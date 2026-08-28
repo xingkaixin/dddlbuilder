@@ -355,16 +355,24 @@ export const failAIUsage = async (
   env: ApiEnv['Bindings'],
   reservation: AIUsageReservation,
   errorCode: string,
+  actualTotalTokens: number | null = null,
 ) => {
-  if (!(await claimSettlement(env, reservation, 'failed', null, errorCode))) {
+  const actualTokens =
+    actualTotalTokens == null ? null : Math.max(0, Math.round(actualTotalTokens));
+  if (!(await claimSettlement(env, reservation, 'failed', actualTokens, errorCode))) {
     return;
   }
 
-  await applyFailedSettlement(env, reservation, errorCode, 'request_failed');
+  if (actualTokens === null) {
+    await applyFailedSettlement(env, reservation, errorCode, 'request_failed');
+  } else {
+    await applySuccessfulSettlement(env, reservation, actualTokens);
+  }
 
   await updateUsageStatus(env, reservation, {
     from: AI_USAGE_STATUS.settlingFailed,
     to: AI_USAGE_STATUS.failed,
+    actualTotalTokens: actualTokens,
     errorCode,
   });
 };
@@ -372,7 +380,8 @@ export const failAIUsage = async (
 /**
  * Worker 可能在预留和结算之间消失（isolate 回收、CPU 超限、流式请求中断），
  * 此时额度已扣但 usage_event 停在非终态，用户余额被永久占用且没有任何请求会再碰它。
- * 这里按 ledger 里的事实——而不是状态列——决定是否退款，然后把记录推到终态。
+ * pending 尚未调用上游，可以退款；reserved 的结果未知，保留预留额度。
+ * 回收意图先持久化，后续重试沿用同一用量，避免中断改变结算结果。
  */
 // 含 reclaiming：上一轮抢占后中途失败的记录必须能被下一轮重新捡起，否则会永久卡住。
 // 重复捡起是安全的——退款走 settlement 幂等键，第二次只会读回已有分录。
@@ -401,15 +410,19 @@ const isAIRouteKey = (value: string): value is AIRouteKey => value in ROUTE_SOUR
  * 抢占先于退款：正常结算路径的 claimSettlement 只认 reserved/settling_*，
  * 状态一旦变成 reclaiming 它就会直接放弃，两条路径不会同时动同一笔额度。
  */
-const claimStaleUsage = async (env: ApiEnv['Bindings'], row: StaleUsageRow) => {
+const claimStaleUsage = async (
+  env: ApiEnv['Bindings'],
+  row: StaleUsageRow,
+  actualTokens: number,
+) => {
   const result = await env.USER_DB.prepare(
     `
       UPDATE usage_events
-      SET status = 'reclaiming'
+      SET status = 'reclaiming', actual_total_tokens = ?
       WHERE id = ? AND status = ?
     `,
   )
-    .bind(row.id, row.status)
+    .bind(actualTokens, row.id, row.status)
     .run();
   if (!result.success) {
     throw new Error('AI_USAGE_RECLAIM_CLAIM_FAILED');
@@ -444,16 +457,24 @@ const reclaimOne = async (env: ApiEnv['Bindings'], row: StaleUsageRow) => {
 
   if (row.status === AI_USAGE_STATUS.settlingFailed) {
     const errorCode = row.errorCode ?? 'RESERVATION_ABANDONED';
-    await applyFailedSettlement(env, reservation, errorCode, 'request_failed');
+    if (row.actualTotalTokens === null) {
+      await applyFailedSettlement(env, reservation, errorCode, 'request_failed');
+    } else {
+      await applySuccessfulSettlement(env, reservation, row.actualTotalTokens);
+    }
     await updateUsageStatus(env, reservation, {
       from: AI_USAGE_STATUS.settlingFailed,
       to: AI_USAGE_STATUS.failed,
+      actualTotalTokens: row.actualTotalTokens,
       errorCode,
     });
     return true;
   }
 
-  if (!(await claimStaleUsage(env, row))) return false;
+  const actualTokens =
+    row.actualTotalTokens ??
+    (row.status === AI_USAGE_STATUS.pending ? 0 : reservation.reservedTokens);
+  if (!(await claimStaleUsage(env, row, actualTokens))) return false;
 
   const reserved = await readCreditLedgerEntry(
     env,
@@ -467,18 +488,14 @@ const reclaimOne = async (env: ApiEnv['Bindings'], row: StaleUsageRow) => {
       buildLedgerIdentity(reservation, 'settlement'),
     );
     if (!settled) {
-      await applyFailedSettlement(
-        env,
-        reservation,
-        'RESERVATION_ABANDONED',
-        'reservation_abandoned',
-      );
+      await applySuccessfulSettlement(env, reservation, actualTokens);
     }
   }
 
   await updateUsageStatus(env, reservation, {
     from: AI_USAGE_STATUS.reclaiming,
     to: AI_USAGE_STATUS.failed,
+    actualTotalTokens: actualTokens,
     errorCode: 'RESERVATION_ABANDONED',
   });
   return true;

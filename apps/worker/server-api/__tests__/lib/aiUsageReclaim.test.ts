@@ -17,7 +17,7 @@ const createDb = (rows: Record<string, unknown>[]) => {
       run: async () => {
         runs.push({ sql, args });
         if (sql.includes("SET status = 'reclaiming'")) {
-          const id = String(args[0]);
+          const id = String(args[1]);
           if (claimed.has(id)) return { success: true, meta: { changes: 0 } };
           claimed.add(id);
           return { success: true, meta: { changes: 1 } };
@@ -92,12 +92,12 @@ describe('reclaimStaleAIUsage with SQLite timestamps', () => {
           scanned: 1,
           reclaimed: 1,
         });
-        expect((await getCreditAccount(env, 'user-1'))?.balance).toBe(800);
+        expect((await getCreditAccount(env, 'user-1'))?.balance).toBe(700);
 
         await completeAIUsage(env, fresh, 60);
         await completeAIUsage(env, boundary, 60);
 
-        expect((await getCreditAccount(env, 'user-1'))?.balance).toBe(880);
+        expect((await getCreditAccount(env, 'user-1'))?.balance).toBe(780);
         expect(
           sqlite.prepare('SELECT request_id, status FROM usage_events ORDER BY request_id').all(),
         ).toEqual([
@@ -135,8 +135,8 @@ describe('reclaimStaleAIUsage', () => {
     vi.clearAllMocks();
   });
 
-  it('refunds a reservation whose consume entry exists and settles it as failed', async () => {
-    const { db, runs } = createDb([staleRow()]);
+  it('refunds a pending reservation whose consume entry exists and settles it as failed', async () => {
+    const { db, runs } = createDb([staleRow({ status: 'pending' })]);
     const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim({
       id: 'ledger-1',
       kind: 'consume',
@@ -186,23 +186,26 @@ describe('reclaimStaleAIUsage', () => {
     expect(runs[0].args).toContain('succeeded');
   });
 
-  it('resumes an interrupted failed settlement without changing its outcome', async () => {
-    const { db, runs } = createDb([
-      staleRow({ status: 'settling_failed', errorCode: 'OPENAI_ERROR' }),
-    ]);
-    const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim(null);
+  it.each([null, 70])(
+    'resumes an interrupted failed settlement with measured usage %s',
+    async (actualTotalTokens) => {
+      const { db, runs } = createDb([
+        staleRow({ status: 'settling_failed', errorCode: 'OPENAI_ERROR', actualTotalTokens }),
+      ]);
+      const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim(null);
 
-    const result = await reclaimStaleAIUsage(createEnv(db));
+      const result = await reclaimStaleAIUsage(createEnv(db));
 
-    expect(result).toEqual({ scanned: 1, reclaimed: 1 });
-    expect(applyCreditMutation).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ kind: 'refund', amount: 120 }),
-    );
-    expect(runs).toHaveLength(1);
-    expect(runs[0].args).toContain('failed');
-    expect(runs[0].args).toContain('OPENAI_ERROR');
-  });
+      expect(result).toEqual({ scanned: 1, reclaimed: 1 });
+      expect(applyCreditMutation).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ kind: 'refund', amount: 120 - (actualTotalTokens ?? 0) }),
+      );
+      expect(runs).toHaveLength(1);
+      expect(runs[0].args).toContain('failed');
+      expect(runs[0].args).toContain('OPENAI_ERROR');
+    },
+  );
 
   it('does not write a second settlement when a reclaiming row already has one', async () => {
     const { db } = createDb([staleRow({ status: 'reclaiming' })]);
@@ -219,7 +222,7 @@ describe('reclaimStaleAIUsage', () => {
   });
 
   it('skips a row whose status was claimed by someone else', async () => {
-    const row = staleRow();
+    const row = staleRow({ status: 'pending' });
     const { db } = createDb([row, row]);
     const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim({ id: 'ledger-1' });
 
@@ -230,7 +233,10 @@ describe('reclaimStaleAIUsage', () => {
   });
 
   it('keeps going when one row throws', async () => {
-    const { db } = createDb([staleRow(), staleRow({ id: 'usage-2', requestId: 'req-2' })]);
+    const { db } = createDb([
+      staleRow({ status: 'pending' }),
+      staleRow({ status: 'pending', id: 'usage-2', requestId: 'req-2' }),
+    ]);
     const applyCreditMutation = vi
       .fn()
       .mockRejectedValueOnce(new Error('boom'))

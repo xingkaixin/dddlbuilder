@@ -1,6 +1,5 @@
 import type { Context } from 'hono';
 import type { ApiEnv } from './lib/context.js';
-import { getClientIp } from './lib/requestRateLimit.js';
 import { dispatchTelegramAuditNotification } from './lib/telegramNotifier.js';
 import { errorResponse, type ApiErrorCode } from './lib/http.js';
 import type { AIRouteKey } from './lib/aiRouteKey.js';
@@ -70,15 +69,6 @@ const sleep = (ms: number) =>
     setTimeout(resolve, ms);
   });
 
-const hashFNV1a = (input: string): string => {
-  let hash = 2166136261;
-  for (let i = 0; i < input.length; i += 1) {
-    hash ^= input.charCodeAt(i);
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
-};
-
 const parseRetryAfterMs = (retryAfterHeader: string | null | undefined) => {
   if (!retryAfterHeader) return null;
   const numeric = Number(retryAfterHeader);
@@ -145,11 +135,6 @@ const computeBackoffDelayMs = (attempt: number, baseDelayMs: number, maxDelayMs:
   const exponential = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
   const jitter = 0.8 + Math.random() * 0.4;
   return Math.max(100, Math.round(exponential * jitter));
-};
-
-const getClientFingerprint = (c: Context<ApiEnv>, routeKey: AIRouteKey): string => {
-  const ip = getClientIp(c);
-  return hashFNV1a(`${routeKey}|${ip}`);
 };
 
 const toUtf8Bytes = (input: string) => new TextEncoder().encode(input).length;
@@ -245,6 +230,7 @@ export async function enforceOpenAIRateLimit(
   c: Context<ApiEnv>,
   routeKey: AIRouteKey,
   config: OpenAIConfig,
+  userId: string,
 ): Promise<{
   response: Response | null;
   rateLimitHit: boolean;
@@ -265,11 +251,10 @@ export async function enforceOpenAIRateLimit(
   const rule = config.rateLimitRules[routeKey];
   const now = Date.now();
   const windowBucket = Math.floor(now / rule.windowMs);
-  const clientFingerprint = getClientFingerprint(c, routeKey);
   const count = await reserveCounterCapacity(
     c.env,
     `rate:${routeKey}`,
-    clientFingerprint,
+    userId,
     String(windowBucket),
     1,
     rule.maxRequests,

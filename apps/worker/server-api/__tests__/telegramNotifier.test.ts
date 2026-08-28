@@ -30,6 +30,42 @@ const auditPayload = {
 };
 
 describe('telegram notifier', () => {
+  it.each([400, 401, 403, 429])('keeps routine %s rejections out of Telegram', async (status) => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'));
+    try {
+      await dispatchTelegramAuditNotification(
+        createEnv({
+          TELEGRAM_NOTIFY_ENABLED: 'true',
+          TELEGRAM_BOT_TOKEN: 'bot-token',
+          TELEGRAM_CHAT_ID: 'chat-id',
+        }),
+        { ...auditPayload, status },
+      );
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+  it.each([{ status: 200 }, { status: 502 }, { status: 429, errorCode: 'BUDGET_EXCEEDED' }])(
+    'notifies for usage and actionable failures: %j',
+    async (outcome) => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'));
+      try {
+        await dispatchTelegramAuditNotification(
+          createEnv({
+            TELEGRAM_NOTIFY_ENABLED: 'true',
+            TELEGRAM_BOT_TOKEN: 'bot-token',
+            TELEGRAM_CHAT_ID: 'chat-id',
+          }),
+          { ...auditPayload, ...outcome },
+        );
+        expect(fetchSpy).toHaveBeenCalledOnce();
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    },
+  );
+
   it('应仅在开关和必要配置完整时启用发送', () => {
     expect(shouldSendTelegramNotification(createEnv())).toBe(false);
     expect(

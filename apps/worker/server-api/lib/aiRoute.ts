@@ -31,6 +31,7 @@ import {
 } from './http.js';
 import { createOpenAIStreamDebugLogger } from './aiStreamDebug.js';
 import { settleAIDailyBudget } from './aiBudget.js';
+import { enforceIpRateLimit } from './requestRateLimit.js';
 
 const DEFAULT_MODEL = 'gpt-4o-mini';
 
@@ -42,6 +43,9 @@ const readCompletedContent = (
   finishReason: string | null | undefined,
   jsonResponse: boolean,
 ): unknown => {
+  if (finishReason === 'length') {
+    throw new DomainError(502, 'AI_OUTPUT_TRUNCATED', 'AI output exceeded the token limit');
+  }
   if (finishReason !== 'stop') {
     throw new Error(`Incomplete AI completion: ${finishReason ?? 'missing finish reason'}`);
   }
@@ -109,7 +113,7 @@ export type AIRouteSpec<Request> = {
 };
 
 /**
- * 五条 AI 路由共用的前置流水线：限流 → 解析请求体 → 鉴权 → 估算 → 预留额度 → 预算，
+ * 五条 AI 路由共用的前置流水线：鉴权 → 用户限流 → 解析请求体 → 估算 → 预留额度 → 预算，
  * 任一步失败都会带上审计日志直接返回。走通之后把句柄交给 run，由它决定怎么调模型、
  * 怎么回包——流式路由会在流回调里才结算，所以结算时机必须留给 run 自己。
  */
@@ -168,7 +172,31 @@ export const withAIGovernance = async <Request>(
     );
   };
 
-  const rateLimit = await enforceOpenAIRateLimit(c, route, config);
+  let userId: string;
+  try {
+    userId = (await authenticateAIUser(c)).userId;
+  } catch (error) {
+    if (error instanceof DomainError) {
+      if (error.status === 401 && config.rateLimitEnabled) {
+        const limited = await enforceIpRateLimit(
+          c,
+          { scope: 'ai:anonymous', limit: 60, windowMs: 60_000 },
+          'Too many unauthenticated AI requests',
+        );
+        if (limited) {
+          audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
+          return limited;
+        }
+      }
+      audit(error.status, 0, false, false, error.code);
+      return errorResponse(c, error.status, error.message, error.code);
+    }
+    console.error(`[${route}] authentication failed`, error);
+    audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+    return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
+  }
+
+  const rateLimit = await enforceOpenAIRateLimit(c, route, config, userId);
   rateLimitRemaining = rateLimit.remaining;
   if (rateLimit.response) {
     audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
@@ -192,20 +220,6 @@ export const withAIGovernance = async <Request>(
   if (isRejection(parsed)) {
     audit(parsed.status, 0, false, false, parsed.code);
     return errorResponse(c, parsed.status, parsed.message, parsed.code);
-  }
-
-  let userId: string;
-  try {
-    userId = (await authenticateAIUser(c)).userId;
-  } catch (error) {
-    // 鉴权失败也要落审计日志，所以这里不能直接把 DomainError 交给全局 onError
-    if (error instanceof DomainError) {
-      audit(error.status, 0, false, false, error.code);
-      return errorResponse(c, error.status, error.message, error.code);
-    }
-    console.error(`[${route}] authentication failed`, error);
-    audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-    return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
   }
 
   const messages = spec.buildMessages(parsed);
@@ -242,8 +256,8 @@ export const withAIGovernance = async <Request>(
 
   const refund = async (code: ApiErrorCode) => {
     const [creditResult, budgetResult] = await Promise.allSettled([
-      failAIUsage(c.env, reservation, code),
-      settleBudget(0),
+      failAIUsage(c.env, reservation, code, usage?.totalTokens ?? null),
+      settleBudget(usage?.totalTokens ?? 0),
     ]);
     if (creditResult.status === 'rejected') {
       console.error(`[${route}] failed to refund credits`, creditResult.reason);
@@ -359,6 +373,12 @@ export const withAIGovernance = async <Request>(
     streamCompletion: ({ scope, temperature, jsonResponse, debugInput }) => {
       c.header('X-AI-Stream-Debug', config.streamDebugEnabled ? '1' : '0');
       streamed = true;
+      let finishStream!: () => void;
+      waitUntil(
+        new Promise<void>((resolve) => {
+          finishStream = resolve;
+        }),
+      );
       const streamDebug = createOpenAIStreamDebugLogger({
         enabled: config.streamDebugEnabled,
         requestId,
@@ -412,15 +432,18 @@ export const withAIGovernance = async <Request>(
         } catch (error) {
           streamDebug.error(error);
           console.error(`[${route}] stream failed`, error);
-          settleFailure('UPSTREAM_OPENAI_ERROR', 502, retryCount);
+          const code = error instanceof DomainError ? error.code : 'UPSTREAM_OPENAI_ERROR';
+          settleFailure(code, 502, retryCount);
           await stream.write(
             encodeAIStreamEvent({
               type: 'error',
-              error: 'Upstream OpenAI error',
-              code: 'UPSTREAM_OPENAI_ERROR',
+              error: error instanceof DomainError ? error.message : 'Upstream OpenAI error',
+              code,
               requestId,
             }),
           );
+        } finally {
+          finishStream();
         }
       });
     },
@@ -432,7 +455,13 @@ export const withAIGovernance = async <Request>(
     return response;
   } catch (error) {
     console.error(`[${route}] failed`, error);
-    settleFailure('UPSTREAM_OPENAI_ERROR', 502, retryCount);
-    return errorResponse(c, 502, 'Upstream OpenAI error', 'UPSTREAM_OPENAI_ERROR');
+    const code = error instanceof DomainError ? error.code : 'UPSTREAM_OPENAI_ERROR';
+    settleFailure(code, 502, retryCount);
+    return errorResponse(
+      c,
+      502,
+      error instanceof DomainError ? error.message : 'Upstream OpenAI error',
+      code,
+    );
   }
 };

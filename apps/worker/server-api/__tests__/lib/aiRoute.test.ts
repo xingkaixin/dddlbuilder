@@ -26,6 +26,9 @@ const loadShell = async (
   const completeAIUsage = vi.fn().mockResolvedValue(undefined);
   const failAIUsage = vi.fn().mockResolvedValue(undefined);
   const openAIConstructor = vi.fn();
+  vi.doMock('../../lib/requestRateLimit.js', () => ({
+    enforceIpRateLimit: vi.fn().mockResolvedValue(null),
+  }));
 
   vi.doMock('../../lib/aiUsage.js', () => ({
     authenticateAIUser: vi.fn().mockResolvedValue({ userId: 'user-1' }),
@@ -63,6 +66,7 @@ const loadShell = async (
   }));
 
   const { withAIGovernance, rejectAIRequest } = await import('../../lib/aiRoute.js');
+  const { enforceOpenAIRateLimit } = await import('../../openaiControl.js');
   return {
     withAIGovernance,
     rejectAIRequest,
@@ -70,6 +74,7 @@ const loadShell = async (
     completeAIUsage,
     failAIUsage,
     openAIConstructor,
+    enforceOpenAIRateLimit,
   };
 };
 
@@ -96,6 +101,24 @@ describe('withAIGovernance', () => {
     bodyMaxBytes: 4096,
     buildMessages: () => PROMPT_MESSAGES,
   };
+
+  it('rejects anonymous requests before parsing or consuming AI quota', async () => {
+    const { DomainError } = await import('../../lib/http.js');
+    const shell = await loadShell({
+      authenticateAIUser: vi
+        .fn()
+        .mockRejectedValue(new DomainError(401, 'AUTH_REQUIRED', 'AUTH_REQUIRED')),
+    });
+    const parseRequest = vi.fn((body) => body);
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest }, async () => c.json({ ok: true })),
+    );
+    const response = await post(app, {});
+    expect(response.status).toBe(401);
+    expect(parseRequest).not.toHaveBeenCalled();
+    expect(shell.enforceOpenAIRateLimit).not.toHaveBeenCalled();
+  });
 
   it.each([
     { label: '截断', content: '{"fields":[', reason: 'length' },
@@ -128,11 +151,14 @@ describe('withAIGovernance', () => {
       .split('\n')
       .map((line) => JSON.parse(line));
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));
-    expect(events.at(-1)).toMatchObject({ type: 'error', code: 'UPSTREAM_OPENAI_ERROR' });
+    expect(events.at(-1)).toMatchObject({
+      type: 'error',
+      code: reason === 'length' ? 'AI_OUTPUT_TRUNCATED' : 'UPSTREAM_OPENAI_ERROR',
+    });
     expect(events.some((event) => event.type === 'done')).toBe(false);
     expect(shell.completeAIUsage).not.toHaveBeenCalled();
     expect(shell.failAIUsage).toHaveBeenCalledTimes(1);
-    expect(waitUntil).toHaveBeenCalledTimes(1);
+    expect(waitUntil).toHaveBeenCalledTimes(2);
   });
 
   it.each([false, true])('完整流在读完最终 usage 后结算一次，JSON=%s', async (jsonResponse) => {
@@ -172,7 +198,7 @@ describe('withAIGovernance', () => {
       15,
     );
     expect(shell.failAIUsage).not.toHaveBeenCalled();
-    expect(waitUntil).toHaveBeenCalledTimes(1);
+    expect(waitUntil).toHaveBeenCalledTimes(2);
   });
 
   it('非流式 JSON 同样拒绝截断结果，即使内容恰好可以解析', async () => {
@@ -189,7 +215,44 @@ describe('withAIGovernance', () => {
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));
     expect(response.status).toBe(502);
     expect(shell.completeAIUsage).not.toHaveBeenCalled();
-    expect(shell.failAIUsage).toHaveBeenCalledTimes(1);
+    expect(shell.failAIUsage).toHaveBeenCalledWith(
+      expect.anything(),
+      RESERVATION,
+      expect.any(String),
+      15,
+    );
+  });
+
+  it('protects the stream lifetime before upstream usage arrives and after cancellation', async () => {
+    let resume!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    async function* upstream() {
+      yield { choices: [{ delta: { content: 'partial' } }] };
+      await gate;
+      yield { choices: [{ delta: {}, finish_reason: 'stop' }] };
+      yield { choices: [], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
+    }
+    const shell = await loadShell({}, '{}', upstream());
+    const waitUntil = vi.fn();
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) =>
+        session.streamCompletion({ scope: 'test-cancel', temperature: 0, debugInput: {} }),
+      ),
+    );
+    const response = await post(app, {}, waitUntil);
+    if (!response.body) throw new Error('Missing stream response body');
+    const reader = response.body.getReader();
+    await reader.read();
+    const protectedBeforeUsage = waitUntil.mock.calls.length;
+    await reader.cancel();
+    resume();
+    await vi.waitFor(() => expect(shell.completeAIUsage).toHaveBeenCalled());
+    await Promise.all(waitUntil.mock.calls.map(([task]) => task));
+    expect(protectedBeforeUsage).toBeGreaterThan(0);
+    expect(shell.completeAIUsage).toHaveBeenCalledWith(expect.anything(), RESERVATION, 15);
   });
 
   it.each([false, true])('流中途失败时发送错误终态并退款，已有输出=%s', async (hasOutput) => {
@@ -224,7 +287,7 @@ describe('withAIGovernance', () => {
     ]);
     expect(shell.completeAIUsage).not.toHaveBeenCalled();
     expect(shell.failAIUsage).toHaveBeenCalledTimes(1);
-    expect(waitUntil).toHaveBeenCalledTimes(1);
+    expect(waitUntil).toHaveBeenCalledTimes(2);
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));
   });
 
@@ -316,10 +379,11 @@ describe('withAIGovernance', () => {
       expect.anything(),
       RESERVATION,
       'UPSTREAM_OPENAI_ERROR',
+      null,
     );
   });
 
-  it('模型返回非法 JSON 时退还额度', async () => {
+  it('模型返回非法 JSON 时仍按已报告用量结算', async () => {
     const shell = await loadShell({}, '{invalid');
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
@@ -340,6 +404,7 @@ describe('withAIGovernance', () => {
       expect.anything(),
       RESERVATION,
       'UPSTREAM_OPENAI_ERROR',
+      15,
     );
   });
 

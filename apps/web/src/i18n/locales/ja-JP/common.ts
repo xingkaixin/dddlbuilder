@@ -1472,6 +1472,8 @@ export const jaJPCommon = {
     authConfigMissing: 'この環境では Better Auth が構成されていません',
     authRequired: 'AI 機能を使用するにはサインインまたは登録します',
     creditExhausted: '現在 AI を使用するのに十分なクレジットがありません',
+    aiOutputTruncated:
+      'AI 出力が長さの上限を超えました。リクエストの範囲を小さくして再試行してください。',
     aiServiceUnavailable:
       'AIサービスが一時的に利用できなくなりました。後でもう一度試してください。',
   },

@@ -1421,6 +1421,7 @@ export const zhCNCommon = {
     authRequired: '请先登录或注册后再使用 AI 功能',
     creditExhausted: '当前额度不足，暂时无法使用 AI 功能',
     aiServiceUnavailable: 'AI 服务暂时不可用，请稍后再试',
+    aiOutputTruncated: 'AI 输出超过长度限制，请缩小请求范围后重试',
   },
   aiComments: {
     done: 'AI 注释已更新',

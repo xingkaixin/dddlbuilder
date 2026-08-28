@@ -52,12 +52,13 @@ export const reserveAIDailyBudget = async (
           actual_tokens,
           limit_tokens,
           expires_at,
-          settled_at
+          settled_at,
+          created_at
         )
-        VALUES (?, ?, ?, NULL, ?, ?, NULL)
+        VALUES (?, ?, ?, NULL, ?, ?, NULL, ?)
       `,
     )
-      .bind(usageEventId, windowId, reservedTokens, limitTokens, getBudgetExpiry())
+      .bind(usageEventId, windowId, reservedTokens, limitTokens, getBudgetExpiry(), Date.now())
       .run();
   } catch (error) {
     if (isBudgetExceeded(error)) return null;
@@ -97,15 +98,15 @@ export const reconcileTerminalAIBudgets = async (env: ApiEnv['Bindings']) => {
     `
       UPDATE ai_budget_reservations
       SET
-        actual_tokens = CASE
+        actual_tokens = COALESCE(
+          (SELECT actual_total_tokens FROM usage_events WHERE id = usage_event_id),
+          CASE
           WHEN (
             SELECT status FROM usage_events WHERE id = usage_event_id
-          ) = 'succeeded' THEN COALESCE(
-            (SELECT actual_total_tokens FROM usage_events WHERE id = usage_event_id),
-            reserved_tokens
-          )
+          ) = 'succeeded' THEN reserved_tokens
           ELSE 0
-        END,
+          END
+        ),
         settled_at = ?
       WHERE actual_tokens IS NULL
         AND usage_event_id IN (

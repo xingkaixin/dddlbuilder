@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 import type { Hono } from 'hono';
+import { createSqliteD1Database } from './helpers/sqliteD1.js';
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -411,7 +412,7 @@ describe.sequential('openai governance', () => {
       code: 'INVALID_JSON',
       error: 'Invalid conversation history',
     });
-    expect(authenticateAIUserMock).not.toHaveBeenCalled();
+    expect(authenticateAIUserMock).toHaveBeenCalledOnce();
   });
 
   it('结构化审计日志不应包含 SQL/DDL 原文', async () => {
@@ -544,9 +545,34 @@ describe.sequential('openai governance', () => {
     expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('separates users behind one IP and preserves their quota when the IP changes', async () => {
+    const app = await loadAuthenticatedApp({
+      OPENAI_RATELIMIT_ENABLED: 'true',
+      OPENAI_RATELIMIT_EXPLAIN_MAX: '1',
+      OPENAI_DAILY_BUDGET_ENABLED: 'false',
+    });
+    const request = (ip: string) =>
+      app.request('https://ddlbuilder.test/api/explain', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'cf-connecting-ip': ip },
+        body: JSON.stringify({ sql: 'select 1' }),
+      });
+    expect((await request('1.1.1.1')).status).toBe(503);
+    authenticateAIUserMock.mockResolvedValue({
+      userId: 'user-2',
+      email: 'second@example.com',
+      emailVerified: true,
+      name: 'Second',
+    });
+    expect((await request('1.1.1.1')).status).toBe(503);
+    expect((await request('2.2.2.2')).status).toBe(429);
+  });
+
   it('匿名 AI 请求应返回 AUTH_REQUIRED', async () => {
+    const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
     const app = await loadAuthenticatedApp(
       {
+        USER_DB: database,
         OPENAI_RATELIMIT_ENABLED: 'true',
         OPENAI_RATELIMIT_WINDOW_MS: '60000',
         OPENAI_RATELIMIT_EXPLAIN_MAX: '20',
@@ -570,6 +596,7 @@ describe.sequential('openai governance', () => {
     });
 
     expect(response.status).toBe(401);
+    sqlite.close();
     expect(await response.json()).toMatchObject({
       code: 'AUTH_REQUIRED',
     });

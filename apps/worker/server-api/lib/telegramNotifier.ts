@@ -103,6 +103,9 @@ export const dispatchTelegramAuditNotification = (
   env: ApiEnv['Bindings'],
   payload: AuditNotificationPayload,
 ): Promise<void> | null => {
+  if (payload.status !== 200 && payload.status < 500 && payload.errorCode !== 'BUDGET_EXCEEDED') {
+    return null;
+  }
   const config = readTelegramNotifyConfig(env);
 
   console.info(
