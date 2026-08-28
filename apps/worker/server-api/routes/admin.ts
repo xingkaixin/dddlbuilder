@@ -109,7 +109,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     try {
       const auth = createBetterAuth(c.env);
       await auth.api.requestPasswordReset({
-        body: { email: userRow.email, redirectTo: '/reset-password' },
+        body: { email: userRow.email, redirectTo: '/?auth_action=reset-password' },
       });
     } catch (error) {
       console.error('[admin] reset-password failed', error);

@@ -540,8 +540,12 @@ describe('/api/admin/*', () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({ ok: true });
       expect(requestPasswordReset).toHaveBeenCalledWith({
-        body: { email: 'user1@example.com', redirectTo: '/reset-password' },
+        body: { email: 'user1@example.com', redirectTo: '/?auth_action=reset-password' },
       });
+      const redirectTo = requestPasswordReset.mock.calls[0][0].body.redirectTo;
+      expect(new URL(redirectTo, 'http://localhost').searchParams.get('auth_action')).toBe(
+        'reset-password',
+      );
     });
 
     it('returns 502 when better-auth throws', async () => {
