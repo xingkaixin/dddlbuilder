@@ -1,13 +1,10 @@
 import type * as Y from 'yjs';
-import { encodeStateAsUpdate, mergeUpdates } from 'yjs';
+import { mergeUpdates } from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import { WORKSPACE_SYNC_MESSAGE } from '@ddlbuilder/shared-types';
-import {
-  materializeWorkspaceYDoc,
-  WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
-} from '@/services/workspaceYDocAdapter';
+import { materializeWorkspaceYDoc, WorkspaceYDocOrigin } from '@/services/workspaceYDocAdapter';
 
 export type WorkspaceYDocConnectionState =
   | 'idle'
@@ -137,7 +134,6 @@ export class WorkspaceYDocSyncClient {
       }
       this.notify('connected');
       this.sendSyncState();
-      this.sendFullState();
     };
     socket.onmessage = (event) => {
       if (this.isCurrentSocket(socket)) {
@@ -179,7 +175,6 @@ export class WorkspaceYDocSyncClient {
       this.pendingAcknowledgements.clear();
       this.notify('connected');
       this.sendSyncState();
-      this.sendFullState();
       return;
     }
     if (this.socket) {
@@ -210,19 +205,17 @@ export class WorkspaceYDocSyncClient {
   }
 
   private readonly handleDocUpdate = (update: Uint8Array, origin: unknown) => {
-    if (origin === this) return;
+    if (origin === WorkspaceYDocOrigin.RemoteSync) return;
     this.queueUpdate(update);
   };
 
   private readonly handleOnline = () => {
     this.browserOffline = false;
-    this.clearPendingUpdates();
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.syncRoundTripComplete = false;
       this.pendingAcknowledgements.clear();
       this.notify('connected');
       this.sendSyncState();
-      this.sendFullState();
       return;
     }
     if (this.socket) {
@@ -240,7 +233,7 @@ export class WorkspaceYDocSyncClient {
 
   private readonly handleOffline = () => {
     this.browserOffline = true;
-    this.clearPendingUpdates();
+    this.clearFlushTimers();
     this.notify('offline');
   };
 
@@ -268,13 +261,13 @@ export class WorkspaceYDocSyncClient {
   }
 
   private queueUpdate(update: Uint8Array) {
+    this.pendingUpdates.push(update);
+    this.pendingUpdatesStartedAt ??= Date.now();
     if (this.isOffline()) {
       this.notify('offline');
       return;
     }
     if (this.socket?.readyState !== WebSocket.OPEN) return;
-    this.pendingUpdates.push(update);
-    this.pendingUpdatesStartedAt ??= Date.now();
     this.notify('connected');
     this.schedulePendingFlush();
   }
@@ -297,10 +290,11 @@ export class WorkspaceYDocSyncClient {
   private flushPendingUpdates() {
     if (this.pendingUpdates.length === 0) return;
     if (this.isOffline()) {
-      this.clearPendingUpdates();
+      this.clearFlushTimers();
       this.notify('offline');
       return;
     }
+    if (this.socket?.readyState !== WebSocket.OPEN) return;
     this.clearFlushTimers();
     const updates = this.pendingUpdates;
     const startedAt = this.pendingUpdatesStartedAt;
@@ -322,12 +316,6 @@ export class WorkspaceYDocSyncClient {
     if (!this.destroyed && this.socket?.readyState === WebSocket.OPEN) {
       this.notify('connected');
     }
-  }
-
-  private clearPendingUpdates() {
-    this.clearFlushTimers();
-    this.pendingUpdates = [];
-    this.pendingUpdatesStartedAt = null;
   }
 
   private clearFlushTimers() {
@@ -383,14 +371,6 @@ export class WorkspaceYDocSyncClient {
   private sendSyncState() {
     this.sendImmediate(
       encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, this.doc)),
-    );
-  }
-
-  private sendFullState() {
-    this.sendImmediate(
-      encodeSyncMessage((encoder) =>
-        syncProtocol.writeUpdate(encoder, encodeStateAsUpdate(this.doc)),
-      ),
       true,
     );
   }
@@ -464,14 +444,14 @@ export class WorkspaceYDocSyncClient {
     const syncMessageType = decoding.peekVarUint(decoder);
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, MESSAGE_SYNC);
-    syncProtocol.readSyncMessage(decoder, encoder, this.doc, this);
+    syncProtocol.readSyncMessage(decoder, encoder, this.doc, WorkspaceYDocOrigin.RemoteSync);
     if (encoding.length(encoder) > 1) {
       this.sendImmediate(encoding.toUint8Array(encoder), true);
     }
     let materialized = false;
     this.doc.transact(() => {
       materialized = materializeWorkspaceYDoc(this.doc);
-    }, WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN);
+    }, WorkspaceYDocOrigin.RemoteMaterialize);
     if (materialized) {
       this.flushPendingUpdates();
       this.syncRoundTripComplete = false;
@@ -481,6 +461,7 @@ export class WorkspaceYDocSyncClient {
     }
     if (syncMessageType === syncProtocol.messageYjsSyncStep2) {
       this.syncRoundTripComplete = true;
+      this.flushPendingUpdates();
     }
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.notify('connected');

@@ -80,7 +80,11 @@ type WorkspaceYDocDraftWriteRecord = Omit<SchemaWorkspaceYDocDraftRecord, 'state
   state: SchemaDocumentState;
 };
 
-export const WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN = { source: 'workspace-local-edit' } as const;
+export const WorkspaceYDocOrigin = {
+  LocalEdit: 'workspace-local-edit',
+  RemoteSync: 'workspace-remote-sync',
+  RemoteMaterialize: 'workspace-remote-materialize',
+} as const;
 
 export const getDraftRecordFromYDoc = (
   doc: Y.Doc,

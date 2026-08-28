@@ -21,7 +21,7 @@ import {
   listTrashedDraftRecordsFromYDoc,
   subscribeWorkspaceYDoc,
   type WorkspaceYDocChange,
-  WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
+  WorkspaceYDocOrigin,
   upsertDraftInYDoc,
   upsertSavedDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
@@ -88,7 +88,7 @@ export function useWorkspaceYDocSubscription({
       if (!change || change.collection === 'savedDrafts' || change.collection === 'savedTables') {
         replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc));
       }
-      if (change?.origin === WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN) return;
+      if (change?.origin === WorkspaceYDocOrigin.LocalEdit) return;
       for (const rename of change?.renamedTables ?? []) {
         useTabStore
           .getState()

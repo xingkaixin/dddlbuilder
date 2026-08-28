@@ -2,15 +2,15 @@ import { useCallback } from 'react';
 import type * as Y from 'yjs';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
+import { WorkspaceYDocOrigin } from '@/services/workspaceYDocAdapter';
 
 type WorkspaceYDocGatewayOptions = {
   enabled?: boolean;
-  origin?: unknown;
 };
 
 export function useWorkspaceYDocGateway(
   scope: WorkspaceScope | null,
-  { enabled = true, origin }: WorkspaceYDocGatewayOptions = {},
+  { enabled = true }: WorkspaceYDocGatewayOptions = {},
 ) {
   const workspaceYDoc = useWorkspaceYDoc();
   const yDocReady = Boolean(
@@ -22,9 +22,9 @@ export function useWorkspaceYDocGateway(
   const runInYDoc = useCallback(
     (mutate: (doc: Y.Doc) => void) => {
       if (!yDoc) return;
-      yDoc.transact(() => mutate(yDoc), origin);
+      yDoc.transact(() => mutate(yDoc), WorkspaceYDocOrigin.LocalEdit);
     },
-    [origin, yDoc],
+    [yDoc],
   );
 
   return { workspaceYDoc, yDoc, yDocReady, runInYDoc };

@@ -8,10 +8,7 @@ import {
   type PersistedState,
   type SchemaDocumentState,
 } from '@ddlbuilder/shared-types';
-import {
-  getWorkspaceSnapshotFromYDoc,
-  WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
-} from '@/services/workspaceYDocAdapter';
+import { getWorkspaceSnapshotFromYDoc } from '@/services/workspaceYDocAdapter';
 import type {
   DraftSummary,
   SavedTableDraftRecord,
@@ -117,7 +114,6 @@ export function usePersistedState(): UsePersistedStateReturn {
   // 分享页没有 workspace 上下文，Y.Doc 永远不参与，本地分区即真相源。
   const { workspaceYDoc, yDoc, yDocReady, runInYDoc } = useWorkspaceYDocGateway(currentScope, {
     enabled: !shareId,
-    origin: WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
   });
   const shouldWaitForYDocHydration = Boolean(
     !shareId && currentScope.kind === 'user' && !workspaceYDoc.localSynced,
