@@ -19,6 +19,12 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
 });
 
 describe('persistedStateSignature', () => {
+  it('keeps large document signatures bounded', () => {
+    const signature = serializePersistedStateForComparison(
+      createState({ tableComment: 'x'.repeat(100_000) }),
+    );
+    expect(signature).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
   it('treats UI defaults as unchanged table state', () => {
     const stored = createState();
     const current = createState({

@@ -46,6 +46,7 @@ interface UseSaveLoadActionsParams {
     normalizedName: string;
     displayName: string;
     baseSignature: string;
+    baseState: PersistedState;
     mode: 'create' | 'update';
   }) => Promise<void> | void;
   onTableLoadStateChange?: (loading: boolean) => void;
@@ -190,6 +191,7 @@ export function useSaveLoadActions({
       ...(savedTableId ? { tableId: savedTableId } : {}),
       displayName: savedDisplayName,
       baseSignature: nextSignature,
+      baseState: nextState,
       mode: saveMode,
     });
   }, [

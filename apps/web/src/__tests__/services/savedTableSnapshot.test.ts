@@ -5,6 +5,7 @@ import { serializePersistedStateForComparison } from '@/utils/persistedStateSign
 import { updateDocumentFields } from '@/stores/editorDocumentMutations';
 import { normalizeFields } from '@/utils/helpers';
 import { buildDDL } from '@ddlbuilder/ddl-core';
+import { decodeSavedDraftBase } from '@ddlbuilder/workspace-core';
 
 const base = withDefaultEditorSession({
   schemaName: '',
@@ -35,9 +36,13 @@ const record = (state = base) => ({
 const draft = (
   state: PersistedState,
   baseSignature = serializePersistedStateForComparison(base),
+  baseState = base,
 ) => ({
   state,
-  baseSignature,
+  ...decodeSavedDraftBase({
+    baseSignature,
+    ...(baseSignature.startsWith('sha256:') ? { baseState } : {}),
+  }),
   tableName: 'Users',
   updatedAt: 1,
 });
@@ -136,7 +141,7 @@ describe('resolveSavedTableSnapshot', () => {
     const nextSaved = { ...saved, tableName: 'accounts' };
     const next = resolveSavedTableSnapshot(
       record(nextSaved),
-      draft({ ...first.state, authInput: 'reader' }, first.source.baseSignature),
+      draft({ ...first.state, authInput: 'reader' }, first.source.baseSignature, saved),
     );
     expect(next.state).toMatchObject({
       tableComment: 'draft',

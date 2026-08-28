@@ -1,3 +1,4 @@
+import { decodeSavedDraftBase } from '@ddlbuilder/workspace-core';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
   SavedTableDraftRecord,
@@ -230,7 +231,7 @@ export const listSavedDrafts = async (
       ...(decoded.tableId ? { tableId: decoded.tableId } : {}),
       state,
       tableName: decoded.tableName,
-      baseSignature: decoded.baseSignature,
+      ...decodeSavedDraftBase(decoded),
       updatedAt: decoded.updatedAt,
     };
   }
@@ -255,7 +256,7 @@ export const readSavedDraft = async (
     ...(decoded.tableId ? { tableId: decoded.tableId } : {}),
     state,
     tableName: decoded.tableName,
-    baseSignature: decoded.baseSignature,
+    ...decodeSavedDraftBase(decoded),
     updatedAt: decoded.updatedAt,
   };
 };
@@ -435,7 +436,7 @@ const readLegacySavedDraftMap = (): Record<string, SavedTableDraftRecord> => {
     next[normalizedName] = {
       state,
       tableName: value.tableName,
-      baseSignature: value.baseSignature,
+      ...decodeSavedDraftBase(value),
       updatedAt,
     };
   }

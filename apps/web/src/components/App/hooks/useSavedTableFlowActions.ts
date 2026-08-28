@@ -62,6 +62,7 @@ interface UseSavedTableFlowActionsParams {
     normalizedName: string;
     displayName: string;
     baseSignature: string;
+    baseState: PersistedState;
     mode: 'create' | 'update';
   }) => Promise<void> | void;
   onTableLoadStateChange?: (loading: boolean) => void;

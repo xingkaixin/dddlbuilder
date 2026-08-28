@@ -1,4 +1,5 @@
 import type * as Y from 'yjs';
+import { decodeSavedDraftBase } from './persistedStateCodec';
 import {
   savedTableReference,
   type SavedTableTarget,
@@ -154,7 +155,7 @@ const readSavedDraftRecord = (
     normalizedName,
     tableName: typeof tableName === 'string' ? tableName : normalizedName,
     state: tableDocToSchemaDocumentState(tableDoc),
-    baseSignature: typeof metadata.baseSignature === 'string' ? metadata.baseSignature : '',
+    ...decodeSavedDraftBase(metadata),
     updatedAt: readWorkspaceTimestamp(metadata.updatedAt),
   };
 };
@@ -178,7 +179,10 @@ export const upsertWorkspaceSavedDraft = (
       tableId,
       normalizedName: record.normalizedName,
       tableName: record.tableName,
-      baseSignature: record.baseSignature,
+      ...decodeSavedDraftBase(
+        record,
+        parent ? tableDocToSchemaDocumentState(parent[1]) : undefined,
+      ),
       updatedAt: record.updatedAt,
     },
     options,

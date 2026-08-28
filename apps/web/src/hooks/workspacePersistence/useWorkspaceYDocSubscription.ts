@@ -180,6 +180,7 @@ export function useWorkspaceYDocSubscription({
                   state: pending.localState,
                   tableName: source.tableName,
                   baseSignature: pending.source.baseSignature,
+                  baseState: pending.baseState,
                   updatedAt: Date.now(),
                 }
               : null;
@@ -190,6 +191,7 @@ export function useWorkspaceYDocSubscription({
                 ...pendingDraft,
                 state: snapshot.state,
                 baseSignature: snapshot.source.baseSignature,
+                baseState: savedTable.state,
               }),
             );
             lastLocalSaveRef.current = {

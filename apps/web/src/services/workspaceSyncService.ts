@@ -98,6 +98,7 @@ const replaceLocalWorkspaceSnapshot = async (
       state: withDefaultEditorSession(item.state),
       updatedAt: item.updatedAt,
       baseSignature: item.baseSignature,
+      baseState: item.baseState,
     };
     await upsertSavedDraft(item.normalizedName, nextDraft, scope);
   }

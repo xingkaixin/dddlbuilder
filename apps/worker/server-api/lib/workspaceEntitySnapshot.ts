@@ -1,5 +1,9 @@
 import type { WorkspaceEntityType, WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
-import { decodeSchemaDocumentState, normalizeWorkspaceSnapshot } from '@ddlbuilder/workspace-core';
+import {
+  decodeSchemaDocumentState,
+  decodeSavedDraftBase,
+  normalizeWorkspaceSnapshot,
+} from '@ddlbuilder/workspace-core';
 
 export const LEGACY_GLOBAL_DRAFT_ENTITY_ID = '__global_draft__';
 
@@ -79,6 +83,7 @@ export const workspaceSnapshotToEntities = (
         tableName: item.tableName,
         state: item.state,
         baseSignature: item.baseSignature,
+        baseState: item.baseState,
       },
       sourceUpdatedAt: item.updatedAt,
     });
@@ -180,7 +185,7 @@ const applyPayloadToSnapshot = (
       tableName: payload.tableName,
       state,
       updatedAt,
-      baseSignature: payload.baseSignature,
+      ...decodeSavedDraftBase(payload),
     });
     return true;
   }

@@ -1,4 +1,8 @@
 export { buildWorkspaceContentHash } from './contentHash';
+export {
+  buildSchemaStateSignature,
+  normalizeSchemaStateForSignature,
+} from './schemaStateSignature';
 export { DEFAULT_DRAFT_ID, shouldAcceptSnapshotRecord } from './snapshotMergePolicy';
 export {
   normalizeWorkspaceSnapshot,
@@ -7,6 +11,7 @@ export {
 } from './workspaceSnapshotNormalization';
 export {
   decodePersistedState,
+  decodeSavedDraftBase,
   decodeSchemaDocumentState,
   decodeWorkspaceSnapshot,
   type PersistedStateDecodeMode,

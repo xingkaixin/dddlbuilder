@@ -58,12 +58,14 @@ export function useSavedTableTabIntegration({
       tableId,
       displayName,
       baseSignature,
+      baseState,
       mode,
     }: {
       normalizedName: string;
       tableId?: string;
       displayName: string;
       baseSignature: string;
+      baseState: PersistedState;
       mode: 'create' | 'update';
     }) => {
       if (isShareView) {
@@ -106,6 +108,7 @@ export function useSavedTableTabIntegration({
           state,
           tableName: displayName,
           baseSignature,
+          baseState,
           updatedAt: Date.now(),
         });
       }

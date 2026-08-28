@@ -4,13 +4,17 @@ import {
   type SavedTableTarget,
 } from '@ddlbuilder/shared-types/workspace';
 import { useCallback, useRef } from 'react';
+import { toSchemaDocumentState, type SchemaDocumentState } from '@ddlbuilder/shared-types';
+import { buildSchemaStateSignature, decodeSavedDraftBase } from '@ddlbuilder/workspace-core';
 import type { SavedTableDraftRecord } from '@ddlbuilder/shared-types/workspace';
 import {
   deleteSavedDraftFromYDoc,
   upsertSavedDraftInYDoc,
   renameSavedDraftInYDoc,
+  getSavedTableFromYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { deleteSavedDraft, renameSavedDraftKey, upsertSavedDraft } from '@/utils/workspaceStateDb';
+import { getSavedTable } from '@/utils/savedTablesDb';
 import type { usePersistenceQueue } from './usePersistenceQueue';
 import type { WorkspaceStorageTarget } from './useWorkspaceStorageTarget';
 
@@ -19,6 +23,14 @@ interface UseSavedTableDraftRecordsParams {
   enqueuePersistence: ReturnType<typeof usePersistenceQueue>['enqueue'];
   storage: WorkspaceStorageTarget;
 }
+
+const withSavedBase = (
+  record: SavedTableDraftRecord,
+  savedState?: SchemaDocumentState,
+): SavedTableDraftRecord =>
+  !record.baseState && savedState && buildSchemaStateSignature(savedState) === record.baseSignature
+    ? { ...record, baseState: toSchemaDocumentState(savedState) }
+    : record;
 
 export function useSavedTableDraftRecords({
   disabled,
@@ -48,15 +60,32 @@ export function useSavedTableDraftRecords({
       if (key !== normalizedName && !recordsRef.current.get(normalizedName)?.tableId) {
         recordsRef.current.delete(normalizedName);
       }
-      recordsRef.current.set(key, { ...record, ...(tableId ? { tableId } : {}) });
+      const existing = recordsRef.current.get(key);
+      const nextRecord = {
+        ...record,
+        ...decodeSavedDraftBase(record),
+        ...(tableId ? { tableId } : {}),
+      };
+      if (!nextRecord.baseState && existing?.baseSignature === nextRecord.baseSignature)
+        nextRecord.baseState = existing.baseState;
+      recordsRef.current.set(key, nextRecord);
       void enqueuePersistence(`saved-draft:${key}`, 'save saved-table draft', () =>
         storage.write({
           yDoc: (doc) =>
-            upsertSavedDraftInYDoc(doc, target, record, {
-              compactSnapshotBase: true,
-            }),
-          local: (scope) =>
-            upsertSavedDraft(normalizedName, { ...record, ...(tableId ? { tableId } : {}) }, scope),
+            upsertSavedDraftInYDoc(
+              doc,
+              target,
+              withSavedBase(nextRecord, getSavedTableFromYDoc(doc, target)?.state),
+              {
+                compactSnapshotBase: true,
+              },
+            ),
+          local: async (scope) =>
+            upsertSavedDraft(
+              normalizedName,
+              withSavedBase(nextRecord, (await getSavedTable(target, scope))?.state),
+              scope,
+            ),
         }),
       );
     },

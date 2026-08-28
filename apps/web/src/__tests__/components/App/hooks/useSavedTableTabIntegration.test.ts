@@ -259,6 +259,7 @@ describe('useSavedTableTabIntegration', () => {
         state: editorState,
         tableName: 'users',
         baseSignature: savedSource.baseSignature,
+        baseState: original,
         updatedAt: expect.any(Number),
       },
     ];

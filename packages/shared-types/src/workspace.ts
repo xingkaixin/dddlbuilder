@@ -63,6 +63,7 @@ export type SavedTableDraftRecord = {
   state: PersistedState;
   tableName: string;
   baseSignature: string;
+  baseState?: SchemaDocumentState;
   updatedAt: number;
 };
 
@@ -116,6 +117,7 @@ export type WorkspaceSnapshot = {
     state: SchemaDocumentState;
     updatedAt: number;
     baseSignature: string;
+    baseState?: SchemaDocumentState;
   }>;
   folders: TableFolderSnapshot[];
 };

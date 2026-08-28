@@ -346,6 +346,7 @@ describe('useSaveLoadActions', () => {
       normalizedName: 'norm',
       displayName: 'orig_name',
       baseSignature: 'mock-sig',
+      baseState: { test: 1 },
       mode: 'update',
     });
     expect(loadTable).not.toHaveBeenCalled();
@@ -395,6 +396,7 @@ describe('useSaveLoadActions', () => {
       normalizedName: 'new_norm',
       displayName: 'new_name',
       baseSignature: 'mock-sig',
+      baseState: { test: 1 },
       mode: 'create',
     });
   });

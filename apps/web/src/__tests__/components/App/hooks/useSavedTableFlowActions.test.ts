@@ -82,6 +82,7 @@ describe('useSavedTableFlowActions', () => {
       normalizedName: 'users',
       displayName: 'Users',
       baseSignature: signature,
+      baseState: state,
       mode: 'create',
     });
   });

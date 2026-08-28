@@ -120,6 +120,7 @@ export const collectWorkspaceMigrationPayload = async (
     state: item.state,
     updatedAt: item.updatedAt,
     baseSignature: item.baseSignature,
+    baseState: item.baseState,
   }));
 
   const migrationDrafts = [

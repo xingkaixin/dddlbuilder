@@ -31,6 +31,27 @@ import {
 } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { normalizeWorkspaceSnapshot } from './workspaceSnapshotNormalization';
+import { buildSchemaStateSignature } from './schemaStateSignature';
+
+export const decodeSavedDraftBase = (
+  value: { baseState?: unknown; baseSignature?: unknown },
+  savedState?: SchemaDocumentState,
+): { baseSignature: string; baseState?: SchemaDocumentState } => {
+  const signature = typeof value.baseSignature === 'string' ? value.baseSignature : '';
+  let baseState = decodeSchemaDocumentState(value.baseState);
+  if (!baseState && savedState && buildSchemaStateSignature(savedState) === signature)
+    baseState = toSchemaDocumentState(savedState);
+  if (!baseState && signature.startsWith('{')) {
+    try {
+      baseState = decodeSchemaDocumentState(JSON.parse(signature));
+    } catch {
+      baseState = null;
+    }
+  }
+  return baseState
+    ? { baseState, baseSignature: buildSchemaStateSignature(baseState) }
+    : { baseSignature: signature };
+};
 
 export type PersistedStateDecodeMode = 'compatible' | 'external';
 
@@ -455,7 +476,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
       ...(typeof item.tableId === 'string' ? { tableId: item.tableId } : {}),
       normalizedName: item.normalizedName,
       tableName: item.tableName,
-      baseSignature: item.baseSignature,
+      ...decodeSavedDraftBase(item),
       updatedAt: item.updatedAt,
       state,
     });
