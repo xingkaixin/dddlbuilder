@@ -65,6 +65,7 @@ describe('PartitionPanel editing', () => {
     fireEvent.change(input, { target: { value: '' } });
     expect(input).toHaveValue(null);
     fireEvent.change(input, { target: { value: '12' } });
+    expect(changed).toHaveBeenLastCalledWith(12);
     fireEvent.blur(input);
     expect(changed).toHaveBeenLastCalledWith(12);
     fireEvent.change(input, { target: { value: '-5' } });

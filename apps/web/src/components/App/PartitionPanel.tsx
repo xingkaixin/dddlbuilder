@@ -87,7 +87,7 @@ function PartitionCountInput({
     const text = input ?? String(value);
     const count = normalizeMysqlPartitionCount(text.trim() ? Number(text) : Number.NaN);
     setInput(null);
-    onChange(count);
+    if (count !== value) onChange(count);
   };
   return (
     <Input
@@ -95,7 +95,14 @@ function PartitionCountInput({
       min={1}
       max={8192}
       value={input ?? String(value)}
-      onChange={(event) => setInput(event.target.value)}
+      onChange={(event) => {
+        const text = event.target.value;
+        setInput(text);
+        const count = Number(text);
+        if (text && count !== value && count === normalizeMysqlPartitionCount(count)) {
+          onChange(count);
+        }
+      }}
       onBlur={commit}
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur();
