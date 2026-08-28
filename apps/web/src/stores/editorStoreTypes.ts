@@ -112,8 +112,8 @@ export interface PartitionSlice {
   setPartitionExpression: (value: string) => void;
   setPartitionCount: (value: number) => void;
   addPartition: (value: PartitionDefinition) => void;
-  removePartition: (name: string) => void;
-  updatePartition: (name: string, value: PartitionDefinition) => void;
+  removePartition: (index: number) => void;
+  updatePartition: (index: number, value: PartitionDefinition) => void;
   generateRangePartitions: (preset: 'year' | 'month' | 'day') => void;
   setMysqlPartitionConfig: (value: Setter<MysqlPartitionConfig>) => void;
   resetPartition: () => void;

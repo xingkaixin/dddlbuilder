@@ -62,21 +62,21 @@ export const createPartitionSlice = (set: EditorSetState): PartitionSlice => ({
         partitions: [...(state.mysqlPartitionConfig.partitions || []), partition],
       },
     })),
-  removePartition: (name) =>
+  removePartition: (index) =>
     set((state) => ({
       mysqlPartitionConfig: {
         ...state.mysqlPartitionConfig,
         partitions: (state.mysqlPartitionConfig.partitions || []).filter(
-          (partition) => partition.name !== name,
+          (_, current) => current !== index,
         ),
       },
     })),
-  updatePartition: (name, partition) =>
+  updatePartition: (index, partition) =>
     set((state) => ({
       mysqlPartitionConfig: {
         ...state.mysqlPartitionConfig,
-        partitions: (state.mysqlPartitionConfig.partitions || []).map((current) =>
-          current.name === name ? partition : current,
+        partitions: (state.mysqlPartitionConfig.partitions || []).map((current, currentIndex) =>
+          currentIndex === index ? partition : current,
         ),
       },
     })),

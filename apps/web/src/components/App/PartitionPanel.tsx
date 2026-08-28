@@ -49,8 +49,8 @@ interface PartitionPanelProps {
   onExpressionChange: (expression: string) => void;
   onPartitionCountChange: (count: number) => void;
   onAddPartition: (partition: PartitionDefinition) => void;
-  onRemovePartition: (name: string) => void;
-  onUpdatePartition: (name: string, partition: PartitionDefinition) => void;
+  onRemovePartition: (index: number) => void;
+  onUpdatePartition: (index: number, partition: PartitionDefinition) => void;
   onGeneratePartitions: (preset: 'year' | 'month' | 'day') => void;
 }
 
@@ -91,7 +91,9 @@ export const PartitionPanel = memo<PartitionPanelProps>(
     const { t } = useTranslation();
 
     const handleAddPartition = () => {
-      const nextIndex = (config.partitions?.length || 0) + 1;
+      const existingNames = new Set((config.partitions ?? []).map((partition) => partition.name));
+      let nextIndex = (config.partitions?.length || 0) + 1;
+      while (existingNames.has(`p${nextIndex}`)) nextIndex += 1;
       onAddPartition({
         name: `p${nextIndex}`,
         value: '',
@@ -377,16 +379,16 @@ export const PartitionPanel = memo<PartitionPanelProps>(
 
                     {config.partitions && config.partitions.length > 0 && (
                       <div className="space-y-2">
-                        {config.partitions.map((partition) => (
+                        {config.partitions.map((partition, index) => (
                           <div
-                            key={partition.name}
+                            key={index}
                             className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3"
                           >
                             <Input
                               placeholder={t('partitionPanel.partitionName')}
                               value={partition.name}
                               onChange={(e) =>
-                                onUpdatePartition(partition.name, {
+                                onUpdatePartition(index, {
                                   ...partition,
                                   name: e.target.value,
                                 })
@@ -406,7 +408,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                               }
                               value={partition.value}
                               onChange={(e) =>
-                                onUpdatePartition(partition.name, {
+                                onUpdatePartition(index, {
                                   ...partition,
                                   value: e.target.value,
                                 })
@@ -419,7 +421,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => onRemovePartition(partition.name)}
+                                  onClick={() => onRemovePartition(index)}
                                   className="h-8 w-8 text-destructive hover:text-destructive"
                                 >
                                   <X className="h-4 w-4" />

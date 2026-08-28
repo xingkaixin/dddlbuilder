@@ -126,13 +126,13 @@ describe('editor store partition state', () => {
 
     // Update partition
     act(() => {
-      result.current.updatePartition('p1', { name: 'p1', value: '2023' });
+      result.current.updatePartition(0, { name: 'p1', value: '2023' });
     });
     expect(result.current.mysqlPartitionConfig.partitions?.[0].value).toBe('2023');
 
     // Remove partition
     act(() => {
-      result.current.removePartition('p1');
+      result.current.removePartition(0);
     });
     expect(result.current.mysqlPartitionConfig.partitions).toHaveLength(1);
     expect(result.current.mysqlPartitionConfig.partitions?.[0].name).toBe('p2');
