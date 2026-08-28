@@ -85,6 +85,10 @@ export class WorkspaceYDocDurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    if (request.method === 'POST' && new URL(request.url).pathname.endsWith('/kick')) {
+      return this.handleKick(request);
+    }
+
     const workspaceId = request.headers.get('x-ddlbuilder-workspace-id') ?? undefined;
     if (workspaceId) {
       this.workspaceId = workspaceId;
@@ -372,6 +376,21 @@ export class WorkspaceYDocDurableObject {
   private async awaitPersisted() {
     this.startPersisting();
     await this.persistQueue;
+  }
+
+  // 登出等撤销事件推送至此：失效授权缓存并立即断开匹配的 socket
+  private handleKick(request: Request): Response {
+    const sessionId = request.headers.get('x-ddlbuilder-session-id');
+    const userId = request.headers.get('x-ddlbuilder-user-id');
+    this.authCache = null;
+    for (const socket of this.state.getWebSockets()) {
+      const attachment = socket.deserializeAttachment?.();
+      if (!isSocketAttachment(attachment)) continue;
+      if (sessionId && attachment.sessionId !== sessionId) continue;
+      if (userId && attachment.userId !== userId) continue;
+      socket.close(1008, 'Session revoked');
+    }
+    return Response.json({ ok: true });
   }
 
   private async authorizedSessionIds(): Promise<Set<string>> {

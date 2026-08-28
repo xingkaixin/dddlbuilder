@@ -41,7 +41,11 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   // ─── Session management ──────────────────────────────────────────
 
   app.post('/admin/session', async (c) => {
-    const limited = await enforceIpRateLimit(c, ADMIN_LOGIN_RATE_LIMIT, 'Too many admin login attempts');
+    const limited = await enforceIpRateLimit(
+      c,
+      ADMIN_LOGIN_RATE_LIMIT,
+      'Too many admin login attempts',
+    );
     if (limited) return limited;
 
     const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{

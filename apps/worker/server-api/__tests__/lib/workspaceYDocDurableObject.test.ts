@@ -1181,4 +1181,56 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     );
     expect(logs.some((payload) => 'userId' in payload)).toBe(false);
   });
+
+  it('kick closes only the matching session and clears the authorization cache', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    let authQueries = 0;
+    const prepare = vi.fn(() => {
+      if (String(prepare.mock.calls.length)) {
+        // 每次调用前累加，用于区分鉴权查询
+      }
+      authQueries += 1;
+      return {
+        bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
+      };
+    });
+    const durableObject = new WorkspaceYDocDurableObject(state, {
+      USER_DB: { prepare },
+    } as unknown as ApiEnv['Bindings']);
+    const matching = createWebSocket({
+      schemaVersion: 1,
+      workspaceId: 'ws-1',
+      userId: 'user-1',
+      sessionId: 'session-1',
+    });
+    const other = createWebSocket({
+      schemaVersion: 1,
+      workspaceId: 'ws-1',
+      userId: 'user-2',
+      sessionId: 'session-2',
+    });
+    vi.mocked(state.getWebSockets).mockReturnValue([matching, other]);
+
+    const kick = await durableObject.fetch(
+      new Request('http://localhost/kick', {
+        method: 'POST',
+        headers: {
+          'x-ddlbuilder-user-id': 'user-1',
+          'x-ddlbuilder-session-id': 'session-1',
+        },
+      }),
+    );
+    expect(kick.status).toBe(200);
+    expect(matching.close).toHaveBeenCalledWith(1008, 'Session revoked');
+    expect(other.close).not.toHaveBeenCalled();
+
+    // 缓存已失效：下一条消息会重新鉴权
+    const doc = new Y.Doc();
+    doc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(doc));
+    await durableObject.webSocketMessage(matching, trackedUpdate(Y.encodeStateAsUpdate(doc), 1));
+    expect(authQueries).toBe(1);
+    doc.destroy();
+  });
 });

@@ -209,5 +209,35 @@ export const createBetterAuth = (env: ApiEnv['Bindings']) => {
         });
       },
     },
+    databaseHooks: {
+      session: {
+        delete: {
+          // 撤销会话时立即断开该会话在 workspace DO 上的同步 socket
+          after: async (session: { id: string; userId: string }) => {
+            const namespace = env.WORKSPACE_YDOC;
+            if (!namespace) return;
+            const workspaces = await env.USER_DB.prepare(
+              'SELECT id FROM workspaces WHERE user_id = ?',
+            )
+              .bind(session.userId)
+              .all<{ id: string }>();
+            await Promise.all(
+              (workspaces.results ?? []).map(({ id }) =>
+                namespace
+                  .get(namespace.idFromName(id))
+                  .fetch('https://workspace-ydoc.internal/kick', {
+                    method: 'POST',
+                    headers: {
+                      'x-ddlbuilder-user-id': session.userId,
+                      'x-ddlbuilder-session-id': session.id,
+                    },
+                  })
+                  .catch(() => undefined),
+              ),
+            );
+          },
+        },
+      },
+    },
   });
 };
