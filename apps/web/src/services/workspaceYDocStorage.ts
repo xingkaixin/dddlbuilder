@@ -6,6 +6,7 @@ export const buildWorkspaceYDocName = (workspaceId: string) =>
   `ddlbuilder:workspace:${workspaceId}`;
 
 export const LEGACY_MIGRATION_COMMITTED = 'legacy-migration-committed';
+const WORKSPACE_SIGN_OUT_TIMEOUT_MS = 10_000;
 type WorkspaceYDocOwner = {
   dispose: () => Promise<void>;
   prepareSignOut: () => Promise<void>;
@@ -25,7 +26,20 @@ export const registerWorkspaceYDocOwner = (workspaceId: string, owner: Workspace
 export const prepareWorkspaceSignOut = async (workspaceId: string) => {
   const owners = activeOwners.get(workspaceId);
   if (!owners?.size) throw new Error('Workspace is not ready');
-  await Promise.all(Array.from(owners, (owner) => owner.prepareSignOut()));
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.all(Array.from(owners, (owner) => owner.prepareSignOut())),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error('Workspace sign out timed out')),
+          WORKSPACE_SIGN_OUT_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
 };
 
 export const commitLegacyWorkspaceYDoc = async (persistence: IndexeddbPersistence, doc: Y.Doc) => {
