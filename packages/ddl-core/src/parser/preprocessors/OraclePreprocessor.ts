@@ -1,4 +1,5 @@
 import type { PreprocessResult } from './types.js';
+import { mapSqlCode } from '../sqlSegments.js';
 
 /**
  * Preprocess Oracle SQL for parsing
@@ -46,14 +47,16 @@ export function preprocessOracle(sql: string): PreprocessResult {
   sql = sql.replace(/CREATE\s+OR\s+REPLACE\s+PUBLIC\s+SYNONYM[\s\S]*?;/gi, '');
 
   // Normalize types and default values for parser compatibility
-  const normalizedSql = sql
-    .replace(/VARCHAR2/gi, 'VARCHAR')
-    .replace(/NUMBER\(\s*(\d+)\s*,\s*null\s*\)/gi, 'DECIMAL($1)')
-    .replace(/NUMBER\(\s*(\d+)\s*,\s*(\d+)\s*\)/gi, 'DECIMAL($1,$2)')
-    .replace(/NUMBER\(\s*(\d+)\s*\)/gi, 'DECIMAL($1)')
-    .replace(/\bNUMBER\b/gi, 'DECIMAL')
-    .replace(/DEFAULT\s+SYS_GUID\(\)/gi, 'DEFAULT uuid()')
-    .replace(/DEFAULT\s+SYSTIMESTAMP/gi, 'DEFAULT CURRENT_TIMESTAMP');
+  const normalizedSql = mapSqlCode(sql, (code) =>
+    code
+      .replace(/\bVARCHAR2\b/gi, 'VARCHAR')
+      .replace(/\bNUMBER\(\s*(\d+)\s*,\s*null\s*\)/gi, 'DECIMAL($1)')
+      .replace(/\bNUMBER\(\s*(\d+)\s*,\s*(\d+)\s*\)/gi, 'DECIMAL($1,$2)')
+      .replace(/\bNUMBER\(\s*(\d+)\s*\)/gi, 'DECIMAL($1)')
+      .replace(/\bNUMBER\b/gi, 'DECIMAL')
+      .replace(/\bDEFAULT\s+SYS_GUID\(\)/gi, 'DEFAULT uuid()')
+      .replace(/\bDEFAULT\s+SYSTIMESTAMP\b/gi, 'DEFAULT CURRENT_TIMESTAMP'),
+  );
 
   return { sql: normalizedSql, tableMetadata: Array.from(metadataByTable.values()) };
 }

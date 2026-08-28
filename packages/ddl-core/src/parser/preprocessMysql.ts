@@ -1,3 +1,4 @@
+import { splitSqlStatements } from './sqlSegments.js';
 import type { MysqlPartitionConfig } from '@ddlbuilder/shared-types';
 import { PARTITION_BY_REGEX, extractPartitionConfig } from './partitionParser.js';
 import type { PreprocessedTableMetadata } from './preprocessors/types.js';
@@ -6,28 +7,6 @@ export interface PreprocessMySqlResult {
   sql: string;
   tableMetadata: PreprocessedTableMetadata[];
   partitionConfigs: Record<string, MysqlPartitionConfig>;
-}
-
-function splitSqlStatements(sql: string): string[] {
-  const statements: string[] = [];
-  let current = '';
-  let quote = '';
-
-  for (let index = 0; index < sql.length; index++) {
-    const char = sql[index];
-    const escaped = index > 0 && sql[index - 1] === '\\';
-    if (!escaped && (char === "'" || char === '"' || char === '`')) {
-      quote = quote === char ? '' : quote || char;
-    }
-    current += char;
-    if (char === ';' && !quote) {
-      statements.push(current);
-      current = '';
-    }
-  }
-
-  if (current.trim()) statements.push(current);
-  return statements;
 }
 
 function extractTableName(sql: string) {

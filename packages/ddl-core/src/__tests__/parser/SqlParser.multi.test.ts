@@ -129,11 +129,10 @@ describe('SqlParser.parseMultiAsync', () => {
     `;
     const parser = new SqlParser();
 
-    // The invalid statement should cause the whole parse to throw,
-    // because astify fails on malformed input.
-    await expect(parser.parseMultiAsync(sql, 'mysql')).rejects.toThrow(
-      '无法解析 SQL，请检查语法或数据库类型是否正确。',
-    );
+    const result = await parser.parseMultiAsync(sql, 'mysql');
+    expect(result.results.map((table) => table.tableName)).toEqual(['valid_table']);
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0].statement).toContain('@@@@@');
   });
 
   it('空 SQL → 返回空 results 和 failed', async () => {

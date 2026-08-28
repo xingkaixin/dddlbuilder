@@ -1,3 +1,4 @@
+import { splitSqlStatements } from './sqlSegments.js';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import {
   preprocessOracle,
@@ -279,58 +280,45 @@ export class SqlParser {
     sql: string,
     dbType: DatabaseType,
   ): MultiParsedResult {
-    const { sqlToParse, tableMetadata, grants, partitionConfigs } = this.preprocessSql(sql, dbType);
-
+    const { tableMetadata, grants, partitionConfigs } = this.preprocessSql(sql, dbType);
     const opt = this.buildAstifyOpt(dbType);
-
-    let ast: AstStatement | AstStatement[];
-    try {
-      ast = parser.astify(sqlToParse, opt);
-    } catch {
-      throw new Error('无法解析 SQL，请检查语法或数据库类型是否正确。');
-    }
-
-    if (!ast) {
-      return { results: [], failed: [] };
-    }
-
-    const statements = Array.isArray(ast) ? ast : [ast];
-
+    const statements: AstStatement[] = [];
     const results: ParsedResult[] = [];
-    const failed: Array<{ statement: string; error: string }> = [];
+    const failed: MultiParsedResult['failed'] = [];
 
-    for (const stmt of statements) {
-      if (isCreateTableStmt(stmt)) {
-        const tableResult: ParsedResult = {
-          tableName: '',
-          tableComment: '',
-          fields: [],
-          indexes: [],
-          foreignKeys: [],
-          authObjects: [],
-        };
-        try {
+    for (const original of splitSqlStatements(sql, {
+      backslashEscapes: getDatabaseFamily(dbType) !== 'postgresql',
+    })) {
+      try {
+        const { sqlToParse } = this.preprocessSql(original, dbType);
+        if (!sqlToParse.trim()) continue;
+        const ast = parser.astify(sqlToParse, opt);
+        if (!ast) continue;
+        const parsed = Array.isArray(ast) ? ast : [ast];
+        statements.push(...parsed);
+        for (const stmt of parsed) {
+          if (!isCreateTableStmt(stmt)) continue;
+          const tableResult: ParsedResult = {
+            tableName: '',
+            tableComment: '',
+            fields: [],
+            indexes: [],
+            foreignKeys: [],
+            authObjects: [],
+          };
           parseCreateTable(stmt, tableResult, (value) => parser.exprToSQL(value, opt));
-        } catch (err) {
-          const stmtText = typeof stmt === 'object' ? JSON.stringify(stmt) : String(stmt);
-          failed.push({
-            statement: stmtText.slice(0, 500),
-            error: err instanceof Error ? err.message : '解析失败',
-          });
-          continue;
+          if (tableResult.tableName) results.push(tableResult);
         }
-        if (tableResult.tableName) {
-          results.push(tableResult);
-        }
+      } catch (error) {
+        failed.push({
+          statement: original.trim(),
+          error: error instanceof Error ? error.message : '解析失败',
+        });
       }
     }
-
-    if (results.length === 0) {
-      return { results: [], failed };
+    if (results.length > 0) {
+      this.completeTables(results, statements, tableMetadata, grants, partitionConfigs, dbType);
     }
-
-    this.completeTables(results, statements, tableMetadata, grants, partitionConfigs, dbType);
-
     return { results, failed };
   }
 
