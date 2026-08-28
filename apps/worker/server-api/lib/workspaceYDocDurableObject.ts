@@ -48,6 +48,7 @@ const COMPACT_UPDATE_COUNT = 100;
 const COMPACT_UPDATE_BYTES = 512 * 1024;
 const ALARM_DELAY_MS = 60 * 60 * 1000;
 const LAST_AUTOMATIC_ALARM_RETRY = 5;
+const AUTH_CACHE_TTL_MS = 30_000;
 
 const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
   const encoder = encoding.createEncoder();
@@ -78,6 +79,7 @@ export class WorkspaceYDocDurableObject {
   private checkpointFailedAt: number | undefined;
   private workspaceId: string | undefined;
   private userId: string | undefined;
+  private authCache: { key: string; sessionIds: Set<string>; expiresAt: number } | null = null;
   private readonly state: DurableObjectState;
   private readonly env: ApiEnv['Bindings'];
 
@@ -100,6 +102,14 @@ export class WorkspaceYDocDurableObject {
     if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
       const sessionId = request.headers.get('x-ddlbuilder-session-id');
       if (!sessionId) return new Response('Missing session id', { status: 401 });
+      try {
+        const sessionIds = await this.authorizedSessionIds();
+        if (!sessionIds.has(sessionId)) {
+          return new Response('Workspace access denied', { status: 403 });
+        }
+      } catch {
+        return new Response('Workspace authorization unavailable', { status: 503 });
+      }
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
       const attachment = this.createSocketAttachment(sessionId);
@@ -362,18 +372,29 @@ export class WorkspaceYDocDurableObject {
     await this.persistQueue;
   }
 
+  private async authorizedSessionIds(): Promise<Set<string>> {
+    const key = `${this.workspaceId ?? ''}:${this.userId ?? ''}`;
+    const now = Date.now();
+    if (this.authCache && this.authCache.key === key && this.authCache.expiresAt > now) {
+      return this.authCache.sessionIds;
+    }
+    const { results } = await this.env.USER_DB.prepare(
+      `SELECT s.id FROM session s
+       JOIN workspaces w ON w.user_id = s.user_id
+       WHERE w.id = ? AND s.user_id = ? AND s.expires_at > ?
+         AND NOT EXISTS (SELECT 1 FROM admin_user_flags f WHERE f.user_id = s.user_id)`,
+    )
+      .bind(this.workspaceId ?? null, this.userId ?? null, now)
+      .all<{ id: string }>();
+    const sessionIds = new Set(results.map(({ id }) => id));
+    this.authCache = { key, sessionIds, expiresAt: now + AUTH_CACHE_TTL_MS };
+    return sessionIds;
+  }
+
   private async authorizeSockets(sockets: WebSocket[]): Promise<WebSocket[]> {
     if (sockets.length === 0) return [];
     try {
-      const { results } = await this.env.USER_DB.prepare(
-        `SELECT s.id FROM session s
-         JOIN workspaces w ON w.user_id = s.user_id
-         WHERE w.id = ? AND s.user_id = ? AND s.expires_at > ?
-           AND NOT EXISTS (SELECT 1 FROM admin_user_flags f WHERE f.user_id = s.user_id)`,
-      )
-        .bind(this.workspaceId ?? null, this.userId ?? null, Date.now())
-        .all<{ id: string }>();
-      const sessionIds = new Set(results.map(({ id }) => id));
+      const sessionIds = await this.authorizedSessionIds();
       return sockets.filter((socket) => {
         const attachment = socket.deserializeAttachment?.();
         if (

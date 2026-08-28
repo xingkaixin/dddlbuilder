@@ -189,6 +189,28 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     doc.destroy();
   });
 
+  it('reuses the cached authorization for repeated messages within the TTL window', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const prepare = vi.fn(() => ({
+      bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
+    }));
+    const durableObject = new WorkspaceYDocDurableObject(state, {
+      USER_DB: { prepare },
+    } as unknown as ApiEnv['Bindings']);
+    const ws = createWebSocket();
+    const doc = new Y.Doc();
+    doc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(doc));
+
+    await durableObject.webSocketMessage(ws, trackedUpdate(Y.encodeStateAsUpdate(doc), 1));
+    await durableObject.webSocketMessage(ws, trackedUpdate(Y.encodeStateAsUpdate(doc), 2));
+
+    const authQueries = prepare.mock.calls.filter(([sql]) => String(sql).includes('FROM session'));
+    expect(authQueries).toHaveLength(1);
+    doc.destroy();
+  });
+
   it.each(['read', 'snapshot'])('retries initialization after a failed %s', async (failure) => {
     const getWorkspaceSnapshotForWorkspace = vi.fn().mockResolvedValue(createSnapshot('users'));
     if (failure === 'read') {
