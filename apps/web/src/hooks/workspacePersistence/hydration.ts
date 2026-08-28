@@ -97,7 +97,7 @@ export const resolveWorkspaceHydration = ({
         tableName: savedTable.tableName,
         baseSignature: serializePersistedStateForComparison(savedTable.state),
       },
-      state: savedTable.draftState ?? session.activeState ?? savedTable.state,
+      state: savedTable.draftState ?? savedTable.state,
     };
   }
 
@@ -105,6 +105,6 @@ export const resolveWorkspaceHydration = ({
   const resolvedDraft = drafts.find((draft) => draft.draftId === draftId) ?? initialDraft;
   return {
     activeSource: { kind: 'draft', draftId: resolvedDraft?.draftId ?? draftId },
-    state: resolvedDraft?.record.state ?? session.activeState ?? null,
+    state: resolvedDraft?.record.state ?? null,
   };
 };

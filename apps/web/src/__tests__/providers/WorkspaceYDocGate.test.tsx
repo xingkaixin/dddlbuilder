@@ -29,6 +29,7 @@ const localLoad = vi.hoisted(() => ({
 
 vi.mock('y-indexeddb', () => ({
   IndexeddbPersistence: class {
+    get = async () => true;
     whenSynced = new Promise<void>((resolve) => {
       localLoad.resolve = () => resolve();
     });
@@ -36,6 +37,10 @@ vi.mock('y-indexeddb', () => ({
       return Promise.resolve();
     }
   },
+}));
+
+vi.mock('@/services/workspaceAccountService', () => ({
+  clearLegacyWorkspaceData: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/services/workspaceMigrationService', () => ({

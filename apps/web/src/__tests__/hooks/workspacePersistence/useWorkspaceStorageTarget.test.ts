@@ -3,19 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Y from 'yjs';
 import { useWorkspaceStorageTarget } from '@/hooks/workspacePersistence/useWorkspaceStorageTarget';
 
-const mocks = vi.hoisted(() => ({
-  invalidateLegacyWorkspaceMigration: vi.fn(),
-}));
-
-vi.mock('@/services/workspaceLegacyMigrationMarker', () => ({
-  invalidateLegacyWorkspaceMigration: mocks.invalidateLegacyWorkspaceMigration,
-}));
-
 describe('useWorkspaceStorageTarget', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('Y.Doc 未就绪时只写本地并重开用户迁移', async () => {
-    const scope = { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' } as const;
+  it('匿名工作区写入本地分区', async () => {
+    const scope = { kind: 'anonymous' } as const;
     const runInYDoc = vi.fn();
     const writeYDoc = vi.fn();
     const writeLocal = vi.fn().mockResolvedValue(undefined);
@@ -28,7 +20,6 @@ describe('useWorkspaceStorageTarget', () => {
     expect(result.current.kind).toBe('indexeddb');
     expect(writeLocal).toHaveBeenCalledWith(scope);
     expect(runInYDoc).not.toHaveBeenCalled();
-    expect(mocks.invalidateLegacyWorkspaceMigration).toHaveBeenCalledWith(scope);
   });
 
   it('Y.Doc 就绪时在事务中写入，并按需清理旧本地副本', async () => {
@@ -47,7 +38,6 @@ describe('useWorkspaceStorageTarget', () => {
     expect(writeYDoc).toHaveBeenCalledWith(doc);
     expect(writeLocal).not.toHaveBeenCalled();
     expect(cleanupLocal).toHaveBeenCalledWith(scope);
-    expect(mocks.invalidateLegacyWorkspaceMigration).not.toHaveBeenCalled();
   });
 
   it('永久删除会同时清理当前 Y.Doc 与旧本地副本', async () => {

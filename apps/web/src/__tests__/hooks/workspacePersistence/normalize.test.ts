@@ -267,7 +267,7 @@ describe('workspacePersistence/normalize', () => {
     });
   });
 
-  it('normalizeWorkspaceSession 应校验 activeSource 并规范 activeState', () => {
+  it('normalizeWorkspaceSession 应校验 activeSource 并忽略历史内容副本', () => {
     vi.spyOn(Date, 'now').mockReturnValue(2222);
 
     const session = normalizeWorkspaceSession({
@@ -296,7 +296,7 @@ describe('workspacePersistence/normalize', () => {
     expect(session).not.toBeNull();
     expect(session?.updatedAt).toBe(2222);
     expect(session?.activeSource.kind).toBe('saved_table');
-    expect(session?.activeState?.authObjects).toEqual(['u1']);
+    expect(session).not.toHaveProperty('activeState');
 
     expect(normalizeWorkspaceSession({ activeSource: { kind: 'x' } })).toBeNull();
     expect(normalizeWorkspaceSession(null)).toBeNull();

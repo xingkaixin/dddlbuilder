@@ -328,6 +328,15 @@ class FakeIndexedDB {
   reset() {
     this.databases.clear();
   }
+
+  deleteDatabase(name: string) {
+    const request = createRequest();
+    queueMicrotask(() => {
+      this.databases.delete(name);
+      request.onsuccess?.({ target: request });
+    });
+    return request;
+  }
 }
 
 export const createFakeIndexedDB = () => new FakeIndexedDB();

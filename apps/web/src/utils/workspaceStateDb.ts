@@ -54,7 +54,8 @@ type WorkspaceSessionEntity = {
 
 export type WorkspaceDraftRecord = Omit<WorkspaceDraftEntity, 'id'>;
 
-export type WorkspaceSessionRecord = Omit<WorkspaceSessionEntity, 'id'>;
+export type WorkspaceSessionRecord = Omit<WorkspaceSessionEntity, 'id' | 'activeState'>;
+type LegacyWorkspaceSessionRecord = Omit<WorkspaceSessionEntity, 'id'>;
 
 type WorkspaceStoreName =
   | typeof WORKSPACE_GLOBAL_DRAFT_STORE_NAME
@@ -98,7 +99,7 @@ const decodeSavedTableEntity = (
   return decoded && state ? { ...decoded, state } : null;
 };
 
-const toSessionRecord = (entity: WorkspaceSessionEntity): WorkspaceSessionRecord => {
+const toSessionRecord = (entity: WorkspaceSessionEntity): LegacyWorkspaceSessionRecord => {
   const activeState = decodePersistedState(entity.activeState);
   return {
     activeSource: entity.activeSource,
@@ -308,7 +309,7 @@ export const renameSavedDraftKey = async (
 
 export const readWorkspaceSession = async (
   scope: WorkspaceScope,
-): Promise<WorkspaceSessionRecord | null> => {
+): Promise<LegacyWorkspaceSessionRecord | null> => {
   const entity = await runWithStore<WorkspaceSessionEntity | undefined>(
     WORKSPACE_SESSION_STORE_NAME,
     'readonly',
@@ -441,7 +442,7 @@ const readLegacySavedDraftMap = (): Record<string, SavedTableDraftRecord> => {
   return next;
 };
 
-const readLegacyWorkspaceSession = (): WorkspaceSessionRecord | null => {
+const readLegacyWorkspaceSession = (): LegacyWorkspaceSessionRecord | null => {
   const parsed = parseStorageJson<unknown>(WORKSPACE_SESSION_STORAGE_KEY);
   if (!isRecord(parsed) || !parsed.activeSource) return null;
   const activeState = decodePersistedState(parsed.activeState);

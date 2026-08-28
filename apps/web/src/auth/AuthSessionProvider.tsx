@@ -323,13 +323,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           throw new Error(translateAuthError(result.error, 'header.auth.signOutFailed'));
         }
 
-        if (state.userId) {
-          queryClient.removeQueries({ queryKey: creditQueryKeys.all(state.userId) });
-          queryClient.removeQueries({ queryKey: workspaceQueryKeys.all(state.userId) });
-          queryClient.removeQueries({ queryKey: workspaceMigrationQueryKeys.all(state.userId) });
-        }
-        queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
-        setAuthDialogOpen(false);
         if (scope) {
           try {
             await clearLocalWorkspaceData(scope);
@@ -344,6 +337,13 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
             );
           }
         }
+        if (state.userId) {
+          queryClient.removeQueries({ queryKey: creditQueryKeys.all(state.userId) });
+          queryClient.removeQueries({ queryKey: workspaceQueryKeys.all(state.userId) });
+          queryClient.removeQueries({ queryKey: workspaceMigrationQueryKeys.all(state.userId) });
+        }
+        queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
+        setAuthDialogOpen(false);
       },
       refreshSession,
       refreshCredits,

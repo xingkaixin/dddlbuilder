@@ -6,6 +6,8 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import * as Y from 'yjs';
+import { upsertSavedTableInYDoc } from '@/services/workspaceYDocAdapter';
 import { useWorkspaceMigration } from '@/hooks/useWorkspaceMigration';
 import {
   beginLegacyWorkspaceMigration,
@@ -18,6 +20,10 @@ import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const scope = { kind: 'user' as const, userId: 'user-1', workspaceId: 'ws-1' };
+const ydoc = vi.hoisted(() => ({ doc: null as Y.Doc | null }));
+vi.mock('@/providers/WorkspaceYDocProvider', () => ({
+  useWorkspaceYDoc: () => ({ doc: ydoc.doc, localSynced: true, synced: true }),
+}));
 const authState = {
   status: 'signed_in' as const,
   userId: scope.userId,
@@ -63,6 +69,7 @@ const renderHook = () => {
 
 describe('useWorkspaceMigration', () => {
   beforeEach(async () => {
+    ydoc.doc = new Y.Doc();
     setupFakeIndexedDB();
     setupMemoryLocalStorage();
     await addSavedTable(table, anonymous);
@@ -74,6 +81,7 @@ describe('useWorkspaceMigration', () => {
   });
 
   afterEach(() => {
+    ydoc.doc?.destroy();
     cleanup();
     teardownFakeIndexedDB();
     vi.unstubAllGlobals();
@@ -109,7 +117,8 @@ describe('useWorkspaceMigration', () => {
   });
 
   it('当前账号本地已有工作区时不应弹匿名迁移', async () => {
-    await addSavedTable(table, scope);
+    if (!ydoc.doc) throw new Error('Missing test document');
+    upsertSavedTableInYDoc(ydoc.doc, table);
     const { result } = renderHook();
     await waitFor(() => expect(result.current.checking).toBe(false));
     expect(result.current.open).toBe(false);

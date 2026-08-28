@@ -12,9 +12,12 @@ import {
   listDrafts,
   listSavedDrafts,
   listTrashedDrafts,
+  readWorkspaceSession,
+  writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { dispatchWorkspaceSnapshotApplied } from './workspaceSyncService';
 import { ApiError } from '@/services/apiError';
+import { clearWorkspaceYDocData } from './workspaceYDocStorage';
 
 const readJsonSafely = async <T>(response: Response): Promise<T | null> =>
   (await response.json().catch(() => null)) as T | null;
@@ -41,9 +44,7 @@ export const fetchCurrentWorkspace = async (
   return payload;
 };
 
-export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {
-  if (scope.kind !== 'user') return;
-
+const clearWorkspacePartition = async (scope: WorkspaceScope): Promise<void> => {
   const [drafts, trashedDrafts, savedTables, trashedSavedTables, savedDrafts] = await Promise.all([
     listDrafts(scope),
     listTrashedDrafts(scope),
@@ -61,6 +62,25 @@ export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<vo
     ...trashedSavedTables.map((item) => deleteSavedTable(item.normalizedName, scope)),
     ...Object.keys(savedDrafts).map((normalizedName) => deleteSavedDraft(normalizedName, scope)),
   ]);
+};
 
+export const clearLegacyWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {
+  if (scope.kind !== 'user') return;
+  const session = await readWorkspaceSession(scope);
+  await clearWorkspacePartition(scope);
+  await clearWorkspacePartition({ kind: 'legacy_user', userId: scope.userId });
+  if (session) {
+    await writeWorkspaceSession(
+      { activeSource: session.activeSource, updatedAt: session.updatedAt },
+      scope,
+    );
+  }
+};
+
+export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {
+  if (scope.kind !== 'user') return;
+  await clearWorkspaceYDocData(scope.workspaceId);
+  await clearWorkspacePartition(scope);
+  await clearWorkspacePartition({ kind: 'legacy_user', userId: scope.userId });
   dispatchWorkspaceSnapshotApplied();
 };

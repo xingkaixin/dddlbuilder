@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import {
   clearWorkspaceMigrationDismissed,
@@ -17,18 +18,24 @@ export const useWorkspaceMigration = (authState: {
   userId: string | null;
   workspaceId: string | null;
 }) => {
+  const { doc, localSynced, synced } = useWorkspaceYDoc();
   const queryClient = useQueryClient();
   const [dialogState, setDialogState] = useState<{
     fingerprint: string | null;
     open: boolean;
   }>({ fingerprint: null, open: false });
   const ready = Boolean(
-    authState.status === 'signed_in' && authState.userId && authState.workspaceId,
+    authState.status === 'signed_in' &&
+    authState.userId &&
+    authState.workspaceId &&
+    doc &&
+    localSynced &&
+    synced,
   );
   const userId = authState.userId ?? '';
   const workspaceId = authState.workspaceId ?? '';
   const proposalQuery = useQuery({
-    ...workspaceMigrationProposalOptions(userId, workspaceId),
+    ...workspaceMigrationProposalOptions(userId, workspaceId, doc),
     enabled: ready,
   });
   const {

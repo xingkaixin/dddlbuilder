@@ -2,7 +2,6 @@ import { useCallback, useMemo } from 'react';
 import type * as Y from 'yjs';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import type { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
-import { invalidateLegacyWorkspaceMigration } from '@/services/workspaceLegacyMigrationMarker';
 import i18n from '@/i18n';
 
 interface WorkspaceReadOperations<T> {
@@ -40,9 +39,6 @@ export function useWorkspaceStorageTarget({
     async (write: (currentScope: WorkspaceScope) => Promise<void>) => {
       const currentScope = requireScope();
       await write(currentScope);
-      if (currentScope.kind === 'user') {
-        invalidateLegacyWorkspaceMigration(currentScope);
-      }
     },
     [requireScope],
   );

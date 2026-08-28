@@ -45,7 +45,11 @@ const createDraft = (draftId: string, tableName: string, createdAt: number): Dra
 const createSession = (
   activeSource: WorkspaceSessionRecord['activeSource'],
   activeState: PersistedState | null = null,
-): WorkspaceSessionRecord => ({ activeSource, activeState, updatedAt: 1 });
+): WorkspaceSessionRecord & { activeState: PersistedState | null } => ({
+  activeSource,
+  activeState,
+  updatedAt: 1,
+});
 
 const savedTable: HydrationSavedTable = {
   normalizedName: 'users',
@@ -141,7 +145,7 @@ describe('workspacePersistence/hydration', () => {
     expect(result.state).toEqual(draftState);
   });
 
-  it('会话指向已保存表且无未保存草稿时应用 activeState', () => {
+  it('会话指向已保存表且无未保存草稿时应用已保存内容', () => {
     const sessionState = createState('users_session');
     const result = resolveWorkspaceHydration({
       drafts: [],
@@ -151,7 +155,7 @@ describe('workspacePersistence/hydration', () => {
       ),
       findSavedTable: () => savedTable,
     });
-    expect(result.state).toEqual(sessionState);
+    expect(result.state).toEqual(savedTable.state);
   });
 
   it('会话指向的已保存表缺失时应回退到 initial draft', () => {
@@ -177,7 +181,7 @@ describe('workspacePersistence/hydration', () => {
     expect(result.state?.tableName).toBe('entity');
   });
 
-  it('会话草稿缺失且无其他草稿时应保留会话 id 与 activeState', () => {
+  it('会话草稿缺失时不复活旧会话的内容副本', () => {
     const sessionState = createState('session_only');
     const result = resolveWorkspaceHydration({
       drafts: [],
@@ -186,6 +190,6 @@ describe('workspacePersistence/hydration', () => {
     });
 
     expect(result.activeSource).toEqual({ kind: 'draft', draftId: 'gone' });
-    expect(result.state).toEqual(sessionState);
+    expect(result.state).toBeNull();
   });
 });

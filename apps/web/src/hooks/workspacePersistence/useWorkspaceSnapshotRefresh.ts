@@ -66,9 +66,7 @@ export function useWorkspaceSnapshotRefresh({
             tableName: savedTable.tableName,
             baseSignature: serializePersistedStateForComparison(savedTable.state),
           });
-          setPersistedStateIfChanged(
-            savedTable.draftState ?? session?.activeState ?? savedTable.state,
-          );
+          setPersistedStateIfChanged(savedTable.draftState ?? savedTable.state);
           setHydrated(true);
           return;
         }
@@ -78,7 +76,7 @@ export function useWorkspaceSnapshotRefresh({
         const resolvedDraft =
           drafts.find((draft) => draft.draftId === sessionDraftId) ?? pickInitialDraft(drafts);
         syncActiveSource({ kind: 'draft', draftId: resolvedDraft?.draftId ?? sessionDraftId });
-        setPersistedStateIfChanged(resolvedDraft?.record.state ?? session?.activeState ?? null);
+        setPersistedStateIfChanged(resolvedDraft?.record.state ?? null);
         setHydrated(true);
       })();
     };

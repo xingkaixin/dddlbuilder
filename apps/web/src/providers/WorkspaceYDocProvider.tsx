@@ -29,7 +29,13 @@ import {
   type WorkspaceYDocConnectionState,
   type WorkspaceYDocFailureReason,
 } from '@/services/workspaceYDocSyncClient';
-import { buildWorkspaceYDocName } from '@/services/workspaceYDocStorage';
+import {
+  buildWorkspaceYDocName,
+  commitLegacyWorkspaceYDoc,
+  LEGACY_MIGRATION_COMMITTED,
+  registerWorkspaceYDocDisposer,
+} from '@/services/workspaceYDocStorage';
+import { clearLegacyWorkspaceData } from '@/services/workspaceAccountService';
 import {
   isWorkspaceWriteTargetPending,
   resolveWorkspaceYDocStartupPlan,
@@ -120,6 +126,17 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     ensureWorkspaceYDocMeta(doc);
     const persistence = new IndexeddbPersistence(buildWorkspaceYDocName(workspaceId), doc);
     let client: WorkspaceYDocSyncClient | null = null;
+    let disposal: Promise<void> | null = null;
+    const dispose = () => {
+      if (disposal) return disposal;
+      cancelled = true;
+      clientRef.current = null;
+      client?.destroy();
+      doc.destroy();
+      disposal = persistence.destroy().finally(unregister);
+      return disposal;
+    };
+    const unregister = registerWorkspaceYDocDisposer(workspaceId, dispose);
 
     // oxlint-disable-next-line react/set-state-in-effect
     setValue({
@@ -133,23 +150,26 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     const initialize = async () => {
       await persistence.whenSynced;
       if (cancelled) return;
+      if (persistence.db)
+        persistence.db.onversionchange = () => {
+          void dispose().catch(console.error);
+        };
 
-      if (startupPlan.steps.includes('merge-legacy-indexeddb-snapshot')) {
-        // legacy 合并是尽力而为的补充步骤，失败不能阻断后续启动：localSynced 卡在 false 会让
-        // usePersistedState 永不水合，用户之后的编辑被静默丢弃。
-        // 失败/中断时不写完成标记，下次启动整段重来；提升是按 updatedAt 的 upsert，重跑安全。
-        try {
-          const token = beginLegacyWorkspaceMigration(scope);
+      try {
+        const token = beginLegacyWorkspaceMigration(scope);
+        const committed = await persistence.get(LEGACY_MIGRATION_COMMITTED);
+        if (!committed && startupPlan.steps.includes('merge-legacy-indexeddb-snapshot')) {
           const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
-          if (!cancelled) {
-            if (snapshot) {
-              mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
-            }
-            completeLegacyWorkspaceMigration(scope, token);
-          }
-        } catch (error) {
-          console.error('[workspace-yjs] legacy snapshot merge failed', error);
+          if (cancelled) return;
+          if (snapshot) mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
         }
+        if (cancelled) return;
+        if (!committed) await commitLegacyWorkspaceYDoc(persistence, doc);
+        if (cancelled) return;
+        await clearLegacyWorkspaceData(scope);
+        completeLegacyWorkspaceMigration(scope, token);
+      } catch (error) {
+        console.error('[workspace-yjs] legacy snapshot merge failed', error);
       }
 
       if (cancelled) return;
@@ -177,12 +197,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     });
 
     return () => {
-      cancelled = true;
-      clientRef.current = null;
-      client?.destroy();
-      // IndexedDB 打不开时 destroy() 会 reject，每次 cleanup/重试都会留下一条 unhandled rejection。
-      persistence.destroy().catch(() => {});
-      doc.destroy();
+      void dispose().catch(() => {});
     };
   }, [signedOut, authUserId, authWorkspaceId, retry, bootstrapAttempt]);
 

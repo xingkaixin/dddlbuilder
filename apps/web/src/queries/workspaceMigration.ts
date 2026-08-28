@@ -1,7 +1,8 @@
 import { queryOptions } from '@tanstack/react-query';
+import type * as Y from 'yjs';
+import { isWorkspaceYDocEmpty } from '@/services/workspaceYDocAdapter';
 import {
   analyzeWorkspaceMigration,
-  hasMeaningfulWorkspaceData,
   isWorkspaceMigrationDismissed,
 } from '@/services/workspaceMigrationService';
 
@@ -11,10 +12,15 @@ export const workspaceMigrationQueryKeys = {
     ['workspace-migration', userId, workspaceId, 'proposal'] as const,
 };
 
-export function workspaceMigrationProposalOptions(userId: string, workspaceId: string) {
+export function workspaceMigrationProposalOptions(
+  userId: string,
+  workspaceId: string,
+  doc: Y.Doc | null,
+) {
   return queryOptions({
     queryKey: workspaceMigrationQueryKeys.proposal(userId, workspaceId),
     queryFn: async () => {
+      if (!doc || !isWorkspaceYDocEmpty(doc)) return null;
       const analysis = await analyzeWorkspaceMigration();
       if (
         !analysis ||
@@ -23,9 +29,6 @@ export function workspaceMigrationProposalOptions(userId: string, workspaceId: s
       ) {
         return null;
       }
-
-      const scope = { kind: 'user' as const, userId, workspaceId };
-      if (await hasMeaningfulWorkspaceData(scope)) return null;
 
       return isWorkspaceMigrationDismissed(userId, analysis.payload.localFingerprint)
         ? null

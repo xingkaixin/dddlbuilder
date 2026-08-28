@@ -11,6 +11,9 @@ import {
   exportWorkspaceYDocToSnapshot,
 } from '@/services/workspaceYDocAdapter';
 import { WorkspaceYDocSyncClient } from '@/services/workspaceYDocSyncClient';
+import { commitLegacyWorkspaceYDoc } from '@/services/workspaceYDocStorage';
+import { clearLegacyWorkspaceData } from '@/services/workspaceAccountService';
+import type * as WorkspaceYDocStorage from '@/services/workspaceYDocStorage';
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthSession: () => ({
@@ -21,13 +24,24 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
 }));
 
 // 模拟 y-indexeddb 的持久化：同一 workspace 的 Y.Doc 状态（含删除墓碑）跨启动保留。
-const persistence = vi.hoisted(() => ({ update: null as Uint8Array | null }));
+const persistence = vi.hoisted(() => ({ update: null as Uint8Array | null, committed: false }));
+
+vi.mock('@/services/workspaceYDocStorage', async (importOriginal) => ({
+  ...(await importOriginal<typeof WorkspaceYDocStorage>()),
+  commitLegacyWorkspaceYDoc: vi.fn(async () => {
+    persistence.committed = true;
+  }),
+}));
+vi.mock('@/services/workspaceAccountService', () => ({
+  clearLegacyWorkspaceData: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('y-indexeddb', async () => {
   const Yjs = await import('yjs');
   return {
     IndexeddbPersistence: class {
       whenSynced = Promise.resolve(this);
+      get = async () => persistence.committed;
       constructor(_name: string, doc: Y.Doc) {
         if (persistence.update) {
           Yjs.applyUpdate(doc, persistence.update);
@@ -118,6 +132,7 @@ describe('WorkspaceYDocProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     persistence.update = null;
+    persistence.committed = false;
     setupMemoryLocalStorage();
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
@@ -137,12 +152,26 @@ describe('WorkspaceYDocProvider', () => {
       expect.any(Function),
     );
     expect(connect).toHaveBeenCalledTimes(1);
+    expect(clearLegacyWorkspaceData).toHaveBeenCalledOnce();
+    expect(vi.mocked(commitLegacyWorkspaceYDoc).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(clearLegacyWorkspaceData).mock.invocationCallOrder[0],
+    );
 
     const snapshot = exportWorkspaceYDocToSnapshot(result.current.doc as Y.Doc);
     expect(snapshot.savedTables[0]).toMatchObject({
       normalizedName: 'legacy_table',
       createdAt: 111,
     });
+  });
+
+  it('retains the source partition when the target transaction cannot commit', async () => {
+    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(legacySnapshotWithTable());
+    vi.mocked(commitLegacyWorkspaceYDoc).mockRejectedValueOnce(new Error('QuotaExceededError'));
+    const first = await startProvider();
+    expect(clearLegacyWorkspaceData).not.toHaveBeenCalled();
+    first.unmount();
+    await startProvider();
+    expect(clearLegacyWorkspaceData).toHaveBeenCalledOnce();
   });
 
   it('legacy 快照准备失败时仍应本地就绪并连接 Durable Object', async () => {
@@ -177,6 +206,8 @@ describe('WorkspaceYDocProvider', () => {
     const first = await startProvider();
     deleteSavedTableFromYDoc(first.result.current.doc as Y.Doc, 'legacy_table');
     first.unmount();
+
+    localStorage.clear();
 
     expect(readPersistedSnapshot().savedTables).toEqual([]);
 

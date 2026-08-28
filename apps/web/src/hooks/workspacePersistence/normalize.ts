@@ -92,11 +92,8 @@ export const buildDraftSummary = (
 export const normalizeWorkspaceSession = (value: unknown): WorkspaceSessionRecord | null => {
   if (!isRecord(value)) return null;
   if (!isWorkspaceSource(value.activeSource)) return null;
-  const activeState = normalizePersistedState(value.activeState);
-
   return {
     activeSource: value.activeSource,
-    ...(activeState ? { activeState } : {}),
     updatedAt: toNumber(value.updatedAt, Date.now()),
   };
 };

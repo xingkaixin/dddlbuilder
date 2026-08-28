@@ -3,6 +3,7 @@
  * IndexedDB is its browser-local cache and offline startup copy, Durable Object storage holds the
  * server-side Yjs update log plus compacted snapshot. D1 `workspace_entities` is only a checkpoint
  * projection written by the Durable Object; clients never synchronize it independently.
+ * Signing out closes synchronization and removes the account's browser-local content copy.
  */
 import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 
@@ -46,7 +47,7 @@ export const resolveWorkspaceYDocStartupPlan = (input: {
       userId: input.userId,
       workspaceId: input.workspaceId,
     },
-    // legacy 迁移完成后必须彻底跳过；重复折叠会把 Y.Doc 里已删除的实体推回去。
+    // localStorage 标记只是优化；Provider 还检查随 Y.Doc 原子落盘的标记并清理源分区。
     steps: [
       'load-indexeddb-ydoc',
       ...(input.legacyMigrationCompleted ? [] : (['merge-legacy-indexeddb-snapshot'] as const)),
