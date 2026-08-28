@@ -60,45 +60,14 @@ async function runWithStore<T>(
   return runIndexedDbRequest(db, REVIEW_STORE_NAME, mode, runner);
 }
 
-const readAndClaimReviews = async (
-  target: ReviewTarget,
-  previousName = target.normalizedName,
-): Promise<ReviewRecord[]> => {
-  const db = await openDb();
-  const tableKey = getTableKey(target);
-  const draftKey = getTableKey({ ...target, tableId: undefined, normalizedName: previousName });
-  return runIndexedDbTransaction(db, REVIEW_STORE_NAME, 'readwrite', (tx) => {
-    const store = tx.objectStore(REVIEW_STORE_NAME);
-    const scopedRequest = store.index('tableKey').getAll(tableKey);
-    const sameNameRequest = store.index('tableNormalizedName').getAll(previousName);
-    let scopedRecords: ReviewRecord[] | null = null;
-    let sameNameRecords: ReviewRecord[] | null = null;
-    let records: ReviewRecord[] = [];
-
-    const claimLegacyRecords = () => {
-      if (!scopedRecords || !sameNameRecords) return;
-      const claimed = sameNameRecords
-        .filter((record) => !record.tableKey || (target.tableId && record.tableKey === draftKey))
-        .map((record) => ({
-          ...record,
-          tableKey,
-          tableId: target.tableId,
-          tableNormalizedName: target.normalizedName,
-        }));
-      for (const record of claimed) store.put(record);
-      records = [...scopedRecords, ...claimed];
-    };
-
-    scopedRequest.onsuccess = () => {
-      scopedRecords = scopedRequest.result as ReviewRecord[];
-      claimLegacyRecords();
-    };
-    sameNameRequest.onsuccess = () => {
-      sameNameRecords = sameNameRequest.result as ReviewRecord[];
-      claimLegacyRecords();
-    };
-    return () => records.map(normalizeReviewRecord).sort((a, b) => b.createdAt - a.createdAt);
-  });
+const getReadableKeys = (target: ReviewTarget) => {
+  const legacyId = `legacy:${target.normalizedName}`;
+  return [
+    getTableKey(target),
+    ...(target.scope.kind === 'anonymous' && (!target.tableId || target.tableId === legacyId)
+      ? [`anonymous::${legacyId}`]
+      : []),
+  ];
 };
 
 export async function saveReview(
@@ -128,14 +97,39 @@ export async function saveReview(
 }
 
 export async function listReviews(target: ReviewTarget): Promise<ReviewRecord[]> {
-  return readAndClaimReviews(target);
+  const groups = await Promise.all(
+    getReadableKeys(target).map((key) =>
+      runWithStore<ReviewRecord[]>('readonly', (store) => store.index('tableKey').getAll(key)),
+    ),
+  );
+  return groups
+    .flat()
+    .map(normalizeReviewRecord)
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function migrateReviewsToTable(
   target: ReviewTarget & { tableId: string },
   previousName: string,
 ): Promise<void> {
-  await readAndClaimReviews(target, previousName);
+  const records = await listReviews({
+    ...target,
+    tableId: undefined,
+    normalizedName: previousName,
+  });
+  if (records.length === 0) return;
+  const db = await openDb();
+  await runIndexedDbTransaction(db, REVIEW_STORE_NAME, 'readwrite', (tx) => {
+    const store = tx.objectStore(REVIEW_STORE_NAME);
+    for (const record of records)
+      store.put({
+        ...record,
+        tableKey: getTableKey(target),
+        tableId: target.tableId,
+        tableNormalizedName: target.normalizedName,
+      });
+    return () => undefined;
+  });
 }
 
 export async function listReviewMetadata(target: ReviewTarget): Promise<ReviewRecordMetadata[]> {
@@ -152,17 +146,10 @@ export async function listReviewMetadata(target: ReviewTarget): Promise<ReviewRe
 }
 
 export async function getReview(id: string, target: ReviewTarget): Promise<ReviewRecord | null> {
-  const tableKey = getTableKey(target);
   const result = await runWithStore<ReviewRecord | undefined>('readonly', (store) => store.get(id));
-  if (!result) return null;
-  if (result.tableKey === tableKey) return normalizeReviewRecord(result);
-  const draftKey = getTableKey({ ...target, tableId: undefined });
-  if (
-    (result.tableKey && result.tableKey !== draftKey) ||
-    result.tableNormalizedName !== target.normalizedName
-  )
-    return null;
-  return (await listReviews(target)).find((record) => record.id === id) ?? null;
+  return result?.tableKey && getReadableKeys(target).includes(result.tableKey)
+    ? normalizeReviewRecord(result)
+    : null;
 }
 
 export async function deleteReview(id: string, target: ReviewTarget): Promise<void> {

@@ -31,6 +31,7 @@ describe('reviewHistory', () => {
     const savedTarget = target('draft_review', 'saved-id');
     const draftTarget = { ...savedTarget, tableId: undefined };
     const record = await saveReview(draftTarget, 'draft', 'ddl', 'mysql', mockReview);
+    await migrateReviewsToTable(savedTarget, draftTarget.normalizedName);
     const reviews = await listReviews(savedTarget);
     expect(reviews.map((review) => review.id)).toEqual([record.id]);
     expect((await getReview(record.id, savedTarget))?.tableId).toBe('saved-id');
@@ -71,6 +72,7 @@ describe('reviewHistory', () => {
       'mysql',
       mockReview,
     );
+    await migrateReviewsToTable(savedTarget, savedTarget.normalizedName);
     expect((await getReview(record.id, savedTarget))?.tableId).toBe('direct-id');
   });
 
@@ -178,7 +180,7 @@ describe('reviewHistory', () => {
     expect(await getReview(record.id, owner)).not.toBeNull();
   });
 
-  it('claims an unscoped legacy review for the first workspace that reads it', async () => {
+  it('cannot claim unscoped legacy reviews during a read', async () => {
     const normalizedName = 'legacy_review_table';
     const owner = target(normalizedName, 'legacy-owner');
     const otherWorkspace = {
@@ -206,9 +208,9 @@ describe('reviewHistory', () => {
       tx.onerror = () => reject(tx.error);
     });
 
-    const [claimed] = await listReviews(owner);
-
-    expect(claimed.tableKey).toBe('anonymous::table:legacy-owner');
+    const stolen = await listReviews(otherWorkspace);
+    expect(stolen).toEqual([]);
+    expect(await listReviews(owner)).toEqual([]);
     expect(await listReviews(otherWorkspace)).toEqual([]);
   });
 

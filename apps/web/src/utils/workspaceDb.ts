@@ -6,7 +6,7 @@ import {
 } from './workspaceScope';
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 14;
+export const DB_VERSION = 15;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
@@ -66,6 +66,21 @@ export const openDb = (): Promise<IDBDatabase> =>
         }
 
         const transaction = request.transaction;
+        if (transaction && oldVersion < 15) {
+          for (const storeName of [VERSION_STORE_NAME, REVIEW_STORE_NAME]) {
+            const cursorRequest = transaction.objectStore(storeName).openCursor();
+            cursorRequest.onsuccess = () => {
+              const cursor = cursorRequest.result;
+              if (!cursor) return;
+              const record = cursor.value;
+              if (!record.tableKey) {
+                const tableId = `legacy:${record.tableNormalizedName}`;
+                cursor.update({ ...record, tableId, tableKey: `${LEGACY_SCOPE}::${tableId}` });
+              }
+              cursor.continue();
+            };
+          }
+        }
         if (transaction && db.objectStoreNames.contains(VERSION_STORE_NAME)) {
           const store = transaction.objectStore(VERSION_STORE_NAME);
           if (!store.indexNames.contains('tableKey')) {

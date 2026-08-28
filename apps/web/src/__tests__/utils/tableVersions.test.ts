@@ -130,7 +130,7 @@ describe('tableVersions', () => {
       expect(versions.map((version) => version.message)).toEqual(['before-rename']);
     });
 
-    it('首次读取时接管旧版未分区历史', async () => {
+    it('读取不认领未分区历史', async () => {
       const target = getTestTableName();
       const competingTarget = {
         scope: {
@@ -155,15 +155,11 @@ describe('tableVersions', () => {
         tx.onerror = () => reject(tx.error);
       });
 
-      const [version] = await listVersions(target);
-
-      expect(version.message).toBe('legacy');
-      expect(version.tableId).toBe(target.tableId);
-      expect(version.tableKey).toBe(`anonymous::${target.tableId}`);
+      expect(await listVersions(target)).toEqual([]);
       expect(await listVersions(competingTarget)).toEqual([]);
     });
 
-    it('通过 ID 读取旧版本时也会固定归属', async () => {
+    it('通过 ID 读取也不会认领未分区版本', async () => {
       const target = getTestTableName();
       const versionId = `legacy-by-id-${target.tableId}`;
       const db = await dbUtils.openDb();
@@ -182,7 +178,7 @@ describe('tableVersions', () => {
 
       const version = await getVersion(versionId, target);
 
-      expect(version?.tableKey).toBe(`anonymous::${target.tableId}`);
+      expect(version).toBeNull();
     });
   });
 

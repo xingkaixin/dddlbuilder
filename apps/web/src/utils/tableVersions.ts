@@ -34,40 +34,11 @@ async function runWithStore<T>(
   return runIndexedDbRequest(db, VERSION_STORE_NAME, mode, runner);
 }
 
-const readAndClaimVersions = async (target: TableVersionTarget): Promise<TableVersion[]> => {
-  const db = await openDb();
-  const tableKey = getTableKey(target);
-  return runIndexedDbTransaction(db, VERSION_STORE_NAME, 'readwrite', (tx) => {
-    const store = tx.objectStore(VERSION_STORE_NAME);
-    const scopedRequest = store.index('tableKey').getAll(tableKey);
-    const sameNameRequest = store.index('tableNormalizedName').getAll(target.normalizedName);
-    let scopedVersions: TableVersion[] | null = null;
-    let sameNameVersions: TableVersion[] | null = null;
-    let versions: TableVersion[] = [];
-
-    const claimLegacyVersions = () => {
-      if (!scopedVersions || !sameNameVersions) return;
-      const claimed = sameNameVersions
-        .filter((version) => !version.tableKey)
-        .map((version) => ({
-          ...version,
-          tableKey,
-          tableId: target.tableId,
-        }));
-      for (const version of claimed) store.put(version);
-      versions = [...scopedVersions, ...claimed];
-    };
-
-    scopedRequest.onsuccess = () => {
-      scopedVersions = scopedRequest.result as TableVersion[];
-      claimLegacyVersions();
-    };
-    sameNameRequest.onsuccess = () => {
-      sameNameVersions = sameNameRequest.result as TableVersion[];
-      claimLegacyVersions();
-    };
-    return () => versions.sort((a, b) => b.createdAt - a.createdAt).map(decodeVersion);
-  });
+const readVersions = async (target: TableVersionTarget): Promise<TableVersion[]> => {
+  const versions = await runWithStore<TableVersion[]>('readonly', (store) =>
+    store.index('tableKey').getAll(getTableKey(target)),
+  );
+  return versions.sort((a, b) => b.createdAt - a.createdAt).map(decodeVersion);
 };
 
 export async function createVersion(
@@ -91,7 +62,7 @@ export async function createVersion(
 }
 
 export async function listVersions(target: TableVersionTarget): Promise<TableVersion[]> {
-  return readAndClaimVersions(target);
+  return readVersions(target);
 }
 
 export async function getVersion(
@@ -99,10 +70,7 @@ export async function getVersion(
   target: TableVersionTarget,
 ): Promise<TableVersion | null> {
   const result = await runWithStore<TableVersion | undefined>('readonly', (store) => store.get(id));
-  if (!result) return null;
-  if (result.tableKey === getTableKey(target)) return decodeVersion(result);
-  if (result.tableKey || result.tableNormalizedName !== target.normalizedName) return null;
-  return (await listVersions(target)).find((version) => version.id === id) ?? null;
+  return result?.tableKey === getTableKey(target) ? decodeVersion(result) : null;
 }
 
 export async function deleteVersion(id: string, target: TableVersionTarget): Promise<void> {
