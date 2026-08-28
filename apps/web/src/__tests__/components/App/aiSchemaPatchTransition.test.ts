@@ -209,12 +209,13 @@ describe('applyAISchemaChanges', () => {
     expect(applyAISchemaChanges(result, candidate, changes)).toEqual(result);
   });
 
-  it('replaces a removed field with an explicitly new identity of the same name', () => {
+  it('preserves the current field identity when an equivalent AI field has a new ID', () => {
     const current = createState([{ ...row('id', 1), id: 'old' }]);
     const candidate = createState([{ ...row('id', 1), id: 'new' }]);
     const changes = buildAISchemaChanges(current, candidate);
     const result = applyAISchemaChanges(current, candidate, changes);
-    expect(result.rows).toEqual(candidate.rows);
+    expect(changes).toEqual([]);
+    expect(result.rows).toEqual(current.rows);
     expect(applyAISchemaChanges(result, candidate, changes)).toEqual(result);
   });
 

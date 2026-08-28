@@ -57,18 +57,10 @@ describe('review DDL regressions', () => {
   });
   it('matches database names even when editor IDs were regenerated', () => {
     const diff = diffPersistedState(state('a'), state('b'));
-    console.info(
-      '[D2 baseline]',
-      diff.fields.map((change) => change.type),
-    );
     expect(diff.fields).toEqual([]);
   });
   it('does not infer column identity from coincidentally identical attributes', () => {
     const diff = diffPersistedState(state('', 'created_by'), state('', 'updated_by'));
-    console.info(
-      '[D2 rename baseline]',
-      diff.fields.map((change) => change.type),
-    );
     expect(diff.fields.map((change) => change.type)).toEqual(['remove', 'add']);
   });
   it('preserves supported CREATE and ALTER work beside an unsupported foreign key', () => {

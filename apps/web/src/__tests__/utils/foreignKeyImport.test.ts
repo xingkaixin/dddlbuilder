@@ -3,7 +3,7 @@ import { decodePersistedState } from '@ddlbuilder/workspace-core';
 import { buildDDL, getForeignKeyIssue } from '@ddlbuilder/ddl-core';
 
 describe('imported foreign key field correspondence', () => {
-  it('preserves invalid field positions and blocks executable DDL', () => {
+  it('preserves invalid field positions and omits only the invalid foreign key', () => {
     const state = decodePersistedState({
       tableName: 'orders',
       dbType: 'postgresql',
@@ -40,6 +40,7 @@ describe('imported foreign key field correspondence', () => {
       })),
     });
     expect(sql).toContain('Manual migration required');
-    expect(sql).not.toContain('CREATE TABLE');
+    expect(sql).toContain('CREATE TABLE orders');
+    expect(sql).not.toContain('FOREIGN KEY');
   });
 });

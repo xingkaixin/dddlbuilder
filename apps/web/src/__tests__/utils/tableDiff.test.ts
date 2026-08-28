@@ -211,7 +211,7 @@ describe('diffPersistedState', () => {
       expect(result.hasChanges).toBe(false);
     });
 
-    it('检测字段重命名（相同类型和注释）', () => {
+    it('相同类型和注释不足以推断字段重命名', () => {
       const old = createState({
         rows: [
           createRow({
@@ -232,10 +232,7 @@ describe('diffPersistedState', () => {
       });
       const result = diffPersistedState(old, newState);
       expect(result.hasChanges).toBe(true);
-      expect(result.fields).toHaveLength(1);
-      expect(result.fields[0].type).toBe('rename');
-      expect(result.fields[0].oldFieldName).toBe('old_name');
-      expect(result.fields[0].newFieldName).toBe('new_name');
+      expect(result.fields.map((field) => field.type)).toEqual(['remove', 'add']);
     });
 
     it('不同类型不视为重命名', () => {
@@ -322,6 +319,8 @@ describe('diffPersistedState', () => {
           }),
         ],
       });
+      old.rows[0].id = 'same-field';
+      newState.rows[0].id = 'same-field';
       const result = diffPersistedState(old, newState);
       expect(result.hasChanges).toBe(true);
       expect(result.fields[0].type).toBe('rename');

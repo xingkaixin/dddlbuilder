@@ -156,7 +156,7 @@ describe('Type Mapping Functions', () => {
       expect(canonicalizeBaseType('national character varying')).toBe('nvarchar');
       expect(canonicalizeBaseType('double precision')).toBe('double');
       expect(canonicalizeBaseType('timestamp without time zone')).toBe('timestamp');
-      expect(canonicalizeBaseType('timestamp with time zone')).toBe('timestamp with time zone');
+      expect(canonicalizeBaseType('timestamp with time zone')).toBe('timestamptz');
     });
   });
 
