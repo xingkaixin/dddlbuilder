@@ -34,8 +34,8 @@ const createField = (overrides: Partial<NormalizedField> = {}): NormalizedField 
 const createIndex = (overrides: Partial<IndexDefinition> = {}): IndexDefinition => ({
   name: 'pk_id',
   fields: [{ name: 'id', direction: 'ASC' }],
-  unique: false,
-  isPrimary: true,
+  kind: 'primary',
+
   ...overrides,
 });
 
@@ -53,7 +53,7 @@ describe('shared utilities', () => {
             { name: 'id', direction: 'ASC' },
             { name: 'org_id', direction: 'ASC' },
           ],
-          isPrimary: true,
+          kind: 'primary',
         }),
       ];
       expect(getPrimaryKeyFieldNames(indexes)).toEqual(['id', 'org_id']);
@@ -78,7 +78,7 @@ describe('shared utilities', () => {
           id: 'unique-email',
           name: 'uq_email',
           fields: [{ name: 'email', direction: 'ASC' }],
-          unique: true,
+          kind: 'unique_index',
         },
         {
           id: 'unique-name-org',
@@ -87,7 +87,7 @@ describe('shared utilities', () => {
             { name: 'name', direction: 'ASC' },
             { name: 'org_id', direction: 'ASC' },
           ],
-          unique: true,
+          kind: 'unique_index',
         },
       ]);
 
@@ -228,8 +228,7 @@ describe('PrismaGenerator', () => {
           { name: 'org_id', direction: 'ASC' },
           { name: 'name', direction: 'ASC' },
         ],
-        unique: true,
-        isPrimary: false,
+        kind: 'unique_index',
       },
     ];
     const fields = [
@@ -350,8 +349,7 @@ describe('TypeORMGenerator', () => {
       {
         name: 'uk_email',
         fields: [{ name: 'email', direction: 'ASC' }],
-        unique: true,
-        isPrimary: false,
+        kind: 'unique_index',
       },
     ];
     const fields = [
@@ -464,8 +462,7 @@ describe('SQLAlchemyGenerator', () => {
       {
         name: 'idx_name',
         fields: [{ name: 'name', direction: 'ASC' }],
-        unique: false,
-        isPrimary: false,
+        kind: 'index',
       },
     ];
     const fields = [
@@ -562,8 +559,7 @@ describe('GORMGenerator', () => {
       {
         name: 'uk_email',
         fields: [{ name: 'email', direction: 'ASC' }],
-        unique: true,
-        isPrimary: false,
+        kind: 'unique_index',
       },
     ];
     const fields = [

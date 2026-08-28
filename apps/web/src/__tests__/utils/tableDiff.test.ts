@@ -333,7 +333,7 @@ describe('diffPersistedState', () => {
       id: '1',
       name: 'idx_test',
       fields: [{ name: 'id', direction: 'ASC' }],
-      unique: false,
+      kind: 'index',
       ...overrides,
     });
 
@@ -441,7 +441,7 @@ describe('diffPersistedState', () => {
             id: '1',
             name: 'idx_name',
             fields: [{ name: 'name', direction: 'ASC' }],
-            unique: false,
+            kind: 'index',
           },
         ],
       });

@@ -104,7 +104,7 @@ describe('tableRelationship', () => {
         { name: 'id', direction: 'ASC' },
         { name: 'tenant_id', direction: 'ASC' },
       ],
-      unique: true,
+      kind: 'unique_index',
     });
 
     expect([...referencedKeyFields(state)]).toEqual(['id']);
@@ -139,7 +139,7 @@ describe('tableRelationship', () => {
     expect(result.plan.sourceState.rows[0]?.nullable).toBe(true);
     expect(result.plan.addedIndex).toMatchObject({
       name: 'idx_orders_user_id',
-      unique: false,
+      kind: 'index',
     });
     expect(result.plan.sourceState.indexes).toHaveLength(1);
   });
@@ -155,7 +155,7 @@ describe('tableRelationship', () => {
 
     expect(result.plan.addedIndex).toMatchObject({
       name: 'uk_orders_user_id',
-      unique: true,
+      kind: 'unique_index',
     });
     expect(result.plan.foreignKey).not.toHaveProperty('cardinality');
   });
@@ -167,7 +167,7 @@ describe('tableRelationship', () => {
         id: 'existing',
         name: 'idx_orders_user_id',
         fields: [{ name: 'user_id', direction: 'ASC' }],
-        unique: false,
+        kind: 'index',
       },
     ];
 
@@ -189,13 +189,13 @@ describe('tableRelationship', () => {
           { name: 'user_id', direction: 'ASC' },
           { name: 'tenant_id', direction: 'ASC' },
         ],
-        unique: true,
+        kind: 'unique_index',
       },
       {
         id: 'name-conflict',
         name: 'uk_orders_user_id',
         fields: [{ name: 'other_user_id', direction: 'ASC' }],
-        unique: true,
+        kind: 'unique_index',
       },
     ];
 

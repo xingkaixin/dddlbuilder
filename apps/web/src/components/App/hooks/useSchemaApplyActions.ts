@@ -179,7 +179,7 @@ export function useSchemaApplyActions({
                 id: indexId,
                 name: suggestion.index.name,
                 fields: suggestion.index.fields,
-                unique: suggestion.index.unique === true,
+                kind: suggestion.index.unique ? 'unique_index' : 'index',
               },
             ]),
           };

@@ -49,7 +49,7 @@ const createState = (tableName: string): PersistedState => ({
       id: 'idx_email',
       name: 'idx_users_email',
       fields: [{ name: 'email', direction: 'ASC' }],
-      unique: true,
+      kind: 'unique_index',
     },
   ],
   authInput: 'app_user',

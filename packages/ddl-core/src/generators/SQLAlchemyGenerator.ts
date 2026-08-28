@@ -95,9 +95,9 @@ export class SQLAlchemyGenerator implements ORMGenerator {
 
     // Indexes
     for (const idx of indexes) {
-      if (idx.isPrimary) continue;
+      if (idx.kind === 'primary') continue;
       const fieldNames = idx.fields.map((f) => `'${escapePythonString(f.name)}'`).join(', ');
-      const uniqueStr = idx.unique ? ', unique=True' : '';
+      const uniqueStr = idx.kind !== 'index' ? ', unique=True' : '';
       tableArgs.push(`    Index('${escapePythonString(idx.name)}', ${fieldNames}${uniqueStr})`);
     }
 

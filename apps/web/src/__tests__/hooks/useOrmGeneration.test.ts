@@ -142,7 +142,7 @@ describe('useOrmGeneration', () => {
 
   it('includes indexes in generated ORM', () => {
     const indexes: IndexDefinition[] = [
-      { name: 'pk_id', fields: [{ name: 'id', direction: 'ASC' }], unique: false, isPrimary: true },
+      { name: 'pk_id', fields: [{ name: 'id', direction: 'ASC' }], kind: 'primary' },
     ];
     const { result } = renderHook(() =>
       useOrmGeneration({

@@ -56,7 +56,7 @@ describe('resolveSavedTableSnapshot', () => {
           id: 'id-index',
           name: 'idx_id',
           fields: [{ name: 'id', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       ],
     };

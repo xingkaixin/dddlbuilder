@@ -74,15 +74,15 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
    * 生成标准索引DDL的通用实现
    */
   protected generateStandardIndexDDL(tableName: string, index: IndexDefinition): string {
-    if (index.isPrimary) {
+    if (index.kind === 'primary') {
       return this.generatePrimaryKeyDDL(tableName, index);
     }
-    if (index.isUniqueConstraint) {
+    if (index.kind === 'unique_constraint') {
       const fields = index.fields.map((field) => this.formatFieldName(field.name)).join(', ');
       return `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${this.formatFieldName(index.name)} UNIQUE (${fields});`;
     }
 
-    const indexType = index.unique ? 'UNIQUE INDEX' : 'INDEX';
+    const indexType = index.kind !== 'index' ? 'UNIQUE INDEX' : 'INDEX';
     const fieldList = this.formatIndexFieldList(index);
     const qualifiedName = this.formatTableName(tableName);
 

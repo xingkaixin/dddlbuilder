@@ -39,7 +39,7 @@ describe('columnStatements', () => {
     expect(generateTableCommentAlter('users', '表', 'postgresql')).toBe(
       "COMMENT ON TABLE users IS '表';",
     );
-    expect(generateTableCommentAlter('users', '表', 'sqlserver')).toContain(
+    expect(generateTableCommentAlter('users', '表', 'sqlserver', '旧注释')).toContain(
       'sp_updateextendedproperty',
     );
     expect(generateTableCommentAlter('users', '表', 'polardb')).toBe(

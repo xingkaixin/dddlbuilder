@@ -81,8 +81,7 @@ const indexProperties = {
       ['name'],
     ),
   },
-  unique: { type: 'boolean' },
-  isPrimary: { type: 'boolean' },
+  kind: { type: 'string', enum: ['index', 'unique_index', 'unique_constraint', 'primary'] },
 };
 
 const patchOperationsSchema = {

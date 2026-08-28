@@ -53,7 +53,7 @@ const index: IndexDefinition = {
   id: 'idx-email',
   name: 'idx_users_email',
   fields: [{ name: 'email', direction: 'ASC' }],
-  unique: false,
+  kind: 'index',
 };
 
 const renderFlow = (overrides: Partial<Parameters<typeof useIndexAdvisorFlow>[0]> = {}) => {
@@ -220,7 +220,7 @@ describe('useIndexAdvisorFlow', () => {
         { name: 'id', direction: 'ASC' },
         { name: 'email', direction: 'DESC' },
       ],
-      unique: true,
+      kind: 'unique_index',
     });
     expect(setActiveTab).toHaveBeenCalledWith('indexes');
   });

@@ -8,7 +8,7 @@ describe('PostgresStrategy', () => {
     const index = {
       id: 'index',
       name: 'OrderKey',
-      unique: true,
+      kind: 'unique_index',
       fields: [{ name: 'order', direction: 'ASC' as const }],
     };
     expect(strategy.generateIndexDDL('Audit.Users', index)).toBe(

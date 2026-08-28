@@ -23,8 +23,7 @@ const input: ORMModelInput = {
       id: 'pk',
       name: 'pk_user_profile',
       fields: [{ name: 'user_id', direction: 'ASC' }],
-      unique: true,
-      isPrimary: true,
+      kind: 'primary',
     },
   ],
 };
@@ -88,7 +87,7 @@ describe('ORM schema mapping', () => {
           id: 'idx',
           name: 'idx_user',
           fields: [{ name: 'user_id', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       ],
       foreignKeys: [

@@ -101,4 +101,4 @@ export type {
 
 export { splitQualifiedName, getSchemaAndTable } from './qualifiedName';
 
-export { indexKindOf, isIndexKind, toLegacyIndexFlags, type IndexKind } from './indexKind';
+export { indexKindOf, isIndexKind, type IndexKind } from './indexKind';

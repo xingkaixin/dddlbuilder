@@ -407,13 +407,13 @@ describe('workspaceMigration', () => {
     const index = {
       id: 'index-1',
       name: 'idx_id',
-      unique: false,
+      kind: 'index',
       fields: [{ name: 'id', direction: 'ASC' as const }],
     };
     payload.snapshot.savedTables[0].state.indexes = [index];
     const existing = structuredClone(payload.snapshot);
     existing.savedTables[0].state.indexes = [
-      { fields: [{ direction: 'ASC', name: 'id' }], unique: false, name: 'idx_id', id: 'index-1' },
+      { fields: [{ direction: 'ASC', name: 'id' }], kind: 'index', name: 'idx_id', id: 'index-1' },
     ];
     importWorkspaceSnapshotToYDoc(cloudDoc, existing);
     const statement = { bind: () => statement, first: async () => null };

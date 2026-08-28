@@ -51,15 +51,13 @@ const sampleIndexes: IndexDefinition[] = [
     id: '1',
     name: 'PRIMARY',
     fields: [{ name: 'id', direction: 'ASC' }],
-    unique: true,
-    isPrimary: true,
+    kind: 'primary',
   },
   {
     id: '2',
     name: 'idx_email',
     fields: [{ name: 'email', direction: 'ASC' }],
-    unique: true,
-    isPrimary: false,
+    kind: 'unique_index',
   },
   {
     id: '3',
@@ -68,8 +66,7 @@ const sampleIndexes: IndexDefinition[] = [
       { name: 'name', direction: 'ASC' },
       { name: 'email', direction: 'ASC' },
     ],
-    unique: true,
-    isPrimary: false,
+    kind: 'unique_index',
   },
 ];
 
@@ -206,8 +203,7 @@ describe('PrismaGenerator', () => {
         id: '1',
         name: 'PRIMARY',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
       },
     ];
     const result = buildORM('prisma', {

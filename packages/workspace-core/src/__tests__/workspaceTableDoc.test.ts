@@ -307,8 +307,8 @@ describe('workspace table doc writes', () => {
       'indexes',
       {
         indexes: [
-          { id: 'duplicate', name: 'idx_id', fields: [], unique: false },
-          { id: 'duplicate', name: 'idx_email', fields: [], unique: false },
+          { id: 'duplicate', name: 'idx_id', fields: [], kind: 'index' },
+          { id: 'duplicate', name: 'idx_email', fields: [], kind: 'index' },
         ],
       },
     ],

@@ -17,8 +17,7 @@ const primaryKey = (names: string[]): IndexDefinition => ({
   id: 'pk',
   name: 'PRIMARY',
   fields: names.map((name) => ({ name, direction: 'ASC' })),
-  unique: true,
-  isPrimary: true,
+  kind: 'primary',
 });
 
 describe('Prisma primary keys', () => {
@@ -77,7 +76,7 @@ describe('Prisma primary keys', () => {
           ...primaryKey(['tenant_id', 'user_id']),
           id: 'unique',
           name: 'uk_user',
-          isPrimary: false,
+          kind: 'unique_index',
         },
       ],
     });

@@ -7,6 +7,7 @@ import type {
   ForeignKeyDefinition,
   HivePartitionConfig,
   IndexDefinition,
+  IndexKind,
   IndexField,
   MysqlPartitionConfig,
   MysqlPartitionType,
@@ -71,7 +72,7 @@ export interface IndexSlice {
   addFieldToIndex: (fieldName: string) => void;
   removeFieldFromIndex: (index: number) => void;
   toggleFieldDirection: (index: number) => void;
-  addIndex: (unique: boolean, isPrimary: boolean, tableName: string, dbType: DatabaseType) => void;
+  addIndex: (kind: IndexKind, tableName: string, dbType: DatabaseType) => void;
   removeIndex: (id: string) => void;
   updateIndexName: (id: string, newName: string, dbType: DatabaseType) => void;
   resetIndexState: () => void;

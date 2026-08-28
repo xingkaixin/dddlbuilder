@@ -104,7 +104,7 @@ describe('DDL Generation Functions', () => {
       expect(result).not.toContain('COMMENT=');
     });
 
-    it('should ignore precision when rendering timestamp columns', () => {
+    it('should preserve precision when rendering timestamp columns', () => {
       const fields: NormalizedField[] = [
         {
           name: 'created_at',
@@ -119,8 +119,8 @@ describe('DDL Generation Functions', () => {
 
       const result = buildDDL({ dbType: 'mysql', tableName: 'events', tableComment: '', fields });
 
-      expect(result).toContain('created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
-      expect(result).not.toContain('TIMESTAMP(6)');
+      expect(result).toContain('created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP');
+      expect(result).toContain('TIMESTAMP(6)');
     });
 
     it('should generate UUID default expression for character columns', () => {
@@ -302,7 +302,7 @@ describe('DDL Generation Functions', () => {
       expect(result).toContain('price NUMBER(10, 2) DEFAULT 0.00');
       expect(result).toContain("COMMENT ON TABLE users IS '用户表'");
       expect(result).toContain("COMMENT ON COLUMN users.name IS '名称'");
-      expect(result).toContain('CREATE OR REPLACE PUBLIC SYNONYM users FOR users;');
+      expect(result).not.toContain('PUBLIC SYNONYM');
     });
 
     it('should align Oracle columns in aligned mode', () => {
@@ -596,7 +596,7 @@ describe('DDL Generation Functions', () => {
           id: 'idx-1',
           name: 'idx_users_name',
           fields: [{ name: 'name', direction: 'ASC' }],
-          unique: true,
+          kind: 'unique_index',
         },
       ];
 
@@ -617,8 +617,7 @@ describe('DDL Generation Functions', () => {
           id: 'pk-1',
           name: 'pk_users',
           fields: [{ name: 'id', direction: 'ASC' }],
-          unique: true,
-          isPrimary: true,
+          kind: 'primary',
         },
       ];
 
@@ -700,7 +699,7 @@ describe('DDL Generation Functions', () => {
 
     it('should handle qualified table names', () => {
       const result = buildOracleSynonyms('schema.users');
-      expect(result).toBe('CREATE OR REPLACE PUBLIC SYNONYM schema.users FOR schema.users;');
+      expect(result).toBe('CREATE OR REPLACE PUBLIC SYNONYM users FOR schema.users;');
     });
 
     it('should return empty string for invalid table name', () => {
@@ -760,7 +759,7 @@ describe('DDL Generation Functions', () => {
         tableComment: 'Test Table',
         fields: fieldsWithSpecialChars,
       });
-      expect(mysqlResult).toContain("COMMENT 'It''s a test with ''quotes'' and \\backslash\\'");
+      expect(mysqlResult).toContain("COMMENT 'It''s a test with ''quotes'' and \\\\backslash\\\\'");
 
       const pgResult = buildDDL({
         dbType: 'postgresql',

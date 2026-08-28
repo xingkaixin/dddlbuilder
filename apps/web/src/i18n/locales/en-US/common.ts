@@ -348,6 +348,7 @@ export const enUSCommon = {
     editNameSrHint: 'Tip: double-click or press Enter to edit the index name',
     deleteIndexTip: 'Delete index',
     type: {
+      uniqueConstraint: 'Unique constraint',
       normal: 'Normal',
       unique: 'Unique',
       primary: 'Primary',

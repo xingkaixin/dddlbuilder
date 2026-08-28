@@ -17,8 +17,7 @@ const primaryKey = (names: string[]): IndexDefinition => ({
   id: 'pk',
   name: 'PRIMARY',
   fields: names.map((name) => ({ name, direction: 'ASC' })),
-  unique: true,
-  isPrimary: true,
+  kind: 'primary',
 });
 
 describe('ORM database name mapping', () => {
@@ -38,7 +37,7 @@ describe('ORM database name mapping', () => {
           id: 'name',
           name: 'idx_display_name',
           fields: [{ name: 'display_name', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       ],
     });
@@ -67,16 +66,16 @@ describe('ORM database name mapping', () => {
   });
 
   it.each([
-    { isPrimary: false, defaultKind: 'none', decorator: 'Column' },
-    { isPrimary: true, defaultKind: 'none', decorator: 'PrimaryColumn' },
-    { isPrimary: true, defaultKind: 'auto_increment', decorator: 'PrimaryGeneratedColumn' },
-  ] as const)('maps TypeORM columns using @$decorator', ({ isPrimary, defaultKind, decorator }) => {
+    { kind: 'index', defaultKind: 'none', decorator: 'Column' },
+    { kind: 'primary', defaultKind: 'none', decorator: 'PrimaryColumn' },
+    { kind: 'primary', defaultKind: 'auto_increment', decorator: 'PrimaryGeneratedColumn' },
+  ] as const)('maps TypeORM columns using @$decorator', ({ kind, defaultKind, decorator }) => {
     const model = buildORM('typeorm', {
       dbType: 'mysql',
       tableName: 'user_profile',
       tableComment: '',
       fields: [field('user_id', { defaultKind })],
-      indexes: isPrimary ? [primaryKey(['user_id'])] : [],
+      indexes: kind === 'primary' ? [primaryKey(['user_id'])] : [],
     });
 
     expect(model).toContain("@Entity('user_profile')");

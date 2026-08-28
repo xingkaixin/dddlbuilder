@@ -44,8 +44,8 @@ const createField = (overrides: Partial<NormalizedField> = {}): NormalizedField 
 const createIndex = (overrides: Partial<IndexDefinition> = {}): IndexDefinition => ({
   name: 'idx_name',
   fields: [{ name: 'name', direction: 'ASC' }],
-  unique: false,
-  isPrimary: false,
+  kind: 'index',
+
   ...overrides,
 });
 
@@ -91,7 +91,7 @@ describe('generateAlterDDL', () => {
   it.each(['postgresql-citus', 'kingbase', 'gaussdb'] as const)(
     '%s drops and restores indexes and comments using PostgreSQL syntax',
     (dbType) => {
-      const primary = createIndex({ name: 'users_pkey', isPrimary: true, unique: true });
+      const primary = createIndex({ name: 'users_pkey', kind: 'primary' });
       const index = createIndex();
       const diff = createTableDiff({
         oldSchemaName: 'audit',
@@ -123,7 +123,7 @@ describe('generateAlterDDL', () => {
         indexes: [
           {
             type: 'remove',
-            index: createIndex({ name: 'PRIMARY', isPrimary: true, unique: true }),
+            index: createIndex({ name: 'PRIMARY', kind: 'primary' }),
           },
           { type: 'remove', index: createIndex() },
         ],
@@ -175,7 +175,7 @@ describe('generateAlterDDL', () => {
   });
 
   it('does not drop MySQL unique constraints as PostgreSQL constraints', () => {
-    const index = createIndex({ name: 'uq_email', unique: true, isUniqueConstraint: true });
+    const index = createIndex({ name: 'uq_email', kind: 'unique_constraint' });
     expect(generateDropIndex('users', { type: 'remove', index }, 'mysql')).toBe(
       'DROP INDEX uq_email ON users;',
     );
@@ -538,7 +538,7 @@ describe('generateAlterDDL', () => {
           index: createIndex({
             name: 'pk_id',
             fields: [{ name: 'id', direction: 'ASC' }],
-            isPrimary: true,
+            kind: 'primary',
           }),
         },
       ],
@@ -555,7 +555,7 @@ describe('generateAlterDDL', () => {
           index: createIndex({
             name: 'pk_id',
             fields: [{ name: 'id', direction: 'ASC' }],
-            isPrimary: true,
+            kind: 'primary',
           }),
         },
       ],
@@ -1361,7 +1361,7 @@ describe('generateDropIndex', () => {
       type: 'remove',
       index: createIndex({
         name: 'pk_id',
-        isPrimary: true,
+        kind: 'primary',
         fields: [{ name: 'id', direction: 'ASC' }],
       }),
     };
@@ -1373,7 +1373,7 @@ describe('generateDropIndex', () => {
       type: 'remove',
       index: createIndex({
         name: 'pk_id',
-        isPrimary: true,
+        kind: 'primary',
         fields: [{ name: 'id', direction: 'ASC' }],
       }),
     };
@@ -1405,7 +1405,7 @@ describe('generateAddIndex', () => {
       type: 'add',
       index: createIndex({
         name: 'pk_id',
-        isPrimary: true,
+        kind: 'primary',
         fields: [
           { name: 'id', direction: 'ASC' },
           { name: 'org_id', direction: 'DESC' },
@@ -1422,7 +1422,7 @@ describe('generateAddIndex', () => {
       type: 'add',
       index: createIndex({
         name: 'pk_id',
-        isPrimary: true,
+        kind: 'primary',
         fields: [{ name: 'id', direction: 'ASC' }],
       }),
     };
@@ -1436,7 +1436,7 @@ describe('generateAddIndex', () => {
       type: 'add',
       index: createIndex({
         name: 'uk_email',
-        unique: true,
+        kind: 'unique_index',
         fields: [{ name: 'email', direction: 'ASC' }],
       }),
     };

@@ -162,11 +162,11 @@ export function PreviewStep({
                     <td className="px-3 py-2">{index.name}</td>
                     <td className="px-3 py-2">{index.fields.map((f) => f.name).join(', ')}</td>
                     <td className="px-3 py-2 text-center">
-                      {index.isPrimary ? (
+                      {index.kind === 'primary' ? (
                         <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
                           {t('importSql.preview.primary')}
                         </span>
-                      ) : index.unique ? (
+                      ) : index.kind !== 'index' ? (
                         <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-emerald-900/40 dark:text-emerald-200">
                           {t('importSql.preview.unique')}
                         </span>

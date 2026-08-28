@@ -1,7 +1,7 @@
 import type { IndexDefinition } from '@ddlbuilder/shared-types';
 
 export function getPrimaryKeyFieldNames(indexes: IndexDefinition[]): string[] {
-  const primaryIndex = indexes.find((i) => i.isPrimary);
+  const primaryIndex = indexes.find((i) => i.kind === 'primary');
   return primaryIndex?.fields.map((f) => f.name) ?? [];
 }
 
@@ -14,7 +14,7 @@ export function buildIndexFieldLookup(indexes: IndexDefinition[]) {
   const singleUniqueFields = new Set<string>();
 
   for (const index of indexes) {
-    if (index.unique && !index.isPrimary && index.fields.length === 1) {
+    if (index.kind !== 'index' && index.kind !== 'primary' && index.fields.length === 1) {
       singleUniqueFields.add(index.fields[0].name);
     }
   }

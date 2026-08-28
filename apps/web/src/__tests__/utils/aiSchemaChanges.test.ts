@@ -45,7 +45,7 @@ function createBaseState(): PersistedState {
         id: 'idx-phone',
         name: 'uk_users_phone',
         fields: [{ name: 'phone', direction: 'ASC' }],
-        unique: true,
+        kind: 'unique_index',
       },
     ],
     authInput: '',
@@ -161,7 +161,7 @@ describe('aiSchemaChanges', () => {
           defaultKind: 'none',
         },
       ],
-      indexes: baseState.indexes,
+      indexes: baseState.indexes.map((index) => ({ ...index, unique: index.kind !== 'index' })),
     };
     const candidate = buildPersistedStateFromAISchema(schema, { baseState });
     const changes = buildAISchemaChanges(baseState, candidate);
@@ -302,17 +302,19 @@ describe('aiSchemaChanges', () => {
 
   it('retains the kind of existing unique constraints in an AI candidate', () => {
     const baseState = createBaseState();
-    baseState.indexes = baseState.indexes.map((index) => ({ ...index, isUniqueConstraint: true }));
+    baseState.indexes = baseState.indexes.map((index) => ({ ...index, kind: 'unique_constraint' }));
     const schema: GeneratedTableSchema = {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
       fields: baseState.rows.map((row) => ({ ...row, defaultKind: row.defaultKind ?? 'none' })),
-      indexes: baseState.indexes.map(({ name, fields, unique }) => ({ name, fields, unique })),
+      indexes: baseState.indexes.map(({ name, fields, kind }) => ({
+        name,
+        fields,
+        unique: kind !== 'index',
+      })),
     };
     const candidate = buildPersistedStateFromAISchema(schema, { baseState });
-    expect(candidate.indexes).toEqual(
-      baseState.indexes.map((index) => ({ ...index, isPrimary: false })),
-    );
+    expect(candidate.indexes).toEqual(baseState.indexes);
   });
 
   it.each([true, false])('preserves a named composite primary key (returned=%s)', (returned) => {
@@ -321,8 +323,8 @@ describe('aiSchemaChanges', () => {
     const primary = {
       id: 'primary',
       name: 'users_pkey',
-      unique: true,
-      isPrimary: true,
+      kind: 'primary',
+
       fields: [
         { name: 'phone', direction: 'DESC' as const },
         { name: 'id', direction: 'ASC' as const },
@@ -351,8 +353,8 @@ describe('aiSchemaChanges', () => {
       {
         id: 'primary',
         name: 'users_pkey',
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
+
         fields: [{ name: 'id', direction: 'ASC' }],
       },
     ];
@@ -361,7 +363,7 @@ describe('aiSchemaChanges', () => {
         tableName: baseState.tableName,
         tableComment: baseState.tableComment,
         fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: row.fieldName === 'phone' })),
-        indexes: baseState.indexes,
+        indexes: baseState.indexes.map((index) => ({ ...index, unique: index.kind !== 'index' })),
       },
       { baseState },
     );
@@ -382,13 +384,13 @@ describe('aiSchemaChanges', () => {
         tableName: baseState.tableName,
         tableComment: baseState.tableComment,
         fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: row.fieldName === 'phone' })),
-        indexes: baseState.indexes,
+        indexes: baseState.indexes.map((index) => ({ ...index, unique: index.kind !== 'index' })),
       },
       { baseState },
     );
     expect(candidate.indexes).toHaveLength(2);
-    expect(candidate.indexes.find((index) => index.id === 'idx-phone')?.isPrimary).toBe(false);
-    expect(candidate.indexes.filter((index) => index.isPrimary)).toHaveLength(1);
+    expect(candidate.indexes.find((index) => index.id === 'idx-phone')?.kind).toBe('unique_index');
+    expect(candidate.indexes.filter((index) => index.kind === 'primary')).toHaveLength(1);
   });
 
   it('uses the supplied unique index for a new primary key without naming heuristics', () => {
@@ -404,7 +406,7 @@ describe('aiSchemaChanges', () => {
       { baseState },
     );
     expect(candidate.indexes).toEqual([
-      expect.objectContaining({ name: 'users_pkey', isPrimary: true }),
+      expect.objectContaining({ name: 'users_pkey', kind: 'primary' }),
     ]);
   });
 
@@ -414,8 +416,8 @@ describe('aiSchemaChanges', () => {
       {
         id: 'primary',
         name: 'users_pkey',
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
+
         fields: [{ name: 'id', direction: 'ASC' }],
       },
     ];
@@ -509,7 +511,7 @@ describe('aiSchemaChanges', () => {
           defaultKind: 'none',
         },
       ],
-      indexes: baseState.indexes,
+      indexes: baseState.indexes.map((index) => ({ ...index, unique: index.kind !== 'index' })),
     };
     const candidate = buildPersistedStateFromAISchema(schema, { baseState });
     const changes = buildAISchemaChanges(baseState, candidate);
@@ -553,7 +555,7 @@ describe('aiSchemaChanges', () => {
       indexes: [
         expect.objectContaining({
           name: 'PRIMARY',
-          isPrimary: true,
+          kind: 'primary',
           fields: [{ name: 'id', direction: 'ASC' }],
         }),
       ],

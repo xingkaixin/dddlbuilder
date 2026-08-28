@@ -170,13 +170,13 @@ describe('applyAISchemaChanges', () => {
           id: 'kept-index',
           name: 'idx_legacy_id',
           fields: [{ name: 'legacy_id', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
         {
           id: 'removed-index',
           name: 'idx_id',
           fields: [{ name: 'id', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       ];
       const candidate = {
@@ -224,7 +224,7 @@ describe('applyAISchemaChanges', () => {
     const index = {
       id: 'email-index',
       name: 'idx_email',
-      unique: false,
+      kind: 'index',
       fields: [{ name: 'email', direction: 'ASC' as const }],
     };
     if (type === 'modify')
@@ -257,7 +257,7 @@ describe('applyAISchemaChanges', () => {
           {
             id: 'uk-keys',
             name: 'uk_keys',
-            unique: true,
+            kind: 'unique_index',
             fields: [
               { name: 'old_key', direction: 'ASC' },
               { name: 'new_key', direction: 'ASC' },
@@ -287,7 +287,7 @@ describe('applyAISchemaChanges', () => {
         {
           id: 'idx-user',
           name: 'idx_user',
-          unique: false,
+          kind: 'index',
           fields: [{ name: 'user_id', direction: 'ASC' }],
         },
       ],
@@ -323,7 +323,7 @@ describe('applyAISchemaChanges', () => {
       id: 'idx-email',
       name: 'idx_users_email',
       fields: [{ name: 'email', direction: 'ASC' as const }],
-      unique: false,
+      kind: 'index',
     };
     const candidate = {
       ...current,

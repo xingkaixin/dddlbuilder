@@ -335,6 +335,7 @@ export const zhCNCommon = {
     editNameSrHint: '提示：双击或按 Enter 可编辑索引名称',
     deleteIndexTip: '删除索引',
     type: {
+      uniqueConstraint: '唯一约束',
       normal: '普通',
       unique: '唯一',
       primary: '主键',

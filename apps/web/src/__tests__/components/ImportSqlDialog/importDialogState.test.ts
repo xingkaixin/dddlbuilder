@@ -51,7 +51,7 @@ describe('importDialogReducer', () => {
             id: 'index',
             name: 'idx_id',
             fields: [{ name: 'id', direction: 'ASC' }],
-            unique: false,
+            kind: 'index',
           },
         ],
       },

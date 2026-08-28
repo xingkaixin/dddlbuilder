@@ -91,7 +91,7 @@ describe('astHandlers', () => {
     expect(result.fields.find((f) => f.name === 'created_at')?.onUpdate).toBe('current_timestamp');
     expect(result.fields.find((f) => f.name === 'custom_func_col')?.defaultValue).toBe('my_func()');
 
-    const primary = result.indexes.find((i) => i.isPrimary);
+    const primary = result.indexes.find((i) => i.kind === 'primary');
     const uniqueInline = result.indexes.find((i) => i.name === 'uk_uuid_col');
     const uniqueConstraint = result.indexes.find((i) => i.name.startsWith('uk_'));
     const uniqueIndex = result.indexes.find((i) => i.name === 'idx_created');
@@ -126,7 +126,7 @@ describe('astHandlers', () => {
       serializeExpression,
     );
 
-    expect(result.indexes.some((i) => i.isPrimary)).toBe(true);
+    expect(result.indexes.some((i) => i.kind === 'primary')).toBe(true);
     expect(result.indexes.some((i) => i.name === 'uk_orders_code')).toBe(true);
     expect(result.fields.find((f) => f.name === 'id')?.nullable).toBe(false);
   });
@@ -165,7 +165,7 @@ describe('astHandlers', () => {
     );
     expect(result.indexes).toHaveLength(1);
     expect(result.indexes[0].name).toBe('idx_users_name');
-    expect(result.indexes[0].unique).toBe(true);
+    expect(result.indexes[0].kind).toBe('unique_index');
   });
 
   it('parseAlterTable should parse both add primary key shapes', () => {

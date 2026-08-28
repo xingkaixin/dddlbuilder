@@ -9,7 +9,7 @@ function createIndexDiff(overrides: Partial<IndexDiff> = {}): IndexDiff {
       id: '1',
       name: 'idx_users_name',
       fields: [{ name: 'name', direction: 'ASC' }],
-      unique: false,
+      kind: 'index',
     },
     ...overrides,
   };
@@ -23,8 +23,7 @@ describe('indexStatements', () => {
         id: 'pk',
         name: 'pk_users',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
       },
     });
 
@@ -46,7 +45,7 @@ describe('indexStatements', () => {
         id: '2',
         name: 'idx_users_age',
         fields: [{ name: 'age', direction: 'DESC' }],
-        unique: false,
+        kind: 'index',
       },
     });
 
@@ -66,8 +65,7 @@ describe('indexStatements', () => {
         id: '3',
         name: 'pk_users',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
       },
     });
 
@@ -94,7 +92,7 @@ describe('indexStatements', () => {
         id: '4',
         name: 'uk_users_email',
         fields: [{ name: 'email', direction: 'ASC' }],
-        unique: true,
+        kind: 'unique_index',
       },
     });
     const normalDiff = createIndexDiff({
@@ -102,7 +100,7 @@ describe('indexStatements', () => {
         id: '5',
         name: 'idx_users_created_at',
         fields: [{ name: 'created_at', direction: 'DESC' }],
-        unique: false,
+        kind: 'index',
       },
     });
 

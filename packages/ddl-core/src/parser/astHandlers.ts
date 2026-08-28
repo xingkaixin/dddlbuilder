@@ -1,6 +1,7 @@
 import { createEntityId } from '@ddlbuilder/shared-types';
 import type {
   IndexField,
+  IndexKind,
   NormalizedField,
   ForeignKeyDefinition,
   ForeignKeyAction,
@@ -34,21 +35,13 @@ const MYSQL_ENGINE_NAME_MAP: Record<string, string> = {
   csv: 'CSV',
 };
 
-function pushIndex(
-  result: ParsedResult,
-  name: string,
-  fields: IndexField[],
-  unique: boolean,
-  kind: 'index' | 'primary' | 'unique' = 'index',
-) {
+function pushIndex(result: ParsedResult, name: string, fields: IndexField[], kind: IndexKind) {
   if (fields.length === 0) return;
   result.indexes.push({
     id: createEntityId(),
     name,
     fields,
-    unique,
-    isPrimary: kind === 'primary',
-    ...(kind === 'unique' ? { isUniqueConstraint: true } : {}),
+    kind,
   });
 }
 
@@ -116,7 +109,7 @@ function enforceNotNullForFields(result: ParsedResult, fieldNames: string[]) {
 }
 
 function pushPrimaryKey(result: ParsedResult, fields: IndexField[], name?: string | null) {
-  pushIndex(result, name || buildPrimaryKeyName(result.tableName), fields, true, 'primary');
+  pushIndex(result, name || buildPrimaryKeyName(result.tableName), fields, 'primary');
   enforceNotNullForFields(
     result,
     fields.map((field) => field.name),
@@ -315,8 +308,7 @@ export function parseCreateTable(
             result,
             def.constraint?.constraint || `uk_${field.name}`,
             [{ name: field.name, direction: 'ASC' }],
-            true,
-            'unique',
+            'unique_constraint',
           );
         }
       } else if (def.resource === 'constraint') {
@@ -326,7 +318,7 @@ export function parseCreateTable(
           const fields = buildIndexFields(def.definition || []);
           const indexName =
             def.constraint || def.index || `uk_${fields.map((f) => f.name).join('_')}`;
-          pushIndex(result, indexName, fields, true, 'unique');
+          pushIndex(result, indexName, fields, 'unique_constraint');
         } else if (def.constraint_type?.toLowerCase() === 'foreign key') {
           pushForeignKey(result, def);
         }
@@ -337,7 +329,7 @@ export function parseCreateTable(
           // 匿名 KEY 的 index 为 null，沿用既有行为直接透传
           def.index as string,
           fields,
-          def.index_type === 'unique' || def.keyword === 'unique',
+          def.index_type === 'unique' || def.keyword === 'unique' ? 'unique_index' : 'index',
         );
       }
     });
@@ -365,7 +357,12 @@ export function parseCreateIndex(
 
   const fields: IndexField[] = buildIndexFields(columns);
 
-  pushIndex(result, indexName, fields, stmt.index_type === 'unique' || stmt.keyword === 'unique');
+  pushIndex(
+    result,
+    indexName,
+    fields,
+    stmt.index_type === 'unique' || stmt.keyword === 'unique' ? 'unique_index' : 'index',
+  );
 }
 
 export function parseAlterTable(
@@ -397,8 +394,7 @@ export function parseAlterTable(
           result,
           name || `uk_${fields.map((field) => field.name).join('_')}`,
           fields,
-          true,
-          'unique',
+          'unique_constraint',
         );
         break;
       case 'foreign key':

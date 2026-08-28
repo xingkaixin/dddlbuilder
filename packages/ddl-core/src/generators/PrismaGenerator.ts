@@ -100,15 +100,19 @@ export class PrismaGenerator implements ORMGenerator {
     }
 
     // Composite unique indexes
-    const compositeUniques = indexes.filter((i) => i.unique && i.fields.length > 1 && !i.isPrimary);
+    const compositeUniques = indexes.filter(
+      (i) => i.kind !== 'index' && i.fields.length > 1 && i.kind !== 'primary',
+    );
     for (const idx of compositeUniques) {
       const fieldNames = idx.fields.map((f) => toCamelCase(f.name)).join(', ');
       lines.push(`  @@unique([${fieldNames}])`);
     }
 
     // Normal and unique indexes (skip primary key)
-    const nonPrimaryIndexes = indexes.filter((i) => !i.isPrimary && !i.unique);
-    const singleUniques = indexes.filter((i) => i.unique && i.fields.length === 1 && !i.isPrimary);
+    const nonPrimaryIndexes = indexes.filter((i) => i.kind !== 'primary' && i.kind === 'index');
+    const singleUniques = indexes.filter(
+      (i) => i.kind !== 'index' && i.fields.length === 1 && i.kind !== 'primary',
+    );
 
     for (const idx of nonPrimaryIndexes) {
       const fieldNames = idx.fields.map((f) => toCamelCase(f.name)).join(', ');

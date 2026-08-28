@@ -27,18 +27,18 @@ function buildIndexClause(change: IndexDiff, dbType: DatabaseType): string {
   const index = change.index;
   const name = formatSqlIdentifier(index.name, dbType);
   if (change.type === 'remove') {
-    return index.isPrimary ? 'DROP PRIMARY KEY' : `DROP INDEX ${name}`;
+    return index.kind === 'primary' ? 'DROP PRIMARY KEY' : `DROP INDEX ${name}`;
   }
-  const constraint = index.isPrimary || index.isUniqueConstraint;
+  const constraint = index.kind === 'primary' || index.kind === 'unique_constraint';
   const columns = index.fields
     .map((field) => {
       const name = formatSqlIdentifier(field.name, dbType);
       return constraint ? name : `${name} ${field.direction}`;
     })
     .join(', ');
-  if (index.isPrimary) return `ADD PRIMARY KEY (${columns})`;
-  if (index.isUniqueConstraint) return `ADD CONSTRAINT ${name} UNIQUE (${columns})`;
-  return `ADD ${index.unique ? 'UNIQUE ' : ''}INDEX ${name} (${columns})`;
+  if (index.kind === 'primary') return `ADD PRIMARY KEY (${columns})`;
+  if (index.kind === 'unique_constraint') return `ADD CONSTRAINT ${name} UNIQUE (${columns})`;
+  return `ADD ${index.kind !== 'index' ? 'UNIQUE ' : ''}INDEX ${name} (${columns})`;
 }
 
 export function generateMysqlAlterStatement(

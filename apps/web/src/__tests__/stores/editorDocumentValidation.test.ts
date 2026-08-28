@@ -34,7 +34,7 @@ describe('editor document validation', () => {
       authObjects: [],
       rows: rows('UserID'),
       indexes: [
-        { id: 'index', name: 'idx', fields: [{ name: 'userid', direction: 'ASC' }], unique: false },
+        { id: 'index', name: 'idx', fields: [{ name: 'userid', direction: 'ASC' }], kind: 'index' },
       ],
     });
     expect(() => validateDocumentFields(state)).toThrow('Unknown index field: userid');

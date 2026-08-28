@@ -1,5 +1,7 @@
 import {
   createEntityId,
+  indexKindOf,
+  isIndexKind,
   normalizeFieldDefaultKind,
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
@@ -113,11 +115,22 @@ const parseIndex = (value: unknown, partial: boolean): Partial<Omit<IndexDefinit
   const name = readString(value, 'name', !partial);
   const fields = value.fields === undefined ? undefined : parseIndexFields(value.fields);
   if (!partial && !fields) throw new Error('Invalid index fields');
+  if (value.kind !== undefined && !isIndexKind(value.kind)) throw new Error('Invalid index kind');
+  const hasKind =
+    value.kind !== undefined ||
+    value.unique !== undefined ||
+    value.isPrimary !== undefined ||
+    value.isUniqueConstraint !== undefined;
+  const kind = indexKindOf({
+    kind: value.kind,
+    unique: readBoolean(value, 'unique', false),
+    isPrimary: readBoolean(value, 'isPrimary', false),
+    isUniqueConstraint: readBoolean(value, 'isUniqueConstraint', false),
+  });
   return {
     ...(name === undefined ? {} : { name }),
     ...(fields === undefined ? {} : { fields }),
-    ...(value.unique === undefined ? {} : { unique: readBoolean(value, 'unique', false) }),
-    ...(value.isPrimary === undefined ? {} : { isPrimary: readBoolean(value, 'isPrimary', false) }),
+    ...(hasKind ? { kind } : {}),
   };
 };
 
@@ -190,7 +203,7 @@ export function parseSchemaPatchOperations(value: unknown): SchemaPatchOperation
           index: {
             name: '',
             fields: [],
-            unique: false,
+            kind: 'index',
             ...parseIndex(item.index, false),
           },
         };

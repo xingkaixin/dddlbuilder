@@ -111,11 +111,12 @@ const IndexDiffRow = memo<{ diff: IndexDiff }>(({ diff }) => {
 
   const index = diff.index;
   const fieldList = index.fields.map((f) => f.name).join(', ');
-  const typeLabel = index.isPrimary
-    ? t('diffDialog.indexTypePrimary')
-    : index.unique
-      ? t('diffDialog.indexTypeUnique')
-      : t('diffDialog.indexTypeNormal');
+  const typeLabel =
+    index.kind === 'primary'
+      ? t('diffDialog.indexTypePrimary')
+      : index.kind !== 'index'
+        ? t('diffDialog.indexTypeUnique')
+        : t('diffDialog.indexTypeNormal');
 
   return (
     <div className={cn('flex items-start gap-2 rounded-md border px-3 py-2 text-sm', bgClass)}>

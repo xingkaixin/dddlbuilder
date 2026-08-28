@@ -99,13 +99,13 @@ export const sampleIndexes: IndexDefinition[] = [
     id: '1',
     name: 'idx_users_id',
     fields: [{ name: 'id', direction: 'ASC' }],
-    unique: false,
+    kind: 'index',
   },
   {
     id: '2',
     name: 'uk_users_name',
     fields: [{ name: 'name', direction: 'ASC' }],
-    unique: true,
+    kind: 'unique_index',
   },
   {
     id: '3',
@@ -114,7 +114,7 @@ export const sampleIndexes: IndexDefinition[] = [
       { name: 'name', direction: 'ASC' },
       { name: 'created_at', direction: 'DESC' },
     ],
-    unique: false,
+    kind: 'index',
   },
 ];
 

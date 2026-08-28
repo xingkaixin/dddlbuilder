@@ -65,11 +65,11 @@ export class TypeORMGenerator implements ORMGenerator {
 
     // Collect composite unique and normal indexes
     for (const idx of indexes) {
-      if (idx.isPrimary) continue;
+      if (idx.kind === 'primary') continue;
       const fieldNames = idx.fields.map((f) => tsStringLiteral(toCamelCase(f.name))).join(', ');
-      if (idx.unique && idx.fields.length > 1) {
+      if (idx.kind !== 'index' && idx.fields.length > 1) {
         classIndexes.push(`@Index([${fieldNames}], { unique: true })`);
-      } else if (!idx.unique) {
+      } else if (idx.kind === 'index') {
         classIndexes.push(`@Index([${fieldNames}])`);
       }
     }

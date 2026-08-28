@@ -25,12 +25,12 @@ export function generateDropIndex(
     index.name,
     dbType,
   );
-  if (index.isPrimary) {
+  if (index.kind === 'primary') {
     return family === 'mysql'
       ? `ALTER TABLE ${tableName} DROP PRIMARY KEY;`
       : `ALTER TABLE ${tableName} DROP CONSTRAINT ${indexName};`;
   }
-  if (index.isUniqueConstraint && family !== 'mysql') {
+  if (index.kind === 'unique_constraint' && family !== 'mysql') {
     return `ALTER TABLE ${tableName} DROP CONSTRAINT ${indexName};`;
   }
   return family === 'mysql' || family === 'sqlserver'
@@ -51,16 +51,17 @@ export function generateAddIndex(
     return `-- Manual migration required: add index ${indexName} on ${tableName} (${dbType}).`;
   }
 
-  if (index.isPrimary || index.isUniqueConstraint) {
+  if (index.kind === 'primary' || index.kind === 'unique_constraint') {
     const columns = index.fields.map((field) => formatSqlIdentifier(field.name, dbType)).join(', ');
-    const constraint = index.isPrimary && family === 'mysql' ? '' : `CONSTRAINT ${indexName} `;
-    const kind = index.isPrimary ? 'PRIMARY KEY' : 'UNIQUE';
+    const constraint =
+      index.kind === 'primary' && family === 'mysql' ? '' : `CONSTRAINT ${indexName} `;
+    const kind = index.kind === 'primary' ? 'PRIMARY KEY' : 'UNIQUE';
     return `ALTER TABLE ${tableName} ADD ${constraint}${kind} (${columns});`;
   }
 
   const fieldList = index.fields
     .map((field) => `${formatSqlIdentifier(field.name, dbType)} ${field.direction}`)
     .join(', ');
-  const indexType = index.unique ? 'UNIQUE INDEX' : 'INDEX';
+  const indexType = index.kind !== 'index' ? 'UNIQUE INDEX' : 'INDEX';
   return `CREATE ${indexType} ${indexName} ON ${tableName} (${fieldList});`;
 }

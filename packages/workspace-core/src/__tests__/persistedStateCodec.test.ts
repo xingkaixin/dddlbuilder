@@ -146,7 +146,12 @@ describe('decodePersistedState', () => {
     };
     const state = decodePersistedState(externalState({ indexes: [constraint] }));
     expect(decodePersistedState(JSON.parse(JSON.stringify(state)))?.indexes).toEqual([
-      { ...constraint, isPrimary: false },
+      {
+        id: constraint.id,
+        name: constraint.name,
+        fields: constraint.fields,
+        kind: 'unique_constraint',
+      },
     ]);
   });
 
@@ -350,7 +355,7 @@ describe('decodePersistedState', () => {
         { id: 'legacy-field-1', fieldName: '' },
       ],
       currentIndexFields: [{ name: 'id', direction: 'DESC' }],
-      indexes: [{ id: 'index-1', name: 'idx_users_id', unique: true, isPrimary: true }],
+      indexes: [{ id: 'index-1', name: 'idx_users_id', kind: 'primary' }],
       authObjects: ['reader'],
       citusShardingConfig: { mode: 'distributed', distributionColumn: 'tenant_id' },
       mysqlPartitionConfig: {
@@ -721,8 +726,7 @@ it.each(['index', 'unique_index', 'unique_constraint', 'primary'] as const)(
       }),
     );
     expect(decoded?.indexes[0]).toMatchObject({
-      unique: kind !== 'index',
-      isPrimary: kind === 'primary',
+      kind,
     });
   },
 );

@@ -4,6 +4,7 @@ import {
   type DatabaseType,
   type IndexDefinition,
   type IndexField,
+  type IndexKind,
 } from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';
@@ -34,22 +35,15 @@ interface IndexPanelProps {
   removingIndexIds?: Set<string>;
 }
 
-type IndexType = 'normal' | 'unique' | 'primary';
-
 type DraftIndex = {
   id: string | null;
   name: string;
-  type: IndexType;
+  type: IndexKind;
   fields: IndexField[];
 };
 
 type PanelState = { kind: 'view'; id: string | null } | { kind: 'edit'; draft: DraftIndex };
-const EMPTY_DRAFT: DraftIndex = { id: null, name: '', type: 'normal', fields: [] };
-
-const getIndexType = (index: IndexDefinition): IndexType => {
-  if (index.isPrimary) return 'primary';
-  return index.unique ? 'unique' : 'normal';
-};
+const EMPTY_DRAFT: DraftIndex = { id: null, name: '', type: 'index', fields: [] };
 
 export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIndexIds }) => {
   const { t } = useTranslation();
@@ -107,7 +101,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
       ? -1
       : Math.min(Math.max(activeSuggestionIndex, 0), fieldSuggestions.length - 1);
 
-  const startCreate = (type: IndexType) => {
+  const startCreate = (type: IndexKind) => {
     setPanel({
       kind: 'edit',
       draft: {
@@ -126,7 +120,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
       draft: {
         id: index.id,
         name: index.name,
-        type: getIndexType(index),
+        type: index.kind,
         fields: [...index.fields],
       },
     });
@@ -143,7 +137,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     if (trimmedName) return truncateIndexName(trimmedName, maxLength);
     if (draft.type === 'primary') return buildPrimaryKeyName(tableName, maxLength);
     return buildIndexName(
-      draft.type === 'unique' ? 'uk' : 'idx',
+      draft.type !== 'index' ? 'uk' : 'idx',
       tableName || 'table',
       draft.fields.map((field) => field.name),
       maxLength,
@@ -160,7 +154,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     }
     if (
       draft.type === 'primary' &&
-      latestIndexes.some((index) => index.isPrimary && index.id !== draft.id)
+      latestIndexes.some((index) => index.kind === 'primary' && index.id !== draft.id)
     ) {
       showToast(t('indexPanel.primaryExists'));
       return;
@@ -170,8 +164,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
       id: draft.id ?? createEntityId(),
       name: buildDraftName(),
       fields: [...draft.fields],
-      unique: draft.type !== 'normal',
-      isPrimary: draft.type === 'primary',
+      kind: draft.type,
     };
 
     setIndexes((prev) =>
@@ -222,19 +215,27 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     }));
   };
 
-  const renderTypeBadge = (type: IndexType) => {
-    const Icon = type === 'primary' ? Key : type === 'unique' ? Lock : Hash;
+  const renderTypeBadge = (type: IndexKind) => {
+    const Icon =
+      type === 'primary'
+        ? Key
+        : type === 'unique_index' || type === 'unique_constraint'
+          ? Lock
+          : Hash;
     return (
       <span
         className={cn(
           'inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold',
           type === 'primary' && 'bg-orange-100 text-orange-700 dark:bg-orange-900/40',
-          type === 'unique' && 'bg-blue-100 text-blue-700 dark:bg-blue-900/40',
-          type === 'normal' && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40',
+          (type === 'unique_index' || type === 'unique_constraint') &&
+            'bg-blue-100 text-blue-700 dark:bg-blue-900/40',
+          type === 'index' && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40',
         )}
       >
         <Icon className="h-3.5 w-3.5" />
-        {t(`indexPanel.type.${type}`)}
+        {t(
+          `indexPanel.type.${type === 'index' ? 'normal' : type === 'unique_index' ? 'unique' : type === 'unique_constraint' ? 'uniqueConstraint' : 'primary'}`,
+        )}
       </span>
     );
   };
@@ -245,8 +246,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
           id: draft.id ?? 'draft',
           name: draft.name,
           fields: draft.fields,
-          unique: draft.type !== 'normal',
-          isPrimary: draft.type === 'primary',
+          kind: draft.type,
         } satisfies IndexDefinition)
       : selectedIndex;
 
@@ -265,7 +265,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
               size="sm"
               variant="outline"
               className="h-7 gap-1.5 px-2 text-xs"
-              onClick={() => startCreate('normal')}
+              onClick={() => startCreate('index')}
             >
               <Hash className="h-3.5 w-3.5" />
               {t('indexPanel.addIndex')}
@@ -274,7 +274,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
               size="sm"
               variant="outline"
               className="h-7 gap-1.5 px-2 text-xs"
-              onClick={() => startCreate('unique')}
+              onClick={() => startCreate('unique_index')}
             >
               <Lock className="h-3.5 w-3.5" />
               {t('indexPanel.addUnique')}
@@ -284,7 +284,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
               variant="outline"
               className="h-7 gap-1.5 px-2 text-xs"
               onClick={() => startCreate('primary')}
-              disabled={indexes.some((index) => index.isPrimary)}
+              disabled={indexes.some((index) => index.kind === 'primary')}
             >
               <Key className="h-3.5 w-3.5" />
               {t('indexPanel.addPrimary')}
@@ -319,7 +319,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
             )}
 
             {indexes.map((index) => {
-              const type = getIndexType(index);
+              const type = index.kind;
               const active = selectedIndex?.id === index.id;
               return (
                 <div
@@ -444,7 +444,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                     {t('indexPanel.typeLabel')}
                   </div>
                   <div className="rounded-md border bg-muted/20 px-3 py-2">
-                    {renderTypeBadge(getIndexType(detailIndex))}
+                    {renderTypeBadge(detailIndex.kind)}
                   </div>
                 </div>
 

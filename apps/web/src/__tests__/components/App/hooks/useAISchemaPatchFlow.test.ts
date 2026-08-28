@@ -16,7 +16,7 @@ const oldIndex: IndexDefinition = {
   id: 'old-index',
   name: 'idx_users_email',
   fields: [{ name: 'email', direction: 'ASC' }],
-  unique: false,
+  kind: 'index',
 };
 
 const createState = (): PersistedState => ({

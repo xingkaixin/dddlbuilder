@@ -18,8 +18,7 @@ const primaryIndex: IndexDefinition = {
   id: 'pk',
   name: 'pk_users',
   fields: [{ name: 'id', direction: 'ASC' }],
-  unique: true,
-  isPrimary: true,
+  kind: 'primary',
 };
 
 describe('lintSchema', () => {
@@ -47,7 +46,7 @@ describe('lintSchema', () => {
           id: 'idx_name',
           name: 'idx_users_name',
           fields: [{ name: 'name', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       ],
     });
@@ -73,7 +72,7 @@ describe('lintSchema', () => {
           id: 'idx_bad',
           name: 'bad_name',
           fields: [{ name: 'name', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       ],
     });
@@ -135,7 +134,7 @@ describe('lintSchema', () => {
           id: 'idx_payload',
           name: 'idx_events_payload',
           fields: [{ name: 'payload', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       ],
     });
@@ -152,7 +151,7 @@ describe('lintSchema', () => {
           id: 'dangling-index',
           name: 'idx_users_missing',
           fields: [{ name: 'missing', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       ],
       foreignKeys: [

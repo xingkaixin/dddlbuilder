@@ -216,7 +216,7 @@ describe('useSchemaApplyActions', () => {
             id: 'obsolete-index',
             name: 'idx_obsolete',
             fields: [{ name: 'obsolete', direction: 'ASC' }],
-            unique: false,
+            kind: 'index',
           },
         ],
         foreignKeys: [
@@ -259,7 +259,7 @@ describe('useSchemaApplyActions', () => {
             id: 'idx',
             name: 'idx_obsolete',
             fields: [{ name: 'obsolete', direction: 'ASC' }],
-            unique: false,
+            kind: 'index',
           },
         ],
         foreignKeys: [
@@ -320,7 +320,7 @@ describe('useSchemaApplyActions', () => {
 
     const nextState = actions.replaceCurrentState.mock.calls[0][0] as PersistedState;
     expect(nextState.indexes).toEqual([
-      expect.objectContaining({ name: 'idx_name', unique: true }),
+      expect.objectContaining({ name: 'idx_name', kind: 'unique_index' }),
     ]);
     act(() => vi.advanceTimersByTime(50));
     expect(actions.triggerIndexAnimation).toHaveBeenCalledWith(nextState.indexes[0].id, 'add');

@@ -3,12 +3,7 @@ import { DATABASE_TYPES } from '@ddlbuilder/shared-types';
 import { SqlParser } from '../../parser/SqlParser.js';
 
 const stripIndexIds = (indexes: any[]) =>
-  indexes.map(({ name, fields, unique, isPrimary }) => ({
-    name,
-    fields,
-    unique,
-    isPrimary: Boolean(isPrimary),
-  }));
+  indexes.map(({ name, fields, kind }) => ({ name, fields, kind }));
 
 describe('SqlParser', () => {
   it('distinguishes string literals from SQL expressions without losing their contents', async () => {
@@ -41,7 +36,7 @@ describe('SqlParser', () => {
       expect(result.indexes).toEqual([
         expect.objectContaining({
           name: 'users_identity',
-          isPrimary: true,
+          kind: 'primary',
           fields: [{ name: 'id', direction: 'ASC' }],
         }),
       ]);
@@ -54,7 +49,7 @@ describe('SqlParser', () => {
       'CREATE TABLE users (id INT CONSTRAINT users_identity PRIMARY KEY);',
       'postgresql',
     );
-    expect(result.indexes[0]).toMatchObject({ name: 'users_identity', isPrimary: true });
+    expect(result.indexes[0]).toMatchObject({ name: 'users_identity', kind: 'primary' });
   });
 
   it.each(DATABASE_TYPES.filter((databaseType) => databaseType !== 'hive'))(
@@ -140,26 +135,22 @@ describe('SqlParser', () => {
       {
         name: 'pk_users',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
       },
       {
         name: 'uk_email',
         fields: [{ name: 'email', direction: 'ASC' }],
-        unique: true,
-        isPrimary: false,
+        kind: 'unique_constraint',
       },
       {
         name: 'idx_name',
         fields: [{ name: 'name', direction: 'DESC' }],
-        unique: false,
-        isPrimary: false,
+        kind: 'index',
       },
       {
         name: 'idx_created_at',
         fields: [{ name: 'created_at', direction: 'ASC' }],
-        unique: false,
-        isPrimary: false,
+        kind: 'index',
       },
     ]);
     expect(result.authObjects).toEqual(['app_user']);
@@ -233,14 +224,12 @@ describe('SqlParser', () => {
       {
         name: 'pk_accounts',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
       },
       {
         name: 'idx_accounts_username',
         fields: [{ name: 'username', direction: 'ASC' }],
-        unique: true,
-        isPrimary: false,
+        kind: 'unique_index',
       },
     ]);
     expect(result.authObjects).toEqual(['reporting']);
@@ -293,20 +282,17 @@ describe('SqlParser', () => {
       {
         name: 'pk_Users',
         fields: [{ name: 'Id', direction: 'ASC' }],
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
       },
       {
         name: 'uk_Username',
         fields: [{ name: 'Username', direction: 'ASC' }],
-        unique: true,
-        isPrimary: false,
+        kind: 'unique_constraint',
       },
       {
         name: 'IX_Users_Username',
         fields: [{ name: 'Username', direction: 'ASC' }],
-        unique: true,
-        isPrimary: false,
+        kind: 'unique_index',
       },
     ]);
   });
@@ -329,8 +315,7 @@ describe('SqlParser', () => {
       {
         name: 'pk_items',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
       },
     ]);
   });
@@ -406,20 +391,17 @@ describe('SqlParser', () => {
       {
         name: 'pk_ttt',
         fields: [{ name: 'ID', direction: 'ASC' }],
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
       },
       {
         name: 'uk_ttt_CORP_ID',
         fields: [{ name: 'CORP_ID', direction: 'ASC' }],
-        unique: true,
-        isPrimary: false,
+        kind: 'unique_index',
       },
       {
         name: 'idx_ttt_END_DT',
         fields: [{ name: 'END_DT', direction: 'ASC' }],
-        unique: false,
-        isPrimary: false,
+        kind: 'index',
       },
       {
         name: 'idx_ttt_ID_INFO_SRC',
@@ -427,8 +409,7 @@ describe('SqlParser', () => {
           { name: 'ID', direction: 'ASC' },
           { name: 'INFO_SRC', direction: 'ASC' },
         ],
-        unique: false,
-        isPrimary: false,
+        kind: 'index',
       },
     ]);
     expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
@@ -581,7 +562,7 @@ describe('SqlParser', () => {
     expect(result.tableName).toBe('orders');
     expect(result.fields.map((f) => f.name)).toEqual(['id', 'user_id', 'amount']);
     // Primary key should be extracted from ALTER TABLE
-    const primaryKey = result.indexes.find((idx) => idx.isPrimary);
+    const primaryKey = result.indexes.find((idx) => idx.kind === 'primary');
     expect(primaryKey).toBeDefined();
     expect(primaryKey?.fields).toEqual([{ name: 'id', direction: 'ASC' }]);
     expect(result.foreignKeys).toEqual([
@@ -722,7 +703,7 @@ describe('SqlParser', () => {
     expect(result.tableName).toBe('idx_test');
     expect(result.indexes.length).toBeGreaterThanOrEqual(2);
 
-    const uniqueIndex = result.indexes.find((idx) => idx.unique);
+    const uniqueIndex = result.indexes.find((idx) => idx.kind !== 'index');
     expect(uniqueIndex).toBeDefined();
   });
 

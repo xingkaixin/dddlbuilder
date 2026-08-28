@@ -1,4 +1,4 @@
-import { indexKindOf, toLegacyIndexFlags } from '@ddlbuilder/shared-types';
+import { indexKindOf } from '@ddlbuilder/shared-types';
 import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 import { isRecord } from './yMapJson';
 import {
@@ -111,7 +111,7 @@ const decodeIndexes = (value: unknown): IndexDefinition[] => {
         id: decodeUniqueEntityId(item.id, `legacy-index-${index}`, usedIds),
         name,
         fields: decodeIndexFields(item.fields),
-        ...toLegacyIndexFlags(indexKindOf(item)),
+        kind: indexKindOf(item),
       },
     ];
   });

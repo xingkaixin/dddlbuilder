@@ -96,7 +96,7 @@ export const createTestIndex = (overrides = {}) => ({
   id: 'test-index-1',
   name: 'idx_test_field',
   fields: [{ name: 'test_field', direction: 'ASC' }],
-  unique: false,
+  kind: 'index',
   ...overrides,
 });
 

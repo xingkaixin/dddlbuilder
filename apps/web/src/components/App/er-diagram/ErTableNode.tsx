@@ -8,8 +8,9 @@ function ErTableNode(props: NodeProps) {
   const { state, onSelectTable } = data;
 
   const pkFields = new Set(
-    state.indexes?.filter((idx) => idx.isPrimary).flatMap((idx) => idx.fields.map((f) => f.name)) ||
-      [],
+    state.indexes
+      ?.filter((idx) => idx.kind === 'primary')
+      .flatMap((idx) => idx.fields.map((f) => f.name)) || [],
   );
 
   const fields = (state.rows || [])

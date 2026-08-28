@@ -44,13 +44,35 @@ function setupStores() {
 }
 
 describe('IndexPanel a11y', () => {
+  it('preserves a unique constraint when editing its name', () => {
+    useEditorStore.getState().setIndexes([
+      {
+        id: 'uq',
+        name: 'uq_user',
+        kind: 'unique_constraint',
+        fields: [{ name: 'user_id', direction: 'ASC' }],
+      },
+    ]);
+    render(<IndexPanel />);
+    fireEvent.click(screen.getAllByRole('button', { name: '编辑' })[0]);
+    fireEvent.change(screen.getByDisplayValue('uq_user'), { target: { value: 'uq_order_user' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存索引' }));
+    expect(useEditorStore.getState().indexes).toEqual([
+      {
+        id: 'uq',
+        name: 'uq_order_user',
+        kind: 'unique_constraint',
+        fields: [{ name: 'user_id', direction: 'ASC' }],
+      },
+    ]);
+  });
   it('keeps an edited draft when its source index is removed externally', () => {
     useEditorStore.getState().setIndexes([
       {
         id: 'original',
         name: 'idx_orders_id',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: false,
+        kind: 'index',
       },
     ]);
     render(<IndexPanel />);
@@ -76,8 +98,7 @@ describe('IndexPanel a11y', () => {
         id: 'primary',
         name: 'pk_orders',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: true,
-        isPrimary: true,
+        kind: 'primary',
       },
     ]);
     render(<IndexPanel />);

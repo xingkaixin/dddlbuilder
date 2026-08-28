@@ -69,14 +69,13 @@ function hasSingleFieldIndex(
   return indexes.some(
     (index) =>
       fieldNames(index)[0] === fieldName &&
-      (!requiresUnique ||
-        (index.fields.length === 1 && (index.isPrimary === true || index.unique))),
+      (!requiresUnique || (index.fields.length === 1 && index.kind !== 'index')),
   );
 }
 
 function isPrimaryKeyField(state: PersistedState, fieldName: string): boolean {
   return (state.indexes ?? []).some(
-    (index) => index.isPrimary === true && fieldNames(index).includes(fieldName),
+    (index) => index.kind === 'primary' && fieldNames(index).includes(fieldName),
   );
 }
 
@@ -107,14 +106,14 @@ function buildRelationshipIndex(
     id: createEntityId(),
     name,
     fields: [{ name: fieldName, direction: 'ASC' }],
-    unique: isUnique,
+    kind: isUnique ? 'unique_index' : 'index',
   };
 }
 
 export function referencedKeyFields(state: PersistedState): Set<string> {
   return new Set(
     (state.indexes ?? [])
-      .filter((index) => index.isPrimary === true || index.unique)
+      .filter((index) => index.kind !== 'index')
       .filter((index) => index.fields.length === 1)
       .map((index) => index.fields[0]?.name)
       .filter((fieldName): fieldName is string => Boolean(fieldName)),

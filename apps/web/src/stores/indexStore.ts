@@ -64,11 +64,12 @@ export const createIndexSlice = (set: EditorSetState, get: EditorGetState): Inde
     }));
   },
 
-  addIndex: (unique, isPrimary, tableName, dbType) => {
+  addIndex: (kind, tableName, dbType) => {
     const { currentIndexFields, indexes } = get();
+    const isPrimary = kind === 'primary';
     if (currentIndexFields.length === 0) return;
 
-    if (isPrimary && indexes.some((index) => index.isPrimary)) {
+    if (isPrimary && indexes.some((index) => index.kind === 'primary')) {
       return;
     }
 
@@ -77,7 +78,7 @@ export const createIndexSlice = (set: EditorSetState, get: EditorGetState): Inde
     const indexName = isPrimary
       ? buildPrimaryKeyName(tableName, indexNameMaxLength)
       : buildIndexName(
-          unique ? 'uk' : 'idx',
+          kind !== 'index' ? 'uk' : 'idx',
           tableName,
           currentIndexFields.map((field) => field.name),
           indexNameMaxLength,
@@ -87,8 +88,7 @@ export const createIndexSlice = (set: EditorSetState, get: EditorGetState): Inde
       id: createEntityId(),
       name: indexName,
       fields: [...currentIndexFields],
-      unique,
-      isPrimary,
+      kind,
     };
 
     set((state) => ({

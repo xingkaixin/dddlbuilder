@@ -36,7 +36,7 @@ function describeIndex(index?: AISchemaChange & { kind: 'index' }) {
   const next = index?.newIndex || index?.oldIndex;
   if (!next) return '';
   const fields = next.fields.map((field) => field.name).join(', ');
-  const type = next.isPrimary ? 'PK' : next.unique ? 'UQ' : 'IDX';
+  const type = next.kind === 'primary' ? 'PK' : next.kind !== 'index' ? 'UQ' : 'IDX';
   return `${type} · ${fields}`;
 }
 

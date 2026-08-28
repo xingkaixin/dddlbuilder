@@ -196,9 +196,7 @@ describe('Utils', () => {
         id: 'uq',
         name: 'uq_email',
         fields: [{ name: 'email', direction: 'ASC' as const }],
-        unique: true,
-        isPrimary: false,
-        isUniqueConstraint: true,
+        kind: 'unique_constraint',
       };
       expect(sanitizeIndexesForPersist([constraint])).toEqual([constraint]);
     });
@@ -212,8 +210,7 @@ describe('Utils', () => {
             { name: 'field1', direction: 'ASC' },
             { name: 'field2', direction: 'DESC' },
           ],
-          unique: true,
-          isPrimary: false,
+          kind: 'unique_index',
         },
       ];
 
@@ -227,8 +224,7 @@ describe('Utils', () => {
           { name: 'field1', direction: 'ASC' },
           { name: 'field2', direction: 'DESC' },
         ],
-        unique: true,
-        isPrimary: false,
+        kind: 'unique_index',
       });
     });
 
@@ -238,22 +234,19 @@ describe('Utils', () => {
           id: '1',
           name: ' idx_name ',
           fields: [{ name: 'field1', direction: 'ASC' }],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
         {
           id: '2',
           name: '',
           fields: [{ name: 'field2', direction: 'ASC' }],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
         {
           id: '3',
           name: null,
           fields: [{ name: 'field3', direction: 'ASC' }],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
       ];
 
@@ -273,8 +266,7 @@ describe('Utils', () => {
             { name: null, direction: 'DESC' },
             { name: undefined, direction: 'ASC' },
           ],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
       ];
 
@@ -300,8 +292,7 @@ describe('Utils', () => {
             { name: 'field4', direction: null as any },
             { name: 'field5', direction: undefined as any },
           ],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
       ];
 
@@ -317,41 +308,15 @@ describe('Utils', () => {
       ]);
     });
 
-    it('应该将 unique 和 isPrimary 转换为布尔值', () => {
-      const indexes: IndexDefinition[] = [
-        {
-          id: '1',
-          name: 'idx_name1',
-          fields: [{ name: 'field1', direction: 'ASC' }],
-          unique: 1 as any,
-          isPrimary: 0 as any,
-        },
-        {
-          id: '2',
-          name: 'idx_name2',
-          fields: [{ name: 'field2', direction: 'ASC' }],
-          unique: 'true' as any,
-          isPrimary: 'false' as any,
-        },
-        {
-          id: '3',
-          name: 'idx_name3',
-          fields: [{ name: 'field3', direction: 'ASC' }],
-          unique: null as any,
-          isPrimary: undefined as any,
-        },
-      ];
-
-      const result = sanitizeIndexesForPersist(indexes);
-
-      expect(result).toHaveLength(3);
-      expect(result[0].unique).toBe(true); // 1 转换为 true
-      expect(result[0].isPrimary).toBe(false); // 0 转换为 false
-      expect(result[1].unique).toBe(true); // 'true' 转换为 true
-      expect(result[1].isPrimary).toBe(true); // 'false' 转换为 true (非空字符串)
-      expect(result[2].unique).toBe(false); // null 转换为 false
-      expect(result[2].isPrimary).toBe(false); // undefined 转换为 false
-    });
+    it.each(['index', 'unique_index', 'unique_constraint', 'primary'] as const)(
+      '保留索引类型 %s',
+      (kind) => {
+        const indexes: IndexDefinition[] = [
+          { id: 'i', name: 'idx', fields: [{ name: 'id', direction: 'ASC' }], kind },
+        ];
+        expect(sanitizeIndexesForPersist(indexes)).toEqual(indexes);
+      },
+    );
 
     it('应该过滤掉没有字段的索引', () => {
       const indexes: IndexDefinition[] = [
@@ -359,15 +324,13 @@ describe('Utils', () => {
           id: '1',
           name: 'valid_index',
           fields: [{ name: 'field1', direction: 'ASC' }],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
         {
           id: '2',
           name: 'empty_fields',
           fields: [],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
       ];
 
@@ -383,8 +346,7 @@ describe('Utils', () => {
           id: '1',
           name: 'null_fields',
           fields: null as any,
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
       ];
 
@@ -403,8 +365,7 @@ describe('Utils', () => {
             { name: '', direction: 'DESC' },
             { name: null, direction: 'INVALID' as any },
           ],
-          unique: 'truthy' as any,
-          isPrimary: 0 as any,
+          kind: 'unique_index',
         },
       ];
 
@@ -419,8 +380,7 @@ describe('Utils', () => {
           { name: '', direction: 'DESC' },
           { name: '', direction: 'ASC' },
         ],
-        unique: true,
-        isPrimary: false,
+        kind: 'unique_index',
       });
     });
 
@@ -437,8 +397,7 @@ describe('Utils', () => {
           id: 'custom-id-123',
           name: 'test_index',
           fields: [{ name: 'field1', direction: 'ASC' }],
-          unique: true,
-          isPrimary: false,
+          kind: 'unique_index',
         },
       ];
 

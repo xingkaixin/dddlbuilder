@@ -125,8 +125,8 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
   const indexes = useEditorStore((state) => state.indexes);
   const indexStats = indexes.reduce<IndexStats>(
     (acc, index) => {
-      if (index.isPrimary) acc.primary += 1;
-      else if (index.unique) acc.unique += 1;
+      if (index.kind === 'primary') acc.primary += 1;
+      else if (index.kind !== 'index') acc.unique += 1;
       else acc.normal += 1;
       return acc;
     },

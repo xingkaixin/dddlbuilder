@@ -17,9 +17,3 @@ export const indexKindOf = (value: {
   if (value.unique !== true) return 'index';
   return value.isUniqueConstraint === true ? 'unique_constraint' : 'unique_index';
 };
-
-export const toLegacyIndexFlags = (kind: IndexKind) => ({
-  unique: kind !== 'index',
-  isPrimary: kind === 'primary',
-  ...(kind === 'unique_constraint' ? { isUniqueConstraint: true } : {}),
-});

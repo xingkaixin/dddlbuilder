@@ -779,7 +779,7 @@ describe('usePersistedState', () => {
           id: 'idx_id',
           name: 'idx_users_id',
           fields: [{ name: 'id', direction: 'ASC' as const }],
-          unique: true,
+          kind: 'unique_index',
         },
       ],
       foreignKeys: [],

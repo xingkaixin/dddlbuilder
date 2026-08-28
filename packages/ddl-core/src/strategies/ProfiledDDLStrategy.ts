@@ -119,10 +119,10 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
 
   private renderMysqlIndex(index: IndexDefinition): string {
     const fields = this.formatIndexFieldList(index);
-    if (index.isPrimary) return `PRIMARY KEY (${fields})`;
+    if (index.kind === 'primary') return `PRIMARY KEY (${fields})`;
     const name = this.formatFieldName(index.name);
-    if (index.isUniqueConstraint) return `CONSTRAINT ${name} UNIQUE (${fields})`;
-    return `${index.unique ? 'UNIQUE ' : ''}INDEX ${name} (${fields})`;
+    if (index.kind === 'unique_constraint') return `CONSTRAINT ${name} UNIQUE (${fields})`;
+    return `${index.kind !== 'index' ? 'UNIQUE ' : ''}INDEX ${name} (${fields})`;
   }
 
   private renderColumn(

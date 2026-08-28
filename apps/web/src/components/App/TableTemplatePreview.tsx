@@ -68,10 +68,7 @@ export function TableTemplatePreview({ blueprint }: TableTemplatePreviewProps) {
           <div className="text-sm font-medium">{t('tableTemplate.preview.indexList')}</div>
           <div className="flex flex-wrap gap-1.5">
             {blueprint.indexes.map((index) => (
-              <Badge
-                key={index.id}
-                variant={index.unique || index.isPrimary ? 'default' : 'outline'}
-              >
+              <Badge key={index.id} variant={index.kind !== 'index' ? 'default' : 'outline'}>
                 {index.name}
               </Badge>
             ))}

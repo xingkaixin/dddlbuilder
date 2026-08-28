@@ -83,9 +83,7 @@ function buildGeneratedRows(
 function sameIndex(a: IndexDefinition, b: IndexDefinition) {
   return (
     a.name === b.name &&
-    !!a.unique === !!b.unique &&
-    !!a.isPrimary === !!b.isPrimary &&
-    !!a.isUniqueConstraint === !!b.isUniqueConstraint &&
+    a.kind === b.kind &&
     a.fields.length === b.fields.length &&
     a.fields.every((field, index) => {
       const other = b.fields[index];
@@ -107,7 +105,7 @@ function buildGeneratedIndexes(
   const pkNames = new Set(pkFields.map((field) => key(field.name)));
   const hasSameFields = (fields: IndexDefinition['fields']) =>
     fields.length === pkFields.length && fields.every((field) => pkNames.has(key(field.name)));
-  const oldPrimary = baseIndexes.find((index) => index.isPrimary);
+  const oldPrimary = baseIndexes.find((index) => index.kind === 'primary');
   const primarySource =
     pkFields.length > 0
       ? schema.indexes?.find((index) =>
@@ -124,9 +122,11 @@ function buildGeneratedIndexes(
         id: existing?.id ?? createEntityId(),
         name: index.name,
         fields: index.fields,
-        unique: index.unique,
-        isPrimary: false,
-        ...(existing?.isUniqueConstraint && index.unique ? { isUniqueConstraint: true } : {}),
+        kind: index.unique
+          ? existing?.kind === 'unique_constraint'
+            ? 'unique_constraint'
+            : 'unique_index'
+          : 'index',
       };
     });
 
@@ -136,8 +136,7 @@ function buildGeneratedIndexes(
       id: oldPrimary?.id ?? createEntityId(),
       name: oldPrimary?.name || primarySource?.name || 'PRIMARY',
       fields: orderedFields && hasSameFields(orderedFields) ? orderedFields : pkFields,
-      unique: true,
-      isPrimary: true,
+      kind: 'primary',
     });
   }
 

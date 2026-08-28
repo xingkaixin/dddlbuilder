@@ -110,8 +110,7 @@ describe('TypeORM database column types', () => {
             id: 'pk',
             name: 'PRIMARY',
             fields: [{ name: 'value', direction: 'ASC' }],
-            unique: true,
-            isPrimary: true,
+            kind: 'primary',
           },
         ],
       });

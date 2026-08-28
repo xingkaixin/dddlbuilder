@@ -32,8 +32,7 @@ describe('convertParsedResultToPersistedState', () => {
           id: 'idx-1',
           name: 'PRIMARY',
           fields: [{ name: 'id', direction: 'ASC' }],
-          unique: true,
-          isPrimary: true,
+          kind: 'primary',
         },
       ],
       foreignKeys: [
@@ -83,7 +82,7 @@ describe('convertParsedResultToPersistedState', () => {
 
     expect(state.indexes).toHaveLength(1);
     expect(state.indexes[0].name).toBe('PRIMARY');
-    expect(state.indexes[0].isPrimary).toBe(true);
+    expect(state.indexes[0].kind).toBe('primary');
   });
 
   it('外键保留', () => {

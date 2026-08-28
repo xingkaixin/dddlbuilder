@@ -15,8 +15,7 @@ const primary: IndexDefinition = {
   id: 'primary',
   name: 'pk_users',
   fields: [{ name: 'id', direction: 'ASC' }],
-  unique: true,
-  isPrimary: true,
+  kind: 'primary',
 };
 
 describe('table creation with indexes', () => {
@@ -42,7 +41,7 @@ describe('table creation with indexes', () => {
       tableName: 'users',
       tableComment: '',
       fields: [field],
-      indexes: [{ ...primary, name: 'index name', isPrimary: false, unique }],
+      indexes: [{ ...primary, name: 'index name', kind: unique ? 'unique_index' : 'index' }],
     });
     expect(ddl.split(';')[0]).toContain(`${unique ? 'UNIQUE ' : ''}INDEX \`index name\` (id ASC)`);
     expect(ddl).not.toContain('PRIMARY KEY');

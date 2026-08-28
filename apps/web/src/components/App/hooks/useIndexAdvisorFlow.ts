@@ -114,8 +114,8 @@ export function useIndexAdvisorFlow({
             indexes: indexes.map((index) => ({
               name: index.name,
               fields: index.fields,
-              unique: index.unique,
-              isPrimary: index.isPrimary,
+              unique: index.kind !== 'index',
+              isPrimary: index.kind === 'primary',
             })),
             queryPatterns,
           });
@@ -166,8 +166,7 @@ export function useIndexAdvisorFlow({
           getIndexNameMaxLength(dbType),
         ),
         fields: recommendedFields,
-        unique: recommendation.index.unique,
-        isPrimary: false,
+        kind: recommendation.index.unique ? 'unique_index' : 'index',
       };
 
       setIndexes((current) => [...current, nextIndex]);

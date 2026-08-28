@@ -77,7 +77,7 @@ describe('generateRollbackDDL', () => {
             id: '1',
             name: 'idx_new',
             fields: [{ name: 'new_col', direction: 'ASC' }],
-            unique: false,
+            kind: 'index',
           },
         },
         {
@@ -86,7 +86,7 @@ describe('generateRollbackDDL', () => {
             id: '2',
             name: 'idx_old',
             fields: [{ name: 'old_name', direction: 'ASC' }],
-            unique: false,
+            kind: 'index',
           },
         },
       ],

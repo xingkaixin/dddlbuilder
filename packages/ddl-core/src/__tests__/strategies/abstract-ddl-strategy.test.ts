@@ -69,8 +69,8 @@ const sampleFields: NormalizedField[] = [
 const primaryIndex: IndexDefinition = {
   id: 'pk',
   name: 'pk_users',
-  isPrimary: true,
-  unique: true,
+
+  kind: 'primary',
   fields: [
     { name: 'id', direction: 'ASC' },
     { name: 'created_at', direction: 'DESC' },
@@ -80,8 +80,8 @@ const primaryIndex: IndexDefinition = {
 const normalIndex: IndexDefinition = {
   id: 'idx_name',
   name: 'idx_users_name',
-  isPrimary: false,
-  unique: false,
+
+  kind: 'index',
   fields: [{ name: 'name', direction: 'ASC' }],
 };
 

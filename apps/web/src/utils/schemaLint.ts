@@ -87,7 +87,7 @@ function hasCurrentTimestampDefault(field: FieldRow): boolean {
 }
 
 function buildExpectedIndexPrefix(tableName: string, index: IndexDefinition): string {
-  const prefix = index.unique ? 'uk' : 'idx';
+  const prefix = index.kind !== 'index' ? 'uk' : 'idx';
   const fields = index.fields.map((field) => field.name.trim()).filter(Boolean);
   return `${prefix}_${tableName}_${fields.join('_')}`;
 }
@@ -150,13 +150,13 @@ export function lintSchema({
     }
   }
 
-  if (filledRows.length > 0 && !indexes.some((index) => index.isPrimary)) {
+  if (filledRows.length > 0 && !indexes.some((index) => index.kind === 'primary')) {
     issues.push(createIssue('primary-key-required', 'error', normalizedTableName || 'table'));
   }
 
   if (normalizedTableName) {
     for (const index of indexes) {
-      if (index.isPrimary || index.fields.length === 0) continue;
+      if (index.kind === 'primary' || index.fields.length === 0) continue;
       const expectedPrefix = buildExpectedIndexPrefix(normalizedTableName, index);
       if (!index.name.trim().startsWith(expectedPrefix)) {
         issues.push(

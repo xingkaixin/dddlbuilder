@@ -24,8 +24,8 @@ const target: PersistedState = {
     {
       id: 'pk-users',
       name: 'pk_users',
-      isPrimary: true,
-      unique: true,
+
+      kind: 'primary',
       fields: [{ name: 'id', direction: 'ASC' }],
     },
   ],

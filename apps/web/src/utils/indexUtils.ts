@@ -17,14 +17,15 @@ export const fillMissingIndexNames = (
       ? index
       : {
           ...index,
-          name: index.isPrimary
-            ? buildPrimaryKeyName(tableName, maxLength)
-            : buildIndexName(
-                index.unique ? 'uk' : 'idx',
-                tableName,
-                index.fields.map((field) => field.name),
-                maxLength,
-              ),
+          name:
+            index.kind === 'primary'
+              ? buildPrimaryKeyName(tableName, maxLength)
+              : buildIndexName(
+                  index.kind !== 'index' ? 'uk' : 'idx',
+                  tableName,
+                  index.fields.map((field) => field.name),
+                  maxLength,
+                ),
         },
   );
 };
@@ -39,8 +40,6 @@ export const sanitizeIndexesForPersist = (indexes: IndexDefinition[]): IndexDefi
         direction:
           field.direction === 'ASC' || field.direction === 'DESC' ? field.direction : 'ASC',
       })),
-      unique: Boolean(index.unique),
-      isPrimary: Boolean(index.isPrimary),
-      ...(index.isUniqueConstraint ? { isUniqueConstraint: true } : {}),
+      kind: index.kind,
     }))
     .filter((index) => index.name && index.fields.length > 0);

@@ -11,10 +11,7 @@ export type IndexDefinition = {
   id: string;
   name: string;
   fields: IndexField[];
-  kind?: IndexKind;
-  unique: boolean;
-  isPrimary?: boolean;
-  isUniqueConstraint?: boolean;
+  kind: IndexKind;
 };
 
 export type ForeignKeyAction = 'CASCADE' | 'SET NULL' | 'SET DEFAULT' | 'RESTRICT' | 'NO ACTION';

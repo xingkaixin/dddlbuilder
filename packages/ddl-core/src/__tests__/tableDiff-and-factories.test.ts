@@ -302,8 +302,7 @@ describe('diffPersistedState', () => {
     const index = {
       name: 'idx_users_email',
       fields: [{ name: 'email', direction: 'ASC' as const }],
-      unique: false,
-      isPrimary: false,
+      kind: 'index',
     };
     const oldState = createPersistedState({ indexes: [index] });
     const newState = createPersistedState({
@@ -325,8 +324,7 @@ describe('diffPersistedState', () => {
         {
           name: 'idx_age',
           fields: [{ name: 'age', direction: 'ASC' }],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
       ],
     });
@@ -342,8 +340,7 @@ describe('diffPersistedState', () => {
         {
           name: 'idx_age',
           fields: [{ name: 'age', direction: 'ASC' }],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
       ],
     });
@@ -357,8 +354,7 @@ describe('diffPersistedState', () => {
     const idx: IndexDefinition = {
       name: 'idx_age',
       fields: [{ name: 'age', direction: 'ASC' }],
-      unique: false,
-      isPrimary: false,
+      kind: 'index',
     };
     const oldState = createPersistedState({ indexes: [idx] });
     const newState = createPersistedState({ indexes: [idx] });
@@ -508,8 +504,7 @@ describe('buildDDL', () => {
       {
         name: 'idx_name',
         fields: [{ name: 'name', direction: 'ASC' }],
-        unique: false,
-        isPrimary: false,
+        kind: 'index',
       },
     ];
     const ddl = buildDDL({

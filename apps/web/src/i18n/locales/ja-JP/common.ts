@@ -351,6 +351,7 @@ export const jaJPCommon = {
     editNameSrHint: 'ヒント: ダブルクリックするか Enter キーを押してインデックス名を編集します',
     deleteIndexTip: 'インデックスの削除',
     type: {
+      uniqueConstraint: '一意制約',
       normal: 'ノーマル',
       unique: 'ユニークな',
       primary: 'プライマリー',

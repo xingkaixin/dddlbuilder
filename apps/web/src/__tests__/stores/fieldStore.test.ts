@@ -54,13 +54,13 @@ describe('fieldStore', () => {
           id: 'kept-index',
           name: 'idx_users_id',
           fields: [{ name: 'id', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
         {
           id: 'removed-index',
           name: 'idx_users_user_id',
           fields: [{ name: 'user_id', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       ],
       foreignKeys: [

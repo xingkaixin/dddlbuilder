@@ -6,8 +6,7 @@ import { generateAlterDDL, generateRollbackDDL } from '../utils/alter-ddl';
 const primary: IndexDefinition = {
   name: 'PRIMARY',
   fields: [{ name: 'id', direction: 'ASC' }],
-  unique: true,
-  isPrimary: true,
+  kind: 'primary',
 };
 
 const before = withDefaultEditorSession({
@@ -82,9 +81,9 @@ describe('MySQL ALTER dependencies', () => {
   });
 
   it.each([
-    { unique: false, isUniqueConstraint: false, clause: 'INDEX idx_id (id ASC)' },
-    { unique: true, isUniqueConstraint: false, clause: 'UNIQUE INDEX idx_id (id ASC)' },
-    { unique: true, isUniqueConstraint: true, clause: 'CONSTRAINT idx_id UNIQUE (id)' },
+    { kind: 'index', clause: 'INDEX idx_id (id ASC)' },
+    { kind: 'unique_index', clause: 'UNIQUE INDEX idx_id (id ASC)' },
+    { kind: 'unique_constraint', clause: 'CONSTRAINT idx_id UNIQUE (id)' },
   ])('replaces the supporting key without leaving an unindexed identity: $clause', (index) => {
     const after = {
       ...before,
@@ -92,9 +91,7 @@ describe('MySQL ALTER dependencies', () => {
         {
           ...primary,
           name: 'idx_id',
-          isPrimary: false,
-          unique: index.unique,
-          isUniqueConstraint: index.isUniqueConstraint,
+          kind: index.kind,
         },
       ],
     };

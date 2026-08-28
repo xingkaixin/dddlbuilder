@@ -95,7 +95,7 @@ describe('DataTable 单元格编辑切换', () => {
           id: 'idx',
           name: 'idx_user_id',
           fields: [{ name: 'user_id', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       ],
       tableMiscConfig: {
@@ -142,7 +142,7 @@ describe('DataTable 单元格编辑切换', () => {
             { name: 'a', direction: 'ASC' },
             { name: 'b', direction: 'DESC' },
           ],
-          unique: false,
+          kind: 'index',
         },
       ],
       foreignKeys: [

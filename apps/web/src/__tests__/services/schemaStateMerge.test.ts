@@ -37,7 +37,7 @@ describe('mergeSchemaStates', () => {
   it.each([true, false])('字段改名与独立新增索引合并后仍指向同一字段 (%s)', (preferRename) => {
     const base = state({
       indexes: [
-        { id: 'existing', name: 'idx_a', fields: [{ name: 'a', direction: 'ASC' }], unique: false },
+        { id: 'existing', name: 'idx_a', fields: [{ name: 'a', direction: 'ASC' }], kind: 'index' },
       ],
     });
     const renamed = updateDocumentFields(base, [row('a', { fieldName: 'account_id' }), row('b')]);
@@ -52,7 +52,7 @@ describe('mergeSchemaStates', () => {
             { name: 'b', direction: 'ASC' as const },
             { name: 'a', direction: 'DESC' as const },
           ],
-          unique: false,
+          kind: 'index',
         },
       ],
     };
@@ -118,8 +118,8 @@ describe('mergeSchemaStates', () => {
     const removed = state({ rows: [row('b')] });
     const configured = state({
       indexes: [
-        { id: 'a', name: 'idx_a', fields: [{ name: 'a', direction: 'ASC' }], unique: false },
-        { id: 'b', name: 'idx_b', fields: [{ name: 'b', direction: 'ASC' }], unique: false },
+        { id: 'a', name: 'idx_a', fields: [{ name: 'a', direction: 'ASC' }], kind: 'index' },
+        { id: 'b', name: 'idx_b', fields: [{ name: 'b', direction: 'ASC' }], kind: 'index' },
       ],
       foreignKeys: [
         { id: 'self', name: 'self', fields: ['b'], refTable: 'users', refFields: ['a'] },
@@ -154,7 +154,7 @@ describe('mergeSchemaStates', () => {
             { name: 'UserID', direction: 'ASC' as const },
             { name: 'userid', direction: 'ASC' as const },
           ],
-          unique: false,
+          kind: 'index',
         },
       ],
     };
@@ -184,7 +184,7 @@ describe('mergeSchemaStates', () => {
   });
 
   it('保留本地对索引等结构化字段的修改', () => {
-    const indexes = [{ id: 'i1', name: 'idx_email', fields: [], unique: true }];
+    const indexes = [{ id: 'i1', name: 'idx_email', fields: [], kind: 'unique_index' }];
     const base = state();
     const local = state({ indexes });
     const remote = state({ tableName: 'accounts' });

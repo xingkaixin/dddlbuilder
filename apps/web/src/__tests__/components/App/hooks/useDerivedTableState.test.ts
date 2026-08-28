@@ -51,7 +51,7 @@ it('增删索引、修改表名和数据库不改写已有索引名', async () =
   const store = useEditorStore.getState();
   act(() => {
     store.addFieldToIndex('id');
-    store.addIndex(false, false, 'users', 'mysql');
+    store.addIndex('index', 'users', 'mysql');
   });
   expect(useEditorStore.getState().indexes.map((index) => index.name)).toEqual([
     'email_lookup',
@@ -79,7 +79,7 @@ it('未命名索引在读入文档时获得默认名', async () => {
   expect(imported.indexes[0].name).toBe('idx_users_id');
   useEditorStore.getState().replaceDocument({
     ...imported,
-    indexes: [{ ...imported.indexes[0], name: '', isPrimary: true, unique: true }],
+    indexes: [{ ...imported.indexes[0], name: '', kind: 'primary' }],
   });
   expect(useEditorStore.getState().indexes[0].name).toBe('pk_users');
 });

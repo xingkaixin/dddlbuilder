@@ -108,15 +108,13 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
     {
       id: 'idx_pk_id',
       name: 'PRIMARY',
-      unique: false,
-      isPrimary: true,
+      kind: 'primary',
       fields: [{ name: 'id', direction: 'ASC' }],
     },
     {
       id: 'idx_uk_username',
       name: 'uk_username',
-      unique: true,
-      isPrimary: false,
+      kind: 'unique_index',
       fields: [{ name: 'username', direction: 'ASC' }],
     },
   ],

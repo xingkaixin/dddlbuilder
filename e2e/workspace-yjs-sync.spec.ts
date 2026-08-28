@@ -975,7 +975,7 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
             id: 'remote-index',
             name: 'idx_id',
             fields: [{ name: 'id', direction: 'ASC' }],
-            unique: false,
+            kind: 'index',
           },
         ],
       },

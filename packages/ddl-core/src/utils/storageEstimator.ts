@@ -311,7 +311,7 @@ function computeIndexBytesPerRow(
   const fieldMap = new Map(fields.map((f) => [f.name, f]));
   const isClustered = CLUSTERED_DATABASES.has(dbType);
 
-  const pkIndex = indexes.find((idx) => idx.isPrimary);
+  const pkIndex = indexes.find((idx) => idx.kind === 'primary');
   const pkKeySize = pkIndex
     ? pkIndex.fields.reduce((sum, f) => {
         const field = fieldMap.get(f.name);
@@ -321,16 +321,17 @@ function computeIndexBytesPerRow(
 
   let totalBytesPerRow = 0;
   for (const index of indexes) {
-    if (index.isPrimary && isClustered) {
+    if (index.kind === 'primary' && isClustered) {
       continue;
     }
 
-    const keySize = index.isPrimary
-      ? pkKeySize
-      : index.fields.reduce((sum, f) => {
-          const field = fieldMap.get(f.name);
-          return sum + (field ? getFieldSize(field.type, dbType) : 8);
-        }, 0);
+    const keySize =
+      index.kind === 'primary'
+        ? pkKeySize
+        : index.fields.reduce((sum, f) => {
+            const field = fieldMap.get(f.name);
+            return sum + (field ? getFieldSize(field.type, dbType) : 8);
+          }, 0);
 
     // Row locator: PK columns (clustered) or physical row ID (heap)
     const locator = isClustered ? pkKeySize : getHeapLocatorSize(dbType);

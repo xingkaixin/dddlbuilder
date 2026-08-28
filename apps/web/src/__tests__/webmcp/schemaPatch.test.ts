@@ -41,7 +41,7 @@ const createState = (): PersistedState => ({
       id: 'index-user',
       name: 'idx_orders_user_id',
       fields: [{ name: 'user_id', direction: 'ASC' }],
-      unique: false,
+      kind: 'index',
     },
   ],
   authInput: '',
@@ -243,8 +243,7 @@ describe('WebMCP schema patch', () => {
         index: {
           name: ' idx_status ',
           fields: [{ name: ' status ' }, { name: 'user_id', direction: 'DESC' }],
-          unique: true,
-          isPrimary: true,
+          kind: 'primary',
         },
       },
       {
@@ -254,8 +253,7 @@ describe('WebMCP schema patch', () => {
         changes: {
           name: ' idx_owner ',
           fields: [{ name: 'user_id', direction: 'ASC' }],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
       },
       { id: 'remove-index', kind: 'index.remove', indexId: 'index-user' },
@@ -306,8 +304,7 @@ describe('WebMCP schema patch', () => {
             { name: 'status', direction: 'ASC' },
             { name: 'user_id', direction: 'DESC' },
           ],
-          unique: true,
-          isPrimary: true,
+          kind: 'primary',
         },
       },
       {
@@ -317,8 +314,7 @@ describe('WebMCP schema patch', () => {
         changes: {
           name: 'idx_owner',
           fields: [{ name: 'user_id', direction: 'ASC' }],
-          unique: false,
-          isPrimary: false,
+          kind: 'index',
         },
       },
       { id: 'remove-index', kind: 'index.remove', indexId: 'index-user' },
@@ -515,7 +511,7 @@ describe('WebMCP schema patch', () => {
       id: 'index-status',
       name: 'idx_orders_status',
       fields: [{ name: 'id', direction: 'ASC' }],
-      unique: false,
+      kind: 'index',
     });
 
     expect(() =>

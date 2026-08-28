@@ -423,7 +423,7 @@ describe('HiveStrategy', () => {
       id: '1',
       name: 'idx_name',
       fields: [{ name: 'name', direction: 'ASC' }],
-      unique: false,
+      kind: 'index',
     });
 
     expect(result).toBe('');

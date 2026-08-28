@@ -19,7 +19,7 @@ describe('indexStore', () => {
     let current = useEditorStore.getState();
     expect(current.currentIndexFields).toEqual([{ name: 'id', direction: 'ASC' }]);
 
-    state.addIndex(false, false, 'users', 'mysql');
+    state.addIndex('index', 'users', 'mysql');
     current = useEditorStore.getState();
     expect(current.indexes.length).toBe(1);
     expect(current.indexes[0].fields[0].name).toBe('id');
@@ -34,7 +34,7 @@ describe('indexStore', () => {
         id: '1',
         name: 'idx_old',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: false,
+        kind: 'index',
       },
     ]);
     state.updateIndexName('1', 'idx_users_id', 'mysql');
@@ -59,13 +59,13 @@ describe('indexStore', () => {
         id: '1',
         name: 'idx_users_name',
         fields: [{ name: 'name', direction: 'ASC' }],
-        unique: false,
+        kind: 'index',
       },
       {
         id: '2',
         name: 'idx_users_age',
         fields: [{ name: 'age', direction: 'ASC' }],
-        unique: false,
+        kind: 'index',
       },
     ]);
 
@@ -91,7 +91,7 @@ describe('indexStore', () => {
         id: '1',
         name: 'idx_video_id',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: false,
+        kind: 'index',
       },
     ]);
 
@@ -110,7 +110,7 @@ describe('indexStore', () => {
         id: '1',
         name: 'idx_users_NAME',
         fields: [{ name: 'Name', direction: 'ASC' }],
-        unique: false,
+        kind: 'index',
       },
     ]);
 
@@ -127,16 +127,16 @@ describe('indexStore', () => {
   it('空字段时不创建索引，且主键只允许一个', () => {
     const state = useEditorStore.getState();
 
-    state.addIndex(false, false, 'users', 'mysql');
+    state.addIndex('index', 'users', 'mysql');
     expect(useEditorStore.getState().indexes.length).toBe(0);
 
     state.addFieldToIndex('id');
-    state.addIndex(true, true, 'users', 'mysql');
+    state.addIndex('primary', 'users', 'mysql');
     expect(useEditorStore.getState().indexes.length).toBe(1);
     expect(useEditorStore.getState().indexes[0].name).toBe('pk_users');
 
     state.addFieldToIndex('name');
-    state.addIndex(true, true, 'users', 'mysql');
+    state.addIndex('primary', 'users', 'mysql');
     expect(useEditorStore.getState().indexes.length).toBe(1);
   });
 
@@ -158,7 +158,7 @@ describe('indexStore', () => {
         id: '1',
         name: 'idx_old',
         fields: [{ name: 'id', direction: 'ASC' }],
-        unique: false,
+        kind: 'index',
       },
     ]);
 
@@ -173,8 +173,8 @@ describe('indexStore', () => {
   it('应该支持删除索引 removeIndex', () => {
     const state = useEditorStore.getState();
     state.setIndexes([
-      { id: '1', name: 'idx_1', fields: [], unique: false },
-      { id: '2', name: 'idx_2', fields: [], unique: false },
+      { id: '1', name: 'idx_1', fields: [], kind: 'index' },
+      { id: '2', name: 'idx_2', fields: [], kind: 'index' },
     ]);
     state.removeIndex('1');
 
