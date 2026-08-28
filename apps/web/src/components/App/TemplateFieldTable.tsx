@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import type { DatabaseType, EnumValueMeta, FieldRow } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet } from '@/stores';
 import { isReservedKeyword, createEmptyRow, toStringSafe } from '@/utils/helpers';
-import { useFieldColumns } from './table/columns';
+import { useFieldColumns, getEditableColumnKeys } from './table/columns';
 import { fieldTableFeatures, type FieldTableRow } from './table/tableFeatures';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
@@ -27,9 +27,9 @@ interface TemplateFieldTableProps {
 
 interface SortableTemplateRowProps {
   row: FieldTableRow;
-  selectedCell: { row: number; col: number } | null;
-  handleCellActivate: (rowIndex: number, colIndex: number) => void;
-  focusEditableCell: (rowIndex: number, editableColIndex: number) => void;
+  selectedCell: { row: number; col: string } | null;
+  handleCellActivate: (rowIndex: number, columnId: string) => void;
+  focusEditableCell: (rowIndex: number, columnId: string) => void;
   focusFirstInteractiveInCell: (cellElement: HTMLTableCellElement | null) => void;
   t: (key: string) => string;
 }
@@ -62,7 +62,7 @@ const SortableTemplateRow = memo<SortableTemplateRowProps>(
       >
         {row.getAllCells().map((cell, colIndex) => {
           const isSelected =
-            selectedCell && selectedCell.row === row.index && selectedCell.col === colIndex - 1;
+            selectedCell && selectedCell.row === row.index && selectedCell.col === cell.column.id;
           const isOrderColumn = cell.column.id === 'order';
 
           return (
@@ -70,6 +70,8 @@ const SortableTemplateRow = memo<SortableTemplateRowProps>(
               key={cell.id}
               data-row-index={row.index}
               data-col-index={colIndex}
+              data-column-id={cell.column.id}
+              data-editable-column={cell.column.columnDef.meta?.editable || undefined}
               className={cn(
                 'h-10 px-1 bg-background transition-colors group-hover/row:bg-muted/30',
                 isSelected && 'ring-2 ring-primary ring-inset',
@@ -79,18 +81,18 @@ const SortableTemplateRow = memo<SortableTemplateRowProps>(
                 minWidth: cell.column.getSize(),
               }}
               onPointerDown={(event) => {
-                if (event.button !== 0) return;
-                handleCellActivate(row.index, colIndex);
+                if (event.button !== 0 || !cell.column.columnDef.meta?.editable) return;
+                if (event.target !== event.currentTarget) return;
+                handleCellActivate(row.index, cell.column.id);
                 focusFirstInteractiveInCell(event.currentTarget);
                 setTimeout(() => {
-                  focusEditableCell(row.index, colIndex - 1);
+                  focusEditableCell(row.index, cell.column.id);
                 }, 0);
               }}
-              onClick={(event) => {
-                handleCellActivate(row.index, colIndex);
-                focusFirstInteractiveInCell(event.currentTarget);
+              onFocusCapture={() => {
+                if (cell.column.columnDef.meta?.editable)
+                  handleCellActivate(row.index, cell.column.id);
               }}
-              onFocusCapture={() => handleCellActivate(row.index, colIndex)}
             >
               {isOrderColumn ? (
                 <div className="flex items-center justify-center gap-1.5">
@@ -137,16 +139,6 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
     [],
   );
 
-  const editableColumnKeys = [
-    'fieldName',
-    'fieldComment',
-    'fieldType',
-    'nullable',
-    'defaultKind',
-    'defaultValue',
-    'onUpdate',
-  ] as const;
-
   const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
 
   const rowWarnings = useMemo(() => {
@@ -188,22 +180,12 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
     handleCellActivate,
     handleTabNavigation,
   } = useDataTableNavigation({
-    rowsLength: rows.length,
-    editableColumnCount: editableColumnKeys.length,
     tableRef,
   });
 
   const clearSelection = useCallback(() => {
     setSelectedCell(null);
   }, [setSelectedCell]);
-
-  const { handlePaste } = useDataTableClipboard({
-    rows,
-    setRows,
-    selectedCell,
-    editableColumnKeys,
-    clearSelection,
-  });
 
   const handleRemoveRow = useCallback(
     (index: number, amount: number) => {
@@ -228,6 +210,15 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
     updateEnumValues,
     handleTabNavigation,
     onRemoveRow: handleRemoveRow,
+  });
+
+  const editableColumnKeys = useMemo(() => getEditableColumnKeys(columns), [columns]);
+  const { handlePaste } = useDataTableClipboard({
+    rows,
+    setRows,
+    selectedCell,
+    editableColumnKeys,
+    clearSelection,
   });
 
   const table = useTable({

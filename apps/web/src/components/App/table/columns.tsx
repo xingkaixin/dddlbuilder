@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 const columnHelper = createColumnHelper<FieldTableFeatures, FieldRow>();
 
 const LOGICAL_ENUM_BASES = new Set(['tinyint', 'smallint', 'int', 'bigint', 'char', 'varchar']);
-type EditingCell = { row: number; col: number };
+type EditingCell = { row: number; col: string };
 
 interface UseFieldColumnsParams {
   mode?: 'table' | 'template';
@@ -28,7 +28,7 @@ interface UseFieldColumnsParams {
   dbType: DatabaseType;
   updateCellValue: (rowIndex: number, columnId: string, value: string | boolean) => void;
   updateEnumValues?: (rowIndex: number, fieldType: string, enumMeta: EnumValueMeta[]) => void;
-  handleTabNavigation: (rowIndex: number, editableColIndex: number, direction: 1 | -1) => void;
+  handleTabNavigation: (rowIndex: number, columnId: string, direction: 1 | -1) => void;
   onRemoveRow: (rowIndex: number, count: number) => void;
   renderOrderCell?: (params: { row: FieldTableRow; warnings: string[] }) => ReactNode;
 }
@@ -66,26 +66,27 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
           ),
       }),
       columnHelper.accessor('fieldName', {
+        meta: { editable: 'text' },
         header: () => t('dataTable.headers.fieldName'),
         size: columnWidths.fieldName,
         cell: ({ row, getValue }) => (
           <EditableCell
             value={getValue() as string}
             onChange={(v) => updateCellValue(row.index, 'fieldName', v)}
-            onTabNavigate={(direction) => handleTabNavigation(row.index, 0, direction)}
-            isEditing={editingCell?.row === row.index && editingCell.col === 0}
+            onTabNavigate={(direction) => handleTabNavigation(row.index, 'fieldName', direction)}
+            isEditing={editingCell?.row === row.index && editingCell.col === 'fieldName'}
             onEditingChange={(isEditing) => {
               onEditingCellChange?.((prev) =>
                 isEditing
-                  ? { row: row.index, col: 0 }
-                  : prev?.row === row.index && prev.col === 0
+                  ? { row: row.index, col: 'fieldName' }
+                  : prev?.row === row.index && prev.col === 'fieldName'
                     ? null
                     : prev,
               );
             }}
             onEditingEnd={() => {
               onEditingCellChange?.((prev) =>
-                prev?.row === row.index && prev.col === 0 ? null : prev,
+                prev?.row === row.index && prev.col === 'fieldName' ? null : prev,
               );
             }}
             placeholder={t('dataTable.placeholder.fieldName')}
@@ -93,26 +94,27 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         ),
       }),
       columnHelper.accessor('fieldComment', {
+        meta: { editable: 'text' },
         header: () => t('dataTable.headers.fieldComment'),
         size: columnWidths.fieldComment,
         cell: ({ row, getValue }) => (
           <EditableCell
             value={getValue() as string}
             onChange={(v) => updateCellValue(row.index, 'fieldComment', v)}
-            onTabNavigate={(direction) => handleTabNavigation(row.index, 1, direction)}
-            isEditing={editingCell?.row === row.index && editingCell.col === 1}
+            onTabNavigate={(direction) => handleTabNavigation(row.index, 'fieldComment', direction)}
+            isEditing={editingCell?.row === row.index && editingCell.col === 'fieldComment'}
             onEditingChange={(isEditing) => {
               onEditingCellChange?.((prev) =>
                 isEditing
-                  ? { row: row.index, col: 1 }
-                  : prev?.row === row.index && prev.col === 1
+                  ? { row: row.index, col: 'fieldComment' }
+                  : prev?.row === row.index && prev.col === 'fieldComment'
                     ? null
                     : prev,
               );
             }}
             onEditingEnd={() => {
               onEditingCellChange?.((prev) =>
-                prev?.row === row.index && prev.col === 1 ? null : prev,
+                prev?.row === row.index && prev.col === 'fieldComment' ? null : prev,
               );
             }}
             placeholder={t('dataTable.placeholder.fieldComment')}
@@ -120,30 +122,34 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         ),
       }),
       columnHelper.accessor('fieldType', {
+        meta: { editable: 'text' },
         header: () => t('dataTable.headers.fieldType'),
         size: columnWidths.fieldType,
         cell: ({ row, getValue }) => {
           const fieldTypeValue = getValue() as string;
-          const isEditingFieldType = editingCell?.row === row.index && editingCell.col === 2;
+          const isEditingFieldType =
+            editingCell?.row === row.index && editingCell.col === 'fieldType';
           if (isEditingFieldType) {
             return (
               <EditableCell
                 value={fieldTypeValue}
                 onChange={(v) => updateCellValue(row.index, 'fieldType', v)}
-                onTabNavigate={(direction) => handleTabNavigation(row.index, 2, direction)}
+                onTabNavigate={(direction) =>
+                  handleTabNavigation(row.index, 'fieldType', direction)
+                }
                 isEditing={isEditingFieldType}
                 onEditingChange={(isEditing) => {
                   onEditingCellChange?.((prev) =>
                     isEditing
-                      ? { row: row.index, col: 2 }
-                      : prev?.row === row.index && prev.col === 2
+                      ? { row: row.index, col: 'fieldType' }
+                      : prev?.row === row.index && prev.col === 'fieldType'
                         ? null
                         : prev,
                   );
                 }}
                 onEditingEnd={() => {
                   onEditingCellChange?.((prev) =>
-                    prev?.row === row.index && prev.col === 2 ? null : prev,
+                    prev?.row === row.index && prev.col === 'fieldType' ? null : prev,
                   );
                 }}
                 placeholder={t('dataTable.placeholder.fieldType')}
@@ -163,7 +169,9 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
                     updateCellValue(row.index, 'fieldType', ft);
                   }
                 }}
-                onTabNavigate={(direction) => handleTabNavigation(row.index, 2, direction)}
+                onTabNavigate={(direction) =>
+                  handleTabNavigation(row.index, 'fieldType', direction)
+                }
               />
             );
           }
@@ -174,7 +182,9 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
                 enumMeta={row.original.enumMeta}
                 onTypeChange={(v) => updateCellValue(row.index, 'fieldType', v)}
                 onEnumSave={(ft, meta) => updateEnumValues?.(row.index, ft, meta)}
-                onTabNavigate={(direction) => handleTabNavigation(row.index, 2, direction)}
+                onTabNavigate={(direction) =>
+                  handleTabNavigation(row.index, 'fieldType', direction)
+                }
               />
             );
           }
@@ -182,20 +192,20 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
             <EditableCell
               value={fieldTypeValue}
               onChange={(v) => updateCellValue(row.index, 'fieldType', v)}
-              onTabNavigate={(direction) => handleTabNavigation(row.index, 2, direction)}
-              isEditing={editingCell?.row === row.index && editingCell.col === 2}
+              onTabNavigate={(direction) => handleTabNavigation(row.index, 'fieldType', direction)}
+              isEditing={editingCell?.row === row.index && editingCell.col === 'fieldType'}
               onEditingChange={(isEditing) => {
                 onEditingCellChange?.((prev) =>
                   isEditing
-                    ? { row: row.index, col: 2 }
-                    : prev?.row === row.index && prev.col === 2
+                    ? { row: row.index, col: 'fieldType' }
+                    : prev?.row === row.index && prev.col === 'fieldType'
                       ? null
                       : prev,
                 );
               }}
               onEditingEnd={() => {
                 onEditingCellChange?.((prev) =>
-                  prev?.row === row.index && prev.col === 2 ? null : prev,
+                  prev?.row === row.index && prev.col === 'fieldType' ? null : prev,
                 );
               }}
               placeholder={t('dataTable.placeholder.fieldType')}
@@ -204,6 +214,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         },
       }),
       columnHelper.accessor('nullable', {
+        meta: { editable: 'control' },
         header: () => t('dataTable.headers.nullable'),
         size: columnWidths.nullable,
         cell: ({ row, getValue }) => (
@@ -214,6 +225,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         ),
       }),
       columnHelper.accessor('defaultKind', {
+        meta: { editable: 'control' },
         header: () => t('dataTable.headers.defaultKind'),
         size: columnWidths.defaultKind,
         cell: ({ row, getValue }) => {
@@ -233,6 +245,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         },
       }),
       columnHelper.accessor('defaultValue', {
+        meta: { editable: 'text' },
         header: () => t('dataTable.headers.defaultValue'),
         size: columnWidths.defaultValue,
         cell: ({ row, getValue }) => {
@@ -242,20 +255,22 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
             <EditableCell
               value={(getValue() as string) || ''}
               onChange={(v) => updateCellValue(row.index, 'defaultValue', v)}
-              onTabNavigate={(direction) => handleTabNavigation(row.index, 5, direction)}
-              isEditing={editingCell?.row === row.index && editingCell.col === 5}
+              onTabNavigate={(direction) =>
+                handleTabNavigation(row.index, 'defaultValue', direction)
+              }
+              isEditing={editingCell?.row === row.index && editingCell.col === 'defaultValue'}
               onEditingChange={(isEditing) => {
                 onEditingCellChange?.((prev) =>
                   isEditing
-                    ? { row: row.index, col: 5 }
-                    : prev?.row === row.index && prev.col === 5
+                    ? { row: row.index, col: 'defaultValue' }
+                    : prev?.row === row.index && prev.col === 'defaultValue'
                       ? null
                       : prev,
                 );
               }}
               onEditingEnd={() => {
                 onEditingCellChange?.((prev) =>
-                  prev?.row === row.index && prev.col === 5 ? null : prev,
+                  prev?.row === row.index && prev.col === 'defaultValue' ? null : prev,
                 );
               }}
               disabled={disabled}
@@ -265,6 +280,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         },
       }),
       columnHelper.accessor('onUpdate', {
+        meta: { editable: 'control' },
         header: () => t('dataTable.headers.onUpdate'),
         size: columnWidths.onUpdate,
         cell: ({ row, getValue }) => {
@@ -331,5 +347,11 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
       onRemoveRow,
       renderOrderCell,
     ],
+  );
+}
+
+export function getEditableColumnKeys(columns: FieldTableColumnDef[]) {
+  return columns.flatMap((column) =>
+    column.meta?.editable && 'accessorKey' in column ? [String(column.accessorKey)] : [],
   );
 }

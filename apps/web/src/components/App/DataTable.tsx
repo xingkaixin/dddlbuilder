@@ -9,7 +9,7 @@ import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import { normalizeAddCount, type EnumValueMeta } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet, useEditorStore } from '@/stores';
-import { useFieldColumns } from './table/columns';
+import { useFieldColumns, getEditableColumnKeys } from './table/columns';
 import { fieldTableFeatures, type FieldTableRow } from './table/tableFeatures';
 import { useFreezeColumns } from './table/useFreezeColumns';
 import { useRowHighlight } from './table/useRowHighlight';
@@ -38,11 +38,11 @@ interface DataTableProps {
 
 interface SortableDataRowProps {
   row: FieldTableRow;
-  selectedColumn: number | null;
-  editingColumn: number | null;
-  setEditingCell: (cell: { row: number; col: number } | null) => void;
-  handleCellActivate: (rowIndex: number, colIndex: number) => void;
-  focusEditableCell: (rowIndex: number, editableColIndex: number) => void;
+  selectedColumn: string | null;
+  editingColumn: string | null;
+  setEditingCell: (cell: { row: number; col: string } | null) => void;
+  handleCellActivate: (rowIndex: number, columnId: string) => void;
+  focusEditableCell: (rowIndex: number, columnId: string) => void;
   focusFirstInteractiveInCell: (cellElement: HTMLTableCellElement | null) => void;
   freezeEnabled: boolean;
   effectiveFreezeColumns: number;
@@ -61,7 +61,7 @@ function isCellContentEvent({ target, currentTarget }: SyntheticEvent<HTMLTableC
 const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
   row,
   selectedColumn,
-  editingColumn: _editingColumn,
+  editingColumn,
   setEditingCell,
   handleCellActivate,
   focusEditableCell,
@@ -100,7 +100,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
       {row.getAllCells().map((cell, colIndex) => {
         const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
         const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
-        const isSelected = selectedColumn === colIndex - 1;
+        const isSelected = selectedColumn === cell.column.id;
         const isOrderColumn = cell.column.id === 'order';
 
         return (
@@ -108,6 +108,9 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
             key={cell.id}
             data-row-index={row.index}
             data-col-index={colIndex}
+            data-column-id={cell.column.id}
+            data-editing={editingColumn === cell.column.id || undefined}
+            data-editable-column={cell.column.columnDef.meta?.editable || undefined}
             className={cn(
               'h-9 px-1 bg-background text-xs transition-colors group-hover/row:bg-muted/30',
               isFrozen && 'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
@@ -122,53 +125,32 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
               left: isFrozen ? getStickyLeft(colIndex) : undefined,
             }}
             onPointerDown={(event) => {
-              if (event.button !== 0) return;
+              if (event.button !== 0 || !cell.column.columnDef.meta?.editable) return;
               if (!isCellContentEvent(event)) return;
               const isTextEditableCell =
-                colIndex === 1 ||
-                colIndex === 2 ||
-                colIndex === 3 ||
-                (colIndex === 6 &&
-                  event.currentTarget.querySelector('[data-editable-cell-trigger="true"]'));
+                cell.column.columnDef.meta?.editable === 'text' &&
+                !event.currentTarget.querySelector('[data-editable-cell-trigger][tabindex="-1"]');
               if (isTextEditableCell) {
                 commitActiveInputOutsideCell(event.currentTarget);
                 event.preventDefault();
-                setEditingCell({ row: row.index, col: colIndex - 1 });
-                handleCellActivate(row.index, colIndex);
+                setEditingCell({ row: row.index, col: cell.column.id });
+                handleCellActivate(row.index, cell.column.id);
                 setTimeout(() => {
-                  focusEditableCell(row.index, colIndex - 1);
+                  focusEditableCell(row.index, cell.column.id);
                 }, 0);
                 return;
               }
-              handleCellActivate(row.index, colIndex);
+              handleCellActivate(row.index, cell.column.id);
               if (event.target !== event.currentTarget) return;
               focusFirstInteractiveInCell(event.currentTarget);
               setTimeout(() => {
-                focusEditableCell(row.index, colIndex - 1);
+                focusEditableCell(row.index, cell.column.id);
               }, 0);
             }}
-            onClick={(event) => {
-              if (!isCellContentEvent(event)) return;
-              const isTextEditableCell =
-                colIndex === 1 ||
-                colIndex === 2 ||
-                colIndex === 3 ||
-                (colIndex === 6 &&
-                  event.currentTarget.querySelector('[data-editable-cell-trigger="true"]'));
-              if (isTextEditableCell) {
-                event.preventDefault();
-                setEditingCell({ row: row.index, col: colIndex - 1 });
-                handleCellActivate(row.index, colIndex);
-                setTimeout(() => {
-                  focusEditableCell(row.index, colIndex - 1);
-                }, 0);
-                return;
-              }
-              handleCellActivate(row.index, colIndex);
-              if (event.target !== event.currentTarget) return;
-              focusFirstInteractiveInCell(event.currentTarget);
+            onFocusCapture={() => {
+              if (cell.column.columnDef.meta?.editable)
+                handleCellActivate(row.index, cell.column.id);
             }}
-            onFocusCapture={() => handleCellActivate(row.index, colIndex)}
           >
             {isOrderColumn ? (
               <div className="flex items-center justify-center gap-1.5">
@@ -224,7 +206,7 @@ export const DataTable = memo<DataTableProps>(
     const tableRef = useRef<HTMLDivElement>(null);
     const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [dragFeedback, setDragFeedback] = useState<string | null>(null);
-    const [editingCell, setEditingCell] = useState<{ row: number; col: number } | null>(null);
+    const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
 
     const [columnWidths] = useState<Record<string, number>>({
       order: 72,
@@ -237,16 +219,6 @@ export const DataTable = memo<DataTableProps>(
       onUpdate: 100,
       actions: 50,
     });
-
-    const editableColumnKeys = [
-      'fieldName',
-      'fieldComment',
-      'fieldType',
-      'nullable',
-      'defaultKind',
-      'defaultValue',
-      'onUpdate',
-    ] as const;
 
     const { updateCellValue } = useFieldRowMutations({ setRows });
 
@@ -292,22 +264,12 @@ export const DataTable = memo<DataTableProps>(
       handleCellActivate,
       handleTabNavigation,
     } = useDataTableNavigation({
-      rowsLength: rows.length,
-      editableColumnCount: editableColumnKeys.length,
       tableRef,
     });
 
     const clearSelection = useCallback(() => {
       setSelectedCell(null);
     }, [setSelectedCell]);
-
-    const { handlePaste } = useDataTableClipboard({
-      rows,
-      setRows,
-      selectedCell,
-      editableColumnKeys,
-      clearSelection,
-    });
 
     const columns = useFieldColumns({
       columnWidths,
@@ -319,6 +281,15 @@ export const DataTable = memo<DataTableProps>(
       updateEnumValues,
       handleTabNavigation,
       onRemoveRow,
+    });
+
+    const editableColumnKeys = useMemo(() => getEditableColumnKeys(columns), [columns]);
+    const { handlePaste } = useDataTableClipboard({
+      rows,
+      setRows,
+      selectedCell,
+      editableColumnKeys,
+      clearSelection,
     });
 
     const table = useTable({
@@ -473,6 +444,7 @@ export const DataTable = memo<DataTableProps>(
                       row={row}
                       selectedColumn={selectedCell?.row === row.index ? selectedCell.col : null}
                       editingColumn={editingCell?.row === row.index ? editingCell.col : null}
+
                       setEditingCell={setEditingCell}
                       handleCellActivate={handleCellActivate}
                       focusEditableCell={focusEditableCell}

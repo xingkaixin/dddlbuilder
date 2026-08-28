@@ -6,16 +6,8 @@ import { createEmptyRow, normalizeFieldCellValue } from '@/utils/helpers';
 interface UseDataTableClipboardParams {
   rows: FieldRow[];
   setRows: (value: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
-  selectedCell: { row: number; col: number } | null;
-  editableColumnKeys: readonly [
-    'fieldName',
-    'fieldComment',
-    'fieldType',
-    'nullable',
-    'defaultKind',
-    'defaultValue',
-    'onUpdate',
-  ];
+  selectedCell: { row: number; col: string } | null;
+  editableColumnKeys: readonly string[];
   clearSelection: () => void;
 }
 
@@ -45,7 +37,7 @@ export function useDataTableClipboard({
       e.preventDefault();
 
       const startRow = selectedCell?.row ?? rows.length;
-      const startCol = selectedCell?.col ?? 0;
+      const startCol = selectedCell ? Math.max(0, editableColumnKeys.indexOf(selectedCell.col)) : 0;
 
       const newRows = [...rows];
 

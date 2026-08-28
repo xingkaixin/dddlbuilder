@@ -1,85 +1,64 @@
-import { useCallback, useState } from 'react';
-import type { RefObject } from 'react';
+import { useCallback, useState, type RefObject } from 'react';
 
 interface SelectedCell {
   row: number;
-  col: number;
+  col: string;
 }
 
-interface UseDataTableNavigationParams {
-  rowsLength: number;
-  editableColumnCount: number;
-  tableRef: RefObject<HTMLDivElement | null>;
-}
+const INTERACTIVE_SELECTOR = 'input:not([disabled]), div[tabindex="0"], button:not([disabled])';
 
 export function useDataTableNavigation({
-  rowsLength,
-  editableColumnCount,
   tableRef,
-}: UseDataTableNavigationParams) {
+}: {
+  tableRef: RefObject<HTMLDivElement | null>;
+}) {
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
 
-  const focusFirstInteractiveInCell = useCallback((cellElement: HTMLTableCellElement | null) => {
-    const focusTarget = cellElement?.querySelector<HTMLElement>(
-      'input:not([disabled]), div[tabindex="0"], button:not([disabled])',
-    );
-    focusTarget?.focus();
+  const focusFirstInteractiveInCell = useCallback((cell: HTMLTableCellElement | null) => {
+    cell?.querySelector<HTMLElement>(INTERACTIVE_SELECTOR)?.focus();
   }, []);
 
-  const handleCellActivate = useCallback(
-    (rowIndex: number, colIndex: number) => {
-      if (colIndex >= 1 && colIndex <= editableColumnCount) {
-        const nextCol = colIndex - 1;
-        setSelectedCell((prev) => {
-          if (prev?.row === rowIndex && prev.col === nextCol) {
-            return prev;
-          }
-          return { row: rowIndex, col: nextCol };
-        });
-      }
-    },
-    [editableColumnCount],
-  );
+  const handleCellActivate = useCallback((row: number, col: string) => {
+    setSelectedCell((previous) =>
+      previous?.row === row && previous.col === col ? previous : { row, col },
+    );
+  }, []);
 
   const focusEditableCell = useCallback(
-    (rowIndex: number, editableColIndex: number) => {
-      if (rowIndex < 0 || rowIndex >= rowsLength) return;
-      if (editableColIndex < 0 || editableColIndex >= editableColumnCount) return;
-
-      const tableColIndex = editableColIndex + 1;
-      const cellElement = tableRef.current?.querySelector<HTMLTableCellElement>(
-        `td[data-row-index="${rowIndex}"][data-col-index="${tableColIndex}"]`,
-      );
-      if (!cellElement) return;
-
-      handleCellActivate(rowIndex, tableColIndex);
-      focusFirstInteractiveInCell(cellElement);
+    (row: number, col: string) => {
+      const cell = Array.from(
+        tableRef.current?.querySelectorAll<HTMLTableCellElement>('td[data-editable-column]') ?? [],
+      ).find((cell) => Number(cell.dataset.rowIndex) === row && cell.dataset.columnId === col);
+      if (!cell) return;
+      handleCellActivate(row, col);
+      focusFirstInteractiveInCell(cell);
     },
-    [rowsLength, editableColumnCount, tableRef, handleCellActivate, focusFirstInteractiveInCell],
+    [tableRef, handleCellActivate, focusFirstInteractiveInCell],
   );
 
   const handleTabNavigation = useCallback(
-    (rowIndex: number, editableColIndex: number, direction: 1 | -1) => {
-      let nextRow = rowIndex;
-      let nextCol = editableColIndex + direction;
-      const lastEditableCol = editableColumnCount - 1;
-
-      while (nextRow >= 0 && nextRow < rowsLength) {
-        if (nextCol > lastEditableCol) {
-          nextRow += 1;
-          nextCol = 0;
-          continue;
-        }
-        if (nextCol < 0) {
-          nextRow -= 1;
-          nextCol = lastEditableCol;
-          continue;
-        }
-        focusEditableCell(nextRow, nextCol);
+    (row: number, col: string, direction: 1 | -1) => {
+      const cells = Array.from(
+        tableRef.current?.querySelectorAll<HTMLTableCellElement>('td[data-editable-column]') ?? [],
+      );
+      const current = cells.findIndex(
+        (cell) => Number(cell.dataset.rowIndex) === row && cell.dataset.columnId === col,
+      );
+      if (current < 0) return;
+      for (
+        let index = current + direction;
+        index >= 0 && index < cells.length;
+        index += direction
+      ) {
+        const cell = cells[index];
+        const columnId = cell.dataset.columnId;
+        if (!columnId || !cell.querySelector(INTERACTIVE_SELECTOR)) continue;
+        handleCellActivate(Number(cell.dataset.rowIndex), columnId);
+        focusFirstInteractiveInCell(cell);
         return;
       }
     },
-    [editableColumnCount, rowsLength, focusEditableCell],
+    [tableRef, handleCellActivate, focusFirstInteractiveInCell],
   );
 
   return {

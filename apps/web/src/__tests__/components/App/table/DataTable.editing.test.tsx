@@ -71,6 +71,21 @@ describe('DataTable 单元格编辑切换', () => {
     setupStores();
   });
 
+  it('a pointer click schedules cell activation only once', () => {
+    const { container } = render(<DataTable />);
+    const cell = container.querySelector('tbody td[data-col-index="2"]');
+    if (!cell) throw new Error('Missing comment cell');
+    const timers = vi.spyOn(globalThis, 'setTimeout');
+    try {
+      fireEvent.pointerDown(cell, { button: 0 });
+      const scheduledAfterPointer = timers.mock.calls.length;
+      fireEvent.click(cell);
+      expect(timers.mock.calls.length).toBe(scheduledAfterPointer);
+    } finally {
+      timers.mockRestore();
+    }
+  });
+
   it('字段改名应在一次文档更新中同步 Hive 分桶和索引引用', () => {
     useEditorStore.setState({
       dbType: 'hive',
