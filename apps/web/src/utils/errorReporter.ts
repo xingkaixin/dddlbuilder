@@ -12,19 +12,11 @@ export interface NormalizedErrorEvent {
   timestamp: number;
 }
 
-export type ErrorReporter = (event: NormalizedErrorEvent) => void;
-
-let externalReporter: ErrorReporter | null = null;
-
 function normalizeError(error: unknown): Error {
   if (error instanceof Error) {
     return error;
   }
   return new Error(typeof error === 'string' ? error : 'Unknown error');
-}
-
-export function setErrorReporter(reporter: ErrorReporter | null): void {
-  externalReporter = reporter;
 }
 
 export function reportError(error: unknown, context: ErrorContext): void {
@@ -36,11 +28,6 @@ export function reportError(error: unknown, context: ErrorContext): void {
     context,
     timestamp: Date.now(),
   };
-
-  if (externalReporter) {
-    externalReporter(event);
-    return;
-  }
 
   // 默认行为: 开发期间仍可在控制台看到错误，后续可替换为监控 SDK 上报。
   console.error(`[${event.context.scope}] ${event.context.action}: ${event.message}`, normalized);

@@ -4,7 +4,6 @@ import type { PreprocessedTableMetadata } from './preprocessors/types.js';
 
 export interface PreprocessMySqlResult {
   sql: string;
-  indexes: string[];
   tableMetadata: PreprocessedTableMetadata[];
   partitionConfigs: Record<string, MysqlPartitionConfig>;
 }
@@ -54,7 +53,6 @@ function extractTableMetadata(sql: string, tableName: string): PreprocessedTable
 export function preprocessMysql(sql: string): PreprocessMySqlResult {
   const result: PreprocessMySqlResult = {
     sql,
-    indexes: [],
     tableMetadata: [],
     partitionConfigs: {},
   };
@@ -88,19 +86,6 @@ export function preprocessMysql(sql: string): PreprocessMySqlResult {
 
   if (!cleanedSql.endsWith(';')) {
     cleanedSql += ';';
-  }
-
-  const standaloneIndexRegex = /CREATE\s+(UNIQUE\s+)?INDEX\s+(\w+)\s+ON\s+\w+\s*\(([^;]+)\);?/gi;
-  const standaloneMatches = [...sql.matchAll(standaloneIndexRegex)];
-  for (const match of standaloneMatches) {
-    result.indexes.push(match[0]);
-  }
-
-  const alterIndexRegex =
-    /ALTER\s+TABLE\s+\w+\s+ADD\s+(PRIMARY\s+KEY|UNIQUE\s+\w+|INDEX\s+\w+|CONSTRAINT\s+\w+\s+(PRIMARY\s+KEY|UNIQUE\s+\w+))?\s*\(([^;]+)\);?/gi;
-  const alterMatches = [...sql.matchAll(alterIndexRegex)];
-  for (const match of alterMatches) {
-    result.indexes.push(match[0]);
   }
 
   result.sql = cleanedSql;

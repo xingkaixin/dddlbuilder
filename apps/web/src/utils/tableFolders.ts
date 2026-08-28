@@ -8,7 +8,6 @@ import {
   buildFolderTreeModel,
   buildFolderDeletionPlan,
   createFolderRecord,
-  getFolderDescendantIds,
   moveFolderRecord,
   renameFolderRecord,
   type FolderTreeNode,
@@ -62,13 +61,6 @@ export async function listFolders(scope: WorkspaceScope): Promise<TableFolder[]>
 /**
  * 获取指定父文件夹下的子文件夹
  */
-export async function listChildFolders(
-  scope: WorkspaceScope,
-  parentId?: string,
-): Promise<TableFolder[]> {
-  const allFolders = await listFolders(scope);
-  return allFolders.filter((f) => (parentId ? f.parentId === parentId : !f.parentId));
-}
 
 /**
  * 获取单个文件夹
@@ -151,12 +143,6 @@ export async function moveFolder(
 /**
  * 获取文件夹的所有后代文件夹 ID
  */
-export async function getDescendantFolderIds(
-  folderId: string,
-  scope: WorkspaceScope,
-): Promise<string[]> {
-  return getFolderDescendantIds(await listFolders(scope), folderId);
-}
 
 /**
  * 删除文件夹及后代，并把其中仍生效的表移入回收站
@@ -247,25 +233,6 @@ export async function bulkPutFolders(folders: TableFolder[], scope: WorkspaceSco
 /**
  * 获取文件夹路径（从根到当前）
  */
-export async function getFolderPath(
-  folderId: string,
-  scope: WorkspaceScope,
-): Promise<TableFolder[]> {
-  const allFolders = await listFolders(scope);
-  const folderMap = new Map(allFolders.map((f) => [f.id, f]));
-
-  const path: TableFolder[] = [];
-  let currentId: string | undefined = folderId;
-
-  while (currentId) {
-    const folder = folderMap.get(currentId);
-    if (!folder) break;
-    path.unshift(folder);
-    currentId = folder.parentId;
-  }
-
-  return path;
-}
 
 /**
  * 构建文件夹树结构

@@ -125,9 +125,6 @@ export const updateTableTemplate = async (
   return updated;
 };
 
-export const renameTableTemplate = (id: string, newName: string) =>
-  updateTableTemplate(id, { name: newName });
-
 export const deleteTableTemplate = async (id: string): Promise<void> => {
   await runWithTableTemplateStore('readwrite', (store) => store.delete(id));
 };

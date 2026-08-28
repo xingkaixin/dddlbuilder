@@ -191,7 +191,6 @@ export function buildAppDialogLayerModel({
               },
               target: versionTarget,
               tableName: ui.versionHistoryTarget.name,
-              currentState: derived.currentPersistedState,
               onRollback: handleRollbackVersion,
               onPlayTimeline: () => ui.setTimelinePlayerTarget(ui.versionHistoryTarget),
             }

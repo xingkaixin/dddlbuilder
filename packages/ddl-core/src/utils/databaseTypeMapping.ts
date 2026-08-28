@@ -220,15 +220,6 @@ export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, canonical: st
   }
 };
 
-/**
- * 获取 Oracle/OceanBase Oracle 模式的时间戳默认值表达式
- * - DATE 类型使用 SYSDATE（精确到秒）
- * - TIMESTAMP 类型使用 SYSTIMESTAMP（包含小数秒和时区）
- */
-export const getOracleTimestampDefault = (canonical: string): string => {
-  return canonical === 'date' ? 'SYSDATE' : 'SYSTIMESTAMP';
-};
-
 export const formatConstantDefault = (canonical: string, value: string) => {
   const shouldQuote = shouldQuoteDefault(canonical, value);
   if (!shouldQuote && !value.trim()) return '';
@@ -237,10 +228,7 @@ export const formatConstantDefault = (canonical: string, value: string) => {
   return ` DEFAULT ${formattedValue}`;
 };
 
-export const shouldQuoteDefault = (canonical: string, value?: string) => {
-  // 支持两种调用方式：shouldQuoteDefault(type) 或 shouldQuoteDefault(type, value)
-  const testValue = value !== undefined ? value : 'test';
-
+export const shouldQuoteDefault = (canonical: string, value: string) => {
   if (isCharacterType(canonical)) return true;
   if (
     ['date', 'time', 'timestamp', 'datetime', 'datetime2', 'timetz', 'timestamptz'].includes(
@@ -250,43 +238,9 @@ export const shouldQuoteDefault = (canonical: string, value?: string) => {
     return true;
   if (['uuid', 'xml', 'json', 'jsonb'].includes(canonical)) return true;
   if (['boolean', 'bit'].includes(canonical)) return false;
-  if (testValue.toLowerCase() === 'null') return false;
+  if (value.toLowerCase() === 'null') return false;
   if (isNumericType(canonical)) return false;
   return true;
-};
-
-export const isLikelyFunctionOrKeyword = (value: string) => {
-  if (!value) return false;
-
-  const exactKeywords = [
-    'current_timestamp',
-    'now()',
-    'sysdate',
-    'getdate()',
-    'systimestamp',
-    'uuid()',
-    'newid()',
-    'sys_guid',
-    'default_value',
-  ];
-
-  const upperValue = value.toUpperCase().trim();
-
-  // Check for exact matches first
-  if (exactKeywords.some((keyword) => upperValue === keyword.toUpperCase())) {
-    return true;
-  }
-
-  // Check for partial matches (but exclude specific cases)
-  const partialKeywords = ['current_timestamp', 'uuid'];
-  return partialKeywords.some((keyword) => {
-    const upperKeyword = keyword.toUpperCase();
-    return (
-      upperValue.includes(upperKeyword) &&
-      !upperValue.includes('NEXTVAL') && // Exclude this specific case
-      !(upperValue.includes('GEN_RANDOM_UUID') && !upperValue.includes('('))
-    ); // Exclude gen_random_uuid without parentheses
-  });
 };
 
 export const escapeSingleQuotes = (value: string) => value.replace(/'/g, "''");

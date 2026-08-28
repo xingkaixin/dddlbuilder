@@ -109,24 +109,6 @@ export type AlterTableStmt = AstStatement & {
   expr?: AlterExprNode[] | null;
 };
 
-export type GrantUserNode = {
-  name?: { value?: string };
-  user?: string;
-};
-
-export type GrantStmt = AstStatement & {
-  user_or_roles?: GrantUserNode[];
-  to?: GrantUserNode[];
-};
-
-/** transactsql 方言下 GRANT 会被解析成一串 assign 语句 */
-export type TransactAssignNode = {
-  stmt?: {
-    left?: { name?: string };
-    right?: { name?: Array<{ value?: unknown }> };
-  };
-};
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
@@ -145,8 +127,3 @@ export const isCreateIndexStmt = (stmt: AstStatement): stmt is CreateIndexStmt =
 
 export const isAlterTableStmt = (stmt: AstStatement): stmt is AlterTableStmt =>
   stmt.type === 'alter' && (!stmt.keyword || stmt.keyword === 'table');
-
-export const isGrantStmt = (stmt: AstStatement): stmt is GrantStmt => stmt.type === 'grant';
-
-export const isTransactAssignList = (stmt: unknown): stmt is TransactAssignNode[] =>
-  Array.isArray(stmt);

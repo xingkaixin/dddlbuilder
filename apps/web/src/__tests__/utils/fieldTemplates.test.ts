@@ -71,12 +71,7 @@ describe('fieldTemplates', () => {
     expect(result).toBeNull();
   });
 
-  it('should rename template through renameTemplate wrapper', async () => {
-    const template = await createTemplate('Old Name', []);
-    const renamed = await renameTemplate(template.id, '  New Name  ');
-
-    expect(renamed?.name).toBe('New Name');
-  });
+  
 
   it('should create template from fields with filtering and normalize', async () => {
     const template = await createTemplateFromFields(

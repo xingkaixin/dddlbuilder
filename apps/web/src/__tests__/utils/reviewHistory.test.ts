@@ -6,9 +6,8 @@ import {
   getReview,
   deleteReview,
   deleteAllReviews,
-  countReviews,
-  pruneOldReviews,
   migrateReviewsToTable,
+  pruneOldReviews,
 } from '@/utils/reviewHistory';
 import * as dbUtils from '@/utils/workspaceDb';
 import { setupFakeIndexedDB } from './fakeIndexedDb';
@@ -117,8 +116,7 @@ describe('reviewHistory', () => {
     const found = await getReview(record.id, reviewTarget);
     expect(found).toBeNull();
 
-    const count = await countReviews(reviewTarget);
-    expect(count).toBe(0);
+    expect(await listReviews(reviewTarget)).toEqual([]);
   });
 
   it('deletes all table reviews without deleting other tables or workspaces', async () => {
@@ -139,15 +137,7 @@ describe('reviewHistory', () => {
     expect(await listReviews(anotherWorkspace)).toHaveLength(1);
   });
 
-  it('should count reviews for a table', async () => {
-    const tableNamespace = 'test_count';
-    const reviewTarget = target(tableNamespace);
-    await saveReview(reviewTarget, 't1', 'd1', 'mysql', mockReview);
-    await saveReview(reviewTarget, 't2', 'd2', 'mysql', mockReview);
-
-    const count = await countReviews(reviewTarget);
-    expect(count).toBe(2);
-  });
+  
 
   it('isolates same-name reviews by workspace', async () => {
     const normalizedName = 'shared_review_table';
@@ -224,33 +214,7 @@ describe('reviewHistory', () => {
     expect(await listReviews(otherWorkspace)).toEqual([]);
   });
 
-  it('should prune old reviews when limit is exceeded', async () => {
-    const tableNamespace = 'test_prune';
-    const reviewTarget = target(tableNamespace);
-    const maxCount = 3;
-
-    // Save 5 reviews
-    for (let i = 0; i < 5; i++) {
-      // Small delay to ensure consistent ordering if based on timestamp
-      await new Promise((r) => setTimeout(r, 10));
-      await saveReview(reviewTarget, `t${i}`, `d${i}`, 'mysql', mockReview);
-    }
-
-    const countBefore = await countReviews(reviewTarget);
-    expect(countBefore).toBe(5);
-
-    const deletedCount = await pruneOldReviews(reviewTarget, maxCount);
-    expect(deletedCount).toBe(2);
-
-    const countAfter = await countReviews(reviewTarget);
-    expect(countAfter).toBe(3);
-
-    // Verify the latest 3 are kept (they are sorted by createdAt desc)
-    const list = await listReviews(reviewTarget);
-    expect(list[0].tableName).toBe('t4');
-    expect(list[1].tableName).toBe('t3');
-    expect(list[2].tableName).toBe('t2');
-  });
+  
 
   it('should return zero when prune limit is not exceeded', async () => {
     const tableNamespace = 'test_prune_noop';

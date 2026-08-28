@@ -8,7 +8,6 @@ import type {
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming.js';
 import type { ParsedResult } from './types.js';
 import {
-  isTransactAssignList,
   readField,
   stringifyAstValue,
   type AlterTableStmt,
@@ -17,7 +16,6 @@ import {
   type CreateIndexStmt,
   type CreateTableStmt,
   type ForeignKeyNode,
-  type GrantStmt,
   type OnActionNode,
 } from './astTypes.js';
 import {
@@ -408,29 +406,4 @@ export function parseAlterTable(
         break;
     }
   });
-}
-
-export function parseDCL(stmt: GrantStmt, result: ParsedResult) {
-  // Handle GRANT statements
-  // Example: GRANT SELECT ON table TO user
-  const users = stmt.user_or_roles || stmt.to;
-  if (users && Array.isArray(users)) {
-    users.forEach((user) => {
-      const userName = user.name ? user.name.value : user.user || stringifyAstValue(user);
-      if (userName && !result.authObjects.includes(userName)) {
-        result.authObjects.push(userName);
-      }
-    });
-  }
-}
-
-export function parseTransactGrant(stmt: unknown, result: ParsedResult) {
-  if (!isTransactAssignList(stmt)) return;
-  const toPart = stmt.find((s) => s?.stmt?.left?.name === 'TO');
-  const nameNode = toPart?.stmt?.right?.name?.[0];
-  const value = nameNode?.value ?? nameNode;
-  const userName = value ? stringifyAstValue(value) : '';
-  if (userName && !result.authObjects.includes(userName)) {
-    result.authObjects.push(userName);
-  }
 }

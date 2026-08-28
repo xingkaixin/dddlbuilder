@@ -8,7 +8,6 @@ describe('preprocessMysql', () => {
 
     expect(result).toEqual({
       sql,
-      indexes: [],
       tableMetadata: [],
       partitionConfigs: {},
     });
@@ -34,9 +33,6 @@ describe('preprocessMysql', () => {
       id: '主键',
       name: '姓名',
     });
-    expect(result.indexes).toHaveLength(2);
-    expect(result.indexes[0]).toContain('CREATE INDEX idx_users_name');
-    expect(result.indexes[1]).toContain('ALTER TABLE users ADD INDEX');
     expect(result.partitionConfigs.users).toEqual({
       enabled: true,
       type: 'HASH',
@@ -79,7 +75,6 @@ describe('preprocessMysql', () => {
     const result = preprocessMysql(sql);
 
     expect(result.sql).toBe(sql);
-    expect(result.indexes).toEqual([]);
     expect(result.tableMetadata).toEqual([]);
     expect(result.partitionConfigs).toEqual({});
   });

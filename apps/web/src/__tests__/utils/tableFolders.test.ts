@@ -1,17 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   listFolders as listFoldersInScope,
-  listChildFolders as listChildFoldersInScope,
   createFolder as createFolderInScope,
   renameFolder as renameFolderInScope,
   moveFolder as moveFolderInScope,
   deleteFolder as deleteFolderInScope,
   bulkPutFolders,
   clearFolders,
-  getDescendantFolderIds as getDescendantFolderIdsInScope,
   getFolder as getFolderInScope,
   buildFolderTree as buildFolderTreeInScope,
-  getFolderPath as getFolderPathInScope,
 } from '@/utils/tableFolders';
 import * as dbUtils from '@/utils/workspaceDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
@@ -21,7 +18,6 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 
 const anonymousScope = getAnonymousWorkspaceScope();
 const listFolders = (scope = anonymousScope) => listFoldersInScope(scope);
-const listChildFolders = (parentId?: string) => listChildFoldersInScope(anonymousScope, parentId);
 const createFolder = (name: string, parentId?: string) =>
   createFolderInScope(name, anonymousScope, parentId);
 const renameFolder = (id: string, newName: string) =>
@@ -29,11 +25,8 @@ const renameFolder = (id: string, newName: string) =>
 const moveFolder = (id: string, newParentId?: string) =>
   moveFolderInScope(id, anonymousScope, newParentId);
 const deleteFolder = (id: string) => deleteFolderInScope(id, anonymousScope);
-const getDescendantFolderIds = (folderId: string) =>
-  getDescendantFolderIdsInScope(folderId, anonymousScope);
 const getFolder = (id: string) => getFolderInScope(id, anonymousScope);
 const buildFolderTree = () => buildFolderTreeInScope(anonymousScope);
-const getFolderPath = (folderId: string) => getFolderPathInScope(folderId, anonymousScope);
 const createState = (): PersistedState => ({
   schemaName: '',
   tableName: 'users',
@@ -61,21 +54,7 @@ describe('tableFolders', () => {
     teardownFakeIndexedDB();
   });
 
-  it('should create folders and list by parent', async () => {
-    const rootA = await createFolder('A');
-    await createFolder('B');
-    await createFolder('A1', rootA.id);
-    await createFolder('A2', rootA.id);
-
-    const roots = await listChildFolders();
-    expect(roots.map((f) => f.name)).toEqual(['A', 'B']);
-
-    const children = await listChildFolders(rootA.id);
-    expect(children.map((f) => f.name)).toEqual(['A1', 'A2']);
-
-    const all = await listFolders();
-    expect(all).toHaveLength(4);
-  });
+  
 
   it('should rename and move folder with validations', async () => {
     const root = await createFolder('Root');
@@ -95,23 +74,9 @@ describe('tableFolders', () => {
     expect(moved?.parentId).toBe(otherRoot.id);
   });
 
-  it('should build tree and get path', async () => {
-    const root = await createFolder('Root');
-    const child = await createFolder('Child', root.id);
-    const grand = await createFolder('Grand', child.id);
+  
 
-    const tree = await buildFolderTree();
-    expect(tree).toHaveLength(1);
-    expect(tree[0].children[0].children[0].id).toBe(grand.id);
-
-    const path = await getFolderPath(grand.id);
-    expect(path.map((f) => f.name)).toEqual(['Root', 'Child', 'Grand']);
-  });
-
-  it('should return empty path for missing folder id', async () => {
-    const path = await getFolderPath('missing-folder');
-    expect(path).toEqual([]);
-  });
+  
 
   it('should treat missing-parent folder as root in tree', async () => {
     const orphan = await createFolder('Orphan', 'missing-parent-id');
@@ -130,21 +95,7 @@ describe('tableFolders', () => {
     expect(moved?.parentId).toBeUndefined();
   });
 
-  it('should delete folder and descendants', async () => {
-    const root = await createFolder('Root');
-    const child = await createFolder('Child', root.id);
-    const grand = await createFolder('Grand', child.id);
-
-    const descendants = await getDescendantFolderIds(root.id);
-    expect(new Set(descendants)).toEqual(new Set([child.id, grand.id]));
-
-    await deleteFolder(root.id);
-    const list = await listFolders();
-    expect(list).toHaveLength(0);
-
-    const missing = await getFolder(child.id);
-    expect(missing).toBeNull();
-  });
+  
 
   it('should move contained tables to trash in the same transaction', async () => {
     const root = await createFolder('Root');

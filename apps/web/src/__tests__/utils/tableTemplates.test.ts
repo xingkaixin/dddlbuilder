@@ -9,7 +9,7 @@ import {
   duplicateTableTemplate,
   getTableTemplate,
   listTableTemplates,
-  renameTableTemplate,
+  updateTableTemplate,
 } from '@/utils/tableTemplates';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 
@@ -92,7 +92,8 @@ describe('tableTemplates', () => {
     expect(first.description).toBe('demo');
     expect((await listTableTemplates()).map((item) => item.id)).toEqual([second.id, first.id]);
 
-    const renamed = await renameTableTemplate(second.id, '  Order Copy  ');
+    await updateTableTemplate(second.id, { name: 'Order Copy' });
+    const renamed = await getTableTemplate(second.id);
     expect(renamed?.name).toBe('Order Copy');
 
     const duplicated = await duplicateTableTemplate(second.id);

@@ -7,7 +7,7 @@ import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { runIndexedDbRequest, runIndexedDbTransaction } from './indexedDbTransaction';
 import { getWorkspaceScopeStorageKey } from './workspaceScope';
 import { openDb, VERSION_STORE_NAME } from './workspaceDb';
-import type { TableVersion, TableVersionMetadata } from './workspaceStorageTypes';
+import type { TableVersion } from './workspaceStorageTypes';
 
 export type TableVersionTarget = {
   scope: WorkspaceScope;
@@ -92,20 +92,6 @@ export async function createVersion(
 
 export async function listVersions(target: TableVersionTarget): Promise<TableVersion[]> {
   return readAndClaimVersions(target);
-}
-
-export async function listVersionMetadata(
-  target: TableVersionTarget,
-): Promise<TableVersionMetadata[]> {
-  const versions = await listVersions(target);
-  return versions.map((version) => ({
-    id: version.id,
-    tableNormalizedName: version.tableNormalizedName,
-    message: version.message,
-    dbType: version.state.dbType,
-    fieldCount: version.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
-    createdAt: version.createdAt,
-  }));
 }
 
 export async function getVersion(

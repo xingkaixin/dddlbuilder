@@ -126,16 +126,6 @@ export const updateTemplate = async (
 };
 
 /**
- * 重命名模板
- */
-export const renameTemplate = async (
-  id: string,
-  newName: string,
-): Promise<FieldTemplate | null> => {
-  return updateTemplate(id, { name: newName });
-};
-
-/**
  * 删除模板
  */
 export const deleteTemplate = async (id: string): Promise<void> => {

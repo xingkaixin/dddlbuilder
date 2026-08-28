@@ -1151,10 +1151,9 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     );
     const socket = createWebSocket({
       schemaVersion: 1,
-      socketId: 'socket-1',
       workspaceId: 'ws-1',
       userId: 'user-1',
-      connectedAt: 1,
+      sessionId: 'session-1',
     });
 
     await durableObject.webSocketClose(socket, 1000, 'done', true);

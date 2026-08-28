@@ -195,6 +195,3 @@ export async function pruneOldReviews(target: ReviewTarget, maxCount: number): P
   return toDelete.length;
 }
 
-export async function countReviews(target: ReviewTarget): Promise<number> {
-  return (await listReviews(target)).length;
-}

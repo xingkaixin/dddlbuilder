@@ -8,7 +8,6 @@ import {
   escapeSingleQuotes,
   formatConstantDefault,
   shouldQuoteDefault,
-  isLikelyFunctionOrKeyword,
   getCanonicalBaseType,
   splitQualifiedName,
   getSchemaAndTable,
@@ -365,55 +364,36 @@ describe('Field Processing Functions', () => {
 
   describe('shouldQuoteDefault', () => {
     it('should identify types that need quoting', () => {
-      expect(shouldQuoteDefault('varchar')).toBe(true);
-      expect(shouldQuoteDefault('nvarchar')).toBe(true);
-      expect(shouldQuoteDefault('char')).toBe(true);
-      expect(shouldQuoteDefault('nchar')).toBe(true);
-      expect(shouldQuoteDefault('text')).toBe(true);
-      expect(shouldQuoteDefault('mediumtext')).toBe(true);
-      expect(shouldQuoteDefault('longtext')).toBe(true);
-      expect(shouldQuoteDefault('uuid')).toBe(true);
-      expect(shouldQuoteDefault('xml')).toBe(true);
-      expect(shouldQuoteDefault('json')).toBe(true);
-      expect(shouldQuoteDefault('jsonb')).toBe(true);
-      expect(shouldQuoteDefault('clob')).toBe(true);
-      expect(shouldQuoteDefault('varchar2')).toBe(true);
-      expect(shouldQuoteDefault('nvarchar2')).toBe(true);
-      expect(shouldQuoteDefault('date')).toBe(true);
-      expect(shouldQuoteDefault('time')).toBe(true);
-      expect(shouldQuoteDefault('timestamp')).toBe(true);
-      expect(shouldQuoteDefault('datetime')).toBe(true);
-      expect(shouldQuoteDefault('datetime2')).toBe(true);
-      expect(shouldQuoteDefault('timetz')).toBe(true);
-      expect(shouldQuoteDefault('timestamptz')).toBe(true);
+      expect(shouldQuoteDefault('varchar', '')).toBe(true);
+      expect(shouldQuoteDefault('nvarchar', '')).toBe(true);
+      expect(shouldQuoteDefault('char', '')).toBe(true);
+      expect(shouldQuoteDefault('nchar', '')).toBe(true);
+      expect(shouldQuoteDefault('text', '')).toBe(true);
+      expect(shouldQuoteDefault('mediumtext', '')).toBe(true);
+      expect(shouldQuoteDefault('longtext', '')).toBe(true);
+      expect(shouldQuoteDefault('uuid', '')).toBe(true);
+      expect(shouldQuoteDefault('xml', '')).toBe(true);
+      expect(shouldQuoteDefault('json', '')).toBe(true);
+      expect(shouldQuoteDefault('jsonb', '')).toBe(true);
+      expect(shouldQuoteDefault('clob', '')).toBe(true);
+      expect(shouldQuoteDefault('varchar2', '')).toBe(true);
+      expect(shouldQuoteDefault('nvarchar2', '')).toBe(true);
+      expect(shouldQuoteDefault('date', '')).toBe(true);
+      expect(shouldQuoteDefault('time', '')).toBe(true);
+      expect(shouldQuoteDefault('timestamp', '')).toBe(true);
+      expect(shouldQuoteDefault('datetime', '')).toBe(true);
+      expect(shouldQuoteDefault('datetime2', '')).toBe(true);
+      expect(shouldQuoteDefault('timetz', '')).toBe(true);
+      expect(shouldQuoteDefault('timestamptz', '')).toBe(true);
 
-      expect(shouldQuoteDefault('int')).toBe(false);
-      expect(shouldQuoteDefault('bigint')).toBe(false);
-      expect(shouldQuoteDefault('decimal')).toBe(false);
-      expect(shouldQuoteDefault('float')).toBe(false);
-      expect(shouldQuoteDefault('double')).toBe(false);
-      expect(shouldQuoteDefault('real')).toBe(false);
-      expect(shouldQuoteDefault('boolean')).toBe(false);
-      expect(shouldQuoteDefault('bit')).toBe(false);
-    });
-  });
-
-  describe('isLikelyFunctionOrKeyword', () => {
-    it('should identify functions and keywords', () => {
-      expect(isLikelyFunctionOrKeyword('CURRENT_TIMESTAMP')).toBe(true);
-      expect(isLikelyFunctionOrKeyword('UUID()')).toBe(true);
-      expect(isLikelyFunctionOrKeyword('NOW()')).toBe(true);
-      expect(isLikelyFunctionOrKeyword('GETDATE()')).toBe(true);
-      expect(isLikelyFunctionOrKeyword('SYSTIMESTAMP')).toBe(true);
-      expect(isLikelyFunctionOrKeyword('DEFAULT_VALUE')).toBe(true);
-      expect(isLikelyFunctionOrKeyword('nextval')).toBe(false);
-      expect(isLikelyFunctionOrKeyword('gen_random_uuid')).toBe(false);
-
-      expect(isLikelyFunctionOrKeyword('simple text')).toBe(false);
-      expect(isLikelyFunctionOrKeyword('123')).toBe(false);
-      expect(isLikelyFunctionOrKeyword('123.45')).toBe(false);
-      expect(isLikelyFunctionOrKeyword('not_a_function')).toBe(false);
-      expect(isLikelyFunctionOrKeyword('')).toBe(false);
+      expect(shouldQuoteDefault('int', '')).toBe(false);
+      expect(shouldQuoteDefault('bigint', '')).toBe(false);
+      expect(shouldQuoteDefault('decimal', '')).toBe(false);
+      expect(shouldQuoteDefault('float', '')).toBe(false);
+      expect(shouldQuoteDefault('double', '')).toBe(false);
+      expect(shouldQuoteDefault('real', '')).toBe(false);
+      expect(shouldQuoteDefault('boolean', '')).toBe(false);
+      expect(shouldQuoteDefault('bit', '')).toBe(false);
     });
   });
 

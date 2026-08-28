@@ -1,22 +1,22 @@
 import { readTextStream } from '@/services/streamingText';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
-import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import {
   normalizeDDLReviewResult,
   type DDLReviewResult,
 } from '@ddlbuilder/shared-types/ddl-review';
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import i18n from '@/i18n';
 
 const REVIEW_API_ENDPOINT = '/api/review';
 
-export interface ReviewRequestPayload {
+type ReviewRequestPayload = {
   ddl: string;
   tableName: string;
   dbType: string;
   locale?: AppLocale;
-}
+};
 
-export type ReviewServiceResult = DDLReviewResult;
+type ReviewServiceResult = DDLReviewResult;
 
 interface RequestDDLReviewOptions {
   signal: AbortSignal;

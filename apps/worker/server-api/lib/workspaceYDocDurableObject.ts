@@ -31,11 +31,9 @@ import {
 
 type WorkspaceYDocSocketAttachment = {
   schemaVersion: 1;
-  socketId: string;
   workspaceId?: string;
   userId?: string;
   sessionId: string;
-  connectedAt: number;
 };
 
 type PendingWorkspaceUpdate = {
@@ -59,10 +57,8 @@ const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
 
 const isSocketAttachment = (value: unknown): value is WorkspaceYDocSocketAttachment => {
   const record = value as Partial<WorkspaceYDocSocketAttachment> | null;
-  return Boolean(record && record.schemaVersion === 1 && typeof record.socketId === 'string');
+  return Boolean(record && record.schemaVersion === 1 && typeof record.sessionId === 'string');
 };
-
-const createSocketId = () => crypto.randomUUID();
 
 export class WorkspaceYDocDurableObject {
   private doc: Y.Doc | null = null;
@@ -560,11 +556,9 @@ export class WorkspaceYDocDurableObject {
   private createSocketAttachment(sessionId: string): WorkspaceYDocSocketAttachment {
     return {
       schemaVersion: 1,
-      socketId: createSocketId(),
       workspaceId: this.workspaceId,
       userId: this.userId,
       sessionId,
-      connectedAt: Date.now(),
     };
   }
 

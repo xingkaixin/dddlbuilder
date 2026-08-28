@@ -89,7 +89,7 @@ vi.mock('@/utils/workspaceDb', () => ({
   openDb: mocks.openDb,
 }));
 
-import { getVersion, listVersionMetadata, listVersions } from '@/utils/tableVersions';
+import { getVersion, listVersions } from '@/utils/tableVersions';
 
 const target = {
   scope: { kind: 'anonymous' } as const,
@@ -113,10 +113,5 @@ describe('tableVersions internal branches', () => {
     await expect(listVersions(target)).resolves.toEqual([]);
   });
 
-  it('should fallback metadata fieldCount to 0 when rows are missing', async () => {
-    mocks.behavior = 'list_rows_missing';
-    const metadata = await listVersionMetadata(target);
-    expect(metadata).toHaveLength(1);
-    expect(metadata[0].fieldCount).toBe(0);
-  });
+  
 });

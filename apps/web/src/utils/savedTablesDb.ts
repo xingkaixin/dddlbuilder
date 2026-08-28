@@ -245,36 +245,3 @@ export const deleteSavedTable = async (
     store.delete(withScopeKey(scope, normalizedName)),
   );
 };
-
-export const moveSavedTableToTrash = async (
-  normalizedName: string,
-  scope: WorkspaceScope,
-): Promise<void> => {
-  const record = await getSavedTable(normalizedName, scope);
-  if (!record) return;
-  await updateSavedTable(
-    {
-      ...record,
-      trashedAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    scope,
-  );
-};
-
-export const restoreSavedTableFromTrash = async (
-  normalizedName: string,
-  scope: WorkspaceScope,
-): Promise<void> => {
-  const records = await listTrashedSavedTables(scope);
-  const record = records.find((item) => item.normalizedName === normalizedName);
-  if (!record) return;
-  await updateSavedTable(
-    {
-      ...record,
-      trashedAt: undefined,
-      updatedAt: Date.now(),
-    },
-    scope,
-  );
-};

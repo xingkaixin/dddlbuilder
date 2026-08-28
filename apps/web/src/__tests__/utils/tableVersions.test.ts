@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import {
   createVersion,
   listVersions,
-  listVersionMetadata,
   getVersion,
   deleteVersion,
   deleteAllVersions,
@@ -184,67 +183,6 @@ describe('tableVersions', () => {
       const version = await getVersion(versionId, target);
 
       expect(version?.tableKey).toBe(`anonymous::${target.tableId}`);
-    });
-  });
-
-  describe('listVersionMetadata', () => {
-    it('返回轻量级元数据', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState();
-      await createVersion(testTableName, state, 'test');
-
-      const metadata = await listVersionMetadata(testTableName);
-      expect(metadata.length).toBe(1);
-      expect(metadata[0].dbType).toBe('mysql');
-      expect(metadata[0].fieldCount).toBe(1);
-      expect(metadata[0].message).toBe('test');
-    });
-
-    it('字段统计应忽略空白字段名', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState({
-        rows: [
-          {
-            order: 1,
-            fieldName: 'id',
-            fieldType: 'BIGINT',
-            fieldComment: '',
-            nullable: false,
-            defaultKind: 'auto_increment',
-            defaultValue: '',
-            onUpdate: 'none',
-          },
-          {
-            order: 2,
-            fieldName: '   ',
-            fieldType: 'VARCHAR(50)',
-            fieldComment: '',
-            nullable: true,
-            defaultKind: 'none',
-            defaultValue: '',
-            onUpdate: 'none',
-          },
-        ],
-      });
-
-      await createVersion(testTableName, state, 'with-empty-field');
-      const metadata = await listVersionMetadata(testTableName);
-
-      expect(metadata).toHaveLength(1);
-      expect(metadata[0].fieldCount).toBe(1);
-    });
-
-    it('rows 缺失时 fieldCount 应回退为 0', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState({
-        rows: undefined as unknown as PersistedState['rows'],
-      });
-
-      await createVersion(testTableName, state, 'rows-missing');
-      const metadata = await listVersionMetadata(testTableName);
-
-      expect(metadata).toHaveLength(1);
-      expect(metadata[0].fieldCount).toBe(0);
     });
   });
 

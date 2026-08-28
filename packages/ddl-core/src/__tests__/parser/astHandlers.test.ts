@@ -5,8 +5,6 @@ import {
   parseAlterTable,
   parseCreateIndex,
   parseCreateTable,
-  parseDCL,
-  parseTransactGrant,
 } from '../../parser/astHandlers.js';
 
 const parser = new Parser();
@@ -224,27 +222,4 @@ describe('astHandlers', () => {
     expect(result.fields[0].nullable).toBe(false);
   });
 
-  it('parseDCL and parseTransactGrant should collect auth users without duplicates', () => {
-    const result = createResult();
-
-    parseDCL(
-      {
-        user_or_roles: [{ name: { value: 'app_user' } }, { user: 'reader' }, 'raw_user'],
-      },
-      result,
-    );
-    parseDCL({ to: [{ name: { value: 'app_user' } }] }, result);
-
-    parseTransactGrant({}, result);
-    parseTransactGrant(
-      [{ stmt: { left: { name: 'TO' }, right: { name: [{ value: 'sa' }] } } }],
-      result,
-    );
-    parseTransactGrant(
-      [{ stmt: { left: { name: 'TO' }, right: { name: [{ value: 'sa' }] } } }],
-      result,
-    );
-
-    expect(result.authObjects).toEqual(['app_user', 'reader', 'raw_user', 'sa']);
-  });
 });

@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { History, RotateCcw, GitCompare, Trash2, Loader2, Play } from '@/components/icons';
+import { History, RotateCcw, Trash2, Loader2, Play } from '@/components/icons';
 import {
   Dialog,
   DialogContent,
@@ -42,9 +42,7 @@ interface VersionHistoryDialogProps {
   target: TableVersionTarget | null;
   tableName: string | null;
   onRollback?: (state: PersistedState) => void;
-  onCompare?: (oldState: PersistedState, newState: PersistedState) => void;
   onPlayTimeline?: () => void;
-  currentState?: PersistedState | null;
 }
 
 function formatDate(
@@ -115,9 +113,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     target,
     tableName,
     onRollback,
-    onCompare,
     onPlayTimeline,
-    currentState,
   }) => {
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
@@ -209,20 +205,6 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
         setActionLoading(false);
       }
     }, [selectedId, onRollback, onOpenChange, target]);
-
-    // 与当前版本对比
-    const handleCompare = useCallback(async () => {
-      if (!selectedId || !onCompare || !currentState || !target) return;
-      setActionLoading(true);
-      try {
-        const version = await getVersion(selectedId, target);
-        if (version) {
-          onCompare(version.state, currentState);
-        }
-      } finally {
-        setActionLoading(false);
-      }
-    }, [selectedId, onCompare, currentState, target]);
 
     // 删除版本
     const handleDelete = useCallback(async () => {
@@ -436,18 +418,6 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                   >
                     <Play className="h-3.5 w-3.5" />
                     {t('versionHistory.playTimeline')}
-                  </Button>
-                )}
-                {onCompare && currentState && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!selectedId || actionLoading}
-                    onClick={handleCompare}
-                    className="h-7 gap-1.5 px-2 text-xs font-medium"
-                  >
-                    <GitCompare className="h-3.5 w-3.5" />
-                    {t('versionHistory.compare')}
                   </Button>
                 )}
                 {onRollback && (
