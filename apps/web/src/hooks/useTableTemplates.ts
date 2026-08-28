@@ -102,7 +102,9 @@ export function useTableTemplates() {
     ): Promise<OperationResult> => {
       try {
         const template = await updateMutation.mutateAsync({ id, updates });
-        return template ? { ok: true } : { ok: false, reason: 'not_found', message: t('tableTemplate.toast.notFound') };
+        return template
+          ? { ok: true }
+          : { ok: false, reason: 'not_found', message: t('tableTemplate.toast.notFound') };
       } catch (error) {
         return failure(error, t('tableTemplate.toast.updateFailed'));
       }

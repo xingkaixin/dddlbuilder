@@ -107,14 +107,7 @@ function toDateInputValue(timestamp: number): string {
 }
 
 export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
-  ({
-    open,
-    onOpenChange,
-    target,
-    tableName,
-    onRollback,
-    onPlayTimeline,
-  }) => {
+  ({ open, onOpenChange, target, tableName, onRollback, onPlayTimeline }) => {
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
     const { showToast } = useToast();

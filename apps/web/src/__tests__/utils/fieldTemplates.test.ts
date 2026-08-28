@@ -5,7 +5,6 @@ import {
   getTemplate,
   createTemplate,
   updateTemplate,
-  renameTemplate,
   deleteTemplate,
   duplicateTemplate,
   createTemplateFromFields,
@@ -70,8 +69,6 @@ describe('fieldTemplates', () => {
     const result = await updateTemplate('missing', { name: 'x' });
     expect(result).toBeNull();
   });
-
-  
 
   it('should create template from fields with filtering and normalize', async () => {
     const template = await createTemplateFromFields(

@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Parser } from 'node-sql-parser';
 import type { ParsedResult } from '../../parser/types.js';
-import {
-  parseAlterTable,
-  parseCreateIndex,
-  parseCreateTable,
-} from '../../parser/astHandlers.js';
+import { parseAlterTable, parseCreateIndex, parseCreateTable } from '../../parser/astHandlers.js';
 
 const parser = new Parser();
 const serializeExpression = (value: unknown) => parser.exprToSQL(value, { database: 'mysql' });
@@ -221,5 +217,4 @@ describe('astHandlers', () => {
     expect(result.indexes.length).toBe(2);
     expect(result.fields[0].nullable).toBe(false);
   });
-
 });

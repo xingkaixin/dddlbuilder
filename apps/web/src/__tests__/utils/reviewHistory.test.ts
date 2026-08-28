@@ -137,8 +137,6 @@ describe('reviewHistory', () => {
     expect(await listReviews(anotherWorkspace)).toHaveLength(1);
   });
 
-  
-
   it('isolates same-name reviews by workspace', async () => {
     const normalizedName = 'shared_review_table';
     const anonymousTarget = target(normalizedName, 'shared-id');
@@ -213,8 +211,6 @@ describe('reviewHistory', () => {
     expect(claimed.tableKey).toBe('anonymous::table:legacy-owner');
     expect(await listReviews(otherWorkspace)).toEqual([]);
   });
-
-  
 
   it('should return zero when prune limit is not exceeded', async () => {
     const tableNamespace = 'test_prune_noop';

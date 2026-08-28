@@ -54,8 +54,6 @@ describe('tableFolders', () => {
     teardownFakeIndexedDB();
   });
 
-  
-
   it('should rename and move folder with validations', async () => {
     const root = await createFolder('Root');
     const child = await createFolder('Child', root.id);
@@ -74,10 +72,6 @@ describe('tableFolders', () => {
     expect(moved?.parentId).toBe(otherRoot.id);
   });
 
-  
-
-  
-
   it('should treat missing-parent folder as root in tree', async () => {
     const orphan = await createFolder('Orphan', 'missing-parent-id');
     const tree = await buildFolderTree();
@@ -94,8 +88,6 @@ describe('tableFolders', () => {
 
     expect(moved?.parentId).toBeUndefined();
   });
-
-  
 
   it('should move contained tables to trash in the same transaction', async () => {
     const root = await createFolder('Root');

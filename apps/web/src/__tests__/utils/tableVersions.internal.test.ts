@@ -112,6 +112,4 @@ describe('tableVersions internal branches', () => {
     mocks.behavior = 'list_result_undefined';
     await expect(listVersions(target)).resolves.toEqual([]);
   });
-
-  
 });

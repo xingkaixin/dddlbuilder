@@ -1,4 +1,4 @@
-import { resolveD1Mode, runD1Execute, seedSqlPath } from './d1-utils';
+import { runD1Execute, seedSqlPath } from './d1-utils';
 
 if (process.argv.slice(2).includes('--remote')) {
   console.error('[d1] seed 灌入本地测试数据，拒绝执行 --remote');

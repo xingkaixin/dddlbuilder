@@ -194,4 +194,3 @@ export async function pruneOldReviews(target: ReviewTarget, maxCount: number): P
   await deleteReviews(toDelete);
   return toDelete.length;
 }
-

@@ -137,7 +137,9 @@ export function useFieldTemplates() {
     ): Promise<OperationResult> => {
       try {
         const template = await updateMutation.mutateAsync({ id, updates });
-        return template ? { ok: true } : { ok: false, reason: 'not_found', message: t('fieldTemplate.toast.notFound') };
+        return template
+          ? { ok: true }
+          : { ok: false, reason: 'not_found', message: t('fieldTemplate.toast.notFound') };
       } catch (error) {
         return failure(error, t('fieldTemplate.toast.updateFailed'));
       }
