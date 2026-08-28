@@ -179,6 +179,11 @@ export const enUSCommon = {
     },
   },
   workspaceYDoc: {
+    signOut: {
+      saving: 'Confirming cloud save before signing out…',
+      unsynced:
+        'Sign out was cancelled because cloud sync is not confirmed. Your local data is preserved. Restore sync and try again.',
+    },
     status: {
       localSaved: 'Saved locally',
       syncing: 'Syncing',

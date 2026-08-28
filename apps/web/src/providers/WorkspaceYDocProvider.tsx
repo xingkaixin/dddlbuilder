@@ -9,7 +9,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 import * as Y from 'yjs';
-import { IndexeddbPersistence } from 'y-indexeddb';
+import { fetchUpdates, IndexeddbPersistence } from 'y-indexeddb';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { WorkspaceBootstrapScreen } from '@/components/WorkspaceBootstrapScreen';
@@ -33,7 +33,7 @@ import {
   buildWorkspaceYDocName,
   commitLegacyWorkspaceYDoc,
   LEGACY_MIGRATION_COMMITTED,
-  registerWorkspaceYDocDisposer,
+  registerWorkspaceYDocOwner,
 } from '@/services/workspaceYDocStorage';
 import { clearLegacyWorkspaceData } from '@/services/workspaceAccountService';
 import {
@@ -136,7 +136,14 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       disposal = persistence.destroy().finally(unregister);
       return disposal;
     };
-    const unregister = registerWorkspaceYDocDisposer(workspaceId, dispose);
+    const unregister = registerWorkspaceYDocOwner(workspaceId, {
+      dispose,
+      prepareSignOut: async () => {
+        if (!client || cancelled) throw new Error('Workspace is not ready');
+        await fetchUpdates(persistence);
+        await client.flushAndWaitForSync();
+      },
+    });
 
     // oxlint-disable-next-line react/set-state-in-effect
     setValue({

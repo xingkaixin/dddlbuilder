@@ -173,6 +173,10 @@ export const zhCNCommon = {
     },
   },
   workspaceYDoc: {
+    signOut: {
+      saving: '正在确认云端保存，完成后退出…',
+      unsynced: '还有内容未确认同步到云端，已取消退出并保留本地数据。请恢复同步后重试。',
+    },
     status: {
       localSaved: '本地已保存',
       syncing: '同步中',

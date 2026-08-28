@@ -57,6 +57,7 @@ export class WorkspaceYDocSyncClient {
   private syncRoundTripComplete = false;
   private nextRequestId = 0;
   private readonly pendingAcknowledgements = new Set<number>();
+  private readonly syncWaiters = new Set<(synced: boolean) => void>();
   private browserOffline = false;
   private readonly ignoredSockets = new WeakSet<WebSocket>();
   private readonly workspaceId: string;
@@ -170,21 +171,39 @@ export class WorkspaceYDocSyncClient {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      this.syncRoundTripComplete = false;
-      this.pendingAcknowledgements.clear();
-      this.notify('connected');
-      this.sendSyncState();
-      return;
-    }
     if (this.socket) {
       this.discardSocket(this.socket);
     }
     void this.connect();
   }
 
+  flushAndWaitForSync(): Promise<void> {
+    if (this.destroyed || this.isOffline()) {
+      return Promise.reject(new Error('Workspace sync is unavailable'));
+    }
+    return new Promise((resolve, reject) => {
+      const finish = (synced: boolean) => {
+        clearTimeout(timer);
+        this.syncWaiters.delete(finish);
+        if (synced) resolve();
+        else reject(new Error('Workspace changes have not been confirmed by the server'));
+      };
+      const timer = setTimeout(() => {
+        finish(false);
+        if (this.socket) this.discardSocket(this.socket);
+        this.notify('error', 'network');
+        this.scheduleReconnect();
+      }, WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
+      this.syncWaiters.add(finish);
+      this.flushPendingUpdates();
+      if (this.socket?.readyState === WebSocket.OPEN) this.notify('connected');
+      else void this.connect();
+    });
+  }
+
   destroy() {
     this.destroyed = true;
+    for (const finish of this.syncWaiters) finish(false);
     this.doc.off('update', this.handleDocUpdate);
     window.removeEventListener('online', this.handleOnline);
     window.removeEventListener('offline', this.handleOffline);
@@ -211,24 +230,8 @@ export class WorkspaceYDocSyncClient {
 
   private readonly handleOnline = () => {
     this.browserOffline = false;
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      this.syncRoundTripComplete = false;
-      this.pendingAcknowledgements.clear();
-      this.notify('connected');
-      this.sendSyncState();
-      return;
-    }
-    if (this.socket) {
-      console.warn(
-        JSON.stringify({
-          event: 'workspace_yjs_client_socket_replaced',
-          workspaceId: this.workspaceId,
-          readyState: this.socket.readyState,
-        }),
-      );
-      this.discardSocket(this.socket);
-    }
-    void this.connect();
+    // 新连接让双方重新交换 state vector，包含已发送但未确认、已离开发送队列的修改。
+    this.retry();
   };
 
   private readonly handleOffline = () => {
@@ -376,7 +379,7 @@ export class WorkspaceYDocSyncClient {
   }
 
   private notify(state: WorkspaceYDocConnectionState, failureReason?: WorkspaceYDocFailureReason) {
-    this.onConnectionStateChange({
+    const status = {
       state,
       failureReason,
       synced:
@@ -384,7 +387,11 @@ export class WorkspaceYDocSyncClient {
         this.syncRoundTripComplete &&
         this.pendingAcknowledgements.size === 0 &&
         this.pendingUpdates.length === 0,
-    });
+    };
+    this.onConnectionStateChange(status);
+    if (status.synced || state === 'offline' || state === 'error') {
+      for (const finish of this.syncWaiters) finish(status.synced);
+    }
   }
 
   private isOffline() {

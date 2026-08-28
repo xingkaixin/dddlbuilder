@@ -18,8 +18,13 @@ const sendVerificationEmailMock = vi.fn();
 const signOutMock = vi.fn();
 const updateUserMock = vi.fn();
 const changePasswordMock = vi.fn();
-const { clearLocalWorkspaceDataMock } = vi.hoisted(() => ({
+const { clearLocalWorkspaceDataMock, prepareWorkspaceSignOutMock } = vi.hoisted(() => ({
   clearLocalWorkspaceDataMock: vi.fn(),
+  prepareWorkspaceSignOutMock: vi.fn(),
+}));
+
+vi.mock('@/services/workspaceYDocStorage', () => ({
+  prepareWorkspaceSignOut: prepareWorkspaceSignOutMock,
 }));
 
 vi.mock('@/auth/betterAuthClient', () => ({
@@ -84,6 +89,7 @@ describe('AuthSessionProvider', () => {
     updateUserMock.mockReset();
     changePasswordMock.mockReset();
     clearLocalWorkspaceDataMock.mockReset();
+    prepareWorkspaceSignOutMock.mockReset().mockResolvedValue(undefined);
   });
 
   describe('translateAuthError', () => {
@@ -446,6 +452,66 @@ describe('AuthSessionProvider', () => {
         revokeOtherSessions: false,
       });
     });
+
+    it.each([true, false])(
+      'protects local data when sync confirmation succeeds: %s',
+      async (confirmed) => {
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+          if (input === '/api/me')
+            return Response.json({
+              signedIn: true,
+              user: {
+                userId: 'user-1',
+                email: 'user@example.com',
+                name: 'User',
+                emailVerified: true,
+              },
+            });
+          if (input === '/api/credits/balance') return Response.json({ balance: 100 });
+          return Response.json({ workspaceId: 'ws-1' });
+        });
+        let settle = () => {};
+        prepareWorkspaceSignOutMock.mockImplementation(
+          () =>
+            new Promise<void>((resolve, reject) => {
+              settle = () => (confirmed ? resolve() : reject(new Error('Unconfirmed changes')));
+            }),
+        );
+        signOutMock.mockResolvedValue({ error: null });
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const session: { current: ReturnType<typeof useAuthSession> | null } = { current: null };
+        const Probe = () => {
+          const api = useAuthSession();
+          useEffect(() => {
+            session.current = api;
+          }, [api]);
+          return <span data-testid="sign-out-status">{api.status}</span>;
+        };
+        render(
+          <AuthSessionProvider>
+            <Probe />
+          </AuthSessionProvider>,
+        );
+        await waitFor(() => expect(session.current?.workspaceId).toBe('ws-1'));
+        if (!session.current) throw new Error('Session not loaded');
+        const outcome = session.current.signOut().then(
+          () => 'signed_out',
+          () => 'cancelled',
+        );
+        await waitFor(() => expect(prepareWorkspaceSignOutMock).toHaveBeenCalledWith('ws-1'));
+        expect(signOutMock).not.toHaveBeenCalled();
+        expect(clearLocalWorkspaceDataMock).not.toHaveBeenCalled();
+        settle();
+        expect(await outcome).toBe(confirmed ? 'signed_out' : 'cancelled');
+        expect(signOutMock).toHaveBeenCalledTimes(confirmed ? 1 : 0);
+        expect(clearLocalWorkspaceDataMock).toHaveBeenCalledTimes(confirmed ? 1 : 0);
+        await waitFor(() =>
+          expect(screen.getByTestId('sign-out-status')).toHaveTextContent(
+            confirmed ? 'signed_out' : 'signed_in',
+          ),
+        );
+      },
+    );
 
     it('keeps the client signed out when local workspace cleanup fails', async () => {
       vi.spyOn(globalThis, 'fetch')

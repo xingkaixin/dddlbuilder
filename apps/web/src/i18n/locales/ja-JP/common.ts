@@ -182,6 +182,11 @@ export const jaJPCommon = {
     },
   },
   workspaceYDoc: {
+    signOut: {
+      saving: 'クラウドへの保存を確認してからログアウトします…',
+      unsynced:
+        'クラウドへの同期を確認できないため、ログアウトを中止しました。ローカルデータは保持されています。同期を復旧してから再試行してください。',
+    },
     status: {
       localSaved: 'ローカルに保存されました',
       syncing: '同期中',

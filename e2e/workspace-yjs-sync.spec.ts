@@ -182,6 +182,55 @@ const mockSignedInWorkspace = async (
   await context.routeWebSocket(`**/api/workspaces/${workspaceId}/yjs`, server.route(clientId));
 };
 
+test('sign out preserves local changes until cloud persistence is confirmed', async ({
+  browser,
+}) => {
+  const workspaceId = `ws-signout-${Date.now()}`;
+  const server = new MockWorkspaceYjsServer();
+  seedDefaultDraft(server.doc, 'cloud_before_signout', 'id');
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(context, server, workspaceId, 'signout-client');
+  let signOutRequests = 0;
+  await context.route('**/api/auth/sign-out', async (route) => {
+    signOutRequests += 1;
+    await route.fulfill({ json: { success: true } });
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto('/');
+    await openDraftByName(page, 'cloud_before_signout');
+    await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    server.setClientPaused('signout-client', true);
+    await tableNameInput(page).fill('local_before_signout');
+    await page.getByTitle('Sync E2E', { exact: true }).click();
+    await page.getByRole('menuitem', { name: '退出登录' }).click();
+    await expect(
+      page.getByText('还有内容未确认同步到云端，已取消退出并保留本地数据。请恢复同步后重试。'),
+    ).toBeVisible({ timeout: 12_000 });
+    expect(signOutRequests).toBe(0);
+    await expect(tableNameInput(page)).toHaveValue('local_before_signout');
+    expect(readDefaultDraftState(server.doc)?.tableName).toBe('cloud_before_signout');
+
+    await page.reload();
+    await expect(page.getByText('local_before_signout').first()).toBeVisible();
+    server.setClientPaused('signout-client', false);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect
+      .poll(() => readDefaultDraftState(server.doc)?.tableName, { timeout: 15_000 })
+      .toBe('local_before_signout');
+    await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    await page.getByTitle('Sync E2E', { exact: true }).click();
+    await page.getByRole('menuitem', { name: '退出登录' }).click();
+    await expect(page.getByRole('button', { name: '登录 / 注册', exact: true })).toBeEnabled();
+    expect(signOutRequests).toBe(1);
+    const databases = await page.evaluate(() => indexedDB.databases());
+    expect(databases.some((db) => db.name === `ddlbuilder:workspace:${workspaceId}`)).toBe(false);
+  } finally {
+    await context.close();
+    server.doc.destroy();
+  }
+});
+
 const editFirstFieldName = async (page: Page, fieldName: string) => {
   const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
   await cell.dblclick();

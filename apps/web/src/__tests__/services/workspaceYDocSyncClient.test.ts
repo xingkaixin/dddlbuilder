@@ -274,6 +274,51 @@ describe('WorkspaceYDocSyncClient', () => {
     client.destroy();
   });
 
+  it('flushes immediately and waits for persisted acknowledgements, including newer edits', async () => {
+    const doc = new Y.Doc();
+    const server = new Y.Doc();
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
+    await client.connect();
+    const socket = firstSocket();
+    socket.open();
+    syncWithServer(socket, server);
+    doc.getMap('fields').set('first', 'value');
+    let completed = false;
+    const pending = client.flushAndWaitForSync().then(() => {
+      completed = true;
+    });
+    const firstBatch = sentMessage(socket, socket.sent.length - 1);
+    doc.getMap('fields').set('second', 'value');
+    acknowledge(socket, firstBatch);
+    await Promise.resolve();
+    expect(completed).toBe(false);
+    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
+    acknowledge(socket, sentMessage(socket, socket.sent.length - 1));
+    await pending;
+    expect(completed).toBe(true);
+    client.destroy();
+  });
+
+  it.each(['timeout', 'offline', 'destroy'])(
+    'does not permit data cleanup after %s',
+    async (failure) => {
+      const doc = new Y.Doc();
+      const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
+      await client.connect();
+      const socket = firstSocket();
+      socket.open();
+      syncWithServer(socket, new Y.Doc());
+      doc.getMap('fields').set('unsynced', 'keep me');
+      const pending = client.flushAndWaitForSync().catch((error: unknown) => error);
+      if (failure === 'timeout') vi.advanceTimersByTime(WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
+      else if (failure === 'offline') window.dispatchEvent(new Event('offline'));
+      else client.destroy();
+      expect(await pending).toBeInstanceOf(Error);
+      expect(doc.getMap('fields').get('unsynced')).toBe('keep me');
+      client.destroy();
+    },
+  );
+
   it('does not reuse acknowledgements after retry or reconnect', async () => {
     const doc = new Y.Doc();
     const statuses: WorkspaceYDocConnectionStatus[] = [];
@@ -283,16 +328,8 @@ describe('WorkspaceYDocSyncClient', () => {
     socket.open();
     const oldBatch = sentMessage(socket, socket.sent.length - 1);
     client.retry();
-    socket.receive(
-      encodeSyncMessage((encoder) => syncProtocol.writeSyncStep2(encoder, new Y.Doc())),
-    );
     acknowledge(socket, oldBatch);
     expect(statuses.at(-1)?.synced).toBe(false);
-    acknowledge(socket, sentMessage(socket, socket.sent.length - 1));
-    expect(statuses.at(-1)?.synced).toBe(true);
-
-    socket.close();
-    client.retry();
     await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
     const activeSocket = MockWebSocket.instances[1];
     activeSocket.open();
@@ -300,6 +337,29 @@ describe('WorkspaceYDocSyncClient', () => {
     acknowledge(activeSocket, oldBatch);
     expect(statuses.at(-1)?.synced).toBe(false);
     syncWithServer(activeSocket, new Y.Doc());
+    expect(statuses.at(-1)?.synced).toBe(true);
+    client.destroy();
+  });
+
+  it('recovers an unacknowledged update when returning online on an open socket', async () => {
+    const doc = new Y.Doc();
+    const server = new Y.Doc();
+    const statuses: WorkspaceYDocConnectionStatus[] = [];
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, (status) => statuses.push(status));
+    await client.connect();
+    let socket = firstSocket();
+    socket.open();
+    syncWithServer(socket, server);
+    doc.getMap('fields').set('lost', 'recover');
+    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
+    const previousCount = socket.sent.length;
+    window.dispatchEvent(new Event('online'));
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    expect(socket.sent).toHaveLength(previousCount);
+    socket = MockWebSocket.instances[1];
+    socket.open();
+    syncWithServer(socket, server);
+    expect(server.getMap('fields').get('lost')).toBe('recover');
     expect(statuses.at(-1)?.synced).toBe(true);
     client.destroy();
   });
@@ -362,8 +422,10 @@ describe('WorkspaceYDocSyncClient', () => {
     onLine.mockReturnValue(true);
     window.dispatchEvent(new Event('online'));
 
-    expect(socket.sent).toHaveLength(syncedMessageCount + 1);
-    syncWithServer(socket, serverDoc);
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    const reconnected = MockWebSocket.instances[1];
+    reconnected.open();
+    syncWithServer(reconnected, serverDoc);
     expect(serverDoc.getMap('fields').get('offline-field')).toBe('offline-value');
 
     client.destroy();
@@ -397,11 +459,12 @@ describe('WorkspaceYDocSyncClient', () => {
     const socket = firstSocket();
     socket.open();
     syncWithServer(socket, serverDoc);
-    const initialCount = socket.sent.length;
     serverDoc.getMap('fields').set('remote-field', 'remote-value');
     window.dispatchEvent(new Event('online'));
-    expect(socket.sent).toHaveLength(initialCount + 1);
-    syncWithServer(socket, serverDoc);
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    const reconnected = MockWebSocket.instances[1];
+    reconnected.open();
+    syncWithServer(reconnected, serverDoc);
     expect(doc.getMap('fields').get('remote-field')).toBe('remote-value');
     expect(serverDoc.getMap('fields').get('local-field')).toBe('local-value');
     client.destroy();

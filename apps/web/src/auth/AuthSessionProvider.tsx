@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
+import { prepareWorkspaceSignOut } from '@/services/workspaceYDocStorage';
 import { currentUserOptions, authQueryKeys } from '@/queries/auth';
 import { creditBalanceOptions, creditQueryKeys } from '@/queries/credits';
 import { currentWorkspaceOptions, workspaceQueryKeys } from '@/queries/workspaces';
@@ -112,6 +113,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   const client = getBetterAuthClient();
   const queryClient = useQueryClient();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const currentUserQuery = useQuery({
     ...currentUserOptions(),
     enabled: configured,
@@ -305,6 +307,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         }
       },
       signOut: async () => {
+        if (signingOut) return;
         if (!client || !configured) {
           setAuthDialogOpen(false);
           return;
@@ -318,39 +321,52 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
                 workspaceId: state.workspaceId,
               }
             : null;
-        const result = await client.signOut();
-        if (result.error) {
-          throw new Error(translateAuthError(result.error, 'header.auth.signOutFailed'));
-        }
-
-        if (scope) {
-          try {
-            await clearLocalWorkspaceData(scope);
-          } catch (error) {
-            console.error(
-              JSON.stringify({
-                event: 'sign_out_local_cleanup_failure',
-                userId: scope.userId,
-                workspaceId: scope.workspaceId,
-              }),
-              error,
-            );
+        setSigningOut(true);
+        try {
+          if (scope) {
+            try {
+              await prepareWorkspaceSignOut(scope.workspaceId);
+            } catch (error) {
+              console.error('[workspace-yjs] sign out cancelled to preserve local changes', error);
+              throw new Error(i18n.t('workspaceYDoc.signOut.unsynced'));
+            }
           }
+          const result = await client.signOut();
+          if (result.error) {
+            throw new Error(translateAuthError(result.error, 'header.auth.signOutFailed'));
+          }
+
+          if (scope) {
+            try {
+              await clearLocalWorkspaceData(scope);
+            } catch (error) {
+              console.error(
+                JSON.stringify({
+                  event: 'sign_out_local_cleanup_failure',
+                  userId: scope.userId,
+                  workspaceId: scope.workspaceId,
+                }),
+                error,
+              );
+            }
+          }
+          if (state.userId) {
+            queryClient.removeQueries({ queryKey: creditQueryKeys.all(state.userId) });
+            queryClient.removeQueries({ queryKey: workspaceQueryKeys.all(state.userId) });
+            queryClient.removeQueries({ queryKey: workspaceMigrationQueryKeys.all(state.userId) });
+          }
+          queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
+          setAuthDialogOpen(false);
+        } finally {
+          setSigningOut(false);
         }
-        if (state.userId) {
-          queryClient.removeQueries({ queryKey: creditQueryKeys.all(state.userId) });
-          queryClient.removeQueries({ queryKey: workspaceQueryKeys.all(state.userId) });
-          queryClient.removeQueries({ queryKey: workspaceMigrationQueryKeys.all(state.userId) });
-        }
-        queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
-        setAuthDialogOpen(false);
       },
       refreshSession,
       refreshCredits,
       openAuthDialog: () => setAuthDialogOpen(true),
       closeAuthDialog: () => setAuthDialogOpen(false),
     }),
-    [client, configured, queryClient, refreshCredits, refreshSession, state],
+    [client, configured, queryClient, refreshCredits, refreshSession, signingOut, state],
   );
 
   useEffect(() => {
@@ -360,7 +376,21 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
+  return (
+    <AuthSessionContext.Provider value={value}>
+      <div className="contents" inert={signingOut} aria-busy={signingOut}>
+        {children}
+      </div>
+      {signingOut && (
+        <div
+          role="status"
+          className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-md border bg-background px-4 py-2 text-sm text-foreground shadow-sm"
+        >
+          {i18n.t('workspaceYDoc.signOut.saving')}
+        </div>
+      )}
+    </AuthSessionContext.Provider>
+  );
 }
 
 export const useAuthSession = () => {

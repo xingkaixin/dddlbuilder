@@ -5,7 +5,8 @@ import {
   clearWorkspaceYDocData,
   commitLegacyWorkspaceYDoc,
   LEGACY_MIGRATION_COMMITTED,
-  registerWorkspaceYDocDisposer,
+  registerWorkspaceYDocOwner,
+  prepareWorkspaceSignOut,
 } from '@/services/workspaceYDocStorage';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -14,8 +15,11 @@ describe('workspace offline storage lifecycle', () => {
   it('closes active owners before awaiting deletion of only the selected database', async () => {
     const dispose = vi.fn().mockResolvedValue(undefined);
     const otherDispose = vi.fn().mockResolvedValue(undefined);
-    const unregister = registerWorkspaceYDocDisposer('selected', dispose);
-    const unregisterOther = registerWorkspaceYDocDisposer('other', otherDispose);
+    const unregister = registerWorkspaceYDocOwner('selected', { dispose, prepareSignOut: vi.fn() });
+    const unregisterOther = registerWorkspaceYDocOwner('other', {
+      dispose: otherDispose,
+      prepareSignOut: vi.fn(),
+    });
     const request = { onsuccess: null as (() => void) | null };
     const deleteDatabase = vi.fn(() => request);
     vi.stubGlobal('indexedDB', { deleteDatabase });
@@ -34,6 +38,27 @@ describe('workspace offline storage lifecycle', () => {
     expect(completed).toBe(true);
     unregister();
     unregisterOther();
+  });
+
+  it('requires every active owner to confirm sync before sign out', async () => {
+    const dispose = vi.fn();
+    const confirmed = vi.fn().mockResolvedValue(undefined);
+    const unconfirmed = vi.fn().mockRejectedValue(new Error('Sync unavailable'));
+    const unregister = registerWorkspaceYDocOwner('selected', {
+      dispose,
+      prepareSignOut: confirmed,
+    });
+    const unregisterPending = registerWorkspaceYDocOwner('selected', {
+      dispose,
+      prepareSignOut: unconfirmed,
+    });
+    await expect(prepareWorkspaceSignOut('selected')).rejects.toThrow('Sync unavailable');
+    expect(confirmed).toHaveBeenCalledOnce();
+    expect(dispose).not.toHaveBeenCalled();
+    unregisterPending();
+    await expect(prepareWorkspaceSignOut('selected')).resolves.toBeUndefined();
+    unregister();
+    await expect(prepareWorkspaceSignOut('selected')).rejects.toThrow('Workspace is not ready');
   });
 
   it.each(['complete', 'abort'])(

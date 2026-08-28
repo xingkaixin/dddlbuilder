@@ -6,19 +6,26 @@ export const buildWorkspaceYDocName = (workspaceId: string) =>
   `ddlbuilder:workspace:${workspaceId}`;
 
 export const LEGACY_MIGRATION_COMMITTED = 'legacy-migration-committed';
-const activeDisposers = new Map<string, Set<() => Promise<void>>>();
+type WorkspaceYDocOwner = {
+  dispose: () => Promise<void>;
+  prepareSignOut: () => Promise<void>;
+};
+const activeOwners = new Map<string, Set<WorkspaceYDocOwner>>();
 
-export const registerWorkspaceYDocDisposer = (
-  workspaceId: string,
-  dispose: () => Promise<void>,
-) => {
-  const disposers = activeDisposers.get(workspaceId) ?? new Set();
-  disposers.add(dispose);
-  activeDisposers.set(workspaceId, disposers);
+export const registerWorkspaceYDocOwner = (workspaceId: string, owner: WorkspaceYDocOwner) => {
+  const owners = activeOwners.get(workspaceId) ?? new Set();
+  owners.add(owner);
+  activeOwners.set(workspaceId, owners);
   return () => {
-    disposers.delete(dispose);
-    if (disposers.size === 0) activeDisposers.delete(workspaceId);
+    owners.delete(owner);
+    if (owners.size === 0) activeOwners.delete(workspaceId);
   };
+};
+
+export const prepareWorkspaceSignOut = async (workspaceId: string) => {
+  const owners = activeOwners.get(workspaceId);
+  if (!owners?.size) throw new Error('Workspace is not ready');
+  await Promise.all(Array.from(owners, (owner) => owner.prepareSignOut()));
 };
 
 export const commitLegacyWorkspaceYDoc = async (persistence: IndexeddbPersistence, doc: Y.Doc) => {
@@ -37,7 +44,7 @@ export const commitLegacyWorkspaceYDoc = async (persistence: IndexeddbPersistenc
 };
 
 export const clearWorkspaceYDocData = async (workspaceId: string) => {
-  await Promise.all(Array.from(activeDisposers.get(workspaceId) ?? [], (dispose) => dispose()));
+  await Promise.all(Array.from(activeOwners.get(workspaceId) ?? [], (owner) => owner.dispose()));
   await new Promise<void>((resolve, reject) => {
     const request = indexedDB.deleteDatabase(buildWorkspaceYDocName(workspaceId));
     request.onsuccess = () => resolve();
