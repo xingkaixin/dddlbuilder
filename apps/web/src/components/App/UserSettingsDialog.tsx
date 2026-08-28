@@ -37,14 +37,6 @@ interface UserSettingsDialogProps {
 type SettingsTab = 'account' | 'workspace' | 'credits';
 const LEDGER_PAGE_SIZE = 20;
 
-const parseLedgerDate = (value: string) => {
-  const normalized =
-    /(?:Z|[+-]\d{2}:\d{2})$/.test(value) || value.includes('GMT')
-      ? value
-      : `${value.replace(' ', 'T')}Z`;
-  return new Date(normalized);
-};
-
 const toLedgerBoundary = (value: string, endOfDay = false) => {
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) {
@@ -56,18 +48,14 @@ const toLedgerBoundary = (value: string, endOfDay = false) => {
   return date.toISOString();
 };
 
-const formatLedgerTime = (value: string) => {
-  const date = parseLedgerDate(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
+const formatLedgerTime = (value: number) => {
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(date);
+  }).format(value);
 };
 
 const formatCompactCredits = (value: number | null | undefined, locale: AppLocale) => {
@@ -161,6 +149,8 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   }, [ledgerEndDate, ledgerPage, ledgerStartDate]);
   const ledgerQuery = useQuery({
     ...creditLedgerOptions(authSession.userId ?? '', ledgerFilters),
+    placeholderData: (previous, query) =>
+      query?.queryKey[1] === authSession.userId ? previous : undefined,
     enabled: open && authSession.status === 'signed_in' && Boolean(authSession.userId),
   });
   const ledgerItems = ledgerQuery.data?.items ?? [];
@@ -432,7 +422,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                       </Button>
                     </div>
                   </div>
-                  {loadingLedger ? (
+                  {ledgerQuery.isPending ? (
                     <div className="text-sm text-muted-foreground">{t('settings.loading')}</div>
                   ) : ledgerError ? (
                     <div className="text-sm text-destructive">{ledgerError}</div>
@@ -440,7 +430,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                     <div className="text-sm text-muted-foreground">{t('settings.noHistory')}</div>
                   ) : (
                     <div className="max-h-72 overflow-auto rounded-lg border">
-                      <table className="min-w-full text-sm">
+                      <table className="min-w-full text-sm" aria-busy={loadingLedger}>
                         <thead className="bg-muted/40 text-left">
                           <tr>
                             <th className="px-3 py-2">{t('settings.time')}</th>

@@ -7,7 +7,7 @@ export type CreditLedgerItem = {
   source: 'signup_bonus' | 'ai_generate' | 'ai_review' | 'ai_explain' | 'manual_adjustment';
   amount: number;
   balanceAfter: number;
-  createdAt: string;
+  createdAt: number;
   metadataJson?: string | null;
 };
 
@@ -58,14 +58,23 @@ export async function fetchCreditLedger(
     signal,
   });
   const payload = (await response.json().catch(() => null)) as
-    | (ApiErrorPayload & Partial<CreditLedgerPage>)
+    | (ApiErrorPayload & {
+        items?: Array<Omit<CreditLedgerItem, 'createdAt'> & { createdAt: string }>;
+        total?: number;
+      })
     | null;
   if (!response.ok) {
     throw new ApiError(payload?.error ?? 'Failed to load credit ledger', response.status);
   }
 
   return {
-    items: Array.isArray(payload?.items) ? payload.items : [],
+    items: Array.isArray(payload?.items)
+      ? payload.items.map((item) => {
+          const createdAt = Date.parse(item.createdAt);
+          if (!Number.isFinite(createdAt)) throw new Error('Invalid credit ledger timestamp');
+          return { ...item, createdAt };
+        })
+      : [],
     total: Number.isFinite(payload?.total) ? Number(payload?.total) : 0,
   };
 }
