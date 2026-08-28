@@ -8,7 +8,7 @@ import type {
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import { DEFAULT_DRAFT_ID, listSavedDrafts } from '@/utils/workspaceStateDb';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
-import { getWorkspaceBootstrap, resetWorkspaceBootstrapCache } from './bootstrap';
+import { getWorkspaceBootstrap } from './bootstrap';
 import {
   collectBootstrapDrafts,
   pickInitialDraft,
@@ -42,7 +42,6 @@ export function useWorkspaceSnapshotRefresh({
     let cancelled = false;
     const handleSnapshotApplied = () => {
       void (async () => {
-        resetWorkspaceBootstrapCache();
         const bootstrap = await getWorkspaceBootstrap(currentScope);
         const savedDrafts = await listSavedDrafts(currentScope);
         if (cancelled) return;

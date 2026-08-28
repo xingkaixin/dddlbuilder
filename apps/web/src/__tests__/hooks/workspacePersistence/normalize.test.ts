@@ -6,7 +6,6 @@ import {
   isSameWorkspaceSelection,
   isSameWorkspaceSource,
   isWorkspaceSource,
-  normalizeGlobalDraftRecord,
   normalizePersistedState,
   normalizeWorkspaceSession,
   resolveUniqueDraftName,
@@ -266,33 +265,6 @@ describe('workspacePersistence/normalize', () => {
       createdAt: 123,
       updatedAt: 456,
     });
-  });
-
-  it('normalizeGlobalDraftRecord 应校验 state 并处理默认 updatedAt', () => {
-    vi.spyOn(Date, 'now').mockReturnValue(1234567890);
-
-    const valid = normalizeGlobalDraftRecord({
-      updatedAt: 'x',
-      state: {
-        schemaName: '',
-        tableName: 'users',
-        tableComment: '',
-        dbType: 'mysql',
-        rows: [],
-        addCount: 10,
-        indexInput: '',
-        currentIndexFields: [],
-        indexes: [],
-        authInput: '',
-        authObjects: [],
-      },
-    });
-
-    expect(valid?.updatedAt).toBe(1234567890);
-    expect(valid?.state.tableName).toBe('users');
-
-    expect(normalizeGlobalDraftRecord({ state: null })).toBeNull();
-    expect(normalizeGlobalDraftRecord('x')).toBeNull();
   });
 
   it('normalizeWorkspaceSession 应校验 activeSource 并规范 activeState', () => {

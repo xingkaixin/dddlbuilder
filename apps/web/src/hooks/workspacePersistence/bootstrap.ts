@@ -5,16 +5,9 @@ import {
 } from '@/utils/workspaceStateDb';
 import { getAnonymousWorkspaceScope, getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 
-export type WorkspaceBootstrapRaw = {
-  globalDraft: unknown;
-  drafts: Array<{ draftId: string; record: unknown }>;
-  session: unknown;
-  savedTable: unknown;
-};
+export type WorkspaceBootstrap = Awaited<ReturnType<typeof readWorkspaceBootstrap>>;
 
-const WORKSPACE_BOOTSTRAP_CACHE_TTL_MS = 50;
-
-const loadWorkspaceBootstrap = async (scope: WorkspaceScope): Promise<WorkspaceBootstrapRaw> => {
+const loadWorkspaceBootstrap = async (scope: WorkspaceScope): Promise<WorkspaceBootstrap> => {
   const initial = await readWorkspaceBootstrap(scope).catch(() => ({
     globalDraft: null,
     drafts: [],
@@ -37,43 +30,18 @@ const loadWorkspaceBootstrap = async (scope: WorkspaceScope): Promise<WorkspaceB
   }));
 };
 
-const workspaceBootstrapPromises = new Map<string, Promise<WorkspaceBootstrapRaw>>();
-let workspaceBootstrapCache: WorkspaceBootstrapRaw | null = null;
-let workspaceBootstrapCacheAt = 0;
-let workspaceBootstrapCacheScopeKey = '';
-
-export const resetWorkspaceBootstrapCache = () => {
-  workspaceBootstrapPromises.clear();
-  workspaceBootstrapCache = null;
-  workspaceBootstrapCacheAt = 0;
-  workspaceBootstrapCacheScopeKey = '';
-};
+const workspaceBootstrapPromises = new Map<string, Promise<WorkspaceBootstrap>>();
 
 export const getWorkspaceBootstrap = (scope: WorkspaceScope = getAnonymousWorkspaceScope()) => {
   const scopeKey = getWorkspaceScopeStorageKey(scope);
-  if (
-    workspaceBootstrapCache &&
-    workspaceBootstrapCacheScopeKey === scopeKey &&
-    Date.now() - workspaceBootstrapCacheAt < WORKSPACE_BOOTSTRAP_CACHE_TTL_MS
-  ) {
-    return Promise.resolve(workspaceBootstrapCache);
-  }
-
   const existingPromise = workspaceBootstrapPromises.get(scopeKey);
   if (existingPromise) {
     return existingPromise;
   }
 
-  const promise = loadWorkspaceBootstrap(scope)
-    .then((value) => {
-      workspaceBootstrapCache = value;
-      workspaceBootstrapCacheAt = Date.now();
-      workspaceBootstrapCacheScopeKey = scopeKey;
-      return value;
-    })
-    .finally(() => {
-      workspaceBootstrapPromises.delete(scopeKey);
-    });
+  const promise = loadWorkspaceBootstrap(scope).finally(() => {
+    workspaceBootstrapPromises.delete(scopeKey);
+  });
   workspaceBootstrapPromises.set(scopeKey, promise);
   return promise;
 };

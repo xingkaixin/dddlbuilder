@@ -89,18 +89,6 @@ export const buildDraftSummary = (
   trashedAt,
 });
 
-export const normalizeGlobalDraftRecord = (value: unknown): GlobalDraftRecord | null => {
-  if (!isRecord(value)) return null;
-  const state = normalizePersistedState(value.state);
-  if (!state) return null;
-
-  return {
-    createdAt: toNumber(value.createdAt, toNumber(value.updatedAt, Date.now())),
-    updatedAt: toNumber(value.updatedAt, Date.now()),
-    state,
-  };
-};
-
 export const normalizeWorkspaceSession = (value: unknown): WorkspaceSessionRecord | null => {
   if (!isRecord(value)) return null;
   if (!isWorkspaceSource(value.activeSource)) return null;

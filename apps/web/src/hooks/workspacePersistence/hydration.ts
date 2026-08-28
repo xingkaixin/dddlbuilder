@@ -9,7 +9,8 @@ import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { DEFAULT_DRAFT_ID, type WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
-import { buildDraftSummary, normalizeGlobalDraftRecord, type GlobalDraftRecord } from './normalize';
+import { buildDraftSummary, type GlobalDraftRecord } from './normalize';
+import type { WorkspaceBootstrap } from './bootstrap';
 
 export type DraftEntry = { draftId: string; record: GlobalDraftRecord };
 
@@ -45,27 +46,13 @@ export const pickInitialDraft = (drafts: DraftEntry[]): DraftEntry | null =>
   )[0] ??
   null;
 
-export const collectBootstrapDrafts = (bootstrap: {
-  globalDraft: unknown;
-  drafts: Array<{ draftId: string; record: unknown }>;
-}): DraftEntry[] => {
-  const entries: DraftEntry[] = [];
-  const defaultRecord = normalizeGlobalDraftRecord(bootstrap.globalDraft);
-  if (defaultRecord) {
-    entries.push({ draftId: DEFAULT_DRAFT_ID, record: defaultRecord });
-  }
-  if (!Array.isArray(bootstrap.drafts)) return entries;
-
-  for (const item of bootstrap.drafts) {
-    if (!item || typeof item.draftId !== 'string' || item.draftId === DEFAULT_DRAFT_ID) continue;
-    if (!item.record || typeof item.record !== 'object') continue;
-    const record = normalizeGlobalDraftRecord(item.record);
-    if (record) {
-      entries.push({ draftId: item.draftId, record });
-    }
-  }
-  return entries;
-};
+export const collectBootstrapDrafts = ({
+  globalDraft,
+  drafts,
+}: Pick<WorkspaceBootstrap, 'globalDraft' | 'drafts'>): DraftEntry[] => [
+  ...(globalDraft ? [{ draftId: DEFAULT_DRAFT_ID, record: globalDraft }] : []),
+  ...drafts.filter(({ draftId }) => draftId !== DEFAULT_DRAFT_ID),
+];
 
 export const toHydrationSavedTable = (
   value: unknown,

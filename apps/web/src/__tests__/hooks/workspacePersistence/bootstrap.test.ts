@@ -28,7 +28,6 @@ const createBootstrapMock = async (options?: {
   const mod = await import('@/hooks/workspacePersistence/bootstrap');
   return {
     getWorkspaceBootstrap: mod.getWorkspaceBootstrap,
-    resetWorkspaceBootstrapCache: mod.resetWorkspaceBootstrapCache,
     readWorkspaceBootstrap,
     migrateLegacyWorkspaceFromLocalStorage,
   };
@@ -150,10 +149,7 @@ describe('workspacePersistence/bootstrap', () => {
     });
   });
 
-  it('TTL 内应命中缓存，过期后应重新读取', async () => {
-    let now = 1000;
-    vi.spyOn(Date, 'now').mockImplementation(() => now);
-
+  it('completed reads are not cached even within the same millisecond', async () => {
     const { getWorkspaceBootstrap, readWorkspaceBootstrap } = await createBootstrapMock({
       readImpl: vi
         .fn()
@@ -170,70 +166,8 @@ describe('workspacePersistence/bootstrap', () => {
           savedTable: null,
         }),
     });
-
-    const first = await getWorkspaceBootstrap();
-    const second = await getWorkspaceBootstrap();
-
-    expect(first).toEqual({
-      globalDraft: { v: 1 },
-      drafts: [],
-      session: null,
-      savedTable: null,
-    });
-    expect(second).toEqual({
-      globalDraft: { v: 1 },
-      drafts: [],
-      session: null,
-      savedTable: null,
-    });
-    expect(readWorkspaceBootstrap).toHaveBeenCalledTimes(1);
-
-    now += 60;
-    const third = await getWorkspaceBootstrap();
-    expect(third).toEqual({
-      globalDraft: { v: 2 },
-      drafts: [],
-      session: null,
-      savedTable: null,
-    });
-    expect(readWorkspaceBootstrap).toHaveBeenCalledTimes(2);
-  });
-
-  it('resetWorkspaceBootstrapCache 应清空 TTL 缓存并允许立即重读', async () => {
-    const { getWorkspaceBootstrap, resetWorkspaceBootstrapCache, readWorkspaceBootstrap } =
-      await createBootstrapMock({
-        readImpl: vi
-          .fn()
-          .mockResolvedValueOnce({
-            globalDraft: { v: 1 },
-            drafts: [],
-            session: null,
-            savedTable: null,
-          })
-          .mockResolvedValueOnce({
-            globalDraft: { v: 2 },
-            drafts: [],
-            session: null,
-            savedTable: null,
-          }),
-      });
-
-    const first = await getWorkspaceBootstrap();
-    resetWorkspaceBootstrapCache();
-    const second = await getWorkspaceBootstrap();
-
-    expect(first).toEqual({
-      globalDraft: { v: 1 },
-      drafts: [],
-      session: null,
-      savedTable: null,
-    });
-    expect(second).toEqual({
-      globalDraft: { v: 2 },
-      drafts: [],
-      session: null,
-      savedTable: null,
-    });
+    expect((await getWorkspaceBootstrap()).globalDraft).toEqual({ v: 1 });
+    expect((await getWorkspaceBootstrap()).globalDraft).toEqual({ v: 2 });
     expect(readWorkspaceBootstrap).toHaveBeenCalledTimes(2);
   });
 

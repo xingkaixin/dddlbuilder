@@ -56,6 +56,13 @@ const savedTable: HydrationSavedTable = {
 const noSavedTable = () => null;
 
 describe('workspacePersistence/hydration', () => {
+  it('preserves draft folder and trash metadata during bootstrap', () => {
+    const draft = createDraft('a', 'draft', 1);
+    draft.record.folderId = 'folder-1';
+    draft.record.trashedAt = 42;
+    const [result] = collectBootstrapDrafts({ globalDraft: null, drafts: [draft] });
+    expect(result.record).toMatchObject({ folderId: 'folder-1', trashedAt: 42 });
+  });
   it('pickInitialDraft 应优先 default draft，否则取最新创建的', () => {
     const drafts = [createDraft('a', 'a', 100), createDraft('default', 'd', 1)];
     expect(pickInitialDraft(drafts)?.draftId).toBe('default');
@@ -65,27 +72,17 @@ describe('workspacePersistence/hydration', () => {
     expect(pickInitialDraft([])).toBeNull();
   });
 
-  it('collectBootstrapDrafts 应合并 globalDraft 与其他草稿并跳过非法项', () => {
+  it('collectBootstrapDrafts 应合并 globalDraft 与其他草稿并保留记录', () => {
     const drafts = collectBootstrapDrafts({
       globalDraft: { state: createState('global'), createdAt: 1, updatedAt: 2 },
       drafts: [
         { draftId: 'default', record: { state: createState('dup'), updatedAt: 3 } },
         { draftId: 'a', record: { state: createState('a'), updatedAt: 3 } },
-        { draftId: 'broken', record: { state: null } },
-        { draftId: 'missing', record: null },
       ],
     });
 
     expect(drafts.map((draft) => draft.draftId)).toEqual(['default', 'a']);
     expect(drafts[0].record.state.tableName).toBe('global');
-  });
-
-  it('collectBootstrapDrafts 在 drafts 非数组时应只返回 globalDraft', () => {
-    const drafts = collectBootstrapDrafts({
-      globalDraft: { state: createState('global'), updatedAt: 2 },
-      drafts: undefined as unknown as [],
-    });
-    expect(drafts).toHaveLength(1);
   });
 
   it('toDraftSummary 应从记录派生摘要', () => {

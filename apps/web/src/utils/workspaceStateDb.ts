@@ -115,6 +115,7 @@ const toDraftRecord = (entity: WorkspaceDraftEntity): WorkspaceDraftRecord | nul
         createdAt: entity.createdAt ?? entity.updatedAt,
         updatedAt: entity.updatedAt,
         folderId: entity.folderId,
+        trashedAt: entity.trashedAt,
       }
     : null;
 };
@@ -205,9 +206,7 @@ export const listTrashedDrafts = async (
     .filter((entity) => entity.trashedAt != null)
     .flatMap((entity) => {
       const record = toDraftRecord(entity);
-      return record
-        ? [{ draftId: entity.id, record: { ...record, trashedAt: entity.trashedAt } }]
-        : [];
+      return record ? [{ draftId: entity.id, record }] : [];
     })
     .sort((a, b) => (b.record.trashedAt ?? 0) - (a.record.trashedAt ?? 0));
 

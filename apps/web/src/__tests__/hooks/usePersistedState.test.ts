@@ -8,7 +8,6 @@ import * as Y from 'yjs';
 import { usePersistedState } from '@/hooks';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
-import { resetWorkspaceBootstrapCache } from '@/hooks/workspacePersistence/bootstrap';
 import { STORAGE_KEY } from '@/utils/constants';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
@@ -315,7 +314,6 @@ describe('usePersistedState', () => {
 
   beforeEach(() => {
     setupFakeIndexedDB();
-    resetWorkspaceBootstrapCache();
     localStorageMock.clear();
     vi.clearAllMocks();
     vi.mocked(useAuthSession).mockReturnValue({
@@ -352,7 +350,6 @@ describe('usePersistedState', () => {
   });
 
   afterEach(() => {
-    resetWorkspaceBootstrapCache();
     teardownFakeIndexedDB();
     vi.restoreAllMocks();
   });
