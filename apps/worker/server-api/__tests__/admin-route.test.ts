@@ -1006,6 +1006,46 @@ describe('/api/admin/*', () => {
       });
     });
 
+    it('passes Idempotency-Key header through to the credit ledger', async () => {
+      const applyCreditMutation = vi.fn().mockResolvedValue({
+        id: 'ledger-1',
+        balanceAfter: 15000,
+      });
+      vi.doMock('../lib/adminAuth.js', () => ({
+        createAdminSession: vi.fn(),
+        resolveAdminSession: vi.fn().mockResolvedValue(true),
+        deleteAdminSession: vi.fn(),
+      }));
+      vi.doMock('../lib/credits.js', () => ({
+        applyCreditMutation,
+        listCreditLedger: vi.fn(),
+      }));
+
+      const app = await createAdminApp();
+      const response = await app.fetch(
+        createRequest('/api/admin/users/user-1/credits', {
+          method: 'POST',
+          headers: {
+            Cookie: 'ddlbuilder_admin_session=valid-token',
+            'content-type': 'application/json',
+            'Idempotency-Key': 'retry-token-1',
+          },
+          body: JSON.stringify({ amount: 5000 }),
+        }),
+        createEnv({
+          USER_DB: mockD1Results([{ id: 'user-1' }]) as unknown as D1Database,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(applyCreditMutation).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          idempotencyKey: 'admin_grant:user-1:retry-token-1',
+        }),
+      );
+    });
+
     it('returns 503 without leaking internal error when credit operation fails', async () => {
       vi.doMock('../lib/adminAuth.js', () => ({
         createAdminSession: vi.fn(),

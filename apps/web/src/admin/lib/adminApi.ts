@@ -131,7 +131,10 @@ export const grantUserCredits = async (
 ): Promise<number> => {
   const result = await adminFetch<{ newBalance: number }>(`/users/${userId}/credits`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      'Idempotency-Key': crypto.randomUUID(),
+    },
     body: JSON.stringify({ amount, note }),
   });
   return result.newBalance;

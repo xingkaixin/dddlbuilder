@@ -196,12 +196,17 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 404, 'User not found');
     }
 
+    const clientKey = c.req.header('Idempotency-Key')?.trim();
+    if (clientKey && clientKey.length > 128) {
+      return errorResponse(c, 400, 'Idempotency-Key too long');
+    }
+
     const ledger = await applyCreditMutation(c.env, {
       userId,
       kind: 'grant',
       source: 'manual_adjustment',
       amount,
-      idempotencyKey: `admin_grant:${userId}:${crypto.randomUUID()}`,
+      idempotencyKey: `admin_grant:${userId}:${clientKey ?? crypto.randomUUID()}`,
       metadata: {
         adminAction: 'manual_credit_grant',
         ...(body.note ? { adminNote: body.note } : {}),
