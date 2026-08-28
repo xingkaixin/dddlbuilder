@@ -421,10 +421,11 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
     const { state, store } = createDurableObjectState();
+    const storageValueLimit = 2 * 1024 * 1024;
     vi.mocked(
       state.storage.put as (key: string, value: unknown) => Promise<void>,
     ).mockImplementation(async (key, value) => {
-      if (value instanceof Uint8Array && value.byteLength > 2 * 1024 * 1024) {
+      if (value instanceof Uint8Array && value.byteLength > storageValueLimit) {
         throw new Error('SQLITE_TOOBIG');
       }
       store.set(key, value);
@@ -434,7 +435,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       drafts: [],
       savedDrafts: [],
       folders: [],
-      savedTables: Array.from({ length: 50 }, (_, table) => ({
+      savedTables: Array.from({ length: 2 }, (_, table) => ({
         tableId: `table-${table}`,
         normalizedName: `table_${table}`,
         name: `table_${table}`,
@@ -442,11 +443,12 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         updatedAt: 1,
         state: {
           ...createState(`table_${table}`),
-          rows: Array.from({ length: 100 }, (_, row) => ({
+          rows: Array.from({ length: 2 }, (_, row) => ({
             id: `row-${row}`,
             fieldName: `column_${row}`,
             fieldType: 'varchar(255)',
-            fieldComment: 'x'.repeat(64),
+            // Exercise the byte limit without creating thousands of CRDT records.
+            fieldComment: `${table}:${row}:${'x'.repeat(storageValueLimit / 4)}`,
             nullable: true,
             defaultKind: 'none',
             defaultValue: '',
@@ -467,7 +469,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     try {
       const response = await cold.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
       const bytes = new Uint8Array(await response.arrayBuffer());
-      expect(bytes.byteLength).toBeGreaterThan(2 * 1024 * 1024);
+      expect(bytes.byteLength).toBeGreaterThan(storageValueLimit);
       Y.applyUpdate(restored, bytes);
       const tables = exportWorkspaceYDocToSnapshot(restored).savedTables;
       expect(Object.fromEntries(tables.map((table) => [table.tableId, table.state.rows]))).toEqual(
