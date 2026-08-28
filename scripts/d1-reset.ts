@@ -1,4 +1,4 @@
-import { resetSqlPath, runAllMigrations, runD1Execute, seedSqlPath } from './d1-utils';
+import { resetDatabase, runD1Execute, runPendingMigrations, seedSqlPath } from './d1-utils';
 
 if (process.argv.slice(2).includes('--remote')) {
   console.error('[d1] reset 只允许本地数据库，拒绝执行 --remote');
@@ -6,6 +6,6 @@ if (process.argv.slice(2).includes('--remote')) {
 }
 
 console.log('[d1] resetting local database');
-runD1Execute('local', { file: resetSqlPath });
-runAllMigrations('local');
+resetDatabase('local');
+runPendingMigrations('local');
 runD1Execute('local', { file: seedSqlPath });

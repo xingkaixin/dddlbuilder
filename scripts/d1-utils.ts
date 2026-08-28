@@ -29,7 +29,6 @@ export const REQUIRED_RUNTIME_TABLES = [
 export const getWranglerConfigPath = (mode: D1Mode) =>
   mode === 'remote' ? 'apps/worker/wrangler.deploy.toml' : 'apps/worker/wrangler.toml';
 export const migrationDir = path.join(repoRoot, 'packages', 'db', 'migrations');
-export const resetSqlPath = path.join(repoRoot, 'sql', 'reset-user-system.sql');
 export const seedSqlPath = path.join(repoRoot, 'packages', 'db', 'seeds', 'user-system.local.sql');
 export const localPersistDir =
   process.env.WRANGLER_PERSIST_DIR ?? path.join('.wrangler', 'state', 'dev');
@@ -165,6 +164,27 @@ export const baselineExistingMigrations = (mode: D1Mode, throughName: string): v
   }
   for (const file of migrations.slice(0, throughIndex + 1)) {
     recordMigration(mode, path.basename(file));
+  }
+};
+
+export const resetDatabase = (mode: D1Mode): void => {
+  // 反创建序返回：子表的 FK 父表总是创建得更早，倒序 drop 即合法依赖序
+  const rows = queryD1Rows<{ type: string; name: string }>(
+    mode,
+    `
+      SELECT type, name
+      FROM sqlite_master
+      WHERE type IN ('table', 'trigger') AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'
+      ORDER BY rowid DESC
+    `,
+  );
+  const dropStatement = ({ type, name }: { type: string; name: string }) =>
+    `DROP ${type.toUpperCase()} IF EXISTS "${name}"`;
+  const triggers = rows.filter(({ type }) => type === 'trigger');
+  const tables = rows.filter(({ type }) => type === 'table');
+  for (const statement of [...triggers, ...tables].map(dropStatement)) {
+    // 逐条执行：打包成单条多语句时，父表先删会触发后续语句对 FK 父表的解析失败
+    runD1Execute(mode, { command: statement });
   }
 };
 

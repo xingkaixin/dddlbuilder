@@ -38,7 +38,7 @@ INSERT OR IGNORE INTO credit_accounts (
   version
 ) VALUES (
   'usr_local_seed',
-  100000,
+  0,
   1
 );
 
