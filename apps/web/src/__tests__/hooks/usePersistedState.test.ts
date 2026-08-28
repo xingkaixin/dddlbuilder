@@ -730,6 +730,55 @@ describe('usePersistedState', () => {
     useEditorStore.getState().resetDocument();
   });
 
+  it('accepts a remote revert after a local draft write has completed', async () => {
+    const doc = new Y.Doc();
+    const remote = new Y.Doc();
+    const base = createState('users');
+    upsertDraftInYDoc(doc, 'default', { state: base, updatedAt: 1 });
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    mockSignedInWorkspaceYDoc(doc);
+    useEditorStore.getState().replaceDocument(base);
+    const getCurrentState = () => toPersistedState(useEditorStore.getState());
+    const { wrapper } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(
+      () => {
+        const persistence = usePersistedState();
+        const editor = useEditorStore();
+        const currentState = useMemo(() => toPersistedState(editor), [editor]);
+        usePersistedSync({
+          hydrated: persistence.hydrated,
+          enabled: true,
+          persistedState: persistence.persistedState,
+          activeSource: persistence.activeSource,
+          saveState: persistence.saveState,
+          currentState,
+          getCurrentState,
+          applyPersistedState: editor.replaceDocument,
+        });
+        return persistence;
+      },
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    await act(async () => useEditorStore.getState().setTableComment('local edit'));
+    expect(getDraftRecordFromYDoc(doc, 'default')?.state.tableComment).toBe('local edit');
+    await act(async () => {
+      Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+      upsertDraftInYDoc(remote, 'default', {
+        state: { ...base, tableComment: '' },
+        updatedAt: 2,
+      });
+      Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote');
+    });
+    expect(useEditorStore.getState().tableComment).toBe('');
+    expect(getDraftRecordFromYDoc(doc, 'default')?.state.tableComment).toBe('');
+    unmount();
+    doc.destroy();
+    remote.destroy();
+    useEditorStore.getState().resetDocument();
+  });
+
   it('本地 YDoc 保存回声应保留当前编辑态入口', async () => {
     const doc = new Y.Doc();
     mockSignedInWorkspaceYDoc(doc);

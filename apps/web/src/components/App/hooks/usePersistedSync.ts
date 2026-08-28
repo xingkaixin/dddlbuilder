@@ -38,21 +38,25 @@ export function usePersistedSync({
     activeSource.kind === 'draft' ? sourceId : `${sourceId}:${activeSource.baseSignature}`;
   const currentSaveKey = `${sourceVersion}:${currentSignature}`;
 
+  const saveSnapshot = useCallback(
+    (state: PersistedState, saveKey: string) => {
+      if (!hydrated || !enabled) return;
+      if (pendingAppliedStateRef.current?.sourceId === sourceId) return;
+      if (lastSavedKeyRef.current === saveKey) return;
+      saveState({ state, source: activeSource });
+      lastSavedKeyRef.current = saveKey;
+    },
+    [activeSource, enabled, hydrated, saveState, sourceId],
+  );
+
   const saveCurrentState = useCallback(() => {
     if (!hydrated || !enabled) return;
-    const pendingAppliedState = pendingAppliedStateRef.current;
-    if (pendingAppliedState?.sourceId === sourceId) return;
     const latestState = getCurrentState();
-    const latestSignature = serializePersistedStateForComparison(latestState);
-    const latestSaveKey = `${sourceVersion}:${latestSignature}`;
-    if (lastSavedKeyRef.current === latestSaveKey) return;
-
-    saveState({
-      state: latestState,
-      source: activeSource,
-    });
-    lastSavedKeyRef.current = latestSaveKey;
-  }, [activeSource, getCurrentState, enabled, hydrated, saveState, sourceId, sourceVersion]);
+    saveSnapshot(
+      latestState,
+      `${sourceVersion}:${serializePersistedStateForComparison(latestState)}`,
+    );
+  }, [enabled, getCurrentState, hydrated, saveSnapshot, sourceVersion]);
 
   useLayoutEffect(() => {
     if (!hydrated || !enabled || !persistedState) return;
@@ -73,8 +77,8 @@ export function usePersistedSync({
         lastSavedKeyRef.current = currentSaveKey;
       }
     }
-    saveCurrentState();
-  });
+    saveSnapshot(currentState, currentSaveKey);
+  }, [currentSaveKey, currentSignature, currentState, saveSnapshot, sourceId]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {

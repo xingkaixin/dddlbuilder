@@ -89,6 +89,35 @@ const SessionProbe = () => {
 };
 
 describe('AuthSessionProvider', () => {
+  it('keeps an anonymous session resolved during a background refresh', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response(JSON.stringify({ signedIn: false, user: null }), { status: 200 }),
+      );
+    render(
+      <AuthSessionProvider>
+        <SessionProbe />
+      </AuthSessionProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('signed_out'));
+    let finish!: (response: Response) => void;
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    fireEvent.click(screen.getByTestId('refresh-session'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const refreshingStatus = screen.getByTestId('status').textContent;
+    await act(async () =>
+      finish(new Response(JSON.stringify({ signedIn: false, user: null }), { status: 200 })),
+    );
+    expect(refreshingStatus).toBe('signed_out');
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     setupMemoryLocalStorage();

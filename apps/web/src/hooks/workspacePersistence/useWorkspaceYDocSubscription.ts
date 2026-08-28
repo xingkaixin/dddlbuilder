@@ -12,7 +12,6 @@ import {
 import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import {
-  getDraftRecordFromYDoc,
   getSavedDraftFromYDoc,
   getSavedTableFromYDoc,
   getStateForWorkspaceSource,
@@ -22,14 +21,12 @@ import {
   subscribeWorkspaceYDoc,
   type WorkspaceYDocChange,
   WorkspaceYDocOrigin,
-  upsertDraftInYDoc,
   upsertSavedDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import { pickInitialDraft, type DraftEntry } from './hydration';
-import { mergeSchemaStates } from '@/services/schemaStateMerge';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
-import { isSameWorkspaceSource, type GlobalDraftRecord } from './normalize';
+import { isSameWorkspaceSource } from './normalize';
 
 export interface PendingLocalSave {
   source: WorkspaceSelection;
@@ -51,7 +48,6 @@ interface UseWorkspaceYDocSubscriptionParams {
   replaceDrafts: (drafts: DraftEntry[]) => void;
   replaceTrashedDrafts: (drafts: DraftEntry[]) => void;
   replaceSavedTableDrafts: (records: Map<string, SavedTableDraftRecord>) => void;
-  cacheDraftRecord: (draftId: string, record: GlobalDraftRecord) => void;
   applyYDocState: (state: SchemaDocumentState) => void;
   setPersistedStateIfChanged: (state: PersistedState | null) => void;
   syncActiveSource: (source: WorkspaceSelection) => void;
@@ -70,7 +66,6 @@ export function useWorkspaceYDocSubscription({
   replaceDrafts,
   replaceTrashedDrafts,
   replaceSavedTableDrafts,
-  cacheDraftRecord,
   applyYDocState,
   setPersistedStateIfChanged,
   syncActiveSource,
@@ -125,45 +120,6 @@ export function useWorkspaceYDocSubscription({
         }
       }
 
-      const reconcileDraftState = (nextState: PersistedState) => {
-        const lastLocalSave = lastLocalSaveRef.current;
-        if (
-          !lastLocalSave ||
-          source.kind !== 'draft' ||
-          !isSameWorkspaceSource(lastLocalSave.source, source)
-        ) {
-          return nextState;
-        }
-        if (isSameState(nextState, lastLocalSave.localState)) {
-          lastLocalSaveRef.current = null;
-          return nextState;
-        }
-        const merged = mergeSchemaStates(
-          lastLocalSave.baseState,
-          lastLocalSave.localState,
-          nextState,
-        );
-        if (isSameState(merged, nextState)) return nextState;
-
-        const existingRecord = getDraftRecordFromYDoc(yDoc, source.draftId);
-        const draftRecord: GlobalDraftRecord = {
-          createdAt: existingRecord?.createdAt ?? Date.now(),
-          updatedAt: Date.now(),
-          state: merged,
-          folderId: existingRecord?.folderId,
-        };
-        cacheDraftRecord(source.draftId, draftRecord);
-        runInYDoc(() =>
-          upsertDraftInYDoc(yDoc, source.draftId, draftRecord, { compactSnapshotBase: true }),
-        );
-        lastLocalSaveRef.current = {
-          source,
-          baseState: nextState,
-          localState: merged,
-        };
-        return merged;
-      };
-
       if (source.kind === 'saved_table') {
         const savedDraft = getSavedDraftFromYDoc(yDoc, source);
         const savedTable = getSavedTableFromYDoc(yDoc, source);
@@ -214,7 +170,7 @@ export function useWorkspaceYDocSubscription({
           const editorState = persistedStateRef.current
             ? withEditorSession(nextState, toEditorSessionState(persistedStateRef.current))
             : withDefaultEditorSession(nextState);
-          applyYDocState(reconcileDraftState(editorState));
+          applyYDocState(editorState);
           return;
         }
       }
@@ -240,7 +196,6 @@ export function useWorkspaceYDocSubscription({
   }, [
     activeSourceRef,
     applyYDocState,
-    cacheDraftRecord,
     getDraftEntries,
     lastLocalSaveRef,
     persistedStateRef,

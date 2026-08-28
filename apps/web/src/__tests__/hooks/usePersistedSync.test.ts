@@ -49,6 +49,17 @@ const createBaseParams = (overrides: Partial<PersistedSyncParams> = {}): Persist
 };
 
 describe('usePersistedSync', () => {
+  it('does not rebuild a snapshot for unrelated renders', () => {
+    const state = createState('users');
+    const getCurrentState = vi.fn(() => state);
+    const params = createBaseParams({ currentState: state, getCurrentState });
+    const { rerender } = renderHook((props) => usePersistedSync(props), { initialProps: params });
+    rerender({ ...params });
+    expect(getCurrentState).not.toHaveBeenCalled();
+    act(() => window.dispatchEvent(new Event('pagehide')));
+    expect(getCurrentState).toHaveBeenCalledOnce();
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
   });

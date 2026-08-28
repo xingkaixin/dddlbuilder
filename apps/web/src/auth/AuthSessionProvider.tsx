@@ -183,7 +183,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
     const status = currentUser
       ? 'signed_in'
-      : currentUserQuery.isPending || currentUserQuery.isFetching
+      : currentUserQuery.isPending
         ? 'loading'
         : 'signed_out';
     return {
@@ -212,7 +212,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     creditBalanceQuery.isError,
     creditBalanceQuery.isPending,
     currentUser,
-    currentUserQuery.isFetching,
     currentUserQuery.isPending,
     userId,
     workspaceId,

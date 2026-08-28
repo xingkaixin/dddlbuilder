@@ -136,7 +136,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     replaceTrashedDrafts,
     getDraftState,
     getDraftEntries,
-    cacheDraftRecord,
     saveDraftState,
     createDraft,
     moveDraftToTrash,
@@ -171,8 +170,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   const applyYDocState = useCallback((nextState: SchemaDocumentState) => {
     setPersistedState((previousState) => {
       if (!previousState) return withDefaultEditorSession(nextState);
-      const mergedState = withEditorSession(nextState, toEditorSessionState(previousState));
-      return isSamePersistedState(previousState, mergedState) ? previousState : mergedState;
+      return withEditorSession(nextState, toEditorSessionState(previousState));
     });
   }, []);
 
@@ -205,7 +203,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     replaceDrafts,
     replaceTrashedDrafts,
     replaceSavedTableDrafts,
-    cacheDraftRecord,
     applyYDocState,
     setPersistedStateIfChanged,
     syncActiveSource,
@@ -297,7 +294,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (!isSameWorkspaceSource(payload.source, currentSource)) {
         return;
       }
-      if (persistedStateRef.current) {
+      if (payload.source.kind === 'saved_table' && persistedStateRef.current) {
         lastLocalSaveRef.current = {
           source: payload.source,
           baseState: persistedStateRef.current,
