@@ -5,22 +5,7 @@ import { Resend } from 'resend';
 import type { ApiEnv } from './context.js';
 import { betterAuthSchema } from '@ddlbuilder/db';
 import { getUserSystemConfig } from './userSystemConfig.js';
-
-const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
-
-const parseAllowedOrigins = (raw: string | undefined) => {
-  const normalized = raw?.trim();
-  if (!normalized) {
-    return DEFAULT_ALLOWED_ORIGINS;
-  }
-
-  const origins = normalized
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  return origins.length > 0 ? origins : DEFAULT_ALLOWED_ORIGINS;
-};
+import { parseAllowedOrigins } from './env.js';
 
 const escapeHtml = (value: string) =>
   value

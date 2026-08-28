@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 
 const requestRateLimitMocks = vi.hoisted(() => ({
-  enforceRequestRateLimit: vi.fn(),
+  enforceIpRateLimit: vi.fn(),
 }));
 
 vi.mock('../lib/requestRateLimit.js', () => requestRateLimitMocks);
@@ -56,24 +56,29 @@ describe('/api/admin/*', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    requestRateLimitMocks.enforceRequestRateLimit.mockResolvedValue({
-      allowed: true,
-      limit: 5,
-      remaining: 4,
-      retryAfterSeconds: 900,
-    });
+    requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(null);
   });
 
   // ─── Session management ──────────────────────────────────────────
 
   describe('POST /api/admin/session', () => {
     it('returns 429 after the admin login limit is exhausted', async () => {
-      requestRateLimitMocks.enforceRequestRateLimit.mockResolvedValue({
-        allowed: false,
-        limit: 5,
-        remaining: 0,
-        retryAfterSeconds: 600,
-      });
+      requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: 'Too many admin login attempts',
+            code: 'RATE_LIMIT_EXCEEDED',
+            requestId: 'test-request-id',
+          }),
+          {
+            status: 429,
+            headers: {
+              'content-type': 'application/json',
+              'retry-after': '600',
+            },
+          },
+        ),
+      );
       const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/session', {

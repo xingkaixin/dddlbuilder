@@ -6,7 +6,7 @@ const betterAuthMocks = vi.hoisted(() => ({
   handler: vi.fn(),
 }));
 const requestRateLimitMocks = vi.hoisted(() => ({
-  enforceRequestRateLimit: vi.fn(),
+  enforceIpRateLimit: vi.fn(),
 }));
 
 vi.mock('../lib/betterAuth.js', () => ({
@@ -43,22 +43,17 @@ describe('/api/auth/*', () => {
     betterAuthMocks.createBetterAuth.mockReturnValue({
       handler: betterAuthMocks.handler,
     });
-    requestRateLimitMocks.enforceRequestRateLimit.mockResolvedValue({
-      allowed: true,
-      limit: 5,
-      remaining: 4,
-      retryAfterSeconds: 900,
-    });
+    requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(null);
   });
 
   describe('POST /api/auth/sign-up/email', () => {
     it('returns 429 when signup attempts are rate limited', async () => {
-      requestRateLimitMocks.enforceRequestRateLimit.mockResolvedValue({
-        allowed: false,
-        limit: 5,
-        remaining: 0,
-        retryAfterSeconds: 300,
-      });
+      requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(
+        new Response(JSON.stringify({ error: 'Too many signup attempts' }), {
+          status: 429,
+          headers: { 'retry-after': '300' },
+        }),
+      );
       const { default: app } = await import('../../api/index');
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {

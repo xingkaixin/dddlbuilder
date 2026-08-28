@@ -3,7 +3,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import { decodePersistedState } from '@ddlbuilder/workspace-core';
 import type { ApiEnv } from '../lib/context.js';
 import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
-import { enforceRequestRateLimit } from '../lib/requestRateLimit.js';
+import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
 
 const SHARE_TTL_SECONDS = 7 * 24 * 60 * 60;
 const SHARE_BODY_MAX_BYTES = 512 * 1024;
@@ -48,13 +48,8 @@ async function getShareState(kv: KVNamespace, key: string): Promise<PersistedSta
 
 export function registerShareRoutes(app: Hono<ApiEnv>) {
   app.post('/share', async (c) => {
-    const rateLimit = await enforceRequestRateLimit(c, SHARE_CREATE_RATE_LIMIT);
-    c.header('X-RateLimit-Limit', String(rateLimit.limit));
-    c.header('X-RateLimit-Remaining', String(rateLimit.remaining));
-    if (!rateLimit.allowed) {
-      c.header('Retry-After', String(rateLimit.retryAfterSeconds));
-      return errorResponse(c, 429, 'Too many share requests', 'RATE_LIMIT_EXCEEDED');
-    }
+    const limited = await enforceIpRateLimit(c, SHARE_CREATE_RATE_LIMIT, 'Too many share requests');
+    if (limited) return limited;
 
     const kv = c.env.SHARE_KV;
     if (!kv) {

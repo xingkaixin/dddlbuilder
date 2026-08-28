@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { ApiEnv } from './lib/context.js';
+import { getClientIp } from './lib/requestRateLimit.js';
 import { dispatchTelegramAuditNotification } from './lib/telegramNotifier.js';
 import { errorResponse, type ApiErrorCode } from './lib/http.js';
 import type { AIRouteKey } from './lib/aiRouteKey.js';
@@ -144,22 +145,6 @@ const computeBackoffDelayMs = (attempt: number, baseDelayMs: number, maxDelayMs:
   const exponential = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
   const jitter = 0.8 + Math.random() * 0.4;
   return Math.max(100, Math.round(exponential * jitter));
-};
-
-const getClientIp = (c: Context<ApiEnv>): string => {
-  const cfConnectingIp = c.req.header('cf-connecting-ip');
-  if (cfConnectingIp) return cfConnectingIp;
-
-  const xForwardedFor = c.req.header('x-forwarded-for');
-  if (xForwardedFor) {
-    const [first] = xForwardedFor.split(',');
-    if (first?.trim()) return first.trim();
-  }
-
-  const xRealIp = c.req.header('x-real-ip');
-  if (xRealIp) return xRealIp;
-
-  return 'unknown';
 };
 
 const getClientFingerprint = (c: Context<ApiEnv>, routeKey: AIRouteKey): string => {

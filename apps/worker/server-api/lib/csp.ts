@@ -1,15 +1,11 @@
 import type { Context } from 'hono';
 import type { ApiEnv } from './context.js';
+import { readEnvBool } from './env.js';
 
 export type CspMode = 'off' | 'report-only' | 'enforce' | 'both';
 
 const DEFAULT_CSP_POLICY =
   "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.cn https://cdn-font.hyperos.mi.com; font-src 'self' data: https://fonts.gstatic.cn https://cdn-font.hyperos.mi.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'";
-
-const readEnvBool = (value: string | undefined, fallback: boolean): boolean => {
-  if (!value) return fallback;
-  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
-};
 
 const normalizeMode = (raw: string | undefined): CspMode => {
   const value = raw?.trim().toLowerCase();

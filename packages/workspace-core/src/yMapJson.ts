@@ -3,6 +3,9 @@ import { stableStringify } from './stableStringify';
 
 export type JsonRecord = Record<string, unknown>;
 
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 export const readMap = (parent: Y.Map<any>, key: string): Y.Map<any> | null => {
   const existing = parent.get(key);
   return existing instanceof Y.Map ? existing : null;

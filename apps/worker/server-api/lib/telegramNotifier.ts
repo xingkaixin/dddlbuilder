@@ -1,4 +1,5 @@
 import type { ApiEnv } from './context.js';
+import { readEnvBool } from './env.js';
 
 type AuditNotificationPayload = {
   requestId: string;
@@ -22,12 +23,6 @@ type TelegramNotifyConfig = {
   enabled: boolean;
   botToken: string | null;
   chatId: string | null;
-};
-
-const readEnvBool = (value: string | undefined, fallback: boolean): boolean => {
-  if (!value) return fallback;
-  const normalized = value.trim().toLowerCase();
-  return ['1', 'true', 'yes', 'on'].includes(normalized);
 };
 
 const readTelegramNotifyConfig = (env: ApiEnv['Bindings']): TelegramNotifyConfig => ({

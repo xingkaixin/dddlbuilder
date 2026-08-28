@@ -4,9 +4,7 @@ import type {
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
 import { decodePersistedState, decodeWorkspaceSnapshot } from './persistedStateCodec';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+import { isRecord } from './yMapJson';
 
 const readRequiredText = (value: unknown) =>
   typeof value === 'string' && value.trim() ? value : null;

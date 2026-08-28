@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { ApiEnv } from './context.js';
+import { errorResponse } from './http.js';
 
 export type RequestRateLimitPolicy = {
   scope: string;
@@ -14,11 +15,12 @@ export type RequestRateLimitResult = {
   retryAfterSeconds: number;
 };
 
-const getClientIp = (c: Context<ApiEnv>) => {
+export const getClientIp = (c: Context<ApiEnv>): string => {
   const direct = c.req.header('cf-connecting-ip')?.trim();
   if (direct) return direct;
   const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
-  return forwarded || 'unknown';
+  if (forwarded) return forwarded;
+  return c.req.header('x-real-ip')?.trim() || 'unknown';
 };
 
 const hashSubject = async (value: string) => {
@@ -85,4 +87,17 @@ export const enforceRequestRateLimit = async (
     remaining: Math.max(policy.limit - used, 0),
     retryAfterSeconds: Math.max(Math.ceil((windowEndsAt - now) / 1000), 1),
   };
+};
+
+export const enforceIpRateLimit = async (
+  c: Context<ApiEnv>,
+  policy: RequestRateLimitPolicy,
+  message: string,
+): Promise<Response | null> => {
+  const rateLimit = await enforceRequestRateLimit(c, policy);
+  c.header('X-RateLimit-Limit', String(rateLimit.limit));
+  c.header('X-RateLimit-Remaining', String(rateLimit.remaining));
+  if (rateLimit.allowed) return null;
+  c.header('Retry-After', String(rateLimit.retryAfterSeconds));
+  return errorResponse(c, 429, message, 'RATE_LIMIT_EXCEEDED');
 };

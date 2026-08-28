@@ -1,4 +1,5 @@
 import type { ApiEnv } from './context.js';
+import { readEnvBool } from './env.js';
 import type { AIRouteKey } from './aiRouteKey.js';
 
 type RateLimitRule = {
@@ -23,11 +24,6 @@ const readEnvInt = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
   if (!value || Number.isNaN(parsed) || parsed <= 0) return fallback;
   return Math.floor(parsed);
-};
-
-const readEnvBool = (value: string | undefined, fallback: boolean): boolean => {
-  if (!value) return fallback;
-  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
 };
 
 export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {

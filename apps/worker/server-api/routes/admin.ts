@@ -5,7 +5,7 @@ import { errorResponse, withMeta, parseJsonBodyWithLimit } from '../lib/http.js'
 import { createBetterAuth } from '../lib/betterAuth.js';
 import { getUserSystemConfig } from '../lib/userSystemConfig.js';
 import { applyCreditMutation, listCreditLedger } from '../lib/credits.js';
-import { enforceRequestRateLimit } from '../lib/requestRateLimit.js';
+import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
 import {
   adminUserExists,
   disableAdminUser,
@@ -41,13 +41,8 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   // ─── Session management ──────────────────────────────────────────
 
   app.post('/admin/session', async (c) => {
-    const rateLimit = await enforceRequestRateLimit(c, ADMIN_LOGIN_RATE_LIMIT);
-    c.header('X-RateLimit-Limit', String(rateLimit.limit));
-    c.header('X-RateLimit-Remaining', String(rateLimit.remaining));
-    if (!rateLimit.allowed) {
-      c.header('Retry-After', String(rateLimit.retryAfterSeconds));
-      return errorResponse(c, 429, 'Too many admin login attempts', 'RATE_LIMIT_EXCEEDED');
-    }
+    const limited = await enforceIpRateLimit(c, ADMIN_LOGIN_RATE_LIMIT, 'Too many admin login attempts');
+    if (limited) return limited;
 
     const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{
       password?: string;

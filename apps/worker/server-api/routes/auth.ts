@@ -3,7 +3,7 @@ import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser } from '../lib/auth.js';
 import { createBetterAuth } from '../lib/betterAuth.js';
 import { DomainError, errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
-import { enforceRequestRateLimit } from '../lib/requestRateLimit.js';
+import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
 import { getUserSystemConfig } from '../lib/userSystemConfig.js';
 
 type TurnstileVerifyResponse = {
@@ -60,13 +60,8 @@ const verifyTurnstile = async (c: Context<ApiEnv>, token: string) => {
 
 export function registerAuthRoutes(app: Hono<ApiEnv>) {
   app.post('/auth/sign-up/email', async (c) => {
-    const rateLimit = await enforceRequestRateLimit(c, SIGNUP_RATE_LIMIT);
-    c.header('X-RateLimit-Limit', String(rateLimit.limit));
-    c.header('X-RateLimit-Remaining', String(rateLimit.remaining));
-    if (!rateLimit.allowed) {
-      c.header('Retry-After', String(rateLimit.retryAfterSeconds));
-      return errorResponse(c, 429, 'Too many signup attempts', 'RATE_LIMIT_EXCEEDED');
-    }
+    const limited = await enforceIpRateLimit(c, SIGNUP_RATE_LIMIT, 'Too many signup attempts');
+    if (limited) return limited;
 
     const parsedBody = await parseJsonBodyWithLimit<Record<string, unknown>>(
       c,

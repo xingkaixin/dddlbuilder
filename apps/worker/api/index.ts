@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { applyCspHeaders } from '../server-api/lib/csp.js';
 import type { ApiEnv } from '../server-api/lib/context.js';
 import { DomainError, errorResponse, withMeta } from '../server-api/lib/http.js';
+import { parseAllowedOrigins } from '../server-api/lib/env.js';
 import { registerParseSqlRoute } from '../server-api/routes/parseSql.js';
 import { registerExplainRoute } from '../server-api/routes/explain.js';
 import { registerReviewRoute } from '../server-api/routes/review.js';
@@ -27,19 +28,7 @@ const app = new Hono<ApiEnv>();
 
 export { api as apiRouter };
 
-const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
-
 const REQUEST_ID_PATTERN = /^[a-zA-Z0-9._:-]{1,128}$/;
-
-const parseAllowedOrigins = (envOrigins?: string): string[] => {
-  const raw = envOrigins?.trim();
-  if (!raw) return DEFAULT_ALLOWED_ORIGINS;
-  const items = raw
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return items.length > 0 ? items : DEFAULT_ALLOWED_ORIGINS;
-};
 
 const normalizeIncomingRequestId = (value: string | undefined) => {
   if (!value) return null;

@@ -1,3 +1,4 @@
+import { isRecord } from './yMapJson';
 import {
   isDatabaseType,
   ensureFieldId,
@@ -48,9 +49,6 @@ const FOREIGN_KEY_ACTIONS = new Set<ForeignKeyAction>([
   'RESTRICT',
   'NO ACTION',
 ]);
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const toText = (value: unknown, fallback = '') => (typeof value === 'string' ? value : fallback);
 const toOptionalText = (value: unknown) => (typeof value === 'string' ? value : undefined);
