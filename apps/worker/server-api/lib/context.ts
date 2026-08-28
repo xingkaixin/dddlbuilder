@@ -47,3 +47,51 @@ export type ApiEnv = {
     ADMIN_SESSION_SECRET?: string;
   };
 };
+
+type EnvVariableKey = {
+  [K in keyof ApiEnv['Bindings']]-?: ApiEnv['Bindings'][K] extends string | undefined ? K : never;
+}[keyof ApiEnv['Bindings']];
+
+export const ENV_VARIABLE_KEYS = [
+  'CORS_ALLOWED_ORIGINS',
+  'BETTER_AUTH_SECRET',
+  'BETTER_AUTH_URL',
+  'AUTH_REQUIRE_EMAIL_VERIFICATION',
+  'RESEND_API_KEY',
+  'RESEND_FROM_EMAIL',
+  'RESEND_FROM_NAME',
+  'TURNSTILE_SECRET_KEY',
+  'SIGNUP_BONUS_CREDITS',
+  'OPENAI_RATELIMIT_ENABLED',
+  'OPENAI_RATELIMIT_WINDOW_MS',
+  'OPENAI_RATELIMIT_EXPLAIN_MAX',
+  'OPENAI_RATELIMIT_REVIEW_MAX',
+  'OPENAI_RATELIMIT_GENERATE_MAX',
+  'OPENAI_RATELIMIT_GENERATE_COMMENTS_MAX',
+  'OPENAI_RATELIMIT_INDEX_ADVISOR_MAX',
+  'OPENAI_RETRY_MAX_ATTEMPTS',
+  'OPENAI_RETRY_BASE_DELAY_MS',
+  'OPENAI_RETRY_MAX_DELAY_MS',
+  'OPENAI_REQUEST_TIMEOUT_MS',
+  'OPENAI_DAILY_BUDGET_ENABLED',
+  'OPENAI_DAILY_BUDGET_MAX_TOKENS',
+  'OPENAI_STREAM_DEBUG',
+  'OPENAI_API_KEY',
+  'OPENAI_BASE_URL',
+  'OPENAI_MODEL_NAME',
+  'TELEGRAM_NOTIFY_ENABLED',
+  'TELEGRAM_BOT_TOKEN',
+  'TELEGRAM_CHAT_ID',
+  'CSP_ENABLE',
+  'CSP_MODE',
+  'CSP_POLICY',
+  'ADMIN_CONSOLE_PASSWORD',
+  'ADMIN_SESSION_SECRET',
+] as const satisfies readonly EnvVariableKey[];
+
+// 编译期断言：新增 Bindings 环境变量而未列入 ENV_VARIABLE_KEYS 时在此报错
+// 编译期断言：新增 Bindings 环境变量而未列入 ENV_VARIABLE_KEYS 时在此报错
+const _envKeysCovered: Exclude<EnvVariableKey, (typeof ENV_VARIABLE_KEYS)[number]> extends never
+  ? true
+  : never = true;
+void _envKeysCovered;
