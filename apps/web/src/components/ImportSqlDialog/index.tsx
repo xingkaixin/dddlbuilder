@@ -1,4 +1,4 @@
-import { useReducer, useState, type ReactNode, useCallback, useMemo } from 'react';
+import { useReducer, useCallback, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
@@ -7,9 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
@@ -37,19 +35,12 @@ import type { ImportSourceType, ParsedTableItem, PreviewFieldKey } from './types
 interface ImportSqlDialogProps {
   currentDbType: DatabaseType;
   onImport: (result: ParsedResult, dbType: DatabaseType) => void;
-  triggerClassName?: string;
-  triggerIcon?: ReactNode;
-  triggerLabel?: string;
   savedTables?: SavedTableSummary[];
   folderTree?: FolderTreeNode[];
   onBatchImport?: (request: SavedTableBatchImportRequest) => Promise<SavedTableBatchImportResult>;
   onBatchImportComplete?: () => void;
-  // Controlled mode: when provided, the dialog is controlled externally.
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  // When true, the trigger button is not rendered (useful when the dialog
-  // is opened programmatically via the controlled open prop).
-  hideTrigger?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 const MAX_SQL_LENGTH = 50_000;
@@ -58,16 +49,12 @@ const MAX_TEXT_LENGTH = 200_000;
 export function ImportSqlDialog({
   currentDbType,
   onImport,
-  triggerClassName,
-  triggerIcon,
-  triggerLabel,
   savedTables,
   folderTree,
   onBatchImport,
   onBatchImportComplete,
-  open: controlledOpen,
+  open: isOpen,
   onOpenChange,
-  hideTrigger,
 }: ImportSqlDialogProps) {
   const sqlParseMutation = useMutation({
     mutationFn: (payload: Parameters<typeof requestSqlParse>[0]) => requestSqlParse(payload),
@@ -83,8 +70,6 @@ export function ImportSqlDialog({
 
   const batchImportSupported = Boolean(savedTables && folderTree && onBatchImport);
 
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const [dialogState, dispatch] = useReducer(
     importDialogReducer,
     currentDbType,
@@ -110,15 +95,10 @@ export function ImportSqlDialog({
       if (!nextOpen) {
         resetDialog();
       }
-      if (controlledOpen === undefined) {
-        setInternalOpen(nextOpen);
-      }
-      onOpenChange?.(nextOpen);
+      onOpenChange(nextOpen);
     },
-    [controlledOpen, onOpenChange, resetDialog],
+    [onOpenChange, resetDialog],
   );
-
-  const resolvedTriggerLabel = triggerLabel ?? t('importSql.title');
 
   const savedTableNames = useMemo(
     () => new Set((savedTables ?? []).map((st) => st.normalizedName)),
@@ -405,21 +385,6 @@ export function ImportSqlDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      {!hideTrigger && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DialogTrigger asChild>
-              <button type="button" className={triggerClassName}>
-                {triggerIcon}
-                <span>{resolvedTriggerLabel}</span>
-              </button>
-            </DialogTrigger>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{t('importSql.triggerTip')}</p>
-          </TooltipContent>
-        </Tooltip>
-      )}
       <DialogContent className="sm:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>{t('importSql.title')}</DialogTitle>

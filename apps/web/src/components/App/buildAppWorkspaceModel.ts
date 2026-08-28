@@ -3,7 +3,6 @@ import type { useEditorSurfaceModel } from './hooks/useEditorSurfaceModel';
 import type { useFolderActions } from './hooks/useFolderActions';
 import type { useNavigationActions } from './hooks/useNavigationActions';
 import type { useSavedTableFlowActions } from './hooks/useSavedTableFlowActions';
-import type { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import type { useSchemaController } from './hooks/useSchemaController';
 import type { useTableTemplateActions } from './hooks/useTableTemplateActions';
 import type { useTabLifecycle } from './hooks/useTabLifecycle';
@@ -29,7 +28,6 @@ interface BuildAppWorkspaceModelParams {
   workspaceTabs: ReturnType<typeof useWorkspaceTabActions>;
   tableTemplateActions: ReturnType<typeof useTableTemplateActions>;
   trashActions: ReturnType<typeof useWorkspaceTrashActions>;
-  schemaActions: ReturnType<typeof useSchemaApplyActions>;
   navigationActions: ReturnType<typeof useNavigationActions>;
   workspacePresentation: ReturnType<typeof useWorkspacePresentation>;
   editorSurface: ReturnType<typeof useEditorSurfaceModel>;
@@ -38,7 +36,6 @@ interface BuildAppWorkspaceModelParams {
   collapseSidebar: () => void;
   expandSidebar: () => void;
   openImportDialog: () => void;
-  openWorkspaceAfterImport: () => void;
   handleFireworksComplete: () => void;
   handlePlayFireworks: () => void;
 }
@@ -54,7 +51,6 @@ export function buildAppWorkspaceModel({
   workspaceTabs,
   tableTemplateActions,
   trashActions,
-  schemaActions,
   navigationActions,
   workspacePresentation,
   editorSurface,
@@ -63,11 +59,10 @@ export function buildAppWorkspaceModel({
   collapseSidebar,
   expandSidebar,
   openImportDialog,
-  openWorkspaceAfterImport,
   handleFireworksComplete,
   handlePlayFireworks,
 }: BuildAppWorkspaceModelParams) {
-  const { editor, ui } = domains;
+  const { ui } = domains;
   const { persistence, savedTableData, folderData, loadedTableNormalizedName } =
     workspaceController;
   const { shareAction } = schemaController;
@@ -80,12 +75,8 @@ export function buildAppWorkspaceModel({
     header: {
       onShare: shareAction.handleShare,
       isSharing: shareAction.isSharing,
-      currentDbType: editor.dbType,
-      onImport: schemaActions.handleImport,
-      savedTables: savedTableData.savedTables,
-      folderTree: folderData.folderTree,
-      onBatchImportComplete: openWorkspaceAfterImport,
-      onBatchImport: savedTableData.importTables,
+      onOpenImport: openImportDialog,
+      onOpenSettings: () => ui.setIsUserSettingsOpen(true),
       onOpenAIGenerate: navigationActions.handleOpenAIGenerateDialog,
     },
     drawer: {

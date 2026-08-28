@@ -6,6 +6,9 @@ import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import type { AppDialogLayerModel } from './buildAppDialogLayerModel';
 import { WebMcpChangeDialog } from '@/webmcp/WebMcpChangeDialog';
+import { AuthDialogs } from '@/auth/AuthDialogs';
+import { WorkspaceMigrationDialog } from './WorkspaceMigrationDialog';
+import { UserSettingsDialog } from './UserSettingsDialog';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -41,6 +44,9 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
 
   return (
     <>
+      <AuthDialogs />
+      <WorkspaceMigrationDialog />
+      {model.userSettings.open && <UserSettingsDialog {...model.userSettings} />}
       <WebMcpChangeDialog model={model.webMcpDialog} />
       <GlobalDialogs {...globalDialogs} saveDialog={saveDialog} />
 

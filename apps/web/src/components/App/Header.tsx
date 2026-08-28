@@ -1,8 +1,6 @@
-import { memo, lazy, Suspense, useState } from 'react';
+import { memo } from 'react';
 import { createPortal } from 'react-dom';
-import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
-import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import packageInfo from '../../../package.json';
 import {
   Share2,
@@ -40,35 +38,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useTheme } from 'next-themes';
 import { useThemeTransition } from './hooks/useThemeTransition';
-import { UserSettingsDialog } from './UserSettingsDialog';
 import { WorkspaceYDocStatus } from './WorkspaceYDocStatus';
-import { WorkspaceMigrationDialog } from './WorkspaceMigrationDialog';
-import { AuthDialogs } from '@/auth/AuthDialogs';
-import type { SavedTableSummary } from '@/hooks/useSavedTables';
-import type { FolderTreeNode } from '@/hooks/useFolders';
-import type {
-  SavedTableBatchImportRequest,
-  SavedTableBatchImportResult,
-} from '@/utils/savedTableBatchImport';
-
-const ImportSqlDialog = lazy(() =>
-  import('@/components/ImportSqlDialog').then((module) => ({
-    default: module.ImportSqlDialog,
-  })),
-);
-
 const FEEDBACK_URL = 'https://my.feishu.cn/share/base/form/shrcnqGnCdcvgRomQ5syagGW2He';
 
 interface HeaderProps {
   onShare: () => void;
   isSharing: boolean;
-  currentDbType: DatabaseType;
-  onImport: (result: ParsedResult, dbType: DatabaseType) => void;
+  onOpenImport: () => void;
+  onOpenSettings: () => void;
   onPlayFireworks?: () => void;
-  savedTables: SavedTableSummary[];
-  folderTree: FolderTreeNode[];
-  onBatchImportComplete: () => void;
-  onBatchImport: (request: SavedTableBatchImportRequest) => Promise<SavedTableBatchImportResult>;
   onOpenAIGenerate?: () => void;
 }
 
@@ -76,13 +54,9 @@ export const Header = memo<HeaderProps>(
   ({
     onShare,
     isSharing,
-    currentDbType,
-    onImport,
+    onOpenImport,
+    onOpenSettings,
     onPlayFireworks,
-    savedTables,
-    folderTree,
-    onBatchImportComplete,
-    onBatchImport,
     onOpenAIGenerate = () => {},
   }) => {
     const { t } = useTranslation();
@@ -100,7 +74,6 @@ export const Header = memo<HeaderProps>(
         setTheme,
       },
     );
-    const [userSettingsOpen, setUserSettingsOpen] = useState(false);
     const actionBtnClass =
       'group inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:bg-primary/10 hover:text-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
     const primaryActionBtnClass =
@@ -279,26 +252,21 @@ export const Header = memo<HeaderProps>(
                 </div>
                 <div className="h-5 w-px shrink-0 bg-border" />
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <Suspense
-                    fallback={
-                      <button type="button" className={primaryActionBtnClass} disabled>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={primaryActionBtnClass}
+                        onClick={onOpenImport}
+                      >
                         <FileInput className="h-4 w-4" aria-hidden />
                         {t('header.importSql')}
                       </button>
-                    }
-                  >
-                    <ImportSqlDialog
-                      currentDbType={currentDbType}
-                      onImport={onImport}
-                      triggerClassName={primaryActionBtnClass}
-                      triggerIcon={<FileInput className="h-4 w-4" aria-hidden />}
-                      triggerLabel={t('header.importSql')}
-                      savedTables={savedTables}
-                      folderTree={folderTree}
-                      onBatchImport={onBatchImport}
-                      onBatchImportComplete={onBatchImportComplete}
-                    />
-                  </Suspense>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t('importSql.triggerTip')}</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button type="button" onClick={onOpenAIGenerate} className={actionBtnClass}>
@@ -448,7 +416,7 @@ export const Header = memo<HeaderProps>(
                       <div className="px-2 py-1.5 text-xs text-muted-foreground">
                         {authSession.name ?? authSession.email ?? t('header.auth.account')}
                       </div>
-                      <DropdownMenuItem onClick={() => setUserSettingsOpen(true)}>
+                      <DropdownMenuItem onClick={onOpenSettings}>
                         <Settings className="h-4 w-4" aria-hidden />
                         {t('header.auth.settings')}
                       </DropdownMenuItem>
@@ -480,11 +448,6 @@ export const Header = memo<HeaderProps>(
         {themeOverlay && typeof document !== 'undefined'
           ? createPortal(themeOverlay, document.body)
           : null}
-        {userSettingsOpen && (
-          <UserSettingsDialog open={userSettingsOpen} onOpenChange={setUserSettingsOpen} />
-        )}
-        <AuthDialogs />
-        <WorkspaceMigrationDialog />
       </>
     );
   },

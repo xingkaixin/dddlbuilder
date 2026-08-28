@@ -436,10 +436,6 @@ export function useAppController() {
     [setWorkspaceSidebarOpen],
   );
   const expandSidebar = useCallback(() => setWorkspaceSidebarOpen(true), [setWorkspaceSidebarOpen]);
-  const openWorkspaceAfterImport = useCallback(
-    () => setSavedTablesDrawerOpen(true),
-    [setSavedTablesDrawerOpen],
-  );
   const openImportDialog = useCallback(() => setIsImportDialogOpen(true), [setIsImportDialogOpen]);
   const openErDiagram = useCallback(() => setIsErDialogOpen(true), [setIsErDialogOpen]);
   const openAISchemaPatch = useCallback(() => {
@@ -520,7 +516,6 @@ export function useAppController() {
     workspaceTabs,
     tableTemplateActions,
     trashActions,
-    schemaActions,
     navigationActions,
     workspacePresentation,
     editorSurface,
@@ -529,7 +524,6 @@ export function useAppController() {
     collapseSidebar,
     expandSidebar,
     openImportDialog,
-    openWorkspaceAfterImport,
     handleFireworksComplete,
     handlePlayFireworks,
   });

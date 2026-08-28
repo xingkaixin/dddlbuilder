@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { Header } from '@/components/App/Header';
+import { AuthDialogs } from '@/auth/AuthDialogs';
+import { WorkspaceMigrationDialog } from '@/components/App/WorkspaceMigrationDialog';
 
 const signInWithEmailMock = vi.fn();
 const signUpWithEmailMock = vi.fn();
@@ -163,6 +165,8 @@ describe('Header', () => {
   const baseProps = {
     onShare: vi.fn(),
     isSharing: false,
+    onOpenImport: vi.fn(),
+    onOpenSettings: vi.fn(),
     currentDbType: 'mysql' as const,
     onImport: vi.fn(),
     savedTables: [],
@@ -172,6 +176,13 @@ describe('Header', () => {
     overwriteTable: vi.fn(),
     moveTableToFolder: vi.fn(),
   };
+
+  it('routes import through the application dialog owner', async () => {
+    const onOpenImport = vi.fn();
+    render(<Header {...baseProps} onOpenImport={onOpenImport} />);
+    fireEvent.click(await screen.findByRole('button', { name: '导入结构' }));
+    expect(onOpenImport).toHaveBeenCalledOnce();
+  });
 
   it('未传入烟花能力时不渲染灯笼按钮', async () => {
     await act(async () => {
@@ -234,7 +245,7 @@ describe('Header', () => {
       closeAuthDialog: closeAuthDialogMock,
     });
 
-    render(<Header {...baseProps} />);
+    render(<AuthDialogs />);
 
     fireEvent.change(screen.getByLabelText('邮箱'), {
       target: {
@@ -415,7 +426,7 @@ describe('Header', () => {
       runMigration: runMigrationMock,
     });
 
-    render(<Header {...baseProps} />);
+    render(<WorkspaceMigrationDialog />);
 
     expect(screen.getByText('迁移匿名工作区')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '开始迁移' }));
@@ -428,7 +439,7 @@ describe('Header', () => {
   it('邮箱验证成功回跳后应刷新会话并提示成功', async () => {
     window.history.replaceState({}, '', '/?auth_action=verify-email');
 
-    render(<Header {...baseProps} />);
+    render(<AuthDialogs />);
 
     await waitFor(() => {
       expect(refreshSessionMock).toHaveBeenCalledTimes(1);

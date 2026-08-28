@@ -45,13 +45,7 @@ describe('ImportSqlDialog', () => {
     mockedRequestSqlParse.mockResolvedValue(parsed);
     const onImport = vi.fn();
     render(
-      <ImportSqlDialog
-        currentDbType="mysql"
-        onImport={onImport}
-        open
-        onOpenChange={vi.fn()}
-        hideTrigger
-      />,
+      <ImportSqlDialog currentDbType="mysql" onImport={onImport} open onOpenChange={vi.fn()} />,
     );
     fireEvent.change(screen.getByLabelText('SQL 内容'), {
       target: { value: 'CREATE TABLE users (id int);' },
@@ -80,9 +74,9 @@ describe('ImportSqlDialog', () => {
   });
 
   it('应在前端拦截超长 SQL 并提示错误', async () => {
-    render(<ImportSqlDialog currentDbType="mysql" onImport={vi.fn()} triggerLabel="导入 SQL" />);
-
-    fireEvent.click(screen.getByRole('button', { name: '导入 SQL' }));
+    render(
+      <ImportSqlDialog currentDbType="mysql" onImport={vi.fn()} open onOpenChange={vi.fn()} />,
+    );
     const textarea = await screen.findByLabelText('SQL 内容');
     fireEvent.change(textarea, {
       target: { value: `CREATE TABLE t (${`a`.repeat(50_010)})` },
@@ -95,9 +89,9 @@ describe('ImportSqlDialog', () => {
 
   it('应使用统一友好文案展示解析失败信息', async () => {
     mockedRequestSqlParse.mockRejectedValue(new Error('parser-stack-detail-should-not-be-exposed'));
-    render(<ImportSqlDialog currentDbType="mysql" onImport={vi.fn()} triggerLabel="导入 SQL" />);
-
-    fireEvent.click(screen.getByRole('button', { name: '导入 SQL' }));
+    render(
+      <ImportSqlDialog currentDbType="mysql" onImport={vi.fn()} open onOpenChange={vi.fn()} />,
+    );
     const textarea = await screen.findByLabelText('SQL 内容');
     fireEvent.change(textarea, {
       target: { value: 'CREATE TABLE demo (id INT);' },
@@ -127,9 +121,9 @@ describe('ImportSqlDialog', () => {
       indexes: [],
       authObjects: [],
     });
-    render(<ImportSqlDialog currentDbType="mysql" onImport={vi.fn()} triggerLabel="导入 SQL" />);
-
-    fireEvent.click(screen.getByRole('button', { name: '导入 SQL' }));
+    render(
+      <ImportSqlDialog currentDbType="mysql" onImport={vi.fn()} open onOpenChange={vi.fn()} />,
+    );
     const textarea = await screen.findByLabelText('SQL 内容');
     fireEvent.change(textarea, {
       target: { value: '  CREATE TABLE users (id INT);  ' },
@@ -167,9 +161,9 @@ describe('ImportSqlDialog', () => {
     mockedRequestSqlParse.mockResolvedValue(parsedResult);
     const onImport = vi.fn();
 
-    render(<ImportSqlDialog currentDbType="mysql" onImport={onImport} triggerLabel="导入 SQL" />);
-
-    fireEvent.click(screen.getByRole('button', { name: '导入 SQL' }));
+    render(
+      <ImportSqlDialog currentDbType="mysql" onImport={onImport} open onOpenChange={vi.fn()} />,
+    );
     const textarea = await screen.findByLabelText('SQL 内容');
     fireEvent.change(textarea, {
       target: {
@@ -214,7 +208,8 @@ describe('ImportSqlDialog', () => {
       <ImportSqlDialog
         currentDbType="mysql"
         onImport={vi.fn()}
-        triggerLabel="导入 SQL"
+        open
+        onOpenChange={vi.fn()}
         savedTables={[
           {
             normalizedName: 'users',
@@ -229,8 +224,6 @@ describe('ImportSqlDialog', () => {
         onBatchImport={onBatchImport}
       />,
     );
-
-    fireEvent.click(screen.getByRole('button', { name: '导入 SQL' }));
     fireEvent.click(await screen.findByLabelText('保存为已保存表'));
     fireEvent.change(screen.getByLabelText('SQL 内容'), {
       target: { value: 'CREATE TABLE USERS (id INT);' },

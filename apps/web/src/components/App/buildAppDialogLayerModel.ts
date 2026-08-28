@@ -94,6 +94,7 @@ export function buildAppDialogLayerModel({
 
   return {
     webMcpDialog,
+    userSettings: { open: ui.isUserSettingsOpen, onOpenChange: ui.setIsUserSettingsOpen },
     saveObjectType: editor.objectType,
     saveDialogIsUpdate: derived.hasLoadedTable,
     globalDialogs: {
@@ -275,10 +276,10 @@ export function buildAppDialogLayerModel({
       onImport: schemaActions.handleImport,
       open: ui.isImportDialogOpen,
       onOpenChange: ui.setIsImportDialogOpen,
-      hideTrigger: true,
       savedTables: savedTableData.savedTables,
       folderTree: folderData.folderTree,
       onBatchImport: savedTableData.importTables,
+      onBatchImportComplete: () => ui.setSavedTablesDrawerOpen(true),
     },
   };
 }
