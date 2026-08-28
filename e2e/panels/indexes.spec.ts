@@ -87,6 +87,10 @@ test.describe('索引管理验证 @panels', () => {
       .locator('xpath=ancestor::div[@role="button"]');
     await indexCard.hover();
     await indexCard.getByRole('button', { name: /删除索引/i }).click();
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: '删除索引', exact: true })
+      .click();
 
     const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
     await expect(sqlOutput).not.toContainText(/INDEX idx_index_test_id/i);

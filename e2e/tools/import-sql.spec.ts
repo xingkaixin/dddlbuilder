@@ -255,6 +255,10 @@ test.describe('SQL 导入功能验证 @tools', () => {
       .locator('xpath=ancestor::div[@role="button"]');
     await card.hover();
     await card.getByRole('button', { name: /删除索引/ }).click();
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: '删除索引', exact: true })
+      .click();
     const sql = page.locator('[role="tabpanel"]:visible pre');
     await expect(sql).toContainText('CREATE TABLE renamed_table');
     await expect(sql).toContainText('INDEX customer_lookup (name ASC)');
