@@ -1,3 +1,4 @@
+import { useWorkspaceQuerySync } from '@/hooks/workspacePersistence/useWorkspaceQuerySync';
 import { useTemplateCatalog } from './hooks/useTemplateCatalog';
 import { useCallback, useMemo } from 'react';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
@@ -30,6 +31,7 @@ import { buildAppWorkspaceModel } from './buildAppWorkspaceModel';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
 export function useAppController() {
+  useWorkspaceQuerySync();
   const { t } = useTranslation();
   const authSession = useAuthSession();
   const domains = useEditorDomains();
@@ -498,5 +500,10 @@ export function useAppController() {
     handleSelectTableFromEr,
   });
 
-  return { workspaceView, dialogLayer };
+  return {
+    workspaceView,
+    dialogLayer,
+    hydrationFailed: persistence.hydrationFailed,
+    retryHydration: persistence.retryHydration,
+  };
 }

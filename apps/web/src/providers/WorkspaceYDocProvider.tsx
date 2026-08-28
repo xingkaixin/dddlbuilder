@@ -193,6 +193,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
         completeLegacyWorkspaceMigration(scope, token);
       } catch (error) {
         console.error('[workspace-yjs] legacy snapshot merge failed', error);
+        throw error;
       }
 
       const remoteLoaded = (await persistence.get(REMOTE_LOADED)) === 1;
@@ -312,7 +313,10 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     <WorkspaceYDocDocumentContext.Provider value={documentValue}>
       <WorkspaceYDocStatusContext.Provider value={statusValue}>
         {blocked ? (
-          <WorkspaceBootstrapScreen failed={bootstrapTimedOut} onRetry={retryBootstrap} />
+          <WorkspaceBootstrapScreen
+            failed={bootstrapTimedOut || value.connectionState === 'error'}
+            onRetry={retryBootstrap}
+          />
         ) : (
           children
         )}

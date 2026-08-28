@@ -1,10 +1,12 @@
+import { WorkspaceBootstrapScreen } from '@/components/WorkspaceBootstrapScreen';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AppDialogLayer } from './AppDialogLayer';
 import { AppWorkspace } from './AppWorkspace';
 import { useAppController } from './useAppController';
 
 export function AppView() {
-  const { workspaceView, dialogLayer } = useAppController();
+  const { workspaceView, dialogLayer, hydrationFailed, retryHydration } = useAppController();
+  if (hydrationFailed) return <WorkspaceBootstrapScreen failed onRetry={retryHydration} />;
 
   return (
     <TooltipProvider>

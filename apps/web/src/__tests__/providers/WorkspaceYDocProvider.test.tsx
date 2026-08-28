@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, screen, waitFor } from '@testing-library/react';
 import * as Y from 'yjs';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
@@ -217,24 +217,20 @@ describe('WorkspaceYDocProvider', () => {
   it('retains the source partition when the target transaction cannot commit', async () => {
     prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(legacySnapshotWithTable());
     vi.mocked(commitLegacyWorkspaceYDoc).mockRejectedValueOnce(new Error('QuotaExceededError'));
-    const first = await startProvider();
+    const first = renderProvider();
+    await screen.findByTestId('workspace-bootstrap-error');
     expect(clearLegacyWorkspaceData).not.toHaveBeenCalled();
     first.unmount();
     await startProvider();
     expect(clearLegacyWorkspaceData).toHaveBeenCalledOnce();
   });
 
-  it('legacy 快照准备失败时仍应本地就绪并连接 Durable Object', async () => {
+  it('legacy 快照准备失败时阻止空工作区和远端连接', async () => {
     prepareLegacyWorkspaceSnapshotMock.mockRejectedValue(new Error('QuotaExceededError'));
-
-    const { result } = await startProvider();
-
-    expect(connect).toHaveBeenCalledTimes(1);
-    expect(result.current.connectionState).not.toBe('error');
-    expect(console.error).toHaveBeenCalledWith(
-      '[workspace-yjs] legacy snapshot merge failed',
-      expect.any(Error),
-    );
+    renderProvider();
+    await screen.findByTestId('workspace-bootstrap-error');
+    expect(connect).not.toHaveBeenCalled();
+    expect(clearLegacyWorkspaceData).not.toHaveBeenCalled();
   });
 
   it('迁移成功后第二次启动不应再跑 legacy 迁移', async () => {
@@ -273,10 +269,9 @@ describe('WorkspaceYDocProvider', () => {
     prepareLegacyWorkspaceSnapshotMock.mockRejectedValueOnce(new Error('IndexedDB 崩了'));
     prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(legacySnapshotWithTable());
 
-    const first = await startProvider();
-    expect(exportWorkspaceYDocToSnapshot(first.result.current.doc as Y.Doc).savedTables).toEqual(
-      [],
-    );
+    const first = renderProvider();
+    await screen.findByTestId('workspace-bootstrap-error');
+    expect(persistence.committed).toBe(false);
     first.unmount();
 
     const second = await startProvider();

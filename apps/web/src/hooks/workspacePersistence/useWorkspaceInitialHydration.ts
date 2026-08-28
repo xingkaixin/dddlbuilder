@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
@@ -65,7 +65,17 @@ export function useWorkspaceInitialHydration({
     ...shareStateOptions(shareId ?? ''),
     enabled: Boolean(shareId && shareStorageKey && !pathInvalid),
   });
-  const [hydrated, setHydrated] = useState(false);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [attempt, setAttempt] = useState(0);
+  const setHydrated = useCallback((ready: boolean) => setStatus(ready ? 'ready' : 'loading'), []);
+  const failHydration = useCallback((error: unknown) => {
+    console.error('[workspace] local hydration failed', error);
+    setStatus('error');
+  }, []);
+  const retryHydration = useCallback(() => {
+    setStatus('loading');
+    setAttempt((previous) => previous + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,7 +157,9 @@ export function useWorkspaceInitialHydration({
           cancelled = true;
         };
       }
-      void hydrateMainWorkspace();
+      void hydrateMainWorkspace().catch((error: unknown) => {
+        if (!cancelled) failHydration(error);
+      });
       return () => {
         cancelled = true;
       };
@@ -172,6 +184,9 @@ export function useWorkspaceInitialHydration({
       cancelled = true;
     };
   }, [
+    attempt,
+    failHydration,
+    setHydrated,
     currentScope,
     pathInvalid,
     replaceDrafts,
@@ -190,5 +205,11 @@ export function useWorkspaceInitialHydration({
     yDoc,
   ]);
 
-  return { hydrated, setHydrated };
+  return {
+    hydrated: status === 'ready',
+    hydrationFailed: status === 'error',
+    retryHydration,
+    failHydration,
+    setHydrated,
+  };
 }

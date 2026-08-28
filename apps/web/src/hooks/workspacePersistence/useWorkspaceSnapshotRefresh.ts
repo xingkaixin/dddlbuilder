@@ -25,6 +25,7 @@ interface UseWorkspaceSnapshotRefreshParams {
   syncActiveSource: (source: WorkspaceSelection) => void;
   setPersistedStateIfChanged: (state: PersistedState | null) => void;
   setHydrated: (hydrated: boolean) => void;
+  failHydration: (error: unknown) => void;
 }
 
 export function useWorkspaceSnapshotRefresh({
@@ -35,6 +36,7 @@ export function useWorkspaceSnapshotRefresh({
   syncActiveSource,
   setPersistedStateIfChanged,
   setHydrated,
+  failHydration,
 }: UseWorkspaceSnapshotRefreshParams) {
   useEffect(() => {
     if (disabled) return;
@@ -78,7 +80,9 @@ export function useWorkspaceSnapshotRefresh({
         syncActiveSource({ kind: 'draft', draftId: resolvedDraft?.draftId ?? sessionDraftId });
         setPersistedStateIfChanged(resolvedDraft?.record.state ?? null);
         setHydrated(true);
-      })();
+      })().catch((error: unknown) => {
+        if (!cancelled) failHydration(error);
+      });
     };
 
     window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
@@ -87,6 +91,7 @@ export function useWorkspaceSnapshotRefresh({
       window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
     };
   }, [
+    failHydration,
     currentScope,
     disabled,
     replaceDrafts,

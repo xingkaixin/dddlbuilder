@@ -1,3 +1,4 @@
+import { useWorkspaceQuerySync } from '@/hooks/workspacePersistence/useWorkspaceQuerySync';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook as testingLibraryRenderHook, act, waitFor } from '@testing-library/react';
 import { useFolders } from '@/hooks/useFolders';
@@ -49,6 +50,19 @@ describe('useFolders', () => {
     vi.restoreAllMocks();
   });
 
+  it('does not install a snapshot listener for every authority consumer', () => {
+    const listen = vi.spyOn(window, 'addEventListener');
+    renderHook(() => {
+      useFolders();
+      useFolders();
+      useFolders();
+    });
+    const count = listen.mock.calls.filter(
+      ([event]) => event === WORKSPACE_SNAPSHOT_APPLIED_EVENT,
+    ).length;
+    expect(count).toBe(0);
+  });
+
   it('should load folders on mount', async () => {
     mockListFolders.mockResolvedValue([{ id: '1', name: 'Root', order: 1 } as any]);
     mockBuildFolderTree.mockResolvedValue([
@@ -70,7 +84,10 @@ describe('useFolders', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1, children: [] } as any]);
 
-    const { result } = renderHook(() => useFolders());
+    const { result } = renderHook(() => {
+      useWorkspaceQuerySync();
+      return useFolders();
+    });
 
     await act(async () => {
       await flushPromises();

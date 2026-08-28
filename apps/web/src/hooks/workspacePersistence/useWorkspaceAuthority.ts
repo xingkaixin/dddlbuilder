@@ -1,9 +1,8 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
 import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { workspaceLocalQueryKeys } from '@/queries/workspaceLocal';
-import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import { useWorkspaceStorageTarget } from './useWorkspaceStorageTarget';
 
 export function useWorkspaceAuthority() {
@@ -17,16 +16,9 @@ export function useWorkspaceAuthority() {
   });
 
   const refresh = useCallback(async () => {
-    if (!scope) return;
+    if (!scope || storage.kind !== 'indexeddb') return;
     await queryClient.invalidateQueries({ queryKey: workspaceLocalQueryKeys.scope(scope) });
-  }, [queryClient, scope]);
-
-  useEffect(() => {
-    const handleSnapshotApplied = () => void refresh();
-    window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
-    return () =>
-      window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
-  }, [refresh]);
+  }, [queryClient, scope, storage.kind]);
 
   return { scope, ...yDocGateway, storage, refresh };
 }

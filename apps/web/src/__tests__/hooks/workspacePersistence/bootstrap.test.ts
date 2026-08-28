@@ -98,7 +98,7 @@ describe('workspacePersistence/bootstrap', () => {
     });
   });
 
-  it('读取或迁移失败时应回退为全 null，不抛错', async () => {
+  it('读取失败时保留错误，重试可重新读取', async () => {
     const {
       getWorkspaceBootstrap,
       readWorkspaceBootstrap,
@@ -112,16 +112,10 @@ describe('workspacePersistence/bootstrap', () => {
       },
     });
 
-    const result = await getWorkspaceBootstrap();
-
-    expect(result).toEqual({
-      globalDraft: null,
-      drafts: [],
-      session: null,
-      savedTable: null,
-    });
+    await expect(getWorkspaceBootstrap()).rejects.toThrow('db fail');
+    await expect(getWorkspaceBootstrap()).rejects.toThrow('db fail');
     expect(readWorkspaceBootstrap).toHaveBeenCalledTimes(2);
-    expect(migrateLegacyWorkspaceFromLocalStorage).toHaveBeenCalledTimes(1);
+    expect(migrateLegacyWorkspaceFromLocalStorage).not.toHaveBeenCalled();
   });
 
   it('并发调用应复用同一个 Promise', async () => {

@@ -1,3 +1,4 @@
+import * as workspaceStateDb from '@/utils/workspaceStateDb';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useMemo } from 'react';
@@ -198,6 +199,28 @@ const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
 };
 
 describe('usePersistedState', () => {
+  it('blocks writes after hydration fails and reloads existing data on retry', async () => {
+    await writeDraft('default', { state: createState('kept'), updatedAt: 1 });
+    const read = vi
+      .spyOn(workspaceStateDb, 'readWorkspaceBootstrap')
+      .mockRejectedValueOnce(new Error('blocked database'));
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    await waitFor(() => expect(result.current.hydrationFailed).toBe(true));
+    expect(result.current.hydrated).toBe(false);
+    act(() =>
+      result.current.saveState({
+        state: createState('overwrite'),
+        source: { kind: 'draft', draftId: 'default' },
+      }),
+    );
+    read.mockRestore();
+    act(() => result.current.retryHydration());
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    expect(result.current.hydrationFailed).toBe(false);
+    expect(result.current.persistedState?.tableName).toBe('kept');
+  });
+
   it('does not publish a draft change when the YDoc write fails', async () => {
     const doc = new Y.Doc();
     const state = createState('users');

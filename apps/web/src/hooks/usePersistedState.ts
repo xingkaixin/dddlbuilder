@@ -54,6 +54,8 @@ const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
 export interface UsePersistedStateReturn {
   persistedState: PersistedState | null;
   hydrated: boolean;
+  hydrationFailed: boolean;
+  retryHydration: () => void;
   saveState: (payload: WorkspaceSavePayload) => void;
   clearState: () => void;
   resetWorkspaceSelection: () => void;
@@ -179,20 +181,21 @@ export function usePersistedState(): UsePersistedStateReturn {
     persistedStateRef.current = persistedState;
   }, [persistedState]);
 
-  const { hydrated, setHydrated } = useWorkspaceInitialHydration({
-    pathInvalid: pathInfo.invalid,
-    shareId,
-    shareStorageKey,
-    currentScope,
-    workspaceScopeReady,
-    shouldWaitForYDocHydration,
-    yDoc,
-    setPersistedState,
-    syncActiveSource,
-    replaceDrafts,
-    replaceTrashedDrafts,
-    replaceSavedTableDrafts,
-  });
+  const { hydrated, hydrationFailed, retryHydration, failHydration, setHydrated } =
+    useWorkspaceInitialHydration({
+      pathInvalid: pathInfo.invalid,
+      shareId,
+      shareStorageKey,
+      currentScope,
+      workspaceScopeReady,
+      shouldWaitForYDocHydration,
+      yDoc,
+      setPersistedState,
+      syncActiveSource,
+      replaceDrafts,
+      replaceTrashedDrafts,
+      replaceSavedTableDrafts,
+    });
 
   useWorkspaceYDocSubscription({
     yDoc,
@@ -214,6 +217,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     syncActiveSource,
     setPersistedStateIfChanged,
     setHydrated,
+    failHydration,
   });
 
   const writeSession = useCallback(
@@ -363,6 +367,8 @@ export function usePersistedState(): UsePersistedStateReturn {
   );
 
   return {
+    hydrationFailed,
+    retryHydration,
     persistedState,
     hydrated,
     saveState,

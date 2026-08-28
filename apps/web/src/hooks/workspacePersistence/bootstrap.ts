@@ -8,26 +8,16 @@ import { getAnonymousWorkspaceScope, getWorkspaceScopeStorageKey } from '@/utils
 export type WorkspaceBootstrap = Awaited<ReturnType<typeof readWorkspaceBootstrap>>;
 
 const loadWorkspaceBootstrap = async (scope: WorkspaceScope): Promise<WorkspaceBootstrap> => {
-  const initial = await readWorkspaceBootstrap(scope).catch(() => ({
-    globalDraft: null,
-    drafts: [],
-    session: null,
-    savedTable: null,
-  }));
+  const initial = await readWorkspaceBootstrap(scope);
 
   if (initial.globalDraft || initial.session || (initial.drafts?.length ?? 0) > 0) {
     return initial;
   }
 
   if (scope.kind === 'anonymous') {
-    await migrateLegacyWorkspaceFromLocalStorage().catch(() => undefined);
+    await migrateLegacyWorkspaceFromLocalStorage();
   }
-  return readWorkspaceBootstrap(scope).catch(() => ({
-    globalDraft: null,
-    drafts: [],
-    session: null,
-    savedTable: null,
-  }));
+  return readWorkspaceBootstrap(scope);
 };
 
 const workspaceBootstrapPromises = new Map<string, Promise<WorkspaceBootstrap>>();
