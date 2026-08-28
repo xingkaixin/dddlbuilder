@@ -350,7 +350,7 @@ export class WorkspaceYDocDurableObject {
           this.storedMeta(),
         );
         if (this.updateCount >= COMPACT_UPDATE_COUNT || this.updateBytes >= COMPACT_UPDATE_BYTES) {
-          await this.compact();
+          this.scheduleCompact();
         }
         await this.ensureAlarm();
         this.pendingUpdates.shift();
@@ -365,6 +365,12 @@ export class WorkspaceYDocDurableObject {
         throw persistError;
       }
     }
+  }
+
+  private scheduleCompact() {
+    void this.compact().catch((error: unknown) => {
+      console.error('[workspace-yjs-do] background compact failed', error);
+    });
   }
 
   private async awaitPersisted() {
