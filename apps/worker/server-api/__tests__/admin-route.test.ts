@@ -4,9 +4,11 @@ import type { ApiEnv } from '../lib/context.js';
 
 const requestRateLimitMocks = vi.hoisted(() => ({
   enforceIpRateLimit: vi.fn(),
+  revokeUserSessions: vi.fn(),
 }));
 
 vi.mock('../lib/requestRateLimit.js', () => requestRateLimitMocks);
+vi.mock('../lib/auth.js', () => ({ revokeUserSessions: requestRateLimitMocks.revokeUserSessions }));
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
@@ -57,13 +59,7 @@ describe('/api/admin/*', () => {
     vi.resetModules();
     vi.clearAllMocks();
     requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(null);
-    vi.doMock('../lib/betterAuth.js', () => ({
-      createBetterAuth: () => ({
-        $context: Promise.resolve({
-          internalAdapter: { deleteUserSessions: vi.fn().mockResolvedValue(undefined) },
-        }),
-      }),
-    }));
+    requestRateLimitMocks.revokeUserSessions.mockResolvedValue(undefined);
   });
 
   it.each([
@@ -72,12 +68,6 @@ describe('/api/admin/*', () => {
   ])('revokes sessions through better-auth for admin action %s', async (action, body) => {
     vi.doMock('../lib/adminAuth.js', () => ({
       resolveAdminSession: vi.fn().mockResolvedValue(true),
-    }));
-    const deleteUserSessions = vi.fn().mockResolvedValue(undefined);
-    vi.doMock('../lib/betterAuth.js', () => ({
-      createBetterAuth: () => ({
-        $context: Promise.resolve({ internalAdapter: { deleteUserSessions } }),
-      }),
     }));
     const fetchSocket = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const waitUntil = vi.fn();
@@ -99,7 +89,7 @@ describe('/api/admin/*', () => {
       { waitUntil, passThroughOnException() {} } as ExecutionContext,
     );
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));
-    expect(deleteUserSessions).toHaveBeenCalledWith('user-1');
+    expect(requestRateLimitMocks.revokeUserSessions).toHaveBeenCalledWith(env, 'user-1');
     expect(response.status).toBe(200);
   });
 
