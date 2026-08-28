@@ -120,6 +120,8 @@ export function usePersistedState(): UsePersistedStateReturn {
     runInYDoc,
   });
   const draftRecords = useDraftRecords({
+    yDoc,
+    runInYDoc,
     disabled: Boolean(shareId),
     enqueuePersistence,
     storage,
@@ -135,7 +137,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     replaceDrafts,
     replaceTrashedDrafts,
     getDraftState,
-    getDraftEntries,
     saveDraftState,
     createDraft,
     moveDraftToTrash,
@@ -199,9 +200,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     activeSourceRef,
     persistedStateRef,
     lastLocalSaveRef,
-    getDraftEntries,
-    replaceDrafts,
-    replaceTrashedDrafts,
     replaceSavedTableDrafts,
     applyYDocState,
     setPersistedStateIfChanged,

@@ -17,14 +17,13 @@ import {
   getStateForWorkspaceSource,
   listDraftRecordsFromYDoc,
   listSavedDraftsFromYDoc,
-  listTrashedDraftRecordsFromYDoc,
   subscribeWorkspaceYDoc,
   type WorkspaceYDocChange,
   WorkspaceYDocOrigin,
   upsertSavedDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
-import { pickInitialDraft, type DraftEntry } from './hydration';
+import { pickInitialDraft } from './hydration';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 import { isSameWorkspaceSource } from './normalize';
 
@@ -44,9 +43,6 @@ interface UseWorkspaceYDocSubscriptionParams {
   activeSourceRef: MutableValue<WorkspaceSelection>;
   persistedStateRef: MutableValue<PersistedState | null>;
   lastLocalSaveRef: MutableValue<PendingLocalSave | null>;
-  getDraftEntries: () => DraftEntry[];
-  replaceDrafts: (drafts: DraftEntry[]) => void;
-  replaceTrashedDrafts: (drafts: DraftEntry[]) => void;
   replaceSavedTableDrafts: (records: Map<string, SavedTableDraftRecord>) => void;
   applyYDocState: (state: SchemaDocumentState) => void;
   setPersistedStateIfChanged: (state: PersistedState | null) => void;
@@ -62,9 +58,6 @@ export function useWorkspaceYDocSubscription({
   activeSourceRef,
   persistedStateRef,
   lastLocalSaveRef,
-  getDraftEntries,
-  replaceDrafts,
-  replaceTrashedDrafts,
   replaceSavedTableDrafts,
   applyYDocState,
   setPersistedStateIfChanged,
@@ -74,12 +67,6 @@ export function useWorkspaceYDocSubscription({
     if (!yDoc) return;
 
     const refreshFromYDoc = (change?: WorkspaceYDocChange) => {
-      let allDrafts = getDraftEntries();
-      if (!change || change.collection === 'drafts') {
-        allDrafts = listDraftRecordsFromYDoc(yDoc);
-        replaceDrafts(allDrafts);
-        replaceTrashedDrafts(listTrashedDraftRecordsFromYDoc(yDoc));
-      }
       if (!change || change.collection === 'savedDrafts' || change.collection === 'savedTables') {
         replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc));
       }
@@ -176,7 +163,7 @@ export function useWorkspaceYDocSubscription({
       }
 
       if (!persistedStateRef.current) {
-        const initialDraft = pickInitialDraft(allDrafts);
+        const initialDraft = pickInitialDraft(listDraftRecordsFromYDoc(yDoc));
         if (initialDraft) {
           syncActiveSource({ kind: 'draft', draftId: initialDraft.draftId });
           applyYDocState(initialDraft.record.state);
@@ -196,11 +183,8 @@ export function useWorkspaceYDocSubscription({
   }, [
     activeSourceRef,
     applyYDocState,
-    getDraftEntries,
     lastLocalSaveRef,
     persistedStateRef,
-    replaceDrafts,
-    replaceTrashedDrafts,
     replaceSavedTableDrafts,
     runInYDoc,
     setPersistedStateIfChanged,

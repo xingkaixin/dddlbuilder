@@ -198,6 +198,39 @@ const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
 };
 
 describe('usePersistedState', () => {
+  it('does not publish a draft change when the YDoc write fails', async () => {
+    const doc = new Y.Doc();
+    const state = createState('users');
+    upsertDraftInYDoc(doc, 'default', { state, updatedAt: 1 });
+    mockSignedInWorkspaceYDoc(doc);
+    const { wrapper } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(() => usePersistedState(), { wrapper });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    let writeError: unknown;
+    await act(async () => {
+      try {
+        result.current.saveState({
+          source: { kind: 'draft', draftId: 'default' },
+          state: {
+            ...state,
+            tableName: 'invalid',
+            indexes: [
+              { id: 'duplicate', name: 'first', fields: [], kind: 'index' },
+              { id: 'duplicate', name: 'second', fields: [], kind: 'index' },
+            ],
+          },
+        });
+      } catch (error) {
+        writeError = error;
+      }
+    });
+    const name = result.current.draftSummaries[0]?.name;
+    unmount();
+    doc.destroy();
+    expect(name).toBe('users');
+    expect(writeError).toBeInstanceOf(Error);
+  });
+
   it.each([1, 3])('远端保存清理草稿后恢复离线端未保存的修改，客户端 ID=%s', async (clientId) => {
     const doc = new Y.Doc();
     doc.clientID = 10;

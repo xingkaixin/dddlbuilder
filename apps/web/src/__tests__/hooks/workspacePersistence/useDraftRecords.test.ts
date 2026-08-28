@@ -27,7 +27,7 @@ const renderDraftRecords = (
   } = {},
 ) => {
   const storage = {
-    kind: 'ydoc' as const,
+    kind: 'indexeddb' as const,
     read: vi.fn(),
     readLocal: vi.fn(),
     update: vi.fn(),
@@ -41,6 +41,8 @@ const renderDraftRecords = (
   return renderHook(() =>
     useDraftRecords({
       disabled: false,
+      yDoc: null,
+      runInYDoc: () => {},
       enqueuePersistence,
       storage,
     }),
@@ -77,26 +79,12 @@ describe('useDraftRecords', () => {
     ]);
   });
 
-  it('updates the derived summary when a synchronized record is cached', () => {
+  it('updates the local summary when draft state changes', () => {
     const { result } = renderDraftRecords();
-    act(() => {
-      result.current.cacheDraftRecord('draft-1', {
-        state: createState('users'),
-        createdAt: 1,
-        updatedAt: 10,
-      });
-    });
-    act(() => {
-      result.current.cacheDraftRecord('draft-1', {
-        state: createState('customers'),
-        createdAt: 1,
-        updatedAt: 11,
-      });
-    });
+    act(() => result.current.saveDraftState('draft-1', createState('users')));
+    act(() => result.current.saveDraftState('draft-1', createState('customers')));
 
-    expect(result.current.draftSummaries).toEqual([
-      expect.objectContaining({ name: 'customers', updatedAt: 11 }),
-    ]);
+    expect(result.current.draftSummaries).toEqual([expect.objectContaining({ name: 'customers' })]);
   });
 
   it('keeps a trashed draft visible until permanent deletion succeeds', async () => {

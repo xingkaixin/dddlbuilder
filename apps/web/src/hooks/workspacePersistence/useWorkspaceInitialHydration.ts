@@ -18,7 +18,6 @@ import {
   getSavedTableFromYDoc,
   listDraftRecordsFromYDoc,
   listSavedDraftsFromYDoc,
-  listTrashedDraftRecordsFromYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { listSavedDrafts, listTrashedDrafts } from '@/utils/workspaceStateDb';
 import { getWorkspaceBootstrap } from './bootstrap';
@@ -88,8 +87,6 @@ export function useWorkspaceInitialHydration({
       if (!yDoc) return false;
       replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc));
       const drafts = listDraftRecordsFromYDoc(yDoc);
-      replaceDrafts(drafts);
-      replaceTrashedDrafts(listTrashedDraftRecordsFromYDoc(yDoc));
       if (cancelled) return true;
 
       const { session } = await getWorkspaceBootstrap(currentScope);
