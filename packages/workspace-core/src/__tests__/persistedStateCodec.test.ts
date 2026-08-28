@@ -711,3 +711,18 @@ it.each(['"my.table"', '`my.table`', '[my.table]'])(
     expect(decoded).toMatchObject({ schemaName: '', tableName });
   },
 );
+
+it.each(['index', 'unique_index', 'unique_constraint', 'primary'] as const)(
+  'reads canonical %s indexes during migration',
+  (kind) => {
+    const decoded = decodePersistedState(
+      externalState({
+        indexes: [{ id: 'i', name: 'idx', fields: [{ name: 'id', direction: 'ASC' }], kind }],
+      }),
+    );
+    expect(decoded?.indexes[0]).toMatchObject({
+      unique: kind !== 'index',
+      isPrimary: kind === 'primary',
+    });
+  },
+);

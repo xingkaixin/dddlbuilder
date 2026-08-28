@@ -100,3 +100,5 @@ export type {
 } from './aiGenerate.js';
 
 export { splitQualifiedName, getSchemaAndTable } from './qualifiedName';
+
+export { indexKindOf, isIndexKind, toLegacyIndexFlags, type IndexKind } from './indexKind';

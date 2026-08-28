@@ -1,3 +1,4 @@
+import type { IndexKind } from './indexKind';
 import type { DatabaseType } from './database.js';
 import type { FieldRow } from './fieldRow.js';
 
@@ -10,6 +11,7 @@ export type IndexDefinition = {
   id: string;
   name: string;
   fields: IndexField[];
+  kind?: IndexKind;
   unique: boolean;
   isPrimary?: boolean;
   isUniqueConstraint?: boolean;
