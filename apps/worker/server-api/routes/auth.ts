@@ -18,6 +18,11 @@ const SIGNUP_RATE_LIMIT = {
   limit: 5,
   windowMs: 15 * 60 * 1000,
 } as const;
+const AUTH_RATE_LIMITS = {
+  '/auth/sign-in/email': { scope: 'auth:signin', limit: 10, windowMs: 15 * 60_000 },
+  '/auth/request-password-reset': { scope: 'auth:reset', limit: 3, windowMs: 60 * 60_000 },
+  '/auth/send-verification-email': { scope: 'auth:verify', limit: 3, windowMs: 60 * 60_000 },
+} as const;
 const TURNSTILE_ALWAYS_PASS_TEST_SECRET = '1x0000000000000000000000000000000AA';
 
 const verifyTurnstile = async (c: Context<ApiEnv>, token: string) => {
@@ -91,7 +96,19 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
     );
   });
 
-  app.all('/auth/*', async (c) => createBetterAuth(c.env).handler(c.req.raw));
+  app.all('/auth/*', async (c) => {
+    if (c.req.method === 'POST') {
+      const path = c.req.path.replace(/^\/api/, '').replace(/\/$/, '');
+      const policy = AUTH_RATE_LIMITS[path as keyof typeof AUTH_RATE_LIMITS] ?? {
+        scope: 'auth:mutation',
+        limit: 60,
+        windowMs: 60_000,
+      };
+      const limited = await enforceIpRateLimit(c, policy, 'Too many authentication attempts');
+      if (limited) return limited;
+    }
+    return createBetterAuth(c.env).handler(c.req.raw);
+  });
 
   app.get('/me', async (c) => {
     try {

@@ -3,7 +3,6 @@ import type { ApiEnv } from '../lib/context.js';
 import { createAdminSession, resolveAdminSession, deleteAdminSession } from '../lib/adminAuth.js';
 import { errorResponse, withMeta, parseJsonBodyWithLimit } from '../lib/http.js';
 import { createBetterAuth } from '../lib/betterAuth.js';
-import { getUserSystemConfig } from '../lib/userSystemConfig.js';
 import { applyCreditMutation, listCreditLedger } from '../lib/credits.js';
 import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
 import { kickWorkspaceSockets } from '../lib/sessionRevocation.js';
@@ -108,27 +107,12 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
     try {
       const auth = createBetterAuth(c.env);
-      const config = getUserSystemConfig(c.env);
-      const baseUrl = new URL(config.betterAuthUrl).origin;
-
-      const response = await auth.handler(
-        new Request(`${baseUrl}/api/auth/forget-password`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ email: userRow.email }),
-        }),
-      );
-      if (!response.ok) {
-        const detail = await response.text().catch(() => '');
-        console.error('[admin] reset-password rejected', {
-          status: response.status,
-          detail: detail.slice(0, 256),
-        });
-        return errorResponse(c, 502, 'Failed to send reset email', 'SERVICE_UNAVAILABLE');
-      }
+      await auth.api.requestPasswordReset({
+        body: { email: userRow.email, redirectTo: '/reset-password' },
+      });
     } catch (error) {
       console.error('[admin] reset-password failed', error);
-      return errorResponse(c, 500, 'Failed to send reset email', 'SERVICE_UNAVAILABLE');
+      return errorResponse(c, 502, 'Failed to send reset email', 'SERVICE_UNAVAILABLE');
     }
 
     return c.json(withMeta(c, { ok: true }));

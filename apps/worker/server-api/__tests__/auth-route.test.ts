@@ -326,6 +326,26 @@ describe('/api/auth/*', () => {
   });
 
   describe('/api/auth/* (better-auth proxy)', () => {
+    it.each(['sign-in/email', 'request-password-reset', 'send-verification-email'])(
+      'limits native auth endpoint %s before invoking better-auth',
+      async (endpoint) => {
+        requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(
+          new Response(null, { status: 429 }),
+        );
+        const { default: app } = await import('../../api/index');
+        const response = await app.fetch(
+          createRequest(`/api/auth/${endpoint}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: '{}',
+          }),
+          createEnv(),
+        );
+        expect(response.status).toBe(429);
+        expect(betterAuthMocks.handler).not.toHaveBeenCalled();
+      },
+    );
+
     it('proxies requests to better-auth handler', async () => {
       betterAuthMocks.handler.mockResolvedValue(
         new Response(JSON.stringify({ ok: true }), {

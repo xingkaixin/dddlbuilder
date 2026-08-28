@@ -515,14 +515,14 @@ describe('/api/admin/*', () => {
     });
 
     it('sends reset password email for existing user', async () => {
-      const mockHandler = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+      const requestPasswordReset = vi.fn().mockResolvedValue({ status: true });
       vi.doMock('../lib/adminAuth.js', () => ({
         createAdminSession: vi.fn(),
         resolveAdminSession: vi.fn().mockResolvedValue(true),
         deleteAdminSession: vi.fn(),
       }));
       vi.doMock('../lib/betterAuth.js', () => ({
-        createBetterAuth: vi.fn().mockReturnValue({ handler: mockHandler }),
+        createBetterAuth: vi.fn().mockReturnValue({ api: { requestPasswordReset } }),
       }));
 
       const app = await createAdminApp();
@@ -540,10 +540,12 @@ describe('/api/admin/*', () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({ ok: true });
-      expect(mockHandler).toHaveBeenCalled();
+      expect(requestPasswordReset).toHaveBeenCalledWith({
+        body: { email: 'user1@example.com', redirectTo: '/reset-password' },
+      });
     });
 
-    it('returns 500 when better-auth throws', async () => {
+    it('returns 502 when better-auth throws', async () => {
       vi.doMock('../lib/adminAuth.js', () => ({
         createAdminSession: vi.fn(),
         resolveAdminSession: vi.fn().mockResolvedValue(true),
@@ -551,7 +553,7 @@ describe('/api/admin/*', () => {
       }));
       vi.doMock('../lib/betterAuth.js', () => ({
         createBetterAuth: vi.fn().mockReturnValue({
-          handler: vi.fn().mockRejectedValue(new Error('Network error')),
+          api: { requestPasswordReset: vi.fn().mockRejectedValue(new Error('Network error')) },
         }),
       }));
 
@@ -568,7 +570,7 @@ describe('/api/admin/*', () => {
         }),
       );
 
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(502);
       expect(await response.json()).toMatchObject({
         error: 'Failed to send reset email',
         code: 'SERVICE_UNAVAILABLE',
@@ -584,7 +586,7 @@ describe('/api/admin/*', () => {
       }));
       vi.doMock('../lib/betterAuth.js', () => ({
         createBetterAuth: vi.fn().mockReturnValue({
-          handler: vi.fn().mockResolvedValue(new Response('rejected', { status: 400 })),
+          api: { requestPasswordReset: vi.fn().mockRejectedValue(new Error('rejected')) },
         }),
       }));
 

@@ -178,6 +178,7 @@ const buildBetterAuth = (env: ApiEnv['Bindings']) => {
   ]);
 
   return betterAuth({
+    rateLimit: { enabled: false },
     secret: config.betterAuthSecret,
     baseURL: authBaseUrl.origin,
     trustedOrigins: [...trustedOrigins],
