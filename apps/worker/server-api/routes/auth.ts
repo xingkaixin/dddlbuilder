@@ -72,7 +72,7 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
       c,
       AUTH_BODY_MAX_BYTES,
     );
-    if (parsedBody.errorResponse) return parsedBody.errorResponse;
+    if (!parsedBody.ok) return parsedBody.response;
     const body = parsedBody.data ?? {};
     const bodyToken = typeof body.turnstileToken === 'string' ? body.turnstileToken.trim() : '';
     const token = c.req.header('x-turnstile-token')?.trim() || bodyToken;

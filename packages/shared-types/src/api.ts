@@ -34,7 +34,8 @@ export type ApiErrorCode =
   | 'AI_OUTPUT_TRUNCATED'
   | 'SERVICE_UNAVAILABLE'
   | 'ADMIN_REQUIRED'
-  | 'WORKSPACE_ACCESS_DENIED';
+  | 'WORKSPACE_ACCESS_DENIED'
+  | 'WORKSPACE_MIGRATION_INVALID';
 
 export type ApiMeta = {
   requestId?: string;

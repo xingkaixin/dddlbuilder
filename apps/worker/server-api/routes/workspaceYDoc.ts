@@ -3,7 +3,7 @@ import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest } from '../lib/auth.js';
 import { errorResponse, parseJsonBodyWithLimit } from '../lib/http.js';
 import { assertWorkspaceOwner, WorkspaceNotFoundError } from '../lib/workspaceEntities.js';
-import { decodeWorkspaceSnapshot } from '../lib/workspaceSnapshotValidation.js';
+import { decodeWorkspaceSnapshot } from '@ddlbuilder/workspace-core';
 
 const IMPORT_BODY_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -115,7 +115,7 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
   app.post('/workspaces/:workspaceId/yjs/import', async (c) =>
     withAuthenticatedWorkspace(c, async (authenticated) => {
       const parsedBody = await parseJsonBodyWithLimit<unknown>(c, IMPORT_BODY_MAX_BYTES);
-      if (parsedBody.errorResponse) return parsedBody.errorResponse;
+      if (!parsedBody.ok) return parsedBody.response;
       const body = parsedBody.data;
 
       const snapshot = decodeWorkspaceSnapshot(body);

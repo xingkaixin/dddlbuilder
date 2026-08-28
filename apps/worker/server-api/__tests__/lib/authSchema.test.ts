@@ -1,3 +1,4 @@
+import type { ApiEnv } from '../../lib/context.js';
 import { describe, expect, it, vi } from 'vitest';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
 import { betterAuthSchema } from '@ddlbuilder/db';
@@ -41,7 +42,7 @@ describe('better-auth session revocation integration', () => {
       TURNSTILE_SECRET_KEY: 'test',
       SIGNUP_BONUS_CREDITS: '1000',
       WORKSPACE_YDOC: { idFromName: (id: string) => id, get: () => ({ fetch }) },
-    } as unknown as import('../../lib/context.js').ApiEnv['Bindings'];
+    } as unknown as ApiEnv['Bindings'];
     try {
       sqlite.exec(
         "INSERT INTO user (id,name,email,created_at,updated_at) VALUES ('u','User','u@example.com',1,1); INSERT INTO workspaces (id,user_id,name,created_at,updated_at) VALUES ('w','u','Workspace',1,1)",

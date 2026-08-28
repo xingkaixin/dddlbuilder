@@ -199,16 +199,16 @@ export const withAIGovernance = async <Request>(
   }
 
   const parsedBody = await parseJsonBodyWithLimit<Record<string, unknown>>(c, spec.bodyMaxBytes);
-  if (parsedBody.errorResponse) {
-    const tooLarge = parsedBody.errorResponse.status === 413;
+  if (!parsedBody.ok) {
+    const tooLarge = parsedBody.response.status === 413;
     audit(
-      parsedBody.errorResponse.status,
+      parsedBody.response.status,
       0,
       false,
       false,
       tooLarge ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON',
     );
-    return parsedBody.errorResponse;
+    return parsedBody.response;
   }
 
   const parsed = spec.parseRequest(parsedBody.data ?? {});

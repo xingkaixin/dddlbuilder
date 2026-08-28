@@ -31,7 +31,7 @@ function validateSqlPayload(
   parsed: JsonBodyResult<{ sql: unknown; dbType: unknown }>,
   c: Parameters<typeof errorResponse>[0],
 ) {
-  if (parsed.errorResponse) return { errorResponse: parsed.errorResponse };
+  if (!parsed.ok) return { errorResponse: parsed.response };
 
   const sql = parsed.data?.sql;
   const dbType = parsed.data?.dbType;

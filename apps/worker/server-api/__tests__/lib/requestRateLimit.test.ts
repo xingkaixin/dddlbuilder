@@ -65,6 +65,7 @@ describe('enforceRequestRateLimit', () => {
       remaining: 3,
       retryAfterSeconds: 30,
     });
+    expect(bindings).toHaveLength(1);
     expect(batch).toHaveBeenCalledOnce();
     expect(bindings[0]).toEqual([
       'auth:signup',

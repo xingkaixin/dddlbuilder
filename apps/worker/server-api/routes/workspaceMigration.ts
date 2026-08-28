@@ -15,7 +15,7 @@ export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
       c,
       REQUEST_BODY_MAX_BYTES,
     );
-    if (parsedBody.errorResponse) return parsedBody.errorResponse;
+    if (!parsedBody.ok) return parsedBody.response;
     const body = parsedBody.data ?? {};
 
     const mode = body.mode === 'commit' ? 'commit' : body.mode === 'analyze' ? 'analyze' : null;
@@ -28,20 +28,10 @@ export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 400, 'Invalid migration payload', 'INVALID_JSON');
     }
 
-    try {
-      const result =
-        mode === 'analyze'
-          ? await analyzeWorkspaceMigration(c.env, user.userId, payload)
-          : await commitWorkspaceMigration(c.env, user.userId, payload);
-
-      return c.json(
-        withMeta(c, {
-          ...result,
-        }),
-      );
-    } catch (error) {
-      console.error(`[workspace-migration] ${mode} failed`, error);
-      return errorResponse(c, 503, 'Workspace migration unavailable', 'SERVICE_UNAVAILABLE');
-    }
+    const result =
+      mode === 'analyze'
+        ? await analyzeWorkspaceMigration(c.env, user.userId, payload)
+        : await commitWorkspaceMigration(c.env, user.userId, payload);
+    return c.json(withMeta(c, result));
   });
 }

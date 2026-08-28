@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { isDeepStrictEqual } from 'node:util';
 import {
-  appendWorkspaceYDocUpdate,
+  appendWorkspaceYDocUpdates,
   compactWorkspaceYDocStorage,
   readWorkspaceYDocStorage,
   type WorkspaceYDocStoredMeta,
@@ -43,7 +43,7 @@ describe('workspace binary storage', () => {
   it('round-trips large updates and snapshots without oversized stored values', async () => {
     const { state, store } = createDurableObjectState();
     const bytes = largeBinary();
-    await appendWorkspaceYDocUpdate(state.storage, 1, bytes, meta());
+    await appendWorkspaceYDocUpdates(state.storage, [{ seq: 1, update: bytes }], meta());
     const loaded = await readWorkspaceYDocStorage(state.storage);
     expect(loaded.updates.size).toBe(1);
     expectBinary(loaded.updates.values().next().value, bytes);
@@ -69,8 +69,12 @@ describe('workspace binary storage', () => {
     const { state } = createDurableObjectState();
     const snapshot = new Uint8Array([1]);
     const tail = new Uint8Array([2]);
-    await appendWorkspaceYDocUpdate(state.storage, 1, snapshot, meta());
-    await appendWorkspaceYDocUpdate(state.storage, 2, tail, meta({ nextSeq: 2 }));
+    await appendWorkspaceYDocUpdates(state.storage, [{ seq: 1, update: snapshot }], meta());
+    await appendWorkspaceYDocUpdates(
+      state.storage,
+      [{ seq: 2, update: tail }],
+      meta({ nextSeq: 2 }),
+    );
     await compactWorkspaceYDocStorage(
       state.storage,
       snapshot,
@@ -85,7 +89,11 @@ describe('workspace binary storage', () => {
       const { state, store } = createDurableObjectState();
       const bytes = largeBinary();
       await compactWorkspaceYDocStorage(state.storage, bytes, meta({ nextSeq: 0 }));
-      await appendWorkspaceYDocUpdate(state.storage, 1, new Uint8Array([1, 2, 3]), meta());
+      await appendWorkspaceYDocUpdates(
+        state.storage,
+        [{ seq: 1, update: new Uint8Array([1, 2, 3]) }],
+        meta(),
+      );
       const before = new Map(store);
       const put = vi.mocked(state.storage.put as (key: string, value: unknown) => Promise<void>);
       const original = put.getMockImplementation();
@@ -98,7 +106,11 @@ describe('workspace binary storage', () => {
       });
       const persist = () =>
         operation === 'append'
-          ? appendWorkspaceYDocUpdate(state.storage, 2, bytes, meta({ nextSeq: 2 }))
+          ? appendWorkspaceYDocUpdates(
+              state.storage,
+              [{ seq: 2, update: bytes }],
+              meta({ nextSeq: 2 }),
+            )
           : compactWorkspaceYDocStorage(state.storage, bytes, meta({ lastCompactedSeq: 1 }));
       await expect(persist()).rejects.toThrow('storage interrupted');
       expect(isDeepStrictEqual(store, before)).toBe(true);

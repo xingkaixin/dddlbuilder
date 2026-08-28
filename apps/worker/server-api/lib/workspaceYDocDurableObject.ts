@@ -23,7 +23,7 @@ import {
 import { logWorkspaceYDocHealth } from './workspaceSyncMetrics.js';
 import { applyWorkspaceMigrationSnapshot } from './workspaceMigration.js';
 import {
-  appendWorkspaceYDocUpdate,
+  appendWorkspaceYDocUpdates,
   compactWorkspaceYDocStorage,
   readWorkspaceYDocStorage,
   WORKSPACE_YDOC_META_KEY,
@@ -68,6 +68,7 @@ export class WorkspaceYDocDurableObject {
   private compactQueue: Promise<void> = Promise.resolve();
   private readonly pendingUpdates: PendingWorkspaceUpdate[] = [];
   private nextSeq = 0;
+  private alarmScheduled = false;
   private updateCount = 0;
   private updateBytes = 0;
   private lastCompactedSeq = 0;
@@ -231,6 +232,7 @@ export class WorkspaceYDocDurableObject {
   }
 
   async alarm(alarmInfo?: AlarmInvocationInfo) {
+    this.alarmScheduled = false;
     await this.loadDoc();
     if (!this.hasPendingCheckpoint()) return;
 
@@ -328,7 +330,7 @@ export class WorkspaceYDocDurableObject {
   private startPersisting() {
     if (this.persistQueue || this.pendingUpdates.length === 0) return;
 
-    const persist = this.drainPendingUpdates();
+    const persist = Promise.resolve().then(() => this.drainPendingUpdates());
     this.persistQueue = persist;
     void persist.then(
       () => {
@@ -342,24 +344,19 @@ export class WorkspaceYDocDurableObject {
 
   private async drainPendingUpdates() {
     while (this.pendingUpdates.length > 0) {
-      const pending = this.pendingUpdates[0];
+      const pending = this.pendingUpdates.slice();
       try {
-        await appendWorkspaceYDocUpdate(
-          this.state.storage,
-          pending.seq,
-          pending.update,
-          this.storedMeta(),
-        );
+        await appendWorkspaceYDocUpdates(this.state.storage, pending, this.storedMeta());
         if (this.updateCount >= COMPACT_UPDATE_COUNT || this.updateBytes >= COMPACT_UPDATE_BYTES) {
           this.scheduleCompact();
         }
         await this.ensureAlarm();
-        this.pendingUpdates.shift();
+        this.pendingUpdates.splice(0, pending.length);
       } catch (error) {
         const persistError = error instanceof Error ? error : new Error(String(error));
         logWorkspaceYDocHealth('persist_failed', {
           workspaceId: this.workspaceId,
-          seq: pending.seq,
+          seq: pending[0].seq,
           errorMessage: persistError.message,
         });
         console.error('[workspace-yjs-do] persist failed', error);
@@ -369,9 +366,11 @@ export class WorkspaceYDocDurableObject {
   }
 
   private scheduleCompact() {
-    void this.compact().catch((error: unknown) => {
-      console.error('[workspace-yjs-do] background compact failed', error);
-    });
+    this.state.waitUntil(
+      this.compact().catch((error: unknown) => {
+        console.error('[workspace-yjs-do] background compact failed', error);
+      }),
+    );
   }
 
   private async awaitPersisted() {
@@ -508,9 +507,15 @@ export class WorkspaceYDocDurableObject {
     }
 
     Y.applyUpdate(doc, createWorkspaceYDocUpdateFromSnapshot(snapshot), this);
-    this.doc = doc;
-    await this.awaitPersisted();
-    await this.compact({ checkpoint: false });
+    this.updateCount = 0;
+    this.updateBytes = 0;
+    this.lastCompactedSeq = this.nextSeq;
+    this.compactCount += 1;
+    await compactWorkspaceYDocStorage(
+      this.state.storage,
+      Y.encodeStateAsUpdate(doc),
+      this.storedMeta(),
+    );
     return true;
   }
 
@@ -550,10 +555,12 @@ export class WorkspaceYDocDurableObject {
   }
 
   private async ensureAlarm() {
+    if (this.alarmScheduled) return;
     const existing = await this.state.storage.getAlarm();
     if (existing == null) {
       await this.state.storage.setAlarm(Date.now() + ALARM_DELAY_MS);
     }
+    this.alarmScheduled = true;
   }
 
   private hasPendingCheckpoint() {

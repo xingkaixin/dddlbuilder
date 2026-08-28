@@ -67,17 +67,6 @@ export const enforceRequestRateLimit = async (
         RETURNING value
       `,
     ).bind(policy.scope, subject, windowId, windowEndsAt, policy.limit),
-    c.env.USER_DB.prepare(
-      `
-        DELETE FROM request_rate_limits
-        WHERE rowid IN (
-          SELECT rowid
-          FROM request_rate_limits
-          WHERE expires_at < ?
-          LIMIT 100
-        )
-      `,
-    ).bind(now),
   ]);
   const value = results[0]?.results?.[0]?.value;
   const used = value == null ? policy.limit : Number(value);

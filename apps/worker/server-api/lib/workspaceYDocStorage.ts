@@ -111,14 +111,15 @@ export const readWorkspaceYDocStorage = async (storage: DurableObjectStorage) =>
   };
 };
 
-export const appendWorkspaceYDocUpdate = (
+export const appendWorkspaceYDocUpdates = (
   storage: DurableObjectStorage,
-  seq: number,
-  update: Uint8Array,
+  updates: readonly { seq: number; update: Uint8Array }[],
   meta: WorkspaceYDocStoredMeta,
 ) =>
   storage.transaction(async (transaction) => {
-    await writeBinary(transaction, updateKey(seq), update);
+    for (const { seq, update } of updates) {
+      await writeBinary(transaction, updateKey(seq), update);
+    }
     await transaction.put(WORKSPACE_YDOC_META_KEY, meta);
   });
 

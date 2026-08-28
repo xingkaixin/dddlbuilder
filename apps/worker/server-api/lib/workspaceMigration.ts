@@ -1,3 +1,4 @@
+import { DomainError } from './http.js';
 import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type * as Y from 'yjs';
 import {
@@ -196,7 +197,11 @@ const buildMigrationEntityRecords = (
   const savedDrafts = snapshot.savedDrafts.map((draft) => {
     const tableId = draft.tableId ?? tableIdsByName.get(draft.normalizedName);
     if (tableId === null)
-      throw new Error('Cannot migrate an ambiguous saved draft without a table ID');
+      throw new DomainError(
+        400,
+        'WORKSPACE_MIGRATION_INVALID',
+        'Cannot migrate an ambiguous saved draft without a table ID',
+      );
     return { ...draft, tableId: tableId ?? `legacy:${draft.normalizedName}` };
   });
   return workspaceSnapshotToEntities({
@@ -282,7 +287,12 @@ const resolveMigrationRecords = (
     if (existingResolution) return existingResolution;
 
     const source = sourceFolders.get(folderId);
-    if (!source) throw new Error(`Migration folder not found: ${folderId}`);
+    if (!source)
+      throw new DomainError(
+        400,
+        'WORKSPACE_MIGRATION_INVALID',
+        `Migration folder not found: ${folderId}`,
+      );
     const parentId = (source.entity.payload as Record<string, unknown>).parentId;
     if (
       typeof parentId === 'string' &&

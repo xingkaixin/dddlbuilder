@@ -18,11 +18,9 @@ const createEnv = (disabled = false) =>
     USER_DB: {
       prepare: vi.fn(() => ({
         bind: vi.fn(() => ({
-          all: vi
-            .fn()
-            .mockResolvedValue({
-              results: [{ id: 'session-1', disabled: disabled ? 'user-1' : null }],
-            }),
+          all: vi.fn().mockResolvedValue({
+            results: [{ id: 'session-1', disabled: disabled ? 'user-1' : null }],
+          }),
         })),
       })),
     },

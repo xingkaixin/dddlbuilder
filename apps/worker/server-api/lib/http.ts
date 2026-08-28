@@ -41,9 +41,7 @@ export const errorResponse = (
   return c.json(payload, status);
 };
 
-export type JsonBodyResult<T> =
-  | { data: T; errorResponse: null }
-  | { data: null; errorResponse: Response };
+export type JsonBodyResult<T> = { ok: true; data: T } | { ok: false; response: Response };
 
 /**
  * 领域层用错误表达可预期的失败，全局 onError 负责渲染成响应；
@@ -68,8 +66,8 @@ export const parseJsonBodyWithLimit = async <T>(
   const contentLength = Number(c.req.header('content-length'));
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     return {
-      data: null,
-      errorResponse: errorResponse(
+      ok: false,
+      response: errorResponse(
         c,
         413,
         `Payload too large, maximum ${maxBytes} bytes`,
@@ -81,8 +79,8 @@ export const parseJsonBodyWithLimit = async <T>(
   const body = c.req.raw.body;
   if (!body) {
     return {
-      data: null,
-      errorResponse: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
+      ok: false,
+      response: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
     };
   }
 
@@ -97,8 +95,8 @@ export const parseJsonBodyWithLimit = async <T>(
       if (totalBytes > maxBytes) {
         await reader.cancel();
         return {
-          data: null,
-          errorResponse: errorResponse(
+          ok: false,
+          response: errorResponse(
             c,
             413,
             `Payload too large, maximum ${maxBytes} bytes`,
@@ -110,8 +108,8 @@ export const parseJsonBodyWithLimit = async <T>(
     }
   } catch {
     return {
-      data: null,
-      errorResponse: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
+      ok: false,
+      response: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
     };
   }
 
@@ -124,11 +122,11 @@ export const parseJsonBodyWithLimit = async <T>(
 
   try {
     const raw = new TextDecoder().decode(bytes);
-    return { data: JSON.parse(raw) as T, errorResponse: null };
+    return { ok: true, data: JSON.parse(raw) as T };
   } catch {
     return {
-      data: null,
-      errorResponse: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
+      ok: false,
+      response: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
     };
   }
 };

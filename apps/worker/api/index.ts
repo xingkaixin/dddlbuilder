@@ -18,7 +18,7 @@ import { registerWorkspaceRoutes } from '../server-api/routes/workspaces.js';
 import { registerWorkspaceYDocRoutes } from '../server-api/routes/workspaceYDoc.js';
 import { registerAdminRoutes } from '../server-api/routes/admin.js';
 import { reclaimStaleAIUsage } from '../server-api/lib/aiUsage.js';
-import { reconcileTerminalAIBudgets } from '../server-api/lib/aiBudget.js';
+import { cleanupAIGovernance, reconcileTerminalAIBudgets } from '../server-api/lib/aiBudget.js';
 export { WorkspaceYDocDurableObject } from '../server-api/lib/workspaceYDocDurableObject.js';
 
 const DOCS_DEV_ORIGIN = 'http://127.0.0.1:5174';
@@ -141,6 +141,7 @@ export default {
       (async () => {
         const { scanned, reclaimed } = await reclaimStaleAIUsage(env);
         const reconciledBudgets = await reconcileTerminalAIBudgets(env);
+        await cleanupAIGovernance(env);
         if (scanned > 0 || reconciledBudgets > 0) {
           console.log(
             `[ai-usage] reclaim scanned=${scanned} reclaimed=${reclaimed} budgets=${reconciledBudgets}`,

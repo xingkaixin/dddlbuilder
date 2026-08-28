@@ -57,7 +57,7 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
     }
 
     const parsed = await parseJsonBodyWithLimit<ShareCreateBody>(c, SHARE_BODY_MAX_BYTES);
-    if (parsed.errorResponse) return parsed.errorResponse;
+    if (!parsed.ok) return parsed.response;
 
     const body = parsed.data || {};
     const state = body.state;

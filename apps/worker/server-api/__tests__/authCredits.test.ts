@@ -57,7 +57,7 @@ describe('authentication credit initialization', () => {
         { ...env, SIGNUP_BONUS_CREDITS: 'invalid' },
         { userId: 'user-1', email: 'user@example.com' },
       ),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/SIGNUP_BONUS_CREDITS/);
     const app = new Hono<ApiEnv>();
     registerCreditRoutes(app);
     const response = await app.request('/credits/balance', {}, env);

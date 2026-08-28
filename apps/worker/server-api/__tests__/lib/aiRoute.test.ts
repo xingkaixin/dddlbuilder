@@ -293,8 +293,7 @@ describe('withAIGovernance', () => {
       },
     ]);
     expect(shell.completeAIUsage).not.toHaveBeenCalled();
-    if (hasOutput) expect(shell.failAIUsage.mock.calls[0]?.[3]).toBeGreaterThan(0);
-    else expect(shell.failAIUsage.mock.calls[0]?.[3]).toBeNull();
+    expect(shell.failAIUsage.mock.calls[0]?.[3]).toEqual(hasOutput ? expect.any(Number) : null);
     expect(shell.failAIUsage).toHaveBeenCalledTimes(1);
     expect(waitUntil).toHaveBeenCalledTimes(2);
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));

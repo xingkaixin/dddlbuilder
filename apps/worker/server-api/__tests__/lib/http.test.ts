@@ -80,16 +80,20 @@ describe('http lib utilities', () => {
   describe('parseJsonBodyWithLimit', () => {
     it('rejects if Content-Length header far exceeds limit', async () => {
       const c = mockContext('', undefined, { 'content-length': '1000' });
-      const { data, errorResponse } = await parseJsonBodyWithLimit(c, 500);
-      expect(data).toBeNull();
+      const result = await parseJsonBodyWithLimit(c, 500);
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('Expected body rejection');
+      const errorResponse = result.response;
       expect((errorResponse as any).status).toBe(413);
       expect((errorResponse as any).data.code).toBe('PAYLOAD_TOO_LARGE');
     });
 
     it('rejects a request without a body', async () => {
       const c = mockContext('');
-      const { data, errorResponse } = await parseJsonBodyWithLimit(c, 500);
-      expect(data).toBeNull();
+      const result = await parseJsonBodyWithLimit(c, 500);
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('Expected body rejection');
+      const errorResponse = result.response;
       expect((errorResponse as any).status).toBe(400);
       expect((errorResponse as any).data.code).toBe('INVALID_JSON');
     });
@@ -97,25 +101,28 @@ describe('http lib utilities', () => {
     it('rejects if actual body encoded length exceeds maxBytes', async () => {
       const longString = 'a'.repeat(600);
       const c = mockContext('', longString);
-      const { data, errorResponse } = await parseJsonBodyWithLimit(c, 500);
-      expect(data).toBeNull();
+      const result = await parseJsonBodyWithLimit(c, 500);
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('Expected body rejection');
+      const errorResponse = result.response;
       expect((errorResponse as any).status).toBe(413);
       expect((errorResponse as any).data.code).toBe('PAYLOAD_TOO_LARGE');
     });
 
     it('rejects invalid json', async () => {
       const c = mockContext('', 'not-json');
-      const { data, errorResponse } = await parseJsonBodyWithLimit(c, 500);
-      expect(data).toBeNull();
+      const result = await parseJsonBodyWithLimit(c, 500);
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('Expected body rejection');
+      const errorResponse = result.response;
       expect((errorResponse as any).status).toBe(400);
       expect((errorResponse as any).data.code).toBe('INVALID_JSON');
     });
 
     it('parses valid json successfully', async () => {
       const c = mockContext('', '{"hello":"world"}');
-      const { data, errorResponse } = await parseJsonBodyWithLimit(c, 500);
-      expect(errorResponse).toBeNull();
-      expect(data).toEqual({ hello: 'world' });
+      const result = await parseJsonBodyWithLimit(c, 500);
+      expect(result).toEqual({ ok: true, data: { hello: 'world' } });
     });
   });
 });

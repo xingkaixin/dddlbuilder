@@ -34,6 +34,40 @@ const createFixture = () => {
 };
 
 describe('AI daily budget lifecycle', () => {
+  it('cleans expired counters and only settled budget reservations after retention', async () => {
+    const { reserveAIDailyBudget, settleAIDailyBudget, cleanupAIGovernance } =
+      await import('../../lib/aiBudget.js');
+    const { env, sqlite, addUsage } = createFixture();
+    try {
+      for (const id of ['old', 'active', 'recent']) {
+        addUsage(id);
+        await reserveAIDailyBudget(env, id, 10, 1000);
+      }
+      await settleAIDailyBudget(env, 'old', 5);
+      await settleAIDailyBudget(env, 'recent', 5);
+      const now = Date.now();
+      sqlite
+        .prepare('UPDATE ai_budget_reservations SET expires_at = ? WHERE usage_event_id != ?')
+        .run(now - 8 * 86_400_000, 'recent');
+      sqlite.prepare('UPDATE ai_governance_counters SET expires_at = ?').run(now - 1);
+      sqlite
+        .prepare(
+          'INSERT INTO request_rate_limits (scope,subject,window_id,value,expires_at) VALUES (?,?,?,?,?)',
+        )
+        .run('auth', 'ip', 'w', 1, now - 1);
+      await cleanupAIGovernance(env, now);
+      expect(
+        sqlite
+          .prepare('SELECT usage_event_id FROM ai_budget_reservations ORDER BY usage_event_id')
+          .all(),
+      ).toEqual([{ usage_event_id: 'active' }, { usage_event_id: 'recent' }]);
+      expect(sqlite.prepare('SELECT COUNT(*) AS n FROM ai_governance_counters').get()?.n).toBe(0);
+      expect(sqlite.prepare('SELECT COUNT(*) AS n FROM request_rate_limits').get()?.n).toBe(0);
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it('replaces admission estimates with actual usage', async () => {
     const { reserveAIDailyBudget, settleAIDailyBudget } = await import('../../lib/aiBudget.js');
     const { env, sqlite, addUsage } = createFixture();

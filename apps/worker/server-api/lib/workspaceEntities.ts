@@ -274,30 +274,21 @@ const writeEntityVersions = async (
   return { cursor, versions };
 };
 
-const listEntities = async (
+const listEntityHashes = async (
   env: ApiEnv['Bindings'],
   workspaceId: string,
   metrics?: WorkspaceD1Metrics,
 ) => {
-  const result = await allWorkspaceD1Result<EntityRow>(
-    env.USER_DB.prepare(
-      `
-      SELECT
-        entity_type AS entityType,
-        entity_id AS entityId,
-        payload_json AS payloadJson,
-        content_hash AS contentHash,
-        version,
-        deleted_at AS deletedAt,
-        updated_at AS updatedAt
-      FROM workspace_entities
-      WHERE workspace_id = ?
-      ORDER BY version ASC
-    `,
-    ).bind(workspaceId),
+  const result = await allWorkspaceD1Result<
+    Pick<EntityRow, 'entityType' | 'entityId' | 'contentHash' | 'deletedAt'>
+  >(
+    env.USER_DB.prepare(`
+      SELECT entity_type AS entityType, entity_id AS entityId,
+        content_hash AS contentHash, deleted_at AS deletedAt
+      FROM workspace_entities WHERE workspace_id = ?
+    `).bind(workspaceId),
     metrics,
   );
-
   return result.results ?? [];
 };
 
@@ -492,7 +483,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
         contentHash: await buildWorkspaceContentHash(entity.payload),
       })),
     ),
-    listEntities(env, workspaceId, metrics),
+    listEntityHashes(env, workspaceId, metrics),
   ]);
   const existingByKey = new Map(
     existingRows.map((row) => [buildEntityKey(row.entityType, row.entityId), row]),

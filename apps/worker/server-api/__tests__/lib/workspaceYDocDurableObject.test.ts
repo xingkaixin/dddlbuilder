@@ -128,6 +128,32 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     vi.restoreAllMocks();
   });
 
+  it('batches queued updates and reads the alarm only once', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const doc = new Y.Doc();
+    doc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(doc));
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+    const ws = createWebSocket();
+    await object.fetch(new Request('http://localhost/state'));
+    const messages = Array.from({ length: 8 }, (_, i) => {
+      doc.getMap('fields').set(String(i), String(i));
+      return trackedUpdate(Y.encodeStateAsUpdate(doc), i);
+    });
+    await Promise.all(messages.map((message) => object.webSocketMessage(ws, message)));
+    expect(state.storage.transaction).toHaveBeenCalledTimes(1);
+    expect(state.storage.getAlarm).toHaveBeenCalledTimes(1);
+    const restored = new Y.Doc();
+    const response = await new WorkspaceYDocDurableObject(state, createEnv()).fetch(
+      new Request('http://localhost/state'),
+    );
+    Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
+    expect(restored.getMap('fields').size).toBe(8);
+    doc.destroy();
+    restored.destroy();
+  });
+
   it('acknowledges a batch only after storage completes and survives a cold reload', async () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
@@ -206,7 +232,9 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     await durableObject.webSocketMessage(ws, trackedUpdate(Y.encodeStateAsUpdate(doc), 1));
     await durableObject.webSocketMessage(ws, trackedUpdate(Y.encodeStateAsUpdate(doc), 2));
 
-    const authQueries = prepare.mock.calls.filter(([sql]) => String(sql).includes('FROM session'));
+    const authQueries = prepare.mock.calls.filter(([sql]) =>
+      String(sql).includes('LEFT JOIN session'),
+    );
     expect(authQueries).toHaveLength(1);
     doc.destroy();
   });

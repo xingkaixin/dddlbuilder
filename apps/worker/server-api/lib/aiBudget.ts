@@ -119,3 +119,12 @@ export const reconcileTerminalAIBudgets = async (env: ApiEnv['Bindings']) => {
 
   return Number(result.meta.changes ?? 0);
 };
+
+export const cleanupAIGovernance = async (env: ApiEnv['Bindings'], now = Date.now()) => {
+  await env.USER_DB.batch([
+    env.USER_DB.prepare('DELETE FROM request_rate_limits WHERE expires_at < ?').bind(now),
+    env.USER_DB.prepare('DELETE FROM ai_governance_counters WHERE expires_at < ?').bind(now),
+    env.USER_DB.prepare(`DELETE FROM ai_budget_reservations
+      WHERE settled_at IS NOT NULL AND expires_at < ?`).bind(now - 7 * 86_400_000),
+  ]);
+};

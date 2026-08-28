@@ -181,3 +181,25 @@ describe('/api/workspace/migrations', () => {
     expect(analyzeWorkspaceMigration).not.toHaveBeenCalled();
   });
 });
+
+it('preserves migration domain errors instead of reporting service failure', async () => {
+  vi.resetModules();
+  const { DomainError } = await import('../lib/http.js');
+  vi.doMock('../lib/auth.js', () => ({ authenticateRequest: async () => ({ userId: 'user-1' }) }));
+  vi.doMock('../lib/workspaceMigration.js', () => ({
+    analyzeWorkspaceMigration: async () => {
+      throw new DomainError(400, 'INVALID_JSON', 'Ambiguous draft');
+    },
+    commitWorkspaceMigration: vi.fn(),
+  }));
+  const { default: app } = await import('../../api/index');
+  const response = await app.fetch(
+    createRequest('/api/workspace/migrations', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mode: 'analyze', payload: samplePayload }),
+    }),
+    createEnv(),
+  );
+  expect(response.status).toBe(400);
+});

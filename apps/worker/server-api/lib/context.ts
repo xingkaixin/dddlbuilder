@@ -90,7 +90,6 @@ export const ENV_VARIABLE_KEYS = [
 ] as const satisfies readonly EnvVariableKey[];
 
 // 编译期断言：新增 Bindings 环境变量而未列入 ENV_VARIABLE_KEYS 时在此报错
-// 编译期断言：新增 Bindings 环境变量而未列入 ENV_VARIABLE_KEYS 时在此报错
 const _envKeysCovered: Exclude<EnvVariableKey, (typeof ENV_VARIABLE_KEYS)[number]> extends never
   ? true
   : never = true;
