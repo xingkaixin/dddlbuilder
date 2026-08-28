@@ -77,12 +77,16 @@ export const settleAIDailyBudget = async (
       UPDATE ai_budget_reservations
       SET
         actual_tokens = COALESCE(?, reserved_tokens),
-        settled_at = CURRENT_TIMESTAMP
+        settled_at = ?
       WHERE usage_event_id = ? AND actual_tokens IS NULL
       RETURNING window_id AS windowId
     `,
   )
-    .bind(actualTokens == null ? null : Math.max(0, Math.round(actualTokens)), usageEventId)
+    .bind(
+      actualTokens == null ? null : Math.max(0, Math.round(actualTokens)),
+      Date.now(),
+      usageEventId,
+    )
     .first<{ windowId: string }>();
 
   return reservation ? readBudgetValue(env, reservation.windowId) : null;
@@ -102,13 +106,15 @@ export const reconcileTerminalAIBudgets = async (env: ApiEnv['Bindings']) => {
           )
           ELSE 0
         END,
-        settled_at = CURRENT_TIMESTAMP
+        settled_at = ?
       WHERE actual_tokens IS NULL
         AND usage_event_id IN (
           SELECT id FROM usage_events WHERE status IN ('succeeded', 'failed')
         )
     `,
-  ).run();
+  )
+    .bind(Date.now())
+    .run();
 
   return Number(result.meta.changes ?? 0);
 };

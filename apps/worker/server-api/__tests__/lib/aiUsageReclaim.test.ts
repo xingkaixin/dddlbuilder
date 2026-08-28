@@ -80,8 +80,8 @@ describe('reclaimStaleAIUsage with SQLite timestamps', () => {
             estimatedTokens: 100,
           });
           sqlite
-            .prepare('UPDATE usage_events SET created_at = datetime(?) WHERE id = ?')
-            .run(new Date(now - ageMs).toISOString(), reservation.usageEventId);
+            .prepare('UPDATE usage_events SET created_at = ? WHERE id = ?')
+            .run(now - ageMs, reservation.usageEventId);
           return reservation;
         };
         const fresh = await reserve('fresh', 60_000);

@@ -1,3 +1,4 @@
+import { toIsoTimestamp } from './timestamps.js';
 export type AdminUserSummary = {
   id: string;
   name: string;
@@ -47,7 +48,7 @@ const toUsageEvent = (row: Record<string, unknown>): AdminUsageEvent => ({
   actualTotalTokens: row.actualTotalTokens !== null ? Number(row.actualTotalTokens) : null,
   status: String(row.status),
   errorCode: typeof row.errorCode === 'string' ? row.errorCode : null,
-  createdAt: String(row.createdAt),
+  createdAt: toIsoTimestamp(row.createdAt),
 });
 
 export const listAdminUsers = async (
@@ -110,7 +111,7 @@ export const getAdminUser = async (
   return {
     ...toUserSummary(row),
     updatedAt: new Date(Number(row.updatedAt)).toISOString(),
-    lastActiveAt: typeof row.lastActiveAt === 'string' ? row.lastActiveAt : null,
+    lastActiveAt: row.lastActiveAt != null ? toIsoTimestamp(row.lastActiveAt) : null,
   };
 };
 
@@ -131,9 +132,9 @@ export const disableAdminUser = async (
   await db.batch([
     db
       .prepare(
-        'INSERT OR IGNORE INTO admin_user_flags (user_id, disabled_at, disabled_reason) VALUES (?, CURRENT_TIMESTAMP, ?)',
+        'INSERT OR IGNORE INTO admin_user_flags (user_id, disabled_at, disabled_reason) VALUES (?, ?, ?)',
       )
-      .bind(userId, reason ?? null),
+      .bind(userId, Date.now(), reason ?? null),
     db.prepare('DELETE FROM session WHERE user_id = ?').bind(userId),
   ]);
 };

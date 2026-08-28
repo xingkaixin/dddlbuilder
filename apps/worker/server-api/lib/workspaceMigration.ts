@@ -157,12 +157,12 @@ const upsertWorkspaceLink = async (
         last_idempotency_key,
         migrated_at
       )
-      VALUES (?, ?, ?, ?, ?, CASE WHEN ? = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END)
+      VALUES (?, ?, ?, ?, ?, CASE WHEN ? = 'completed' THEN ? ELSE NULL END)
       ON CONFLICT(user_id, local_fingerprint) DO UPDATE SET
         migration_status = excluded.migration_status,
         last_idempotency_key = excluded.last_idempotency_key,
         migrated_at = CASE
-          WHEN excluded.migration_status = 'completed' THEN CURRENT_TIMESTAMP
+          WHEN excluded.migration_status = 'completed' THEN excluded.migrated_at
           ELSE workspace_links.migrated_at
         END
     `,
@@ -174,6 +174,7 @@ const upsertWorkspaceLink = async (
       input.migrationStatus,
       input.idempotencyKey,
       input.migrationStatus,
+      Date.now(),
     )
     .run();
 };

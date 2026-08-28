@@ -128,7 +128,7 @@ describe('credits', () => {
             idempotencyKey: 'signup:user-1',
             relatedUsageId: null,
             metadataJson: null,
-            createdAt: '2026-04-11T00:00:00Z',
+            createdAt: 1775865600000,
           },
         ],
       });
@@ -213,7 +213,7 @@ describe('credits', () => {
       idempotencyKey: 'test-key',
       relatedUsageId: null,
       metadataJson: null,
-      createdAt: '2026-04-11T00:00:00Z',
+      createdAt: 1775865600000,
       ...overrides,
     });
 

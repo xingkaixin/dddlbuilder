@@ -1,4 +1,5 @@
 import type { ApiEnv } from './context.js';
+import { toIsoTimestamp } from './timestamps.js';
 import { DomainError } from './http.js';
 import { getUserSystemConfig } from './userSystemConfig.js';
 
@@ -34,8 +35,8 @@ export type CreditLedgerRow = {
 export type CreditLedgerListOptions = {
   limit: number;
   offset: number;
-  startDate?: string;
-  endDate?: string;
+  startDate?: number;
+  endDate?: number;
 };
 
 type CreditMutationInput = {
@@ -59,7 +60,7 @@ const toLedgerRow = (row: Record<string, unknown>): CreditLedgerRow => ({
   idempotencyKey: String(row.idempotencyKey),
   relatedUsageId: typeof row.relatedUsageId === 'string' ? row.relatedUsageId : null,
   metadataJson: typeof row.metadataJson === 'string' ? row.metadataJson : null,
-  createdAt: String(row.createdAt),
+  createdAt: toIsoTimestamp(row.createdAt),
 });
 
 export const readCreditLedgerEntry = async (
@@ -268,12 +269,13 @@ export const applyCreditMutation = async (
           balance_after,
           idempotency_key,
           related_usage_id,
-          metadata_json
+          metadata_json,
+          created_at
         )
         SELECT
           ?, ?, ?, ?, ?,
           CASE WHEN ? = 'consume' THEN balance - ? ELSE balance + ? END,
-          ?, ?, ?
+          ?, ?, ?, ?
         FROM credit_accounts
         WHERE user_id = ?
       `,
@@ -290,6 +292,7 @@ export const applyCreditMutation = async (
         input.idempotencyKey,
         input.relatedUsageId ?? null,
         input.metadata ? JSON.stringify(input.metadata) : null,
+        Date.now(),
         input.userId,
       )
       .run();

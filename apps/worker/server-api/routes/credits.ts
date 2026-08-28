@@ -20,8 +20,6 @@ const parseLedgerOffset = (value: string | undefined) => {
   return parsed;
 };
 
-const formatD1DateTime = (date: Date) => date.toISOString().slice(0, 19).replace('T', ' ');
-
 const parseLedgerDateTime = (value: string | undefined) => {
   if (!value) {
     return undefined;
@@ -32,7 +30,7 @@ const parseLedgerDateTime = (value: string | undefined) => {
     return undefined;
   }
 
-  return formatD1DateTime(date);
+  return date.getTime();
 };
 
 const resolveAuthenticatedUser = async (c: Context<ApiEnv>) => {

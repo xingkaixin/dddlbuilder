@@ -282,12 +282,12 @@ describe('/api/credits/*', () => {
     expect(listCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', {
       limit: 20,
       offset: 40,
-      startDate: '2026-04-01 00:00:00',
-      endDate: '2026-04-30 00:00:00',
+      startDate: 1775001600000,
+      endDate: 1777507200000,
     });
     expect(countCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', {
-      startDate: '2026-04-01 00:00:00',
-      endDate: '2026-04-30 00:00:00',
+      startDate: 1775001600000,
+      endDate: 1777507200000,
     });
     expect(await response.json()).toMatchObject({
       total: 42,

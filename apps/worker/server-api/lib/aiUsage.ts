@@ -77,9 +77,10 @@ const createUsageEvent = async (env: ApiEnv['Bindings'], reservation: AIUsageRes
         estimated_tokens,
         actual_total_tokens,
         status,
-        error_code
+        error_code,
+        created_at
       )
-      VALUES (?, ?, ?, ?, ?, NULL, 'pending', NULL)
+      VALUES (?, ?, ?, ?, ?, NULL, 'pending', NULL, ?)
     `,
   )
     .bind(
@@ -88,6 +89,7 @@ const createUsageEvent = async (env: ApiEnv['Bindings'], reservation: AIUsageRes
       reservation.routeKey,
       reservation.requestId,
       reservation.reservedTokens,
+      Date.now(),
     )
     .run();
 
@@ -487,7 +489,7 @@ export const reclaimStaleAIUsage = async (
   options: { now?: number; ttlMs?: number; limit?: number } = {},
 ) => {
   const ttlMs = options.ttlMs ?? getAIUsageReclaimTtlMs(buildOpenAIConfig(env));
-  const cutoff = new Date((options.now ?? Date.now()) - ttlMs).toISOString();
+  const cutoff = (options.now ?? Date.now()) - ttlMs;
   const placeholders = RECLAIMABLE_STATUSES.map(() => '?').join(', ');
 
   const stale = await env.USER_DB.prepare(
@@ -502,7 +504,7 @@ export const reclaimStaleAIUsage = async (
         status,
         error_code AS errorCode
       FROM usage_events
-      WHERE status IN (${placeholders}) AND created_at < datetime(?)
+      WHERE status IN (${placeholders}) AND created_at < ?
       ORDER BY created_at
       LIMIT ?
     `,
