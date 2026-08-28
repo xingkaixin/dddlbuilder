@@ -23,6 +23,17 @@ You can manage temporary designs and formally saved versions separately, reduce 
 11. When you need to manually back up or restore, use `Upload to cloud` or `Download from cloud` in the `Workspace Sync` tab. Result: you can upload the full workspace (saved tables, drafts, folders, and trash) from this device to the cloud, or download from the cloud to overwrite the current device; both actions require confirmation to avoid accidental overwrite.
 12. When signing in for the first time, if anonymous local data exists in the browser, a migration prompt appears. Result: after starting the migration, saved tables, drafts, and folders from the anonymous workspace are bound to your account; if there are naming conflicts, the system automatically saves copies without overwriting existing cloud content.
 
+## Local copies and cloud sync
+
+After opening an account workspace in the same browser, refreshing restores its local copy first. Authentication checks and cloud sync run in the background, so you can continue without waiting for cloud content.
+
+- Local content remains readable and editable when the network or authentication endpoint is temporarily unavailable. If your session has expired, sign back into the original account to resume cloud sync. Switching accounts does not transfer the previous account's content.
+- A new device that has not downloaded cloud content shows “Initial sync is not complete.” This does not mean the cloud workspace is empty. Stay signed in and connected; you can also create content locally and let it merge later.
+- Signing out pauses editing on the current page while waiting for cloud confirmation. If confirmation fails, sign-out is cancelled and local data is retained. Restore sync and try again. Successful sign-out removes the account's local copy.
+- “Local copy opened” does not mean “Cloud synced.” Do not clear browser data before synchronization completes.
+
+These behaviors require the page to load and browser storage to be available. Reopening or refreshing the entire site without a network connection is not currently guaranteed.
+
 ## Done when
 
 - Frequently used tables are saved with names and can be loaded from the list reliably.
