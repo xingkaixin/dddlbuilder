@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import * as Y from 'yjs';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
-import { WorkspaceYDocProvider, useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
+import {
+  WorkspaceYDocProvider,
+  useWorkspaceYDoc,
+  useWorkspaceYDocDocument,
+} from '@/providers/WorkspaceYDocProvider';
 import { prepareLegacyWorkspaceSnapshot } from '@/services/workspaceMigrationService';
 import {
   deleteSavedTableFromYDoc,
@@ -44,6 +48,7 @@ vi.mock('y-indexeddb', async () => {
     IndexeddbPersistence: class {
       whenSynced = Promise.resolve(this);
       get = async () => persistence.committed;
+      set = async () => {};
       constructor(_name: string, doc: Y.Doc) {
         if (persistence.update) {
           Yjs.applyUpdate(doc, persistence.update);
@@ -131,6 +136,24 @@ const readPersistedSnapshot = () => {
 };
 
 describe('WorkspaceYDocProvider', () => {
+  it('does not rerender document consumers when only connection status changes', async () => {
+    let renders = 0;
+    const { result } = renderHook(
+      () => {
+        renders += 1;
+        return useWorkspaceYDocDocument();
+      },
+      { wrapper: WorkspaceYDocProvider },
+    );
+    await waitFor(() => expect(result.current.localSynced).toBe(true));
+    const before = renders;
+    const call = vi.mocked(WorkspaceYDocSyncClient).mock.calls.at(-1);
+    if (!call) throw new Error('Expected a sync client');
+    const onStatus = call[2];
+    act(() => onStatus({ state: 'connected', synced: true }));
+    expect(renders).toBe(before);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     auth.status = 'signed_in';

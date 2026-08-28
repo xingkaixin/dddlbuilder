@@ -16,7 +16,7 @@ const workspace = vi.hoisted(() => ({
   localSynced: true,
 }));
 vi.mock('@/hooks/useWorkspaceScope', () => ({ useWorkspaceScope: () => workspace.scope }));
-vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDoc: () => workspace }));
+vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDocDocument: () => workspace }));
 vi.mock('@/utils/savedTablesDb', async (importOriginal) => ({
   ...(await importOriginal<typeof SavedTablesDb>()),
   getSavedTable: vi.fn(),

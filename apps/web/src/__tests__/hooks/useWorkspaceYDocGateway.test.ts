@@ -4,7 +4,7 @@ import * as Y from 'yjs';
 import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 
 const workspace = vi.hoisted(() => ({ doc: null as Y.Doc | null, localSynced: true }));
-vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDoc: () => workspace }));
+vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDocDocument: () => workspace }));
 
 describe('local workspace transaction ownership', () => {
   it('assigns the same local origin to every gateway', () => {

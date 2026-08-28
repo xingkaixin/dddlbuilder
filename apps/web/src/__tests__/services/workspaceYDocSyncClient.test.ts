@@ -116,6 +116,24 @@ const sentMessage = (socket: MockWebSocket, index: number) => {
 };
 
 describe('WorkspaceYDocSyncClient', () => {
+  it('notifies only when connection status changes during an edit burst', async () => {
+    const doc = new Y.Doc();
+    const server = new Y.Doc();
+    const status = vi.fn();
+    const client = new WorkspaceYDocSyncClient('ws', doc, status);
+    await client.connect();
+    const socket = firstSocket();
+    socket.open();
+    syncWithServer(socket, server);
+    status.mockClear();
+    for (let i = 0; i < 10; i += 1) doc.getMap('test').set('value', i);
+    const calls = status.mock.calls.length;
+    client.destroy();
+    doc.destroy();
+    server.destroy();
+    expect(calls).toBe(1);
+  });
+
   it('materializes a remote snapshot with a distinct origin and sends the resulting delta', async () => {
     const doc = new Y.Doc();
     const serverDoc = new Y.Doc();

@@ -26,7 +26,7 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
   }),
 }));
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
-  useWorkspaceYDoc: () => ({ doc: capture.doc, localSynced: true, synced: true }),
+  useWorkspaceYDocDocument: () => ({ doc: capture.doc, localSynced: true, synced: true }),
 }));
 vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactFlowModule>()),

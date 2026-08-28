@@ -70,14 +70,21 @@ const hasCompletedLegacyMigration = (userId: string | null, workspaceId: string 
     isLegacyWorkspaceMigrationCompleted({ kind: 'user', userId, workspaceId }),
   );
 
-const WorkspaceYDocContext = createContext<WorkspaceYDocContextValue>({
+type WorkspaceYDocDocument = Pick<
+  WorkspaceYDocContextValue,
+  'doc' | 'scope' | 'localSynced' | 'retry'
+>;
+type WorkspaceYDocStatus = Omit<WorkspaceYDocContextValue, keyof WorkspaceYDocDocument>;
+const WorkspaceYDocDocumentContext = createContext<WorkspaceYDocDocument>({
   doc: null,
   scope: null,
-  synced: false,
   localSynced: false,
+  retry: noop,
+});
+const WorkspaceYDocStatusContext = createContext<WorkspaceYDocStatus>({
+  synced: false,
   remoteLoaded: false,
   connectionState: 'idle',
-  retry: noop,
 });
 
 export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
@@ -229,13 +236,21 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     const persistence = persistenceRef.current;
     const client = new WorkspaceYDocSyncClient(workspaceId, doc, (status) => {
       if (cancelled) return;
-      setValue((prev) => ({
-        ...prev,
-        connectionState: status.state,
-        failureReason: status.failureReason,
-        synced: status.synced,
-        remoteLoaded: prev.remoteLoaded || status.synced,
-      }));
+      setValue((prev) => {
+        if (
+          prev.connectionState === status.state &&
+          prev.failureReason === status.failureReason &&
+          prev.synced === status.synced
+        )
+          return prev;
+        return {
+          ...prev,
+          connectionState: status.state,
+          failureReason: status.failureReason,
+          synced: status.synced,
+          remoteLoaded: prev.remoteLoaded || status.synced,
+        };
+      });
       if (status.synced && !rememberedRemote) {
         rememberedRemote = true;
         void persistence?.set(REMOTE_LOADED, 1).catch((error: unknown) => {
@@ -252,9 +267,18 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     };
   }, [canSync, doc, localSynced, workspaceId]);
 
-  const memoizedValue = useMemo(
-    () => ({ ...value, doc, localSynced, retry }),
-    [value, doc, localSynced, retry],
+  const documentValue = useMemo(
+    () => ({ doc, scope: value.scope, localSynced, retry }),
+    [doc, value.scope, localSynced, retry],
+  );
+  const statusValue = useMemo(
+    () => ({
+      synced: value.synced,
+      remoteLoaded: value.remoteLoaded,
+      connectionState: value.connectionState,
+      failureReason: value.failureReason,
+    }),
+    [value.synced, value.remoteLoaded, value.connectionState, value.failureReason],
   );
   // 分享页读的是分享快照而非 Y.Doc，工作区写入入口全部关闭，挡住它只会让本可展示的页面白屏。
   const blocked =
@@ -285,14 +309,20 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   }, [refreshSession]);
 
   return (
-    <WorkspaceYDocContext.Provider value={memoizedValue}>
-      {blocked ? (
-        <WorkspaceBootstrapScreen failed={bootstrapTimedOut} onRetry={retryBootstrap} />
-      ) : (
-        children
-      )}
-    </WorkspaceYDocContext.Provider>
+    <WorkspaceYDocDocumentContext.Provider value={documentValue}>
+      <WorkspaceYDocStatusContext.Provider value={statusValue}>
+        {blocked ? (
+          <WorkspaceBootstrapScreen failed={bootstrapTimedOut} onRetry={retryBootstrap} />
+        ) : (
+          children
+        )}
+      </WorkspaceYDocStatusContext.Provider>
+    </WorkspaceYDocDocumentContext.Provider>
   );
 }
 
-export const useWorkspaceYDoc = () => useContext(WorkspaceYDocContext);
+export const useWorkspaceYDocDocument = () => useContext(WorkspaceYDocDocumentContext);
+export const useWorkspaceYDoc = () => ({
+  ...useWorkspaceYDocDocument(),
+  ...useContext(WorkspaceYDocStatusContext),
+});

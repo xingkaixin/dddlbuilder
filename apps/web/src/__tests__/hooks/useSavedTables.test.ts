@@ -46,7 +46,7 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
 }));
 
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
-  useWorkspaceYDoc: () => mockWorkspaceYDoc.value,
+  useWorkspaceYDocDocument: () => mockWorkspaceYDoc.value,
 }));
 
 vi.mock('@/services/workspaceLegacyMigrationMarker', () => ({

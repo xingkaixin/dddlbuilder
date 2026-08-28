@@ -11,7 +11,7 @@ import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { STORAGE_KEY } from '@/utils/constants';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
-import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
+import { useWorkspaceYDocDocument } from '@/providers/WorkspaceYDocProvider';
 import { getShareState, ShareApiError } from '@/services/shareService';
 import type { WorkspaceSavePayload } from '@ddlbuilder/shared-types/workspace';
 import {
@@ -124,7 +124,7 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
 }));
 
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
-  useWorkspaceYDoc: vi.fn(() => ({
+  useWorkspaceYDocDocument: vi.fn(() => ({
     doc: null,
     synced: false,
     localSynced: true,
@@ -188,7 +188,7 @@ const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
     openAuthDialog: vi.fn(),
     closeAuthDialog: vi.fn(),
   });
-  vi.mocked(useWorkspaceYDoc).mockReturnValue({
+  vi.mocked(useWorkspaceYDocDocument).mockReturnValue({
     doc,
     synced: false,
     localSynced,
@@ -343,7 +343,7 @@ describe('usePersistedState', () => {
       openAuthDialog: vi.fn(),
       closeAuthDialog: vi.fn(),
     });
-    vi.mocked(useWorkspaceYDoc).mockReturnValue({
+    vi.mocked(useWorkspaceYDocDocument).mockReturnValue({
       doc: null,
       synced: false,
       localSynced: true,

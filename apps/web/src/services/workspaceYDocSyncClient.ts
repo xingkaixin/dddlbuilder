@@ -55,6 +55,7 @@ export class WorkspaceYDocSyncClient {
   private pendingUpdatesStartedAt: number | null = null;
   private reconnectDelayMs = 1000;
   private syncRoundTripComplete = false;
+  private lastStatus: WorkspaceYDocConnectionStatus | null = null;
   private nextRequestId = 0;
   private readonly pendingAcknowledgements = new Set<number>();
   private readonly syncWaiters = new Set<(synced: boolean) => void>();
@@ -388,7 +389,14 @@ export class WorkspaceYDocSyncClient {
         this.pendingAcknowledgements.size === 0 &&
         this.pendingUpdates.length === 0,
     };
-    this.onConnectionStateChange(status);
+    if (
+      this.lastStatus?.state !== status.state ||
+      this.lastStatus.failureReason !== status.failureReason ||
+      this.lastStatus.synced !== status.synced
+    ) {
+      this.lastStatus = status;
+      this.onConnectionStateChange(status);
+    }
     if (status.synced || state === 'offline' || state === 'error') {
       for (const finish of this.syncWaiters) finish(status.synced);
     }

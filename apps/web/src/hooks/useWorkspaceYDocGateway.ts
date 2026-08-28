@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type * as Y from 'yjs';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
+import { useWorkspaceYDocDocument } from '@/providers/WorkspaceYDocProvider';
 import { WorkspaceYDocOrigin } from '@/services/workspaceYDocAdapter';
 
 type WorkspaceYDocGatewayOptions = {
@@ -12,7 +12,7 @@ export function useWorkspaceYDocGateway(
   scope: WorkspaceScope | null,
   { enabled = true }: WorkspaceYDocGatewayOptions = {},
 ) {
-  const workspaceYDoc = useWorkspaceYDoc();
+  const workspaceYDoc = useWorkspaceYDocDocument();
   const yDocReady = Boolean(
     enabled && workspaceYDoc.doc && workspaceYDoc.localSynced && scope?.kind === 'user',
   );
