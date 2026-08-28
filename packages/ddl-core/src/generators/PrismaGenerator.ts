@@ -108,13 +108,12 @@ export class PrismaGenerator implements ORMGenerator {
       lines.push(`  @@unique([${fieldNames}])`);
     }
 
-    // Normal and unique indexes (skip primary key)
-    const nonPrimaryIndexes = indexes.filter((i) => i.kind !== 'primary' && i.kind === 'index');
+    const regularIndexes = indexes.filter((i) => i.kind === 'index');
     const singleUniques = indexes.filter(
       (i) => i.kind !== 'index' && i.fields.length === 1 && i.kind !== 'primary',
     );
 
-    for (const idx of nonPrimaryIndexes) {
+    for (const idx of regularIndexes) {
       const fieldNames = idx.fields.map((f) => toCamelCase(f.name)).join(', ');
       lines.push(`  @@index([${fieldNames}])`);
     }
