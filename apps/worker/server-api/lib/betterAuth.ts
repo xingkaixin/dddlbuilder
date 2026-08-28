@@ -6,6 +6,8 @@ import type { ApiEnv } from './context.js';
 import { betterAuthSchema } from '@ddlbuilder/db';
 import { getUserSystemConfig } from './userSystemConfig.js';
 import { parseAllowedOrigins } from './env.js';
+import { grantSignupCredits } from './credits.js';
+import { kickWorkspaceSockets } from './sessionRevocation.js';
 
 const escapeHtml = (value: string) =>
   value
@@ -166,7 +168,7 @@ const renderResetPasswordEmail = (url: string, name: string) => {
   };
 };
 
-export const createBetterAuth = (env: ApiEnv['Bindings']) => {
+const buildBetterAuth = (env: ApiEnv['Bindings']) => {
   const config = getUserSystemConfig(env);
   const db = drizzle(env.USER_DB);
   const authBaseUrl = new URL(config.betterAuthUrl);
@@ -210,34 +212,30 @@ export const createBetterAuth = (env: ApiEnv['Bindings']) => {
       },
     },
     databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            await grantSignupCredits(env, { userId: user.id, email: user.email });
+          },
+        },
+      },
       session: {
         delete: {
-          // 撤销会话时立即断开该会话在 workspace DO 上的同步 socket
-          after: async (session: { id: string; userId: string }) => {
-            const namespace = env.WORKSPACE_YDOC;
-            if (!namespace) return;
-            const workspaces = await env.USER_DB.prepare(
-              'SELECT id FROM workspaces WHERE user_id = ?',
-            )
-              .bind(session.userId)
-              .all<{ id: string }>();
-            await Promise.all(
-              (workspaces.results ?? []).map(({ id }) =>
-                namespace
-                  .get(namespace.idFromName(id))
-                  .fetch('https://workspace-ydoc.internal/kick', {
-                    method: 'POST',
-                    headers: {
-                      'x-ddlbuilder-user-id': session.userId,
-                      'x-ddlbuilder-session-id': session.id,
-                    },
-                  })
-                  .catch(() => undefined),
-              ),
-            );
-          },
+          after: (session) =>
+            kickWorkspaceSockets(env, { userId: session.userId, sessionId: session.id }),
         },
       },
     },
   });
+};
+
+const authInstances = new WeakMap<ApiEnv['Bindings'], ReturnType<typeof buildBetterAuth>>();
+
+export const createBetterAuth = (env: ApiEnv['Bindings']) => {
+  let auth = authInstances.get(env);
+  if (!auth) {
+    auth = buildBetterAuth(env);
+    authInstances.set(env, auth);
+  }
+  return auth;
 };

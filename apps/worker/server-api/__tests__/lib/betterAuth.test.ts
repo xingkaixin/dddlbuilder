@@ -26,6 +26,7 @@ describe('createBetterAuth', () => {
   const drizzleAdapterMock = vi.fn();
   const drizzleMock = vi.fn(() => ({ db: 'mocked' }));
   const resendSendMock = vi.fn();
+  const grantSignupCreditsMock = vi.fn();
   class MockResend {
     emails = { send: resendSendMock };
   }
@@ -47,6 +48,7 @@ describe('createBetterAuth', () => {
     vi.doMock('resend', () => ({
       Resend: MockResend,
     }));
+    vi.doMock('../../lib/credits.js', () => ({ grantSignupCredits: grantSignupCreditsMock }));
   });
 
   it('calls betterAuth with correct config including trustedOrigins from default allowed origins', async () => {
@@ -70,6 +72,22 @@ describe('createBetterAuth', () => {
     expect(config.emailVerification.sendOnSignUp).toBe(true);
     expect(config.emailVerification.sendOnSignIn).toBe(false);
     expect(config.emailVerification.autoSignInAfterVerification).toBe(true);
+  });
+
+  it('reuses auth instances for the same bindings and owns signup grants', async () => {
+    betterAuthMock.mockReturnValue({ api: {} });
+    const { createBetterAuth } = await import('../../lib/betterAuth.js');
+    const env = createEnv();
+    createBetterAuth(env);
+    createBetterAuth(env);
+    const config = betterAuthMock.mock.calls[0][0];
+    expect(betterAuthMock).toHaveBeenCalledTimes(1);
+    expect(config.databaseHooks.user.create.after).toBeTypeOf('function');
+    await config.databaseHooks.user.create.after({ id: 'user-1', email: 'user@example.com' });
+    expect(grantSignupCreditsMock).toHaveBeenCalledExactlyOnceWith(env, {
+      userId: 'user-1',
+      email: 'user@example.com',
+    });
   });
 
   it('parses single CORS_ALLOWED_ORIGINS and includes it in trustedOrigins', async () => {

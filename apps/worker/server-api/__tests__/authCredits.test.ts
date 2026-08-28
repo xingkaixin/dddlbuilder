@@ -2,11 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 import { createSqliteD1Database } from './helpers/sqliteD1';
 import { resolveAuthenticatedUser } from '../lib/auth.js';
+import { grantSignupCredits } from '../lib/credits.js';
 
 vi.mock('../lib/betterAuth.js', () => ({
   createBetterAuth: () => ({
-    handler: async () =>
-      Response.json({
+    api: {
+      getSession: async () => ({
         session: { id: 'session-1', token: 'session-token' },
         user: {
           id: 'user-1',
@@ -15,6 +16,7 @@ vi.mock('../lib/betterAuth.js', () => ({
           name: 'User One',
         },
       }),
+    },
   }),
 }));
 
@@ -45,7 +47,7 @@ describe('authentication credit initialization', () => {
   it.each(['200000', '50000'])(
     'preserves an existing grant when the policy becomes %s',
     async (amount) => {
-      await resolveAuthenticatedUser(env, new Headers());
+      await grantSignupCredits(env, { userId: 'user-1', email: 'user@example.com' });
       const result = resolveAuthenticatedUser(
         { ...env, SIGNUP_BONUS_CREDITS: amount },
         new Headers(),
@@ -63,8 +65,11 @@ describe('authentication credit initialization', () => {
 
   it('initializes a new user once under concurrent policies', async () => {
     const results = await Promise.allSettled([
-      resolveAuthenticatedUser(env, new Headers()),
-      resolveAuthenticatedUser({ ...env, SIGNUP_BONUS_CREDITS: '200000' }, new Headers()),
+      grantSignupCredits(env, { userId: 'user-1', email: 'user@example.com' }),
+      grantSignupCredits(
+        { ...env, SIGNUP_BONUS_CREDITS: '200000' },
+        { userId: 'user-1', email: 'user@example.com' },
+      ),
     ]);
     expect(results.map((result) => result.status)).toEqual(['fulfilled', 'fulfilled']);
     const ledger = fixture.sqlite.prepare('SELECT amount, balance_after FROM credit_ledger').all();

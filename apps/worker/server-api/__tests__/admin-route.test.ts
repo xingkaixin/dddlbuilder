@@ -59,6 +59,41 @@ describe('/api/admin/*', () => {
     requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(null);
   });
 
+  it.each([
+    ['disable', { reason: 'security' }],
+    ['email-verification', { verified: false }],
+  ])('kicks workspace sockets when admin action %s revokes sessions', async (action, body) => {
+    vi.doMock('../lib/adminAuth.js', () => ({
+      resolveAdminSession: vi.fn().mockResolvedValue(true),
+    }));
+    const fetchSocket = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    const waitUntil = vi.fn();
+    const env = createEnv({
+      USER_DB: mockD1Results([{ id: 'workspace-1' }]) as unknown as D1Database,
+      WORKSPACE_YDOC: {
+        idFromName: vi.fn((id) => id),
+        get: vi.fn(() => ({ fetch: fetchSocket })),
+      } as unknown as DurableObjectNamespace,
+    });
+    const app = await createAdminApp();
+    const response = await app.fetch(
+      createRequest(`/api/admin/users/user-1/${action}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+      env,
+      { waitUntil, passThroughOnException() {} } as ExecutionContext,
+    );
+    await Promise.all(waitUntil.mock.calls.map(([task]) => task));
+    expect(response.status).toBe(200);
+    expect(fetchSocket).toHaveBeenCalledWith(
+      'https://workspace-ydoc.internal/kick',
+      expect.objectContaining({ headers: { 'x-ddlbuilder-user-id': 'user-1' } }),
+    );
+    expect(waitUntil).toHaveBeenCalled();
+  });
+
   // ─── Session management ──────────────────────────────────────────
 
   describe('POST /api/admin/session', () => {

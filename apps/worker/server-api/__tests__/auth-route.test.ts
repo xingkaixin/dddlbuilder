@@ -42,6 +42,7 @@ describe('/api/auth/*', () => {
     );
     betterAuthMocks.createBetterAuth.mockReturnValue({
       handler: betterAuthMocks.handler,
+      api: { getSession: vi.fn().mockResolvedValue(null) },
     });
     requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(null);
   });

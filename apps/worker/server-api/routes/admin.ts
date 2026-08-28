@@ -6,6 +6,7 @@ import { createBetterAuth } from '../lib/betterAuth.js';
 import { getUserSystemConfig } from '../lib/userSystemConfig.js';
 import { applyCreditMutation, listCreditLedger } from '../lib/credits.js';
 import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
+import { kickWorkspaceSockets } from '../lib/sessionRevocation.js';
 import {
   adminUserExists,
   disableAdminUser,
@@ -145,6 +146,9 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     }
 
     await disableAdminUser(c.env.USER_DB, userId, body.reason);
+    if (c.env.WORKSPACE_YDOC) {
+      c.executionCtx.waitUntil(kickWorkspaceSockets(c.env, { userId }));
+    }
 
     return c.json(withMeta(c, { ok: true }));
   });
@@ -172,6 +176,9 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     }
 
     await setAdminUserEmailVerification(c.env.USER_DB, userId, body.verified);
+    if (!body.verified && c.env.WORKSPACE_YDOC) {
+      c.executionCtx.waitUntil(kickWorkspaceSockets(c.env, { userId }));
+    }
 
     return c.json(withMeta(c, { ok: true, emailVerified: body.verified }));
   });
