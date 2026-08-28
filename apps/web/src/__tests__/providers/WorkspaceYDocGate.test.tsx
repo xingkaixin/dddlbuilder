@@ -51,6 +51,7 @@ vi.mock('y-indexeddb', () => ({
 
 vi.mock('@/services/workspaceAccountService', () => ({
   clearLegacyWorkspaceData: vi.fn().mockResolvedValue(undefined),
+  retryPendingWorkspaceCleanup: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/services/workspaceMigrationService', () => ({
@@ -108,18 +109,19 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
 
   it('本地 Y.Doc 加载完成后正常渲染 children', async () => {
     renderGate();
+    await waitFor(() => expect(localLoad.resolve).toBeTypeOf('function'));
     act(() => localLoad.resolve?.());
 
     await waitFor(() => expect(createDraftEntry()).toBeInTheDocument());
     expect(screen.queryByTestId('workspace-bootstrap-loading')).toBeNull();
   });
 
-  it('whenSynced 永不 resolve 时超时进入错误态，重试后回到加载态而非永久卡住', () => {
+  it('whenSynced 永不 resolve 时超时进入错误态，重试后回到加载态而非永久卡住', async () => {
     vi.useFakeTimers();
     renderGate();
     expect(screen.getByTestId('workspace-bootstrap-loading')).toBeInTheDocument();
 
-    act(() => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
+    await act(async () => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
 
     expect(screen.getByTestId('workspace-bootstrap-error')).toBeInTheDocument();
     expect(createDraftEntry()).toBeNull();
@@ -129,7 +131,7 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     expect(screen.getByTestId('workspace-bootstrap-loading')).toBeInTheDocument();
   });
 
-  it('未登录时不被门禁挡住', () => {
+  it('未登录时清理检查完成后不被门禁挡住', async () => {
     authSession.current = {
       status: 'signed_out',
       userId: null,
@@ -138,7 +140,7 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     };
     renderGate();
 
-    expect(createDraftEntry()).toBeInTheDocument();
+    await waitFor(() => expect(createDraftEntry()).toBeInTheDocument());
     expect(screen.queryByTestId('workspace-bootstrap-loading')).toBeNull();
   });
 
@@ -168,7 +170,7 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     expect(createDraftEntry()).toBeNull();
   });
 
-  it('workspaceId 永远拿不到时不会永久卡在加载态，重试会重新解析会话', () => {
+  it('workspaceId 永远拿不到时不会永久卡在加载态，重试会重新解析会话', async () => {
     vi.useFakeTimers();
     authSession.current = {
       status: 'signed_in',
@@ -178,7 +180,7 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     };
     renderGate();
 
-    act(() => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
+    await act(async () => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
 
     expect(screen.getByTestId('workspace-bootstrap-error')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '重试加载' }));
@@ -186,7 +188,7 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     expect(authSession.refreshSession).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('workspace-bootstrap-loading')).toBeInTheDocument();
 
-    act(() => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
+    await act(async () => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
     expect(screen.getByTestId('workspace-bootstrap-error')).toBeInTheDocument();
   });
 
@@ -216,6 +218,7 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
   // Y.Doc 拆掉——那会让用户在改个用户名的工夫里看着整个界面退回启动态。
   it('已加载完成后遇上 refreshSession，不应退回门禁', async () => {
     const { rerender } = renderGate();
+    await waitFor(() => expect(localLoad.resolve).toBeTypeOf('function'));
     act(() => localLoad.resolve?.());
     await waitFor(() => expect(createDraftEntry()).toBeInTheDocument());
 
@@ -262,9 +265,10 @@ describe('WorkspaceYDocProvider 门禁不改变已就绪时的行为', () => {
   it('迟到的本地加载会把超时留下的错误态复位', async () => {
     vi.useFakeTimers();
     renderGate();
-    act(() => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
+    await act(async () => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
     expect(screen.getByTestId('workspace-bootstrap-error')).toBeInTheDocument();
 
+    await act(async () => {});
     const lateResolve = localLoad.resolve;
     vi.useRealTimers();
     act(() => lateResolve?.());

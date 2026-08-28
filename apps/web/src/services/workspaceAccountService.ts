@@ -1,3 +1,13 @@
+import {
+  forgetWorkspaceCache,
+  markWorkspaceCleanupPending,
+  readWorkspaceCaches,
+} from './workspaceCacheRegistry';
+import {
+  parseWorkspaceIdentity,
+  readWorkspaceIdentity,
+  writeWorkspaceIdentity,
+} from './workspaceIdentity';
 import { clearWorkspaceHistory } from './workspaceHistoryCleanup';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types';
 import type {
@@ -80,10 +90,33 @@ export const clearLegacyWorkspaceData = async (scope: WorkspaceScope): Promise<v
 
 export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {
   if (scope.kind !== 'user') return;
-  await clearWorkspaceYDocData(scope.workspaceId);
-  await clearWorkspacePartition(scope);
+  const scopes = markWorkspaceCleanupPending(scope);
+  for (const cachedScope of scopes) {
+    await clearWorkspaceYDocData(cachedScope.workspaceId);
+    await clearWorkspacePartition(cachedScope);
+    await clearWorkspaceHistory(cachedScope);
+  }
   await clearWorkspacePartition({ kind: 'legacy_user', userId: scope.userId });
-  await clearWorkspaceHistory(scope);
   await clearWorkspaceHistory({ kind: 'legacy_user', userId: scope.userId });
+  for (const cachedScope of scopes) forgetWorkspaceCache(cachedScope);
   dispatchWorkspaceSnapshotApplied();
+};
+
+let pendingCleanup: Promise<void> | null = null;
+export const retryPendingWorkspaceCleanup = (): Promise<void> => {
+  if (pendingCleanup) return pendingCleanup;
+  pendingCleanup = (async () => {
+    const scopes = readWorkspaceCaches().filter((cache) => cache.status === 'pending_cleanup');
+    const users = new Set<string>();
+    for (const scope of scopes) {
+      if (users.has(scope.userId)) continue;
+      users.add(scope.userId);
+      await clearLocalWorkspaceData(scope);
+      if (parseWorkspaceIdentity(readWorkspaceIdentity())?.userId === scope.userId)
+        writeWorkspaceIdentity(null);
+    }
+  })().finally(() => {
+    pendingCleanup = null;
+  });
+  return pendingCleanup;
 };

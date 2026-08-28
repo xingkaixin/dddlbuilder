@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, renderHook, screen, waitFor } from '@testing-library/react';
 import * as Y from 'yjs';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
@@ -16,7 +16,10 @@ import {
 } from '@/services/workspaceYDocAdapter';
 import { WorkspaceYDocSyncClient } from '@/services/workspaceYDocSyncClient';
 import { commitLegacyWorkspaceYDoc } from '@/services/workspaceYDocStorage';
-import { clearLegacyWorkspaceData } from '@/services/workspaceAccountService';
+import {
+  clearLegacyWorkspaceData,
+  retryPendingWorkspaceCleanup,
+} from '@/services/workspaceAccountService';
 import type * as WorkspaceYDocStorage from '@/services/workspaceYDocStorage';
 
 const auth = vi.hoisted(() => ({
@@ -40,6 +43,7 @@ vi.mock('@/services/workspaceYDocStorage', async (importOriginal) => ({
 }));
 vi.mock('@/services/workspaceAccountService', () => ({
   clearLegacyWorkspaceData: vi.fn().mockResolvedValue(undefined),
+  retryPendingWorkspaceCleanup: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('y-indexeddb', async () => {
@@ -136,6 +140,17 @@ const readPersistedSnapshot = () => {
 };
 
 describe('WorkspaceYDocProvider', () => {
+  it('blocks startup until pending account cleanup succeeds', async () => {
+    vi.mocked(retryPendingWorkspaceCleanup).mockRejectedValueOnce(new Error('blocked deletion'));
+    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(null);
+    const view = renderProvider();
+    await screen.findByTestId('workspace-bootstrap-error');
+    expect(connect).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '重试加载' }));
+    await waitFor(() => expect(view.result.current.localSynced).toBe(true));
+    expect(retryPendingWorkspaceCleanup).toHaveBeenCalledTimes(2);
+  });
+
   it('does not rerender document consumers when only connection status changes', async () => {
     let renders = 0;
     const { result } = renderHook(

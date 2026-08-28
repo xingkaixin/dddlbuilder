@@ -1,3 +1,4 @@
+import { markWorkspaceCleanupPending } from '@/services/workspaceCacheRegistry';
 import {
   createContext,
   useCallback,
@@ -387,8 +388,11 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           }
           await queryClient.cancelQueries({ queryKey: authQueryKeys.me });
 
+          let cleanupRegistered = !scope;
           if (scope) {
             try {
+              markWorkspaceCleanupPending(scope);
+              cleanupRegistered = true;
               await clearLocalWorkspaceData(scope);
             } catch (error) {
               console.error(
@@ -399,6 +403,24 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
                 }),
                 error,
               );
+              toast.error(i18n.t('workspaceYDoc.signOut.cleanupFailed'), {
+                action: {
+                  label: i18n.t('workspaceYDoc.signOut.retryCleanup'),
+                  onClick: () => {
+                    void clearLocalWorkspaceData(scope)
+                      .then(() => {
+                        if (
+                          parseWorkspaceIdentity(readWorkspaceIdentity())?.userId === scope.userId
+                        )
+                          writeWorkspaceIdentity(null);
+                      })
+                      .catch((error: unknown) => {
+                        console.error('[workspace] cleanup retry failed', error);
+                        toast.error(i18n.t('workspaceYDoc.signOut.cleanupFailed'));
+                      });
+                  },
+                },
+              });
             }
           }
           if (state.userId) {
@@ -407,7 +429,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
             queryClient.removeQueries({ queryKey: workspaceMigrationQueryKeys.all(state.userId) });
           }
           queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
-          writeWorkspaceIdentity(null);
+          if (cleanupRegistered) writeWorkspaceIdentity(null);
           setAuthDialogOpen(false);
         } finally {
           setSigningOut(false);

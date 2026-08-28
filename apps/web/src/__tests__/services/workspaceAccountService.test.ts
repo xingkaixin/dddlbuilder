@@ -1,3 +1,10 @@
+import {
+  markWorkspaceCleanupPending,
+  readWorkspaceCaches,
+  rememberWorkspaceCache,
+} from '@/services/workspaceCacheRegistry';
+import { writeWorkspaceIdentity, readWorkspaceIdentity } from '@/services/workspaceIdentity';
+import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import * as Y from 'yjs';
 import { watchWorkspaceHistory } from '@/services/workspaceHistoryCleanup';
 import { upsertSavedTableInYDoc, deleteSavedTableFromYDoc } from '@/services/workspaceYDocAdapter';
@@ -8,6 +15,7 @@ import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fak
 import {
   clearLegacyWorkspaceData,
   clearLocalWorkspaceData,
+  retryPendingWorkspaceCleanup,
   fetchCurrentWorkspace,
 } from '@/services/workspaceAccountService';
 import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
@@ -32,6 +40,40 @@ const createState = (tableName: string) => ({
 });
 
 describe('workspaceAccountService', () => {
+  it('removes every registered workspace for an account without touching another account', async () => {
+    const older = { ...scope, workspaceId: 'older' };
+    const other = { ...scope, userId: 'other', workspaceId: 'other' };
+    for (const current of [scope, older, other]) {
+      rememberWorkspaceCache(current);
+      await writeDraft('draft', { state: createState(current.workspaceId), updatedAt: 1 }, current);
+    }
+    const deleted = vi.spyOn(indexedDB, 'deleteDatabase');
+    await clearLocalWorkspaceData(scope);
+    expect(deleted.mock.calls.map(([name]) => name).sort()).toEqual([
+      'ddlbuilder:workspace:older',
+      'ddlbuilder:workspace:ws-1',
+    ]);
+    expect(await readDraft('draft', older)).toBeNull();
+    expect((await readDraft('draft', other))?.state.tableName).toBe('other');
+    expect(readWorkspaceCaches()).toEqual([{ ...other, status: 'active' }]);
+  });
+
+  it('retries durable cleanup after a blocked database deletion', async () => {
+    writeWorkspaceIdentity(scope);
+    markWorkspaceCleanupPending(scope);
+    const blocked = vi.spyOn(indexedDB, 'deleteDatabase').mockImplementationOnce(() => {
+      const request = { onblocked: null as (() => void) | null };
+      queueMicrotask(() => request.onblocked?.());
+      return request as unknown as IDBOpenDBRequest;
+    });
+    await expect(clearLocalWorkspaceData(scope)).rejects.toThrow('Close other workspace tabs');
+    expect(readWorkspaceCaches()).toEqual([{ ...scope, status: 'pending_cleanup' }]);
+    blocked.mockRestore();
+    await retryPendingWorkspaceCleanup();
+    expect(readWorkspaceCaches()).toEqual([]);
+    expect(readWorkspaceIdentity()).toBeNull();
+  });
+
   it('cleans history after a remote permanent deletion and retains trashed tables', async () => {
     const doc = new Y.Doc();
     const remote = new Y.Doc();
@@ -84,6 +126,7 @@ describe('workspaceAccountService', () => {
 
   beforeEach(() => {
     setupFakeIndexedDB();
+    setupMemoryLocalStorage();
   });
 
   afterEach(() => {

@@ -1,3 +1,4 @@
+import { rememberWorkspaceCache } from '@/services/workspaceCacheRegistry';
 import { watchWorkspaceHistory } from '@/services/workspaceHistoryCleanup';
 import {
   createContext,
@@ -36,7 +37,10 @@ import {
   LEGACY_MIGRATION_COMMITTED,
   registerWorkspaceYDocOwner,
 } from '@/services/workspaceYDocStorage';
-import { clearLegacyWorkspaceData } from '@/services/workspaceAccountService';
+import {
+  clearLegacyWorkspaceData,
+  retryPendingWorkspaceCleanup,
+} from '@/services/workspaceAccountService';
 import { isWorkspaceWriteTargetPending } from '@/services/workspaceYDocAuthority';
 import { useAppUiStore, useEditorStore, useTabStore } from '@/stores';
 
@@ -95,6 +99,27 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   const clientRef = useRef<WorkspaceYDocSyncClient | null>(null);
   const persistenceRef = useRef<IndexeddbPersistence | null>(null);
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
+  const [cleanupResult, setCleanupResult] = useState<{
+    attempt: number;
+    status: 'ready' | 'error';
+  } | null>(null);
+  const cleanupReady =
+    cleanupResult?.attempt === bootstrapAttempt && cleanupResult.status === 'ready';
+  useEffect(() => {
+    let cancelled = false;
+    void retryPendingWorkspaceCleanup().then(
+      () => {
+        if (!cancelled) setCleanupResult({ attempt: bootstrapAttempt, status: 'ready' });
+      },
+      (error: unknown) => {
+        console.error('[workspace] pending cleanup failed', error);
+        if (!cancelled) setCleanupResult({ attempt: bootstrapAttempt, status: 'error' });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [bootstrapAttempt]);
   const [timedOutAttempt, setTimedOutAttempt] = useState<number | null>(null);
   const retry = useCallback(() => {
     void refreshSession();
@@ -120,6 +145,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   }, [workspaceUserId, workspaceId, shareId]);
 
   useEffect(() => {
+    if (!cleanupReady) return;
     if (!workspaceUserId || !workspaceId) {
       // oxlint-disable-next-line react/set-state-in-effect
       setValue({
@@ -135,6 +161,20 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
 
     let cancelled = false;
     const scope: UserWorkspaceScope = { kind: 'user', userId: workspaceUserId, workspaceId };
+    try {
+      rememberWorkspaceCache(scope);
+    } catch (error) {
+      console.error('[workspace] failed to register offline cache', error);
+      setValue((previous) => ({
+        ...previous,
+        doc: null,
+        scope,
+        localSynced: false,
+        connectionState: 'error',
+        failureReason: 'unknown',
+      }));
+      return;
+    }
     const doc = new Y.Doc();
     ensureWorkspaceYDocMeta(doc);
     const persistence = new IndexeddbPersistence(buildWorkspaceYDocName(workspaceId), doc);
@@ -212,7 +252,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     return () => {
       void dispose().catch(() => {});
     };
-  }, [workspaceUserId, workspaceId, bootstrapAttempt]);
+  }, [workspaceUserId, workspaceId, bootstrapAttempt, cleanupReady]);
 
   const sameWorkspace =
     (value.scope?.userId ?? null) === workspaceUserId &&
@@ -290,7 +330,8 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   // 分享页读的是分享快照而非 Y.Doc，工作区写入入口全部关闭，挡住它只会让本可展示的页面白屏。
   const blocked =
     !shareId &&
-    (!sameWorkspace ||
+    (!cleanupReady ||
+      !sameWorkspace ||
       isWorkspaceWriteTargetPending({
         authStatus: authSession.status,
         userId: workspaceUserId ?? authSession.userId,
@@ -320,7 +361,11 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       <WorkspaceYDocStatusContext.Provider value={statusValue}>
         {blocked ? (
           <WorkspaceBootstrapScreen
-            failed={bootstrapTimedOut || value.connectionState === 'error'}
+            failed={
+              bootstrapTimedOut ||
+              value.connectionState === 'error' ||
+              (cleanupResult?.attempt === bootstrapAttempt && cleanupResult.status === 'error')
+            }
             onRetry={retryBootstrap}
           />
         ) : (

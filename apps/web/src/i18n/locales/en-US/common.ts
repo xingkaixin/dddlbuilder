@@ -180,6 +180,9 @@ export const enUSCommon = {
   },
   workspaceYDoc: {
     signOut: {
+      cleanupFailed:
+        'Signed out, but local copies could not be removed. Close other workspace tabs and retry.',
+      retryCleanup: 'Retry cleanup',
       saving: 'Confirming cloud save before signing out…',
       unsynced:
         'Sign out was cancelled because cloud sync is not confirmed. Your local data is preserved. Restore sync and try again.',

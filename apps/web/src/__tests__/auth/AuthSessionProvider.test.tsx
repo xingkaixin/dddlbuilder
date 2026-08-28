@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { act, fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useEffect } from 'react';
@@ -669,6 +670,7 @@ describe('AuthSessionProvider', () => {
     );
 
     it('keeps the client signed out when local workspace cleanup fails', async () => {
+      const notice = vi.spyOn(toast, 'error');
       vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(
           new Response(
@@ -711,6 +713,12 @@ describe('AuthSessionProvider', () => {
       await waitFor(() => {
         expect(screen.getByTestId('sign-out-status')).toHaveTextContent('signed_out');
       });
+      const retained = localStorage.getItem('ddlbuilder:workspace-caches:v1');
+      expect(retained).toContain('pending_cleanup');
+      expect(notice).toHaveBeenCalledWith(
+        expect.stringContaining('本机副本未能清理'),
+        expect.objectContaining({ action: expect.any(Object) }),
+      );
       expect(consoleError).toHaveBeenCalledWith(
         JSON.stringify({
           event: 'sign_out_local_cleanup_failure',

@@ -174,6 +174,8 @@ export const zhCNCommon = {
   },
   workspaceYDoc: {
     signOut: {
+      cleanupFailed: '已退出登录，但本机副本未能清理。请关闭其他工作区标签页后重试。',
+      retryCleanup: '重试清理',
       saving: '正在确认云端保存，完成后退出…',
       unsynced: '还有内容未确认同步到云端，已取消退出并保留本地数据。请恢复同步后重试。',
     },
