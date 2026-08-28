@@ -1401,6 +1401,7 @@ export const enUSCommon = {
     },
   },
   timelinePlayer: {
+    addedBadge: 'Added',
     title: 'Schema Change Replay',
     titleWithName: '{{name}} Change Replay',
     empty: 'No version data',

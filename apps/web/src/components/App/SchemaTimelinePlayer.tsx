@@ -375,7 +375,7 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                               <span className="font-medium">{row.fieldName}</span>
                               {status === 'added' && (
                                 <span className="rounded bg-green-500/15 px-1 py-0 text-[10px] text-green-700 dark:text-green-400">
-                                  +{t('diffDialog.fieldChanges', { count: 1 }).replace('1', '')}
+                                  {t('timelinePlayer.addedBadge')}
                                 </span>
                               )}
                               {status === 'renamed' && fieldDiff?.oldFieldName && (

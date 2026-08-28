@@ -356,10 +356,9 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                           )}
 
                           <p className="text-xs text-muted-foreground">
-                            {v.state.rows?.filter((r) => r.fieldName?.trim()).length || 0}{' '}
                             {t('versionHistory.fieldCount', {
                               count: v.state.rows?.filter((r) => r.fieldName?.trim()).length || 0,
-                            }).replace(/\d+\s*/, '')}{' '}
+                            })}{' '}
                             · {v.state.dbType.toUpperCase()}
                           </p>
 

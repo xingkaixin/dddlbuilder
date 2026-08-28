@@ -1408,6 +1408,7 @@ export const jaJPCommon = {
     },
   },
   timelinePlayer: {
+    addedBadge: '追加',
     title: 'スキーマ変更の再生',
     titleWithName: '{{name}} リプレイ変更',
     empty: 'バージョンデータがありません',

@@ -1352,6 +1352,7 @@ export const zhCNCommon = {
     },
   },
   timelinePlayer: {
+    addedBadge: '新增',
     title: 'Schema 变更回放',
     titleWithName: '{{name}} 的变更回放',
     empty: '暂无版本数据',

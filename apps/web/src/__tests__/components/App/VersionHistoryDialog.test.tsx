@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/__tests__/utils/test-utils';
 import { withDefaultEditorSession } from '@ddlbuilder/shared-types';
@@ -16,6 +17,43 @@ vi.mock('@/utils/tableVersions', () => ({
 }));
 
 describe('version history identity', () => {
+  it('renders translated field counts without rewriting their text', async () => {
+    const originalResource = i18n.getResource('zh-CN', 'translation', 'versionHistory.fieldCount');
+    i18n.addResource(
+      'zh-CN',
+      'translation',
+      'versionHistory.fieldCount',
+      '版本1包含{{count}}个字段',
+    );
+    try {
+      const state = withDefaultEditorSession({
+        schemaName: '',
+        tableName: 'users',
+        tableComment: '',
+        dbType: 'mysql',
+        rows: [],
+        indexes: [],
+        authInput: '',
+        authObjects: [],
+      });
+      vi.mocked(listVersions).mockResolvedValue([
+        { id: 'one', createdAt: 1, state, tableNormalizedName: 'users', message: 'count version' },
+      ]);
+      render(
+        <VersionHistoryDialog
+          open
+          onOpenChange={vi.fn()}
+          tableName="Users"
+          target={{ scope: { kind: 'anonymous' }, tableId: 'users', normalizedName: 'users' }}
+        />,
+      );
+      const version = await screen.findByText('count version');
+      expect(version.closest('button')).toHaveTextContent('版本1包含0个字段');
+    } finally {
+      i18n.addResource('zh-CN', 'translation', 'versionHistory.fieldCount', originalResource);
+    }
+  });
+
   it.each([
     { failure: 'missing', remaining: false, notice: '该版本已不存在，列表已刷新。' },
     { failure: 'failed', remaining: true, notice: '回滚失败，请稍后重试。' },
