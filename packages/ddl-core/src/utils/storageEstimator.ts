@@ -56,38 +56,37 @@ function getFieldSize(type: string, dbType: DatabaseType): number {
   return 8; // 默认
 }
 
-const MySQLProfile: StorageProfile = {
-  name: 'MySQL (InnoDB)',
+// 同族数据库行开销公式一致，仅字段大小按各自 dbType 计算（getFieldSize 按 family 分支，同族等价）
+const mysqlLikeProfile = (name: string, dbType: DatabaseType): StorageProfile => ({
+  name,
   calculateRowSize: (fields) => {
     // 隐藏列: TRX_ID(6) + ROLL_PTR(7) + ROW_ID(6, 假设有主键时不计)
     let overhead = 5 + 6 + 7;
-    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'mysql'), 0);
-    const nullBitmap = Math.ceil(fields.filter((f) => f.nullable).length / 8);
-    overhead += nullBitmap;
+    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, dbType), 0);
+    overhead += Math.ceil(fields.filter((f) => f.nullable).length / 8);
 
     return {
       overhead,
       data,
     };
   },
-};
+});
 
-const PostgresProfile: StorageProfile = {
-  name: 'PostgreSQL',
+const postgresLikeProfile = (name: string, dbType: DatabaseType): StorageProfile => ({
+  name,
   calculateRowSize: (fields) => {
     const overhead = 23 + 4; // Header + ItemID
-    let data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'postgresql'), 0);
+    let data = fields.reduce((acc, f) => acc + getFieldSize(f.type, dbType), 0);
 
     // 对齐补全 (粗略估算)
-    const padding = Math.ceil(data / 8) * 8 - data;
-    data += padding;
+    data += Math.ceil(data / 8) * 8 - data;
 
     return {
       overhead,
       data,
     };
   },
-};
+});
 
 const TiDBProfile: StorageProfile = {
   name: 'TiDB (TiKV)',
@@ -145,74 +144,6 @@ const SqlServerProfile: StorageProfile = {
   },
 };
 
-const KingbaseProfile: StorageProfile = {
-  name: 'Kingbase',
-  calculateRowSize: (fields) => {
-    // Kingbase 基于 PostgreSQL，使用类似的计算逻辑
-    const overhead = 23 + 4; // Header + ItemID
-    let data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'kingbase'), 0);
-
-    // 对齐补全 (粗略估算)
-    const padding = Math.ceil(data / 8) * 8 - data;
-    data += padding;
-
-    return {
-      overhead,
-      data,
-    };
-  },
-};
-
-const GBaseProfile: StorageProfile = {
-  name: 'GBase',
-  calculateRowSize: (fields) => {
-    // GBase 基于 MySQL，使用类似的计算逻辑
-    let overhead = 5 + 6 + 7; // 隐藏列开销
-    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'gbase'), 0);
-    const nullBitmap = Math.ceil(fields.filter((f) => f.nullable).length / 8);
-    overhead += nullBitmap;
-
-    return {
-      overhead,
-      data,
-    };
-  },
-};
-
-const PolarDBProfile: StorageProfile = {
-  name: 'PolarDB',
-  calculateRowSize: (fields) => {
-    // PolarDB 基于 MySQL，使用类似的计算逻辑
-    let overhead = 5 + 6 + 7; // 隐藏列开销
-    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'polardb'), 0);
-    const nullBitmap = Math.ceil(fields.filter((f) => f.nullable).length / 8);
-    overhead += nullBitmap;
-
-    return {
-      overhead,
-      data,
-    };
-  },
-};
-
-const GaussDBProfile: StorageProfile = {
-  name: 'GaussDB',
-  calculateRowSize: (fields) => {
-    // GaussDB 基于 PostgreSQL，使用类似的计算逻辑
-    const overhead = 23 + 4; // Header + ItemID
-    let data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'gaussdb'), 0);
-
-    // 对齐补全 (粗略估算)
-    const padding = Math.ceil(data / 8) * 8 - data;
-    data += padding;
-
-    return {
-      overhead,
-      data,
-    };
-  },
-};
-
 const HiveOrcProfile: StorageProfile = {
   name: 'Hive (ORC)',
   calculateRowSize: (fields) => {
@@ -261,20 +192,20 @@ const HiveProfiles: Record<string, StorageProfile> = {
 };
 
 const Profiles = {
-  mysql: MySQLProfile,
-  mariadb: MySQLProfile,
+  mysql: mysqlLikeProfile('MySQL (InnoDB)', 'mysql'),
+  mariadb: mysqlLikeProfile('MySQL (InnoDB)', 'mariadb'),
   tidb: TiDBProfile,
-  postgresql: PostgresProfile,
-  'postgresql-citus': PostgresProfile,
+  postgresql: postgresLikeProfile('PostgreSQL', 'postgresql'),
+  'postgresql-citus': postgresLikeProfile('PostgreSQL', 'postgresql-citus'),
   oceanbase: OceanBaseProfile,
   'oceanbase-oracle': OceanBaseProfile,
   oracle: OracleProfile,
   sqlserver: SqlServerProfile,
   dm: OracleProfile, // 达梦参考 Oracle
-  kingbase: KingbaseProfile,
-  gbase: GBaseProfile,
-  polardb: PolarDBProfile,
-  gaussdb: GaussDBProfile,
+  kingbase: postgresLikeProfile('Kingbase', 'kingbase'),
+  gbase: mysqlLikeProfile('GBase', 'gbase'),
+  polardb: mysqlLikeProfile('PolarDB', 'polardb'),
+  gaussdb: postgresLikeProfile('GaussDB', 'gaussdb'),
   hive: HiveOrcProfile,
 } satisfies Record<DatabaseType, StorageProfile>;
 
