@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
 import {
   buildFolderTreeFromYDoc,
@@ -41,6 +42,7 @@ const readFolderProjection = (doc: Y.Doc) => ({
 });
 
 export function useFolders() {
+  const { t } = useTranslation();
   const { scope: currentScope, yDoc, yDocReady, storage, refresh } = useWorkspaceAuthority();
   const yDocProjection = useWorkspaceYDocProjection(
     yDoc,
@@ -68,10 +70,10 @@ export function useFolders() {
         await refresh();
         return folder;
       } catch (error) {
-        throw error instanceof Error ? error : new Error('创建文件夹失败');
+        throw error instanceof Error ? error : new Error(t('savedTables.toast.createFolderFailed'));
       }
     },
-    [refresh, storage, yDocProjection.folders],
+    [refresh, storage, yDocProjection.folders, t],
   );
 
   const handleRenameFolder = useCallback(
@@ -80,17 +82,17 @@ export function useFolders() {
         await storage.update({
           yDoc: (doc) => {
             const folder = yDocProjection.folders.find((item) => item.id === id);
-            if (!folder) throw new Error('文件夹不存在');
+            if (!folder) throw new Error(t('savedTables.toast.folderNotFound'));
             upsertFolderInYDoc(doc, renameFolderRecord(folder, newName));
           },
           local: (scope) => renameFolder(id, newName, scope),
         });
         await refresh();
       } catch (error) {
-        throw error instanceof Error ? error : new Error('重命名文件夹失败');
+        throw error instanceof Error ? error : new Error(t('savedTables.toast.renameFolderFailed'));
       }
     },
-    [refresh, storage, yDocProjection.folders],
+    [refresh, storage, yDocProjection.folders, t],
   );
 
   const handleDeleteFolder = useCallback(
@@ -117,10 +119,10 @@ export function useFolders() {
           storage: storage.kind,
           error,
         });
-        throw error instanceof Error ? error : new Error('删除文件夹失败');
+        throw error instanceof Error ? error : new Error(t('savedTables.toast.deleteFailed'));
       }
     },
-    [refresh, storage],
+    [refresh, storage, t],
   );
 
   const handleMoveFolder = useCallback(
@@ -135,10 +137,10 @@ export function useFolders() {
         });
         await refresh();
       } catch (error) {
-        throw error instanceof Error ? error : new Error('移动文件夹失败');
+        throw error instanceof Error ? error : new Error(t('savedTables.toast.moveFolderFailed'));
       }
     },
-    [refresh, storage, yDocProjection.folders],
+    [refresh, storage, yDocProjection.folders, t],
   );
 
   return {
@@ -149,7 +151,7 @@ export function useFolders() {
       !yDocReady && localFoldersQuery.error
         ? localFoldersQuery.error instanceof Error
           ? localFoldersQuery.error.message
-          : '加载文件夹失败'
+          : t('savedTables.toast.folderLoadFailed')
         : null,
     refresh,
     createFolder: handleCreateFolder,

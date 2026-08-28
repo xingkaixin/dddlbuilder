@@ -219,8 +219,8 @@ describe('useFolders', () => {
 
     await expect(result.current.createFolder('x')).rejects.toThrow('创建文件夹失败');
     await expect(result.current.renameFolder('1', 'x')).rejects.toThrow('重命名文件夹失败');
-    await expect(result.current.deleteFolder('1')).rejects.toThrow('删除文件夹失败');
-    await expect(result.current.moveFolder('1', '2')).rejects.toThrow('移动文件夹失败');
+    await expect(result.current.deleteFolder('1')).rejects.toThrow('删除失败');
+    await expect(result.current.moveFolder('1', '2')).rejects.toThrow('文件夹移动失败');
   });
 
   it('should keep original error message when create/delete fail with Error', async () => {

@@ -148,7 +148,7 @@ describe('useSavedTables failure states', () => {
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.error).toBe('读取失败');
+    expect(result.current.error).toBe('加载失败');
   });
 
   it('overwriteTable should cover not_found and error branches', async () => {

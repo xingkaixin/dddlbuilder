@@ -1,5 +1,6 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
@@ -69,6 +70,7 @@ export function useSaveLoadActions({
   onSaveSuccess,
   onTableLoadStateChange,
 }: UseSaveLoadActionsParams) {
+  const { t } = useTranslation();
   const loadedTableName = loadedTableSource?.tableName ?? null;
   const saveName = saveDialog.data.name;
 
@@ -79,7 +81,7 @@ export function useSaveLoadActions({
       try {
         const record = await loadTable(target);
         if (!record) {
-          showToast('未找到保存的表');
+          showToast(t('savedTables.toast.tableNotFound'));
           return null;
         }
 
@@ -95,13 +97,13 @@ export function useSaveLoadActions({
 
         return { ...snapshot, version: resolvedVersion };
       } catch (error) {
-        showToast(error instanceof Error ? error.message : '加载失败');
+        showToast(error instanceof Error ? error.message : t('savedTables.toast.loadFailed'));
         return null;
       } finally {
         onTableLoadStateChange?.(false);
       }
     },
-    [loadTable, showToast, getSavedTableDraft, onTableLoadStateChange, countTableVersions],
+    [loadTable, showToast, getSavedTableDraft, onTableLoadStateChange, countTableVersions, t],
   );
 
   const openSaveDialog = useCallback(() => {
@@ -111,7 +113,7 @@ export function useSaveLoadActions({
 
   const handleConfirmSave = useCallback(async () => {
     if (!canSaveCurrent) {
-      showToast('加载的表未修改，无法保存');
+      showToast(t('savedTables.toast.noChangesToSave'));
       return;
     }
     const nextState = buildPersistedState();
@@ -126,25 +128,25 @@ export function useSaveLoadActions({
       const result = await overwriteTable(loadedTableSource, nextState);
       if (!result.ok) {
         if (result.reason === 'not_found') {
-          showToast('未找到保存的表');
+          showToast(t('savedTables.toast.tableNotFound'));
           return;
         }
-        showToast(result.message ?? '更新失败');
+        showToast(result.message ?? t('savedTables.toast.updateFailed'));
         return;
       }
       savedNormalizedName = result.normalizedName;
       savedTableId = result.tableId ?? loadedTableSource.tableId;
       savedDisplayName = loadedTableName ?? saveName;
       saveMode = 'update';
-      showToast(`已更新：${loadedTableName ?? saveName}`);
+      showToast(t('savedTables.toast.tableUpdated', { name: loadedTableName ?? saveName }));
     } else {
       const result = await saveTable(saveName, nextState);
       if (!result.ok) {
         if (result.reason === 'duplicate') {
-          saveDialog.setError('名称已存在，请换一个');
+          saveDialog.setError(t('savedTables.toast.nameExists'));
           return;
         }
-        showToast(result.message ?? '保存失败');
+        showToast(result.message ?? t('savedTables.toast.saveFailed'));
         return;
       }
       const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
@@ -153,7 +155,7 @@ export function useSaveLoadActions({
       savedTableId = result.tableId;
       savedDisplayName = displayName;
       saveMode = 'create';
-      showToast(`已保存：${displayName}`);
+      showToast(t('savedTables.toast.tableSaved', { name: displayName }));
     }
     saveDialog.closeDialog();
 
@@ -206,6 +208,7 @@ export function useSaveLoadActions({
     onSaveSuccess,
     countTableVersions,
     createTableVersion,
+    t,
   ]);
 
   const handleSaveDialogOpenChange = useCallback(

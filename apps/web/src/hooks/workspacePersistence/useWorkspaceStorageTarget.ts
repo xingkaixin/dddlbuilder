@@ -3,6 +3,7 @@ import type * as Y from 'yjs';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import type { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { invalidateLegacyWorkspaceMigration } from '@/services/workspaceLegacyMigrationMarker';
+import i18n from '@/i18n';
 
 interface WorkspaceReadOperations<T> {
   yDoc: (doc: Y.Doc) => T;
@@ -31,7 +32,7 @@ export function useWorkspaceStorageTarget({
   runInYDoc,
 }: UseWorkspaceStorageTargetParams) {
   const requireScope = useCallback(() => {
-    if (!scope) throw new Error('工作区未就绪');
+    if (!scope) throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
     return scope;
   }, [scope]);
 

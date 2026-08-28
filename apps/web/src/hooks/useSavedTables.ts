@@ -1,6 +1,7 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
 import { createEntityId, type PersistedState } from '@ddlbuilder/shared-types';
 import {
@@ -51,6 +52,7 @@ const readSavedTablesProjection = (doc: Y.Doc) => ({
 });
 
 export function useSavedTables() {
+  const { t } = useTranslation();
   const {
     scope: currentScope,
     yDoc,
@@ -90,7 +92,11 @@ export function useSavedTables() {
     !currentScope ||
     (!yDocReady && (trashedTablesQuery.isPending || localSavedTablesQuery.isPending));
   const queryError = localSavedTablesQuery.error ?? trashedTablesQuery.error;
-  const error = queryError ? (queryError instanceof Error ? queryError.message : '读取失败') : null;
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : t('savedTables.toast.loadFailed')
+    : null;
 
   const persistActiveTable = useCallback(
     async (record: SavedTableRecord, mode: 'add' | 'update' = 'update') => {
@@ -102,7 +108,7 @@ export function useSavedTables() {
   const saveTable = useCallback(
     async (name: string, state: PersistedState): Promise<SaveTableResult> => {
       try {
-        if (!currentScope) throw new Error('工作区未就绪');
+        if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const displayName = ensureSavedTableName(name);
         const normalizedName = normalizeSavedTableName(displayName);
         const { active, trashed } = await readAllTables();
@@ -140,17 +146,17 @@ export function useSavedTables() {
         return {
           ok: false,
           reason: 'error',
-          message: err instanceof Error ? err.message : '保存失败',
+          message: err instanceof Error ? err.message : t('savedTables.toast.saveFailed'),
         };
       }
     },
-    [currentScope, persistActiveTable, readAllTables, refresh],
+    [currentScope, persistActiveTable, readAllTables, refresh, t],
   );
 
   const overwriteTable = useCallback(
     async (target: SavedTableTarget, update: SavedTableStateUpdate): Promise<SaveTableResult> => {
       try {
-        if (!currentScope) throw new Error('工作区未就绪');
+        if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await updateTableState(target, update);
         if (!record) {
           return { ok: false, reason: 'not_found' };
@@ -165,17 +171,17 @@ export function useSavedTables() {
         return {
           ok: false,
           reason: 'error',
-          message: err instanceof Error ? err.message : '更新失败',
+          message: err instanceof Error ? err.message : t('savedTables.toast.updateFailed'),
         };
       }
     },
-    [currentScope, updateTableState, refresh],
+    [currentScope, updateTableState, refresh, t],
   );
 
   const deleteTable = useCallback(
     async (target: SavedTableTarget): Promise<SaveTableResult> => {
       try {
-        if (!currentScope) throw new Error('工作区未就绪');
+        if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await moveTableToTrash(target);
         if (!record) return { ok: false, reason: 'not_found' };
         await refresh();
@@ -188,11 +194,11 @@ export function useSavedTables() {
         return {
           ok: false,
           reason: 'error',
-          message: err instanceof Error ? err.message : '删除失败',
+          message: err instanceof Error ? err.message : t('savedTables.toast.deleteFailed'),
         };
       }
     },
-    [currentScope, moveTableToTrash, refresh],
+    [currentScope, moveTableToTrash, refresh, t],
   );
 
   const restoreTable = useCallback(
@@ -201,7 +207,7 @@ export function useSavedTables() {
       options?: { existingFolderIds?: Set<string> },
     ): Promise<SaveTableResult> => {
       try {
-        if (!currentScope) throw new Error('工作区未就绪');
+        if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await readTable(target);
         if (!record) {
           return { ok: false, reason: 'not_found' };
@@ -250,17 +256,17 @@ export function useSavedTables() {
         return {
           ok: false,
           reason: 'error',
-          message: err instanceof Error ? err.message : '恢复失败',
+          message: err instanceof Error ? err.message : t('savedTables.toast.restoreFailed'),
         };
       }
     },
-    [cleanupLocalTable, currentScope, readTable, refresh, replaceTable, savedTables],
+    [cleanupLocalTable, currentScope, readTable, refresh, replaceTable, savedTables, t],
   );
 
   const deleteTablePermanently = useCallback(
     async (target: SavedTableTarget): Promise<SaveTableResult> => {
       try {
-        if (!currentScope) throw new Error('工作区未就绪');
+        if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await readTable(target);
         if (!record) return { ok: false, reason: 'not_found' };
         const historyTarget = {
@@ -281,17 +287,17 @@ export function useSavedTables() {
         return {
           ok: false,
           reason: 'error',
-          message: err instanceof Error ? err.message : '删除失败',
+          message: err instanceof Error ? err.message : t('savedTables.toast.deleteFailed'),
         };
       }
     },
-    [currentScope, deleteTableEverywhere, readTable, refresh],
+    [currentScope, deleteTableEverywhere, readTable, refresh, t],
   );
 
   const renameTable = useCallback(
     async (target: SavedTableTarget, newName: string): Promise<SaveTableResult> => {
       try {
-        if (!currentScope) throw new Error('工作区未就绪');
+        if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await readTable(target);
         if (!record) {
           return { ok: false, reason: 'not_found' };
@@ -324,11 +330,11 @@ export function useSavedTables() {
         return {
           ok: false,
           reason: 'error',
-          message: err instanceof Error ? err.message : '重命名失败',
+          message: err instanceof Error ? err.message : t('savedTables.toast.renameFailed'),
         };
       }
     },
-    [currentScope, readTable, readAllTables, refresh, replaceTable],
+    [currentScope, readTable, readAllTables, refresh, replaceTable, t],
   );
 
   const loadTable = useCallback(
@@ -338,16 +344,16 @@ export function useSavedTables() {
   const loadTables = useCallback(async () => (await readAllTables()).active, [readAllTables]);
   const resolveVersionTarget = useCallback(
     async (target: SavedTableTarget) => {
-      if (!currentScope) throw new Error('工作区未就绪');
+      if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
       const record = await readTable(target);
-      if (!record) throw new Error('未找到保存的表');
+      if (!record) throw new Error(t('savedTables.toast.tableNotFound'));
       return {
         scope: currentScope,
         tableId: resolveSavedTableId(record),
         normalizedName: record.normalizedName,
       };
     },
-    [currentScope, readTable],
+    [currentScope, readTable, t],
   );
   const countTableVersions = useCallback(
     async (normalizedName: SavedTableTarget) =>
@@ -364,7 +370,7 @@ export function useSavedTables() {
   const moveTableToFolder = useCallback(
     async (target: SavedTableTarget, folderId?: string): Promise<SaveTableResult> => {
       try {
-        if (!currentScope) throw new Error('工作区未就绪');
+        if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await readTable(target);
         if (!record) {
           return { ok: false, reason: 'not_found' };
@@ -385,11 +391,11 @@ export function useSavedTables() {
         return {
           ok: false,
           reason: 'error',
-          message: err instanceof Error ? err.message : '移动失败',
+          message: err instanceof Error ? err.message : t('savedTables.toast.moveFailed'),
         };
       }
     },
-    [currentScope, persistActiveTable, readTable, refresh],
+    [currentScope, persistActiveTable, readTable, refresh, t],
   );
 
   const importTables = useCallback(

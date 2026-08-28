@@ -76,9 +76,9 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
           showToast(t('erDiagram.toast.tableSaved'));
           void refresh();
         } else if (result.reason === 'duplicate') {
-          showToast(t('erDiagram.toast.tableDuplicate') || '表名已存在');
+          showToast(t('erDiagram.toast.tableDuplicate'));
         } else {
-          showToast(result.message || t('erDiagram.toast.tableSaveFailed') || '保存失败');
+          showToast(result.message || t('erDiagram.toast.tableSaveFailed'));
         }
       });
     }, [saveTable, refresh, showToast, t]);

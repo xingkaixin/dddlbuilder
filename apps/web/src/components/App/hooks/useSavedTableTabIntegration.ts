@@ -9,6 +9,7 @@ import type {
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import type { useTabLifecycle } from './useTabLifecycle';
+import i18n from '@/i18n';
 
 export const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
 
@@ -67,7 +68,7 @@ export function useSavedTableTabIntegration({
     }) => {
       if (isShareView) {
         try {
-          if (!workspaceScope) throw new Error('工作区未就绪');
+          if (!workspaceScope) throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
           await writeWorkspaceSession(
             {
               activeSource: {

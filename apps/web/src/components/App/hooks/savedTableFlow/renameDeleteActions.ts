@@ -1,5 +1,6 @@
 import { isSameSavedTable, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
@@ -54,6 +55,7 @@ export function useRenameDeleteActions({
   onTabRename,
   onTabRemove,
 }: UseRenameDeleteActionsParams) {
+  const { t } = useTranslation();
   const loadedTableSignature = loadedTableSource?.baseSignature ?? null;
   const renameName = renameDialog.data.name;
   const renameTarget = renameDialog.data.target;
@@ -83,14 +85,14 @@ export function useRenameDeleteActions({
     const result = await renameTable(renameTarget, renameName);
     if (!result.ok) {
       if (result.reason === 'duplicate') {
-        renameDialog.setError('名称已存在，请换一个');
+        renameDialog.setError(t('savedTables.toast.nameExists'));
         return;
       }
-      showToast(result.message ?? '重命名失败');
+      showToast(result.message ?? t('savedTables.toast.renameFailed'));
       return;
     }
     const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
-    showToast(`已重命名为：${displayName}`);
+    showToast(t('savedTables.toast.tableRenamed', { name: displayName }));
     renameSavedTableDraft?.(renameTarget, result.normalizedName, displayName);
     onTabRename?.(renameTarget, result.normalizedName, displayName);
     if (loadedTableSource && isSameSavedTable(renameTarget, loadedTableSource)) {
@@ -114,6 +116,7 @@ export function useRenameDeleteActions({
     renameName,
     renameDialog,
     showToast,
+    t,
     loadedTableSource,
     loadedTableSignature,
     serializePersistedState,
@@ -143,14 +146,14 @@ export function useRenameDeleteActions({
     if (!deleteTarget) return;
     const result = await deleteTable(deleteTarget);
     if (!result.ok) {
-      showToast(result.message ?? '删除失败');
+      showToast(result.message ?? t('savedTables.toast.deleteFailed'));
     } else {
       removeSavedTableDraft?.(deleteTarget);
-      showToast(`已移入回收站：${deleteTarget.name}`);
+      showToast(t('savedTables.toast.tableTrashed', { name: deleteTarget.name }));
       onTabRemove?.(deleteTarget);
     }
     deleteDialog.closeDialog();
-  }, [deleteTarget, deleteTable, showToast, removeSavedTableDraft, deleteDialog, onTabRemove]);
+  }, [deleteTarget, deleteTable, showToast, removeSavedTableDraft, deleteDialog, onTabRemove, t]);
 
   return {
     handleOpenRenameDialog,

@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createTableTemplate,
@@ -24,6 +25,7 @@ const failure = (error: unknown, fallback: string): OperationResult => ({
 });
 
 export function useTableTemplates() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const templatesQuery = useQuery(tableTemplateListOptions());
   const invalidateTemplates = useCallback(
@@ -87,10 +89,10 @@ export function useTableTemplates() {
         const template = await createMutation.mutateAsync({ name, blueprint, description });
         return { ok: true, template };
       } catch (error) {
-        return failure(error, '创建失败');
+        return failure(error, t('tableTemplate.toast.createFailed'));
       }
     },
-    [createMutation],
+    [createMutation, t],
   );
 
   const update = useCallback(
@@ -100,12 +102,12 @@ export function useTableTemplates() {
     ): Promise<OperationResult> => {
       try {
         const template = await updateMutation.mutateAsync({ id, updates });
-        return template ? { ok: true } : { ok: false, reason: 'not_found', message: '蓝本不存在' };
+        return template ? { ok: true } : { ok: false, reason: 'not_found', message: t('tableTemplate.toast.notFound') };
       } catch (error) {
-        return failure(error, '更新失败');
+        return failure(error, t('tableTemplate.toast.updateFailed'));
       }
     },
-    [updateMutation],
+    [updateMutation, t],
   );
 
   const rename = useCallback(
@@ -119,10 +121,10 @@ export function useTableTemplates() {
         await removeMutation.mutateAsync(id);
         return { ok: true };
       } catch (error) {
-        return failure(error, '删除失败');
+        return failure(error, t('tableTemplate.toast.deleteFailed'));
       }
     },
-    [removeMutation],
+    [removeMutation, t],
   );
 
   const duplicate = useCallback(
@@ -134,12 +136,12 @@ export function useTableTemplates() {
         const template = await duplicateMutation.mutateAsync({ id, newName });
         return template
           ? { ok: true, template }
-          : { ok: false, reason: 'not_found', message: '蓝本不存在' };
+          : { ok: false, reason: 'not_found', message: t('tableTemplate.toast.notFound') };
       } catch (error) {
-        return failure(error, '复制失败');
+        return failure(error, t('tableTemplate.toast.duplicateFailed'));
       }
     },
-    [duplicateMutation],
+    [duplicateMutation, t],
   );
 
   return {
