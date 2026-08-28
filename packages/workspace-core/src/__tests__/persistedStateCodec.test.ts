@@ -703,3 +703,11 @@ describe('decodeWorkspaceSnapshot', () => {
     expect(decodeWorkspaceSnapshot(snapshot)).toBeNull();
   });
 });
+
+it.each(['"my.table"', '`my.table`', '[my.table]'])(
+  'preserves a quoted table name %s through decoding',
+  (tableName) => {
+    const decoded = decodePersistedState({ tableName, dbType: 'postgresql' });
+    expect(decoded).toMatchObject({ schemaName: '', tableName });
+  },
+);

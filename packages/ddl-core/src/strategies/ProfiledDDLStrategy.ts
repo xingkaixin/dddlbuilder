@@ -5,19 +5,19 @@ import type {
   SqlFormatMode,
   TableMiscConfig,
 } from '@ddlbuilder/shared-types';
-import { escapeSingleQuotes, getSchemaAndTable } from '../utils/databaseTypeMapping';
+import { getSchemaAndTable } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 import { DIALECT_PROFILES } from './dialectProfiles';
 import type { DialectProfile } from './dialectProfiles';
 import { buildDialectColumn } from './dialectColumn';
-import {
-  buildCitusShardingStatement,
-  buildMysqlPartitionClause,
-  buildOracleSynonym,
-} from './dialectStatements';
+import { buildCitusShardingStatement, buildMysqlPartitionClause } from './dialectStatements';
 import { buildExtendedProperty } from './dialectComments';
 import type { ConfiguredTableDDL, TableFeatureConfig } from '../interfaces/DDLStrategy';
-import { getDatabaseFamily, supportsMysqlPartition } from '../utils/databaseFamily';
+import {
+  escapeSqlString,
+  getDatabaseFamily,
+  supportsMysqlPartition,
+} from '../utils/databaseFamily';
 import { buildTableOptionsClause } from '../utils/tableOptions';
 
 /**
@@ -54,13 +54,6 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
           ...configured.trailingStatements,
           buildCitusShardingStatement(tableName, config.citusShardingConfig),
         ],
-      };
-    }
-
-    if (this.databaseType === 'oracle') {
-      return {
-        ...configured,
-        trailingStatements: [...configured.trailingStatements, buildOracleSynonym(tableName)],
       };
     }
 
@@ -149,7 +142,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     tableOptions: string,
   ): string {
     const commentClause = tableComment
-      ? ` COMMENT='${escapeSingleQuotes(tableComment.trim())}'`
+      ? ` COMMENT='${escapeSqlString(tableComment.trim(), this.databaseType)}'`
       : '';
 
     return `CREATE TABLE ${this.formatTableName(tableName)} (\n${columnLines.join(
@@ -171,7 +164,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
 
     if (tableComment.trim()) {
       statements.push(
-        `COMMENT ON TABLE ${qualifiedTableName} IS '${escapeSingleQuotes(tableComment.trim())}';`,
+        `COMMENT ON TABLE ${qualifiedTableName} IS '${escapeSqlString(tableComment.trim(), this.databaseType)}';`,
       );
     }
 

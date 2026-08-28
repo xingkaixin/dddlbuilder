@@ -111,7 +111,7 @@ describe('TypeMapper', () => {
           unsigned: false,
           raw: 'timestamp(6)',
         }),
-      ).toBe('TIMESTAMP');
+      ).toBe('TIMESTAMP(6)');
     });
 
     it.each([

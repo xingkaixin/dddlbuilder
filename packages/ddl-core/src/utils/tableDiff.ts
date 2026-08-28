@@ -1,3 +1,4 @@
+import { parseFieldType } from './databaseTypeMapping';
 import {
   type PersistedState,
   type NormalizedField,
@@ -136,9 +137,14 @@ function extractFields(state: PersistedState): DiffField[] {
 /**
  * 比较两个字段是否相同
  */
+const stableTypeKey = (type: string) => {
+  const parsed = parseFieldType(type);
+  return JSON.stringify([parsed.baseType, parsed.args, parsed.unsigned]);
+};
+
 function fieldsEqual(a: NormalizedField, b: NormalizedField): boolean {
   return (
-    a.type === b.type &&
+    stableTypeKey(a.type) === stableTypeKey(b.type) &&
     a.nullable === b.nullable &&
     a.defaultKind === b.defaultKind &&
     a.defaultValue === b.defaultValue &&
@@ -153,7 +159,7 @@ function fieldsEqual(a: NormalizedField, b: NormalizedField): boolean {
 function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): FieldChangeType[] {
   const changes: FieldChangeType[] = [];
 
-  if (oldField.type !== newField.type) {
+  if (stableTypeKey(oldField.type) !== stableTypeKey(newField.type)) {
     changes.push('type');
   }
   if (oldField.nullable !== newField.nullable) {

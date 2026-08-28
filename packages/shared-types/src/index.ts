@@ -98,3 +98,5 @@ export type {
   AIIndexAdvisorRecommendationCategory,
   AIIndexAdvisorResult,
 } from './aiGenerate.js';
+
+export { splitQualifiedName, getSchemaAndTable } from './qualifiedName';

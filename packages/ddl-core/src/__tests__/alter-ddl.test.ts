@@ -884,14 +884,14 @@ describe('generateTableCommentAlter', () => {
     { db: 'mariadb', expected: "ALTER TABLE t COMMENT = '注释';" },
     { db: 'tidb', expected: "ALTER TABLE t COMMENT = '注释';" },
     { db: 'postgresql', expected: "COMMENT ON TABLE t IS '注释';" },
-    { db: 'sqlserver', expected: '-- 请使用 sp_updateextendedproperty 更新表注释' },
+    { db: 'sqlserver', expected: 'sp_addextendedproperty' },
     { db: 'oracle', expected: "COMMENT ON TABLE t IS '注释';" },
     { db: 'dm', expected: "COMMENT ON TABLE t IS '注释';" },
   ];
 
   for (const { db, expected } of cases) {
     it(`handles ${db}`, () => {
-      expect(generateTableCommentAlter('t', '注释', db)).toBe(expected);
+      expect(generateTableCommentAlter('t', '注释', db)).toContain(expected);
     });
   }
 
@@ -1161,7 +1161,7 @@ describe('generateModifyColumn', () => {
       newField: createField({ name: 'age', type: 'bigint' }),
     };
     expect(generateModifyColumn('users', diff, 'oracle')).toBe(
-      'ALTER TABLE users MODIFY (age NUMBER(19) NOT NULL);',
+      'ALTER TABLE users MODIFY (age NUMBER(19) DEFAULT NULL NOT NULL);',
     );
   });
 

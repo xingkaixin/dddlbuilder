@@ -1,6 +1,8 @@
+import { splitQualifiedName } from '@ddlbuilder/shared-types';
+export { splitQualifiedName, getSchemaAndTable } from '@ddlbuilder/shared-types';
 import type { DatabaseType, ParsedFieldType } from '@ddlbuilder/shared-types';
 import { TypeMapper } from './TypeMapper.js';
-import { getDatabaseFamily } from './databaseFamily.js';
+import { escapeSqlString, getDatabaseFamily } from './databaseFamily.js';
 import { canonicalizeBaseType } from './typeAliases.js';
 import { formatSqlIdentifier } from './sqlIdentifiers';
 
@@ -222,10 +224,14 @@ export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, canonical: st
   }
 };
 
-export const formatConstantDefault = (canonical: string, value: string) => {
+export const formatConstantDefault = (
+  canonical: string,
+  value: string,
+  dbType: DatabaseType = 'postgresql',
+) => {
   const shouldQuote = shouldQuoteDefault(canonical, value);
   if (!shouldQuote && !value.trim()) return '';
-  const cleanValue = escapeSingleQuotes(value);
+  const cleanValue = escapeSqlString(value, dbType);
   const formattedValue = shouldQuote ? `'${cleanValue}'` : cleanValue;
   return ` DEFAULT ${formattedValue}`;
 };
@@ -246,23 +252,6 @@ export const shouldQuoteDefault = (canonical: string, value: string) => {
 };
 
 export const escapeSingleQuotes = (value: string) => value.replace(/'/g, "''");
-
-export const splitQualifiedName = (raw: string) =>
-  (raw.match(/(?:"(?:[^"]|"")*"|`(?:[^`]|``)*`|\[(?:[^\]]|\]\])*\]|[^.])+/g) ?? [])
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-
-export const getSchemaAndTable = (raw: string) => {
-  const parts = splitQualifiedName(raw);
-  if (parts.length <= 1) {
-    const table = parts[0] ?? raw.trim();
-    return { schema: '', table };
-  }
-  return {
-    schema: parts.slice(0, -1).join('.'),
-    table: parts[parts.length - 1],
-  };
-};
 
 export const formatSqlTableName = (tableName: string, dbType: DatabaseType): string =>
   splitQualifiedName(tableName)

@@ -585,9 +585,9 @@ describe('buildDDL', () => {
     expect(ddl).toContain("SELECT create_reference_table('users')");
   });
 
-  it('includes Oracle synonyms', () => {
+  it('does not create public Oracle synonyms implicitly', () => {
     const ddl = buildDDL({ dbType: 'oracle', tableName: 'users', tableComment: '', fields });
-    expect(ddl).toContain('CREATE OR REPLACE PUBLIC SYNONYM users FOR users');
+    expect(ddl).not.toContain('PUBLIC SYNONYM');
   });
 });
 

@@ -1,3 +1,4 @@
+import { escapeSqlString } from '../utils/databaseFamily';
 import {
   normalizeHiveBucketCount,
   type HiveClusteringConfig,
@@ -5,7 +6,7 @@ import {
   type SqlFormatMode,
   type TableMiscConfig,
 } from '@ddlbuilder/shared-types';
-import { escapeSingleQuotes, parseFieldType } from '../utils/databaseTypeMapping';
+import { parseFieldType } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 
 /**
@@ -31,7 +32,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
       const parsedType = parseFieldType(field.type);
       const type = typeMapper.mapType(parsedType);
 
-      const comment = field.comment ? ` COMMENT '${escapeSingleQuotes(field.comment)}'` : '';
+      const comment = field.comment ? ` COMMENT '${escapeSqlString(field.comment, 'hive')}'` : '';
 
       return {
         name: this.formatFieldName(field.name),
@@ -44,7 +45,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
     const externalClause = config?.external ? 'EXTERNAL ' : '';
 
     const commentClause = tableComment
-      ? ` COMMENT '${escapeSingleQuotes(tableComment.trim())}'`
+      ? ` COMMENT '${escapeSqlString(tableComment.trim(), 'hive')}'`
       : '';
 
     const partitionClause = this.buildPartitionClause(config?.partitions);
@@ -54,7 +55,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
     const storedAsClause = config?.storedAs ? `\nSTORED AS ${config.storedAs}` : '';
 
     const locationClause = config?.location
-      ? `\nLOCATION '${escapeSingleQuotes(config.location)}'`
+      ? `\nLOCATION '${escapeSqlString(config.location, 'hive')}'`
       : '';
 
     return (
@@ -77,8 +78,8 @@ export class HiveStrategy extends AbstractDDLStrategy {
     const columns = config.columns.map((col) => {
       const parsedType = parseFieldType(col.type);
       const type = typeMapper.mapType(parsedType);
-      const comment = col.comment ? ` COMMENT '${escapeSingleQuotes(col.comment)}'` : '';
-      return `  ${col.name} ${type}${comment}`;
+      const comment = col.comment ? ` COMMENT '${escapeSqlString(col.comment, 'hive')}'` : '';
+      return `  ${this.formatFieldName(col.name)} ${type}${comment}`;
     });
 
     return `\nPARTITIONED BY (\n${columns.join(',\n')}\n)`;
@@ -89,7 +90,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
       return '';
     }
 
-    const columns = config.columns.join(', ');
+    const columns = config.columns.map((name) => this.formatFieldName(name)).join(', ');
     return `\nCLUSTERED BY (${columns}) INTO ${normalizeHiveBucketCount(config.bucketCount)} BUCKETS`;
   }
 }

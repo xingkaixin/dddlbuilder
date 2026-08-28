@@ -31,7 +31,7 @@ export class TypeMapper {
     }
 
     // 如果有自定义转换函数，使用转换函数
-    if (mapping.transform) {
+    if ('transform' in mapping) {
       return mapping.transform(parsed);
     }
 

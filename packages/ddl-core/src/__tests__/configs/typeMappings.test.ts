@@ -94,11 +94,8 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.mysql.serial.transform?.(parsed)).toBe('BIGINT UNSIGNED AUTO_INCREMENT');
     });
 
-    it('maps timestamp with transform', () => {
-      expect(TYPE_MAPPINGS.mysql.timestamp).toEqual({
-        transform: expect.any(Function),
-      });
-      expect(TYPE_MAPPINGS.mysql.timestamp.transform?.(parsed)).toBe('TIMESTAMP');
+    it('maps timestamp with fractional precision', () => {
+      expect(TYPE_MAPPINGS.mysql.timestamp).toEqual({ mapping: 'timestamp', maxArgs: 1 });
     });
   });
 
@@ -394,11 +391,8 @@ describe('TYPE_MAPPINGS', () => {
       );
     });
 
-    it('maps timestamp with transform', () => {
-      expect(TYPE_MAPPINGS.oceanbase.timestamp).toEqual({
-        transform: expect.any(Function),
-      });
-      expect(TYPE_MAPPINGS.oceanbase.timestamp.transform?.(parsed)).toBe('TIMESTAMP');
+    it('maps timestamp with fractional precision', () => {
+      expect(TYPE_MAPPINGS.mysql.timestamp).toEqual({ mapping: 'timestamp', maxArgs: 1 });
     });
   });
 
@@ -535,16 +529,6 @@ describe('TYPE_MAPPINGS', () => {
   });
 
   describe('transform functions', () => {
-    it('mysql timestamp transform ignores input', () => {
-      const customParsed: ParsedFieldType = {
-        baseType: 'timestamp',
-        args: ['6'],
-        unsigned: true,
-        raw: 'timestamp(6)',
-      };
-      expect(TYPE_MAPPINGS.mysql.timestamp.transform?.(customParsed)).toBe('TIMESTAMP');
-    });
-
     it('hive varchar transform ignores input', () => {
       const customParsed: ParsedFieldType = {
         baseType: 'varchar',

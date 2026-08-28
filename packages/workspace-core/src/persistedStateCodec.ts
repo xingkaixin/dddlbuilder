@@ -1,3 +1,4 @@
+import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 import { isRecord } from './yMapJson';
 import {
   isDatabaseType,
@@ -89,16 +90,6 @@ const decodeUniqueEntityId = (value: unknown, fallback: string, usedIds: Set<str
   }
   usedIds.add(id);
   return id;
-};
-
-const splitQualifiedTableName = (raw: string) => {
-  const parts = raw
-    .split('.')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return parts.length <= 1
-    ? { schema: '', table: parts[0] ?? raw.trim() }
-    : { schema: parts.slice(0, -1).join('.'), table: parts.at(-1) ?? '' };
 };
 
 const decodeIndexFields = (value: unknown): IndexField[] =>
@@ -339,7 +330,7 @@ export const decodePersistedState = (
   const { schema, table } =
     explicitSchemaName || !rawTableName.includes('.')
       ? { schema: explicitSchemaName, table: rawTableName }
-      : splitQualifiedTableName(rawTableName);
+      : getSchemaAndTable(rawTableName);
   const dbType = isDatabaseType(value.dbType) ? value.dbType : 'mysql';
   const foreignKeys = decodeForeignKeys(value.foreignKeys);
   const citusShardingConfig = decodeCitusConfig(value.citusShardingConfig);

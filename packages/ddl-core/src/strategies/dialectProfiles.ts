@@ -3,6 +3,7 @@ import type { DatabaseType } from '@ddlbuilder/shared-types';
 export type CommentChannel = 'inline' | 'comment-on' | 'extended-property';
 
 export interface DialectProfile {
+  expressionDefaultTypes?: ReadonlySet<string>;
   identityClause: string;
   uuidFunction: string;
   nowFunction: (canonicalType: string) => string;
@@ -19,6 +20,19 @@ const oracleNow = (canonicalType: string) =>
   canonicalType === 'date' ? 'SYSDATE' : 'SYSTIMESTAMP';
 
 const mysqlLike: DialectProfile = {
+  expressionDefaultTypes: new Set([
+    'text',
+    'tinytext',
+    'mediumtext',
+    'longtext',
+    'blob',
+    'tinyblob',
+    'mediumblob',
+    'longblob',
+    'json',
+    'jsonb',
+    'geometry',
+  ]),
   identityClause: 'AUTO_INCREMENT',
   uuidFunction: '(UUID())',
   nowFunction: constantNow('CURRENT_TIMESTAMP'),

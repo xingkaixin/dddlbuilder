@@ -110,6 +110,7 @@ export function generateAlterDDL(
       activeTableName,
       diff.newTableComment || '',
       dbType,
+      diff.oldTableComment,
     );
     if (commentSql) {
       statements.push(commentSql);

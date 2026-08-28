@@ -1,15 +1,16 @@
 import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
 import type { FieldDiff } from '../tableDiff';
-import { getDatabaseFamily } from '../databaseFamily';
+import { escapeSqlString, getDatabaseFamily } from '../databaseFamily';
 import {
   escapeSingleQuotes,
   getFieldTypeForDatabase,
   formatSqlTableName,
+  getSchemaAndTable,
 } from '../databaseTypeMapping';
 import { buildDialectColumn } from '../../strategies/dialectColumn';
 import { formatSqlIdentifier, unquoteSqlIdentifier } from '../sqlIdentifiers';
 import { buildDefaultClause } from './defaultClause';
-import { buildColumnComment } from '../../strategies/dialectComments';
+import { buildColumnComment, buildExtendedProperty } from '../../strategies/dialectComments';
 import {
   generateSqlServerDropDefault,
   generateSqlServerModifyColumn,
@@ -19,9 +20,10 @@ export function generateTableCommentAlter(
   tableName: string,
   comment: string,
   dbType: DatabaseType,
+  previousComment?: string,
 ): string {
   tableName = formatSqlTableName(tableName, dbType);
-  const escapedComment = escapeSingleQuotes(comment);
+  const escapedComment = escapeSqlString(comment, dbType);
 
   switch (getDatabaseFamily(dbType)) {
     case 'mysql':
@@ -31,8 +33,11 @@ export function generateTableCommentAlter(
     case 'dm':
       return `COMMENT ON TABLE ${tableName} IS '${escapedComment}';`;
     case 'sqlserver':
-      // SQL Server 使用扩展属性，较复杂，暂返回注释提示
-      return `-- 请使用 sp_updateextendedproperty 更新表注释`;
+      return buildExtendedProperty({
+        ...getSchemaAndTable(tableName),
+        value: comment,
+        operation: !comment ? 'drop' : previousComment ? 'update' : 'add',
+      });
     default:
       return `-- Manual migration required: update table comment for ${tableName} (${dbType}).`;
   }
@@ -115,13 +120,24 @@ export function generateModifyColumn(
   tableName = formatSqlTableName(tableName, dbType);
   if (dbType === 'sqlserver') return generateSqlServerModifyColumn(tableName, fieldDiff);
   const fieldName = formatSqlIdentifier(field.name, dbType);
-  const columnDef = buildColumnDefinition(field, dbType);
   const family = getDatabaseFamily(dbType);
   if (family === 'postgresql') return generatePostgresModifyColumn(tableName, fieldDiff);
   const comment = fieldDiff.changes?.includes('comment')
     ? buildColumnComment(tableName, field, dbType, fieldDiff.oldField?.comment)
     : '';
   if (comment && fieldDiff.changes?.every((change) => change === 'comment')) return comment;
+  const changes = fieldDiff.changes ?? ['type', 'default', 'nullable'];
+  const columnDef =
+    family === 'oracle' || family === 'dm'
+      ? [
+          changes.includes('type') ? getFieldTypeForDatabase(dbType, field.type) : '',
+          changes.includes('default') ? buildDefaultClause(field, dbType) || 'DEFAULT NULL' : '',
+          changes.includes('nullable') ? (field.nullable ? 'NULL' : 'NOT NULL') : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+      : buildColumnDefinition(field, dbType);
+  if (!columnDef) return comment;
   const column = `${fieldName} ${columnDef}`;
   const clause =
     family === 'oracle' || dbType === 'dm' ? `MODIFY (${column})` : `MODIFY COLUMN ${column}`;

@@ -1,13 +1,9 @@
 import type { ParsedFieldType } from '@ddlbuilder/shared-types';
 import { expandDatabaseFamilies } from '../utils/databaseFamily.js';
 
-export interface TypeMappingRule {
-  maxArgs?: number;
-  defaultArgs?: string[];
-  mapping?: string;
-  suffix?: string;
-  transform?: (parsed: ParsedFieldType) => string;
-}
+export type TypeMappingRule =
+  | { transform: (parsed: ParsedFieldType) => string }
+  | { mapping: string; maxArgs?: number; defaultArgs?: string[]; suffix?: string };
 
 export interface DatabaseTypeMapping {
   [canonicalType: string]: TypeMappingRule;
@@ -33,9 +29,7 @@ const FAMILY_TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     date: { mapping: 'date' },
     datetime: { mapping: 'datetime', maxArgs: 1 },
     datetime2: { mapping: 'datetime', maxArgs: 1 },
-    timestamp: {
-      transform: () => 'TIMESTAMP',
-    },
+    timestamp: { mapping: 'timestamp', maxArgs: 1 },
     time: { mapping: 'time', maxArgs: 1 },
     boolean: { mapping: 'tinyint', defaultArgs: ['1'] },
     bit: { mapping: 'bit', defaultArgs: ['1'] },

@@ -1,6 +1,6 @@
+import { escapeSqlString } from '../utils/databaseFamily';
 import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
 import {
-  escapeSingleQuotes,
   formatConstantDefault,
   getCanonicalBaseType,
   parseFieldType,
@@ -17,7 +17,10 @@ export const buildDialectDefaultClause = (field: NormalizedField, dbType: Databa
   const profile = DIALECT_PROFILES[dbType];
 
   if (field.defaultKind === 'constant') {
-    return formatConstantDefault(canonicalType, field.defaultValue).trimStart();
+    const clause = formatConstantDefault(canonicalType, field.defaultValue, dbType).trimStart();
+    return clause && profile.expressionDefaultTypes?.has(canonicalType)
+      ? `DEFAULT (${clause.slice('DEFAULT '.length)})`
+      : clause;
   }
   if (field.defaultKind === 'expression') {
     const expression = field.defaultValue.trim();
@@ -63,7 +66,7 @@ export const buildDialectColumn = (
       : '';
   const comment =
     profile.commentChannel === 'inline' && field.comment
-      ? `COMMENT '${escapeSingleQuotes(field.comment)}'`
+      ? `COMMENT '${escapeSqlString(field.comment, dbType)}'`
       : undefined;
 
   return {
