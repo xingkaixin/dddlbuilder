@@ -3,6 +3,15 @@ import { vi } from 'vitest';
 import app from '../../api/index';
 import type { ApiEnv } from '../lib/context.js';
 
+vi.mock('../lib/requestRateLimit', () => ({
+  enforceRequestRateLimit: vi.fn().mockResolvedValue({
+    allowed: true,
+    limit: 10,
+    remaining: 9,
+    retryAfterSeconds: 60,
+  }),
+}));
+
 // Helper to create env object for tests
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },

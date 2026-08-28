@@ -8,9 +8,15 @@ import {
   withMeta,
   type JsonBodyResult,
 } from '../lib/http.js';
+import { enforceRequestRateLimit } from '../lib/requestRateLimit.js';
 
 const MAX_SQL_LENGTH = 50_000;
 const MAX_PARSE_SQL_BODY_BYTES = 131_072;
+const PARSE_SQL_RATE_LIMIT = {
+  scope: 'parse:sql',
+  limit: 10,
+  windowMs: 60 * 1000,
+} as const;
 
 const SUPPORTED_DATABASE_TYPES = new Set<DatabaseType>(
   DATABASE_TYPES.filter((databaseType) => databaseType !== 'hive'),
@@ -55,6 +61,14 @@ function validateSqlPayload(
 
 export function registerParseSqlRoute(app: Hono<ApiEnv>) {
   app.post('/parse-sql', async (c) => {
+    const rateLimit = await enforceRequestRateLimit(c, PARSE_SQL_RATE_LIMIT);
+    c.header('X-RateLimit-Limit', String(rateLimit.limit));
+    c.header('X-RateLimit-Remaining', String(rateLimit.remaining));
+    if (!rateLimit.allowed) {
+      c.header('Retry-After', String(rateLimit.retryAfterSeconds));
+      return errorResponse(c, 429, 'Too many parse requests', 'RATE_LIMIT_EXCEEDED');
+    }
+
     const parsed = await parseJsonBodyWithLimit<{
       sql: unknown;
       dbType: unknown;
@@ -76,6 +90,14 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
   });
 
   app.post('/parse-multi-sql', async (c) => {
+    const rateLimit = await enforceRequestRateLimit(c, PARSE_SQL_RATE_LIMIT);
+    c.header('X-RateLimit-Limit', String(rateLimit.limit));
+    c.header('X-RateLimit-Remaining', String(rateLimit.remaining));
+    if (!rateLimit.allowed) {
+      c.header('Retry-After', String(rateLimit.retryAfterSeconds));
+      return errorResponse(c, 429, 'Too many parse requests', 'RATE_LIMIT_EXCEEDED');
+    }
+
     const parsed = await parseJsonBodyWithLimit<{
       sql: unknown;
       dbType: unknown;
