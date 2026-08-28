@@ -8,6 +8,7 @@ import {
   getWranglerConfigPath,
   listMigrationFiles,
   migrationDir,
+  resetDatabase,
   resolveD1Mode,
   runAllMigrations,
   runD1Execute,
@@ -315,6 +316,64 @@ describe('d1-utils', () => {
       expect.arrayContaining(['--remote', '--file']),
       expect.objectContaining({ stdio: 'inherit' }),
     );
+  });
+
+  it('drops triggers before tables and preserves reverse creation order', () => {
+    vi.mocked(spawnSync)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([
+          {
+            results: [
+              { type: 'table', name: 'child' },
+              { type: 'trigger', name: 'parent_insert' },
+              { type: 'table', name: 'parent' },
+            ],
+          },
+        ]),
+      } as ReturnType<typeof spawnSync>)
+      .mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>);
+
+    resetDatabase('local');
+
+    const commands = vi
+      .mocked(spawnSync)
+      .mock.calls.flatMap(([, args]) =>
+        Array.isArray(args) ? [args[args.indexOf('--command') + 1]] : [],
+      );
+    expect(commands[0]).toContain("name NOT LIKE 'sqlite_%'");
+    expect(commands[0]).toContain("name NOT LIKE '_cf_%'");
+    expect(commands[0]).toContain('ORDER BY rowid DESC');
+    expect(commands.slice(1)).toEqual([
+      'DROP TRIGGER IF EXISTS "parent_insert"',
+      'DROP TABLE IF EXISTS "child"',
+      'DROP TABLE IF EXISTS "parent"',
+    ]);
+  });
+
+  it('does not issue drop statements for an empty database', () => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status: 0,
+      stdout: JSON.stringify([{ results: [] }]),
+    } as ReturnType<typeof spawnSync>);
+
+    resetDatabase('local');
+
+    expect(spawnSync).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([1, null])('stops a reset when schema inspection fails (%s)', (status) => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status,
+      stderr: 'D1 inspection failed\n',
+    } as ReturnType<typeof spawnSync>);
+    vi.mocked(process.exit).mockImplementationOnce(() => {
+      throw new Error('process exited');
+    });
+
+    expect(() => resetDatabase('local')).toThrow('process exited');
+    expect(process.exit).toHaveBeenCalledWith(1);
+    expect(spawnSync).toHaveBeenCalledTimes(1);
   });
 
   it('verifies all required runtime tables', () => {
