@@ -52,7 +52,7 @@ api.use(
       const allowed = parseAllowedOrigins(c.env.CORS_ALLOWED_ORIGINS);
       return allowed.includes(origin) ? origin : null;
     },
-    allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Turnstile-Token'],
     credentials: true,
     exposeHeaders: [
