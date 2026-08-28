@@ -37,6 +37,8 @@ describe('useAIRequestAccess', () => {
     });
     const { result } = renderHook(() => useAIRequestAccess());
 
+    expect(result.current.accessError).toBe(i18n.t('services.authRequired'));
+    expect(mocks.openAuthDialog).not.toHaveBeenCalled();
     expect(result.current.getAccessError()).toBe(i18n.t('services.authRequired'));
     expect(mocks.openAuthDialog).toHaveBeenCalledTimes(1);
   });

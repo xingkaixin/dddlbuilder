@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ReviewResultPanel } from '../ReviewResult';
 import { SchemaLintPanel } from '../SchemaLintPanel';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAIRequestAccess } from '@/hooks/useAIRequestAccess';
 import { useTranslation } from 'react-i18next';
 import { CopyOutputButton, OutputCode, OutputHeading } from './OutputPrimitives';
 
@@ -46,7 +46,7 @@ export function DdlOutputPanel({
   onApplySuggestion,
 }: DdlOutputPanelProps) {
   const { t } = useTranslation();
-  const authSession = useAuthSession();
+  const { accessError } = useAIRequestAccess();
   const canReview = Boolean(code && !code.startsWith('--'));
   const formatControls = (
     <div className="inline-flex overflow-hidden rounded-md border border-border/70 bg-background shadow-xs">
@@ -101,13 +101,7 @@ export function DdlOutputPanel({
                 </span>
               </TooltipTrigger>
               <TooltipContent>
-                <p>
-                  {authSession.status !== 'signed_in'
-                    ? t('services.authRequired')
-                    : authSession.creditsStatus === 'ready' && (authSession.creditBalance ?? 0) <= 0
-                      ? t('services.creditExhausted')
-                      : t('ddlOutput.reviewTip')}
-                </p>
+                <p>{accessError ?? t('ddlOutput.reviewTip')}</p>
               </TooltipContent>
             </Tooltip>
             {onViewReviewHistory && (

@@ -105,7 +105,7 @@ export function useAIGenerateTable() {
           ...prev,
           error: i18n.t('services.inputDescribeRequired'),
         }));
-        return;
+        return false;
       }
 
       const accessError = requestAccess.getAccessError();
@@ -114,7 +114,7 @@ export function useAIGenerateTable() {
           ...prev,
           error: accessError,
         }));
-        return;
+        return false;
       }
 
       const baseConversation = options?.continueConversation ? conversationHistory : [];
@@ -138,7 +138,7 @@ export function useAIGenerateTable() {
 
       if (activeRequestRef.current) {
         if (activeRequestRef.current.key === requestKey) {
-          return;
+          return false;
         }
         activeRequestRef.current.controller.abort();
       }
@@ -169,7 +169,7 @@ export function useAIGenerateTable() {
             }));
           },
         });
-        if (activeRequestRef.current?.controller !== abortController) return;
+        if (activeRequestRef.current?.controller !== abortController) return false;
 
         setState({
           streamingText: '',
@@ -184,10 +184,11 @@ export function useAIGenerateTable() {
           appendConversation(baseConversation, normalizedDescription, fullText),
         );
         requestAccess.refreshCreditsAfterSuccess();
+        return true;
       } catch (err) {
-        if (activeRequestRef.current?.controller !== abortController) return;
+        if (activeRequestRef.current?.controller !== abortController) return false;
         if ((err as Error).name === 'AbortError') {
-          return;
+          return false;
         }
         setState({
           streamingText: '',
@@ -196,6 +197,7 @@ export function useAIGenerateTable() {
           previousResult: null,
           error: requestAccess.resolveRequestError(err, i18n.t('services.generationFailed')),
         });
+        return false;
       } finally {
         if (activeRequestRef.current?.controller === abortController) {
           activeRequestRef.current = null;

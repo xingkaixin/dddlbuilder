@@ -1,3 +1,4 @@
+import { AIAccessNotice } from './AIAccessNotice';
 import {
   Bot,
   Check,
@@ -18,7 +19,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
 
 import {
   MAX_PATCH_INPUT_LENGTH as MAX_INPUT_LENGTH,
@@ -55,7 +55,6 @@ export function AISchemaPatchPanel({
   onFocusChange,
 }: AISchemaPatchPanelProps) {
   const { t } = useTranslation();
-  const authSession = useAuthSession();
   const {
     input,
     isLoading,
@@ -277,19 +276,7 @@ export function AISchemaPatchPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-6 py-5">
-        {authSession.status !== 'signed_in' ? (
-          <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            {t('services.authRequired')}
-          </div>
-        ) : null}
-        {authSession.status === 'signed_in' &&
-        authSession.creditsStatus === 'ready' &&
-        (authSession.creditBalance ?? 0) <= 0 ? (
-          <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            {t('services.creditExhausted')}
-          </div>
-        ) : null}
-
+        <AIAccessNotice className="mb-4" />
         {error && (
           <div
             role="alert"

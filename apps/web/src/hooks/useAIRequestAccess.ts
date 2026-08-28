@@ -1,31 +1,32 @@
 import { useCallback, useMemo } from 'react';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
-import i18n from '@/i18n';
+import { useTranslation } from 'react-i18next';
 
 export function useAIRequestAccess() {
+  const { t } = useTranslation();
   const { status, userId, creditsStatus, creditBalance, openAuthDialog, refreshCredits } =
     useAuthSession();
 
+  const authenticated = status === 'signed_in' && Boolean(userId);
+  const accessError = !authenticated
+    ? t('services.authRequired')
+    : creditsStatus === 'ready' && (creditBalance ?? 0) <= 0
+      ? t('services.creditExhausted')
+      : null;
   const getAccessError = useCallback(() => {
-    if (status !== 'signed_in' || !userId) {
-      openAuthDialog();
-      return i18n.t('services.authRequired');
-    }
-    if (creditsStatus === 'ready' && (creditBalance ?? 0) <= 0) {
-      return i18n.t('services.creditExhausted');
-    }
-    return null;
-  }, [creditBalance, creditsStatus, openAuthDialog, status, userId]);
+    if (!authenticated) openAuthDialog();
+    return accessError;
+  }, [accessError, authenticated, openAuthDialog]);
 
   const resolveRequestError = useCallback(
     (error: unknown, fallbackMessage: string) => {
       const message = error instanceof Error ? error.message || fallbackMessage : fallbackMessage;
-      if (message === i18n.t('services.authRequired')) {
+      if (message === t('services.authRequired')) {
         openAuthDialog();
       }
       return message;
     },
-    [openAuthDialog],
+    [openAuthDialog, t],
   );
 
   const refreshCreditsAfterSuccess = useCallback(() => {
@@ -33,7 +34,7 @@ export function useAIRequestAccess() {
   }, [refreshCredits]);
 
   return useMemo(
-    () => ({ getAccessError, resolveRequestError, refreshCreditsAfterSuccess }),
-    [getAccessError, refreshCreditsAfterSuccess, resolveRequestError],
+    () => ({ accessError, getAccessError, resolveRequestError, refreshCreditsAfterSuccess }),
+    [accessError, getAccessError, refreshCreditsAfterSuccess, resolveRequestError],
   );
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@/__tests__/utils/test-utils';
+import { act, fireEvent, render, screen } from '@/__tests__/utils/test-utils';
 import { AIGenerateDialog } from '@/components/App/AIGenerateDialog';
 import { useAIGenerateTable } from '@/hooks/useAIGenerateTable';
 
@@ -42,7 +42,7 @@ function createHookState(overrides: Partial<ReturnType<typeof useAIGenerateTable
     previousResult: null,
     partialResult: null,
     conversationHistory: [],
-    generateTable: vi.fn(),
+    generateTable: vi.fn().mockResolvedValue(false),
     clearResult: vi.fn(),
     clearConversation: vi.fn(),
     cancelGeneration: vi.fn(),
@@ -51,6 +51,35 @@ function createHookState(overrides: Partial<ReturnType<typeof useAIGenerateTable
 }
 
 describe('AIGenerateDialog a11y', () => {
+  it('does not clear text typed while a request is pending', async () => {
+    let complete: (success: boolean) => void = () => {};
+    const generateTable = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          complete = resolve;
+        }),
+    );
+    mockedUseAIGenerateTable.mockReturnValue(createHookState({ generateTable }));
+    render(<AIGenerateDialog open onOpenChange={vi.fn()} dbType="mysql" onApply={vi.fn()} />);
+    const input = screen.getByPlaceholderText(/描述你需要的表结构/);
+    fireEvent.change(input, { target: { value: 'first request' } });
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+    fireEvent.change(input, { target: { value: 'unsent revision' } });
+    await act(async () => complete(true));
+    expect(input).toHaveValue('unsent revision');
+  });
+
+  it.each([true, false])('clears only a successful submission: %s', async (success) => {
+    const generateTable = vi.fn().mockResolvedValue(success);
+    mockedUseAIGenerateTable.mockReturnValue(createHookState({ generateTable }));
+    render(<AIGenerateDialog open onOpenChange={vi.fn()} dbType="mysql" onApply={vi.fn()} />);
+    const input = screen.getByPlaceholderText(/描述你需要的表结构/);
+    fireEvent.change(input, { target: { value: '请生成订单表，保留这段需求' } });
+    await act(async () => fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true }));
+    expect(generateTable).toHaveBeenCalledOnce();
+    expect(input).toHaveValue(success ? '' : '请生成订单表，保留这段需求');
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -106,7 +135,7 @@ describe('AIGenerateDialog a11y', () => {
   });
 
   it('结果态输入新需求后应继续迭代', () => {
-    const generateTable = vi.fn();
+    const generateTable = vi.fn().mockResolvedValue(true);
     mockedUseAIGenerateTable.mockReturnValue(
       createHookState({
         result: {

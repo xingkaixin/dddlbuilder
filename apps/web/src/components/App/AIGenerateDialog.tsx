@@ -1,3 +1,4 @@
+import { AIAccessNotice } from './AIAccessNotice';
 import { memo, useState, useCallback, useMemo } from 'react';
 import {
   Dialog,
@@ -29,7 +30,6 @@ import { diffPersistedState, type FieldDiff } from '@ddlbuilder/ddl-core';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import type { TableTemplate } from '@/hooks/useTableTemplates';
 import { useTranslation } from 'react-i18next';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
 
 const MAX_INPUT_LENGTH = 500;
 
@@ -55,7 +55,6 @@ interface AIGenerateDialogProps {
 export const AIGenerateDialog = memo<AIGenerateDialogProps>(
   ({ open, onOpenChange, dbType, existingConfig, templates, onApply }) => {
     const { t } = useTranslation();
-    const authSession = useAuthSession();
     const [input, setInput] = useState('');
     const [templateSelection, setTemplateSelection] = useState<Set<string> | null>(null);
     const selectedTemplateIds = useMemo(
@@ -85,15 +84,15 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     const displayResult: PartialTableSchema | GeneratedTableSchema | null =
       result || (isLoading ? partialResult : null);
 
-    const handleGenerate = useCallback(() => {
+    const handleGenerate = useCallback(async () => {
       if (!input.trim()) return;
       const selectedTemplates = templates?.filter((t) => selectedTemplateIds.has(t.id)) || [];
-      void generateTable(input, dbType, {
+      const succeeded = await generateTable(input, dbType, {
         templates: selectedTemplates.length > 0 ? selectedTemplates : undefined,
         existingConfig: hasExistingConfig ? existingConfig : undefined,
         continueConversation: conversationHistory.length > 0,
       });
-      setInput('');
+      if (succeeded) setInput((current) => (current === input ? '' : current));
     }, [
       input,
       dbType,
@@ -153,7 +152,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-          handleGenerate();
+          void handleGenerate();
         }
       },
       [handleGenerate],
@@ -216,18 +215,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-            {authSession.status !== 'signed_in' ? (
-              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {t('services.authRequired')}
-              </div>
-            ) : null}
-            {authSession.status === 'signed_in' &&
-            authSession.creditsStatus === 'ready' &&
-            (authSession.creditBalance ?? 0) <= 0 ? (
-              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {t('services.creditExhausted')}
-              </div>
-            ) : null}
+            <AIAccessNotice />
             {/* Existing config hint */}
             {hasExistingConfig && !conversationHistory.length && (
               <div className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-md px-3 py-2">
