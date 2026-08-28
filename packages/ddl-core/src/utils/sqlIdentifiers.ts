@@ -25,7 +25,9 @@ export function formatSqlIdentifier(name: string, dbType: DatabaseType): string 
   if (unquoted !== value) return quoteIdentifier(unquoted, dbType);
   const lower = value.toLowerCase();
   if (
-    /^[a-z_][a-z0-9_$]*$/i.test(value) &&
+    (getDatabaseFamily(dbType) === 'hive' ? /^[a-z_][a-z0-9_]*$/i : /^[a-z_][a-z0-9_$]*$/i).test(
+      value,
+    ) &&
     !RESERVED_KEYWORDS[dbType]?.has(lower) &&
     (getDatabaseFamily(dbType) !== 'postgresql' || value === lower)
   ) {

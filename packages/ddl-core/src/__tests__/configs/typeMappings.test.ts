@@ -120,7 +120,7 @@ describe('TYPE_MAPPINGS', () => {
 
   describe('postgresql', () => {
     it('maps varchar without default args', () => {
-      expect(TYPE_MAPPINGS.postgresql.varchar).toEqual({ mapping: 'varchar' });
+      expect(TYPE_MAPPINGS.postgresql.varchar).toEqual({ mapping: 'varchar', maxArgs: 1 });
     });
 
     it('maps int to integer', () => {
@@ -136,12 +136,13 @@ describe('TYPE_MAPPINGS', () => {
     });
 
     it('maps datetime to timestamp', () => {
-      expect(TYPE_MAPPINGS.postgresql.datetime).toEqual({ mapping: 'timestamp' });
+      expect(TYPE_MAPPINGS.postgresql.datetime).toEqual({ mapping: 'timestamp', maxArgs: 1 });
     });
 
     it('maps timestamptz with suffix', () => {
       expect(TYPE_MAPPINGS.postgresql.timestamptz).toEqual({
         mapping: 'timestamp',
+        maxArgs: 1,
         suffix: 'WITH TIME ZONE',
       });
     });
@@ -149,6 +150,7 @@ describe('TYPE_MAPPINGS', () => {
     it('maps time with suffix', () => {
       expect(TYPE_MAPPINGS.postgresql.time).toEqual({
         mapping: 'time',
+        maxArgs: 1,
         suffix: 'WITHOUT TIME ZONE',
       });
     });
@@ -156,6 +158,7 @@ describe('TYPE_MAPPINGS', () => {
     it('maps timetz with suffix', () => {
       expect(TYPE_MAPPINGS.postgresql.timetz).toEqual({
         mapping: 'time',
+        maxArgs: 1,
         suffix: 'WITH TIME ZONE',
       });
     });
@@ -208,7 +211,7 @@ describe('TYPE_MAPPINGS', () => {
     });
 
     it('maps datetime to datetime2', () => {
-      expect(TYPE_MAPPINGS.sqlserver.datetime).toEqual({ mapping: 'datetime2' });
+      expect(TYPE_MAPPINGS.sqlserver.datetime).toEqual({ mapping: 'datetime2', maxArgs: 1 });
     });
 
     it('maps datetimeoffset with default args', () => {
@@ -287,12 +290,13 @@ describe('TYPE_MAPPINGS', () => {
     });
 
     it('maps datetime to timestamp', () => {
-      expect(TYPE_MAPPINGS.oracle.datetime).toEqual({ mapping: 'timestamp' });
+      expect(TYPE_MAPPINGS.oracle.datetime).toEqual({ mapping: 'timestamp', maxArgs: 1 });
     });
 
     it('maps timestamptz with suffix', () => {
       expect(TYPE_MAPPINGS.oracle.timestamptz).toEqual({
         mapping: 'timestamp',
+        maxArgs: 1,
         suffix: 'WITH TIME ZONE',
       });
     });
@@ -351,6 +355,7 @@ describe('TYPE_MAPPINGS', () => {
     it('maps timestamptz with suffix', () => {
       expect(TYPE_MAPPINGS.dm.timestamptz).toEqual({
         mapping: 'timestamp',
+        maxArgs: 1,
         suffix: 'WITH TIME ZONE',
       });
     });

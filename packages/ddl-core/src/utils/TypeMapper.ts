@@ -38,7 +38,11 @@ export class TypeMapper {
     // 使用配置的映射规则
     const targetType = mapping.mapping || parsed.baseType;
     // 如果原始字段有参数，优先使用原始参数，否则使用默认参数
-    const args = parsed.args.length > 0 ? parsed.args : mapping.defaultArgs;
+    const limit = mapping.maxArgs ?? mapping.defaultArgs?.length ?? 0;
+    const args = (parsed.args.length > 0 ? parsed.args : (mapping.defaultArgs ?? [])).slice(
+      0,
+      limit,
+    );
     let suffix = mapping.suffix || '';
 
     // 处理 unsigned 后缀（MySQL 兼容数据库）

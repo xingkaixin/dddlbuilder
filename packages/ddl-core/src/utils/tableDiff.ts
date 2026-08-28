@@ -147,10 +147,6 @@ function fieldsEqual(a: NormalizedField, b: NormalizedField): boolean {
   );
 }
 
-function getFieldRenameSignature(field: NormalizedField): string {
-  return JSON.stringify([field.type, field.comment]);
-}
-
 /**
  * 获取两个字段之间的差异
  */
@@ -241,33 +237,11 @@ function diffFields(
     const oldField = oldFields[oldIndex];
     const candidates = Array.from(unmatchedNew).filter((newIndex) => {
       const newField = newFields[newIndex];
-      return (
-        (!oldField.id || !newField.id) &&
-        (caseSensitive
-          ? oldField.field.name === newField.field.name
-          : oldField.field.name.toLowerCase() === newField.field.name.toLowerCase())
-      );
+      return caseSensitive
+        ? oldField.field.name === newField.field.name
+        : oldField.field.name.toLowerCase() === newField.field.name.toLowerCase();
     });
     if (candidates.length === 1) match(oldIndex, candidates[0]);
-  }
-
-  const oldByStructure = new Map<string, number[]>();
-  const newByStructure = new Map<string, number[]>();
-  for (const oldIndex of unmatchedOld) {
-    if (oldFields[oldIndex].id) continue;
-    const signature = getFieldRenameSignature(oldFields[oldIndex].field);
-    oldByStructure.set(signature, [...(oldByStructure.get(signature) ?? []), oldIndex]);
-  }
-  for (const newIndex of unmatchedNew) {
-    if (newFields[newIndex].id) continue;
-    const signature = getFieldRenameSignature(newFields[newIndex].field);
-    newByStructure.set(signature, [...(newByStructure.get(signature) ?? []), newIndex]);
-  }
-  for (const [signature, oldIndexes] of oldByStructure) {
-    const newIndexes = newByStructure.get(signature);
-    if (oldIndexes.length === 1 && newIndexes?.length === 1) {
-      match(oldIndexes[0], newIndexes[0]);
-    }
   }
 
   for (const oldIndex of unmatchedOld) {

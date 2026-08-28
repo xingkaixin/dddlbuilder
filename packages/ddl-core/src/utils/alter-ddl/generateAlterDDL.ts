@@ -16,9 +16,9 @@ import {
 } from './tableStatements';
 import { buildQualifiedTableName, getSchemaAndTable } from '../databaseTypeMapping';
 import { getDatabaseFamily } from '../databaseFamily';
-import { getSqlServerColumnChangeNotice } from './sqlServerColumnStatements';
-import { getForeignKeyIssue } from '../foreignKeys';
 import { generateMysqlAlterStatement } from './mysqlAlterStatement';
+import { getForeignKeyIssue } from '../foreignKeys';
+import { getSqlIdentifierKey } from '../sqlIdentifiers';
 
 const MANUAL_CHANGE_DESCRIPTIONS: Record<ManualSchemaChange, string> = {
   objectType: 'schema object type',
@@ -81,19 +81,6 @@ export function generateAlterDDL(
     return `-- Manual migration required: ${reasons} changed from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
   }
 
-  if (dbType === 'sqlserver') {
-    for (const field of diff.fields) {
-      const notice = getSqlServerColumnChangeNotice(field);
-      if (notice) return notice;
-    }
-  }
-
-  const unsupportedForeignKey = diff.foreignKeys?.find(
-    (change) => change.type === 'add' && getForeignKeyIssue(change.foreignKey, dbType),
-  );
-  if (unsupportedForeignKey)
-    return generateAddForeignKey(activeTableName, unsupportedForeignKey, dbType);
-
   const renames = orderFieldRenames(diff.fields, dbType);
   if (!renames) {
     return `-- Manual migration required: cyclic column renames in ${oldTableName} (${dbType}). No automatic changes generated.`;
@@ -130,6 +117,13 @@ export function generateAlterDDL(
   }
 
   for (const fkDiff of (diff.foreignKeys || []).filter((f) => f.type === 'remove')) {
+    const replacement = diff.foreignKeys?.find(
+      (change) =>
+        change.type === 'add' &&
+        getSqlIdentifierKey(change.foreignKey.name, dbType) ===
+          getSqlIdentifierKey(fkDiff.foreignKey.name, dbType),
+    );
+    if (replacement && getForeignKeyIssue(replacement.foreignKey, dbType)) continue;
     statements.push(generateDropForeignKey(activeTableName, fkDiff, dbType));
   }
 

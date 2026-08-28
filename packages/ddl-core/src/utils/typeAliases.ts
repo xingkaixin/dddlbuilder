@@ -39,6 +39,7 @@ export const TYPE_ALIASES: Record<string, string> = {
   time: 'time',
   timestamp: 'timestamp',
   'timestamp without time zone': 'timestamp',
+  'timestamp with time zone': 'timestamptz',
   timestamptz: 'timestamptz',
   tinyint: 'tinyint',
   uuid: 'uuid',

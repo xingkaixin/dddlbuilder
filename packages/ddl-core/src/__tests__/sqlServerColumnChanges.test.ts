@@ -157,9 +157,9 @@ describe('SQL Server column changes', () => {
       ]) {
         expect(sql).toContain('Manual migration required');
         expect(sql).toContain('IDENTITY');
-        expect(sql).toContain('No automatic changes generated');
+        expect(sql).toContain('This column modification was skipped');
         expect(sql).not.toContain('ALTER TABLE');
-        expect(sql).not.toContain('sp_rename');
+        expect(sql).toContain('sp_rename');
       }
     },
   );

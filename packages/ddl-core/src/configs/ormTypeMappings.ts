@@ -57,7 +57,6 @@ export const ORM_TYPE_MAPPINGS: Record<ORMTarget, Record<string, string>> = {
     datetime2: 'Date',
     timestamp: 'Date',
     timestamptz: 'Date',
-    'timestamp with time zone': 'Date',
     datetimeoffset: 'Date',
     time: 'Date',
     timetz: 'Date',

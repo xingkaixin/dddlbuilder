@@ -206,7 +206,7 @@ describe('diffPersistedState', () => {
     expect(diff.fields[0].changes).toContain('comment');
   });
 
-  it('detects rename when type and comment match', () => {
+  it('does not infer a rename from matching type and comment alone', () => {
     const oldState = createPersistedState({
       rows: [createRow({ fieldName: 'old_name', fieldType: 'varchar', fieldComment: '名称' })],
     });
@@ -214,10 +214,7 @@ describe('diffPersistedState', () => {
       rows: [createRow({ fieldName: 'new_name', fieldType: 'varchar', fieldComment: '名称' })],
     });
     const diff = diffPersistedState(oldState, newState);
-    expect(diff.fields).toHaveLength(1);
-    expect(diff.fields[0].type).toBe('rename');
-    expect(diff.fields[0].oldFieldName).toBe('old_name');
-    expect(diff.fields[0].newFieldName).toBe('new_name');
+    expect(diff.fields.map((field) => field.type)).toEqual(['remove', 'add']);
   });
 
   it('uses a stable field id to detect rename and property changes together', () => {

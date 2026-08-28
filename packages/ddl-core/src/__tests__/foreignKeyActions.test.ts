@@ -52,7 +52,7 @@ describe('foreign key referential actions', () => {
     expect(sql).not.toContain('DROP CONSTRAINT');
   });
 
-  it('does not present a table without its requested constraint as executable DDL', () => {
+  it('emits the table and a notice for its unsupported constraint', () => {
     const sql = buildDDL({
       dbType: 'oracle',
       tableName: 'orders',
@@ -71,7 +71,7 @@ describe('foreign key referential actions', () => {
       foreignKeys: [{ ...foreignKey, onUpdate: 'CASCADE' }],
     });
     expect(sql).toContain('Manual migration required');
-    expect(sql).not.toContain('CREATE TABLE');
+    expect(sql).toContain('CREATE TABLE');
   });
 
   it.each(['CASCADE', 'SET NULL'] as const)('preserves Oracle ON DELETE %s', (onDelete) => {

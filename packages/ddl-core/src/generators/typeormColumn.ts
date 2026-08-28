@@ -39,6 +39,8 @@ const temporalTypes = new Set([
 const widthTypes = new Set(['tinyint', 'smallint', 'mediumint', 'int', 'integer', 'bigint', 'bit']);
 
 export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseType) {
+  const original = parseFieldType(field.type);
+  if (original.args.length > (numericTypes.has(original.baseType) ? 2 : 1)) return null;
   const family = getDatabaseFamily(dbType);
   const sqlType = getFieldTypeForDatabase(dbType, field.type).replace(
     /\s+(?:AUTO_INCREMENT|IDENTITY\b.*)$/i,
@@ -47,7 +49,7 @@ export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseTyp
   const parameters = sqlType.match(/\(([^()]*)\)/);
   const args = parameters ? parameters[1].split(',').map((arg) => arg.trim()) : [];
   const parsed = parseFieldType(sqlType.replace(/\([^()]*\)/, ''));
-  const isSerial = /^(?:big)?serial$/.test(parseFieldType(field.type).baseType);
+  const isSerial = /^(?:big)?serial$/.test(original.baseType);
   const type =
     parsed.baseType === 'serial'
       ? 'integer'

@@ -11,7 +11,7 @@ export function getSqlServerColumnChangeNotice(diff: FieldDiff): string {
     (diff.oldField.defaultKind === 'auto_increment') !==
       (diff.newField.defaultKind === 'auto_increment')
   ) {
-    return '-- Manual migration required: SQL Server cannot add or remove IDENTITY on an existing column. No automatic changes generated.';
+    return `-- Manual migration required: SQL Server cannot add or remove IDENTITY on column ${formatSqlIdentifier(diff.newField.name, 'sqlserver')}. This column modification was skipped.`;
   }
   return '';
 }

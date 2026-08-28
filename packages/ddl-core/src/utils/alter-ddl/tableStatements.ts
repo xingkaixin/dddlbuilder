@@ -1,4 +1,5 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { getDatabaseFamily } from '../databaseFamily';
 import {
   buildQualifiedTableName,
   escapeSingleQuotes,
@@ -16,9 +17,10 @@ export function generateTableSchemaChange(
   if (!newSchema) return null;
   tableName = formatSqlTableName(tableName, dbType);
   newSchema = formatSqlIdentifier(newSchema, dbType);
-  if (dbType === 'postgresql') return `ALTER TABLE ${tableName} SET SCHEMA ${newSchema};`;
-  if (dbType === 'sqlserver') return `ALTER SCHEMA ${newSchema} TRANSFER ${tableName};`;
-  if (dbType === 'mysql') {
+  const family = getDatabaseFamily(dbType);
+  if (family === 'postgresql') return `ALTER TABLE ${tableName} SET SCHEMA ${newSchema};`;
+  if (family === 'sqlserver') return `ALTER SCHEMA ${newSchema} TRANSFER ${tableName};`;
+  if (family === 'mysql') {
     return `RENAME TABLE ${tableName} TO ${buildQualifiedTableName(newSchema, getSchemaAndTable(tableName).table, dbType)};`;
   }
   return null;
@@ -36,7 +38,7 @@ export function generateRenameTable(
   }
   oldTableName = formatSqlTableName(oldTableName, dbType);
   newTableName = formatSqlTableName(newTableName, dbType);
-  if (['mysql', 'mariadb', 'tidb', 'oceanbase'].includes(dbType)) {
+  if (getDatabaseFamily(dbType) === 'mysql') {
     return `ALTER TABLE ${oldTableName} RENAME TO ${newTableName};`;
   }
   const newName = getSchemaAndTable(newTableName).table;

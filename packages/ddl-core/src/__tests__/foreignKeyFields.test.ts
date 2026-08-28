@@ -50,7 +50,7 @@ describe('foreign key field correspondence', () => {
         foreignKeys: [fk],
       });
       expect(sql).toContain('Manual migration required');
-      expect(sql).not.toContain('CREATE TABLE');
+      expect(sql).toContain('CREATE TABLE');
       expect(sql).not.toContain('ADD CONSTRAINT');
     },
   );

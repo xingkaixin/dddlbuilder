@@ -50,11 +50,13 @@ const parseUnsigned = (type: string): { clean: string; isUnsigned: boolean } => 
 
 // 辅助函数：提取类型名称和参数
 const extractTypeAndArgs = (type: string): { baseType: string; args: string[] } | null => {
-  const match = type.match(/^([a-z0-9_\s]+)(?:\(([^)]*)\))?$/i);
+  const match = type.match(
+    /^([a-z0-9_\s]+?)(?:\(([^)]*)\))?(\s+(?:with|without)\s+time\s+zone)?$/i,
+  );
   if (!match) return null;
 
-  const [, baseType, argString] = match;
-  const cleanBaseType = baseType.trim().toLowerCase();
+  const [, baseType, argString, suffix = ''] = match;
+  const cleanBaseType = (baseType + suffix).trim().toLowerCase().replace(/\s+/g, ' ');
   const args = argString ? argString.split(',').map((arg) => arg.trim()) : [];
 
   return { baseType: cleanBaseType, args };
