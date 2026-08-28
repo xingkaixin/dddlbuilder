@@ -2,14 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, act } from '@/__tests__/utils/test-utils';
 import { UserSettingsDialog } from '@/components/App/UserSettingsDialog';
 import { fetchCreditLedger } from '@/services/creditService';
-const auth = vi.hoisted(() => ({ userId: 'ledger-user' }));
+const auth = vi.hoisted(() => ({ userId: 'ledger-user', name: 'Tester' }));
 
 vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ locale: 'zh-CN' }) }));
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthSession: () => ({
     status: 'signed_in',
     userId: auth.userId,
-    name: 'Tester',
+    name: auth.name,
     creditBalance: 100,
     email: 'user@example.com',
   }),
@@ -33,8 +33,24 @@ const item = {
 describe('credit ledger rendering', () => {
   beforeEach(() => {
     auth.userId = 'ledger-user';
+    auth.name = 'Tester';
   });
   afterEach(() => vi.unstubAllGlobals());
+  it('shows the latest account name and resets unsaved edits on reopening', () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ items: [], total: 0 })));
+    const onOpenChange = vi.fn();
+    const { rerender } = render(<UserSettingsDialog open onOpenChange={onOpenChange} />);
+    auth.name = 'Updated';
+    rerender(<UserSettingsDialog open onOpenChange={onOpenChange} />);
+    const input = screen.getByDisplayValue('Updated');
+    fireEvent.change(input, { target: { value: 'Unsaved' } });
+    rerender(<UserSettingsDialog open onOpenChange={onOpenChange} />);
+    expect(screen.getByDisplayValue('Unsaved')).toBeInTheDocument();
+    rerender(<UserSettingsDialog open={false} onOpenChange={onOpenChange} />);
+    rerender(<UserSettingsDialog open onOpenChange={onOpenChange} />);
+    expect(screen.getByDisplayValue('Updated')).toBeInTheDocument();
+  });
+
   it('keeps the current page visible while fetching the next page', async () => {
     let resolvePage: (response: Response) => void = () => {};
     const pendingPage = new Promise<Response>((resolve) => {

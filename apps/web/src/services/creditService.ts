@@ -23,6 +23,9 @@ export type CreditLedgerFilters = {
   endAt?: string;
 };
 
+export const formatSignedCreditAmount = (item: Pick<CreditLedgerItem, 'kind' | 'amount'>) =>
+  `${item.kind === 'consume' ? '-' : '+'}${item.amount}`;
+
 export async function fetchCreditBalance(signal?: AbortSignal): Promise<number> {
   const response = await fetch('/api/credits/balance', {
     credentials: 'include',

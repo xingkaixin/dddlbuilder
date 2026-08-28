@@ -26,7 +26,7 @@ import { useToast } from '@/hooks/useToast';
 import { useLocale } from '@/i18n/LocaleContext';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { creditLedgerOptions } from '@/queries/credits';
-import type { CreditLedgerItem } from '@/services/creditService';
+import { formatSignedCreditAmount, type CreditLedgerItem } from '@/services/creditService';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 
 interface UserSettingsDialogProps {
@@ -119,17 +119,63 @@ const resolveLedgerTypeLabel = (
   return t(`settings.kind.${item.kind}`);
 };
 
+function AccountNameForm({
+  initialName,
+  updateUserName,
+}: {
+  initialName: string;
+  updateUserName: (name: string) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const { success, error } = useToast();
+  const [name, setName] = useState(initialName);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      error(t('settings.usernameRequired'));
+      return;
+    }
+    try {
+      setSaving(true);
+      await updateUserName(trimmedName);
+      success(t('settings.usernameSuccess'));
+    } catch (err) {
+      error(err instanceof Error ? err.message : t('settings.usernameFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="space-y-3">
+      <h3 className="text-sm font-semibold">{t('settings.username')}</h3>
+      <div className="space-y-2">
+        <Input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder={t('settings.usernamePlaceholder')}
+        />
+        <div className="flex justify-end">
+          <Button type="button" onClick={handleSubmit} disabled={saving}>
+            {saving ? t('settings.saving') : t('settings.save')}
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogProps) {
   const { t } = useTranslation();
   const { locale } = useLocale();
   const authSession = useAuthSession();
   const workspaceYDoc = useWorkspaceYDoc();
   const { success, error } = useToast();
-  const [name, setName] = useState(() => authSession.name ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [savingName, setSavingName] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [ledgerPage, setLedgerPage] = useState(1);
   const [ledgerStartDate, setLedgerStartDate] = useState('');
@@ -166,24 +212,6 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
     () => Math.max(1, Math.ceil(ledgerTotal / LEDGER_PAGE_SIZE)),
     [ledgerTotal],
   );
-
-  const handleUpdateName = async () => {
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      error(t('settings.usernameRequired'));
-      return;
-    }
-
-    try {
-      setSavingName(true);
-      await authSession.updateUserName(trimmedName);
-      success(t('settings.usernameSuccess'));
-    } catch (err) {
-      error(err instanceof Error ? err.message : t('settings.usernameFailed'));
-    } finally {
-      setSavingName(false);
-    }
-  };
 
   const handleChangePassword = async () => {
     if (!currentPassword.trim() || !newPassword.trim()) {
@@ -277,21 +305,11 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                     </div>
                   </div>
                 </section>
-                <section className="space-y-3">
-                  <h3 className="text-sm font-semibold">{t('settings.username')}</h3>
-                  <div className="space-y-2">
-                    <Input
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      placeholder={t('settings.usernamePlaceholder')}
-                    />
-                    <div className="flex justify-end">
-                      <Button type="button" onClick={handleUpdateName} disabled={savingName}>
-                        {savingName ? t('settings.saving') : t('settings.save')}
-                      </Button>
-                    </div>
-                  </div>
-                </section>
+                <AccountNameForm
+                  key={`${authSession.userId}:${open}:${authSession.name ?? ''}`}
+                  initialName={authSession.name ?? ''}
+                  updateUserName={authSession.updateUserName}
+                />
                 <section className="space-y-3">
                   <h3 className="text-sm font-semibold">{t('settings.passwordSection')}</h3>
                   <div className="space-y-2">
@@ -448,10 +466,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                               <td className="px-3 py-2">
                                 {t(`settings.sourceMap.${item.source}`)}
                               </td>
-                              <td className="px-3 py-2">
-                                {item.kind === 'consume' ? '-' : '+'}
-                                {item.amount}
-                              </td>
+                              <td className="px-3 py-2">{formatSignedCreditAmount(item)}</td>
                               <td className="px-3 py-2">{item.balanceAfter}</td>
                             </tr>
                           ))}
