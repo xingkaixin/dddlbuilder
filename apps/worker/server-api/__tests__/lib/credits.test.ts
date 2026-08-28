@@ -272,9 +272,11 @@ describe('credits', () => {
     it('surfaces CREDIT_BALANCE_OVERFLOW raised by the balance trigger', async () => {
       const db = createMockDb();
       db.first.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
-      db.run
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockRejectedValueOnce(new Error('D1_ERROR: CREDIT_BALANCE_OVERFLOW'));
+      db.first
+        .mockReset()
+        .mockResolvedValueOnce(null)
+        .mockRejectedValueOnce(new Error('D1_ERROR: CREDIT_BALANCE_OVERFLOW'))
+        .mockResolvedValueOnce(null);
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
@@ -304,6 +306,7 @@ describe('credits', () => {
       const db = createMockDb();
       db.first
         .mockResolvedValueOnce(null)
+        .mockRejectedValueOnce(new Error('UNIQUE constraint failed'))
         .mockResolvedValueOnce(ledgerRow({ kind: 'refund', amount: 50 }));
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
@@ -358,9 +361,11 @@ describe('credits', () => {
     it('surfaces CREDIT_EXHAUSTED raised by the balance trigger', async () => {
       const db = createMockDb();
       db.first.mockResolvedValueOnce(null);
-      db.run
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockRejectedValueOnce(new Error('D1_ERROR: CREDIT_EXHAUSTED'));
+      db.first
+        .mockReset()
+        .mockResolvedValueOnce(null)
+        .mockRejectedValueOnce(new Error('D1_ERROR: CREDIT_EXHAUSTED'))
+        .mockResolvedValueOnce(null);
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
@@ -374,9 +379,11 @@ describe('credits', () => {
     it('returns an equivalent ledger written by a concurrent request', async () => {
       const db = createMockDb();
       db.first.mockResolvedValueOnce(null).mockResolvedValueOnce(ledgerRow());
-      db.run
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockRejectedValueOnce(new Error('UNIQUE constraint failed'));
+      db.first
+        .mockReset()
+        .mockResolvedValueOnce(null)
+        .mockRejectedValueOnce(new Error('UNIQUE constraint failed'))
+        .mockResolvedValueOnce(ledgerRow());
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       const result = await applyCreditMutation(
@@ -391,9 +398,11 @@ describe('credits', () => {
     it('maps an unknown insert failure to its original error', async () => {
       const db = createMockDb();
       db.first.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
-      db.run
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockRejectedValueOnce(new Error('D1_ERROR: storage exploded'));
+      db.first
+        .mockReset()
+        .mockResolvedValueOnce(null)
+        .mockRejectedValueOnce(new Error('D1_ERROR: storage exploded'))
+        .mockResolvedValueOnce(null);
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
@@ -416,22 +425,6 @@ describe('credits', () => {
           createMutationInput(),
         ),
       ).rejects.toThrow('CREDIT_ACCOUNT_MISSING');
-    });
-
-    it('throws CREDIT_LEDGER_WRITE_FAILED when created ledger cannot be read back', async () => {
-      const db = createMockDb();
-      db.first
-        .mockResolvedValueOnce(null) // idempotency pre-check
-        .mockResolvedValueOnce(null); // read back after insert
-      db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
-
-      const { applyCreditMutation } = await import('../../lib/credits.js');
-      await expect(
-        applyCreditMutation(
-          createEnv({ USER_DB: db as unknown as D1Database }),
-          createMutationInput(),
-        ),
-      ).rejects.toThrow('CREDIT_LEDGER_WRITE_FAILED');
     });
 
     it('uses custom ledgerId when provided', async () => {

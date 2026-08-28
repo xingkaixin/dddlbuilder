@@ -44,6 +44,22 @@ describe('authentication credit initialization', () => {
 
   afterEach(() => fixture.sqlite.close());
 
+  it('repairs a missing signup grant when reading the balance', async () => {
+    const { Hono } = await import('hono');
+    const { registerCreditRoutes } = await import('../routes/credits.js');
+    await expect(
+      grantSignupCredits(
+        { ...env, SIGNUP_BONUS_CREDITS: 'invalid' },
+        { userId: 'user-1', email: 'user@example.com' },
+      ),
+    ).rejects.toThrow();
+    const app = new Hono<ApiEnv>();
+    registerCreditRoutes(app);
+    const response = await app.request('/credits/balance', {}, env);
+    const body = await response.json();
+    expect(body.balance).toBe(100000);
+  });
+
   it.each(['200000', '50000'])(
     'preserves an existing grant when the policy becomes %s',
     async (amount) => {

@@ -88,7 +88,7 @@ const createMockStream = (chunks: unknown[]) => ({
   },
 });
 
-let authenticateAIUserMock = vi.fn().mockResolvedValue({
+let authenticateRequestMock = vi.fn().mockResolvedValue({
   userId: 'user-1',
   email: 'user@example.com',
   emailVerified: true,
@@ -142,7 +142,7 @@ const mockAIUsageModule = async (options?: {
     return new DomainError(status, code, message);
   };
 
-  authenticateAIUserMock = options?.authenticateError
+  authenticateRequestMock = options?.authenticateError
     ? vi
         .fn()
         .mockRejectedValue(
@@ -176,8 +176,11 @@ const mockAIUsageModule = async (options?: {
   completeAIUsageMock = vi.fn().mockResolvedValue(undefined);
   failAIUsageMock = vi.fn().mockResolvedValue(undefined);
 
+  vi.doMock('../lib/auth.js', () => ({ authenticateRequest: authenticateRequestMock }));
+  vi.doMock('../lib/credits.js', () => ({
+    grantSignupCredits: vi.fn().mockResolvedValue(undefined),
+  }));
   vi.doMock('../lib/aiUsage.js', () => ({
-    authenticateAIUser: authenticateAIUserMock,
     reserveAIUsage: reserveAIUsageMock,
     completeAIUsage: completeAIUsageMock,
     failAIUsage: failAIUsageMock,
@@ -412,7 +415,7 @@ describe.sequential('openai governance', () => {
       code: 'INVALID_JSON',
       error: 'Invalid conversation history',
     });
-    expect(authenticateAIUserMock).toHaveBeenCalledOnce();
+    expect(authenticateRequestMock).toHaveBeenCalledOnce();
   });
 
   it('结构化审计日志不应包含 SQL/DDL 原文', async () => {
@@ -558,7 +561,7 @@ describe.sequential('openai governance', () => {
         body: JSON.stringify({ sql: 'select 1' }),
       });
     expect((await request('1.1.1.1')).status).toBe(503);
-    authenticateAIUserMock.mockResolvedValue({
+    authenticateRequestMock.mockResolvedValue({
       userId: 'user-2',
       email: 'second@example.com',
       emailVerified: true,
@@ -785,7 +788,7 @@ describe.sequential('openai governance', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(String(fetchSpy.mock.calls[0]?.[1]?.body)).toContain('actualTotalTokens: 39');
     expect(String(fetchSpy.mock.calls[0]?.[1]?.body)).toContain('estimatedTokens:');
-    expect(authenticateAIUserMock).toHaveBeenCalledTimes(1);
+    expect(authenticateRequestMock).toHaveBeenCalledTimes(1);
     expect(reserveAIUsageMock).toHaveBeenCalledTimes(1);
     expect(completeAIUsageMock).toHaveBeenCalledWith(
       expect.any(Object),

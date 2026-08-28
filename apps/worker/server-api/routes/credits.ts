@@ -1,7 +1,12 @@
 import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser as resolveSessionUser } from '../lib/auth.js';
-import { countCreditLedger, getCreditAccount, listCreditLedger } from '../lib/credits.js';
+import {
+  countCreditLedger,
+  getCreditAccount,
+  grantSignupCredits,
+  listCreditLedger,
+} from '../lib/credits.js';
 import { DomainError, withMeta } from '../lib/http.js';
 
 const parseLedgerLimit = (value: string | undefined) => {
@@ -56,6 +61,7 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
   app.get('/credits/balance', async (c) => {
     const user = await resolveAuthenticatedUser(c);
     return wrapCreditService(async () => {
+      await grantSignupCredits(c.env, user);
       const account = await getCreditAccount(c.env, user.userId);
       return c.json(
         withMeta(c, {

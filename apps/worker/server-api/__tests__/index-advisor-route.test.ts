@@ -12,8 +12,11 @@ vi.mock('openai', () => ({
   },
 }));
 
+vi.mock('../lib/auth.js', () => ({
+  authenticateRequest: vi.fn().mockResolvedValue({ userId: 'user-1', email: 'user@example.com' }),
+}));
+vi.mock('../lib/credits.js', () => ({ grantSignupCredits: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../lib/aiUsage.js', () => ({
-  authenticateAIUser: vi.fn().mockResolvedValue({ userId: 'user-1' }),
   reserveAIUsage: vi.fn().mockResolvedValue({ usageEventId: 'usage-1', userId: 'user-1' }),
   completeAIUsage: vi.fn().mockResolvedValue(undefined),
   failAIUsage: vi.fn().mockResolvedValue(undefined),

@@ -216,7 +216,11 @@ const buildBetterAuth = (env: ApiEnv['Bindings']) => {
       user: {
         create: {
           after: async (user) => {
-            await grantSignupCredits(env, { userId: user.id, email: user.email });
+            try {
+              await grantSignupCredits(env, { userId: user.id, email: user.email });
+            } catch (error) {
+              console.error('[credits] signup grant deferred', { userId: user.id, error });
+            }
           },
         },
       },

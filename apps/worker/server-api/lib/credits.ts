@@ -222,7 +222,7 @@ const LEDGER_ABORT_CODES = [
 ] as const;
 
 // 余额不变量由触发器执法（ADR-0001）；TS 只负责把 ABORT 消息还原成领域错误。
-const mapLedgerAbort = (error: unknown): Error => {
+export const mapLedgerAbort = (error: unknown): Error => {
   const message = error instanceof Error ? error.message : String(error);
   const abortCode = LEDGER_ABORT_CODES.find((code) => message.includes(code));
   if (abortCode === 'CREDIT_EXHAUSTED') {
@@ -240,79 +240,56 @@ const mapLedgerAbort = (error: unknown): Error => {
   return new Error(message);
 };
 
+export const prepareCreditMutation = (env: ApiEnv['Bindings'], input: CreditMutationInput) => {
+  if (!Number.isSafeInteger(input.amount) || input.amount <= 0) {
+    throw new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_CREDIT_AMOUNT');
+  }
+  return env.USER_DB.prepare(`
+    INSERT INTO credit_ledger (
+      id, user_id, kind, source, amount, balance_after, idempotency_key,
+      related_usage_id, metadata_json, created_at
+    )
+    SELECT ?, ?, ?, ?, ?,
+      CASE WHEN ? = 'consume' THEN balance - ? ELSE balance + ? END,
+      ?, ?, ?, ?
+    FROM credit_accounts WHERE user_id = ?
+    RETURNING id, user_id AS userId, kind, source, amount, balance_after AS balanceAfter,
+      idempotency_key AS idempotencyKey, related_usage_id AS relatedUsageId,
+      metadata_json AS metadataJson, created_at AS createdAt
+  `).bind(
+    input.ledgerId ?? `${input.kind}:${input.idempotencyKey}`,
+    input.userId,
+    input.kind,
+    input.source,
+    input.amount,
+    input.kind,
+    input.amount,
+    input.amount,
+    input.idempotencyKey,
+    input.relatedUsageId ?? null,
+    input.metadata ? JSON.stringify(input.metadata) : null,
+    Date.now(),
+    input.userId,
+  );
+};
+
 export const applyCreditMutation = async (
   env: ApiEnv['Bindings'],
   input: CreditMutationInput,
 ): Promise<CreditLedgerRow> => {
-  if (!Number.isSafeInteger(input.amount) || input.amount <= 0) {
-    throw new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_CREDIT_AMOUNT');
-  }
-
+  const statement = prepareCreditMutation(env, input);
   const existing = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
-  if (existing) {
-    return validateExistingLedger(existing, input);
-  }
-
+  if (existing) return validateExistingLedger(existing, input);
   await ensureCreditAccount(env, input.userId);
-
-  const ledgerId = input.ledgerId ?? `${input.kind}:${input.idempotencyKey}`;
   try {
-    // 余额读取与插入必须在同一条语句里：语句内快照一致，触发器的余额校验不会因并发读到过期值而误报
-    const inserted = await env.USER_DB.prepare(
-      `
-        INSERT INTO credit_ledger (
-          id,
-          user_id,
-          kind,
-          source,
-          amount,
-          balance_after,
-          idempotency_key,
-          related_usage_id,
-          metadata_json,
-          created_at
-        )
-        SELECT
-          ?, ?, ?, ?, ?,
-          CASE WHEN ? = 'consume' THEN balance - ? ELSE balance + ? END,
-          ?, ?, ?, ?
-        FROM credit_accounts
-        WHERE user_id = ?
-      `,
-    )
-      .bind(
-        ledgerId,
-        input.userId,
-        input.kind,
-        input.source,
-        input.amount,
-        input.kind,
-        input.amount,
-        input.amount,
-        input.idempotencyKey,
-        input.relatedUsageId ?? null,
-        input.metadata ? JSON.stringify(input.metadata) : null,
-        Date.now(),
-        input.userId,
-      )
-      .run();
-
-    if (!inserted.success || Number(inserted.meta.changes ?? 0) === 0) {
-      throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_ACCOUNT_MISSING');
-    }
+    const created = await statement.first<Record<string, unknown>>();
+    if (!created) throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_ACCOUNT_MISSING');
+    return toLedgerRow(created);
   } catch (error) {
     const concurrent = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
-    if (concurrent) {
-      return validateExistingLedger(concurrent, input);
-    }
+    if (concurrent) return validateExistingLedger(concurrent, input);
     throw mapLedgerAbort(error);
   }
-
-  const created = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
-  if (!created) {
-    throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_LEDGER_WRITE_FAILED');
-  }
-  return created;
 };
 
 export const grantSignupCredits = async (
@@ -333,7 +310,6 @@ export const grantSignupCredits = async (
       metadata: { email: user.email },
     });
   } catch (error) {
-    // Another first login may have completed the grant under a different policy.
     if (!(await readCreditLedgerEntry(env, user.userId, idempotencyKey))) throw error;
   }
 };

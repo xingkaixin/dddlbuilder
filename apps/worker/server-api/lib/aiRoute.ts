@@ -1,3 +1,5 @@
+import { authenticateRequest, type AuthenticatedAppUser } from './auth.js';
+import { grantSignupCredits } from './credits.js';
 import type { Context } from 'hono';
 import { stream } from 'hono/streaming';
 import { encodeAIStreamEvent } from '@ddlbuilder/shared-types';
@@ -5,7 +7,6 @@ import OpenAI from 'openai';
 import {
   type AIRouteKey,
   type AIUsageReservation,
-  authenticateAIUser,
   completeAIUsage,
   failAIUsage,
   reserveAIUsage,
@@ -16,6 +17,7 @@ import {
   enforceOpenAIDailyBudget,
   enforceOpenAIRateLimit,
   estimateRequestTokens,
+  estimateResponseTokensFromText,
   getOpenAIGovernanceSnapshot,
   logOpenAIAudit,
   readUsageFromStreamChunk,
@@ -172,9 +174,9 @@ export const withAIGovernance = async <Request>(
     );
   };
 
-  let userId: string;
+  let user: AuthenticatedAppUser;
   try {
-    userId = (await authenticateAIUser(c)).userId;
+    user = await authenticateRequest(c);
   } catch (error) {
     if (error instanceof DomainError) {
       if (error.status === 401 && config.rateLimitEnabled) {
@@ -196,13 +198,6 @@ export const withAIGovernance = async <Request>(
     return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
   }
 
-  const rateLimit = await enforceOpenAIRateLimit(c, route, config, userId);
-  rateLimitRemaining = rateLimit.remaining;
-  if (rateLimit.response) {
-    audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
-    return rateLimit.response;
-  }
-
   const parsedBody = await parseJsonBodyWithLimit<Record<string, unknown>>(c, spec.bodyMaxBytes);
   if (parsedBody.errorResponse) {
     const tooLarge = parsedBody.errorResponse.status === 413;
@@ -222,6 +217,13 @@ export const withAIGovernance = async <Request>(
     return errorResponse(c, parsed.status, parsed.message, parsed.code);
   }
 
+  const rateLimit = await enforceOpenAIRateLimit(c, route, config, user.userId);
+  rateLimitRemaining = rateLimit.remaining;
+  if (rateLimit.response) {
+    audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
+    return rateLimit.response;
+  }
+
   const messages = spec.buildMessages(parsed);
   estimatedTokens = estimateRequestTokens(messages, maxOutputTokens);
 
@@ -233,8 +235,9 @@ export const withAIGovernance = async <Request>(
 
   let reservation: AIUsageReservation;
   try {
+    await grantSignupCredits(c.env, user);
     reservation = await reserveAIUsage(c.env, {
-      userId,
+      userId: user.userId,
       routeKey: route,
       requestId,
       estimatedTokens,
@@ -254,10 +257,11 @@ export const withAIGovernance = async <Request>(
       ? settleAIDailyBudget(c.env, reservation.usageEventId, actualTokens)
       : Promise.resolve(null);
 
-  const refund = async (code: ApiErrorCode) => {
+  const refund = async (code: ApiErrorCode, fallbackTokens: number | null = null) => {
+    const actualTokens = usage?.totalTokens ?? fallbackTokens;
     const [creditResult, budgetResult] = await Promise.allSettled([
-      failAIUsage(c.env, reservation, code, usage?.totalTokens ?? null),
-      settleBudget(usage?.totalTokens ?? 0),
+      failAIUsage(c.env, reservation, code, actualTokens),
+      settleBudget(actualTokens ?? 0),
     ]);
     if (creditResult.status === 'rejected') {
       console.error(`[${route}] failed to refund credits`, creditResult.reason);
@@ -322,10 +326,17 @@ export const withAIGovernance = async <Request>(
     });
     waitUntil(settlement);
   };
-  const settleFailure = (code: ApiErrorCode, status: number, retryCount: number) => {
+  const settleFailure = (
+    code: ApiErrorCode,
+    status: number,
+    retryCount: number,
+    fallbackTokens: number | null = null,
+  ) => {
     if (settled) return;
     settled = true;
-    const settlement = refund(code).then(() => audit(status, retryCount, false, false, code));
+    const settlement = refund(code, fallbackTokens).then(() =>
+      audit(status, retryCount, false, false, code),
+    );
     waitUntil(settlement);
   };
 
@@ -392,6 +403,7 @@ export const withAIGovernance = async <Request>(
       c.header('Cache-Control', 'no-cache');
       return stream(c, async (stream) => {
         streamDebug.start();
+        let fullText = '';
         try {
           const { data: response, attempts } = await withOpenAIRetry(
             async () =>
@@ -411,7 +423,6 @@ export const withAIGovernance = async <Request>(
           retryCount = attempts;
           streamDebug.connected();
 
-          let fullText = '';
           let finishReason: string | null = null;
           for await (const chunk of response) {
             reportUsage(readUsageFromStreamChunk(chunk));
@@ -433,7 +444,11 @@ export const withAIGovernance = async <Request>(
           streamDebug.error(error);
           console.error(`[${route}] stream failed`, error);
           const code = error instanceof DomainError ? error.code : 'UPSTREAM_OPENAI_ERROR';
-          settleFailure(code, 502, retryCount);
+          const fallbackTokens = fullText
+            ? Math.max(0, estimatedTokens - maxOutputTokens) +
+              estimateResponseTokensFromText(fullText)
+            : null;
+          settleFailure(code, 502, retryCount, fallbackTokens);
           await stream.write(
             encodeAIStreamEvent({
               type: 'error',

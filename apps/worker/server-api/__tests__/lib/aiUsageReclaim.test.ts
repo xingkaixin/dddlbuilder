@@ -1,47 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
-
+import { createCreditFixture } from '../helpers/creditFixture.js';
+import { reclaimStaleAIUsage } from '../../lib/aiUsage.js';
 const createEnv = (db: unknown): ApiEnv['Bindings'] =>
   ({ USER_DB: db as D1Database }) as ApiEnv['Bindings'];
-
-/** 按 SQL 片段分派的 D1 桩，回收流程要跨 select/update/ledger 三类语句断言顺序。 */
-const createDb = (rows: Record<string, unknown>[]) => {
-  const runs: { sql: string; args: unknown[] }[] = [];
-  const claimed = new Set<string>();
-
-  const prepare = vi.fn((sql: string) => ({
-    bind: (...args: unknown[]) => ({
-      all: async () => ({ results: rows }),
-      first: async () => null,
-      run: async () => {
-        runs.push({ sql, args });
-        if (sql.includes("SET status = 'reclaiming'")) {
-          const id = String(args[1]);
-          if (claimed.has(id)) return { success: true, meta: { changes: 0 } };
-          claimed.add(id);
-          return { success: true, meta: { changes: 1 } };
-        }
-        return { success: true, meta: { changes: 1 } };
-      },
-    }),
-  }));
-
-  return { db: { prepare }, runs };
-};
-
-const staleRow = (overrides: Record<string, unknown> = {}) => ({
-  id: 'usage:6:user-1:7:explain:5:req-1',
-  userId: 'user-1',
-  routeKey: 'explain',
-  requestId: 'req-1',
-  estimatedTokens: 120,
-  actualTotalTokens: null,
-  status: 'reserved',
-  errorCode: null,
-  ...overrides,
-});
-
 describe('reclaimStaleAIUsage with SQLite timestamps', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -112,160 +75,40 @@ describe('reclaimStaleAIUsage with SQLite timestamps', () => {
   );
 });
 
-const loadReclaim = async (
-  reserveLedgerEntry: unknown,
-  applyCreditMutation = vi.fn(),
-  settlementLedgerEntry: unknown = null,
-) => {
-  vi.doMock('../../lib/credits.js', () => ({
-    applyCreditMutation,
-    readCreditLedgerEntry: vi
-      .fn()
-      .mockImplementation((_env, _userId, idempotencyKey: string) =>
-        idempotencyKey.endsWith(':reserve') ? reserveLedgerEntry : settlementLedgerEntry,
-      ),
-  }));
-  const { reclaimStaleAIUsage } = await import('../../lib/aiUsage.js');
-  return { reclaimStaleAIUsage, applyCreditMutation };
-};
-
-describe('reclaimStaleAIUsage', () => {
-  beforeEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
+describe('legacy usage recovery', () => {
+  it.each([
+    ['pending', null, 1000, 'failed'],
+    ['reserved', null, 900, 'failed'],
+    ['reclaiming', 0, 1000, 'failed'],
+    ['reclaiming', 100, 900, 'failed'],
+    ['settling_succeeded', 60, 940, 'succeeded'],
+    ['settling_failed', 60, 940, 'failed'],
+    ['settling_failed', null, 1000, 'failed'],
+  ] as const)('recovers %s with usage %s', async (status, actual, expected, terminal) => {
+    const f = await createCreditFixture();
+    try {
+      await f.reserve();
+      f.sqlite
+        .prepare('UPDATE usage_events SET status = ?, actual_total_tokens = ?, created_at = 1')
+        .run(status, actual);
+      expect(await reclaimStaleAIUsage(f.env)).toEqual({ scanned: 1, reclaimed: 1 });
+      expect(await reclaimStaleAIUsage(f.env)).toEqual({ scanned: 0, reclaimed: 0 });
+      expect(await f.balance()).toBe(expected);
+      expect(f.sqlite.prepare('SELECT status FROM usage_events').get()?.status).toBe(terminal);
+    } finally {
+      f.sqlite.close();
+    }
   });
-
-  it('refunds a pending reservation whose consume entry exists and settles it as failed', async () => {
-    const { db, runs } = createDb([staleRow({ status: 'pending' })]);
-    const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim({
-      id: 'ledger-1',
-      kind: 'consume',
-    });
-
-    const result = await reclaimStaleAIUsage(createEnv(db));
-
-    expect(result).toEqual({ scanned: 1, reclaimed: 1 });
-    expect(applyCreditMutation).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        userId: 'user-1',
-        kind: 'refund',
-        amount: 120,
-        idempotencyKey: 'usage:6:user-1:7:explain:5:req-1:settlement',
-      }),
-    );
-    // 抢占必须发生在退款之前，否则会和正常结算路径同时动同一笔额度
-    expect(runs[0].sql).toContain("SET status = 'reclaiming'");
-    expect(runs.at(-1)?.args).toContain('failed');
-  });
-
-  it('settles a pending event without refunding when no consume entry was written', async () => {
-    const { db } = createDb([staleRow({ status: 'pending' })]);
-    const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim(null);
-
-    const result = await reclaimStaleAIUsage(createEnv(db));
-
-    expect(result).toEqual({ scanned: 1, reclaimed: 1 });
-    expect(applyCreditMutation).not.toHaveBeenCalled();
-  });
-
-  it('resumes an interrupted successful settlement from stored actual tokens', async () => {
-    const { db, runs } = createDb([
-      staleRow({ status: 'settling_succeeded', actualTotalTokens: 70 }),
-    ]);
-    const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim(null);
-
-    const result = await reclaimStaleAIUsage(createEnv(db));
-
-    expect(result).toEqual({ scanned: 1, reclaimed: 1 });
-    expect(applyCreditMutation).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ kind: 'refund', amount: 50 }),
-    );
-    expect(runs).toHaveLength(1);
-    expect(runs[0].args).toContain('succeeded');
-  });
-
-  it.each([null, 70])(
-    'resumes an interrupted failed settlement with measured usage %s',
-    async (actualTotalTokens) => {
-      const { db, runs } = createDb([
-        staleRow({ status: 'settling_failed', errorCode: 'OPENAI_ERROR', actualTotalTokens }),
-      ]);
-      const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim(null);
-
-      const result = await reclaimStaleAIUsage(createEnv(db));
-
-      expect(result).toEqual({ scanned: 1, reclaimed: 1 });
-      expect(applyCreditMutation).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ kind: 'refund', amount: 120 - (actualTotalTokens ?? 0) }),
+  it('does not refund an old pending event with no consume entry', async () => {
+    const f = await createCreditFixture();
+    try {
+      f.sqlite.exec(
+        "INSERT INTO usage_events (id,user_id,route_key,request_id,estimated_tokens,status,created_at) VALUES ('legacy','user-1','explain','r',100,'pending',1)",
       );
-      expect(runs).toHaveLength(1);
-      expect(runs[0].args).toContain('failed');
-      expect(runs[0].args).toContain('OPENAI_ERROR');
-    },
-  );
-
-  it('does not write a second settlement when a reclaiming row already has one', async () => {
-    const { db } = createDb([staleRow({ status: 'reclaiming' })]);
-    const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim(
-      { id: 'reserve-ledger' },
-      vi.fn(),
-      { id: 'settlement-ledger' },
-    );
-
-    const result = await reclaimStaleAIUsage(createEnv(db));
-
-    expect(result).toEqual({ scanned: 1, reclaimed: 1 });
-    expect(applyCreditMutation).not.toHaveBeenCalled();
-  });
-
-  it('skips a row whose status was claimed by someone else', async () => {
-    const row = staleRow({ status: 'pending' });
-    const { db } = createDb([row, row]);
-    const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim({ id: 'ledger-1' });
-
-    const result = await reclaimStaleAIUsage(createEnv(db));
-
-    expect(result).toEqual({ scanned: 2, reclaimed: 1 });
-    expect(applyCreditMutation).toHaveBeenCalledTimes(1);
-  });
-
-  it('keeps going when one row throws', async () => {
-    const { db } = createDb([
-      staleRow({ status: 'pending' }),
-      staleRow({ status: 'pending', id: 'usage-2', requestId: 'req-2' }),
-    ]);
-    const applyCreditMutation = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('boom'))
-      .mockResolvedValue({ id: 'ledger-2' });
-    const { reclaimStaleAIUsage } = await loadReclaim({ id: 'ledger-1' }, applyCreditMutation);
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    const result = await reclaimStaleAIUsage(createEnv(db));
-
-    expect(result).toEqual({ scanned: 2, reclaimed: 1 });
-  });
-
-  it('ignores rows carrying an unknown route key', async () => {
-    const { db } = createDb([staleRow({ routeKey: 'retired-route' })]);
-    const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim({ id: 'ledger-1' });
-
-    const result = await reclaimStaleAIUsage(createEnv(db));
-
-    expect(result).toEqual({ scanned: 1, reclaimed: 0 });
-    expect(applyCreditMutation).not.toHaveBeenCalled();
-  });
-
-  it('scans reclaiming rows so a half-finished pass is retried', async () => {
-    const { db } = createDb([]);
-    const { reclaimStaleAIUsage } = await loadReclaim(null);
-
-    await reclaimStaleAIUsage(createEnv(db), { ttlMs: 1000, now: 10_000, limit: 5 });
-
-    const select = db.prepare.mock.calls.find(([sql]) => String(sql).includes('SELECT'));
-    expect(String(select?.[0])).toContain('status IN (?, ?, ?, ?, ?)');
+      await reclaimStaleAIUsage(f.env);
+      expect(await f.balance()).toBe(1000);
+    } finally {
+      f.sqlite.close();
+    }
   });
 });

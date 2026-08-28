@@ -44,6 +44,7 @@ describe('/api/credits/*', () => {
       }),
     }));
     vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn().mockResolvedValue({
         userId: 'user-1',
         balance: 8800,
@@ -75,6 +76,7 @@ describe('/api/credits/*', () => {
       }),
     }));
     vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn().mockResolvedValue(null),
       listCreditLedger: vi.fn(),
       countCreditLedger: vi.fn(),
@@ -101,6 +103,7 @@ describe('/api/credits/*', () => {
       }),
     }));
     vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
       listCreditLedger: vi.fn().mockResolvedValue([
         {
@@ -149,6 +152,7 @@ describe('/api/credits/*', () => {
       }),
     }));
     vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
       listCreditLedger,
       countCreditLedger,
@@ -178,6 +182,7 @@ describe('/api/credits/*', () => {
       }),
     }));
     vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
       listCreditLedger,
       countCreditLedger,
@@ -207,6 +212,7 @@ describe('/api/credits/*', () => {
       }),
     }));
     vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
       listCreditLedger,
       countCreditLedger,
@@ -236,6 +242,7 @@ describe('/api/credits/*', () => {
       }),
     }));
     vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
       listCreditLedger,
       countCreditLedger,
@@ -265,6 +272,7 @@ describe('/api/credits/*', () => {
       }),
     }));
     vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
       listCreditLedger,
       countCreditLedger,
@@ -306,6 +314,7 @@ describe('/api/credits/*', () => {
       }),
     }));
     vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn().mockRejectedValue(new Error('DB down')),
       listCreditLedger: vi.fn(),
       countCreditLedger: vi.fn(),
@@ -331,6 +340,7 @@ describe('/api/credits/*', () => {
       }),
     }));
     vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
       listCreditLedger: vi.fn().mockRejectedValue(new Error('DB down')),
       countCreditLedger: vi.fn().mockResolvedValue(0),

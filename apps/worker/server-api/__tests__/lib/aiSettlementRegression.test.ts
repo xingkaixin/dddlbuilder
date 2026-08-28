@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
 import { failAIUsage, reclaimStaleAIUsage, reserveAIUsage } from '../../lib/aiUsage.js';
 import { applyCreditMutation, getCreditAccount } from '../../lib/credits.js';
@@ -28,6 +28,27 @@ const fixture = async () => {
 };
 
 describe('AI settlement regressions', () => {
+  it('rolls back usage and ledger together when reservation is rejected', async () => {
+    const { env, sqlite } = await fixture();
+    try {
+      const before = sqlite.prepare('SELECT COUNT(*) AS count FROM usage_events').get()?.count;
+      const prepare = vi.spyOn(env.USER_DB, 'prepare');
+      await expect(
+        reserveAIUsage(env, {
+          userId: 'user-1',
+          routeKey: 'explain',
+          requestId: 'too-large',
+          estimatedTokens: 2000,
+        }),
+      ).rejects.toThrow('CREDIT_EXHAUSTED');
+      const after = sqlite.prepare('SELECT COUNT(*) AS count FROM usage_events').get()?.count;
+      expect(after).toBe(before);
+      expect(prepare.mock.calls).toHaveLength(2);
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it('charges measured usage even when local response processing fails', async () => {
     const { env, sqlite, reservation } = await fixture();
     try {

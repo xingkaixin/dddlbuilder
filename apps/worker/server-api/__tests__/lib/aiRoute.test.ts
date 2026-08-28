@@ -30,8 +30,15 @@ const loadShell = async (
     enforceIpRateLimit: vi.fn().mockResolvedValue(null),
   }));
 
+  vi.doMock('../../lib/auth.js', () => ({
+    authenticateRequest:
+      overrides.authenticateRequest ??
+      vi.fn().mockResolvedValue({ userId: 'user-1', email: 'user@example.com' }),
+  }));
+  vi.doMock('../../lib/credits.js', () => ({
+    grantSignupCredits: vi.fn().mockResolvedValue(undefined),
+  }));
   vi.doMock('../../lib/aiUsage.js', () => ({
-    authenticateAIUser: vi.fn().mockResolvedValue({ userId: 'user-1' }),
     reserveAIUsage,
     completeAIUsage,
     failAIUsage,
@@ -105,7 +112,7 @@ describe('withAIGovernance', () => {
   it('rejects anonymous requests before parsing or consuming AI quota', async () => {
     const { DomainError } = await import('../../lib/http.js');
     const shell = await loadShell({
-      authenticateAIUser: vi
+      authenticateRequest: vi
         .fn()
         .mockRejectedValue(new DomainError(401, 'AUTH_REQUIRED', 'AUTH_REQUIRED')),
     });
@@ -286,6 +293,8 @@ describe('withAIGovernance', () => {
       },
     ]);
     expect(shell.completeAIUsage).not.toHaveBeenCalled();
+    if (hasOutput) expect(shell.failAIUsage.mock.calls[0]?.[3]).toBeGreaterThan(0);
+    else expect(shell.failAIUsage.mock.calls[0]?.[3]).toBeNull();
     expect(shell.failAIUsage).toHaveBeenCalledTimes(1);
     expect(waitUntil).toHaveBeenCalledTimes(2);
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));
@@ -423,6 +432,7 @@ describe('withAIGovernance', () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: 'SQL_REQUIRED' });
+    expect(shell.enforceOpenAIRateLimit).not.toHaveBeenCalled();
     expect(shell.reserveAIUsage).not.toHaveBeenCalled();
   });
 
