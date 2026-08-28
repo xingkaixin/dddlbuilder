@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,24 +8,7 @@ export type D1Mode = 'local' | 'remote';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export const D1_BINDING = 'USER_DB';
-export const REQUIRED_RUNTIME_TABLES = [
-  'account',
-  'admin_sessions',
-  'admin_user_flags',
-  'ai_governance_counters',
-  'credit_accounts',
-  'credit_ledger',
-  'request_rate_limits',
-  'session',
-  'usage_events',
-  'user',
-  'verification',
-  'workspace_clocks',
-  'workspace_entities',
-  'workspace_links',
-  'workspace_snapshots',
-  'workspaces',
-] as const;
+
 export const getWranglerConfigPath = (mode: D1Mode) =>
   mode === 'remote' ? 'apps/worker/wrangler.deploy.toml' : 'apps/worker/wrangler.toml';
 export const migrationDir = path.join(repoRoot, 'packages', 'db', 'migrations');
@@ -44,6 +27,37 @@ export const listMigrationFiles = (dir = migrationDir): string[] =>
     .filter((name) => /^\d{4}_.+\.sql$/u.test(name))
     .sort((a, b) => a.localeCompare(b))
     .map((name) => path.join(dir, name));
+
+// 重放迁移文件中的建表/删表/改名语句，派生出最终 schema 应存在的表，
+// 避免手工维护第二份清单随迁移演进漂移。同名表在迁移中先删后建，必须按语句顺序重放
+const deriveRequiredRuntimeTables = (dir: string): string[] => {
+  const tables = new Set<string>();
+  const statements: Array<{ index: number; apply: () => void }> = [];
+  for (const file of listMigrationFiles(dir)) {
+    const sql = readFileSync(file, 'utf8');
+    const scoped: Array<{ index: number; apply: () => void }> = [];
+    for (const match of sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?"?(\w+)"?/gi)) {
+      scoped.push({ index: match.index ?? 0, apply: () => tables.add(match[1]) });
+    }
+    for (const match of sql.matchAll(/DROP TABLE (?:IF EXISTS )?"?(\w+)"?/gi)) {
+      scoped.push({ index: match.index ?? 0, apply: () => tables.delete(match[1]) });
+    }
+    for (const match of sql.matchAll(/ALTER TABLE "?(\w+)"? RENAME TO "?(\w+)"?/gi)) {
+      scoped.push({
+        index: match.index ?? 0,
+        apply: () => {
+          tables.delete(match[1]);
+          tables.add(match[2]);
+        },
+      });
+    }
+    statements.push(...scoped.sort((a, b) => a.index - b.index));
+  }
+  for (const { apply } of statements) apply();
+  return [...tables].sort();
+};
+
+export const REQUIRED_RUNTIME_TABLES = deriveRequiredRuntimeTables(migrationDir);
 
 export const buildD1ExecuteArgs = (
   mode: D1Mode,
