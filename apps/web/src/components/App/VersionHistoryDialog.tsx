@@ -178,14 +178,20 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       setActionLoading(true);
       try {
         const version = await getVersion(selectedId, target);
-        if (version) {
-          onRollback(version.state);
-          onOpenChange(false);
+        if (!version) {
+          showToast(t('versionHistory.versionMissing'));
+          await queryClient.invalidateQueries({ queryKey: tableVersionsOptions(target).queryKey });
+          return;
         }
+        onRollback(version.state);
+        onOpenChange(false);
+      } catch (error) {
+        console.error('[versions] rollback failed', error);
+        showToast(t('versionHistory.rollbackFailed'));
       } finally {
         setActionLoading(false);
       }
-    }, [selectedId, onRollback, onOpenChange, target]);
+    }, [selectedId, onRollback, onOpenChange, queryClient, showToast, t, target]);
 
     // 删除版本
     const handleDelete = useCallback(async () => {

@@ -114,7 +114,7 @@ describe('importDialogReducer', () => {
       sourceType: 'sql',
       sql: '',
       selectedDbType: 'postgresql',
-      operation: 'idle',
+      operation: { kind: 'idle' },
     });
   });
 
@@ -158,8 +158,11 @@ describe('importDialogReducer', () => {
     expect(withSource).toMatchObject({ sourceType: 'csv', file: null, validationResult: null });
     expect(withFile.file).toBe(file);
     expect(withDatabase.selectedDbType).toBe('postgresql');
-    expect(validating).toMatchObject({ operation: 'validating', validationResult: null });
-    expect(failed).toMatchObject({ operation: 'idle', validationResult: { success: false } });
+    expect(validating).toMatchObject({ operation: { kind: 'validating' }, validationResult: null });
+    expect(failed).toMatchObject({
+      operation: { kind: 'idle' },
+      validationResult: { success: false },
+    });
     expect(renamed.mode === 'workspace' && renamed.parsedResult?.fields[0]?.name).toBe('user_id');
     expect(movedDown.mode === 'workspace' && movedDown.parsedResult?.fields[0]?.name).toBe('name');
     expect(movedUp.mode === 'workspace' && movedUp.parsedResult?.fields[0]?.name).toBe('user_id');
@@ -199,8 +202,8 @@ describe('importDialogReducer', () => {
       selectedFolderId: 'folder-1',
       conflictStrategy: 'overwrite',
     });
-    expect(importing.operation).toBe('importing');
-    expect(finished.operation).toBe('idle');
+    expect(importing.operation.kind).toBe('importing');
+    expect(finished.operation.kind).toBe('idle');
     expect(workspaceAgain).toMatchObject({ mode: 'workspace', step: 'validate' });
     expect(
       importDialogReducer(workspace, {

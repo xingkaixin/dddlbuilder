@@ -1,3 +1,4 @@
+import { AmbiguousTableOverwriteError } from '@/utils/savedTableBatchImport';
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SavedTableRecord } from '@/utils/savedTablesDb';
@@ -63,7 +64,7 @@ describe('buildSavedTableBatchImportPlan', () => {
     const items = [{ name: 'Shared', state: createState('imported') }];
     expect(() =>
       buildSavedTableBatchImportPlan({ items, conflictStrategy: 'overwrite' }, existing, 100),
-    ).toThrow('Multiple saved tables');
+    ).toThrow(AmbiguousTableOverwriteError);
     expect(
       buildSavedTableBatchImportPlan({ items, conflictStrategy: 'skip' }, existing, 100).records,
     ).toEqual([]);

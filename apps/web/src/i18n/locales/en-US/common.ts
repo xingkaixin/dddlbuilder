@@ -1088,6 +1088,9 @@ export const enUSCommon = {
       description: 'After confirmation, table structure will be imported into current workspace.',
     },
     batch: {
+      importFailed: 'Import failed. Check local storage and try again.',
+      ambiguousOverwrite:
+        'Multiple tables share this name. Skip, rename, or rename the existing tables first.',
       stepInput: 'Input',
       stepSelect: 'Select',
       stepSave: 'Save',
@@ -1357,6 +1360,8 @@ export const enUSCommon = {
     today: 'Today {{time}}',
   },
   versionHistory: {
+    versionMissing: 'This version no longer exists. The list has been refreshed.',
+    rollbackFailed: 'Rollback failed. Please try again.',
     title: 'Version History',
     descriptionWithName: 'History of {{name}}',
     descriptionFallback: 'View and manage version history',

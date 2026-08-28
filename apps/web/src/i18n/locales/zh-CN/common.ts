@@ -1048,6 +1048,8 @@ export const zhCNCommon = {
       description: '点击确认后，表结构将导入到当前工作区。',
     },
     batch: {
+      importFailed: '导入失败，请检查存储状态后重试。',
+      ambiguousOverwrite: '存在多张同名表，请选择跳过、自动重命名，或先修改现有表名。',
       stepInput: '输入',
       stepSelect: '选择',
       stepSave: '保存',
@@ -1309,6 +1311,8 @@ export const zhCNCommon = {
     today: '今天 {{time}}',
   },
   versionHistory: {
+    versionMissing: '该版本已不存在，列表已刷新。',
+    rollbackFailed: '回滚失败，请稍后重试。',
     title: '版本历史',
     descriptionWithName: '{{name}} 的历史版本',
     descriptionFallback: '查看和管理历史版本',

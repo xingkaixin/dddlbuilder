@@ -4,6 +4,13 @@ import type { SavedTableRecord } from './workspaceStorageTypes';
 import { createSavedTableId, resolveSavedTableId } from './savedTableIdentity';
 import { preserveImportedFieldIds } from './importedFieldIdentity';
 
+export class AmbiguousTableOverwriteError extends Error {
+  constructor() {
+    super('Ambiguous table overwrite');
+    this.name = 'AmbiguousTableOverwriteError';
+  }
+}
+
 export type SavedTableConflictStrategy = 'skip' | 'overwrite' | 'rename';
 
 export interface SavedTableImportItem {
@@ -66,7 +73,7 @@ export const buildSavedTableBatchImportPlan = (
     const displayName = ensureSavedTableName(item.name);
     const normalizedName = normalizeSavedTableName(displayName);
     if (ambiguousNames.has(normalizedName) && request.conflictStrategy === 'overwrite') {
-      throw new Error('Multiple saved tables share this name; rename them before overwriting');
+      throw new AmbiguousTableOverwriteError();
     }
     const existing = pendingRecords.get(normalizedName) ?? recordsByName.get(normalizedName);
     const hasActiveConflict =

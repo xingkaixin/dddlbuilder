@@ -1,3 +1,4 @@
+import { AmbiguousTableOverwriteError } from '@/utils/savedTableBatchImport';
 import { useReducer, useCallback, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
@@ -83,8 +84,8 @@ export function ImportSqlDialog({
   const failedItems = dialogState.mode === 'saved' ? dialogState.failedItems : [];
   const selectedFolderId = dialogState.mode === 'saved' ? dialogState.selectedFolderId : undefined;
   const conflictStrategy = dialogState.mode === 'saved' ? dialogState.conflictStrategy : 'skip';
-  const isValidating = operation === 'validating';
-  const isImporting = operation === 'importing';
+  const isValidating = operation.kind === 'validating';
+  const isImporting = operation.kind === 'importing';
 
   const resetDialog = useCallback(() => {
     dispatch({ type: 'reset', dbType: currentDbType });
@@ -336,8 +337,9 @@ export function ImportSqlDialog({
     if (!onBatchImport) return;
 
     dispatch({ type: 'import_started' });
+    let result: SavedTableBatchImportResult;
     try {
-      const result = await onBatchImport({
+      result = await onBatchImport({
         items: selectedTables.map((table) => ({
           name: table.tableName,
           state: convertParsedResultToPersistedState(table, selectedDbType),
@@ -345,18 +347,28 @@ export function ImportSqlDialog({
         conflictStrategy,
         folderId: selectedFolderId,
       });
-      setOpen(false);
-      showToast(
-        t('importSql.batch.importResult', {
-          success: result.successCount,
-          skip: result.skipCount,
-          failed: result.failCount,
-        }),
-      );
-      onBatchImportComplete?.();
-    } finally {
-      dispatch({ type: 'import_finished' });
+    } catch (error) {
+      console.error('[import] batch import failed', error);
+      dispatch({
+        type: 'import_failed',
+        error: t(
+          error instanceof AmbiguousTableOverwriteError
+            ? 'importSql.batch.ambiguousOverwrite'
+            : 'importSql.batch.importFailed',
+        ),
+      });
+      return;
     }
+    setOpen(false);
+    showToast(
+      t('importSql.batch.importResult', {
+        success: result.successCount,
+        skip: result.skipCount,
+        failed: result.failCount,
+      }),
+    );
+    dispatch({ type: 'import_finished' });
+    onBatchImportComplete?.();
   };
 
   const stepDefinitions = useMemo(() => {
@@ -471,6 +483,14 @@ export function ImportSqlDialog({
             />
           )}
 
+          {step === 'save' && operation.kind === 'failed' && (
+            <p
+              role="alert"
+              className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+            >
+              {operation.error}
+            </p>
+          )}
           {step === 'save' && batchImportSupported && (
             <SaveConfigStep
               folders={folderTree ?? []}

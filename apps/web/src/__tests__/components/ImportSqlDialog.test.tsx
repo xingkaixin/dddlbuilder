@@ -1,3 +1,4 @@
+import { AmbiguousTableOverwriteError } from '@/utils/savedTableBatchImport';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@/__tests__/utils/test-utils';
 import { ImportSqlDialog } from '@/components/ImportSqlDialog';
@@ -25,6 +26,62 @@ const mockedRequestSqlParse = vi.mocked(requestSqlParse);
 const mockedRequestMultiSqlParse = vi.mocked(requestMultiSqlParse);
 
 describe('ImportSqlDialog', () => {
+  it.each([false, true])(
+    'preserves a failed batch import for retry, ambiguous=%s',
+    async (ambiguous) => {
+      mockedRequestMultiSqlParse.mockResolvedValue({
+        results: [
+          {
+            tableName: 'users',
+            tableComment: '',
+            fields: [],
+            indexes: [],
+            foreignKeys: [],
+            authObjects: [],
+          },
+        ],
+        failed: [],
+      });
+      const onBatchImport = vi
+        .fn()
+        .mockRejectedValueOnce(
+          ambiguous ? new AmbiguousTableOverwriteError() : new Error('storage unavailable'),
+        )
+        .mockResolvedValue({ successCount: 1, skipCount: 0, failCount: 0 });
+      const onOpenChange = vi.fn();
+      render(
+        <ImportSqlDialog
+          currentDbType="mysql"
+          onImport={vi.fn()}
+          open
+          onOpenChange={onOpenChange}
+          savedTables={[]}
+          folderTree={[]}
+          onBatchImport={onBatchImport}
+        />,
+      );
+      fireEvent.click(await screen.findByLabelText('保存为已保存表'));
+      fireEvent.change(screen.getByLabelText('SQL 内容'), {
+        target: { value: 'CREATE TABLE users (id INT);' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+      await screen.findByText('users');
+      fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+      fireEvent.click(screen.getByRole('button', { name: '确认导入' }));
+      await waitFor(() => expect(onBatchImport).toHaveBeenCalledOnce());
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        ambiguous ? '存在多张同名表' : '导入失败',
+      );
+      expect(onOpenChange).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: '确认导入' }));
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(onBatchImport.mock.calls[1][0]).toMatchObject({
+        conflictStrategy: 'skip',
+        items: [{ name: 'users', state: { tableName: 'users' } }],
+      });
+    },
+  );
+
   it('imports the edited, reordered and filtered preview', async () => {
     const parsed = {
       tableName: 'users',

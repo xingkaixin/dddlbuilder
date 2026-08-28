@@ -18,7 +18,9 @@ import type {
   WorkspaceStep,
 } from './types';
 
-type ImportOperation = 'idle' | 'validating' | 'importing';
+type ImportOperation =
+  | { kind: 'idle' | 'validating' | 'importing' }
+  | { kind: 'failed'; error: string };
 
 interface CommonImportState {
   sourceType: ImportSourceType;
@@ -71,6 +73,7 @@ export type ImportDialogAction =
   | { type: 'select_all_tables'; selected: boolean }
   | { type: 'set_folder'; folderId: string | undefined }
   | { type: 'set_conflict_strategy'; strategy: ConflictStrategy }
+  | { type: 'import_failed'; error: string }
   | { type: 'import_started' }
   | { type: 'import_finished' };
 
@@ -83,7 +86,7 @@ export function createImportDialogState(dbType: DatabaseType): ImportDialogState
     file: null,
     selectedDbType: dbType,
     validationResult: null,
-    operation: 'idle',
+    operation: { kind: 'idle' },
     parsedResult: null,
   };
 }
@@ -95,7 +98,7 @@ function switchMode(state: ImportDialogState, mode: ImportMode): ImportDialogSta
     file: state.file,
     selectedDbType: state.selectedDbType,
     validationResult: null,
-    operation: 'idle' as const,
+    operation: { kind: 'idle' as const },
   };
 
   return mode === 'workspace'
@@ -171,15 +174,15 @@ export function importDialogReducer(
     case 'set_db_type':
       return { ...state, selectedDbType: action.dbType };
     case 'validation_started':
-      return { ...state, operation: 'validating', validationResult: null };
+      return { ...state, operation: { kind: 'validating' }, validationResult: null };
     case 'validation_failed':
-      return { ...state, operation: 'idle', validationResult: action.result };
+      return { ...state, operation: { kind: 'idle' }, validationResult: action.result };
     case 'workspace_validated':
       if (state.mode !== 'workspace') return state;
       return {
         ...state,
         step: 'preview',
-        operation: 'idle',
+        operation: { kind: 'idle' },
         validationResult: { success: true },
         parsedResult: action.result,
       };
@@ -188,7 +191,7 @@ export function importDialogReducer(
       return {
         ...state,
         step: 'select',
-        operation: 'idle',
+        operation: { kind: 'idle' },
         validationResult: { success: true },
         parsedTables: action.tables,
         failedItems: action.failedItems,
@@ -261,9 +264,11 @@ export function importDialogReducer(
     case 'set_conflict_strategy':
       if (state.mode !== 'saved') return state;
       return { ...state, conflictStrategy: action.strategy };
+    case 'import_failed':
+      return { ...state, operation: { kind: 'failed', error: action.error } };
     case 'import_started':
-      return { ...state, operation: 'importing' };
+      return { ...state, operation: { kind: 'importing' } };
     case 'import_finished':
-      return { ...state, operation: 'idle' };
+      return { ...state, operation: { kind: 'idle' } };
   }
 }

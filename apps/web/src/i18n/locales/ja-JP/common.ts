@@ -1096,6 +1096,9 @@ export const jaJPCommon = {
       description: '確認後、テーブル構造が現在のワークスペースにインポートされます。',
     },
     batch: {
+      importFailed: 'インポートに失敗しました。ストレージを確認して再試行してください。',
+      ambiguousOverwrite:
+        '同名のテーブルが複数あります。スキップ、自動リネーム、または既存テーブルの名前を変更してください。',
       stepInput: '入力',
       stepSelect: '選択',
       stepSave: '保存',
@@ -1364,6 +1367,8 @@ export const jaJPCommon = {
     today: '今日 {{time}}',
   },
   versionHistory: {
+    versionMissing: 'このバージョンは存在しません。一覧を更新しました。',
+    rollbackFailed: 'ロールバックに失敗しました。再試行してください。',
     title: 'バージョン履歴',
     descriptionWithName: '{{name}}の歴史',
     descriptionFallback: 'バージョン履歴の表示と管理',
