@@ -6,7 +6,7 @@ import {
 import { create } from 'zustand';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSelection, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 export interface WorkspaceTab {
   id: string;
@@ -18,7 +18,7 @@ export interface WorkspaceTab {
 
 export const isWorkspaceTabDirty = (tab: WorkspaceTab) =>
   tab.source.kind === 'saved_table' &&
-  serializePersistedStateForComparison(tab.stateSnapshot) !== tab.source.baseSignature;
+  buildSchemaStateSignature(tab.stateSnapshot) !== tab.source.baseSignature;
 
 function isSameSourceId(a: WorkspaceSource, b: WorkspaceSource): boolean {
   if (a.kind !== b.kind) return false;

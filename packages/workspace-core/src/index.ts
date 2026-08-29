@@ -1,6 +1,8 @@
 export { buildWorkspaceContentHash } from './contentHash';
 export {
+  buildPersistedStateSignature,
   buildSchemaStateSignature,
+  normalizePersistedStateForSignature,
   normalizeSchemaStateForSignature,
 } from './schemaStateSignature';
 export { DEFAULT_DRAFT_ID, shouldAcceptSnapshotRecord } from './snapshotMergePolicy';

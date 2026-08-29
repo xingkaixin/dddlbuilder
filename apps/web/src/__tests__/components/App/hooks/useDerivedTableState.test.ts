@@ -5,7 +5,7 @@ import { useEditorStore } from '@/stores';
 import { useDerivedTableState } from '@/components/App/hooks/useDerivedTableState';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 afterEach(() => {
   cleanup();
@@ -18,9 +18,7 @@ const loadTable = async () => {
     'mysql',
   );
   useEditorStore.getState().replaceDocument(convertParsedResultToPersistedState(parsed, 'mysql'));
-  const signature = serializePersistedStateForComparison(
-    toPersistedState(useEditorStore.getState()),
-  );
+  const signature = buildSchemaStateSignature(toPersistedState(useEditorStore.getState()));
   const loadedTableState = toPersistedState(useEditorStore.getState());
   return renderHook(() =>
     useDerivedTableState({

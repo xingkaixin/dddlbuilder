@@ -1,6 +1,6 @@
 import { withDefaultEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { mergeSchemaStates } from './schemaStateMerge';
 
 interface SavedTableSnapshotRecord {
@@ -17,7 +17,7 @@ export const resolveSavedTableSnapshot = (
   source: Extract<WorkspaceSelection, { kind: 'saved_table' }>;
   state: PersistedState;
 } => {
-  const baseSignature = serializePersistedStateForComparison(record.state);
+  const baseSignature = buildSchemaStateSignature(record.state);
   let state = draft?.state ?? record.state;
   if (draft && draft.baseSignature !== baseSignature) {
     const base = draft.baseState ? withDefaultEditorSession(draft.baseState) : null;

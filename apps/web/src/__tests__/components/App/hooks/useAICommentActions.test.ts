@@ -4,7 +4,7 @@ import type { AICommentResult } from '@ddlbuilder/shared-types';
 import { useAICommentActions } from '@/components/App/hooks/useAICommentActions';
 import { useEditorStore } from '@/stores/editorStore';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const mocks = vi.hoisted(() => ({
@@ -40,11 +40,11 @@ const renderComments = () => {
         getCurrentDocumentKey: () =>
           JSON.stringify([
             documentId,
-            serializePersistedStateForComparison(toPersistedState(useEditorStore.getState())),
+            buildSchemaStateSignature(toPersistedState(useEditorStore.getState())),
           ]),
         documentKey: JSON.stringify([
           documentId,
-          serializePersistedStateForComparison(toPersistedState(editor)),
+          buildSchemaStateSignature(toPersistedState(editor)),
         ]),
       });
     },

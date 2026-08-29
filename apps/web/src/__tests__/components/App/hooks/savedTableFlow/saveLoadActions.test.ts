@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { type PersistedState, normalizePersistedRows } from '@ddlbuilder/shared-types';
 import { useSaveLoadActions } from '@/components/App/hooks/savedTableFlow/saveLoadActions';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 vi.mock('@/utils/tableVersions', () => ({
   INITIAL_VERSION_MESSAGE_KEY: 'init',
@@ -18,7 +18,7 @@ describe('useSaveLoadActions', () => {
   let onSaveSuccess: any;
   let onTableLoadStateChange: any;
   let buildPersistedState: any;
-  let serializePersistedState: any;
+  let persistedState: PersistedState;
   let countTableVersions: any;
   let createTableVersion: any;
 
@@ -40,8 +40,19 @@ describe('useSaveLoadActions', () => {
     showToast = vi.fn();
     onSaveSuccess = vi.fn();
     onTableLoadStateChange = vi.fn();
-    buildPersistedState = vi.fn().mockReturnValue({ test: 1 });
-    serializePersistedState = vi.fn().mockReturnValue('mock-sig');
+    persistedState = {
+      schemaName: '',
+      tableName: 'test',
+      tableComment: '',
+      dbType: 'mysql',
+      sqlFormatMode: 'compact',
+      rows: [],
+      addCount: 10,
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+    };
+    buildPersistedState = vi.fn().mockReturnValue(persistedState);
     countTableVersions = vi.fn().mockResolvedValue(1);
     createTableVersion = vi.fn().mockResolvedValue(undefined);
   });
@@ -56,7 +67,6 @@ describe('useSaveLoadActions', () => {
         setLoadedTableVersion,
         saveDialog,
         buildPersistedState,
-        serializePersistedState,
         loadTable,
         saveTable,
         overwriteTable,
@@ -160,7 +170,7 @@ describe('useSaveLoadActions', () => {
         kind: 'saved_table',
         normalizedName: 'norm_test',
         tableName: 'test_table',
-        baseSignature: serializePersistedStateForComparison(
+        baseSignature: buildSchemaStateSignature(
           normalizePersistedRows(savedState as PersistedState),
         ),
       },
@@ -221,7 +231,6 @@ describe('useSaveLoadActions', () => {
       });
 
       return getHook({
-        serializePersistedState: serializePersistedStateForComparison,
         getSavedTableDraft: vi.fn().mockReturnValue({
           state: draftState,
           tableName: 'orders',
@@ -345,8 +354,8 @@ describe('useSaveLoadActions', () => {
     expect(onSaveSuccess).toHaveBeenCalledWith({
       normalizedName: 'norm',
       displayName: 'orig_name',
-      baseSignature: 'mock-sig',
-      baseState: { test: 1 },
+      baseSignature: buildSchemaStateSignature(persistedState),
+      baseState: persistedState,
       mode: 'update',
     });
     expect(loadTable).not.toHaveBeenCalled();
@@ -395,8 +404,8 @@ describe('useSaveLoadActions', () => {
     expect(onSaveSuccess).toHaveBeenCalledWith({
       normalizedName: 'new_norm',
       displayName: 'new_name',
-      baseSignature: 'mock-sig',
-      baseState: { test: 1 },
+      baseSignature: buildSchemaStateSignature(persistedState),
+      baseState: persistedState,
       mode: 'create',
     });
   });

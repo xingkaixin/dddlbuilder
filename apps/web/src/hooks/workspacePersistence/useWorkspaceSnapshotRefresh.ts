@@ -7,7 +7,7 @@ import type {
 } from '@ddlbuilder/shared-types/workspace';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import { DEFAULT_DRAFT_ID, listSavedDrafts } from '@/utils/workspaceStateDb';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { getWorkspaceBootstrap } from './bootstrap';
 import {
   collectBootstrapDrafts,
@@ -66,7 +66,7 @@ export function useWorkspaceSnapshotRefresh({
             ...(savedTable.tableId ? { tableId: savedTable.tableId } : {}),
             normalizedName: savedTable.normalizedName,
             tableName: savedTable.tableName,
-            baseSignature: serializePersistedStateForComparison(savedTable.state),
+            baseSignature: buildSchemaStateSignature(savedTable.state),
           });
           setPersistedStateIfChanged(savedTable.draftState ?? savedTable.state);
           setHydrated(true);

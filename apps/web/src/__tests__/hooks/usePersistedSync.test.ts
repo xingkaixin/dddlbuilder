@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSavePayload, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import { usePersistedSync } from '@/components/App/hooks/usePersistedSync';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 function createState(name: string): PersistedState {
   return {
@@ -129,6 +129,28 @@ describe('usePersistedSync', () => {
     });
   });
 
+  it('编辑器会话变化也会保存', () => {
+    const saveState = vi.fn();
+    const firstState = createState('users');
+    const secondState = {
+      ...firstState,
+      sqlFormatMode: 'aligned' as const,
+      addCount: 25,
+      fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
+    };
+    const { rerender } = renderHook((params: PersistedSyncParams) => usePersistedSync(params), {
+      initialProps: createBaseParams({ currentState: firstState, saveState }),
+    });
+
+    rerender(createBaseParams({ currentState: secondState, saveState }));
+
+    expect(saveState).toHaveBeenCalledTimes(2);
+    expect(saveState).toHaveBeenLastCalledWith({
+      state: secondState,
+      source: { kind: 'draft', draftId: 'default' },
+    });
+  });
+
   it('页面退出时读取编辑器的最新快照', () => {
     const saveState = vi.fn();
     let latestState = createState('rendered');
@@ -224,7 +246,7 @@ describe('usePersistedSync', () => {
       kind: 'saved_table',
       normalizedName: 'users',
       tableName: 'Users',
-      baseSignature: serializePersistedStateForComparison(baseState),
+      baseSignature: buildSchemaStateSignature(baseState),
     };
     renderHook(() => usePersistedSync(createBaseParams({ activeSource, currentState, saveState })));
 
@@ -265,7 +287,7 @@ describe('usePersistedSync', () => {
       kind: 'saved_table',
       normalizedName: 'users',
       tableName: 'Users',
-      baseSignature: serializePersistedStateForComparison(baseState),
+      baseSignature: buildSchemaStateSignature(baseState),
     };
     renderHook(() => usePersistedSync(createBaseParams({ activeSource, currentState, saveState })));
 
@@ -284,11 +306,11 @@ describe('usePersistedSync', () => {
       kind: 'saved_table',
       normalizedName: 'users',
       tableName: 'Users',
-      baseSignature: serializePersistedStateForComparison(createState('users')),
+      baseSignature: buildSchemaStateSignature(createState('users')),
     };
     const cleanSource: WorkspaceSelection = {
       ...dirtySource,
-      baseSignature: serializePersistedStateForComparison(currentState),
+      baseSignature: buildSchemaStateSignature(currentState),
     };
     const { rerender } = renderHook((params: PersistedSyncParams) => usePersistedSync(params), {
       initialProps: createBaseParams({ activeSource: dirtySource, currentState, saveState }),

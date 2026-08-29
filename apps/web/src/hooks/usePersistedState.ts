@@ -1,13 +1,6 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  DEFAULT_EDITOR_SESSION_STATE,
-  toEditorSessionState,
-  withDefaultEditorSession,
-  withEditorSession,
-  type PersistedState,
-  type SchemaDocumentState,
-} from '@ddlbuilder/shared-types';
+import { withEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import { getWorkspaceSnapshotFromYDoc } from '@/services/workspaceYDocAdapter';
 import type {
   DraftSummary,
@@ -20,7 +13,10 @@ import {
   DEFAULT_DRAFT_ID,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import {
+  buildPersistedStateSignature,
+  buildSchemaStateSignature,
+} from '@/utils/persistedStateSignature';
 import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { useWorkspaceScopeState } from '@/hooks/useWorkspaceScope';
 import {
@@ -47,9 +43,11 @@ import {
 } from './workspacePersistence/useWorkspaceYDocSubscription';
 import { useWorkspaceSnapshotRefresh } from './workspacePersistence/useWorkspaceSnapshotRefresh';
 import { useWorkspaceStorageTarget } from './workspacePersistence/useWorkspaceStorageTarget';
+import { useEditorStore } from '@/stores';
+import { toEditorSessionSnapshot } from '@/stores/editorDocumentCodec';
 
 const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
-  serializePersistedStateForComparison(left) === serializePersistedStateForComparison(right);
+  buildPersistedStateSignature(left) === buildPersistedStateSignature(right);
 
 export interface WorkspacePersistenceStatus {
   hydrated: boolean;
@@ -186,11 +184,8 @@ export function usePersistedState(): UsePersistedStateReturn {
     });
   }, []);
 
-  const applyYDocState = useCallback((nextState: SchemaDocumentState) => {
-    setPersistedState((previousState) => {
-      if (!previousState) return withDefaultEditorSession(nextState);
-      return withEditorSession(nextState, toEditorSessionState(previousState));
-    });
+  const applyYDocState = useCallback((nextState: PersistedState) => {
+    setPersistedState(nextState);
   }, []);
 
   useEffect(() => {
@@ -285,14 +280,11 @@ export function usePersistedState(): UsePersistedStateReturn {
 
   const resolveWorkspaceSnapshot = useCallback(
     (source: WorkspaceSelection) => {
+      const editorSession = toEditorSessionSnapshot(useEditorStore.getState());
       if (source.kind === 'draft') {
         const state = getDraftState(source.draftId);
-        return state ? { source, state } : null;
+        return state ? { source, state: withEditorSession(state, editorSession) } : null;
       }
-      const state = persistedStateRef.current;
-      const editorSession = state
-        ? toEditorSessionState(state)
-        : toEditorSessionState(DEFAULT_EDITOR_SESSION_STATE);
       return yDoc ? getWorkspaceSnapshotFromYDoc(yDoc, source, editorSession) : null;
     },
     [getDraftState, yDoc],
@@ -325,8 +317,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       } else {
         const { tableName, baseSignature } = payload.source;
         const existingDraft = getSavedTableDraft(payload.source);
-        const isDirty =
-          serializePersistedStateForComparison(payload.state) !== payload.source.baseSignature;
+        const isDirty = buildSchemaStateSignature(payload.state) !== payload.source.baseSignature;
         if (!isDirty) {
           if (existingDraft) dropSavedTableDraft(payload.source);
         } else if (

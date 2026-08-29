@@ -157,7 +157,6 @@ export function useAppController() {
   const {
     currentPersistedState,
     buildPersistedState,
-    serializePersistedState,
     hasLoadedTable,
     isLoadedDirty,
     canSaveCurrent,
@@ -169,7 +168,6 @@ export function useAppController() {
   const tabLifecycle = useTabLifecycle({
     enabled: hydrated && !isShareView,
     getCurrentState: buildPersistedState,
-    serializePersistedState,
     saveState,
     selectWorkspaceSnapshot,
     resolveWorkspaceSnapshot,
@@ -252,7 +250,6 @@ export function useAppController() {
     renameDialog,
     deleteDialog,
     buildPersistedState,
-    serializePersistedState,
     loadTable,
     renameTable,
     deleteTable,

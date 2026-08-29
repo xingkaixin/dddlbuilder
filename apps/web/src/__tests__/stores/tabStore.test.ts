@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { isWorkspaceTabDirty, useTabStore } from '@/stores/tabStore';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 
 function resetTabStore() {
@@ -145,7 +145,7 @@ describe('tabStore', () => {
         kind: 'saved_table',
         normalizedName: 'old',
         tableName: 'Old',
-        baseSignature: serializePersistedStateForComparison(createSnapshot('old')),
+        baseSignature: buildSchemaStateSignature(createSnapshot('old')),
       },
       stateSnapshot: createSnapshot('old'),
     });

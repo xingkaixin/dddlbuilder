@@ -4,6 +4,7 @@ import {
   normalizeFreezeColumns,
   normalizeOptionalMysqlPartitionCount,
   normalizeTableMiscConfigNumbers,
+  type EditorSessionState,
   type PersistedState,
 } from '@ddlbuilder/shared-types';
 import { fillMissingIndexNames, sanitizeIndexesForPersist } from '@/utils/indexUtils';
@@ -68,13 +69,27 @@ export const toEditorDocumentState = (state: PersistedState): EditorDocumentStat
   };
 };
 
+export const toEditorSessionSnapshot = (
+  state: Pick<
+    EditorStoreState,
+    'sqlFormatMode' | 'addCount' | 'fieldTableFreezeEnabled' | 'fieldTableFreezeColumns'
+  >,
+): EditorSessionState => ({
+  sqlFormatMode: state.sqlFormatMode,
+  addCount: normalizeAddCount(state.addCount),
+  fieldTableViewConfig: {
+    freezeEnabled: state.fieldTableFreezeEnabled,
+    freezeColumns: normalizeFreezeColumns(state.fieldTableFreezeColumns),
+  },
+});
+
 export const toPersistedState = (state: EditorDocumentState): PersistedState => ({
   objectType: state.objectType,
   schemaName: state.schemaName,
   tableName: state.tableName,
   tableComment: state.tableComment,
   dbType: state.dbType,
-  sqlFormatMode: state.sqlFormatMode,
+  ...toEditorSessionSnapshot(state),
   viewDefinition: state.viewDefinition,
   viewCreateOrReplace: state.viewCreateOrReplace,
   rows: state.rows.map((row) => ({
@@ -87,7 +102,6 @@ export const toPersistedState = (state: EditorDocumentState): PersistedState => 
     defaultValue: row.defaultValue || '',
     onUpdate: row.onUpdate ?? 'none',
   })),
-  addCount: state.addCount,
   indexes: sanitizeIndexesForPersist(state.indexes),
   authInput: state.authInput,
   authObjects: state.authObjects,
@@ -96,9 +110,5 @@ export const toPersistedState = (state: EditorDocumentState): PersistedState => 
     ? state.mysqlPartitionConfig
     : undefined,
   tableMiscConfig: state.tableMiscConfig,
-  fieldTableViewConfig: {
-    freezeEnabled: state.fieldTableFreezeEnabled,
-    freezeColumns: state.fieldTableFreezeColumns,
-  },
   foreignKeys: state.foreignKeys.length > 0 ? state.foreignKeys : undefined,
 });

@@ -6,13 +6,13 @@ import type {
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
 import { useTabStore, type WorkspaceTab } from '@/stores';
+import { buildPersistedStateSignature } from '@/utils/persistedStateSignature';
 import { useShallow } from 'zustand/react/shallow';
 import { applySavedState } from '../applySavedState';
 
 interface UseTabLifecycleParams {
   enabled: boolean;
   getCurrentState: () => PersistedState;
-  serializePersistedState: (state: PersistedState) => string;
   saveState: (payload: WorkspaceSavePayload) => void;
   selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
   resolveWorkspaceSnapshot: (
@@ -24,7 +24,6 @@ interface UseTabLifecycleParams {
 export function useTabLifecycle({
   enabled,
   getCurrentState,
-  serializePersistedState,
   saveState,
   selectWorkspaceSnapshot,
   resolveWorkspaceSnapshot,
@@ -55,19 +54,12 @@ export function useTabLifecycle({
   const flushActiveTab = useCallback(() => {
     if (!enabled || !activeWorkspaceTab || activeWorkspaceTab.isLoading) return;
     const currentState = getCurrentState();
-    const tabSnapshotSignature = serializePersistedState(activeWorkspaceTab.stateSnapshot);
-    if (tabSnapshotSignature === serializePersistedState(currentState)) return;
+    const tabSnapshotSignature = buildPersistedStateSignature(activeWorkspaceTab.stateSnapshot);
+    if (tabSnapshotSignature === buildPersistedStateSignature(currentState)) return;
 
     updateActiveTabSnapshot(currentState);
     saveState({ state: currentState, source: activeWorkspaceTab.source });
-  }, [
-    enabled,
-    activeWorkspaceTab,
-    getCurrentState,
-    serializePersistedState,
-    updateActiveTabSnapshot,
-    saveState,
-  ]);
+  }, [enabled, activeWorkspaceTab, getCurrentState, updateActiveTabSnapshot, saveState]);
 
   const showTab = useCallback(
     (tab: WorkspaceTab) => {

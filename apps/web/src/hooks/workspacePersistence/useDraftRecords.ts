@@ -12,7 +12,10 @@ import {
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import type { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { deleteDraft, readDraft, writeDraft } from '@/utils/workspaceStateDb';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import {
+  buildPersistedStateSignature,
+  buildSchemaStateSignature,
+} from '@/utils/persistedStateSignature';
 import { getDraftDisplayName, resolveUniqueDraftName, type GlobalDraftRecord } from './normalize';
 import { toDraftSummary, type DraftEntry } from './hydration';
 import type { usePersistenceQueue } from './usePersistenceQueue';
@@ -26,9 +29,6 @@ const readDrafts = (doc: Y.Doc) => [
 ];
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   drafts.sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
-const isSameState = (left: PersistedState, right: PersistedState) =>
-  serializePersistedStateForComparison(left) === serializePersistedStateForComparison(right);
-
 type UseDraftRecordsParams = Pick<
   ReturnType<typeof useWorkspaceYDocGateway>,
   'yDoc' | 'runInYDoc'
@@ -127,7 +127,10 @@ export function useDraftRecords({
     (draftId: string, state: PersistedState) => {
       if (disabled) return;
       const existing = getRecord(draftId);
-      if (existing && isSameState(existing.state, state)) return;
+      if (existing) {
+        const buildSignature = yDoc ? buildSchemaStateSignature : buildPersistedStateSignature;
+        if (buildSignature(existing.state) === buildSignature(state)) return;
+      }
       persistRecord(
         draftId,
         {
@@ -139,7 +142,7 @@ export function useDraftRecords({
         'save draft',
       );
     },
-    [disabled, getRecord, persistRecord],
+    [disabled, getRecord, persistRecord, yDoc],
   );
 
   const resolveDraftNameConflict = useCallback(

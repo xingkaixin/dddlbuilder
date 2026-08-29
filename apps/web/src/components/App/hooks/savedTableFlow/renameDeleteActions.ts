@@ -6,6 +6,7 @@ import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 type RenameDialogData = {
   name: string;
@@ -21,7 +22,6 @@ interface UseRenameDeleteActionsParams {
   renameDialog: UseDialogStateReturn<RenameDialogData>;
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
   buildPersistedState: () => PersistedState;
-  serializePersistedState: (state: PersistedState) => string;
   renameTable: (normalizedName: SavedTableTarget, newName: string) => Promise<SaveTableResult>;
   deleteTable: (normalizedName: SavedTableTarget) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
@@ -45,7 +45,6 @@ export function useRenameDeleteActions({
   renameDialog,
   deleteDialog,
   buildPersistedState,
-  serializePersistedState,
   renameTable,
   deleteTable,
   showToast,
@@ -97,7 +96,7 @@ export function useRenameDeleteActions({
     onTabRename?.(renameTarget, result.normalizedName, displayName);
     if (loadedTableSource && isSameSavedTable(renameTarget, loadedTableSource)) {
       const currentState = buildPersistedState();
-      const nextSignature = loadedTableSignature ?? serializePersistedState(currentState);
+      const nextSignature = loadedTableSignature ?? buildSchemaStateSignature(currentState);
       setWorkspaceSnapshot?.(
         {
           kind: 'saved_table',
@@ -119,7 +118,6 @@ export function useRenameDeleteActions({
     t,
     loadedTableSource,
     loadedTableSignature,
-    serializePersistedState,
     setWorkspaceSnapshot,
     buildPersistedState,
     renameSavedTableDraft,

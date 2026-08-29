@@ -8,6 +8,7 @@ import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
 import { INITIAL_VERSION_MESSAGE_KEY } from '@/utils/tableVersions';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 type SaveDialogData = {
   name: string;
@@ -21,7 +22,6 @@ interface UseSaveLoadActionsParams {
   setLoadedTableVersion: (version: number, normalizedName?: SavedTableTarget) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   buildPersistedState: () => PersistedState;
-  serializePersistedState: (state: PersistedState) => string;
   loadTable: (normalizedName: SavedTableTarget) => Promise<{
     tableId?: string;
     normalizedName: string;
@@ -60,7 +60,6 @@ export function useSaveLoadActions({
   setLoadedTableVersion,
   saveDialog,
   buildPersistedState,
-  serializePersistedState,
   loadTable,
   saveTable,
   overwriteTable,
@@ -118,7 +117,7 @@ export function useSaveLoadActions({
       return;
     }
     const nextState = buildPersistedState();
-    const nextSignature = serializePersistedState(nextState);
+    const nextSignature = buildSchemaStateSignature(nextState);
 
     let savedNormalizedName = '';
     let savedTableId: string | undefined;
@@ -198,7 +197,6 @@ export function useSaveLoadActions({
     canSaveCurrent,
     showToast,
     buildPersistedState,
-    serializePersistedState,
     hasLoadedTable,
     loadedTableSource,
     overwriteTable,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { withDefaultEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { updateDocumentFields } from '@/stores/editorDocumentMutations';
 import { normalizeFields } from '@/utils/helpers';
 import { buildDDL } from '@ddlbuilder/ddl-core';
@@ -35,7 +35,7 @@ const record = (state = base) => ({
 });
 const draft = (
   state: PersistedState,
-  baseSignature = serializePersistedStateForComparison(base),
+  baseSignature = buildSchemaStateSignature(base),
   baseState = base,
 ) => ({
   state,
@@ -111,7 +111,7 @@ describe('resolveSavedTableSnapshot', () => {
         { id: 'name', nullable: false, fieldComment: 'draft comment' },
       ],
     });
-    expect(snapshot.source.baseSignature).toBe(serializePersistedStateForComparison(saved));
+    expect(snapshot.source.baseSignature).toBe(buildSchemaStateSignature(saved));
     expect(edited.schemaName).toBe('');
     expect(saved.tableComment).toBe('saved');
   });

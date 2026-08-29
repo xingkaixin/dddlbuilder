@@ -7,7 +7,7 @@ import { useTabLifecycle } from '@/components/App/hooks/useTabLifecycle';
 import { useTabStore } from '@/stores/tabStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 describe('useSavedTableTabIntegration', () => {
   beforeEach(() => useTabStore.setState({ tabs: [], activeTabId: null }));
@@ -21,7 +21,7 @@ describe('useSavedTableTabIntegration', () => {
       stateSnapshot: state,
     });
     const tabs = { ...useTabStore.getState(), closeTabBySource: vi.fn() };
-    const signature = serializePersistedStateForComparison(state);
+    const signature = buildSchemaStateSignature(state);
     const { result } = renderHook(() =>
       useSavedTableTabIntegration({
         isShareView: false,
@@ -67,7 +67,7 @@ describe('useSavedTableTabIntegration', () => {
       kind: 'saved_table' as const,
       normalizedName: 'old',
       tableName: 'Old',
-      baseSignature: serializePersistedStateForComparison(state),
+      baseSignature: buildSchemaStateSignature(state),
     };
     const savedTabId = useTabStore
       .getState()
@@ -83,7 +83,6 @@ describe('useSavedTableTabIntegration', () => {
       const tabs = useTabLifecycle({
         enabled: true,
         getCurrentState: () => state,
-        serializePersistedState: serializePersistedStateForComparison,
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
         resolveWorkspaceSnapshot: () => null,
@@ -161,7 +160,6 @@ describe('useSavedTableTabIntegration', () => {
       const tabs = useTabLifecycle({
         enabled: true,
         getCurrentState,
-        serializePersistedState: serializePersistedStateForComparison,
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
         resolveWorkspaceSnapshot: () => null,
@@ -191,7 +189,6 @@ describe('useSavedTableTabIntegration', () => {
         setLoadedTableVersion,
         saveDialog,
         buildPersistedState: getCurrentState,
-        serializePersistedState: serializePersistedStateForComparison,
         loadTable: vi.fn(),
         saveTable,
         overwriteTable: vi.fn(),
@@ -243,7 +240,7 @@ describe('useSavedTableTabIntegration', () => {
       kind: 'saved_table',
       normalizedName: 'users',
       tableName: 'users',
-      baseSignature: serializePersistedStateForComparison(original),
+      baseSignature: buildSchemaStateSignature(original),
     };
     const expectedSavedTab = {
       id: firstId,

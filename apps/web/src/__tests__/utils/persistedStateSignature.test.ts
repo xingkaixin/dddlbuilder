@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import {
+  buildPersistedStateSignature,
+  buildSchemaStateSignature,
+} from '@/utils/persistedStateSignature';
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   schemaName: '',
@@ -18,9 +21,7 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
 
 describe('persistedStateSignature', () => {
   it('keeps large document signatures bounded', () => {
-    const signature = serializePersistedStateForComparison(
-      createState({ tableComment: 'x'.repeat(100_000) }),
-    );
+    const signature = buildSchemaStateSignature(createState({ tableComment: 'x'.repeat(100_000) }));
     expect(signature).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
   it('treats UI defaults as unchanged table state', () => {
@@ -50,9 +51,7 @@ describe('persistedStateSignature', () => {
       },
     });
 
-    expect(serializePersistedStateForComparison(current)).toBe(
-      serializePersistedStateForComparison(stored),
-    );
+    expect(buildSchemaStateSignature(current)).toBe(buildSchemaStateSignature(stored));
   });
 
   it('ignores editor session changes when comparing schema documents', () => {
@@ -66,17 +65,23 @@ describe('persistedStateSignature', () => {
       },
     });
 
-    expect(serializePersistedStateForComparison(current)).toBe(
-      serializePersistedStateForComparison(stored),
-    );
+    expect(buildSchemaStateSignature(current)).toBe(buildSchemaStateSignature(stored));
+    expect(buildPersistedStateSignature(current)).not.toBe(buildPersistedStateSignature(stored));
+  });
+
+  it('normalizes omitted editor defaults in full-state signatures', () => {
+    const stored = createState();
+    const current = createState({
+      fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 3 },
+    });
+
+    expect(buildPersistedStateSignature(current)).toBe(buildPersistedStateSignature(stored));
   });
 
   it('keeps schema document changes in the comparison signature', () => {
     const stored = createState();
     const current = createState({ tableComment: 'Changed' });
 
-    expect(serializePersistedStateForComparison(current)).not.toBe(
-      serializePersistedStateForComparison(stored),
-    );
+    expect(buildSchemaStateSignature(current)).not.toBe(buildSchemaStateSignature(stored));
   });
 });

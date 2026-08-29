@@ -3,8 +3,6 @@ import { useEffect } from 'react';
 import { useTabStore } from '@/stores/tabStore';
 import type * as Y from 'yjs';
 import {
-  toEditorSessionState,
-  withDefaultEditorSession,
   withEditorSession,
   type PersistedState,
   type SchemaDocumentState,
@@ -22,10 +20,12 @@ import {
   WorkspaceYDocOrigin,
   upsertSavedDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { pickInitialDraft } from './hydration';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 import { isSameWorkspaceSource } from './normalize';
+import { useEditorStore } from '@/stores';
+import { toEditorSessionSnapshot } from '@/stores/editorDocumentCodec';
 
 export interface PendingLocalSave {
   source: WorkspaceSelection;
@@ -44,13 +44,13 @@ interface UseWorkspaceYDocSubscriptionParams {
   persistedStateRef: MutableValue<PersistedState | null>;
   lastLocalSaveRef: MutableValue<PendingLocalSave | null>;
   replaceSavedTableDrafts: (records: Map<string, SavedTableDraftRecord>) => void;
-  applyYDocState: (state: SchemaDocumentState) => void;
+  applyYDocState: (state: PersistedState) => void;
   setPersistedStateIfChanged: (state: PersistedState | null) => void;
   syncActiveSource: (source: WorkspaceSelection) => void;
 }
 
 const isSameState = (left: PersistedState, right: PersistedState) =>
-  serializePersistedStateForComparison(left) === serializePersistedStateForComparison(right);
+  buildSchemaStateSignature(left) === buildSchemaStateSignature(right);
 
 export function useWorkspaceYDocSubscription({
   yDoc,
@@ -67,6 +67,11 @@ export function useWorkspaceYDocSubscription({
     if (!yDoc) return;
 
     const refreshFromYDoc = (change?: WorkspaceYDocChange) => {
+      const applyRemoteState = (state: SchemaDocumentState) =>
+        applyYDocState(
+          withEditorSession(state, toEditorSessionSnapshot(useEditorStore.getState())),
+        );
+
       if (!change || change.collection === 'savedDrafts' || change.collection === 'savedTables') {
         replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc));
       }
@@ -118,7 +123,7 @@ export function useWorkspaceYDocSubscription({
             savedTable.trashedAt == null &&
             pending?.source.kind === 'saved_table' &&
             isSameWorkspaceSource(pending.source, source) &&
-            serializePersistedStateForComparison(pending.localState) !== source.baseSignature
+            buildSchemaStateSignature(pending.localState) !== source.baseSignature
               ? {
                   state: pending.localState,
                   tableName: source.tableName,
@@ -144,20 +149,17 @@ export function useWorkspaceYDocSubscription({
             };
           }
           syncActiveSource(snapshot.source);
-          applyYDocState(snapshot.state);
+          applyRemoteState(snapshot.state);
           return;
         }
         if (savedDraft) {
-          applyYDocState(savedDraft.state);
+          applyRemoteState(savedDraft.state);
           return;
         }
       } else {
         const nextState = getStateForWorkspaceSource(yDoc, source);
         if (nextState) {
-          const editorState = persistedStateRef.current
-            ? withEditorSession(nextState, toEditorSessionState(persistedStateRef.current))
-            : withDefaultEditorSession(nextState);
-          applyYDocState(editorState);
+          applyRemoteState(nextState);
           return;
         }
       }
@@ -166,7 +168,7 @@ export function useWorkspaceYDocSubscription({
         const initialDraft = pickInitialDraft(listDraftRecordsFromYDoc(yDoc));
         if (initialDraft) {
           syncActiveSource({ kind: 'draft', draftId: initialDraft.draftId });
-          applyYDocState(initialDraft.record.state);
+          applyRemoteState(initialDraft.record.state);
           return;
         }
       }

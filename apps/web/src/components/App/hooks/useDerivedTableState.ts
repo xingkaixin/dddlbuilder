@@ -13,8 +13,8 @@ import type {
 import { buildNormalizedFields } from '@/stores';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
 import {
-  normalizePersistedStateSignature,
-  serializePersistedStateForComparison,
+  buildSchemaStateSignature,
+  normalizeSchemaStateSignature,
 } from '@/utils/persistedStateSignature';
 import { diffPersistedState, supportsMysqlPartition, type TableDiff } from '@ddlbuilder/ddl-core';
 import { useEditorStore } from '@/stores';
@@ -141,10 +141,9 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
 
   const buildPersistedState = useCallback(() => toPersistedState(useEditorStore.getState()), []);
 
-  const serializePersistedState = serializePersistedStateForComparison;
   const normalizedLoadedTableSignature = useMemo(
     () =>
-      loadedTableSignature == null ? null : normalizePersistedStateSignature(loadedTableSignature),
+      loadedTableSignature == null ? null : normalizeSchemaStateSignature(loadedTableSignature),
     [loadedTableSignature],
   );
 
@@ -153,8 +152,8 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     () =>
       normalizedLoadedTableSignature == null
         ? null
-        : serializePersistedState(currentPersistedState),
-    [normalizedLoadedTableSignature, currentPersistedState, serializePersistedState],
+        : buildSchemaStateSignature(currentPersistedState),
+    [normalizedLoadedTableSignature, currentPersistedState],
   );
 
   const hasLoadedTable = Boolean(loadedTableNormalizedName);
@@ -183,7 +182,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     // 持久化
     currentPersistedState,
     buildPersistedState,
-    serializePersistedState,
     // 加载状态
     hasLoadedTable,
     isLoadedDirty,

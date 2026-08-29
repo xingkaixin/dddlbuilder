@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { usePersistedSync } from '@/components/App/hooks/usePersistedSync';
 import { useEditorStore } from '@/stores/editorStore';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
+import { buildPersistedStateSignature } from '@/utils/persistedStateSignature';
 import * as Y from 'yjs';
 import { usePersistedState } from '@/hooks';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
@@ -14,6 +15,7 @@ import { STORAGE_KEY } from '@/utils/constants';
 import { useAuthIdentity, type AuthIdentityState } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDocDocument } from '@/providers/WorkspaceYDocProvider';
 import { getShareState, ShareApiError } from '@/services/shareService';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSavePayload } from '@ddlbuilder/shared-types/workspace';
 import {
   DEFAULT_DRAFT_ID,
@@ -368,7 +370,11 @@ describe('usePersistedState', () => {
 
     const reloaded = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(reloaded.result.current.hydrated).toBe(true));
-    expect(reloaded.result.current.persistedState).toEqual(reopened.state);
+    const reloadedState = reloaded.result.current.persistedState;
+    if (!reloadedState) throw new Error('Reloaded state missing');
+    expect(buildPersistedStateSignature(reloadedState)).toBe(
+      buildPersistedStateSignature(reopened.state),
+    );
     expect(reloaded.result.current.resolveWorkspaceSnapshot(source)?.state).toEqual(reopened.state);
     reloaded.unmount();
     doc.destroy();
@@ -593,6 +599,20 @@ describe('usePersistedState', () => {
       const session = await readWorkspaceSession();
       expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
     });
+
+    const sessionOnlyState: PersistedState = {
+      ...payload.state,
+      sqlFormatMode: 'aligned',
+      addCount: 25,
+      fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
+    };
+    act(() => {
+      result.current.saveState({ ...payload, state: sessionOnlyState });
+    });
+
+    await waitFor(async () => {
+      expect((await readDraft(DEFAULT_DRAFT_ID))?.state).toEqual(sessionOnlyState);
+    });
   });
 
   it('本地 YDoc 已加载时应在远端连接前写入 YDoc', async () => {
@@ -652,7 +672,14 @@ describe('usePersistedState', () => {
     );
     await waitFor(() => expect(result.current.hydrated).toBe(true));
 
-    await act(async () => useEditorStore.getState().setTableComment('local edit'));
+    await act(async () => {
+      const editor = useEditorStore.getState();
+      editor.setTableComment('local edit');
+      editor.setSqlFormatMode('aligned');
+      editor.setAddCount(25);
+      editor.setFieldTableFreezeEnabled(true);
+      editor.setFieldTableFreezeColumns(2);
+    });
     expect(getDraftRecordFromYDoc(doc, 'default')?.state.tableComment).toBe('local edit');
     await act(async () => {
       upsertDraftInYDoc(remote, 'default', {
@@ -664,6 +691,10 @@ describe('usePersistedState', () => {
     expect(useEditorStore.getState()).toMatchObject({
       tableComment: 'local edit',
       schemaName: 'remote_schema',
+      sqlFormatMode: 'aligned',
+      addCount: 25,
+      fieldTableFreezeEnabled: true,
+      fieldTableFreezeColumns: 2,
     });
     unmount();
     doc.destroy();
@@ -712,8 +743,9 @@ describe('usePersistedState', () => {
       });
       Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote');
     });
-    expect(useEditorStore.getState().tableComment).toBe('');
     expect(getDraftRecordFromYDoc(doc, 'default')?.state.tableComment).toBe('');
+    expect(result.current.persistedState?.tableComment).toBe('');
+    await waitFor(() => expect(useEditorStore.getState().tableComment).toBe(''));
     unmount();
     doc.destroy();
     remote.destroy();

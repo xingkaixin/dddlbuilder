@@ -8,7 +8,7 @@ import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useOrmGeneration } from '@/hooks/useOrmGeneration';
 import { useTabStore } from '@/stores/tabStore';
 import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { useToast } from '@/hooks/useToast';
 import { lintSchema } from '@/utils/schemaLint';
 import { useDerivedTableState } from './useDerivedTableState';
@@ -141,7 +141,7 @@ export function useSchemaController({
     JSON.stringify([
       workspaceScope ? getWorkspaceScopeStorageKey(workspaceScope) : null,
       tabId,
-      serializePersistedStateForComparison(state),
+      buildSchemaStateSignature(state),
     ]);
   const documentKey = getDocumentKey(derived.currentPersistedState);
   const aiCommentActions = useAICommentActions({

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { useSavedTableFlowActions } from '@/components/App/hooks/useSavedTableFlowActions';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 const createState = (tableName: string): PersistedState => ({
   schemaName: '',
@@ -60,7 +61,6 @@ describe('useSavedTableFlowActions', () => {
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target: null }),
         buildPersistedState: () => state,
-        serializePersistedState: (nextState) => JSON.stringify(nextState),
         loadTable: vi.fn(),
         renameTable: vi.fn(),
         deleteTable: vi.fn(),
@@ -75,7 +75,7 @@ describe('useSavedTableFlowActions', () => {
       await result.current.handleConfirmSave();
     });
 
-    const signature = JSON.stringify(state);
+    const signature = buildSchemaStateSignature(state);
     expect(onSaveSuccess).toHaveBeenCalledWith({
       normalizedName: 'users',
       displayName: 'Users',
@@ -107,7 +107,6 @@ describe('useSavedTableFlowActions', () => {
         renameDialog: createDialog({ name: 'Users New', target }),
         deleteDialog: createDialog({ target: null }),
         buildPersistedState: () => createState('Users'),
-        serializePersistedState: (nextState) => JSON.stringify(nextState),
         loadTable: vi.fn(),
         renameTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users_new' }),
         deleteTable: vi.fn(),
@@ -151,7 +150,6 @@ describe('useSavedTableFlowActions', () => {
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target }),
         buildPersistedState: () => createState('Users'),
-        serializePersistedState: (nextState) => JSON.stringify(nextState),
         loadTable: vi.fn(),
         renameTable: vi.fn(),
         deleteTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users' }),
@@ -195,7 +193,6 @@ describe('useSavedTableFlowActions', () => {
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target: null }),
         buildPersistedState: () => createState('Users'),
-        serializePersistedState: (nextState) => JSON.stringify(nextState),
         loadTable,
         renameTable: vi.fn(),
         deleteTable: vi.fn(),
@@ -242,7 +239,6 @@ describe('useSavedTableFlowActions', () => {
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target: null }),
         buildPersistedState: () => createState('Users'),
-        serializePersistedState: (nextState) => JSON.stringify(nextState),
         loadTable,
         renameTable: vi.fn(),
         deleteTable: vi.fn(),

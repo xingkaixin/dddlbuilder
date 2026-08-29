@@ -1,9 +1,11 @@
 import type {
   CitusShardingConfig,
   MysqlPartitionConfig,
+  PersistedState,
   SchemaDocumentState,
   TableMiscConfig,
 } from '@ddlbuilder/shared-types';
+import { normalizeAddCount, normalizeFreezeColumns } from '@ddlbuilder/shared-types';
 import { digest } from 'lib0/hash/sha256';
 import { toSchemaDocumentState } from '@ddlbuilder/shared-types';
 
@@ -98,5 +100,24 @@ export const normalizeSchemaStateForSignature = (state: SchemaDocumentState) => 
 
 export const buildSchemaStateSignature = (state: SchemaDocumentState) => {
   const bytes = new TextEncoder().encode(JSON.stringify(normalizeSchemaStateForSignature(state)));
+  return `sha256:${Array.from(digest(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+};
+
+export const normalizePersistedStateForSignature = (state: PersistedState) => ({
+  schema: normalizeSchemaStateForSignature(state),
+  editorSession: {
+    sqlFormatMode: state.sqlFormatMode,
+    addCount: normalizeAddCount(state.addCount),
+    fieldTableViewConfig: {
+      freezeEnabled: state.fieldTableViewConfig?.freezeEnabled ?? false,
+      freezeColumns: normalizeFreezeColumns(state.fieldTableViewConfig?.freezeColumns ?? 3),
+    },
+  },
+});
+
+export const buildPersistedStateSignature = (state: PersistedState) => {
+  const bytes = new TextEncoder().encode(
+    JSON.stringify(normalizePersistedStateForSignature(state)),
+  );
   return `sha256:${Array.from(digest(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 };

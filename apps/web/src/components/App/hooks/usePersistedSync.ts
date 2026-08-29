@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSavePayload, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildPersistedStateSignature } from '@/utils/persistedStateSignature';
 
 interface UsePersistedSyncParams {
   hydrated: boolean;
@@ -27,7 +27,7 @@ export function usePersistedSync({
   const pendingAppliedStateRef = useRef<{ sourceId: string; signature: string } | null>(null);
   const lastSavedKeyRef = useRef<string | null>(null);
   const currentSignature = useMemo(
-    () => serializePersistedStateForComparison(currentState),
+    () => buildPersistedStateSignature(currentState),
     [currentState],
   );
   const sourceId =
@@ -52,17 +52,14 @@ export function usePersistedSync({
   const saveCurrentState = useCallback(() => {
     if (!hydrated || !enabled) return;
     const latestState = getCurrentState();
-    saveSnapshot(
-      latestState,
-      `${sourceVersion}:${serializePersistedStateForComparison(latestState)}`,
-    );
+    saveSnapshot(latestState, `${sourceVersion}:${buildPersistedStateSignature(latestState)}`);
   }, [enabled, getCurrentState, hydrated, saveSnapshot, sourceVersion]);
 
   useLayoutEffect(() => {
     if (!hydrated || !enabled || !persistedState) return;
     pendingAppliedStateRef.current = {
       sourceId,
-      signature: serializePersistedStateForComparison(persistedState),
+      signature: buildPersistedStateSignature(persistedState),
     };
     applyPersistedState(persistedState);
   }, [applyPersistedState, enabled, hydrated, persistedState, sourceId]);

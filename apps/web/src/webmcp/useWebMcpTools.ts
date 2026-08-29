@@ -8,7 +8,7 @@ import { requestSqlParse } from '@/services/sqlParseService';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
 import { lintSchema, type SchemaLintIssue } from '@/utils/schemaLint';
-import { normalizePersistedStateForSignature } from '@/utils/persistedStateSignature';
+import { normalizeSchemaStateForSignature } from '@/utils/persistedStateSignature';
 import { applySchemaPatchOperations, parseSchemaPatchOperations } from './schemaPatch';
 import { createWebMcpTools, WebMcpToolError } from './tools';
 import {
@@ -68,7 +68,7 @@ const readInteger = (
 };
 
 const buildSignature = (state: PersistedState) =>
-  buildWorkspaceContentHash(normalizePersistedStateForSignature(state));
+  buildWorkspaceContentHash(normalizeSchemaStateForSignature(state));
 
 const applyPatchOperations = (state: PersistedState, operations: WebMcpChangeSet['operations']) => {
   if (!operations) throw new WebMcpToolError('INVALID_INPUT', 'Operations are required');

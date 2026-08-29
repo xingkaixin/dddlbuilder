@@ -8,7 +8,7 @@ import type {
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { DEFAULT_DRAFT_ID, type WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { buildDraftSummary, type GlobalDraftRecord } from './normalize';
 import type { WorkspaceBootstrap } from './bootstrap';
 
@@ -95,7 +95,7 @@ export const resolveWorkspaceHydration = ({
         ...(savedTable.tableId ? { tableId: savedTable.tableId } : {}),
         normalizedName: savedTable.normalizedName,
         tableName: savedTable.tableName,
-        baseSignature: serializePersistedStateForComparison(savedTable.state),
+        baseSignature: buildSchemaStateSignature(savedTable.state),
       },
       state: savedTable.draftState ?? savedTable.state,
     };

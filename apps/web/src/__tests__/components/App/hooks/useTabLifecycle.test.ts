@@ -53,7 +53,6 @@ describe('useTabLifecycle', () => {
       useTabLifecycle({
         enabled: true,
         getCurrentState: () => createState('active'),
-        serializePersistedState: JSON.stringify,
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
         resolveWorkspaceSnapshot,
@@ -97,7 +96,6 @@ describe('useTabLifecycle', () => {
       useTabLifecycle({
         enabled: true,
         getCurrentState: () => createState('placeholder'),
-        serializePersistedState: JSON.stringify,
         saveState,
         selectWorkspaceSnapshot: vi.fn(),
         resolveWorkspaceSnapshot: () => null,
@@ -121,7 +119,6 @@ describe('useTabLifecycle', () => {
     const saveState = vi.fn();
     const stableParams = {
       enabled: true,
-      serializePersistedState: JSON.stringify,
       saveState,
       selectWorkspaceSnapshot: vi.fn(),
       resolveWorkspaceSnapshot: () => null,
@@ -140,6 +137,40 @@ describe('useTabLifecycle', () => {
 
     expect(result.current.flushActiveTab).toBe(initialFlush);
     act(() => result.current.flushActiveTab());
+    expect(saveState).toHaveBeenCalledWith({
+      state: latestState,
+      source: { kind: 'draft', draftId: 'draft-a' },
+    });
+  });
+
+  it('仅编辑器会话变化时也更新标签快照', () => {
+    const initialState = createState('users');
+    const latestState = {
+      ...initialState,
+      sqlFormatMode: 'aligned' as const,
+      addCount: 20,
+      fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
+    };
+    useTabStore.getState().addTab({
+      title: 'Draft',
+      source: { kind: 'draft', draftId: 'draft-a' },
+      stateSnapshot: initialState,
+    });
+    const saveState = vi.fn();
+    const { result } = renderHook(() =>
+      useTabLifecycle({
+        enabled: true,
+        getCurrentState: () => latestState,
+        saveState,
+        selectWorkspaceSnapshot: vi.fn(),
+        resolveWorkspaceSnapshot: () => null,
+        resetWorkspaceSelection: vi.fn(),
+      }),
+    );
+
+    act(() => result.current.flushActiveTab());
+
+    expect(useTabStore.getState().getActiveTab()?.stateSnapshot).toEqual(latestState);
     expect(saveState).toHaveBeenCalledWith({
       state: latestState,
       source: { kind: 'draft', draftId: 'draft-a' },
@@ -169,7 +200,6 @@ describe('useTabLifecycle', () => {
       useTabLifecycle({
         enabled: true,
         getCurrentState: () => savedState,
-        serializePersistedState: JSON.stringify,
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
         resolveWorkspaceSnapshot: () => null,
@@ -205,7 +235,6 @@ describe('useTabLifecycle', () => {
       useTabLifecycle({
         enabled: true,
         getCurrentState: () => savedState,
-        serializePersistedState: JSON.stringify,
         saveState: vi.fn(),
         selectWorkspaceSnapshot: vi.fn(),
         resolveWorkspaceSnapshot: () => null,

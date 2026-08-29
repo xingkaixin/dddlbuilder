@@ -6,7 +6,7 @@ import type { DDLReviewStructuredSuggestion } from '@ddlbuilder/shared-types/ddl
 import { useSchemaApplyActions } from '@/components/App/hooks/useSchemaApplyActions';
 import { diffPersistedState } from '@ddlbuilder/ddl-core';
 import { toEditorDocumentState, toPersistedState } from '@/stores/editorDocumentCodec';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   schemaName: '',
@@ -376,9 +376,7 @@ describe('useSchemaApplyActions', () => {
     );
     expect(actions.triggerIndexAnimation).toHaveBeenCalledOnce();
     const committedState = toPersistedState(toEditorDocumentState(nextState));
-    expect(serializePersistedStateForComparison(nextState)).toBe(
-      serializePersistedStateForComparison(committedState),
-    );
+    expect(buildSchemaStateSignature(nextState)).toBe(buildSchemaStateSignature(committedState));
   });
 
   it('不支持自动应用的建议只提示用户', () => {

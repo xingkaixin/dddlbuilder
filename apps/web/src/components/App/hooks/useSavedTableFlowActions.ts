@@ -29,7 +29,6 @@ interface UseSavedTableFlowActionsParams {
   renameDialog: UseDialogStateReturn<RenameDialogData>;
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
   buildPersistedState: () => PersistedState;
-  serializePersistedState: (state: PersistedState) => string;
   loadTable: (normalizedName: SavedTableTarget) => Promise<{
     tableId?: string;
     normalizedName: string;
@@ -84,7 +83,6 @@ export function useSavedTableFlowActions({
   renameDialog,
   deleteDialog,
   buildPersistedState,
-  serializePersistedState,
   loadTable,
   renameTable,
   deleteTable,
@@ -110,7 +108,6 @@ export function useSavedTableFlowActions({
     setLoadedTableVersion,
     saveDialog,
     buildPersistedState,
-    serializePersistedState,
     loadTable,
     saveTable,
     overwriteTable,
@@ -127,7 +124,6 @@ export function useSavedTableFlowActions({
     renameDialog,
     deleteDialog,
     buildPersistedState,
-    serializePersistedState,
     renameTable,
     deleteTable,
     showToast,

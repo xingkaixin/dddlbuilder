@@ -4,7 +4,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 import type { BuilderTab } from '@/utils/tabUtils';
 import { applyAISchemaChanges } from '../aiSchemaPatchTransition';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import i18n from '@/i18n';
 
 interface UseAISchemaPatchFlowParams {
@@ -24,10 +24,7 @@ export function useAISchemaPatchFlow({
 }: UseAISchemaPatchFlowParams) {
   const applyChanges = useCallback(
     (changes: AISchemaChange[], candidateState: PersistedState, baseState: PersistedState) => {
-      if (
-        serializePersistedStateForComparison(currentState) !==
-        serializePersistedStateForComparison(baseState)
-      ) {
+      if (buildSchemaStateSignature(currentState) !== buildSchemaStateSignature(baseState)) {
         throw new Error(i18n.t('aiPatch.staleResult'));
       }
       const nextState = applyAISchemaChanges(currentState, candidateState, changes);

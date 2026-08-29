@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import i18n from '@/i18n';
 
 type ShareLinkCacheRecord = {
@@ -65,7 +65,7 @@ export function useShareAction({ buildPersistedState, showToast }: UseShareActio
 
     try {
       const currentState = buildPersistedState();
-      const signature = serializePersistedStateForComparison(currentState);
+      const signature = buildSchemaStateSignature(currentState);
       const cached = readShareLinkCache();
       const now = Date.now();
 

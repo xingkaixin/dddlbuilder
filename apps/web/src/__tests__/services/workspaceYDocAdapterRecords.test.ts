@@ -20,7 +20,7 @@ import {
   upsertSavedDraftInYDoc,
   upsertSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
@@ -190,7 +190,7 @@ describe('workspaceYDocAdapter records', () => {
     const savedRecord = getSavedTableFromYDoc(doc, 'users');
     expect(savedRecord).not.toBeNull();
     if (!savedRecord) throw new Error('saved table fixture missing');
-    const savedBaseSignature = serializePersistedStateForComparison(savedRecord.state);
+    const savedBaseSignature = buildSchemaStateSignature(savedRecord.state);
     upsertSavedDraftInYDoc(doc, 'users', {
       state: draftState,
       tableName: 'Users',
@@ -219,7 +219,7 @@ describe('workspaceYDocAdapter records', () => {
     expect(refreshed?.source).toMatchObject({
       kind: 'saved_table',
       normalizedName: 'users',
-      baseSignature: serializePersistedStateForComparison(remoteRecord.state),
+      baseSignature: buildSchemaStateSignature(remoteRecord.state),
     });
   });
 

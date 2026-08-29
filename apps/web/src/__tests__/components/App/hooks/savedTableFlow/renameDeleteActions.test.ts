@@ -12,7 +12,6 @@ describe('useRenameDeleteActions', () => {
   let renameSavedTableDraft: any;
   let removeSavedTableDraft: any;
   let buildPersistedState: any;
-  let serializePersistedState: any;
 
   beforeEach(() => {
     renameDialog = {
@@ -42,7 +41,6 @@ describe('useRenameDeleteActions', () => {
     renameSavedTableDraft = vi.fn();
     removeSavedTableDraft = vi.fn();
     buildPersistedState = vi.fn().mockReturnValue({ test: 1 });
-    serializePersistedState = vi.fn().mockReturnValue('mock-signature');
   });
 
   const getHook = (overrides = {}) =>
@@ -57,7 +55,6 @@ describe('useRenameDeleteActions', () => {
         renameDialog,
         deleteDialog,
         buildPersistedState,
-        serializePersistedState,
         renameTable,
         deleteTable,
         showToast,

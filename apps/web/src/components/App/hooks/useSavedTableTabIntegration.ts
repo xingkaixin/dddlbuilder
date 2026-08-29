@@ -7,7 +7,7 @@ import type {
   WorkspaceSelection,
 } from '@ddlbuilder/shared-types/workspace';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import type { useTabLifecycle } from './useTabLifecycle';
 import i18n from '@/i18n';
 
@@ -101,7 +101,7 @@ export function useSavedTableTabIntegration({
         tableName: displayName,
         baseSignature,
       };
-      if (serializePersistedStateForComparison(state) === baseSignature) {
+      if (buildSchemaStateSignature(state) === baseSignature) {
         removeSavedTableDraft(source);
       } else {
         persistSavedTableDraft(source, {
