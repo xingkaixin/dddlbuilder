@@ -987,6 +987,7 @@ export const zhCNCommon = {
     confirmImport: '确认导入',
     sqlRequired: 'SQL 内容不能为空',
     sqlTooLong: 'SQL 内容过长，最大允许 {{max}} 个字符',
+    contentTooLong: '导入内容过长，最大允许 {{max}} 个字符',
     sqlParseFailed: 'SQL 解析失败，请检查 SQL 语法后重试。',
     sqlNoTable: '未能从 SQL 中解析出有效的表结构，请检查 SQL 语法。',
     importSuccess: '导入成功: 成功解析表: {{tableName}}',
@@ -1003,6 +1004,7 @@ export const zhCNCommon = {
     file: {
       label: '上传文件',
       required: '请上传文件。',
+      tooLarge: '文件过大，最大允许 {{max}} MB',
     },
     excelFormat: {
       title: 'Excel 格式要求',

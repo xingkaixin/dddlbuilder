@@ -1031,6 +1031,7 @@ export const jaJPCommon = {
     confirmImport: 'インポート',
     sqlRequired: 'SQLコンテンツは必須です',
     sqlTooLong: 'SQLが長すぎます。最大 {{max}} 文字が許可されます。',
+    contentTooLong: 'インポート内容が長すぎます。最大 {{max}} 文字までです。',
     sqlParseFailed: 'SQLの解析に失敗しました。構文を確認して再試行してください。',
     sqlNoTable: 'SQL から有効なテーブル構造を解析できませんでした。構文を確認してください。',
     importSuccess: 'インポートは成功しました: テーブル {{tableName}} が解析されました',
@@ -1047,6 +1048,7 @@ export const jaJPCommon = {
     file: {
       label: 'ファイルをアップロードする',
       required: 'ファイルをアップロードしてください。',
+      tooLarge: 'ファイルが大きすぎます。最大 {{max}} MB までです。',
     },
     excelFormat: {
       title: 'Excel形式',

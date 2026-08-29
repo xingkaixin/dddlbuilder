@@ -168,9 +168,9 @@ export function importDialogReducer(
     case 'set_source_type':
       return { ...state, sourceType: action.sourceType, file: null, validationResult: null };
     case 'set_sql':
-      return { ...state, sql: action.sql };
+      return { ...state, sql: action.sql, validationResult: null };
     case 'set_file':
-      return { ...state, file: action.file };
+      return { ...state, file: action.file, validationResult: null };
     case 'set_db_type':
       return { ...state, selectedDbType: action.dbType };
     case 'validation_started':

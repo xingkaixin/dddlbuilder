@@ -31,6 +31,7 @@ import { ConfirmStep } from './ConfirmStep';
 import { TableSelectStep } from './TableSelectStep';
 import { SaveConfigStep } from './SaveConfigStep';
 import { createImportDialogState, importDialogReducer } from './importDialogState';
+import { getImportCharacterLimit, getImportFileByteLimit, toMebibytes } from './importLimits';
 import type { ImportSourceType, ParsedTableItem, PreviewFieldKey } from './types';
 
 interface ImportSqlDialogProps {
@@ -43,9 +44,6 @@ interface ImportSqlDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const MAX_SQL_LENGTH = 50_000;
-const MAX_TEXT_LENGTH = 200_000;
 
 export function ImportSqlDialog({
   currentDbType,
@@ -118,25 +116,68 @@ export function ImportSqlDialog({
     dispatch({ type: 'set_sql', sql: nextSql });
   }, []);
 
-  const handleFileChange = useCallback((nextFile: File | null) => {
-    dispatch({ type: 'set_file', file: nextFile });
-  }, []);
+  const fileSizeError = useCallback(
+    (candidate: File): string | null => {
+      const maxBytes = getImportFileByteLimit(sourceType);
+      return maxBytes !== null && candidate.size > maxBytes
+        ? t('importSql.file.tooLarge', { max: toMebibytes(maxBytes).toLocaleString() })
+        : null;
+    },
+    [sourceType, t],
+  );
+
+  const contentLengthError = useCallback(
+    (content: string): string | null => {
+      const maxCharacters = getImportCharacterLimit(sourceType);
+      if (maxCharacters === null || content.length <= maxCharacters) return null;
+      return t(sourceType === 'sql' ? 'importSql.sqlTooLong' : 'importSql.contentTooLong', {
+        max: maxCharacters.toLocaleString(),
+      });
+    },
+    [sourceType, t],
+  );
+
+  const handleFileChange = useCallback(
+    (nextFile: File | null) => {
+      if (nextFile) {
+        const error = fileSizeError(nextFile);
+        if (error) {
+          dispatch({ type: 'set_file', file: null });
+          dispatch({
+            type: 'validation_failed',
+            result: { success: false, error, lineNumber: 1 },
+          });
+          return;
+        }
+      }
+      dispatch({ type: 'set_file', file: nextFile });
+    },
+    [fileSizeError],
+  );
 
   const buildStructuredTables = useCallback(async (): Promise<ParsedResult[]> => {
     if (sourceType === 'excel') {
       if (!file) throw new Error(t('importSql.file.required'));
+      const error = fileSizeError(file);
+      if (error) throw new Error(error);
       return parseExcelImport(file);
     }
 
+    if (file) {
+      const error = fileSizeError(file);
+      if (error) throw new Error(error);
+    }
     const content = file ? await file.text() : sql.trim();
     if (!content.trim()) throw new Error(t('importSql.sqlRequired'));
+    const error = contentLengthError(content);
+    if (error) throw new Error(error);
 
     return parseStructuredImportText(
       sourceType === 'json' ? 'json' : 'csv',
       content,
       file?.name ?? 'imported_table',
     );
-  }, [file, sourceType, sql, t]);
+  }, [contentLengthError, file, fileSizeError, sourceType, sql, t]);
 
   const validateForWorkspace = useCallback(async () => {
     dispatch({ type: 'validation_started' });
@@ -241,17 +282,23 @@ export function ImportSqlDialog({
       });
       return;
     }
-    const maxLength = sourceType === 'sql' ? MAX_SQL_LENGTH : MAX_TEXT_LENGTH;
-    if (trimmedSql.length > maxLength) {
+    const fileError = file ? fileSizeError(file) : null;
+    if (fileError) {
       dispatch({
         type: 'validation_failed',
         result: {
           success: false,
-          error: t('importSql.sqlTooLong', {
-            max: maxLength.toLocaleString(),
-          }),
+          error: fileError,
           lineNumber: 1,
         },
+      });
+      return;
+    }
+    const contentError = !file ? contentLengthError(trimmedSql) : null;
+    if (contentError) {
+      dispatch({
+        type: 'validation_failed',
+        result: { success: false, error: contentError, lineNumber: 1 },
       });
       return;
     }
@@ -268,6 +315,8 @@ export function ImportSqlDialog({
     batchImportSupported,
     validateForSaved,
     validateForWorkspace,
+    contentLengthError,
+    fileSizeError,
     t,
   ]);
 
