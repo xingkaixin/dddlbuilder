@@ -540,4 +540,32 @@ describe('workspaceMigration', () => {
     expect(table?.folderId).toBe(folder?.id);
     expect(child?.parentId).toBe(folder?.id);
   });
+
+  it('拒绝环形文件夹层级且不写入文档', () => {
+    const payload = createPayload();
+    payload.snapshot.savedTables = [];
+    payload.snapshot.folders = [
+      {
+        id: 'folder-a',
+        name: 'Folder A',
+        parentId: 'folder-b',
+        order: 0,
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      {
+        id: 'folder-b',
+        name: 'Folder B',
+        parentId: 'folder-a',
+        order: 1,
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    ];
+
+    expect(() => applyWorkspaceMigrationSnapshot(cloudDoc, 'user-1', payload.snapshot)).toThrow(
+      'Migration folders contain a parent cycle',
+    );
+    expect(exportWorkspaceYDocToSnapshot(cloudDoc).folders).toEqual([]);
+  });
 });
