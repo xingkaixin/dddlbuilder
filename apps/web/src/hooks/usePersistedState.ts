@@ -137,7 +137,6 @@ export function usePersistedState(): UsePersistedStateReturn {
   });
   const draftRecords = useDraftRecords({
     yDoc,
-    runInYDoc,
     disabled: Boolean(shareId),
     enqueuePersistence,
     storage,

@@ -20,27 +20,19 @@ const createState = (tableName: string): PersistedState => ({
 
 const renderDraftRecords = (
   overrides: {
-    storage?: Partial<WorkspaceStorageTarget>;
+    storage?: WorkspaceStorageTarget;
     enqueuePersistence?: ReturnType<typeof usePersistenceQueue>['enqueue'];
   } = {},
 ) => {
-  const storage = {
+  const storage: WorkspaceStorageTarget = overrides.storage ?? {
     kind: 'indexeddb' as const,
-    read: vi.fn(),
-    readLocal: vi.fn(),
-    update: vi.fn(),
-    write: vi.fn(),
-    cleanupLocal: vi.fn(),
-    removeEverywhere: vi.fn(),
-    ...overrides.storage,
+    scope: { kind: 'anonymous' },
   };
-  const enqueuePersistence =
-    overrides.enqueuePersistence ?? vi.fn((_key, _operation, run) => run());
+  const enqueuePersistence = overrides.enqueuePersistence ?? vi.fn(async () => undefined);
   return renderHook(() =>
     useDraftRecords({
       disabled: false,
       yDoc: null,
-      runInYDoc: () => {},
       enqueuePersistence,
       storage,
     }),
@@ -87,13 +79,13 @@ describe('useDraftRecords', () => {
 
   it('keeps a trashed draft visible until permanent deletion succeeds', async () => {
     let finishDeletion!: () => void;
-    const removeEverywhere = vi.fn(
-      () =>
+    const enqueuePersistence = vi.fn(
+      (_key, _operation, _run) =>
         new Promise<void>((resolve) => {
           finishDeletion = resolve;
         }),
     );
-    const { result } = renderDraftRecords({ storage: { removeEverywhere } });
+    const { result } = renderDraftRecords({ enqueuePersistence });
     act(() => {
       result.current.replaceTrashedDrafts([
         {
@@ -118,7 +110,7 @@ describe('useDraftRecords', () => {
 
   it('keeps a trashed draft when restore persistence fails', async () => {
     const { result } = renderDraftRecords({
-      storage: { write: vi.fn().mockRejectedValue(new Error('restore failed')) },
+      enqueuePersistence: vi.fn().mockRejectedValue(new Error('restore failed')),
     });
     act(() => {
       result.current.replaceTrashedDrafts([

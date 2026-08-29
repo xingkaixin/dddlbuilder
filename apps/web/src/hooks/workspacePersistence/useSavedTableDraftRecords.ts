@@ -16,7 +16,10 @@ import {
 import { deleteSavedDraft, renameSavedDraftKey, upsertSavedDraft } from '@/utils/workspaceStateDb';
 import { getSavedTable } from '@/utils/savedTablesDb';
 import type { usePersistenceQueue } from './usePersistenceQueue';
-import type { WorkspaceStorageTarget } from './useWorkspaceStorageTarget';
+import {
+  requireReadyWorkspaceStorage,
+  type WorkspaceStorageTarget,
+} from './useWorkspaceStorageTarget';
 
 interface UseSavedTableDraftRecordsParams {
   disabled: boolean;
@@ -69,25 +72,25 @@ export function useSavedTableDraftRecords({
       if (!nextRecord.baseState && existing?.baseSignature === nextRecord.baseSignature)
         nextRecord.baseState = existing.baseState;
       recordsRef.current.set(key, nextRecord);
-      void enqueuePersistence(`saved-draft:${key}`, 'save saved-table draft', () =>
-        storage.write({
-          yDoc: (doc) =>
+      void enqueuePersistence(`saved-draft:${key}`, 'save saved-table draft', async () => {
+        const destination = requireReadyWorkspaceStorage(storage);
+        if (destination.kind === 'ydoc') {
+          destination.transact((doc) =>
             upsertSavedDraftInYDoc(
               doc,
               target,
               withSavedBase(nextRecord, getSavedTableFromYDoc(doc, target)?.state),
-              {
-                compactSnapshotBase: true,
-              },
+              { compactSnapshotBase: true },
             ),
-          local: async (scope) =>
-            upsertSavedDraft(
-              normalizedName,
-              withSavedBase(nextRecord, (await getSavedTable(target, scope))?.state),
-              scope,
-            ),
-        }),
-      );
+          );
+          return;
+        }
+        await upsertSavedDraft(
+          normalizedName,
+          withSavedBase(nextRecord, (await getSavedTable(target, destination.scope))?.state),
+          destination.scope,
+        );
+      });
     },
     [enqueuePersistence, storage],
   );
@@ -100,12 +103,13 @@ export function useSavedTableDraftRecords({
       if (key !== normalizedName && !recordsRef.current.get(normalizedName)?.tableId) {
         recordsRef.current.delete(normalizedName);
       }
-      void enqueuePersistence(`saved-draft:${key}`, 'delete saved-table draft', () =>
-        storage.removeEverywhere({
-          yDoc: (doc) => deleteSavedDraftFromYDoc(doc, target),
-          local: (scope) => deleteSavedDraft(normalizedName, scope),
-        }),
-      );
+      void enqueuePersistence(`saved-draft:${key}`, 'delete saved-table draft', async () => {
+        const destination = requireReadyWorkspaceStorage(storage);
+        if (destination.kind === 'ydoc') {
+          destination.transact((doc) => deleteSavedDraftFromYDoc(doc, target));
+        }
+        await deleteSavedDraft(normalizedName, destination.scope);
+      });
     },
     [enqueuePersistence, storage],
   );
@@ -138,14 +142,20 @@ export function useSavedTableDraftRecords({
           recordsRef.current.delete(fromNormalizedName);
       }
       void enqueuePersistence(`saved-draft:${oldKey}`, 'rename saved-table draft', async () => {
-        await storage.write({
-          yDoc: (doc) => renameSavedDraftInYDoc(doc, target, toNormalizedName, nextTableName),
-          local: (scope) =>
-            renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, scope),
-        });
-        if (keyChanged) {
-          await storage.cleanupLocal((scope) => deleteSavedDraft(fromNormalizedName, scope));
+        const destination = requireReadyWorkspaceStorage(storage);
+        if (destination.kind === 'ydoc') {
+          destination.transact((doc) =>
+            renameSavedDraftInYDoc(doc, target, toNormalizedName, nextTableName),
+          );
+          if (keyChanged) await deleteSavedDraft(fromNormalizedName, destination.scope);
+          return;
         }
+        await renameSavedDraftKey(
+          fromNormalizedName,
+          toNormalizedName,
+          nextTableName,
+          destination.scope,
+        );
       });
     },
     [disabled, enqueuePersistence, getRecord, storage],

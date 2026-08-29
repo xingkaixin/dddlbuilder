@@ -2,31 +2,12 @@ import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
-import {
-  buildFolderTreeFromYDoc,
-  deleteFolderFromYDoc,
-  listSavedTableRecordsFromYDoc,
-  listFoldersFromYDoc,
-  upsertSavedTableInYDoc,
-  upsertFolderInYDoc,
-} from '@/services/workspaceYDocAdapter';
+import { buildFolderTreeFromYDoc, listFoldersFromYDoc } from '@/services/workspaceYDocAdapter';
 import type { TableFolder } from '@/utils/workspaceStorageTypes';
-import {
-  createFolder,
-  deleteFolder,
-  moveFolder,
-  renameFolder,
-  type FolderTreeNode,
-} from '@/utils/tableFolders';
-import { useWorkspaceAuthority } from '@/hooks/workspacePersistence/useWorkspaceAuthority';
+import { type FolderTreeNode } from '@/utils/tableFolders';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import { localFoldersOptions } from '@/queries/workspaceLocal';
-import {
-  buildFolderDeletionPlan,
-  createFolderRecord,
-  moveFolderRecord,
-  renameFolderRecord,
-} from '@/utils/folderModel';
+import { useFolderPersistence } from '@/hooks/workspacePersistence/useFolderPersistence';
 
 export type { FolderTreeNode };
 
@@ -43,7 +24,17 @@ const readFolderProjection = (doc: Y.Doc) => ({
 
 export function useFolders() {
   const { t } = useTranslation();
-  const { scope: currentScope, yDoc, yDocReady, storage, refresh } = useWorkspaceAuthority();
+  const {
+    scope: currentScope,
+    yDoc,
+    yDocReady,
+    storage,
+    refresh,
+    createFolderEntry,
+    renameFolderEntry,
+    deleteFolderTree,
+    moveFolderEntry,
+  } = useFolderPersistence();
   const yDocProjection = useWorkspaceYDocProjection(
     yDoc,
     FOLDER_COLLECTIONS,
@@ -59,58 +50,32 @@ export function useFolders() {
   const handleCreateFolder = useCallback(
     async (name: string, parentId?: string) => {
       try {
-        const folder = await storage.update({
-          yDoc: (doc) => {
-            const nextFolder = createFolderRecord(yDocProjection.folders, name, parentId);
-            upsertFolderInYDoc(doc, nextFolder);
-            return nextFolder;
-          },
-          local: (scope) => createFolder(name, scope, parentId),
-        });
+        const folder = await createFolderEntry(name, parentId);
         await refresh();
         return folder;
       } catch (error) {
         throw error instanceof Error ? error : new Error(t('savedTables.toast.createFolderFailed'));
       }
     },
-    [refresh, storage, yDocProjection.folders, t],
+    [createFolderEntry, refresh, t],
   );
 
   const handleRenameFolder = useCallback(
     async (id: string, newName: string) => {
       try {
-        await storage.update({
-          yDoc: (doc) => {
-            const folder = yDocProjection.folders.find((item) => item.id === id);
-            if (!folder) throw new Error(t('savedTables.toast.folderNotFound'));
-            upsertFolderInYDoc(doc, renameFolderRecord(folder, newName));
-          },
-          local: (scope) => renameFolder(id, newName, scope),
-        });
+        await renameFolderEntry(id, newName);
         await refresh();
       } catch (error) {
         throw error instanceof Error ? error : new Error(t('savedTables.toast.renameFolderFailed'));
       }
     },
-    [refresh, storage, yDocProjection.folders, t],
+    [refresh, renameFolderEntry, t],
   );
 
   const handleDeleteFolder = useCallback(
     async (id: string) => {
       try {
-        const allFolderIds = await storage.update({
-          yDoc: (doc) => {
-            const plan = buildFolderDeletionPlan(
-              listFoldersFromYDoc(doc),
-              listSavedTableRecordsFromYDoc(doc),
-              id,
-            );
-            for (const table of plan.tablesToTrash) upsertSavedTableInYDoc(doc, table);
-            for (const folderId of plan.folderIds) deleteFolderFromYDoc(doc, folderId);
-            return plan.folderIds;
-          },
-          local: (scope) => deleteFolder(id, scope),
-        });
+        const allFolderIds = await deleteFolderTree(id);
         await refresh();
         return allFolderIds;
       } catch (error) {
@@ -122,25 +87,19 @@ export function useFolders() {
         throw error instanceof Error ? error : new Error(t('savedTables.toast.deleteFailed'));
       }
     },
-    [refresh, storage, t],
+    [deleteFolderTree, refresh, storage.kind, t],
   );
 
   const handleMoveFolder = useCallback(
     async (id: string, newParentId?: string) => {
       try {
-        await storage.update({
-          yDoc: (doc) => {
-            const nextFolder = moveFolderRecord(yDocProjection.folders, id, newParentId);
-            upsertFolderInYDoc(doc, nextFolder);
-          },
-          local: (scope) => moveFolder(id, scope, newParentId),
-        });
+        await moveFolderEntry(id, newParentId);
         await refresh();
       } catch (error) {
         throw error instanceof Error ? error : new Error(t('savedTables.toast.moveFolderFailed'));
       }
     },
-    [refresh, storage, yDocProjection.folders, t],
+    [moveFolderEntry, refresh, t],
   );
 
   return {

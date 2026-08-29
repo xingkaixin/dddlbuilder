@@ -24,86 +24,95 @@ import {
 } from '@/utils/savedTableStateUpdate';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { useWorkspaceAuthority } from './useWorkspaceAuthority';
+import { requireReadyWorkspaceStorage } from './useWorkspaceStorageTarget';
 
 export function useSavedTablePersistence() {
   const authority = useWorkspaceAuthority();
   const { storage } = authority;
 
   const readTable = useCallback(
-    (normalizedName: SavedTableTarget) =>
-      storage.read({
-        yDoc: (doc) => getSavedTableFromYDoc(doc, normalizedName),
-        local: (scope) => getSavedTable(normalizedName, scope),
-      }),
+    (normalizedName: SavedTableTarget) => {
+      const target = requireReadyWorkspaceStorage(storage);
+      return target.kind === 'ydoc'
+        ? Promise.resolve(getSavedTableFromYDoc(target.yDoc, normalizedName))
+        : getSavedTable(normalizedName, target.scope);
+    },
     [storage],
   );
 
-  const readAllTables = useCallback(
-    () =>
-      storage.read({
-        yDoc: (doc) => ({
-          active: listSavedTableRecordsFromYDoc(doc),
-          trashed: listTrashedSavedTableRecordsFromYDoc(doc),
-        }),
-        local: (scope) =>
-          Promise.all([listSavedTables(scope), listTrashedSavedTables(scope)]).then(
-            ([active, trashed]) => ({ active, trashed }),
-          ),
-      }),
-    [storage],
-  );
+  const readAllTables = useCallback(() => {
+    const target = requireReadyWorkspaceStorage(storage);
+    if (target.kind === 'ydoc') {
+      return Promise.resolve({
+        active: listSavedTableRecordsFromYDoc(target.yDoc),
+        trashed: listTrashedSavedTableRecordsFromYDoc(target.yDoc),
+      });
+    }
+    return Promise.all([listSavedTables(target.scope), listTrashedSavedTables(target.scope)]).then(
+      ([active, trashed]) => ({ active, trashed }),
+    );
+  }, [storage]);
 
   const putTable = useCallback(
     async (record: SavedTableRecord, mode: 'add' | 'update' = 'update') => {
-      await storage.write({
-        yDoc: (doc) => upsertSavedTableInYDoc(doc, record),
-        local: (scope) =>
-          mode === 'add' ? addSavedTable(record, scope) : updateSavedTable(record, scope),
-      });
+      const target = requireReadyWorkspaceStorage(storage);
+      if (target.kind === 'ydoc') {
+        target.transact((doc) => upsertSavedTableInYDoc(doc, record));
+        return;
+      }
+      await (mode === 'add'
+        ? addSavedTable(record, target.scope)
+        : updateSavedTable(record, target.scope));
     },
     [storage],
   );
 
   const putTables = useCallback(
     async (records: SavedTableRecord[]) => {
-      await storage.write({
-        yDoc: (doc) => {
+      const target = requireReadyWorkspaceStorage(storage);
+      if (target.kind === 'ydoc') {
+        target.transact((doc) => {
           for (const record of records) upsertSavedTableInYDoc(doc, record);
-        },
-        local: (scope) => updateSavedTables(records, scope),
-      });
+        });
+        return;
+      }
+      await updateSavedTables(records, target.scope);
     },
     [storage],
   );
 
   const updateTableState = useCallback(
-    (target: SavedTableTarget, update: SavedTableStateUpdate) =>
-      storage.update({
-        yDoc: (doc) => {
-          const record = applySavedTableStateUpdate(target, update, (reference) =>
-            getSavedTableFromYDoc(doc, reference),
-          );
-          if (record) upsertSavedTableInYDoc(doc, record);
-          return record;
-        },
-        local: (scope) => updateSavedTableState(target, update, scope),
-      }),
+    (target: SavedTableTarget, update: SavedTableStateUpdate) => {
+      const destination = requireReadyWorkspaceStorage(storage);
+      if (destination.kind === 'ydoc') {
+        return Promise.resolve(
+          destination.transact((doc) => {
+            const record = applySavedTableStateUpdate(target, update, (reference) =>
+              getSavedTableFromYDoc(doc, reference),
+            );
+            if (record) upsertSavedTableInYDoc(doc, record);
+            return record;
+          }),
+        );
+      }
+      return updateSavedTableState(target, update, destination.scope);
+    },
     [storage],
   );
 
   const replaceTable = useCallback(
     async (previousNormalizedName: string, record: SavedTableRecord) => {
-      await storage.write({
-        yDoc: (doc) => renameSavedTableInYDoc(doc, previousNormalizedName, record),
-        local: async (scope) => {
-          if (record.normalizedName === previousNormalizedName) {
-            await updateSavedTable(record, scope);
-            return;
-          }
-          await addSavedTable(record, scope);
-          await deleteSavedTable(previousNormalizedName, scope);
-        },
-      });
+      const target = requireReadyWorkspaceStorage(storage);
+      if (target.kind === 'ydoc') {
+        target.transact((doc) => renameSavedTableInYDoc(doc, previousNormalizedName, record));
+        return;
+      }
+      if (record.normalizedName === previousNormalizedName) {
+        await updateSavedTable(record, target.scope);
+        return;
+      }
+      await addSavedTable(record, target.scope);
+      await deleteSavedTable(previousNormalizedName, target.scope);
     },
     [storage],
   );
@@ -129,17 +138,21 @@ export function useSavedTablePersistence() {
   );
 
   const cleanupLocalTable = useCallback(
-    (normalizedName: SavedTableTarget) =>
-      storage.cleanupLocal((scope) => deleteSavedTable(normalizedName, scope)),
+    (normalizedName: SavedTableTarget) => {
+      if (storage.kind !== 'ydoc') return Promise.resolve();
+      return deleteSavedTable(normalizedName, storage.scope);
+    },
     [storage],
   );
 
   const deleteTableEverywhere = useCallback(
-    (normalizedName: SavedTableTarget) =>
-      storage.removeEverywhere({
-        yDoc: (doc) => deleteSavedTableFromYDoc(doc, normalizedName),
-        local: (scope) => deleteSavedTable(normalizedName, scope),
-      }),
+    async (normalizedName: SavedTableTarget) => {
+      const target = requireReadyWorkspaceStorage(storage);
+      if (target.kind === 'ydoc') {
+        target.transact((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
+      }
+      await deleteSavedTable(normalizedName, target.scope);
+    },
     [storage],
   );
 

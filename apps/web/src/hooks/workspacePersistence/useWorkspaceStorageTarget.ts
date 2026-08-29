@@ -1,23 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import type * as Y from 'yjs';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import type { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import i18n from '@/i18n';
-
-interface WorkspaceReadOperations<T> {
-  yDoc: (doc: Y.Doc) => T;
-  local: (scope: WorkspaceScope) => Promise<T>;
-}
-
-interface WorkspaceWriteOperations {
-  yDoc: (doc: Y.Doc) => void;
-  local: (scope: WorkspaceScope) => Promise<void>;
-}
-
-interface WorkspaceUpdateOperations<T> {
-  yDoc: (doc: Y.Doc) => T;
-  local: (scope: WorkspaceScope) => Promise<T>;
-}
 
 interface UseWorkspaceStorageTargetParams {
   scope: WorkspaceScope | null;
@@ -25,91 +10,45 @@ interface UseWorkspaceStorageTargetParams {
   runInYDoc: ReturnType<typeof useWorkspaceYDocGateway>['runInYDoc'];
 }
 
+type WorkspaceYDocStorage = {
+  kind: 'ydoc';
+  scope: WorkspaceScope;
+  yDoc: Y.Doc;
+  transact: ReturnType<typeof useWorkspaceYDocGateway>['runInYDoc'];
+};
+
+type WorkspaceIndexedDbStorage = {
+  kind: 'indexeddb';
+  scope: Extract<WorkspaceScope, { kind: 'anonymous' }>;
+};
+
+type WorkspaceLoadingStorage = {
+  kind: 'loading';
+  scope: WorkspaceScope | null;
+};
+
+export type WorkspaceStorageTarget =
+  | WorkspaceYDocStorage
+  | WorkspaceIndexedDbStorage
+  | WorkspaceLoadingStorage;
+
+export type ReadyWorkspaceStorage = Exclude<WorkspaceStorageTarget, WorkspaceLoadingStorage>;
+
+export const requireReadyWorkspaceStorage = (
+  storage: WorkspaceStorageTarget,
+): ReadyWorkspaceStorage => {
+  if (storage.kind === 'loading') throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
+  return storage;
+};
+
 export function useWorkspaceStorageTarget({
   scope,
   yDoc,
   runInYDoc,
 }: UseWorkspaceStorageTargetParams) {
-  const requireScope = useCallback(() => {
-    if (!scope) throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
-    return scope;
-  }, [scope]);
-
-  const writeLocal = useCallback(
-    async (write: (currentScope: WorkspaceScope) => Promise<void>) => {
-      const currentScope = requireScope();
-      if (currentScope.kind === 'user')
-        throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
-      await write(currentScope);
-    },
-    [requireScope],
-  );
-
-  const read = useCallback(
-    async <T>({ yDoc: readYDoc, local: readLocal }: WorkspaceReadOperations<T>): Promise<T> => {
-      if (yDoc) return readYDoc(yDoc);
-      return readLocal(requireScope());
-    },
-    [requireScope, yDoc],
-  );
-
-  const readLocal = useCallback(
-    <T>(read: (currentScope: WorkspaceScope) => Promise<T>) => read(requireScope()),
-    [requireScope],
-  );
-
-  const update = useCallback(
-    async <T>({ yDoc: updateYDoc, local }: WorkspaceUpdateOperations<T>): Promise<T> => {
-      if (yDoc) {
-        let result: T | undefined;
-        runInYDoc((doc) => {
-          result = updateYDoc(doc);
-        });
-        return result as T;
-      }
-      let result: T | undefined;
-      await writeLocal(async (currentScope) => {
-        result = await local(currentScope);
-      });
-      return result as T;
-    },
-    [runInYDoc, writeLocal, yDoc],
-  );
-
-  const write = useCallback((operations: WorkspaceWriteOperations) => update(operations), [update]);
-
-  const cleanupLocal = useCallback(
-    async (cleanup: (currentScope: WorkspaceScope) => Promise<void>) => {
-      if (!yDoc) return;
-      await cleanup(requireScope());
-    },
-    [requireScope, yDoc],
-  );
-
-  const removeEverywhere = useCallback(
-    async ({ yDoc: removeYDoc, local }: WorkspaceWriteOperations) => {
-      if (!yDoc) {
-        await writeLocal(local);
-        return;
-      }
-      runInYDoc(removeYDoc);
-      await local(requireScope());
-    },
-    [requireScope, runInYDoc, writeLocal, yDoc],
-  );
-
-  return useMemo(
-    () => ({
-      kind: yDoc ? ('ydoc' as const) : ('indexeddb' as const),
-      read,
-      readLocal,
-      update,
-      write,
-      cleanupLocal,
-      removeEverywhere,
-    }),
-    [cleanupLocal, read, readLocal, removeEverywhere, update, write, yDoc],
-  );
+  return useMemo<WorkspaceStorageTarget>(() => {
+    if (yDoc && scope) return { kind: 'ydoc', scope, yDoc, transact: runInYDoc };
+    if (scope?.kind === 'anonymous') return { kind: 'indexeddb', scope };
+    return { kind: 'loading', scope };
+  }, [runInYDoc, scope, yDoc]);
 }
-
-export type WorkspaceStorageTarget = ReturnType<typeof useWorkspaceStorageTarget>;

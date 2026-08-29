@@ -3,6 +3,7 @@ import type * as Y from 'yjs';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { useWorkspaceYDocDocument } from '@/providers/WorkspaceYDocProvider';
 import { WorkspaceYDocOrigin } from '@/services/workspaceYDocAdapter';
+import i18n from '@/i18n';
 
 type WorkspaceYDocGatewayOptions = {
   enabled?: boolean;
@@ -20,9 +21,14 @@ export function useWorkspaceYDocGateway(
   const yDoc = yDocReady ? workspaceYDoc.doc : null;
 
   const runInYDoc = useCallback(
-    (mutate: (doc: Y.Doc) => void) => {
-      if (!yDoc) return;
-      yDoc.transact(() => mutate(yDoc), WorkspaceYDocOrigin.LocalEdit);
+    <T>(mutate: (doc: Y.Doc) => T): T => {
+      if (!yDoc) throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
+      let outcome: { value: T } | undefined;
+      yDoc.transact(() => {
+        outcome = { value: mutate(yDoc) };
+      }, WorkspaceYDocOrigin.LocalEdit);
+      if (!outcome) throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
+      return outcome.value;
     },
     [yDoc],
   );

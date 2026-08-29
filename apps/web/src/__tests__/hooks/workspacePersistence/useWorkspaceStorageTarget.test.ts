@@ -1,70 +1,54 @@
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Y from 'yjs';
-import { useWorkspaceStorageTarget } from '@/hooks/workspacePersistence/useWorkspaceStorageTarget';
+import {
+  requireReadyWorkspaceStorage,
+  useWorkspaceStorageTarget,
+} from '@/hooks/workspacePersistence/useWorkspaceStorageTarget';
 
 describe('useWorkspaceStorageTarget', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('rejects user writes while the authoritative YDoc is loading', async () => {
+  it('显式表示用户工作区仍在加载', () => {
     const scope = { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' } as const;
-    const writeLocal = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
       useWorkspaceStorageTarget({ scope, yDoc: null, runInYDoc: vi.fn() }),
     );
-    const outcome = await result.current.write({ yDoc: vi.fn(), local: writeLocal }).then(
-      () => 'written',
-      () => 'rejected',
-    );
-    expect(outcome).toBe('rejected');
-    expect(writeLocal).not.toHaveBeenCalled();
+
+    expect(result.current).toEqual({ kind: 'loading', scope });
+    expect(() => requireReadyWorkspaceStorage(result.current)).toThrow('工作区未就绪');
   });
 
-  it('匿名工作区写入本地分区', async () => {
+  it('匿名工作区选择本地分区', () => {
     const scope = { kind: 'anonymous' } as const;
     const runInYDoc = vi.fn();
-    const writeYDoc = vi.fn();
-    const writeLocal = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
       useWorkspaceStorageTarget({ scope, yDoc: null, runInYDoc }),
     );
 
-    await act(() => result.current.write({ yDoc: writeYDoc, local: writeLocal }));
-
-    expect(result.current.kind).toBe('indexeddb');
-    expect(writeLocal).toHaveBeenCalledWith(scope);
+    expect(result.current).toEqual({ kind: 'indexeddb', scope });
     expect(runInYDoc).not.toHaveBeenCalled();
   });
 
-  it('Y.Doc 就绪时在事务中写入，并按需清理旧本地副本', async () => {
+  it('Y.Doc 就绪时暴露可返回结果的事务入口', () => {
     const scope = { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' } as const;
     const doc = {} as Y.Doc;
-    const runInYDoc = vi.fn((mutate: (currentDoc: Y.Doc) => void) => mutate(doc));
-    const writeYDoc = vi.fn();
-    const writeLocal = vi.fn().mockResolvedValue(undefined);
-    const cleanupLocal = vi.fn().mockResolvedValue(undefined);
+    const runInYDoc = vi.fn((mutate: (currentDoc: Y.Doc) => unknown) => mutate(doc));
     const { result } = renderHook(() => useWorkspaceStorageTarget({ scope, yDoc: doc, runInYDoc }));
+    const target = requireReadyWorkspaceStorage(result.current);
+    if (target.kind !== 'ydoc') throw new Error('Y.Doc target missing');
 
-    await act(() => result.current.write({ yDoc: writeYDoc, local: writeLocal }));
-    await act(() => result.current.cleanupLocal(cleanupLocal));
+    const outcome = target.transact((currentDoc) => (currentDoc === doc ? 'written' : 'invalid'));
 
-    expect(result.current.kind).toBe('ydoc');
-    expect(writeYDoc).toHaveBeenCalledWith(doc);
-    expect(writeLocal).not.toHaveBeenCalled();
-    expect(cleanupLocal).toHaveBeenCalledWith(scope);
+    expect(outcome).toBe('written');
+    expect(runInYDoc).toHaveBeenCalledOnce();
   });
 
-  it('永久删除会同时清理当前 Y.Doc 与旧本地副本', async () => {
-    const scope = { kind: 'anonymous' } as const;
-    const doc = {} as Y.Doc;
-    const runInYDoc = vi.fn((mutate: (currentDoc: Y.Doc) => void) => mutate(doc));
-    const removeYDoc = vi.fn();
-    const removeLocal = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useWorkspaceStorageTarget({ scope, yDoc: doc, runInYDoc }));
+  it('scope 缺失时保持加载态', () => {
+    const { result } = renderHook(() =>
+      useWorkspaceStorageTarget({ scope: null, yDoc: null, runInYDoc: vi.fn() }),
+    );
 
-    await act(() => result.current.removeEverywhere({ yDoc: removeYDoc, local: removeLocal }));
-
-    expect(removeYDoc).toHaveBeenCalledWith(doc);
-    expect(removeLocal).toHaveBeenCalledWith(scope);
+    expect(result.current).toEqual({ kind: 'loading', scope: null });
   });
 });

@@ -17,7 +17,9 @@ describe('local workspace transaction ownership', () => {
     doc.on('update', (_update, origin) => origins.push(origin));
     first.result.current.runInYDoc((current) => current.getMap('drafts').set('one', 1));
     second.result.current.runInYDoc((current) => current.getMap('drafts').set('two', 2));
+    const outcome = first.result.current.runInYDoc(() => 'committed');
     expect(origins).toEqual(['workspace-local-edit', 'workspace-local-edit']);
+    expect(outcome).toBe('committed');
     first.unmount();
     second.unmount();
     doc.destroy();
