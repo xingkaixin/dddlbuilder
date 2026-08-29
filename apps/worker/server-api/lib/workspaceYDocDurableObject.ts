@@ -42,6 +42,13 @@ type PendingWorkspaceUpdate = {
   update: Uint8Array;
 };
 
+type WorkspaceYDocIdentity = {
+  workspaceId?: string;
+  userId?: string;
+};
+
+class WorkspaceYDocIdentityMismatchError extends Error {}
+
 const MESSAGE_SYNC = WORKSPACE_SYNC_MESSAGE.sync;
 const COMPACT_UPDATE_COUNT = 100;
 const COMPACT_UPDATE_BYTES = 512 * 1024;
@@ -91,15 +98,19 @@ export class WorkspaceYDocDurableObject {
       return this.handleKick(request);
     }
 
-    const workspaceId = request.headers.get('x-ddlbuilder-workspace-id') ?? undefined;
-    if (workspaceId) {
-      this.workspaceId = workspaceId;
+    const identity = {
+      workspaceId: request.headers.get('x-ddlbuilder-workspace-id') ?? undefined,
+      userId: request.headers.get('x-ddlbuilder-user-id') ?? undefined,
+    };
+    let doc: Y.Doc;
+    try {
+      doc = await this.loadDoc(identity);
+    } catch (error) {
+      if (error instanceof WorkspaceYDocIdentityMismatchError) {
+        return new Response('Workspace identity mismatch', { status: 409 });
+      }
+      throw error;
     }
-    const userId = request.headers.get('x-ddlbuilder-user-id') ?? undefined;
-    if (userId) {
-      this.userId = userId;
-    }
-    const doc = await this.loadDoc();
 
     if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
       const sessionId = request.headers.get('x-ddlbuilder-session-id');
@@ -160,9 +171,9 @@ export class WorkspaceYDocDurableObject {
     }
 
     if (request.method === 'POST' && url.pathname.endsWith('/migrate')) {
-      if (!userId) return new Response('Missing user id', { status: 400 });
+      if (!identity.userId) return new Response('Missing user id', { status: 400 });
       const snapshot = (await request.json()) as WorkspaceMigrationSnapshot;
-      const result = applyWorkspaceMigrationSnapshot(doc, userId, snapshot);
+      const result = applyWorkspaceMigrationSnapshot(doc, identity.userId, snapshot);
       await this.awaitPersisted();
       await this.compact();
       return Response.json(result);
@@ -178,9 +189,17 @@ export class WorkspaceYDocDurableObject {
 
   async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
     if (typeof message === 'string') return;
-    this.restoreSocketAttachment(ws);
+    let doc: Y.Doc;
+    try {
+      doc = await this.loadDoc(this.readSocketIdentity(ws));
+    } catch (error) {
+      if (error instanceof WorkspaceYDocIdentityMismatchError) {
+        ws.close(1008, 'Workspace access denied');
+        return;
+      }
+      throw error;
+    }
     if ((await this.authorizeSockets([ws])).length === 0) return;
-    const doc = await this.loadDoc();
     const decoder = decoding.createDecoder(new Uint8Array(message));
     let messageType = decoding.readVarUint(decoder);
     let requestId: number | undefined;
@@ -211,9 +230,9 @@ export class WorkspaceYDocDurableObject {
   }
 
   async webSocketClose(ws: WebSocket, code: number, _reason: string, wasClean: boolean) {
-    this.restoreSocketAttachment(ws);
+    const identity = this.readSocketIdentity(ws);
     logWorkspaceYDocHealth('close', {
-      workspaceId: this.workspaceId,
+      workspaceId: this.workspaceId ?? identity.workspaceId,
       connectedSockets: this.connectedSocketCount(),
       compactCount: this.compactCount,
       closeCode: code,
@@ -222,9 +241,9 @@ export class WorkspaceYDocDurableObject {
   }
 
   async webSocketError(ws: WebSocket, error: unknown) {
-    this.restoreSocketAttachment(ws);
+    const identity = this.readSocketIdentity(ws);
     logWorkspaceYDocHealth('error', {
-      workspaceId: this.workspaceId,
+      workspaceId: this.workspaceId ?? identity.workspaceId,
       connectedSockets: this.connectedSocketCount(),
       compactCount: this.compactCount,
       errorMessage: error instanceof Error ? error.message : String(error),
@@ -246,16 +265,23 @@ export class WorkspaceYDocDurableObject {
     }
   }
 
-  private async loadDoc() {
-    if (this.loadPromise) return this.loadPromise;
-    if (this.doc) return this.doc;
+  private async loadDoc(identity: WorkspaceYDocIdentity = {}) {
+    if (this.loadPromise) {
+      const doc = await this.loadPromise;
+      this.bindIdentity(identity);
+      return doc;
+    }
+    if (this.doc) {
+      this.bindIdentity(identity);
+      return this.doc;
+    }
 
     const doc = new Y.Doc();
     this.loadPromise = (async () => {
       const startedAt = Date.now();
       const { meta, snapshot, updates } = await readWorkspaceYDocStorage(this.state.storage);
       if (meta) {
-        this.workspaceId = meta.workspaceId ?? this.workspaceId;
+        this.bindIdentity(meta);
         this.nextSeq = meta.nextSeq;
         this.updateCount = meta.updateCount;
         this.updateBytes = meta.updateBytes;
@@ -263,8 +289,8 @@ export class WorkspaceYDocDurableObject {
         this.lastCheckpointSeq = meta.lastCheckpointSeq ?? 0;
         this.compactCount = meta.compactCount ?? 0;
         this.checkpointFailedAt = meta.checkpointFailedAt;
-        this.userId = meta.userId ?? this.userId;
       }
+      this.bindIdentity(identity);
 
       if (snapshot) {
         Y.applyUpdate(doc, snapshot, this);
@@ -299,7 +325,9 @@ export class WorkspaceYDocDurableObject {
       .catch((error: unknown) => {
         this.doc = null;
         doc.destroy();
-        console.error('[workspace-yjs-do] load failed', error);
+        if (!(error instanceof WorkspaceYDocIdentityMismatchError)) {
+          console.error('[workspace-yjs-do] load failed', error);
+        }
         throw error;
       })
       .finally(() => {
@@ -585,11 +613,30 @@ export class WorkspaceYDocDurableObject {
     };
   }
 
-  private restoreSocketAttachment(ws: WebSocket) {
-    // Hibernation restarts the constructor, so socket-scoped identity must come from attachment.
+  private readSocketIdentity(ws: WebSocket): WorkspaceYDocIdentity {
     const attachment = ws.deserializeAttachment?.();
-    if (!isSocketAttachment(attachment)) return;
-    this.workspaceId = attachment.workspaceId ?? this.workspaceId;
-    this.userId = attachment.userId ?? this.userId;
+    if (!isSocketAttachment(attachment)) return {};
+    return { workspaceId: attachment.workspaceId, userId: attachment.userId };
+  }
+
+  private bindIdentity(identity: WorkspaceYDocIdentity) {
+    if (identity.workspaceId) {
+      if (this.workspaceId && this.workspaceId !== identity.workspaceId) {
+        throw new WorkspaceYDocIdentityMismatchError();
+      }
+      if (!this.workspaceId) {
+        this.workspaceId = identity.workspaceId;
+        this.authCache = null;
+      }
+    }
+    if (identity.userId) {
+      if (this.userId && this.userId !== identity.userId) {
+        throw new WorkspaceYDocIdentityMismatchError();
+      }
+      if (!this.userId) {
+        this.userId = identity.userId;
+        this.authCache = null;
+      }
+    }
   }
 }

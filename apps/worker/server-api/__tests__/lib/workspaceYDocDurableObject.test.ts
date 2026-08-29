@@ -126,6 +126,85 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     vi.restoreAllMocks();
   });
 
+  it('rejects request identity changes after the object is bound', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const doc = new Y.Doc();
+    doc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(doc));
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+
+    expect((await object.fetch(createRequest('/state'))).status).toBe(200);
+    const mismatch = await object.fetch(
+      new Request('http://localhost/state', {
+        headers: {
+          'x-ddlbuilder-workspace-id': 'ws-2',
+          'x-ddlbuilder-user-id': 'user-2',
+        },
+      }),
+    );
+
+    expect(mismatch.status).toBe(409);
+    expect(await mismatch.text()).toBe('Workspace identity mismatch');
+    expect((await object.fetch(createRequest('/state'))).status).toBe(200);
+    doc.destroy();
+  });
+
+  it('prefers stored identity over mismatched cold-start headers', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const doc = new Y.Doc();
+    doc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(doc));
+    store.set('meta', {
+      workspaceId: 'ws-1',
+      userId: 'user-1',
+      schemaVersion: 1,
+      nextSeq: 0,
+      updateCount: 0,
+      updateBytes: 0,
+      updatedAt: 1,
+      lastCompactedSeq: 0,
+      lastCheckpointSeq: 0,
+    });
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+
+    const mismatch = await object.fetch(
+      new Request('http://localhost/state', {
+        headers: {
+          'x-ddlbuilder-workspace-id': 'ws-2',
+          'x-ddlbuilder-user-id': 'user-2',
+        },
+      }),
+    );
+
+    expect(mismatch.status).toBe(409);
+    expect((await object.fetch(createRequest('/state'))).status).toBe(200);
+    doc.destroy();
+  });
+
+  it('closes sockets whose attachment identity differs from the object', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const doc = new Y.Doc();
+    doc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(doc));
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+    await object.fetch(createRequest('/state'));
+    const socket = createWebSocket({
+      schemaVersion: 1,
+      workspaceId: 'ws-2',
+      userId: 'user-2',
+      sessionId: 'session-1',
+    });
+
+    await object.webSocketMessage(socket, trackedUpdate(Y.encodeStateAsUpdate(doc), 1));
+
+    expect(socket.close).toHaveBeenCalledWith(1008, 'Workspace access denied');
+    expect(socket.send).not.toHaveBeenCalled();
+    doc.destroy();
+  });
+
   it('batches queued updates and reads the alarm only once', async () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
