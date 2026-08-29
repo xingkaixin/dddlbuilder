@@ -63,11 +63,15 @@ export function useDDLExplain() {
             throw new Error(i18n.t('services.noResponseBody'));
           }
 
+          const requestId = response.headers?.get?.('X-Request-Id') ?? null;
+          const forceDebug = response.headers?.get?.('X-AI-Stream-Debug') === '1';
+
           commitIfCurrent(() => {
             setState({ phase: 'streaming', explanation: '', error: null });
           });
 
           const explanation = await readTextStream(response.body, {
+            debugContext: { route: 'explain', requestId, forceDebug },
             onUpdate: (nextExplanation) => {
               commitIfCurrent(() => {
                 setState((previous) => ({ ...previous, explanation: nextExplanation }));

@@ -110,6 +110,37 @@ describe('useDDLExplain', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('should pass server stream debug context to the stream reader', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: new ReadableStream(),
+      headers: new Headers({
+        'X-AI-Stream-Debug': '1',
+        'X-Request-Id': 'request-123',
+      }),
+      json: vi.fn(),
+    } as unknown as Response);
+    streamingMocks.readTextStream.mockResolvedValue('explanation');
+
+    const { result } = renderDDLExplainHook();
+
+    await act(async () => {
+      await result.current.startExplain('SELECT 1');
+    });
+
+    expect(streamingMocks.readTextStream).toHaveBeenCalledWith(
+      expect.any(ReadableStream),
+      expect.objectContaining({
+        debugContext: {
+          route: 'explain',
+          requestId: 'request-123',
+          forceDebug: true,
+        },
+      }),
+    );
+  });
+
   it('should send the current locale after switching language', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
