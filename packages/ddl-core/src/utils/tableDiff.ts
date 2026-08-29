@@ -12,8 +12,9 @@ import {
 } from '@ddlbuilder/shared-types';
 
 import { buildCitusShardingDDL, buildMysqlPartitionClause } from './tableFeatures';
-import { getDatabaseFamily, supportsMysqlPartition } from './databaseFamily';
+import { supportsMysqlPartition } from './databaseFamily';
 import { resolveFieldComment } from './fieldComment';
+import { getSqlIdentifierKey } from './sqlIdentifiers';
 
 /**
  * 字段变更类型
@@ -182,14 +183,10 @@ function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): 
 function createMatchedFieldDiff(
   oldField: NormalizedField,
   newField: NormalizedField,
-  caseSensitive: boolean,
+  dbType: PersistedState['dbType'],
 ) {
   const changes = getFieldChanges(oldField, newField);
-  if (
-    caseSensitive
-      ? oldField.name !== newField.name
-      : oldField.name.toLowerCase() !== newField.name.toLowerCase()
-  ) {
+  if (getSqlIdentifierKey(oldField.name, dbType) !== getSqlIdentifierKey(newField.name, dbType)) {
     return {
       type: 'rename',
       fieldName: newField.name,
@@ -213,7 +210,7 @@ function createMatchedFieldDiff(
 function diffFields(
   oldFields: DiffField[],
   newFields: DiffField[],
-  caseSensitive: boolean,
+  dbType: PersistedState['dbType'],
 ): FieldDiff[] {
   const diffs: FieldDiff[] = [];
   const unmatchedOld = new Set(oldFields.map((_, index) => index));
@@ -225,7 +222,7 @@ function diffFields(
     const diff = createMatchedFieldDiff(
       oldFields[oldIndex].field,
       newFields[newIndex].field,
-      caseSensitive,
+      dbType,
     );
     if (diff) diffs.push(diff);
   };
@@ -243,9 +240,10 @@ function diffFields(
     const oldField = oldFields[oldIndex];
     const candidates = Array.from(unmatchedNew).filter((newIndex) => {
       const newField = newFields[newIndex];
-      return caseSensitive
-        ? oldField.field.name === newField.field.name
-        : oldField.field.name.toLowerCase() === newField.field.name.toLowerCase();
+      return (
+        getSqlIdentifierKey(oldField.field.name, dbType) ===
+        getSqlIdentifierKey(newField.field.name, dbType)
+      );
     });
     if (candidates.length === 1) match(oldIndex, candidates[0]);
   }
@@ -301,8 +299,7 @@ function normalizeMiscConfig(config?: TableMiscConfig): TableMiscConfig {
 /**
  * 生成索引的唯一标识（用于比较）
  */
-function getIndexSignature(index: IndexDefinition): string {
-  const fieldsSig = index.fields.map((f) => `${f.name}:${f.direction}`).join(',');
+function getIndexSignature(index: IndexDefinition, dbType: PersistedState['dbType']): string {
   const prefix =
     index.kind === 'primary'
       ? 'PK'
@@ -311,7 +308,26 @@ function getIndexSignature(index: IndexDefinition): string {
         : index.kind !== 'index'
           ? 'UQ'
           : 'IX';
-  return `${prefix}:${index.name}:${fieldsSig}`;
+  return JSON.stringify([
+    prefix,
+    getSqlIdentifierKey(index.name, dbType),
+    index.fields.map((field) => [getSqlIdentifierKey(field.name, dbType), field.direction]),
+  ]);
+}
+
+function getForeignKeySignature(
+  foreignKey: ForeignKeyDefinition,
+  dbType: PersistedState['dbType'],
+): string {
+  return JSON.stringify([
+    getSqlIdentifierKey(foreignKey.name, dbType),
+    foreignKey.fields.map((field) => getSqlIdentifierKey(field, dbType)),
+    getSqlIdentifierKey(foreignKey.refSchema || '', dbType),
+    getSqlIdentifierKey(foreignKey.refTable, dbType),
+    foreignKey.refFields.map((field) => getSqlIdentifierKey(field, dbType)),
+    foreignKey.onDelete || '',
+    foreignKey.onUpdate || '',
+  ]);
 }
 
 function getManualSchemaChanges(
@@ -351,6 +367,7 @@ function getManualSchemaChanges(
  * 对比两个 PersistedState，生成变更详情
  */
 export function diffPersistedState(oldState: PersistedState, newState: PersistedState): TableDiff {
+  const dbType = newState.dbType;
   const result: TableDiff = {
     hasChanges: false,
     tableNameChanged: false,
@@ -367,13 +384,16 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   };
 
   // 1. 表名变更
-  if (result.oldSchemaName !== result.newSchemaName) {
+  if (
+    getSqlIdentifierKey(result.oldSchemaName || '', dbType) !==
+    getSqlIdentifierKey(result.newSchemaName || '', dbType)
+  ) {
     result.schemaNameChanged = true;
     result.hasChanges = true;
   }
   const oldTableName = oldState.tableName?.trim() || '';
   const newTableName = newState.tableName?.trim() || '';
-  if (oldTableName !== newTableName) {
+  if (getSqlIdentifierKey(oldTableName, dbType) !== getSqlIdentifierKey(newTableName, dbType)) {
     result.tableNameChanged = true;
     result.oldTableName = oldTableName;
     result.newTableName = newTableName;
@@ -403,11 +423,7 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   // 3. 字段变更
   const oldFields = extractFields(oldState);
   const newFields = extractFields(newState);
-  result.fields = diffFields(
-    oldFields,
-    newFields,
-    getDatabaseFamily(newState.dbType) === 'postgresql',
-  );
+  result.fields = diffFields(oldFields, newFields, dbType);
   if (result.fields.length > 0) result.hasChanges = true;
 
   // 4. 索引变更
@@ -416,12 +432,12 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
 
   const oldIndexSigs = new Map<string, IndexDefinition>();
   for (const idx of oldIndexes) {
-    oldIndexSigs.set(getIndexSignature(idx), idx);
+    oldIndexSigs.set(getIndexSignature(idx, dbType), idx);
   }
 
   const newIndexSigs = new Map<string, IndexDefinition>();
   for (const idx of newIndexes) {
-    newIndexSigs.set(getIndexSignature(idx), idx);
+    newIndexSigs.set(getIndexSignature(idx, dbType), idx);
   }
 
   // 检测删除的索引
@@ -444,21 +460,14 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   const oldForeignKeys = oldState.foreignKeys || [];
   const newForeignKeys = newState.foreignKeys || [];
 
-  function getForeignKeySignature(fk: ForeignKeyDefinition): string {
-    const fieldsSig = fk.fields.join(',');
-    const refSig = `${fk.refSchema || ''}.${fk.refTable}(${fk.refFields.join(',')})`;
-    const actionSig = `${fk.onDelete || ''}|${fk.onUpdate || ''}`;
-    return `${fk.name}:${fieldsSig}:${refSig}:${actionSig}`;
-  }
-
   const oldFkSigs = new Map<string, ForeignKeyDefinition>();
   for (const fk of oldForeignKeys) {
-    oldFkSigs.set(getForeignKeySignature(fk), fk);
+    oldFkSigs.set(getForeignKeySignature(fk, dbType), fk);
   }
 
   const newFkSigs = new Map<string, ForeignKeyDefinition>();
   for (const fk of newForeignKeys) {
-    newFkSigs.set(getForeignKeySignature(fk), fk);
+    newFkSigs.set(getForeignKeySignature(fk, dbType), fk);
   }
 
   // 检测删除的外键

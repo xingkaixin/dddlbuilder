@@ -432,6 +432,148 @@ describe('diffPersistedState', () => {
     expect(diff.hasChanges).toBe(false);
   });
 
+  it.each(['oracle', 'oceanbase-oracle', 'dm'] as const)(
+    '%s folds unquoted identifiers across schema objects',
+    (dbType) => {
+      const before = createPersistedState({
+        dbType,
+        schemaName: 'app',
+        tableName: 'orders',
+        rows: [createRow({ id: 'field-id', fieldName: 'id' })],
+        indexes: [
+          {
+            id: 'index-id',
+            name: 'idx_id',
+            fields: [{ name: 'id', direction: 'ASC' }],
+            kind: 'index',
+          },
+        ],
+        foreignKeys: [
+          {
+            id: 'foreign-key-id',
+            name: 'fk_user',
+            fields: ['id'],
+            refSchema: 'app',
+            refTable: 'users',
+            refFields: ['id'],
+          },
+        ],
+      });
+      const after = createPersistedState({
+        ...before,
+        schemaName: 'APP',
+        tableName: 'ORDERS',
+        rows: [createRow({ id: 'field-id', fieldName: 'ID' })],
+        indexes: [
+          {
+            id: 'index-id',
+            name: 'IDX_ID',
+            fields: [{ name: 'ID', direction: 'ASC' }],
+            kind: 'index',
+          },
+        ],
+        foreignKeys: [
+          {
+            id: 'foreign-key-id',
+            name: 'FK_USER',
+            fields: ['ID'],
+            refSchema: 'APP',
+            refTable: 'USERS',
+            refFields: ['ID'],
+          },
+        ],
+      });
+
+      expect(diffPersistedState(before, after)).toMatchObject({
+        hasChanges: false,
+        schemaNameChanged: false,
+        tableNameChanged: false,
+        fields: [],
+        indexes: [],
+        foreignKeys: [],
+      });
+    },
+  );
+
+  it.each(['oracle', 'oceanbase-oracle', 'dm'] as const)(
+    '%s preserves quoted identifier identity in table diffs',
+    (dbType) => {
+      const before = createPersistedState({
+        dbType,
+        schemaName: 'APP',
+        tableName: 'ORDERS',
+        rows: [createRow({ id: 'field-id', fieldName: 'ID' })],
+      });
+      const after = createPersistedState({
+        ...before,
+        schemaName: '"app"',
+        tableName: '"orders"',
+        rows: [createRow({ id: 'field-id', fieldName: '"id"' })],
+      });
+      const diff = diffPersistedState(before, after);
+
+      expect(diff).toMatchObject({
+        hasChanges: true,
+        schemaNameChanged: true,
+        tableNameChanged: true,
+        fields: [
+          {
+            type: 'rename',
+            oldFieldName: 'ID',
+            newFieldName: '"id"',
+          },
+        ],
+      });
+    },
+  );
+
+  it('does not conflate quoted punctuation across index and foreign key parts', () => {
+    const before = createPersistedState({
+      dbType: 'oracle',
+      indexes: [
+        {
+          id: 'index-id',
+          name: '"A:B"',
+          fields: [{ name: 'C', direction: 'ASC' }],
+          kind: 'index',
+        },
+      ],
+      foreignKeys: [
+        {
+          id: 'foreign-key-id',
+          name: '"A:B"',
+          fields: ['C'],
+          refTable: 'USERS',
+          refFields: ['ID'],
+        },
+      ],
+    });
+    const after = createPersistedState({
+      ...before,
+      indexes: [
+        {
+          id: 'index-id',
+          name: 'A',
+          fields: [{ name: '"B:C"', direction: 'ASC' }],
+          kind: 'index',
+        },
+      ],
+      foreignKeys: [
+        {
+          id: 'foreign-key-id',
+          name: 'A',
+          fields: ['"B:C"'],
+          refTable: 'USERS',
+          refFields: ['ID'],
+        },
+      ],
+    });
+    const diff = diffPersistedState(before, after);
+
+    expect(diff.indexes.map((change) => change.type)).toEqual(['remove', 'add']);
+    expect(diff.foreignKeys.map((change) => change.type)).toEqual(['remove', 'add']);
+  });
+
   it('handles empty rows gracefully', () => {
     const oldState = createPersistedState({ rows: [] });
     const newState = createPersistedState({ rows: [] });

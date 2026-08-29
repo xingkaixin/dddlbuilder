@@ -32,10 +32,7 @@ function orderFieldRenames(fields: FieldDiff[], dbType: DatabaseType): FieldDiff
   const renames = fields.filter(
     (field) => field.type === 'rename' && field.oldFieldName && field.newFieldName,
   );
-  const key = (name: string | undefined) => {
-    const value = name?.trim() ?? '';
-    return getDatabaseFamily(dbType) === 'postgresql' ? value : value.toLowerCase();
-  };
+  const key = (name: string | undefined) => getSqlIdentifierKey(name ?? '', dbType);
   const oldNames = new Set(renames.map((field) => key(field.oldFieldName)));
   const byTarget = new Map(renames.map((field) => [key(field.newFieldName), field]));
   const ordered = renames.filter((field) => !oldNames.has(key(field.newFieldName)));

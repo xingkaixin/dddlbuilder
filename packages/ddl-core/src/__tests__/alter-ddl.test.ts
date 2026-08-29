@@ -426,6 +426,28 @@ describe('generateAlterDDL', () => {
     },
   );
 
+  it.each(['oracle', 'oceanbase-oracle', 'dm'] as const)(
+    '%s orders equivalent quoted and unquoted rename targets',
+    (dbType) => {
+      const diff = createTableDiff({
+        fields: [createRename('A', 'b'), createRename('"B"', 'C')],
+      });
+
+      expect(generateAlterDDL('users', diff, [], dbType)).toBe(
+        [
+          'ALTER TABLE users RENAME COLUMN "B" TO C;',
+          'ALTER TABLE users RENAME COLUMN A TO b;',
+        ].join('\n\n'),
+      );
+      expect(generateRollbackDDL('users', diff, [], dbType)).toBe(
+        [
+          'ALTER TABLE users RENAME COLUMN b TO A;',
+          'ALTER TABLE users RENAME COLUMN C TO "B";',
+        ].join('\n\n'),
+      );
+    },
+  );
+
   it('changes column properties only after freeing the rename target', () => {
     const diff = createTableDiff({
       fields: [
