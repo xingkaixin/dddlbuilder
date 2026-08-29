@@ -333,6 +333,7 @@ export const zhCNCommon = {
     addPrimary: '添加主键',
     addPrimaryTip: '添加主键索引',
     primaryExists: '已存在主键',
+    duplicateName: '已存在同名索引',
     suggestionAria: '字段建议',
     removeFieldTip: '移除字段',
     addedTitle: '已添加的索引',

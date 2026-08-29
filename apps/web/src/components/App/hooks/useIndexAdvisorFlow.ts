@@ -13,6 +13,7 @@ import {
   buildIndexName,
   getIdentifierNameMaxLength as getIndexNameMaxLength,
 } from '@ddlbuilder/ddl-core';
+import { insertIndexDefinition } from '@/stores/indexDefinitionMutations';
 import { useTranslation } from 'react-i18next';
 import type { BuilderTab } from '@/utils/tabUtils';
 
@@ -169,7 +170,10 @@ export function useIndexAdvisorFlow({
         kind: recommendation.index.unique ? 'unique_index' : 'index',
       };
 
-      setIndexes((current) => [...current, nextIndex]);
+      setIndexes((current) => {
+        const result = insertIndexDefinition(current, nextIndex);
+        return result.ok ? result.indexes : current;
+      });
       setActiveTab('indexes');
       showToast(t('aiIndexAdvisor.indexApplied'));
     },

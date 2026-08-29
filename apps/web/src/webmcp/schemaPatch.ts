@@ -18,6 +18,11 @@ import {
   validateDocumentFields,
   validateUniqueFieldNames,
 } from '@/stores/editorDocumentValidation';
+import {
+  describeIndexWriteFailure,
+  insertIndexDefinition,
+  replaceIndexDefinition,
+} from '@/stores/indexDefinitionMutations';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -222,16 +227,6 @@ export function parseSchemaPatchOperations(value: unknown): SchemaPatchOperation
   });
 }
 
-const assertUniqueIndexName = (indexes: IndexDefinition[], name: string, exceptId?: string) => {
-  if (
-    indexes.some(
-      (index) => index.id !== exceptId && index.name.trim().toLowerCase() === name.toLowerCase(),
-    )
-  ) {
-    throw new Error(`Duplicate index name: ${name}`);
-  }
-};
-
 export function applySchemaPatchOperations(
   baseState: PersistedState,
   operations: SchemaPatchOperation[],
@@ -296,27 +291,19 @@ export function applySchemaPatchOperations(
         break;
       }
       case 'index.add': {
-        assertUniqueIndexName(state.indexes, operation.index.name);
-        state = {
-          ...state,
-          indexes: [...state.indexes, { ...operation.index, id: createEntityId() }],
-        };
+        const candidate = { ...operation.index, id: createEntityId() };
+        const result = insertIndexDefinition(state.indexes, candidate);
+        if (!result.ok) throw new Error(describeIndexWriteFailure(result.reason, candidate));
+        state = { ...state, indexes: result.indexes };
         break;
       }
       case 'index.update': {
         const target = state.indexes.find((index) => index.id === operation.indexId);
         if (!target) throw new Error(`Index not found: ${operation.indexId}`);
-        if (operation.changes.name) {
-          assertUniqueIndexName(state.indexes, operation.changes.name, operation.indexId);
-        }
-        state = {
-          ...state,
-          indexes: state.indexes.map((index) =>
-            index.id === operation.indexId
-              ? { ...index, ...operation.changes, id: index.id }
-              : index,
-          ),
-        };
+        const candidate = { ...target, ...operation.changes, id: target.id };
+        const result = replaceIndexDefinition(state.indexes, candidate);
+        if (!result.ok) throw new Error(describeIndexWriteFailure(result.reason, candidate));
+        state = { ...state, indexes: result.indexes };
         break;
       }
       case 'index.remove': {

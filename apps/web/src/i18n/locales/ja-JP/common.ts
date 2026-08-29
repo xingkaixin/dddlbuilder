@@ -350,6 +350,7 @@ export const jaJPCommon = {
     addPrimary: '主キーの追加',
     addPrimaryTip: '主キーインデックスを追加する',
     primaryExists: '主キーはすでに存在します',
+    duplicateName: '同じ名前のインデックスがすでに存在します',
     suggestionAria: 'フィールドの提案',
     removeFieldTip: 'フィールドを削除',
     addedTitle: '追加されたインデックス',

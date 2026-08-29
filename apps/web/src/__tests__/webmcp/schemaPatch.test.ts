@@ -34,8 +34,6 @@ const createState = (): PersistedState => ({
     },
   ],
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [{ name: 'user_id', direction: 'ASC' }],
   indexes: [
     {
       id: 'index-user',
@@ -127,7 +125,6 @@ describe('WebMCP schema patch', () => {
     ]);
 
     expect(next.rows[1].fieldName).toBe('account_id');
-    expect(next.currentIndexFields[0].name).toBe('account_id');
     expect(next.indexes[0].fields[0].name).toBe('account_id');
     expect(next.indexes[0].name).toBe('idx_orders_account_id');
     expect(next.foreignKeys?.[0].fields).toEqual(['account_id']);
@@ -151,7 +148,6 @@ describe('WebMCP schema patch', () => {
     expect(toEditorDocumentState(useEditorStore.getState())).toEqual(
       toEditorDocumentState(expected),
     );
-    expect(expected.currentIndexFields[0].name).toBe(fieldName);
   });
 
   it('removes dependent definitions when a referenced field is deleted', () => {
@@ -524,5 +520,29 @@ describe('WebMCP schema patch', () => {
         },
       ]),
     ).toThrow('Duplicate index name: IDX_ORDERS_STATUS');
+  });
+
+  it('rejects adding a second primary index', () => {
+    const base = createState();
+    base.indexes.push({
+      id: 'primary',
+      name: 'pk_orders',
+      fields: [{ name: 'id', direction: 'ASC' }],
+      kind: 'primary',
+    });
+
+    expect(() =>
+      applySchemaPatchOperations(base, [
+        {
+          id: 'second-primary',
+          kind: 'index.add',
+          index: {
+            name: 'pk_orders_2',
+            fields: [{ name: 'user_id', direction: 'ASC' }],
+            kind: 'primary',
+          },
+        },
+      ]),
+    ).toThrow('Primary index already exists');
   });
 });

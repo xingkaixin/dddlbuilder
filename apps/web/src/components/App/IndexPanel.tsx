@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/useToast';
 import { DragDropVerticalIcon, Hash, Key, Lock, Pencil, Trash2, X } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { buildNormalizedFields, useEditorStore } from '@/stores';
+import { insertIndexDefinition, replaceIndexDefinition } from '@/stores/indexDefinitionMutations';
 import {
   buildIndexName,
   getIdentifierNameMaxLength as getIndexNameMaxLength,
@@ -147,31 +148,28 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
   const saveDraft = () => {
     if (draft.fields.length === 0) return;
     const latestIndexes = useEditorStore.getState().indexes;
-    if (draft.id && !latestIndexes.some((index) => index.id === draft.id)) {
-      setDraft({ ...draft, id: null });
-      showToast(t('indexPanel.sourceRemoved'));
-      return;
-    }
-    if (
-      draft.type === 'primary' &&
-      latestIndexes.some((index) => index.kind === 'primary' && index.id !== draft.id)
-    ) {
-      showToast(t('indexPanel.primaryExists'));
-      return;
-    }
-
     const nextIndex: IndexDefinition = {
       id: draft.id ?? createEntityId(),
       name: buildDraftName(),
       fields: [...draft.fields],
       kind: draft.type,
     };
+    const result = draft.id
+      ? replaceIndexDefinition(latestIndexes, nextIndex)
+      : insertIndexDefinition(latestIndexes, nextIndex);
+    if (!result.ok) {
+      if (result.reason === 'not-found') {
+        setDraft({ ...draft, id: null });
+        showToast(t('indexPanel.sourceRemoved'));
+      } else if (result.reason === 'primary-exists') {
+        showToast(t('indexPanel.primaryExists'));
+      } else {
+        showToast(t('indexPanel.duplicateName'));
+      }
+      return;
+    }
 
-    setIndexes((prev) =>
-      draft.id
-        ? prev.map((index) => (index.id === draft.id ? nextIndex : index))
-        : [...prev, nextIndex],
-    );
+    setIndexes(result.indexes);
     setPanel({ kind: 'view', id: nextIndex.id });
     setFieldQuery('');
   };

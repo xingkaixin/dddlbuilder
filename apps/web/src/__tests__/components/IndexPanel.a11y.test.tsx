@@ -88,6 +88,30 @@ describe('IndexPanel a11y', () => {
       expect.objectContaining({ name: 'local_draft_index' }),
     ]);
   });
+
+  it('rejects creating a duplicate index name', async () => {
+    useEditorStore.getState().setIndexes([
+      {
+        id: 'existing',
+        name: 'idx_orders_id',
+        fields: [{ name: 'id', direction: 'ASC' }],
+        kind: 'index',
+      },
+    ]);
+    render(<IndexPanel />);
+    fireEvent.click(screen.getByRole('button', { name: '添加索引' }));
+    fireEvent.change(screen.getByPlaceholderText('留空则自动生成'), {
+      target: { value: 'IDX_ORDERS_ID' },
+    });
+    const fieldInput = screen.getByPlaceholderText('输入字段名进行匹配...');
+    fireEvent.change(fieldInput, { target: { value: 'user_id' } });
+    fireEvent.click(await screen.findByRole('option', { name: 'user_id' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存索引' }));
+
+    expect(useEditorStore.getState().indexes).toHaveLength(1);
+    expect(screen.getByDisplayValue('IDX_ORDERS_ID')).toBeInTheDocument();
+  });
+
   beforeEach(() => {
     setupStores();
   });

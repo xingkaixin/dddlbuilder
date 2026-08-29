@@ -347,6 +347,7 @@ export const enUSCommon = {
     addPrimary: 'Add Primary Key',
     addPrimaryTip: 'Add primary key index',
     primaryExists: 'Primary key already exists',
+    duplicateName: 'An index with this name already exists',
     suggestionAria: 'Field suggestions',
     removeFieldTip: 'Remove field',
     addedTitle: 'Added indexes',
