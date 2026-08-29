@@ -38,8 +38,6 @@ function createBaseState(): PersistedState {
       },
     ],
     addCount: 10,
-    indexInput: '',
-    currentIndexFields: [],
     indexes: [
       {
         id: 'idx-phone',

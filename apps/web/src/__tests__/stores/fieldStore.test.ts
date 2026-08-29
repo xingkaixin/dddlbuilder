@@ -45,10 +45,6 @@ describe('fieldStore', () => {
     const userIdRow = { ...createEmptyRow(1), fieldName: 'user_id' };
     useEditorStore.setState({
       rows: [idRow, userIdRow],
-      currentIndexFields: [
-        { name: 'id', direction: 'ASC' },
-        { name: 'user_id', direction: 'ASC' },
-      ],
       indexes: [
         {
           id: 'kept-index',
@@ -93,7 +89,6 @@ describe('fieldStore', () => {
 
     const current = useEditorStore.getState();
     expect(current.rows).toEqual([idRow]);
-    expect(current.currentIndexFields).toEqual([{ name: 'id', direction: 'ASC' }]);
     expect(current.indexes.map((index) => index.id)).toEqual(['kept-index']);
     expect(current.foreignKeys).toEqual([]);
     expect(current.mysqlPartitionConfig).toMatchObject({ enabled: false, columns: [] });

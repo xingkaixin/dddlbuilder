@@ -41,8 +41,6 @@ describe('foreign key referential actions', () => {
       indexes: [],
       foreignKeys: [foreignKey],
       addCount: 1,
-      indexInput: '',
-      currentIndexFields: [],
       authInput: '',
       authObjects: [],
     };

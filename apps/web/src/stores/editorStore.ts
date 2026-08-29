@@ -15,7 +15,7 @@ import { createEmptyRow } from '@/utils/helpers';
 export const useEditorStore = create<EditorStoreState>((set, get) => ({
   ...createAppSlice(set),
   ...createFieldSlice(set),
-  ...createIndexSlice(set, get),
+  ...createIndexSlice(set),
   ...createForeignKeySlice(set),
   ...createAuthSlice(set, get),
   ...createShardingSlice(set),
@@ -31,10 +31,5 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
         return rowIndex >= index && rowIndex < index + amount;
       }),
     ),
-  replaceDocument: (state) =>
-    set({
-      ...toEditorDocumentState(state),
-      showFieldSuggestions: false,
-      selectedSuggestionIndex: 0,
-    }),
+  replaceDocument: (state) => set(toEditorDocumentState(state)),
 }));

@@ -50,8 +50,15 @@ it('增删索引、修改表名和数据库不改写已有索引名', async () =
   await loadTable();
   const store = useEditorStore.getState();
   act(() => {
-    store.addFieldToIndex('id');
-    store.addIndex('index', 'users', 'mysql');
+    store.setIndexes((indexes) => [
+      ...indexes,
+      {
+        id: 'users-id-index',
+        name: 'idx_users_id',
+        fields: [{ name: 'id', direction: 'ASC' }],
+        kind: 'index',
+      },
+    ]);
   });
   expect(useEditorStore.getState().indexes.map((index) => index.name)).toEqual([
     'email_lookup',

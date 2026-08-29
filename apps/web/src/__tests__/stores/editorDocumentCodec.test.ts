@@ -27,8 +27,6 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
     },
   ],
   addCount: 10,
-  indexInput: 'idx_accounts_id',
-  currentIndexFields: [{ name: 'id', direction: 'ASC' }],
   indexes: [
     {
       id: 'index-id',

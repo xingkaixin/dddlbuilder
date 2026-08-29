@@ -27,8 +27,6 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
   sqlFormatMode: 'compact',
   rows: [],
   addCount: 1,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

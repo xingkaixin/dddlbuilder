@@ -11,8 +11,6 @@ const state: PersistedState = {
   sqlFormatMode: 'compact',
   rows: [],
   addCount: 0,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: 'grant_input',
   authObjects: ['reader'],

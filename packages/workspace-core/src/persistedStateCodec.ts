@@ -308,8 +308,6 @@ const hasExternalStateShape = (value: Record<string, unknown>) =>
   Array.isArray(value.rows) &&
   typeof value.addCount === 'number' &&
   Number.isFinite(value.addCount) &&
-  typeof value.indexInput === 'string' &&
-  Array.isArray(value.currentIndexFields) &&
   Array.isArray(value.indexes) &&
   typeof value.authInput === 'string' &&
   Array.isArray(value.authObjects);
@@ -357,8 +355,6 @@ export const decodePersistedState = (
       : {}),
     rows: decodeRows(value.rows),
     addCount: normalizeAddCount(value.addCount),
-    indexInput: toText(value.indexInput),
-    currentIndexFields: decodeIndexFields(value.currentIndexFields),
     indexes: decodeIndexDefinitions(value.indexes),
     authInput: toText(value.authInput),
     authObjects: toStringArray(value.authObjects),

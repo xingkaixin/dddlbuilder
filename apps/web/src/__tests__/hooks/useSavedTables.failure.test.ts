@@ -70,8 +70,6 @@ const createState = (name: string) => ({
   dbType: 'mysql' as const,
   rows: [],
   addCount: 1,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

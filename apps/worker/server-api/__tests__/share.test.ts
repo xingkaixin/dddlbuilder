@@ -16,8 +16,6 @@ const buildState = () => ({
   dbType: 'mysql',
   rows: [],
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

@@ -14,8 +14,6 @@ function createState(name: string): PersistedState {
     sqlFormatMode: 'compact',
     rows: [],
     addCount: 10,
-    indexInput: '',
-    currentIndexFields: [],
     indexes: [],
     authInput: '',
     authObjects: [],

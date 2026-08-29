@@ -64,8 +64,6 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
         sqlFormatMode: 'compact',
         rows: INITIAL_ROWS,
         addCount: 4,
-        indexInput: '',
-        currentIndexFields: [],
         indexes: [],
         authInput: '',
         authObjects: [],

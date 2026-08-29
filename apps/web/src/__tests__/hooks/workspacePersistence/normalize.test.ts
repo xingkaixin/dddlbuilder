@@ -42,8 +42,6 @@ describe('workspacePersistence/normalize', () => {
         'invalid-row',
       ],
       addCount: 'x',
-      indexInput: 1,
-      currentIndexFields: [{ name: 'id', direction: 'DESC' }, { name: '', direction: 'ASC' }, null],
       indexes: [
         {
           id: 1,
@@ -70,7 +68,6 @@ describe('workspacePersistence/normalize', () => {
       dbType: 'mysql',
       sqlFormatMode: 'compact',
       addCount: 10,
-      indexInput: '',
       authInput: '',
       authObjects: ['u1', 'u2'],
       citusShardingConfig: { mode: 'reference' },
@@ -101,7 +98,7 @@ describe('workspacePersistence/normalize', () => {
       },
     ]);
 
-    expect(result?.currentIndexFields).toEqual([{ name: 'id', direction: 'DESC' }]);
+    expect(result).not.toHaveProperty('currentIndexFields');
     expect(result?.indexes).toHaveLength(1);
     expect(result?.indexes[0].name).toBe('idx_users_id');
     expect(result?.indexes[0].id).toBe('legacy-index-0');
@@ -135,8 +132,6 @@ describe('workspacePersistence/normalize', () => {
         },
       ],
       addCount: 10,
-      indexInput: '',
-      currentIndexFields: [],
       indexes: [],
       authInput: '',
       authObjects: [],
@@ -154,8 +149,6 @@ describe('workspacePersistence/normalize', () => {
       dbType: 'postgresql',
       rows: [],
       addCount: 10,
-      indexInput: '',
-      currentIndexFields: [],
       indexes: [],
       authInput: '',
       authObjects: [],
@@ -246,8 +239,6 @@ describe('workspacePersistence/normalize', () => {
           },
         ],
         addCount: 10,
-        indexInput: '',
-        currentIndexFields: [],
         indexes: [],
         authInput: '',
         authObjects: [],
@@ -283,8 +274,6 @@ describe('workspacePersistence/normalize', () => {
         dbType: 'mysql',
         rows: [],
         addCount: 10,
-        indexInput: '',
-        currentIndexFields: [],
         indexes: [],
         authInput: '',
         authObjects: ['u1', 1],

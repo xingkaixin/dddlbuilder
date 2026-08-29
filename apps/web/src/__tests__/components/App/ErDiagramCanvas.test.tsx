@@ -37,8 +37,6 @@ const original: SavedTableRecord = {
     rows: [{ id: 'id', fieldName: 'id', fieldType: 'bigint', nullable: false }],
     indexes: [],
     addCount: 1,
-    indexInput: '',
-    currentIndexFields: [],
     authInput: '',
     authObjects: [],
     foreignKeys: [

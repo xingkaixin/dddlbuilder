@@ -54,8 +54,6 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
     },
   ],
   addCount: 12,
-  indexInput: '',
-  currentIndexFields: [{ name: 'email', direction: 'ASC' }],
   indexes: [
     {
       id: 'idx_email',
@@ -394,8 +392,6 @@ describe('workspaceYDocAdapter', () => {
       state: createState({
         sqlFormatMode: 'aligned',
         addCount: 99,
-        indexInput: 'email',
-        currentIndexFields: [{ name: 'email', direction: 'DESC' }],
       }),
       updatedAt: 1,
     });
@@ -404,8 +400,6 @@ describe('workspaceYDocAdapter', () => {
     expect(restored).toMatchObject({
       sqlFormatMode: 'compact',
       addCount: 10,
-      indexInput: '',
-      currentIndexFields: [],
     });
   });
 

@@ -25,8 +25,6 @@ const state = (overrides: Partial<PersistedState> = {}): PersistedState =>
     viewCreateOrReplace: true,
     rows: [row('a'), row('b')],
     addCount: 10,
-    indexInput: '',
-    currentIndexFields: [],
     indexes: [],
     authInput: '',
     authObjects: [],

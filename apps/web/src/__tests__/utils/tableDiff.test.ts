@@ -14,8 +14,6 @@ function createState(overrides: Partial<PersistedState> = {}): PersistedState {
     dbType: 'mysql',
     rows: [],
     addCount: 10,
-    indexInput: '',
-    currentIndexFields: [],
     indexes: [],
     authInput: '',
     authObjects: [],

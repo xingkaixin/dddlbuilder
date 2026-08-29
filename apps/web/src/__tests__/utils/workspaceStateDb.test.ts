@@ -95,8 +95,6 @@ const createState = (tableName = 'users'): PersistedState => ({
   sqlFormatMode: 'compact',
   rows: [],
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

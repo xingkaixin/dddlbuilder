@@ -56,8 +56,6 @@ const buildPersistedState = () => ({
   dbType: 'mysql' as const,
   rows: [],
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

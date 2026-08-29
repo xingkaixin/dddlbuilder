@@ -39,8 +39,6 @@ const state: PersistedState = {
   rows: [{ id: 'id', fieldName: 'id', fieldType: 'INT', fieldComment: '', nullable: false }],
   indexes: [],
   addCount: 1,
-  indexInput: '',
-  currentIndexFields: [],
   authInput: '',
   authObjects: [],
 };

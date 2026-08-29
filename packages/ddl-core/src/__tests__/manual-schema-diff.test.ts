@@ -13,8 +13,6 @@ const state = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   rows: [],
   indexes: [],
   addCount: 1,
-  indexInput: '',
-  currentIndexFields: [],
   authInput: '',
   authObjects: [],
   ...overrides,

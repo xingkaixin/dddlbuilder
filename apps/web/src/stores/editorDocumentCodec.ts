@@ -24,8 +24,6 @@ export type EditorDocumentState = Pick<
   | 'viewCreateOrReplace'
   | 'rows'
   | 'addCount'
-  | 'indexInput'
-  | 'currentIndexFields'
   | 'indexes'
   | 'authInput'
   | 'authObjects'
@@ -53,8 +51,6 @@ export const toEditorDocumentState = (state: PersistedState): EditorDocumentStat
     sqlFormatMode: state.sqlFormatMode ?? 'compact',
     addCount: normalizeAddCount(state.addCount),
     rows: state.rows,
-    indexInput: state.indexInput ?? '',
-    currentIndexFields: state.currentIndexFields ?? [],
     indexes: fillMissingIndexNames(state.indexes ?? [], state.tableName, state.dbType),
     authInput: state.authInput ?? '',
     authObjects: state.authObjects ?? [],
@@ -92,8 +88,6 @@ export const toPersistedState = (state: EditorDocumentState): PersistedState => 
     onUpdate: row.onUpdate ?? 'none',
   })),
   addCount: state.addCount,
-  indexInput: state.indexInput,
-  currentIndexFields: state.currentIndexFields,
   indexes: sanitizeIndexesForPersist(state.indexes),
   authInput: state.authInput,
   authObjects: state.authObjects,

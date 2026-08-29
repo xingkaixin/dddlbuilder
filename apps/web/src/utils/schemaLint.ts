@@ -3,7 +3,6 @@ import type {
   FieldRow,
   ForeignKeyDefinition,
   IndexDefinition,
-  IndexField,
   MysqlPartitionConfig,
   TableMiscConfig,
 } from '@ddlbuilder/shared-types';
@@ -37,7 +36,6 @@ export type SchemaLintInput = {
   tableName: string;
   rows: FieldRow[];
   indexes: IndexDefinition[];
-  currentIndexFields?: IndexField[];
   foreignKeys?: ForeignKeyDefinition[];
   mysqlPartitionConfig?: MysqlPartitionConfig;
   citusShardingConfig?: CitusShardingConfig;
@@ -96,7 +94,6 @@ export function lintSchema({
   tableName,
   rows,
   indexes,
-  currentIndexFields = [],
   foreignKeys = [],
   mysqlPartitionConfig,
   citusShardingConfig,
@@ -123,7 +120,6 @@ export function lintSchema({
   for (const index of indexes) {
     for (const field of index.fields) addDanglingReference(index.name || 'index', field.name);
   }
-  for (const field of currentIndexFields) addDanglingReference('current index', field.name);
   for (const foreignKey of foreignKeys) {
     for (const field of foreignKey.fields) {
       addDanglingReference(foreignKey.name || 'foreign key', field);

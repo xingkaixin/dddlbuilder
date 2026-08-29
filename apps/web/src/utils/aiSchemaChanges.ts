@@ -161,8 +161,6 @@ function createBaseState(dbType: DatabaseType, sqlFormatMode: SqlFormatMode): Pe
     sqlFormatMode,
     rows: [],
     addCount: 10,
-    indexInput: '',
-    currentIndexFields: [],
     indexes: [],
     authInput: '',
     authObjects: [],

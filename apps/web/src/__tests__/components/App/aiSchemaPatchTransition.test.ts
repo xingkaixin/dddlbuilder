@@ -20,8 +20,6 @@ const createState = (rows = [row('id', 1)]): PersistedState => ({
   sqlFormatMode: 'compact',
   rows,
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

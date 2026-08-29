@@ -70,7 +70,6 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
   return {
     ...state,
     rows,
-    currentIndexFields: state.currentIndexFields.map(renameIndexField),
     indexes: state.indexes.map((index) => {
       const indexRenames = new Map(
         index.fields
@@ -198,9 +197,6 @@ export function removeFieldsFromDocument(
   return {
     ...state,
     rows,
-    currentIndexFields: state.currentIndexFields.filter(
-      (field) => !matchesRemovedField(field.name),
-    ),
     indexes: state.indexes.filter(
       (index) => !index.fields.some((field) => matchesRemovedField(field.name)),
     ),

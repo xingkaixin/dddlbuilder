@@ -18,8 +18,6 @@ const createEmptyDraftState = (): PersistedState => ({
   sqlFormatMode: 'compact',
   rows: Array.from({ length: 12 }, () => createEmptyRow()),
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

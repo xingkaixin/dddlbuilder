@@ -35,8 +35,6 @@ function createTable(
       },
     ],
     addCount: 1,
-    indexInput: '',
-    currentIndexFields: [],
     indexes:
       options.isPrimary || options.isUnique
         ? [

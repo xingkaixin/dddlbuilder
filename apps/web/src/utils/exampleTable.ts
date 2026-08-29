@@ -102,8 +102,6 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
     ...Array.from({ length: 2 }, () => createEmptyRow()),
   ],
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [
     {
       id: 'idx_pk_id',

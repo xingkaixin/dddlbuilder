@@ -55,8 +55,6 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
     },
   ],
   addCount: 12,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

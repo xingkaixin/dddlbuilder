@@ -38,8 +38,6 @@ const createClientState = (overrides: Partial<PersistedState> = {}): PersistedSt
       viewCreateOrReplace: true,
       rows: [createRow(0), createRow(1), createRow(2)],
       addCount: 12,
-      indexInput: '',
-      currentIndexFields: [],
       indexes: [],
       authInput: '',
       authObjects: [],

@@ -7,8 +7,6 @@ import type {
   ForeignKeyDefinition,
   HivePartitionConfig,
   IndexDefinition,
-  IndexKind,
-  IndexField,
   MysqlPartitionConfig,
   MysqlPartitionType,
   PartitionDefinition,
@@ -59,22 +57,9 @@ export interface FieldSlice {
 }
 
 export interface IndexSlice {
-  indexInput: string;
-  currentIndexFields: IndexField[];
   indexes: IndexDefinition[];
-  showFieldSuggestions: boolean;
-  selectedSuggestionIndex: number;
-  setIndexInput: (value: Setter<string>) => void;
-  setCurrentIndexFields: (value: Setter<IndexField[]>) => void;
   setIndexes: (value: Setter<IndexDefinition[]>) => void;
-  setShowFieldSuggestions: (value: Setter<boolean>) => void;
-  setSelectedSuggestionIndex: (value: Setter<number>) => void;
-  addFieldToIndex: (fieldName: string) => void;
-  removeFieldFromIndex: (index: number) => void;
-  toggleFieldDirection: (index: number) => void;
-  addIndex: (kind: IndexKind, tableName: string, dbType: DatabaseType) => void;
   removeIndex: (id: string) => void;
-  updateIndexName: (id: string, newName: string, dbType: DatabaseType) => void;
   resetIndexState: () => void;
 }
 

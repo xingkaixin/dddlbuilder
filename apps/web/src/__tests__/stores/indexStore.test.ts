@@ -1,198 +1,29 @@
-import { renameEditorField } from '@/__tests__/utils/editorFields';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useEditorStore } from '@/stores';
 
-function resetIndexStore() {
-  useEditorStore.getState().resetIndexState();
-  useEditorStore.getState().setIndexes([]);
-}
-
 describe('indexStore', () => {
   beforeEach(() => {
-    resetIndexStore();
+    useEditorStore.getState().resetIndexState();
   });
 
-  it('应该添加索引字段并创建索引', () => {
-    const state = useEditorStore.getState();
+  it('replaces and removes document indexes', () => {
+    const indexes = [
+      { id: '1', name: 'idx_users_id', fields: [], kind: 'index' as const },
+      { id: '2', name: 'idx_users_email', fields: [], kind: 'unique_index' as const },
+    ];
+    useEditorStore.getState().setIndexes(indexes);
+    useEditorStore.getState().removeIndex('1');
 
-    state.addFieldToIndex('id');
-    let current = useEditorStore.getState();
-    expect(current.currentIndexFields).toEqual([{ name: 'id', direction: 'ASC' }]);
-
-    state.addIndex('index', 'users', 'mysql');
-    current = useEditorStore.getState();
-    expect(current.indexes.length).toBe(1);
-    expect(current.indexes[0].fields[0].name).toBe('id');
-    expect(current.currentIndexFields.length).toBe(0);
+    expect(useEditorStore.getState().indexes).toEqual([indexes[1]]);
   });
 
-  it('应该更新索引名称并支持重置', () => {
-    const state = useEditorStore.getState();
+  it('resets document indexes', () => {
+    useEditorStore
+      .getState()
+      .setIndexes([{ id: '1', name: 'idx_users_id', fields: [], kind: 'index' }]);
 
-    state.setIndexes([
-      {
-        id: '1',
-        name: 'idx_old',
-        fields: [{ name: 'id', direction: 'ASC' }],
-        kind: 'index',
-      },
-    ]);
-    state.updateIndexName('1', 'idx_users_id', 'mysql');
+    useEditorStore.getState().resetIndexState();
 
-    let current = useEditorStore.getState();
-    expect(current.indexes[0].name).toBe('idx_users_id');
-
-    state.resetIndexState();
-    current = useEditorStore.getState();
-    expect(current.indexInput).toBe('');
-    expect(current.currentIndexFields).toEqual([]);
-    expect(current.showFieldSuggestions).toBe(false);
-    expect(current.selectedSuggestionIndex).toBe(0);
-  });
-
-  it('字段重命名时应同步索引字段和索引名', () => {
-    const state = useEditorStore.getState();
-
-    state.setCurrentIndexFields([{ name: 'name', direction: 'ASC' }]);
-    state.setIndexes([
-      {
-        id: '1',
-        name: 'idx_users_name',
-        fields: [{ name: 'name', direction: 'ASC' }],
-        kind: 'index',
-      },
-      {
-        id: '2',
-        name: 'idx_users_age',
-        fields: [{ name: 'age', direction: 'ASC' }],
-        kind: 'index',
-      },
-    ]);
-
-    renameEditorField('name', 'nickname', 'mysql');
-
-    const current = useEditorStore.getState();
-    expect(current.currentIndexFields).toEqual([{ name: 'nickname', direction: 'ASC' }]);
-    expect(current.indexes[0]).toMatchObject({
-      name: 'idx_users_nickname',
-      fields: [{ name: 'nickname', direction: 'ASC' }],
-    });
-    expect(current.indexes[1]).toMatchObject({
-      name: 'idx_users_age',
-      fields: [{ name: 'age', direction: 'ASC' }],
-    });
-  });
-
-  it('字段重命名不应误替换索引名中的普通子串', () => {
-    const state = useEditorStore.getState();
-
-    state.setIndexes([
-      {
-        id: '1',
-        name: 'idx_video_id',
-        fields: [{ name: 'id', direction: 'ASC' }],
-        kind: 'index',
-      },
-    ]);
-
-    renameEditorField('id', 'uuid', 'mysql');
-
-    const current = useEditorStore.getState();
-    expect(current.indexes[0].name).toBe('idx_video_uuid');
-  });
-
-  it('字段重命名应支持大小写不敏感匹配', () => {
-    const state = useEditorStore.getState();
-
-    state.setCurrentIndexFields([{ name: 'Name', direction: 'ASC' }]);
-    state.setIndexes([
-      {
-        id: '1',
-        name: 'idx_users_NAME',
-        fields: [{ name: 'Name', direction: 'ASC' }],
-        kind: 'index',
-      },
-    ]);
-
-    renameEditorField('name', 'nickname', 'mysql');
-
-    const current = useEditorStore.getState();
-    expect(current.currentIndexFields).toEqual([{ name: 'nickname', direction: 'ASC' }]);
-    expect(current.indexes[0]).toMatchObject({
-      name: 'idx_users_nickname',
-      fields: [{ name: 'nickname', direction: 'ASC' }],
-    });
-  });
-
-  it('空字段时不创建索引，且主键只允许一个', () => {
-    const state = useEditorStore.getState();
-
-    state.addIndex('index', 'users', 'mysql');
-    expect(useEditorStore.getState().indexes.length).toBe(0);
-
-    state.addFieldToIndex('id');
-    state.addIndex('primary', 'users', 'mysql');
-    expect(useEditorStore.getState().indexes.length).toBe(1);
-    expect(useEditorStore.getState().indexes[0].name).toBe('pk_users');
-
-    state.addFieldToIndex('name');
-    state.addIndex('primary', 'users', 'mysql');
-    expect(useEditorStore.getState().indexes.length).toBe(1);
-  });
-
-  it('应支持切换排序方向与删除字段', () => {
-    const state = useEditorStore.getState();
-    state.setCurrentIndexFields([{ name: 'name', direction: 'ASC' }]);
-
-    state.toggleFieldDirection(0);
-    expect(useEditorStore.getState().currentIndexFields[0].direction).toBe('DESC');
-
-    state.removeFieldFromIndex(0);
-    expect(useEditorStore.getState().currentIndexFields).toEqual([]);
-  });
-
-  it('应忽略空名称更新，并在 Oracle 下截断过长索引名', () => {
-    const state = useEditorStore.getState();
-    state.setIndexes([
-      {
-        id: '1',
-        name: 'idx_old',
-        fields: [{ name: 'id', direction: 'ASC' }],
-        kind: 'index',
-      },
-    ]);
-
-    state.updateIndexName('1', '   ', 'mysql');
-    expect(useEditorStore.getState().indexes[0].name).toBe('idx_old');
-
-    const longName = `idx_${'a'.repeat(80)}`;
-    state.updateIndexName('1', longName, 'oracle');
-    expect(useEditorStore.getState().indexes[0].name.length).toBeLessThanOrEqual(30);
-  });
-
-  it('应该支持删除索引 removeIndex', () => {
-    const state = useEditorStore.getState();
-    state.setIndexes([
-      { id: '1', name: 'idx_1', fields: [], kind: 'index' },
-      { id: '2', name: 'idx_2', fields: [], kind: 'index' },
-    ]);
-    state.removeIndex('1');
-
-    const current = useEditorStore.getState();
-    expect(current.indexes.length).toBe(1);
-    expect(current.indexes[0].id).toBe('2');
-  });
-
-  it('同步字段重命名时如果参数为空或相同应直接返回', () => {
-    const state = useEditorStore.getState();
-    state.setCurrentIndexFields([{ name: 'id', direction: 'ASC' }]);
-
-    // missing arg
-    renameEditorField('', 'new_id', 'mysql');
-    expect(useEditorStore.getState().currentIndexFields[0].name).toBe('id');
-
-    // same arg
-    renameEditorField('id', 'id', 'mysql');
-    expect(useEditorStore.getState().currentIndexFields[0].name).toBe('id');
+    expect(useEditorStore.getState().indexes).toEqual([]);
   });
 });

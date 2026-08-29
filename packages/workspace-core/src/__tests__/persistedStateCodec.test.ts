@@ -7,8 +7,6 @@ const externalState = (overrides: Record<string, unknown> = {}) => ({
   dbType: 'mysql',
   rows: [],
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],
@@ -375,7 +373,6 @@ describe('decodePersistedState', () => {
         { id: 'field-1', fieldName: 'id', enumMeta: [{ value: '1', i18n: { 'en-US': 'one' } }] },
         { id: 'legacy-field-1', fieldName: '' },
       ],
-      currentIndexFields: [{ name: 'id', direction: 'DESC' }],
       indexes: [{ id: 'index-1', name: 'idx_users_id', kind: 'primary' }],
       authObjects: ['reader'],
       citusShardingConfig: { mode: 'distributed', distributionColumn: 'tenant_id' },
@@ -414,6 +411,8 @@ describe('decodePersistedState', () => {
         },
       ],
     });
+    expect(decoded).not.toHaveProperty('indexInput');
+    expect(decoded).not.toHaveProperty('currentIndexFields');
   });
 
   it('省略类型不匹配的可选配置值', () => {
@@ -516,8 +515,6 @@ describe('decodePersistedState', () => {
     ['rows', null],
     ['addCount', '10'],
     ['addCount', Number.NaN],
-    ['indexInput', 1],
-    ['currentIndexFields', null],
     ['indexes', null],
     ['authInput', 1],
     ['authObjects', null],

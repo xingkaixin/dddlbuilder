@@ -94,8 +94,6 @@ describe('useAIGenerateTable behaviors', () => {
       rows: [],
       indexes: [],
       addCount: 10,
-      indexInput: '',
-      currentIndexFields: [],
       authInput: '',
       authObjects: [],
     };

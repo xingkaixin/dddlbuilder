@@ -48,16 +48,12 @@ function useIndexPanelSelectorProbe() {
   const tableName = useEditorStore((state) => state.tableName);
   const dbType = useEditorStore((state) => state.dbType);
   const rowsLength = useEditorStore((state) => state.rows.length);
-  const indexInput = useEditorStore((state) => state.indexInput);
-  const currentIndexFieldsLength = useEditorStore((state) => state.currentIndexFields.length);
   const indexesLength = useEditorStore((state) => state.indexes.length);
 
   return {
     tableName,
     dbType,
     rowsLength,
-    indexInput,
-    currentIndexFieldsLength,
     indexesLength,
   };
 }
@@ -116,11 +112,13 @@ describe('store selector subscription scope', () => {
     expect(renderCount).toBe(initialRenderCount);
 
     act(() => {
-      useEditorStore.getState().setIndexInput('id');
+      useEditorStore
+        .getState()
+        .setIndexes([{ id: '1', name: 'idx_users_id', fields: [], kind: 'index' }]);
     });
 
     expect(renderCount).toBe(initialRenderCount + 1);
-    expect(result.current.indexInput).toBe('id');
+    expect(result.current.indexesLength).toBe(1);
   });
 
   it('App 编辑器 selector 不订阅纯弹窗可见状态', () => {

@@ -10,8 +10,6 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
   sqlFormatMode: 'compact',
   rows: [],
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],
@@ -62,8 +60,6 @@ describe('persistedStateSignature', () => {
     const current = createState({
       sqlFormatMode: 'aligned',
       addCount: 50,
-      indexInput: 'idx_users_email',
-      currentIndexFields: [{ name: 'email', direction: 'DESC' }],
       fieldTableViewConfig: {
         freezeEnabled: true,
         freezeColumns: 5,

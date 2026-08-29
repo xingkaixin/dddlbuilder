@@ -41,8 +41,6 @@ const createState = (dbType: DatabaseType, value: NormalizedField): PersistedSta
     },
   ],
   indexes: [],
-  currentIndexFields: [],
-  indexInput: '',
   authObjects: [],
   authInput: '',
   addCount: 1,

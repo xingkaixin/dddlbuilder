@@ -53,8 +53,6 @@ const createClientState = (overrides: Partial<PersistedState> = {}): PersistedSt
         },
       ],
       addCount: 12,
-      indexInput: '',
-      currentIndexFields: [],
       indexes: [],
       authInput: '',
       authObjects: [],
@@ -347,8 +345,6 @@ describe('workspace table doc writes', () => {
       ...clientState,
       sqlFormatMode: 'aligned',
       addCount: 99,
-      indexInput: 'email',
-      currentIndexFields: [{ name: 'email', direction: 'DESC' }],
       fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
     });
 
@@ -359,7 +355,6 @@ describe('workspace table doc writes', () => {
   it('removes editor session fields from legacy collaborative storage', () => {
     const clientState = createClientState({
       sqlFormatMode: 'aligned',
-      indexInput: 'email',
       fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
     });
     const tableDoc = createLegacyTableDoc(clientState);

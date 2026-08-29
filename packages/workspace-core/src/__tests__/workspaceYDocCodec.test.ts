@@ -42,8 +42,6 @@ const createState = (tableName: string): PersistedState => ({
     },
   ],
   addCount: 12,
-  indexInput: 'email',
-  currentIndexFields: [{ name: 'email', direction: 'ASC' }],
   indexes: [
     {
       id: 'idx_email',

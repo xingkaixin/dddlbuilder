@@ -53,8 +53,6 @@ const source: SavedTableRecord = {
     rows: [{ id: 'field-id', fieldName: 'id', fieldType: 'INT', nullable: true }],
     indexes: [],
     addCount: 1,
-    indexInput: '',
-    currentIndexFields: [],
     authInput: '',
     authObjects: [],
   },

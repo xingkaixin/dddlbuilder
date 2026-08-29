@@ -62,8 +62,6 @@ export function convertParsedResultToPersistedState(
     sqlFormatMode: 'compact',
     rows: newRows,
     addCount: 10,
-    indexInput: '',
-    currentIndexFields: [],
     indexes: fillMissingIndexNames(result.indexes, parsedName.table, importDbType),
     authInput: '',
     authObjects: result.authObjects,

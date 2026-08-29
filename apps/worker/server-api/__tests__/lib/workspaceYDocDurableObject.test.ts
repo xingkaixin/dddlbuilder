@@ -44,8 +44,6 @@ const createState = (tableName: string): PersistedState => ({
   viewCreateOrReplace: true,
   rows: [],
   addCount: 12,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

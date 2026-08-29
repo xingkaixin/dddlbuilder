@@ -3,7 +3,6 @@ import type {
   PersistedState,
   FieldRow,
   IndexDefinition,
-  IndexField,
   DatabaseType,
   CitusShardingConfig,
   MysqlPartitionConfig,
@@ -33,8 +32,6 @@ interface UseDerivedTableStateDeps {
   addCount: number;
   rows: FieldRow[];
   indexes: IndexDefinition[];
-  indexInput: string;
-  currentIndexFields: IndexField[];
   // 外键
   foreignKeys: ForeignKeyDefinition[];
   // 认证
@@ -69,8 +66,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     addCount,
     rows,
     indexes,
-    indexInput,
-    currentIndexFields,
     foreignKeys,
     authInput,
     authObjects,
@@ -111,8 +106,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
         viewCreateOrReplace,
         rows,
         addCount,
-        indexInput,
-        currentIndexFields,
         indexes,
         authInput,
         authObjects,
@@ -134,8 +127,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
       sqlFormatMode,
       rows,
       addCount,
-      indexInput,
-      currentIndexFields,
       indexes,
       authInput,
       authObjects,

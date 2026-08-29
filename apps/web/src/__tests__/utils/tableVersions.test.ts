@@ -30,8 +30,6 @@ function createMockState(overrides: Partial<PersistedState> = {}): PersistedStat
       },
     ],
     addCount: 10,
-    indexInput: '',
-    currentIndexFields: [],
     indexes: [],
     authInput: '',
     authObjects: [],

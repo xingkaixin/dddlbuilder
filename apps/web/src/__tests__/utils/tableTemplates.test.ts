@@ -39,8 +39,6 @@ const state: PersistedState = {
     },
   ],
   addCount: 10,
-  indexInput: 'idx_name',
-  currentIndexFields: [{ name: 'id', direction: 'ASC' }],
   indexes: [
     {
       id: 'pk',
@@ -123,8 +121,6 @@ describe('tableTemplates', () => {
     expect(next.rows).toHaveLength(1);
     expect(next.rows[0].order).toBe(1);
     expect(next.indexes).toHaveLength(1);
-    expect(next.currentIndexFields).toEqual([]);
-    expect(next.indexInput).toBe('');
   });
 
   it.each(['table', 'view'] as const)(

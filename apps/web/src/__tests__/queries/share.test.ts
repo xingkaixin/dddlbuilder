@@ -20,8 +20,6 @@ describe('share queries', () => {
       schemaName: '',
       sqlFormatMode: 'compact',
       addCount: 10,
-      indexInput: '',
-      currentIndexFields: [],
       authInput: '',
       authObjects: [],
     };

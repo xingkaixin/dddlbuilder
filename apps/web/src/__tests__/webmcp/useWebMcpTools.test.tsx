@@ -22,8 +22,6 @@ const createState = (): PersistedState => ({
     },
   ],
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

@@ -30,8 +30,6 @@ const createState = (name: string): PersistedState => ({
     },
   ],
   addCount: 1,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
 });
 

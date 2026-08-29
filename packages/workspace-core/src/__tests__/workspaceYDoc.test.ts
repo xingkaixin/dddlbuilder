@@ -51,8 +51,6 @@ const createState = (tableName: string): PersistedState => ({
     },
   ],
   addCount: 12,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

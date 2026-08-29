@@ -9,8 +9,6 @@ const state = () => ({
   sqlFormatMode: 'compact',
   rows: [],
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

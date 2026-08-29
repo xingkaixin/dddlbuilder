@@ -29,8 +29,6 @@ const createState = () => ({
   sqlFormatMode: 'compact',
   rows: [],
   addCount: 12,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],

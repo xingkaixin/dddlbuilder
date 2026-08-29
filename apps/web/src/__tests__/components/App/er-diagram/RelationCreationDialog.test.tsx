@@ -11,8 +11,6 @@ const source: PersistedState = {
   rows: [{ order: 1, fieldName: 'user_id', fieldType: 'INT', fieldComment: '', nullable: true }],
   indexes: [],
   addCount: 1,
-  indexInput: '',
-  currentIndexFields: [],
   authInput: '',
   authObjects: [],
 };

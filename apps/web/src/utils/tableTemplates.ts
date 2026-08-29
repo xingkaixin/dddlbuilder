@@ -61,8 +61,6 @@ export const applyBlueprintToState = (
     id: createEntityId(),
   })),
   indexes: clone(blueprint.indexes),
-  currentIndexFields: [],
-  indexInput: '',
   citusShardingConfig:
     blueprint.dbType === 'postgresql-citus' && blueprint.citusShardingConfig
       ? clone(blueprint.citusShardingConfig)

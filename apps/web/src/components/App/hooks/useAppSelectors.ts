@@ -28,8 +28,7 @@ export function useAppSelectors() {
 
   const { setRows, resetRows: resetTableRows } = useEditorStore.getState();
 
-  const { setIndexInput, setCurrentIndexFields, resetIndexState, setIndexes } =
-    useEditorStore.getState();
+  const { resetIndexState, setIndexes } = useEditorStore.getState();
 
   const {
     setForeignKeys,
@@ -54,8 +53,6 @@ export function useAppSelectors() {
       fieldTableFreezeEnabled: current.fieldTableFreezeEnabled,
       fieldTableFreezeColumns: current.fieldTableFreezeColumns,
       rows: current.rows,
-      indexInput: current.indexInput,
-      currentIndexFields: current.currentIndexFields,
       indexes: current.indexes,
       foreignKeys: current.foreignKeys,
     })),
@@ -84,8 +81,6 @@ export function useAppSelectors() {
     setRows,
     resetTableRows,
     // Index store
-    setIndexInput,
-    setCurrentIndexFields,
     resetIndexState,
     setIndexes,
     // ForeignKey store

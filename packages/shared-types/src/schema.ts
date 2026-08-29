@@ -136,8 +136,6 @@ export type SchemaDocumentState = {
 export type EditorSessionState = {
   sqlFormatMode: SqlFormatMode;
   addCount: number;
-  indexInput: string;
-  currentIndexFields: IndexField[];
   fieldTableViewConfig?: FieldTableViewConfig;
 };
 
@@ -146,8 +144,6 @@ export type PersistedState = SchemaDocumentState & EditorSessionState;
 export const DEFAULT_EDITOR_SESSION_STATE: Readonly<EditorSessionState> = {
   sqlFormatMode: 'compact',
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
 };
 
 export const toSchemaDocumentState = (state: SchemaDocumentState): SchemaDocumentState => ({
@@ -171,14 +167,11 @@ export const toSchemaDocumentState = (state: SchemaDocumentState): SchemaDocumen
 export const withDefaultEditorSession = (state: SchemaDocumentState): PersistedState => ({
   ...state,
   ...DEFAULT_EDITOR_SESSION_STATE,
-  currentIndexFields: [...DEFAULT_EDITOR_SESSION_STATE.currentIndexFields],
 });
 
 export const toEditorSessionState = (state: EditorSessionState): EditorSessionState => ({
   sqlFormatMode: state.sqlFormatMode,
   addCount: state.addCount,
-  indexInput: state.indexInput,
-  currentIndexFields: state.currentIndexFields,
   fieldTableViewConfig: state.fieldTableViewConfig,
 });
 

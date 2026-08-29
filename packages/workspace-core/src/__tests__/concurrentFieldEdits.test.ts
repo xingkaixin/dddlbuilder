@@ -28,8 +28,6 @@ const state = (rows: FieldRow[]): PersistedState =>
     viewCreateOrReplace: true,
     rows: rows.map((r, index) => ({ ...r, order: index + 1 })),
     addCount: 10,
-    indexInput: '',
-    currentIndexFields: [],
     indexes: [],
     authInput: '',
     authObjects: [],

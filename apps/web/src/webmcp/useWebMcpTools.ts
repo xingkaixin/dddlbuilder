@@ -87,7 +87,6 @@ const lintState = (state: PersistedState): SchemaLintIssue[] =>
     tableName: state.tableName,
     rows: state.rows,
     indexes: state.indexes,
-    currentIndexFields: state.currentIndexFields,
     foreignKeys: state.foreignKeys,
     mysqlPartitionConfig: state.mysqlPartitionConfig,
     citusShardingConfig: state.citusShardingConfig,
