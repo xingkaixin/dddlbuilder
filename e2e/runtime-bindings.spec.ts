@@ -17,8 +17,6 @@ const createState = (tableName: string) => ({
   viewCreateOrReplace: true,
   rows: [],
   addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
   indexes: [],
   authInput: '',
   authObjects: [],
