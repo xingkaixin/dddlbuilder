@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import type { ApiEnv } from './context.js';
 import { createBetterAuth } from './betterAuth.js';
 import { DomainError } from './http.js';
+import { getRequestLogger } from './logging.js';
 
 export type AuthenticatedAppUser = {
   userId: string;
@@ -39,13 +40,17 @@ export const revokeUserSessions = async (env: ApiEnv['Bindings'], userId: string
   await context.internalAdapter.deleteUserSessions(userId);
 };
 
+const throwAuthenticationUnavailable = (c: Context<ApiEnv>, error: unknown): never => {
+  getRequestLogger(c)?.error(error instanceof Error ? error : String(error));
+  throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'Authentication service unavailable');
+};
+
 export const resolveAuthenticatedUser = async (
-  env: ApiEnv['Bindings'],
-  headers: Headers,
+  c: Context<ApiEnv>,
 ): Promise<AuthenticatedAppUser | null> => {
-  const auth = createBetterAuth(env);
+  const auth = createBetterAuth(c.env);
   const requestHeaders = new Headers();
-  const cookieHeader = headers.get('cookie');
+  const cookieHeader = c.req.raw.headers.get('cookie');
 
   if (cookieHeader) {
     requestHeaders.set('cookie', cookieHeader);
@@ -53,16 +58,15 @@ export const resolveAuthenticatedUser = async (
 
   const session = await auth.api
     .getSession({ headers: requestHeaders, query: { disableRefresh: true } })
-    .catch((error: unknown) => {
-      console.error('[auth] session lookup failed', error);
-      throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'FAILED_TO_GET_SESSION');
-    });
+    .catch((error: unknown) => throwAuthenticationUnavailable(c, error));
 
   if (!session?.user || !session.session?.id) {
     return null;
   }
 
-  const access = await readSessionAccess(env, session.user.id);
+  const access = await readSessionAccess(c.env, session.user.id).catch((error: unknown) =>
+    throwAuthenticationUnavailable(c, error),
+  );
   if (access.disabled) throw new DomainError(403, 'USER_DISABLED', 'USER_DISABLED');
   if (!access.sessionIds.has(session.session.id)) return null;
 
@@ -76,7 +80,7 @@ export const resolveAuthenticatedUser = async (
 };
 
 export const authenticateRequest = async (c: Context<ApiEnv>) => {
-  const user = await resolveAuthenticatedUser(c.env, c.req.raw.headers);
+  const user = await resolveAuthenticatedUser(c);
   if (!user) {
     throw new DomainError(401, 'AUTH_REQUIRED', 'AUTH_REQUIRED');
   }

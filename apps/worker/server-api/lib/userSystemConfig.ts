@@ -1,5 +1,8 @@
 import type { ApiEnv } from './context.js';
 
+const DEFAULT_AUTH_BODY_MAX_BYTES = 16 * 1024;
+const MAX_AUTH_BODY_MAX_BYTES = 1024 * 1024;
+
 const requireEnv = (value: string | undefined, key: string): string => {
   const normalized = value?.trim();
   if (!normalized) {
@@ -10,11 +13,22 @@ const requireEnv = (value: string | undefined, key: string): string => {
 
 const requirePositiveInt = (value: string | undefined, key: string): number => {
   const normalized = requireEnv(value, key);
-  const parsed = Number.parseInt(normalized, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
+  const parsed = Number(normalized);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     throw new Error(`${key} must be a positive integer`);
   }
   return parsed;
+};
+
+export const getAuthBodyMaxBytes = (env: ApiEnv['Bindings']): number => {
+  const rawValue = env.AUTH_BODY_MAX_BYTES?.trim();
+  if (!rawValue) return DEFAULT_AUTH_BODY_MAX_BYTES;
+
+  const maxBytes = requirePositiveInt(rawValue, 'AUTH_BODY_MAX_BYTES');
+  if (maxBytes > MAX_AUTH_BODY_MAX_BYTES) {
+    throw new Error(`AUTH_BODY_MAX_BYTES cannot exceed ${MAX_AUTH_BODY_MAX_BYTES}`);
+  }
+  return maxBytes;
 };
 
 const readEmailVerificationRequirement = (value: string | undefined): boolean => {

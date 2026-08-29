@@ -284,18 +284,18 @@ describe('api security guards', () => {
         const response = await app.fetch(createRequest('/api/workspaces'), createEnv());
         const payload = (await response.json()) as Record<string, unknown>;
 
-        expect(response.status).toBe(503);
+        expect(response.status).toBe(500);
         expect(payload).toMatchObject({
-          error: 'Service unavailable',
-          code: 'SERVICE_UNAVAILABLE',
+          error: 'Internal server error',
+          code: 'INTERNAL_ERROR',
         });
         expect(JSON.stringify(payload)).not.toContain('BETTER_AUTH_SECRET');
         expect(events).toHaveLength(1);
         expect(events[0]).toMatchObject({
           path: '/api/workspaces',
           level: 'error',
-          status: 503,
-          outcome: { errorCode: 'SERVICE_UNAVAILABLE' },
+          status: 500,
+          outcome: { errorCode: 'INTERNAL_ERROR' },
           error: { message: 'BETTER_AUTH_SECRET is required' },
         });
       } finally {

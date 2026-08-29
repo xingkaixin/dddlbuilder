@@ -77,13 +77,12 @@ app.use('*', async (c, next) => {
 
 api.get('/health', (c) => c.json(withMeta(c, { status: 'ok' })));
 
-// 领域错误在抛出点已带状态码；其余一律按基础设施故障处理，原始 message 只进日志
 api.onError((error, c) => {
   if (error instanceof DomainError) {
     return errorResponse(c, error.status, error.message, error.code);
   }
   getRequestLogger(c)?.error(error);
-  return errorResponse(c, 503, 'Service unavailable', 'SERVICE_UNAVAILABLE');
+  return errorResponse(c, 500, 'Internal server error', 'INTERNAL_ERROR');
 });
 
 registerParseSqlRoute(api);

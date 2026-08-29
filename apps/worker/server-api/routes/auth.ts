@@ -2,9 +2,15 @@ import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser } from '../lib/auth.js';
 import { createBetterAuth } from '../lib/betterAuth.js';
-import { DomainError, errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
+import {
+  errorResponse,
+  parseJsonBodyWithLimit,
+  validateRequestBodyWithLimit,
+  withMeta,
+} from '../lib/http.js';
 import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
-import { getUserSystemConfig } from '../lib/userSystemConfig.js';
+import { getRequestLogger } from '../lib/logging.js';
+import { getAuthBodyMaxBytes, getUserSystemConfig } from '../lib/userSystemConfig.js';
 
 type TurnstileVerifyResponse = {
   success: boolean;
@@ -12,7 +18,6 @@ type TurnstileVerifyResponse = {
   'error-codes'?: string[];
 };
 
-const AUTH_BODY_MAX_BYTES = 16 * 1024;
 const SIGNUP_RATE_LIMIT = {
   scope: 'auth:signup',
   limit: 5,
@@ -23,6 +28,7 @@ const AUTH_RATE_LIMITS = {
   '/auth/request-password-reset': { scope: 'auth:reset', limit: 3, windowMs: 60 * 60_000 },
   '/auth/send-verification-email': { scope: 'auth:verify', limit: 3, windowMs: 60 * 60_000 },
 } as const;
+const SAFE_AUTH_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const TURNSTILE_ALWAYS_PASS_TEST_SECRET = '1x0000000000000000000000000000000AA';
 
 const verifyTurnstile = async (c: Context<ApiEnv>, token: string) => {
@@ -48,7 +54,8 @@ const verifyTurnstile = async (c: Context<ApiEnv>, token: string) => {
       },
       body: formData.toString(),
     });
-  } catch {
+  } catch (error) {
+    getRequestLogger(c)?.error(error instanceof Error ? error : String(error));
     return errorResponse(c, 503, 'Turnstile service unavailable', 'SERVICE_UNAVAILABLE');
   }
 
@@ -70,7 +77,7 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
 
     const parsedBody = await parseJsonBodyWithLimit<Record<string, unknown>>(
       c,
-      AUTH_BODY_MAX_BYTES,
+      getAuthBodyMaxBytes(c.env),
     );
     if (!parsedBody.ok) return parsedBody.response;
     const body = parsedBody.data ?? {};
@@ -97,7 +104,7 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
   });
 
   app.all('/auth/*', async (c) => {
-    if (c.req.method === 'POST') {
+    if (!SAFE_AUTH_METHODS.has(c.req.method)) {
       const path = c.req.path.replace(/^\/api/, '').replace(/\/$/, '');
       const policy = AUTH_RATE_LIMITS[path as keyof typeof AUTH_RATE_LIMITS] ?? {
         scope: 'auth:mutation',
@@ -107,35 +114,30 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
       const limited = await enforceIpRateLimit(c, policy, 'Too many authentication attempts');
       if (limited) return limited;
     }
+    if (c.req.raw.body) {
+      const bodyValidation = await validateRequestBodyWithLimit(c, getAuthBodyMaxBytes(c.env));
+      if (!bodyValidation.ok) return bodyValidation.response;
+    }
     return createBetterAuth(c.env).handler(c.req.raw);
   });
 
   app.get('/me', async (c) => {
-    try {
-      const user = await resolveAuthenticatedUser(c.env, c.req.raw.headers);
-      if (!user) {
-        return c.json(withMeta(c, { signedIn: false as const, user: null }));
-      }
-
-      c.set('currentUserId', user.userId);
-      return c.json(
-        withMeta(c, {
-          signedIn: true as const,
-          user: {
-            userId: user.userId,
-            email: user.email,
-            emailVerified: user.emailVerified,
-            name: user.name,
-          },
-        }),
-      );
-    } catch (error) {
-      // USER_DISABLED 是明确的账号状态，要原样告诉前端；其余按服务故障处理
-      if (error instanceof DomainError && error.code === 'USER_DISABLED') {
-        return errorResponse(c, error.status, error.message, error.code);
-      }
-      console.error('[auth] /me failed', error);
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
+    const user = await resolveAuthenticatedUser(c);
+    if (!user) {
+      return c.json(withMeta(c, { signedIn: false as const, user: null }));
     }
+
+    c.set('currentUserId', user.userId);
+    return c.json(
+      withMeta(c, {
+        signedIn: true as const,
+        user: {
+          userId: user.userId,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          name: user.name,
+        },
+      }),
+    );
   });
 }

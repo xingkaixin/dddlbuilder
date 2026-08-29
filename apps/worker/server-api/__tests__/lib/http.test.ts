@@ -17,6 +17,7 @@ describe('http lib utilities', () => {
       req: {
         raw: new Request('http://localhost/test', {
           method: 'POST',
+          headers,
           ...(bodyText === undefined ? {} : { body: bodyText }),
         }),
         header: (name: string) => headers[name],

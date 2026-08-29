@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getUserSystemConfig } from '../lib/userSystemConfig';
+import { getAuthBodyMaxBytes, getUserSystemConfig } from '../lib/userSystemConfig';
 
 const buildEnv = () =>
   ({
@@ -54,5 +54,22 @@ describe('getUserSystemConfig', () => {
     expect(() => getUserSystemConfig(env as never)).toThrow(
       'AUTH_REQUIRE_EMAIL_VERIFICATION must be true or false',
     );
+  });
+
+  it('defaults and supports a bounded authentication body limit', () => {
+    expect(getAuthBodyMaxBytes(buildEnv() as never)).toBe(16 * 1024);
+    const env = {
+      ...buildEnv(),
+      AUTH_BODY_MAX_BYTES: '32768',
+    };
+    expect(getAuthBodyMaxBytes(env as never)).toBe(32768);
+  });
+
+  it.each(['0', '1.5', '1048577'])('rejects an unsafe authentication body limit: %s', (value) => {
+    const env = {
+      ...buildEnv(),
+      AUTH_BODY_MAX_BYTES: value,
+    };
+    expect(() => getAuthBodyMaxBytes(env as never)).toThrow('AUTH_BODY_MAX_BYTES');
   });
 });

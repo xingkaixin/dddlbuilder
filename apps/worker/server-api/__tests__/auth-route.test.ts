@@ -87,6 +87,22 @@ describe('/api/auth/*', () => {
       });
     });
 
+    it('uses the configured authentication body limit', async () => {
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/auth/sign-up/email', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ turnstileToken: 'token', padding: 'x'.repeat(128) }),
+        }),
+        createEnv({ AUTH_BODY_MAX_BYTES: '64' }),
+      );
+
+      expect(response.status).toBe(413);
+      expect(await response.json()).toMatchObject({ code: 'PAYLOAD_TOO_LARGE' });
+      expect(betterAuthMocks.handler).not.toHaveBeenCalled();
+    });
+
     it('returns 400 when token is missing', async () => {
       const { default: app } = await import('../../api/index');
       const response = await app.fetch(
@@ -346,6 +362,28 @@ describe('/api/auth/*', () => {
       },
     );
 
+    it.each(['POST', 'PUT', 'PATCH', 'DELETE'])(
+      'rate limits %s mutations before invoking better-auth',
+      async (method) => {
+        requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(
+          new Response(null, { status: 429 }),
+        );
+        const { default: app } = await import('../../api/index');
+        const response = await app.fetch(
+          createRequest('/api/auth/session', {
+            method,
+            headers: { 'content-type': 'application/json' },
+            body: '{}',
+          }),
+          createEnv(),
+        );
+
+        expect(response.status).toBe(429);
+        expect(requestRateLimitMocks.enforceIpRateLimit).toHaveBeenCalledOnce();
+        expect(betterAuthMocks.handler).not.toHaveBeenCalled();
+      },
+    );
+
     it('proxies requests to better-auth handler', async () => {
       betterAuthMocks.handler.mockResolvedValue(
         new Response(JSON.stringify({ ok: true }), {
@@ -368,6 +406,45 @@ describe('/api/auth/*', () => {
       expect(betterAuthMocks.handler).toHaveBeenCalled();
     });
 
+    it.each(['POST', 'PUT', 'PATCH', 'DELETE'])(
+      'rejects an oversized %s body before invoking better-auth',
+      async (method) => {
+        const { default: app } = await import('../../api/index');
+        const response = await app.fetch(
+          createRequest('/api/auth/session', {
+            method,
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ padding: 'x'.repeat(16 * 1024) }),
+          }),
+          createEnv(),
+        );
+
+        expect(response.status).toBe(413);
+        expect(await response.json()).toMatchObject({ code: 'PAYLOAD_TOO_LARGE' });
+        expect(betterAuthMocks.handler).not.toHaveBeenCalled();
+      },
+    );
+
+    it('preserves the accepted request body for better-auth', async () => {
+      betterAuthMocks.handler.mockImplementation(async (request: Request) =>
+        Response.json({ body: await request.json() }),
+      );
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/auth/sign-in/email', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email: 'test@example.com', password: 'password' }),
+        }),
+        createEnv(),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        body: { email: 'test@example.com', password: 'password' },
+      });
+    });
+
     it('proxies GET requests to better-auth handler', async () => {
       betterAuthMocks.handler.mockResolvedValue(
         new Response(JSON.stringify({ providers: [] }), {
@@ -380,6 +457,7 @@ describe('/api/auth/*', () => {
       const response = await app.fetch(createRequest('/api/auth/providers'), createEnv());
 
       expect(response.status).toBe(200);
+      expect(requestRateLimitMocks.enforceIpRateLimit).not.toHaveBeenCalled();
       expect(betterAuthMocks.handler).toHaveBeenCalled();
     });
   });
@@ -447,9 +525,34 @@ describe('/api/me', () => {
     });
   });
 
-  it('returns 503 when authentication service throws', async () => {
+  it('returns 500 when authentication throws an unknown error', async () => {
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockRejectedValue(new Error('DB down')),
+    }));
+
+    const { default: app } = await import('../../api/index');
+    const response = await app.fetch(
+      createRequest('/api/me', {
+        headers: { Cookie: 'session=ok' },
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+    });
+  });
+
+  it('returns 503 when session lookup is unavailable', async () => {
+    const { DomainError } = await import('../lib/http.js');
+    vi.doMock('../lib/auth.js', () => ({
+      resolveAuthenticatedUser: vi
+        .fn()
+        .mockRejectedValue(
+          new DomainError(503, 'SERVICE_UNAVAILABLE', 'Authentication service unavailable'),
+        ),
     }));
 
     const { default: app } = await import('../../api/index');

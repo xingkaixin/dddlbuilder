@@ -26,16 +26,34 @@ const createEnv = (disabled = false) =>
     },
   }) as unknown as ApiEnv['Bindings'];
 
+const createContext = (
+  env = createEnv(),
+  headers = new Headers(),
+  log?: { error: (error: unknown) => void },
+) => {
+  const set = vi.fn();
+  return {
+    context: {
+      env,
+      req: { raw: { headers } },
+      get: (key: string) => (key === 'log' ? log : undefined),
+      set,
+    } as unknown as Context<ApiEnv>,
+    set,
+  };
+};
+
 describe('authenticated session resolution', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getSession.mockResolvedValue(session);
   });
   it('reads the session API without refreshing it or granting credits', async () => {
-    const user = await resolveAuthenticatedUser(
+    const { context } = createContext(
       createEnv(),
       new Headers({ cookie: 'session=test', authorization: 'ignored' }),
     );
+    const user = await resolveAuthenticatedUser(context);
     expect(user).toEqual({
       userId: 'user-1',
       sessionId: 'session-1',
@@ -53,31 +71,33 @@ describe('authenticated session resolution', () => {
     'returns null for an absent session %#',
     async (value) => {
       mocks.getSession.mockResolvedValue(value);
-      expect(await resolveAuthenticatedUser(createEnv(), new Headers())).toBeNull();
+      const { context } = createContext();
+      expect(await resolveAuthenticatedUser(context)).toBeNull();
     },
   );
   it('distinguishes auth service failure from an anonymous user', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
     mocks.getSession.mockRejectedValue(new Error('database unavailable'));
-    await expect(resolveAuthenticatedUser(createEnv(), new Headers())).rejects.toMatchObject({
+    const error = vi.fn();
+    const { context } = createContext(createEnv(), new Headers(), { error });
+    await expect(resolveAuthenticatedUser(context)).rejects.toMatchObject({
       status: 503,
       code: 'SERVICE_UNAVAILABLE',
+      message: 'Authentication service unavailable',
     });
+    expect(error).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'database unavailable' }),
+    );
   });
   it('rejects disabled users', async () => {
-    await expect(resolveAuthenticatedUser(createEnv(true), new Headers())).rejects.toMatchObject({
+    const { context } = createContext(createEnv(true));
+    await expect(resolveAuthenticatedUser(context)).rejects.toMatchObject({
       status: 403,
       code: 'USER_DISABLED',
     });
   });
   it('rejects anonymous requests', async () => {
     mocks.getSession.mockResolvedValue(null);
-    const set = vi.fn();
-    const context = {
-      env: createEnv(),
-      req: { raw: { headers: new Headers() } },
-      set,
-    } as unknown as Context<ApiEnv>;
+    const { context, set } = createContext();
     await expect(authenticateRequest(context)).rejects.toMatchObject({
       status: 401,
       code: 'AUTH_REQUIRED',
@@ -86,12 +106,7 @@ describe('authenticated session resolution', () => {
   });
 
   it('records the authenticated request user', async () => {
-    const set = vi.fn();
-    const context = {
-      env: createEnv(),
-      req: { raw: { headers: new Headers() } },
-      set,
-    } as unknown as Context<ApiEnv>;
+    const { context, set } = createContext();
     expect(await authenticateRequest(context)).toMatchObject({ userId: 'user-1' });
     expect(set).toHaveBeenCalledWith('currentUserId', 'user-1');
   });

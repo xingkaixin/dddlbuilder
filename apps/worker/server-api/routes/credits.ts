@@ -39,7 +39,7 @@ const parseLedgerDateTime = (value: string | undefined) => {
 };
 
 const resolveAuthenticatedUser = async (c: Context<ApiEnv>) => {
-  const user = await resolveSessionUser(c.env, c.req.raw.headers);
+  const user = await resolveSessionUser(c);
   if (!user) {
     throw new DomainError(401, 'AUTH_REQUIRED', 'Authentication required');
   }

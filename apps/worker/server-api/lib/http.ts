@@ -45,6 +45,67 @@ export const errorResponse = (
 
 export type JsonBodyResult<T> = { ok: true; data: T } | { ok: false; response: Response };
 
+type BodyValidationResult = { ok: true } | { ok: false; response: Response };
+
+type BodyReadResult =
+  | { ok: true; bytes: Uint8Array | null }
+  | { ok: false; reason: 'invalid' | 'too_large' };
+
+const readBodyWithLimit = async (request: Request, maxBytes: number): Promise<BodyReadResult> => {
+  const contentLength = Number(request.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    return { ok: false, reason: 'too_large' };
+  }
+
+  if (!request.body) return { ok: true, bytes: null };
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        return { ok: false, reason: 'too_large' };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, reason: 'invalid' };
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, bytes };
+};
+
+const payloadTooLargeResponse = (c: Context<ApiEnv>, maxBytes: number) =>
+  errorResponse(c, 413, `Payload too large, maximum ${maxBytes} bytes`, 'PAYLOAD_TOO_LARGE');
+
+export const validateRequestBodyWithLimit = async (
+  c: Context<ApiEnv>,
+  maxBytes: number,
+): Promise<BodyValidationResult> => {
+  const result = await readBodyWithLimit(c.req.raw.clone(), maxBytes);
+  if (!result.ok) {
+    return {
+      ok: false,
+      response:
+        result.reason === 'too_large'
+          ? payloadTooLargeResponse(c, maxBytes)
+          : errorResponse(c, 400, 'Invalid request body'),
+    };
+  }
+  return { ok: true };
+};
+
 /**
  * 领域层用错误表达可预期的失败，全局 onError 负责渲染成响应；
  * status 和 code 在抛出点确定，路由层不再各自翻译错误字符串。
@@ -65,65 +126,26 @@ export const parseJsonBodyWithLimit = async <T>(
   c: Context<ApiEnv>,
   maxBytes: number,
 ): Promise<JsonBodyResult<T>> => {
-  const contentLength = Number(c.req.header('content-length'));
-  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+  const result = await readBodyWithLimit(c.req.raw, maxBytes);
+  if (!result.ok) {
     return {
       ok: false,
-      response: errorResponse(
-        c,
-        413,
-        `Payload too large, maximum ${maxBytes} bytes`,
-        'PAYLOAD_TOO_LARGE',
-      ),
+      response:
+        result.reason === 'too_large'
+          ? payloadTooLargeResponse(c, maxBytes)
+          : errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
     };
   }
 
-  const body = c.req.raw.body;
-  if (!body) {
+  if (!result.bytes) {
     return {
       ok: false,
       response: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
     };
   }
 
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      totalBytes += value.byteLength;
-      if (totalBytes > maxBytes) {
-        await reader.cancel();
-        return {
-          ok: false,
-          response: errorResponse(
-            c,
-            413,
-            `Payload too large, maximum ${maxBytes} bytes`,
-            'PAYLOAD_TOO_LARGE',
-          ),
-        };
-      }
-      chunks.push(value);
-    }
-  } catch {
-    return {
-      ok: false,
-      response: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
-    };
-  }
-
-  const bytes = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  try {
-    const raw = new TextDecoder().decode(bytes);
+    const raw = new TextDecoder().decode(result.bytes);
     return { ok: true, data: JSON.parse(raw) as T };
   } catch {
     return {

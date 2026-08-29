@@ -33,6 +33,7 @@ export type ApiEnv = {
     BETTER_AUTH_SECRET?: string;
     BETTER_AUTH_URL?: string;
     AUTH_REQUIRE_EMAIL_VERIFICATION?: string;
+    AUTH_BODY_MAX_BYTES?: string;
     RESEND_API_KEY?: string;
     RESEND_FROM_EMAIL?: string;
     RESEND_FROM_NAME?: string;
@@ -75,6 +76,7 @@ export const ENV_VARIABLE_KEYS = [
   'BETTER_AUTH_SECRET',
   'BETTER_AUTH_URL',
   'AUTH_REQUIRE_EMAIL_VERIFICATION',
+  'AUTH_BODY_MAX_BYTES',
   'RESEND_API_KEY',
   'RESEND_FROM_EMAIL',
   'RESEND_FROM_NAME',

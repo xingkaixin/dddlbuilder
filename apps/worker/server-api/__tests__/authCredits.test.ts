@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Context } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { createSqliteD1Database } from './helpers/sqliteD1';
 import { resolveAuthenticatedUser } from '../lib/auth.js';
@@ -49,6 +50,13 @@ describe('authentication credit initialization', () => {
 
   afterEach(() => fixture.sqlite.close());
 
+  const createContext = (bindings: ApiEnv['Bindings']) =>
+    ({
+      env: bindings,
+      req: { raw: { headers: new Headers() } },
+      get: () => undefined,
+    }) as unknown as Context<ApiEnv>;
+
   it('repairs a missing signup grant when reading the balance', async () => {
     const { Hono } = await import('hono');
     const { registerCreditRoutes } = await import('../routes/credits.js');
@@ -70,8 +78,7 @@ describe('authentication credit initialization', () => {
     async (amount) => {
       await grantSignupCredits(env, { userId: 'user-1', email: 'user@example.com' });
       const result = resolveAuthenticatedUser(
-        { ...env, SIGNUP_BONUS_CREDITS: amount },
-        new Headers(),
+        createContext({ ...env, SIGNUP_BONUS_CREDITS: amount }),
       );
       await expect(result).resolves.toMatchObject({ userId: 'user-1' });
       expect(fixture.sqlite.prepare('SELECT balance, version FROM credit_accounts').get()).toEqual({
