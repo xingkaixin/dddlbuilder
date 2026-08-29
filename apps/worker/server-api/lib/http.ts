@@ -51,7 +51,12 @@ type BodyReadResult =
   | { ok: true; bytes: Uint8Array | null }
   | { ok: false; reason: 'invalid' | 'too_large' };
 
-const readBodyWithLimit = async (request: Request, maxBytes: number): Promise<BodyReadResult> => {
+type RequestBodySource = Pick<Request, 'body' | 'headers'>;
+
+const readBodyWithLimit = async (
+  request: RequestBodySource,
+  maxBytes: number,
+): Promise<BodyReadResult> => {
   const contentLength = Number(request.headers.get('content-length'));
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     return { ok: false, reason: 'too_large' };
