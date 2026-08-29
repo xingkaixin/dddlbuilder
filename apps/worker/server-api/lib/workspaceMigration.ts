@@ -4,7 +4,7 @@ import {
   mergeWorkspaceSnapshotIntoYDoc,
   normalizeWorkspaceMigrationSnapshot,
 } from '@ddlbuilder/workspace-core';
-import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
+import type { WorkspaceMigrationResult } from '@ddlbuilder/shared-types/api';
 import type {
   WorkspaceMigrationPayload,
   WorkspaceMigrationSnapshot,
@@ -17,8 +17,6 @@ import {
   buildMigrationEntityRecords,
   buildMigrationWritePlan,
 } from './workspaceMigrationPlan.js';
-
-export type WorkspaceMigrationResult = Omit<WorkspaceMigrationResponse, 'meta'>;
 
 const readWorkspaceLink = async (
   env: ApiEnv['Bindings'],

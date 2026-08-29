@@ -3,10 +3,10 @@ import type {
   WorkspaceMigrationSnapshot,
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
+import type { WorkspaceMigrationResult } from '@ddlbuilder/shared-types/api';
 import { exportWorkspaceYDocToSnapshot } from '@ddlbuilder/workspace-core';
 import type { ApiEnv } from './context.js';
 import { getOrCreateDefaultWorkspace } from './workspaceEntities.js';
-import type { WorkspaceMigrationResult } from './workspaceMigration.js';
 
 export type WorkspaceYDocAuthority = {
   readSnapshot: () => Promise<WorkspaceSnapshot>;

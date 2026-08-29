@@ -1,5 +1,5 @@
 import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
-import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
+import type { WorkspaceMigrationResult } from '@ddlbuilder/shared-types/api';
 import type { WorkspaceEntityType, WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { normalizeSchemaDocumentState, stableStringify } from '@ddlbuilder/workspace-core';
 import { DomainError } from './http.js';
@@ -278,7 +278,7 @@ export const analyzeMigrationRecords = (
 ) => {
   let createdCount = 0;
   let skippedCount = 0;
-  const conflicts: WorkspaceMigrationResponse['conflicts'] = [];
+  const conflicts: WorkspaceMigrationResult['conflicts'] = [];
   const existingPayloads = buildEntityPayloadMap(existingRecords);
 
   for (const record of sourceRecords) {

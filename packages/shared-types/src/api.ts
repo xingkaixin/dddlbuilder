@@ -53,15 +53,16 @@ export type WorkspaceMigrationConflict = {
   displayName: string;
 };
 
-export type WorkspaceMigrationResponse = {
+export type WorkspaceMigrationResult = {
   status: 'no_data' | 'ready' | 'completed';
   createdCount: number;
   copiedCount: number;
   skippedCount: number;
   conflictCount: number;
   conflicts: WorkspaceMigrationConflict[];
-  meta?: ApiMeta;
 };
+
+export type WorkspaceMigrationResponse = WorkspaceMigrationResult & { meta?: ApiMeta };
 
 export type CurrentWorkspaceResponseWithMeta = CurrentWorkspaceResponse & { meta?: ApiMeta };
 

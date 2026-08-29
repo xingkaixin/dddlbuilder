@@ -8,7 +8,7 @@ import type {
   WorkspaceMigrationSnapshot,
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
-import type { WorkspaceMigrationResult } from '../../lib/workspaceMigration.js';
+import type { WorkspaceMigrationResult } from '@ddlbuilder/shared-types/api';
 import type { ApiEnv } from '../../lib/context.js';
 import { createDurableObjectState } from '../helpers/durableObjectState';
 
