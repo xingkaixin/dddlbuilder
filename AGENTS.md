@@ -16,13 +16,13 @@
 |---------|------|------|
 | `@ddlbuilder/ddl-core` | `packages/ddl-core/` | DDL/DCL 生成核心逻辑，按数据库方言分策略实现，另含表结构 diff 和 ORM 模型输出 |
 | `@ddlbuilder/workspace-core` | `packages/workspace-core/` | workspace Y.Doc 的 CRDT 编解码（快照 ↔ Y.Doc 互转、初始化判定）和内容哈希，前后端共用同一份实现 |
-| `@ddlbuilder/db` | `packages/db/` | Drizzle ORM schema、D1 迁移与种子 SQL，供 `worker` 和根目录 `scripts/d1-*` 共用 |
+| `@ddlbuilder/user-db` | `packages/db/` | `USER_DB` 的 Drizzle ORM schema、D1 迁移与种子 SQL，供 `worker` 和根目录 `scripts/d1-*` 共用 |
 | `@ddlbuilder/shared-types` | `packages/shared-types/` | 跨 monorepo 共享的 TypeScript 类型定义 |
 | `@ddlbuilder/tsconfig` | `packages/tsconfig/` | 共享的 TypeScript 配置预设 |
 
 **依赖流向：**
 - `apps/web` → `@ddlbuilder/ddl-core`、`@ddlbuilder/workspace-core`、`@ddlbuilder/shared-types`
-- `apps/worker` → `@ddlbuilder/db`、`@ddlbuilder/workspace-core`、`@ddlbuilder/shared-types`
+- `apps/worker` → `@ddlbuilder/user-db`、`@ddlbuilder/workspace-core`、`@ddlbuilder/shared-types`
 - `packages/ddl-core`、`packages/workspace-core` → `@ddlbuilder/shared-types`
 - 多数 package dev 依赖 `@ddlbuilder/tsconfig`
 

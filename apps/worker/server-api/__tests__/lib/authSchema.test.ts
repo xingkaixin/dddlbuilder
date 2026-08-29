@@ -1,7 +1,7 @@
 import type { ApiEnv } from '../../lib/context.js';
 import { describe, expect, it, vi } from 'vitest';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
-import { betterAuthSchema } from '@ddlbuilder/db';
+import { betterAuthSchema } from '@ddlbuilder/user-db';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
 describe('auth schema migration parity', () => {

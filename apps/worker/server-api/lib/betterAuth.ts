@@ -3,7 +3,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { drizzle } from 'drizzle-orm/d1';
 import { Resend } from 'resend';
 import type { ApiEnv } from './context.js';
-import { betterAuthSchema } from '@ddlbuilder/db';
+import { betterAuthSchema } from '@ddlbuilder/user-db';
 import { getUserSystemConfig } from './userSystemConfig.js';
 import { parseAllowedOrigins } from './env.js';
 import { grantSignupCredits } from './credits.js';

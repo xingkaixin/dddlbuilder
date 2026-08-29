@@ -1,5 +1,5 @@
 {
-  "name": "@ddlbuilder/db",
+  "name": "@ddlbuilder/user-db",
   "private": true,
   "type": "module",
   "exports": {

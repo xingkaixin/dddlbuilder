@@ -14,9 +14,9 @@
     "format": "oxfmt --config ../../.oxfmtrc.json --write api/ server-api/"
   },
   "dependencies": {
-    "@ddlbuilder/db": "workspace:*",
     "@ddlbuilder/ddl-core": "workspace:*",
     "@ddlbuilder/shared-types": "workspace:*",
+    "@ddlbuilder/user-db": "workspace:*",
     "@ddlbuilder/workspace-core": "workspace:*",
     "better-auth": "^1.7.1",
     "drizzle-orm": "^0.45.2",

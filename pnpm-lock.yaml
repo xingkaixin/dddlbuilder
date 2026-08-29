@@ -236,15 +236,15 @@ importers:
 
   apps/worker:
     dependencies:
-      '@ddlbuilder/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@ddlbuilder/ddl-core':
         specifier: workspace:*
         version: link:../../packages/ddl-core
       '@ddlbuilder/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      '@ddlbuilder/user-db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@ddlbuilder/workspace-core':
         specifier: workspace:*
         version: link:../../packages/workspace-core

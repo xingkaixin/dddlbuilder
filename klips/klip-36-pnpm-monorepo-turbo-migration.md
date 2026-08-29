@@ -9,7 +9,7 @@ Status: Complete
 ## 现状结论（代码校准）
 
 - pnpm workspace 已按 `apps/web`、`apps/worker`、`apps/docs` 和 `packages/*` 拆分，Turbo 负责 build、test、lint 与缓存边界。证据：[`pnpm-workspace.yaml`](../pnpm-workspace.yaml)、[`turbo.json`](../turbo.json)
-- DDL 引擎、共享类型、数据库 schema 和共享 tsconfig 已分别进入 `@ddlbuilder/ddl-core`、`@ddlbuilder/shared-types`、`@ddlbuilder/db`、`@ddlbuilder/tsconfig`。
+- DDL 引擎、共享类型、数据库 schema 和共享 tsconfig 已分别进入 `@ddlbuilder/ddl-core`、`@ddlbuilder/shared-types`、`@ddlbuilder/user-db`、`@ddlbuilder/tsconfig`。
 - Worker 与 Web 产物分别位于 `apps/worker/dist` 与 `apps/web/dist/client`，Wrangler、部署和根 Node 启动入口均使用 monorepo 路径。
 - 本 KLIP 的目录迁移与构建边界已完成；依赖所有权和全仓 typecheck gate 作为后续架构治理继续收敛。
 
@@ -69,7 +69,7 @@ Cloudflare Workers 要求的产物是：
 
 这两个产物分别由 `apps/worker` 和 `apps/web` 的 Vite 构建产生，monorepo 只是代码的组织方式，不影响最终 bundle 策略。`wrangler.toml` 迁移到 `apps/worker/` 后，只需调整 `[assets] directory` 的相对路径指向 `apps/web/dist/client`，或在 Turbo 的 `build` pipeline 完成后将产物拷贝到标准位置，均可实现。
 
-目前 `vite.config.server.ts` 中 `@/*` alias 指向 `./src`，这是隐式耦合。迁移后 `apps/worker` 的 Vite 配置不再需要这个 alias，改为从 `@ddlbuilder/shared-types`、`@ddlbuilder/db` 引入，反而更加清晰。
+目前 `vite.config.server.ts` 中 `@/*` alias 指向 `./src`，这是隐式耦合。迁移后 `apps/worker` 的 Vite 配置不再需要这个 alias，改为从 `@ddlbuilder/shared-types`、`@ddlbuilder/user-db` 引入，反而更加清晰。
 
 ### 2. 构建收益
 
@@ -227,7 +227,7 @@ ddlbuilder/
 │       ├── seeds/              # 原根目录 seeds/
 │       ├── drizzle.config.ts   # Drizzle Kit 配置
 │       ├── tsconfig.json
-│       └── package.json        # @ddlbuilder/db
+│       └── package.json        # @ddlbuilder/user-db
 ├── scripts/                    # CI/部署 pnpm 脚本（保留在根目录）
 ├── turbo.json
 ├── pnpm-workspace.yaml
@@ -243,12 +243,12 @@ ddlbuilder/
        │          │
        │          ├── @ddlbuilder/ddl-core ──→ apps/web
        │          │
-       │          └── @ddlbuilder/db ────────→ apps/worker
+       │          └── @ddlbuilder/user-db ───→ apps/worker
        │
        └── (直接被 apps/* 引用)
 
 apps/web     → @ddlbuilder/shared-types, @ddlbuilder/ddl-core, @ddlbuilder/tsconfig
-apps/worker  → @ddlbuilder/shared-types, @ddlbuilder/db, @ddlbuilder/tsconfig
+apps/worker  → @ddlbuilder/shared-types, @ddlbuilder/user-db, @ddlbuilder/tsconfig
 apps/docs    → 无内部包依赖
 ```
 
@@ -380,7 +380,7 @@ directory = "dist/client"
   - `migrations/` → `packages/db/migrations/`
   - `seeds/` → `packages/db/seeds/`
 - 在 `packages/db/` 中创建 `drizzle.config.ts`
-- 更新 `server-api/lib/betterAuth.ts` 和其他引用 schema 的文件，改为从 `@ddlbuilder/db` 引入
+- 更新 `server-api/lib/betterAuth.ts` 和其他引用 schema 的文件，改为从 `@ddlbuilder/user-db` 引入
 - 更新 `package.json` 中数据库相关脚本（`db:migrate:local` 等），改为在 `packages/db/` 目录下执行
 
 **验证：** `pnpm db:migrate:local` 正常执行，本地 D1 数据库可访问，`pnpm dev:worker` 正常启动。
@@ -396,7 +396,7 @@ directory = "dist/client"
   - `vite.config.server.ts` → `apps/worker/vite.config.ts`
   - `wrangler.toml` → `apps/worker/wrangler.toml`（调整路径）
   - `wrangler.e2e.toml` → `apps/worker/wrangler.e2e.toml`
-- 创建 `apps/worker/package.json`（`@ddlbuilder/worker`），声明对 `@ddlbuilder/shared-types`、`@ddlbuilder/db` 的依赖
+- 创建 `apps/worker/package.json`（`@ddlbuilder/worker`），声明对 `@ddlbuilder/shared-types`、`@ddlbuilder/user-db` 的依赖
 - 更新 `apps/worker` 中的 import 路径（已不存在 `@/` alias）
 
 **验证：** `pnpm --filter @ddlbuilder/worker build` 成功输出 `dist/server.js`，API 端点正常响应。
