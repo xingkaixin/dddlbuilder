@@ -420,6 +420,7 @@ export function useAppController() {
     tabs,
   });
   const editorSurface = useEditorSurfaceModel({
+    documentId: activeTabId ?? 'share-view',
     domains,
     schemaController,
     clearActions,

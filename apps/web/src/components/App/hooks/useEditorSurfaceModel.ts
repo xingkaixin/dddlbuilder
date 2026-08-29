@@ -11,6 +11,7 @@ type EditorDomains = ReturnType<typeof useEditorDomains>;
 type SchemaController = ReturnType<typeof useSchemaController>;
 
 interface UseEditorSurfaceModelInput {
+  documentId: string;
   domains: EditorDomains;
   schemaController: SchemaController;
   clearActions: ReturnType<typeof useClearAllActions>;
@@ -33,6 +34,7 @@ interface UseEditorSurfaceModelInput {
 }
 
 export function useEditorSurfaceModel({
+  documentId,
   domains,
   schemaController,
   clearActions,
@@ -78,6 +80,7 @@ export function useEditorSurfaceModel({
   const collapseOutput = useCallback(() => setOutputPanelOpen(false), [setOutputPanelOpen]);
 
   return {
+    documentId,
     isShareView,
     outputPanelOpen,
     tableBuilderProps: {

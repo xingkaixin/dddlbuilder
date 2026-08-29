@@ -5,6 +5,7 @@ import {
 } from './containers/TableBuilderContainer';
 
 export interface EditorSurfaceModel {
+  documentId: string;
   isShareView: boolean;
   outputPanelOpen: boolean;
   tableBuilderProps: TableBuilderContainerProps;
@@ -12,7 +13,7 @@ export interface EditorSurfaceModel {
 }
 
 export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
-  const { isShareView, outputPanelOpen, tableBuilderProps, outputProps } = model;
+  const { documentId, isShareView, outputPanelOpen, tableBuilderProps, outputProps } = model;
 
   return (
     <div className="flex flex-col gap-4 xl:flex-row">
@@ -21,7 +22,7 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
           isShareView ? 'pointer-events-none select-none opacity-80' : ''
         }`}
       >
-        <TableBuilderContainer {...tableBuilderProps} />
+        <TableBuilderContainer key={documentId} {...tableBuilderProps} />
       </div>
 
       {(isShareView || outputPanelOpen) && <OutputContainer {...outputProps} />}
