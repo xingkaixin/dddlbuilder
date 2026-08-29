@@ -7,13 +7,8 @@ import { reserveAIDailyBudget } from './lib/aiBudget.js';
 import type { OpenAIConfig } from './lib/openaiConfig.js';
 
 export { buildOpenAIConfig } from './lib/openaiConfig.js';
-
-type RetryOptions = {
-  scope: string;
-  maxAttempts?: number;
-  baseDelayMs?: number;
-  maxDelayMs?: number;
-};
+export { withOpenAIRetry } from './lib/openaiRetry.js';
+export type { OpenAIRetryResult } from './lib/openaiRetry.js';
 
 export type AuditLogPayload = {
   requestId: string;
@@ -40,11 +35,6 @@ export type AuditLogPayload = {
   errorCode?: ApiErrorCode;
 };
 
-export type OpenAIRetryResult<T> = {
-  data: T;
-  attempts: number;
-};
-
 export type OpenAIUsageSnapshot = {
   promptTokens: number;
   completionTokens: number;
@@ -53,8 +43,6 @@ export type OpenAIUsageSnapshot = {
 
 type WaitUntilFn = (promise: Promise<unknown>) => void;
 
-const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
-
 export type GovernanceSnapshot = {
   rateLimitEnabled: boolean;
   rateLimitStore: 'd1';
@@ -62,79 +50,6 @@ export type GovernanceSnapshot = {
   rateLimitWindowMs: number | null;
   budgetEnabled: boolean;
   budgetLimitTokens: number | null;
-};
-
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
-
-const parseRetryAfterMs = (retryAfterHeader: string | null | undefined) => {
-  if (!retryAfterHeader) return null;
-  const numeric = Number(retryAfterHeader);
-  if (!Number.isNaN(numeric) && numeric > 0) {
-    return Math.round(numeric * 1_000);
-  }
-
-  const dateMs = Date.parse(retryAfterHeader);
-  if (Number.isNaN(dateMs)) return null;
-
-  const delta = dateMs - Date.now();
-  return delta > 0 ? delta : null;
-};
-
-const readHeaderFromUnknown = (headers: unknown, key: string): string | undefined => {
-  if (!headers || typeof headers !== 'object') return undefined;
-  const normalizedKey = key.toLowerCase();
-
-  if ('get' in headers && typeof (headers as { get: unknown }).get === 'function') {
-    const value = (headers as { get: (k: string) => string | null }).get(normalizedKey);
-    return value ?? undefined;
-  }
-
-  const entries = Object.entries(headers as Record<string, unknown>);
-  for (const [name, value] of entries) {
-    if (name.toLowerCase() === normalizedKey && typeof value === 'string') {
-      return value;
-    }
-  }
-
-  return undefined;
-};
-
-const getErrorStatus = (error: unknown): number | null => {
-  if (!error || typeof error !== 'object') return null;
-  const status = (error as { status?: unknown }).status;
-  return typeof status === 'number' ? status : null;
-};
-
-const getRetryAfterFromError = (error: unknown): number | null => {
-  if (!error || typeof error !== 'object') return null;
-  const headers = (error as { headers?: unknown }).headers;
-  const retryAfterHeader = readHeaderFromUnknown(headers, 'retry-after');
-  return parseRetryAfterMs(retryAfterHeader);
-};
-
-const isRetryableError = (error: unknown): boolean => {
-  const status = getErrorStatus(error);
-  if (status !== null) {
-    return RETRYABLE_STATUS_CODES.has(status);
-  }
-
-  if (error && typeof error === 'object') {
-    const code = (error as { code?: unknown }).code;
-    if (typeof code === 'string') {
-      return ['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENOTFOUND', 'ECONNREFUSED'].includes(code);
-    }
-  }
-
-  return false;
-};
-
-const computeBackoffDelayMs = (attempt: number, baseDelayMs: number, maxDelayMs: number) => {
-  const exponential = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
-  const jitter = 0.8 + Math.random() * 0.4;
-  return Math.max(100, Math.round(exponential * jitter));
 };
 
 const toUtf8Bytes = (input: string) => new TextEncoder().encode(input).length;
@@ -352,45 +267,6 @@ export function logOpenAIAudit(
   const notifyTask = dispatchTelegramAuditNotification(env, payload);
 
   if (notifyTask) waitUntil(notifyTask);
-}
-
-export async function withOpenAIRetry<T>(
-  operation: () => Promise<T>,
-  options: RetryOptions,
-  config: OpenAIConfig,
-): Promise<OpenAIRetryResult<T>> {
-  const maxAttempts = options.maxAttempts ?? config.retryMaxAttempts;
-  const baseDelayMs = options.baseDelayMs ?? config.retryBaseDelayMs;
-  const maxDelayMs = options.maxDelayMs ?? config.retryMaxDelayMs;
-
-  let attempt = 0;
-  while (attempt < maxAttempts) {
-    attempt += 1;
-    try {
-      const data = await operation();
-      return {
-        data,
-        attempts: attempt,
-      };
-    } catch (error) {
-      const shouldRetry = isRetryableError(error) && attempt < maxAttempts;
-      if (!shouldRetry) {
-        throw error;
-      }
-
-      const retryAfterMs = getRetryAfterFromError(error);
-      const backoffDelayMs = computeBackoffDelayMs(attempt, baseDelayMs, maxDelayMs);
-      const waitMs = Math.min(retryAfterMs ?? backoffDelayMs, maxDelayMs);
-
-      const status = getErrorStatus(error);
-      console.warn(
-        `[${options.scope}] OpenAI request failed (attempt ${attempt}/${maxAttempts}, status=${status ?? 'unknown'}), retrying in ${waitMs}ms`,
-      );
-      await sleep(waitMs);
-    }
-  }
-
-  throw new Error(`[${options.scope}] OpenAI retry failed unexpectedly`);
 }
 
 export const estimateResponseTokensFromText = (text: string) => {
