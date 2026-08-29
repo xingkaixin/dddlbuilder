@@ -203,10 +203,28 @@ describe('tabStore', () => {
       stateSnapshot: createSnapshot('t1'),
     });
 
-    useTabStore.getState().updateActiveTabTitle('New');
+    useTabStore.getState().updateDraftTitle(id, 'New');
     const tab = useTabStore.getState().tabs.find((t) => t.id === id);
     expect(tab).toBeDefined();
     expect(tab?.title).toBe('New');
+  });
+
+  it('does not derive a saved table title from draft edits', () => {
+    const state = useTabStore.getState();
+    const id = state.addTab({
+      title: 'Saved users',
+      source: {
+        kind: 'saved_table',
+        normalizedName: 'users',
+        tableName: 'Saved users',
+        baseSignature: 'base',
+      },
+      stateSnapshot: createSnapshot('users'),
+    });
+
+    useTabStore.getState().updateDraftTitle(id, 'Edited table name');
+
+    expect(useTabStore.getState().getTabById(id)?.title).toBe('Saved users');
   });
 
   it('updates active tab source', () => {

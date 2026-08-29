@@ -167,14 +167,14 @@ export function useAppController() {
 
   const tabLifecycle = useTabLifecycle({
     enabled: hydrated && !isShareView,
+    activeTableName: tableName,
     getCurrentState: buildPersistedState,
     saveState,
     selectWorkspaceSnapshot,
     resolveWorkspaceSnapshot,
     resetWorkspaceSelection,
   });
-  const { tabs, activeTabId, activeWorkspaceTab, getActiveTab, updateActiveTabTitle } =
-    tabLifecycle;
+  const { tabs, activeTabId, activeWorkspaceTab } = tabLifecycle;
   const activeEditorSource = activeWorkspaceTab?.source ?? activeSource;
   const canSyncActiveTab = activeWorkspaceTab != null && !activeWorkspaceTab.isLoading;
 
@@ -389,18 +389,6 @@ export function useAppController() {
     [setDbType, activeTab, setActiveTab],
   );
 
-  const handleTableNameChange = useCallback(
-    (value: string) => {
-      setTableName(value);
-      const currentTab = getActiveTab();
-      if (currentTab?.source.kind === 'draft') {
-        const newTitle = value.trim() || t('app.workspace.globalDraft');
-        updateActiveTabTitle(newTitle);
-      }
-    },
-    [setTableName, getActiveTab, updateActiveTabTitle, t],
-  );
-
   const collapseSidebar = useCallback(
     () => setWorkspaceSidebarOpen(false),
     [setWorkspaceSidebarOpen],
@@ -441,7 +429,7 @@ export function useAppController() {
     loadedTableNormalizedName,
     workspaceLabel,
     dataTableToolbarLeft,
-    onTableNameChange: handleTableNameChange,
+    onTableNameChange: setTableName,
     onDbTypeChange: handleDbTypeChange,
     onSaveCurrent: handleSaveCurrent,
     onViewCurrentVersionHistory: handleViewCurrentVersionHistory,

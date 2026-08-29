@@ -82,6 +82,7 @@ describe('useSavedTableTabIntegration', () => {
     const { result, unmount } = renderHook(() => {
       const tabs = useTabLifecycle({
         enabled: true,
+        activeTableName: state.tableName,
         getCurrentState: () => state,
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
@@ -159,6 +160,7 @@ describe('useSavedTableTabIntegration', () => {
     const { result, unmount } = renderHook(() => {
       const tabs = useTabLifecycle({
         enabled: true,
+        activeTableName: editorState.tableName,
         getCurrentState,
         saveState: vi.fn(),
         selectWorkspaceSnapshot,

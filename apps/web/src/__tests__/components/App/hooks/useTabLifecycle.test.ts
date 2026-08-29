@@ -52,6 +52,7 @@ describe('useTabLifecycle', () => {
     const { result } = renderHook(() =>
       useTabLifecycle({
         enabled: true,
+        activeTableName: 'active',
         getCurrentState: () => createState('active'),
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
@@ -95,6 +96,7 @@ describe('useTabLifecycle', () => {
     const { result } = renderHook(() =>
       useTabLifecycle({
         enabled: true,
+        activeTableName: 'placeholder',
         getCurrentState: () => createState('placeholder'),
         saveState,
         selectWorkspaceSnapshot: vi.fn(),
@@ -119,6 +121,7 @@ describe('useTabLifecycle', () => {
     const saveState = vi.fn();
     const stableParams = {
       enabled: true,
+      activeTableName: 'initial',
       saveState,
       selectWorkspaceSnapshot: vi.fn(),
       resolveWorkspaceSnapshot: () => null,
@@ -143,6 +146,76 @@ describe('useTabLifecycle', () => {
     });
   });
 
+  it('外部替换编辑器状态时只同步当前草稿标题', () => {
+    const store = useTabStore.getState();
+    const backgroundId = store.addTab({
+      title: 'Background',
+      source: { kind: 'draft', draftId: 'background' },
+      stateSnapshot: createState('background'),
+    });
+    const activeId = store.addTab({
+      title: 'Before import',
+      source: { kind: 'draft', draftId: 'active' },
+      stateSnapshot: createState('before_import'),
+    });
+    const stableParams = {
+      enabled: true,
+      getCurrentState: () => createState('before_import'),
+      saveState: vi.fn(),
+      selectWorkspaceSnapshot: vi.fn(),
+      resolveWorkspaceSnapshot: () => null,
+      resetWorkspaceSelection: vi.fn(),
+    };
+    const { rerender } = renderHook(
+      ({ activeTableName }) => useTabLifecycle({ ...stableParams, activeTableName }),
+      { initialProps: { activeTableName: 'before_import' } },
+    );
+
+    rerender({ activeTableName: 'imported_users' });
+    expect(useTabStore.getState().getTabById(activeId)?.title).toBe('imported_users');
+    rerender({ activeTableName: 'ai_adjusted_users' });
+    expect(useTabStore.getState().getTabById(activeId)?.title).toBe('ai_adjusted_users');
+    rerender({ activeTableName: 'remote_users' });
+    expect(useTabStore.getState().getTabById(activeId)?.title).toBe('remote_users');
+    expect(useTabStore.getState().getTabById(backgroundId)?.title).toBe('Background');
+  });
+
+  it('切换草稿时等待编辑器状态匹配目标快照再同步标题', () => {
+    const store = useTabStore.getState();
+    const previousId = store.addTab({
+      title: 'Previous',
+      source: { kind: 'draft', draftId: 'previous' },
+      stateSnapshot: createState('previous_table'),
+    });
+    const nextId = store.addTab({
+      title: 'Next',
+      source: { kind: 'draft', draftId: 'next' },
+      stateSnapshot: createState('next_table'),
+    });
+    store.activateTab(previousId);
+    const stableParams = {
+      enabled: true,
+      getCurrentState: () => createState('previous_table'),
+      saveState: vi.fn(),
+      selectWorkspaceSnapshot: vi.fn(),
+      resolveWorkspaceSnapshot: () => null,
+      resetWorkspaceSelection: vi.fn(),
+    };
+    const { rerender } = renderHook(
+      ({ activeTableName }) => useTabLifecycle({ ...stableParams, activeTableName }),
+      { initialProps: { activeTableName: 'previous_table' } },
+    );
+
+    act(() => useTabStore.getState().activateTab(nextId));
+    expect(useTabStore.getState().getTabById(nextId)?.title).toBe('Next');
+
+    rerender({ activeTableName: 'still_previous_table' });
+    expect(useTabStore.getState().getTabById(nextId)?.title).toBe('Next');
+
+    rerender({ activeTableName: 'next_table' });
+    expect(useTabStore.getState().getTabById(nextId)?.title).toBe('next_table');
+  });
+
   it('仅编辑器会话变化时也更新标签快照', () => {
     const initialState = createState('users');
     const latestState = {
@@ -160,6 +233,7 @@ describe('useTabLifecycle', () => {
     const { result } = renderHook(() =>
       useTabLifecycle({
         enabled: true,
+        activeTableName: 'users',
         getCurrentState: () => latestState,
         saveState,
         selectWorkspaceSnapshot: vi.fn(),
@@ -199,6 +273,7 @@ describe('useTabLifecycle', () => {
     const { result } = renderHook(() =>
       useTabLifecycle({
         enabled: true,
+        activeTableName: 'Saved',
         getCurrentState: () => savedState,
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
@@ -234,6 +309,7 @@ describe('useTabLifecycle', () => {
     const { result } = renderHook(() =>
       useTabLifecycle({
         enabled: true,
+        activeTableName: 'Saved',
         getCurrentState: () => savedState,
         saveState: vi.fn(),
         selectWorkspaceSnapshot: vi.fn(),

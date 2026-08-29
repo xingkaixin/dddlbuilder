@@ -1,4 +1,5 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
   WorkspaceSavePayload,
@@ -12,6 +13,7 @@ import { applySavedState } from '../applySavedState';
 
 interface UseTabLifecycleParams {
   enabled: boolean;
+  activeTableName: string;
   getCurrentState: () => PersistedState;
   saveState: (payload: WorkspaceSavePayload) => void;
   selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
@@ -23,12 +25,14 @@ interface UseTabLifecycleParams {
 
 export function useTabLifecycle({
   enabled,
+  activeTableName,
   getCurrentState,
   saveState,
   selectWorkspaceSnapshot,
   resolveWorkspaceSnapshot,
   resetWorkspaceSelection,
 }: UseTabLifecycleParams) {
+  const { t } = useTranslation();
   const { tabs, activeTabId } = useTabStore(
     useShallow((state) => ({ tabs: state.tabs, activeTabId: state.activeTabId })),
   );
@@ -38,7 +42,7 @@ export function useTabLifecycle({
     closeTab: closeTabStore,
     hydrateTab,
     updateActiveTabSnapshot,
-    updateActiveTabTitle,
+    updateDraftTitle,
     updateActiveTabSource,
     findTabBySource,
     getActiveTab,
@@ -50,6 +54,34 @@ export function useTabLifecycle({
     () => tabs.find((tab) => tab.id === activeTabId) ?? null,
     [activeTabId, tabs],
   );
+  // 标签会先激活、编辑器再替换；等待表名与目标快照对齐，避免写入上一标签的标题。
+  const previousActiveTabId = useRef(activeTabId);
+  const pendingDraftTitleId = useRef<string | null>(null);
+  const activeDraftId = activeWorkspaceTab?.source.kind === 'draft' ? activeWorkspaceTab.id : null;
+  const activeSnapshotTableName = activeWorkspaceTab?.stateSnapshot.tableName;
+  useLayoutEffect(() => {
+    const activeTabChanged = previousActiveTabId.current !== activeTabId;
+    previousActiveTabId.current = activeTabId;
+    if (activeTabChanged) pendingDraftTitleId.current = activeDraftId;
+    if (!enabled || !activeDraftId) return;
+    if (
+      pendingDraftTitleId.current === activeDraftId &&
+      activeTableName !== activeSnapshotTableName
+    ) {
+      return;
+    }
+    pendingDraftTitleId.current = null;
+    const title = activeTableName.trim() || t('app.workspace.globalDraft');
+    updateDraftTitle(activeDraftId, title);
+  }, [
+    activeDraftId,
+    activeSnapshotTableName,
+    activeTabId,
+    activeTableName,
+    enabled,
+    t,
+    updateDraftTitle,
+  ]);
   // 编辑器是唯一真相源，标签快照只在冲刷点回写；内容没变时跳过，避免无谓的持久化。
   const flushActiveTab = useCallback(() => {
     if (!enabled || !activeWorkspaceTab || activeWorkspaceTab.isLoading) return;
@@ -131,7 +163,6 @@ export function useTabLifecycle({
     getActiveTab,
     getTabById,
     renameSavedTableTabs,
-    updateActiveTabTitle,
     updateActiveTabSource,
     updateActiveTabSnapshot,
     flushActiveTab,
