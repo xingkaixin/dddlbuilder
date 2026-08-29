@@ -1,15 +1,33 @@
 /// <reference types="@cloudflare/workers-types" />
 
+import type { ApiErrorCode } from '@ddlbuilder/shared-types/api';
+import type { AuditableLogger } from 'evlog';
+
+export type WorkerRequestLogFields = {
+  path: string;
+  requestId: string;
+  user: {
+    id: string;
+  };
+  outcome: {
+    errorCode: ApiErrorCode;
+  };
+};
+
+export type WorkerRequestLogger = AuditableLogger<WorkerRequestLogFields>;
+
 export type ApiEnv = {
   Variables: {
     requestId: string;
     currentUserId?: string;
+    log?: WorkerRequestLogger;
   };
   Bindings: {
     ASSETS: { fetch: typeof fetch };
     SHARE_KV: KVNamespace;
     USER_DB: D1Database;
     WORKSPACE_YDOC?: DurableObjectNamespace;
+    EVLOG_REQUEST_LOG?: WorkerRequestLogger;
     // Environment variables
     CORS_ALLOWED_ORIGINS?: string;
     BETTER_AUTH_SECRET?: string;

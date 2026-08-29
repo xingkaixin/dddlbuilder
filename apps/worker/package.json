@@ -20,6 +20,7 @@
     "@ddlbuilder/workspace-core": "workspace:*",
     "better-auth": "^1.7.1",
     "drizzle-orm": "^0.45.2",
+    "evlog": "2.27.1",
     "hono": "^4.13.3",
     "lib0": "^0.2.117",
     "openai": "^7.5.0",

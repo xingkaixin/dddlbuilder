@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { vi } from 'vitest';
 import app from '../../api/index';
 import type { ApiEnv } from '../lib/context.js';
+import { configureWorkerLogging } from '../lib/logging.js';
 
 vi.mock('../lib/requestRateLimit', () => ({
   enforceIpRateLimit: vi.fn().mockResolvedValue(null),
@@ -208,6 +209,99 @@ describe('api security guards', () => {
       );
       expect(response.headers.get('x-request-id')).not.toBe('   ');
       expect(response.headers.get('x-request-id')).toBeTruthy();
+    });
+  });
+
+  describe('structured request logging', () => {
+    it('emits one canonical event with the response request id', async () => {
+      const events: Array<Record<string, unknown>> = [];
+      const spies = (['log', 'info', 'warn', 'error'] as const).map((method) =>
+        vi.spyOn(console, method).mockImplementation((value: unknown) => {
+          if (value && typeof value === 'object') {
+            const event = value as Record<string, unknown>;
+            if (event.service === 'ddlbuilder-worker') events.push(event);
+          }
+        }),
+      );
+      configureWorkerLogging(true);
+
+      try {
+        const response = await app.fetch(
+          createRequest('/api/share/not-a-uuid', {
+            headers: { 'x-request-id': 'invalid request id' },
+          }),
+          createEnv(),
+        );
+
+        expect(response.status).toBe(400);
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({
+          method: 'GET',
+          path: '/api/share/:uuid',
+          requestId: response.headers.get('x-request-id'),
+          status: 400,
+          level: 'warn',
+          outcome: { errorCode: 'SHARE_UUID_INVALID' },
+        });
+      } finally {
+        configureWorkerLogging(false);
+        for (const spy of spies) spy.mockRestore();
+      }
+    });
+
+    it('does not emit request events for health checks', async () => {
+      const events: Array<Record<string, unknown>> = [];
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation((value: unknown) => {
+        if (value && typeof value === 'object') {
+          const event = value as Record<string, unknown>;
+          if (event.service === 'ddlbuilder-worker') events.push(event);
+        }
+      });
+      configureWorkerLogging(true);
+
+      try {
+        const response = await app.fetch(createRequest('/api/health'), createEnv());
+
+        expect(response.status).toBe(200);
+        expect(events).toHaveLength(0);
+      } finally {
+        configureWorkerLogging(false);
+        infoSpy.mockRestore();
+      }
+    });
+
+    it('records unexpected failures without exposing their details', async () => {
+      const events: Array<Record<string, unknown>> = [];
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation((value: unknown) => {
+        if (value && typeof value === 'object') {
+          const event = value as Record<string, unknown>;
+          if (event.service === 'ddlbuilder-worker') events.push(event);
+        }
+      });
+      configureWorkerLogging(true);
+
+      try {
+        const response = await app.fetch(createRequest('/api/workspaces'), createEnv());
+        const payload = (await response.json()) as Record<string, unknown>;
+
+        expect(response.status).toBe(503);
+        expect(payload).toMatchObject({
+          error: 'Service unavailable',
+          code: 'SERVICE_UNAVAILABLE',
+        });
+        expect(JSON.stringify(payload)).not.toContain('BETTER_AUTH_SECRET');
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({
+          path: '/api/workspaces',
+          level: 'error',
+          status: 503,
+          outcome: { errorCode: 'SERVICE_UNAVAILABLE' },
+          error: { message: 'BETTER_AUTH_SECRET is required' },
+        });
+      } finally {
+        configureWorkerLogging(false);
+        errorSpy.mockRestore();
+      }
     });
   });
 

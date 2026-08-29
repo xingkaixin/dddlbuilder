@@ -4,6 +4,12 @@ import { applyCspHeaders } from '../server-api/lib/csp.js';
 import type { ApiEnv } from '../server-api/lib/context.js';
 import { DomainError, errorResponse, withMeta } from '../server-api/lib/http.js';
 import { parseAllowedOrigins } from '../server-api/lib/env.js';
+import {
+  completeRequestLogContext,
+  getRequestLogger,
+  normalizeIncomingRequestId,
+  withWorkerRequestLogging,
+} from '../server-api/lib/logging.js';
 import { registerParseSqlRoute } from '../server-api/routes/parseSql.js';
 import { registerExplainRoute } from '../server-api/routes/explain.js';
 import { registerReviewRoute } from '../server-api/routes/review.js';
@@ -28,21 +34,17 @@ const app = new Hono<ApiEnv>();
 
 export { api as apiRouter };
 
-const REQUEST_ID_PATTERN = /^[a-zA-Z0-9._:-]{1,128}$/;
-
-const normalizeIncomingRequestId = (value: string | undefined) => {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!REQUEST_ID_PATTERN.test(trimmed)) return null;
-  return trimmed;
-};
-
 api.use('/*', async (c, next) => {
   const incoming = normalizeIncomingRequestId(c.req.header('x-request-id'));
   const requestId = incoming ?? crypto.randomUUID();
   c.set('requestId', requestId);
+  if (c.env.EVLOG_REQUEST_LOG) c.set('log', c.env.EVLOG_REQUEST_LOG);
   c.header('X-Request-Id', requestId);
-  await next();
+  try {
+    await next();
+  } finally {
+    completeRequestLogContext(c, requestId);
+  }
 });
 
 api.use(
@@ -80,7 +82,7 @@ api.onError((error, c) => {
   if (error instanceof DomainError) {
     return errorResponse(c, error.status, error.message, error.code);
   }
-  console.error('[api] unhandled error', error);
+  getRequestLogger(c)?.error(error);
   return errorResponse(c, 503, 'Service unavailable', 'SERVICE_UNAVAILABLE');
 });
 
@@ -134,8 +136,10 @@ app.get('*', async (c) => {
   });
 });
 
+const workerFetch = withWorkerRequestLogging((request, env, ctx) => app.fetch(request, env, ctx));
+
 export default {
-  fetch: app.fetch,
+  fetch: workerFetch,
   async scheduled(_event: ScheduledEvent, env: ApiEnv['Bindings'], ctx: ExecutionContext) {
     ctx.waitUntil(
       (async () => {

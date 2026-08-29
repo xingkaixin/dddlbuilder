@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { ApiErrorCode, ApiErrorPayload, ApiMeta } from '@ddlbuilder/shared-types/api';
 import type { ApiEnv } from './context.js';
+import { getRequestLogger } from './logging.js';
 
 export type { ApiErrorCode, ApiErrorPayload, ApiMeta } from '@ddlbuilder/shared-types/api';
 
@@ -32,6 +33,7 @@ export const errorResponse = (
   error: string,
   code?: ApiErrorCode,
 ) => {
+  if (code) getRequestLogger(c)?.set({ outcome: { errorCode: code } });
   const requestId = getRequestId(c);
   const payload: ApiErrorPayload = {
     error,
