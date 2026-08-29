@@ -180,6 +180,29 @@ describe('useTabLifecycle', () => {
     expect(useTabStore.getState().getTabById(backgroundId)?.title).toBe('Background');
   });
 
+  it('空草稿保持未命名标题', () => {
+    const emptyState = createState('');
+    const tabId = useTabStore.getState().addTab({
+      title: '未命名草稿',
+      source: { kind: 'draft', draftId: 'empty' },
+      stateSnapshot: emptyState,
+    });
+
+    renderHook(() =>
+      useTabLifecycle({
+        enabled: true,
+        activeTableName: '',
+        getCurrentState: () => emptyState,
+        saveState: vi.fn(),
+        selectWorkspaceSnapshot: vi.fn(),
+        resolveWorkspaceSnapshot: () => null,
+        resetWorkspaceSelection: vi.fn(),
+      }),
+    );
+
+    expect(useTabStore.getState().getTabById(tabId)?.title).toBe('未命名草稿');
+  });
+
   it('切换草稿时等待编辑器状态匹配目标快照再同步标题', () => {
     const store = useTabStore.getState();
     const previousId = store.addTab({

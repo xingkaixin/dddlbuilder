@@ -71,7 +71,7 @@ export function useTabLifecycle({
       return;
     }
     pendingDraftTitleId.current = null;
-    const title = activeTableName.trim() || t('app.workspace.globalDraft');
+    const title = activeTableName.trim() || t('app.workspace.unnamedDraft');
     updateDraftTitle(activeDraftId, title);
   }, [
     activeDraftId,
