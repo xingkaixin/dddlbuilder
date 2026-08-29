@@ -46,23 +46,24 @@ export function useAISchemaPatchSession({
   const [statusState, setStatusState] = useState(() => ({
     result,
     values: {} as Record<string, AISchemaChangeStatus>,
-    appliedState: null as PersistedState | null,
+    expectedState: null as PersistedState | null,
     error: null as string | null,
   }));
   const statuses = statusState.result === result ? statusState.values : EMPTY_CHANGE_STATUSES;
-  const reviewBaseState =
-    (statusState.result === result && statusState.appliedState) || resultBaseState;
+  const expectedState =
+    (statusState.result === result && statusState.expectedState) || resultBaseState;
   const updateStatuses = useCallback(
     (
       update: (
         current: Record<string, AISchemaChangeStatus>,
       ) => Record<string, AISchemaChangeStatus>,
-      appliedState?: PersistedState,
+      nextExpectedState?: PersistedState,
     ) => {
       setStatusState((current) => ({
         result,
         values: update(current.result === result ? current.values : {}),
-        appliedState: appliedState ?? (current.result === result ? current.appliedState : null),
+        expectedState:
+          nextExpectedState ?? (current.result === result ? current.expectedState : null),
         error: null,
       }));
     },
@@ -75,12 +76,12 @@ export function useAISchemaPatchSession({
   }, [resultBaseState, result]);
 
   const changes = useMemo(() => {
-    if (!candidateState || !reviewBaseState) return [];
-    return buildAISchemaChanges(reviewBaseState, candidateState).map((change) => ({
+    if (!candidateState || !resultBaseState) return [];
+    return buildAISchemaChanges(resultBaseState, candidateState).map((change) => ({
       ...change,
       status: statuses[change.id] || 'pending',
     }));
-  }, [candidateState, reviewBaseState, statuses]);
+  }, [candidateState, resultBaseState, statuses]);
 
   const pendingChanges = changes.filter((change) => change.status === 'pending');
   const acceptedChanges = changes.filter((change) => change.status === 'accepted');
@@ -100,7 +101,7 @@ export function useAISchemaPatchSession({
   const handleReset = useCallback(() => {
     clearResult();
     clearConversation();
-    setStatusState({ result: null, values: {}, appliedState: null, error: null });
+    setStatusState({ result: null, values: {}, expectedState: null, error: null });
     setInput('');
   }, [clearConversation, clearResult]);
 
@@ -119,10 +120,10 @@ export function useAISchemaPatchSession({
   );
 
   const handleApplyAccepted = useCallback(() => {
-    if (!candidateState || !reviewBaseState) return;
+    if (!candidateState || !expectedState) return;
     let appliedState: PersistedState;
     try {
-      appliedState = onApplyChanges(acceptedChanges, candidateState, reviewBaseState);
+      appliedState = onApplyChanges(acceptedChanges, candidateState, expectedState);
     } catch (error) {
       setStatusState((current) => ({
         ...current,
@@ -139,7 +140,7 @@ export function useAISchemaPatchSession({
       for (const id of appliedIds) next[id] = 'applied';
       return next;
     }, appliedState);
-  }, [acceptedChanges, candidateState, reviewBaseState, onApplyChanges, result, t, updateStatuses]);
+  }, [acceptedChanges, candidateState, expectedState, onApplyChanges, result, t, updateStatuses]);
 
   const handleSelectAll = useCallback(() => {
     updateStatuses((current) => {

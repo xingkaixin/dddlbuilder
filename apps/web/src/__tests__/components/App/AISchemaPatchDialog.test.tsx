@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@/__tests__/utils/test-utils';
 import { withDefaultEditorSession } from '@ddlbuilder/shared-types';
 import { AppDialogLayer } from '@/components/App/AppDialogLayer';
 import type { AppDialogLayerModel } from '@/components/App/buildAppDialogLayerModel';
+import { applyAISchemaChanges } from '@/components/App/aiSchemaPatchTransition';
 import { requestGenerateTable } from '@/services/aiGenerateTableService';
+import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 
 vi.mock('@/services/aiGenerateTableService', () => ({ requestGenerateTable: vi.fn() }));
 
@@ -41,9 +43,11 @@ const state = withDefaultEditorSession({
   authInput: '',
   authObjects: [],
 });
+const applyChanges = vi.fn();
 
 function Harness() {
   const [open, setOpen] = useState(true);
+  const [currentState, setCurrentState] = useState(state);
   const model = {
     saveObjectType: 'table',
     globalDialogs: { saveDialog: {} },
@@ -54,9 +58,18 @@ function Harness() {
       open,
       onOpenChange: setOpen,
       dbType: 'mysql',
-      currentState: state,
+      currentState,
       templates: [],
-      onApplyChanges: vi.fn(),
+      onApplyChanges: (
+        changes: AISchemaChange[],
+        candidateState: typeof state,
+        expectedState: typeof state,
+      ): typeof state => {
+        const nextState = applyAISchemaChanges(currentState, candidateState, changes);
+        applyChanges(changes, candidateState, expectedState, nextState);
+        setCurrentState(nextState);
+        return nextState;
+      },
       onFocusChange: vi.fn(),
     },
   } as unknown as AppDialogLayerModel;
@@ -69,6 +82,11 @@ function Harness() {
 }
 
 describe('AI patch dialog session', () => {
+  beforeEach(() => {
+    vi.mocked(requestGenerateTable).mockReset();
+    applyChanges.mockReset();
+  });
+
   it('keeps the conversation input across closing and reopening the view', async () => {
     render(<Harness />);
     const input = screen.getByRole('textbox');
@@ -114,5 +132,41 @@ describe('AI patch dialog session', () => {
       within(screen.getByRole('alertdialog')).getByRole('button', { name: '重新开始' }),
     );
     await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue(''));
+  });
+
+  it('keeps applied changes visible and advances the expected state between batches', async () => {
+    vi.mocked(requestGenerateTable).mockResolvedValue({
+      fullText: '{"tableName":"accounts","tableComment":"账号表","fields":[]}',
+      result: {
+        tableName: 'accounts',
+        tableComment: '账号表',
+        fields: [],
+        indexes: [],
+      },
+    });
+    render(<Harness />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '补充表说明' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送' }));
+    await screen.findByText('调整表英文名');
+    fireEvent.click(screen.getAllByRole('button', { name: '确认' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: '应用 1 项变更' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('调整表英文名')).toBeInTheDocument();
+      expect(screen.getByText('1 项待确认，0 项已选择，1 项已应用')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: '确认' }));
+    fireEvent.click(screen.getByRole('button', { name: '应用 1 项变更' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('0 项待确认，0 项已选择，2 项已应用')).toBeInTheDocument(),
+    );
+    expect(applyChanges).toHaveBeenCalledTimes(2);
+    expect(applyChanges.mock.calls[0][2]).toEqual(state);
+    expect(applyChanges.mock.calls[1][2]).toBe(applyChanges.mock.calls[0][3]);
+    expect(applyChanges.mock.calls[1][2]).toEqual(
+      expect.objectContaining({ tableName: 'accounts', tableComment: '' }),
+    );
   });
 });
