@@ -10,12 +10,12 @@ const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
 };
 
 vi.mock('@/auth/AuthSessionProvider', () => {
-  const useAuthSession = vi.fn(() => ({
+  const useAuthIdentity = vi.fn(() => ({
     status: 'signed_out',
     configured: true,
     userId: null,
   }));
-  return { useAuthSession, useAuthIdentity: useAuthSession };
+  return { useAuthIdentity };
 });
 
 const savedTableMocks = vi.hoisted(() => ({

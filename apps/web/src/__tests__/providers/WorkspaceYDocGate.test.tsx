@@ -19,7 +19,7 @@ const authSession = vi.hoisted(() => ({
 }));
 
 vi.mock('@/auth/AuthSessionProvider', () => {
-  const useAuthSession = () => ({
+  const useAuthIdentity = () => ({
     ...authSession.current,
     workspaceScope:
       authSession.current.userId && authSession.current.workspaceId
@@ -31,9 +31,8 @@ vi.mock('@/auth/AuthSessionProvider', () => {
         : null,
   });
   return {
-    useAuthSession,
-    useAuthIdentity: useAuthSession,
-    useAuthActions: useAuthSession,
+    useAuthIdentity,
+    useAuthActions: () => ({ refreshSession: authSession.current.refreshSession }),
   };
 });
 

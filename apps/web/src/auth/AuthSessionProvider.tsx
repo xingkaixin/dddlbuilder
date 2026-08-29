@@ -52,8 +52,6 @@ export type AuthDialogState = {
   authDialogOpen: boolean;
 };
 
-export type UserSessionState = AuthIdentityState & AuthCreditsState & AuthDialogState;
-
 export type AuthActions = AuthAccountActions & {
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
@@ -68,29 +66,10 @@ export type AuthDialogContextValue = AuthDialogState & {
   closeAuthDialog: () => void;
 };
 
-export type AuthSessionContextValue = UserSessionState &
-  AuthActions &
-  AuthCreditsContextValue &
-  AuthDialogContextValue;
-
 const AuthIdentityContext = createContext<AuthIdentityState | null>(null);
 const AuthActionsContext = createContext<AuthActions | null>(null);
 const AuthCreditsContext = createContext<AuthCreditsContextValue | null>(null);
 const AuthDialogContext = createContext<AuthDialogContextValue | null>(null);
-
-export const signedOutState = (configured: boolean): UserSessionState => ({
-  status: 'signed_out',
-  configured,
-  userId: null,
-  workspaceId: null,
-  workspaceScope: null,
-  email: null,
-  name: null,
-  emailVerified: false,
-  creditBalance: null,
-  creditsStatus: 'idle',
-  authDialogOpen: false,
-});
 
 export function AuthSessionProvider({ children }: PropsWithChildren) {
   const configured = isBetterAuthConfigured();
@@ -328,15 +307,4 @@ export const useAuthDialog = () => {
   const value = useContext(AuthDialogContext);
   if (!value) throw new Error('useAuthDialog must be used within AuthSessionProvider');
   return value;
-};
-
-export const useAuthSession = (): AuthSessionContextValue => {
-  const identityValue = useAuthIdentity();
-  const actionsValue = useAuthActions();
-  const creditsValue = useAuthCredits();
-  const dialogValue = useAuthDialog();
-  return useMemo(
-    () => ({ ...identityValue, ...actionsValue, ...creditsValue, ...dialogValue }),
-    [actionsValue, creditsValue, dialogValue, identityValue],
-  );
 };

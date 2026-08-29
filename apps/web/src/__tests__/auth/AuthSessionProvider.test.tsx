@@ -10,10 +10,11 @@ import {
 } from '@/services/workspaceIdentity';
 import {
   AuthSessionProvider,
+  useAuthActions,
+  useAuthCredits,
+  useAuthDialog,
   useAuthIdentity,
-  useAuthSession,
   translateAuthError,
-  signedOutState,
   fetchCurrentUser,
   fetchCreditBalance,
 } from '@/auth/AuthSessionProvider';
@@ -58,8 +59,15 @@ vi.mock('@/services/workspaceAccountService', async (importOriginal) => ({
   clearLocalWorkspaceData: clearLocalWorkspaceDataMock,
 }));
 
+const useSessionProbeState = () => ({
+  ...useAuthIdentity(),
+  ...useAuthActions(),
+  ...useAuthCredits(),
+  ...useAuthDialog(),
+});
+
 const SessionProbe = () => {
-  const session = useAuthSession();
+  const session = useSessionProbeState();
   return (
     <div>
       <span data-testid="status">{session.status}</span>
@@ -161,31 +169,6 @@ describe('AuthSessionProvider', () => {
 
     it('uses fallbackKey for unknown codes', () => {
       expect(translateAuthError({ code: 'UNKNOWN' }, 'header.auth.signInFailed')).toBe('登录失败');
-    });
-  });
-
-  describe('signedOutState', () => {
-    it('returns correct state when configured is true', () => {
-      const state = signedOutState(true);
-      expect(state).toEqual({
-        status: 'signed_out',
-        configured: true,
-        userId: null,
-        workspaceId: null,
-        workspaceScope: null,
-        email: null,
-        name: null,
-        emailVerified: false,
-        creditBalance: null,
-        creditsStatus: 'idle',
-        authDialogOpen: false,
-      });
-    });
-
-    it('returns correct state when configured is false', () => {
-      const state = signedOutState(false);
-      expect(state.configured).toBe(false);
-      expect(state.status).toBe('signed_out');
     });
   });
 
@@ -530,7 +513,7 @@ describe('AuthSessionProvider', () => {
       }));
 
       // Re-import to pick up the new mock
-      const { AuthSessionProvider: UnconfiguredProvider, useAuthSession: UnconfiguredHook } =
+      const { AuthSessionProvider: UnconfiguredProvider, useAuthIdentity: UnconfiguredHook } =
         await import('@/auth/AuthSessionProvider');
 
       const Probe = () => {
@@ -582,9 +565,11 @@ describe('AuthSessionProvider', () => {
         )
         .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })));
 
-      const sessionApi: { current: ReturnType<typeof useAuthSession> | null } = { current: null };
+      const sessionApi: { current: ReturnType<typeof useSessionProbeState> | null } = {
+        current: null,
+      };
       const Probe = () => {
-        const api = useAuthSession();
+        const api = useSessionProbeState();
         useEffect(() => {
           sessionApi.current = api;
         }, [api]);
@@ -641,9 +626,11 @@ describe('AuthSessionProvider', () => {
         );
         signOutMock.mockResolvedValue({ error: null });
         vi.spyOn(console, 'error').mockImplementation(() => {});
-        const session: { current: ReturnType<typeof useAuthSession> | null } = { current: null };
+        const session: { current: ReturnType<typeof useSessionProbeState> | null } = {
+          current: null,
+        };
         const Probe = () => {
-          const api = useAuthSession();
+          const api = useSessionProbeState();
           useEffect(() => {
             session.current = api;
           }, [api]);
@@ -700,9 +687,11 @@ describe('AuthSessionProvider', () => {
       signOutMock.mockResolvedValue({ error: null });
       clearLocalWorkspaceDataMock.mockRejectedValue(new Error('IndexedDB unavailable'));
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      const sessionApi: { current: ReturnType<typeof useAuthSession> | null } = { current: null };
+      const sessionApi: { current: ReturnType<typeof useSessionProbeState> | null } = {
+        current: null,
+      };
       const Probe = () => {
-        const api = useAuthSession();
+        const api = useSessionProbeState();
         useEffect(() => {
           sessionApi.current = api;
         }, [api]);

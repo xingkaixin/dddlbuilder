@@ -5,33 +5,25 @@ import { useLocale } from '@/i18n/LocaleContext';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 vi.mock('@/auth/AuthSessionProvider', () => {
-  const useAuthSession = () => ({
+  const useAuthIdentity = () => ({
     status: 'signed_in',
     configured: true,
     userId: 'user-1',
     email: 'user@example.com',
     name: 'User One',
     emailVerified: true,
+  });
+  const useAuthCredits = () => ({
     creditBalance: 1000,
     creditsStatus: 'ready',
-    authDialogOpen: false,
-    signInWithEmail: vi.fn(),
-    signUpWithEmail: vi.fn(),
-    requestPasswordReset: vi.fn(),
-    resetPassword: vi.fn(),
-    sendVerificationEmail: vi.fn(),
-    signOut: vi.fn(),
-    refreshSession: vi.fn(),
     refreshCredits: vi.fn(),
+  });
+  const useAuthDialog = () => ({
+    authDialogOpen: false,
     openAuthDialog: vi.fn(),
     closeAuthDialog: vi.fn(),
   });
-  return {
-    useAuthSession,
-    useAuthIdentity: useAuthSession,
-    useAuthCredits: useAuthSession,
-    useAuthDialog: useAuthSession,
-  };
+  return { useAuthIdentity, useAuthCredits, useAuthDialog };
 });
 
 const streamingMocks = vi.hoisted(() => ({

@@ -16,21 +16,19 @@ vi.mock('@/components/App/WorkspaceMigrationDialog', () => ({
 }));
 vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ resolvedLocale: 'zh-CN' }) }));
 vi.mock('@/auth/AuthSessionProvider', () => {
-  const useAuthSession = () => ({
+  const useAuthIdentity = () => ({
     status: 'signed_in',
     userId: 'user',
     workspaceId: 'workspace',
     workspaceScope: { kind: 'user', userId: 'user', workspaceId: 'workspace' },
+  });
+  const useAuthCredits = () => ({
     creditsStatus: 'ready',
     creditBalance: 1000,
     refreshCredits: vi.fn(),
   });
-  return {
-    useAuthSession,
-    useAuthIdentity: useAuthSession,
-    useAuthCredits: useAuthSession,
-    useAuthDialog: useAuthSession,
-  };
+  const useAuthDialog = () => ({ openAuthDialog: vi.fn() });
+  return { useAuthIdentity, useAuthCredits, useAuthDialog };
 });
 
 const state = withDefaultEditorSession({

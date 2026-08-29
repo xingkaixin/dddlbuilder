@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-
 import { Header } from '@/components/App/Header';
 import { AuthDialogs } from '@/auth/AuthDialogs';
 import { WorkspaceMigrationDialog } from '@/components/App/WorkspaceMigrationDialog';
+import type { AuthIdentityState } from '@/auth/AuthSessionProvider';
 
 const signInWithEmailMock = vi.fn();
 const signUpWithEmailMock = vi.fn();
@@ -20,6 +21,28 @@ const retryWorkspaceYDocMock = vi.fn();
 const mockWorkspaceYDoc = vi.hoisted(() => ({
   value: {} as any,
 }));
+
+const signedOutIdentity: AuthIdentityState = {
+  status: 'signed_out',
+  configured: true,
+  userId: null,
+  workspaceId: null,
+  workspaceScope: null,
+  email: null,
+  name: null,
+  emailVerified: false,
+};
+
+const signedInIdentity: AuthIdentityState = {
+  status: 'signed_in',
+  configured: true,
+  userId: 'user-1',
+  workspaceId: 'workspace-1',
+  workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' },
+  email: 'user@example.com',
+  name: 'User One',
+  emailVerified: true,
+};
 
 vi.mock('@/i18n/LocaleContext', () => ({
   useLocale: () => ({
@@ -91,17 +114,8 @@ vi.mock('@/components/ui/tooltip', () => ({
 }));
 
 vi.mock('@/auth/AuthSessionProvider', () => {
-  const useAuthSession = vi.fn(() => ({
-    status: 'signed_out',
-    configured: true,
-    userId: null,
-    workspaceId: null,
-    email: null,
-    name: null,
-    emailVerified: false,
-    creditBalance: null,
-    creditsStatus: 'idle',
-    authDialogOpen: false,
+  const useAuthIdentity = vi.fn(() => signedOutIdentity);
+  const buildActions = () => ({
     signInWithEmail: signInWithEmailMock,
     signUpWithEmail: signUpWithEmailMock,
     updateUserName: vi.fn(),
@@ -111,16 +125,17 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     sendVerificationEmail: sendVerificationEmailMock,
     signOut: signOutMock,
     refreshSession: refreshSessionMock,
-    refreshCredits: vi.fn(),
+  });
+  const buildDialog = () => ({
+    authDialogOpen: false,
     openAuthDialog: openAuthDialogMock,
     closeAuthDialog: closeAuthDialogMock,
-  }));
-  return {
-    useAuthSession,
-    useAuthIdentity: useAuthSession,
-    useAuthActions: useAuthSession,
-    useAuthDialog: useAuthSession,
-  };
+  });
+  let actions: ReturnType<typeof buildActions> | undefined;
+  let dialog: ReturnType<typeof buildDialog> | undefined;
+  const useAuthActions = vi.fn(() => (actions ??= buildActions()));
+  const useAuthDialog = vi.fn(() => (dialog ??= buildDialog()));
+  return { useAuthIdentity, useAuthActions, useAuthDialog };
 });
 
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
@@ -148,8 +163,15 @@ vi.mock('@/hooks/useToast', () => ({
 }));
 
 describe('Header', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const { useAuthDialog, useAuthIdentity } = await import('@/auth/AuthSessionProvider');
+    vi.mocked(useAuthIdentity).mockReturnValue(signedOutIdentity);
+    vi.mocked(useAuthDialog).mockReturnValue({
+      authDialogOpen: false,
+      openAuthDialog: openAuthDialogMock,
+      closeAuthDialog: closeAuthDialogMock,
+    });
     runMigrationMock.mockReset();
     refreshSessionMock.mockReset();
     refreshSessionMock.mockResolvedValue(undefined);
@@ -225,28 +247,9 @@ describe('Header', () => {
   });
 
   it('未登录时应展示登录入口并可提交邮箱密码登录', async () => {
-    const { useAuthSession } = await import('@/auth/AuthSessionProvider');
-    vi.mocked(useAuthSession).mockReturnValue({
-      status: 'signed_out',
-      configured: true,
-      userId: null,
-      workspaceId: null,
-      email: null,
-      name: null,
-      emailVerified: false,
-      creditBalance: null,
-      creditsStatus: 'idle',
+    const { useAuthDialog } = await import('@/auth/AuthSessionProvider');
+    vi.mocked(useAuthDialog).mockReturnValue({
       authDialogOpen: true,
-      signInWithEmail: signInWithEmailMock,
-      signUpWithEmail: signUpWithEmailMock,
-      updateUserName: vi.fn(),
-      changePassword: vi.fn(),
-      requestPasswordReset: requestPasswordResetMock,
-      resetPassword: resetPasswordMock,
-      sendVerificationEmail: sendVerificationEmailMock,
-      signOut: signOutMock,
-      refreshSession: refreshSessionMock,
-      refreshCredits: vi.fn(),
       openAuthDialog: openAuthDialogMock,
       closeAuthDialog: closeAuthDialogMock,
     });
@@ -271,32 +274,8 @@ describe('Header', () => {
   });
 
   it('登录后应展示用户菜单并支持退出登录', async () => {
-    const { useAuthSession } = await import('@/auth/AuthSessionProvider');
-    vi.mocked(useAuthSession).mockReturnValue({
-      status: 'signed_in',
-      configured: true,
-      userId: 'user-1',
-      workspaceId: 'workspace-1',
-      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' },
-      email: 'user@example.com',
-      name: 'User One',
-      emailVerified: true,
-      creditBalance: 8800,
-      creditsStatus: 'ready',
-      authDialogOpen: false,
-      signInWithEmail: signInWithEmailMock,
-      signUpWithEmail: signUpWithEmailMock,
-      updateUserName: vi.fn(),
-      changePassword: vi.fn(),
-      requestPasswordReset: requestPasswordResetMock,
-      resetPassword: resetPasswordMock,
-      sendVerificationEmail: sendVerificationEmailMock,
-      signOut: signOutMock,
-      refreshSession: refreshSessionMock,
-      refreshCredits: vi.fn(),
-      openAuthDialog: openAuthDialogMock,
-      closeAuthDialog: closeAuthDialogMock,
-    });
+    const { useAuthIdentity } = await import('@/auth/AuthSessionProvider');
+    vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
 
     render(<Header {...baseProps} />);
 
@@ -311,32 +290,8 @@ describe('Header', () => {
   });
 
   it('登录后应展示工作区同步状态并支持失败重试', async () => {
-    const { useAuthSession } = await import('@/auth/AuthSessionProvider');
-    vi.mocked(useAuthSession).mockReturnValue({
-      status: 'signed_in',
-      configured: true,
-      userId: 'user-1',
-      workspaceId: 'workspace-1',
-      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' },
-      email: 'user@example.com',
-      name: 'User One',
-      emailVerified: true,
-      creditBalance: 8800,
-      creditsStatus: 'ready',
-      authDialogOpen: false,
-      signInWithEmail: signInWithEmailMock,
-      signUpWithEmail: signUpWithEmailMock,
-      updateUserName: vi.fn(),
-      changePassword: vi.fn(),
-      requestPasswordReset: requestPasswordResetMock,
-      resetPassword: resetPasswordMock,
-      sendVerificationEmail: sendVerificationEmailMock,
-      signOut: signOutMock,
-      refreshSession: refreshSessionMock,
-      refreshCredits: vi.fn(),
-      openAuthDialog: openAuthDialogMock,
-      closeAuthDialog: closeAuthDialogMock,
-    });
+    const { useAuthIdentity } = await import('@/auth/AuthSessionProvider');
+    vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
     mockWorkspaceYDoc.value = {
       doc: null,
       synced: false,
@@ -373,34 +328,10 @@ describe('Header', () => {
   });
 
   it('存在待迁移工作区时应展示迁移对话框并可执行迁移', async () => {
-    const { useAuthSession } = await import('@/auth/AuthSessionProvider');
+    const { useAuthIdentity } = await import('@/auth/AuthSessionProvider');
     const { useWorkspaceMigration } = await import('@/hooks/useWorkspaceMigration');
 
-    vi.mocked(useAuthSession).mockReturnValue({
-      status: 'signed_in',
-      configured: true,
-      userId: 'user-1',
-      workspaceId: 'workspace-1',
-      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' },
-      email: 'user@example.com',
-      name: 'User One',
-      emailVerified: true,
-      creditBalance: 8800,
-      creditsStatus: 'ready',
-      authDialogOpen: false,
-      signInWithEmail: signInWithEmailMock,
-      signUpWithEmail: signUpWithEmailMock,
-      updateUserName: vi.fn(),
-      changePassword: vi.fn(),
-      requestPasswordReset: requestPasswordResetMock,
-      resetPassword: resetPasswordMock,
-      sendVerificationEmail: sendVerificationEmailMock,
-      signOut: signOutMock,
-      refreshSession: refreshSessionMock,
-      refreshCredits: vi.fn(),
-      openAuthDialog: openAuthDialogMock,
-      closeAuthDialog: closeAuthDialogMock,
-    });
+    vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
     vi.mocked(useWorkspaceMigration).mockReturnValue({
       checking: false,
       running: false,

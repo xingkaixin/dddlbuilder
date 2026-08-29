@@ -11,7 +11,7 @@ import { usePersistedState } from '@/hooks';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { STORAGE_KEY } from '@/utils/constants';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAuthIdentity, type AuthIdentityState } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDocDocument } from '@/providers/WorkspaceYDocProvider';
 import { getShareState, ShareApiError } from '@/services/shareService';
 import type { WorkspaceSavePayload } from '@ddlbuilder/shared-types/workspace';
@@ -99,30 +99,17 @@ vi.mock('@/services/shareService', () => ({
 }));
 
 vi.mock('@/auth/AuthSessionProvider', () => {
-  const useAuthSession = vi.fn(() => ({
+  const useAuthIdentity = vi.fn(() => ({
     status: 'signed_out',
     configured: true,
     userId: null,
+    workspaceId: null,
+    workspaceScope: null,
     email: null,
     name: null,
     emailVerified: false,
-    creditBalance: null,
-    creditsStatus: 'idle',
-    authDialogOpen: false,
-    signInWithEmail: vi.fn(),
-    signUpWithEmail: vi.fn(),
-    updateUserName: vi.fn(),
-    changePassword: vi.fn(),
-    requestPasswordReset: vi.fn(),
-    resetPassword: vi.fn(),
-    sendVerificationEmail: vi.fn(),
-    signOut: vi.fn(),
-    refreshSession: vi.fn(),
-    refreshCredits: vi.fn(),
-    openAuthDialog: vi.fn(),
-    closeAuthDialog: vi.fn(),
   }));
-  return { useAuthSession, useAuthIdentity: useAuthSession };
+  return { useAuthIdentity };
 });
 
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
@@ -138,6 +125,26 @@ vi.mock('@/providers/WorkspaceYDocProvider', () => ({
 const mockedGetShareState = vi.mocked(getShareState);
 const VALID_SHARE_ID = '8c6afce1-2a39-47aa-a14f-f3450c3ad7dd';
 const SHARE_STORAGE_KEY = `${STORAGE_KEY}:share:${VALID_SHARE_ID}`;
+const signedOutIdentity: AuthIdentityState = {
+  status: 'signed_out',
+  configured: true,
+  userId: null,
+  workspaceId: null,
+  workspaceScope: null,
+  email: null,
+  name: null,
+  emailVerified: false,
+};
+const signedInIdentity: AuthIdentityState = {
+  status: 'signed_in',
+  configured: true,
+  userId: 'user-1',
+  workspaceId: 'ws-1',
+  workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
+  email: 'user@example.com',
+  name: 'User One',
+  emailVerified: true,
+};
 
 const createDeferred = <T>() => {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -168,31 +175,7 @@ const createState = (tableName: string) => ({
 });
 
 const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
-  vi.mocked(useAuthSession).mockReturnValue({
-    status: 'signed_in',
-    configured: true,
-    userId: 'user-1',
-    workspaceId: 'ws-1',
-    workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
-    email: 'user@example.com',
-    name: 'User One',
-    emailVerified: true,
-    creditBalance: 100,
-    creditsStatus: 'ready',
-    authDialogOpen: false,
-    signInWithEmail: vi.fn(),
-    signUpWithEmail: vi.fn(),
-    updateUserName: vi.fn(),
-    changePassword: vi.fn(),
-    requestPasswordReset: vi.fn(),
-    resetPassword: vi.fn(),
-    sendVerificationEmail: vi.fn(),
-    signOut: vi.fn(),
-    refreshSession: vi.fn(),
-    refreshCredits: vi.fn(),
-    openAuthDialog: vi.fn(),
-    closeAuthDialog: vi.fn(),
-  });
+  vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
   vi.mocked(useWorkspaceYDocDocument).mockReturnValue({
     doc,
     synced: false,
@@ -396,29 +379,7 @@ describe('usePersistedState', () => {
     setupFakeIndexedDB();
     localStorageMock.clear();
     vi.clearAllMocks();
-    vi.mocked(useAuthSession).mockReturnValue({
-      status: 'signed_out',
-      configured: true,
-      userId: null,
-      email: null,
-      name: null,
-      emailVerified: false,
-      creditBalance: null,
-      creditsStatus: 'idle',
-      authDialogOpen: false,
-      signInWithEmail: vi.fn(),
-      signUpWithEmail: vi.fn(),
-      updateUserName: vi.fn(),
-      changePassword: vi.fn(),
-      requestPasswordReset: vi.fn(),
-      resetPassword: vi.fn(),
-      sendVerificationEmail: vi.fn(),
-      signOut: vi.fn(),
-      refreshSession: vi.fn(),
-      refreshCredits: vi.fn(),
-      openAuthDialog: vi.fn(),
-      closeAuthDialog: vi.fn(),
-    });
+    vi.mocked(useAuthIdentity).mockReturnValue(signedOutIdentity);
     vi.mocked(useWorkspaceYDocDocument).mockReturnValue({
       doc: null,
       synced: false,
@@ -523,31 +484,7 @@ describe('usePersistedState', () => {
   });
 
   it('登录用户不应自动拉取云端 workspace', async () => {
-    vi.mocked(useAuthSession).mockReturnValue({
-      status: 'signed_in',
-      configured: true,
-      userId: 'user-1',
-      workspaceId: 'ws-1',
-      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
-      email: 'user@example.com',
-      name: 'User One',
-      emailVerified: true,
-      creditBalance: 100,
-      creditsStatus: 'ready',
-      authDialogOpen: false,
-      signInWithEmail: vi.fn(),
-      signUpWithEmail: vi.fn(),
-      updateUserName: vi.fn(),
-      changePassword: vi.fn(),
-      requestPasswordReset: vi.fn(),
-      resetPassword: vi.fn(),
-      sendVerificationEmail: vi.fn(),
-      signOut: vi.fn(),
-      refreshSession: vi.fn(),
-      refreshCredits: vi.fn(),
-      openAuthDialog: vi.fn(),
-      closeAuthDialog: vi.fn(),
-    });
+    vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     const { wrapper } = createQueryClientWrapper();
@@ -570,31 +507,7 @@ describe('usePersistedState', () => {
       },
       getAnonymousWorkspaceScope(),
     );
-    vi.mocked(useAuthSession).mockReturnValue({
-      status: 'signed_in',
-      configured: true,
-      userId: 'user-1',
-      workspaceId: 'ws-1',
-      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
-      email: 'user@example.com',
-      name: 'User One',
-      emailVerified: true,
-      creditBalance: 100,
-      creditsStatus: 'ready',
-      authDialogOpen: false,
-      signInWithEmail: vi.fn(),
-      signUpWithEmail: vi.fn(),
-      updateUserName: vi.fn(),
-      changePassword: vi.fn(),
-      requestPasswordReset: vi.fn(),
-      resetPassword: vi.fn(),
-      sendVerificationEmail: vi.fn(),
-      signOut: vi.fn(),
-      refreshSession: vi.fn(),
-      refreshCredits: vi.fn(),
-      openAuthDialog: vi.fn(),
-      closeAuthDialog: vi.fn(),
-    });
+    vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
@@ -617,31 +530,7 @@ describe('usePersistedState', () => {
       { state: createState('new_draft'), createdAt: 2, updatedAt: 2 },
       scope,
     );
-    vi.mocked(useAuthSession).mockReturnValue({
-      status: 'signed_in',
-      configured: true,
-      userId: 'user-1',
-      workspaceId: 'ws-1',
-      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
-      email: 'user@example.com',
-      name: 'User One',
-      emailVerified: true,
-      creditBalance: 100,
-      creditsStatus: 'ready',
-      authDialogOpen: false,
-      signInWithEmail: vi.fn(),
-      signUpWithEmail: vi.fn(),
-      updateUserName: vi.fn(),
-      changePassword: vi.fn(),
-      requestPasswordReset: vi.fn(),
-      resetPassword: vi.fn(),
-      sendVerificationEmail: vi.fn(),
-      signOut: vi.fn(),
-      refreshSession: vi.fn(),
-      refreshCredits: vi.fn(),
-      openAuthDialog: vi.fn(),
-      closeAuthDialog: vi.fn(),
-    });
+    vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
 
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => useTestPersistedState(), { wrapper });
@@ -654,31 +543,7 @@ describe('usePersistedState', () => {
   });
 
   it('登录用户编辑全局草稿后不应被重复 hydrate 回滚', async () => {
-    vi.mocked(useAuthSession).mockReturnValue({
-      status: 'signed_in',
-      configured: true,
-      userId: 'user-1',
-      workspaceId: 'ws-1',
-      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
-      email: 'user@example.com',
-      name: 'User One',
-      emailVerified: true,
-      creditBalance: 100,
-      creditsStatus: 'ready',
-      authDialogOpen: false,
-      signInWithEmail: vi.fn(),
-      signUpWithEmail: vi.fn(),
-      updateUserName: vi.fn(),
-      changePassword: vi.fn(),
-      requestPasswordReset: vi.fn(),
-      resetPassword: vi.fn(),
-      sendVerificationEmail: vi.fn(),
-      signOut: vi.fn(),
-      refreshSession: vi.fn(),
-      refreshCredits: vi.fn(),
-      openAuthDialog: vi.fn(),
-      closeAuthDialog: vi.fn(),
-    });
+    vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
 
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => useTestPersistedState(), { wrapper });

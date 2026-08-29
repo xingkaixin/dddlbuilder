@@ -4,38 +4,36 @@ import { useAIRequestAccess } from '@/hooks/useAIRequestAccess';
 import i18n from '@/i18n';
 
 const mocks = vi.hoisted(() => ({
-  useAuthSession: vi.fn(),
+  useAuthIdentity: vi.fn(),
+  useAuthCredits: vi.fn(),
+  useAuthDialog: vi.fn(),
   openAuthDialog: vi.fn(),
   refreshCredits: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: mocks.useAuthSession,
-  useAuthIdentity: mocks.useAuthSession,
-  useAuthCredits: mocks.useAuthSession,
-  useAuthDialog: mocks.useAuthSession,
+  useAuthIdentity: mocks.useAuthIdentity,
+  useAuthCredits: mocks.useAuthCredits,
+  useAuthDialog: mocks.useAuthDialog,
 }));
 
 describe('useAIRequestAccess', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.useAuthSession.mockReturnValue({
-      status: 'signed_in',
-      userId: 'user-1',
+    mocks.useAuthIdentity.mockReturnValue({ status: 'signed_in', userId: 'user-1' });
+    mocks.useAuthCredits.mockReturnValue({
       creditsStatus: 'ready',
       creditBalance: 10,
-      openAuthDialog: mocks.openAuthDialog,
       refreshCredits: mocks.refreshCredits,
     });
+    mocks.useAuthDialog.mockReturnValue({ openAuthDialog: mocks.openAuthDialog });
   });
 
   it('未登录时阻止请求并打开登录框', () => {
-    mocks.useAuthSession.mockReturnValue({
-      status: 'signed_out',
-      userId: null,
+    mocks.useAuthIdentity.mockReturnValue({ status: 'signed_out', userId: null });
+    mocks.useAuthCredits.mockReturnValue({
       creditsStatus: 'idle',
       creditBalance: null,
-      openAuthDialog: mocks.openAuthDialog,
       refreshCredits: mocks.refreshCredits,
     });
     const { result } = renderHook(() => useAIRequestAccess());
@@ -47,12 +45,9 @@ describe('useAIRequestAccess', () => {
   });
 
   it('额度耗尽时阻止请求但不改变登录状态', () => {
-    mocks.useAuthSession.mockReturnValue({
-      status: 'signed_in',
-      userId: 'user-1',
+    mocks.useAuthCredits.mockReturnValue({
       creditsStatus: 'ready',
       creditBalance: 0,
-      openAuthDialog: mocks.openAuthDialog,
       refreshCredits: mocks.refreshCredits,
     });
     const { result } = renderHook(() => useAIRequestAccess());

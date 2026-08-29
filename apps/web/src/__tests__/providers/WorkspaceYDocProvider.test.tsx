@@ -31,9 +31,8 @@ const auth = vi.hoisted(() => ({
 }));
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => auth,
   useAuthIdentity: () => auth,
-  useAuthActions: () => auth,
+  useAuthActions: () => ({ refreshSession: auth.refreshSession }),
 }));
 
 // 模拟 y-indexeddb 的持久化：同一 workspace 的 Y.Doc 状态（含删除墓碑）跨启动保留。

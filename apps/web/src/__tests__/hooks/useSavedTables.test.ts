@@ -15,7 +15,7 @@ const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
   return testingLibraryRenderHook(render, { wrapper });
 };
 
-const mockUseAuthSession = vi.hoisted(() =>
+const mockUseAuthIdentity = vi.hoisted(() =>
   vi.fn(() => ({
     status: 'signed_out',
     configured: true,
@@ -42,8 +42,7 @@ const mockYDocAdapter = vi.hoisted(() => ({
 }));
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: mockUseAuthSession,
-  useAuthIdentity: mockUseAuthSession,
+  useAuthIdentity: mockUseAuthIdentity,
 }));
 
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
@@ -83,7 +82,7 @@ const createState = (name: string): PersistedState => ({
 describe('useSavedTables', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
-    mockUseAuthSession.mockReturnValue({
+    mockUseAuthIdentity.mockReturnValue({
       status: 'signed_out',
       configured: true,
       userId: null,
@@ -265,7 +264,7 @@ describe('useSavedTables', () => {
 
   it('should write saved table changes to local ydoc before remote connects', async () => {
     const doc = { transact: (callback: () => void) => callback() };
-    mockUseAuthSession.mockReturnValue({
+    mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
       userId: 'user_1',
@@ -307,7 +306,7 @@ describe('useSavedTables', () => {
   });
 
   it('本地 Y.Doc 未就绪时保存，应拒绝写入旧分区', async () => {
-    mockUseAuthSession.mockReturnValue({
+    mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
       userId: 'user_1',
@@ -344,7 +343,7 @@ describe('useSavedTables', () => {
   });
 
   it('本地 Y.Doc 未就绪时批量导入，应明确报告未写入', async () => {
-    mockUseAuthSession.mockReturnValue({
+    mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
       userId: 'user_1',
@@ -380,7 +379,7 @@ describe('useSavedTables', () => {
   });
 
   it('本地 Y.Doc 就绪时保存，不应重开 legacy 迁移', async () => {
-    mockUseAuthSession.mockReturnValue({
+    mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
       userId: 'user_1',
@@ -414,7 +413,7 @@ describe('useSavedTables', () => {
   it('records the current trash write target when Y.Doc is ready', async () => {
     const log = vi.spyOn(console, 'info').mockImplementation(() => {});
     const doc = { transact: (callback: () => void) => callback() };
-    mockUseAuthSession.mockReturnValue({
+    mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
       userId: 'user_1',
@@ -480,7 +479,7 @@ describe('useSavedTables', () => {
   it('should refresh ydoc updates without showing loading again', async () => {
     let notifyYDocChanged: (() => void) | null = null;
     const doc = {};
-    mockUseAuthSession.mockReturnValue({
+    mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
       userId: 'user_1',
@@ -542,7 +541,7 @@ describe('useSavedTables', () => {
 
   it('restores a trashed record from the authoritative YDoc', async () => {
     const doc = { transact: (callback: () => void) => callback() };
-    mockUseAuthSession.mockReturnValue({
+    mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
       userId: 'user_1',

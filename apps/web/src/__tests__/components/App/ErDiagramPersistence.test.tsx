@@ -18,13 +18,13 @@ const capture = vi.hoisted(() => ({
   fitView: vi.fn(),
 }));
 vi.mock('@/auth/AuthSessionProvider', () => {
-  const useAuthSession = () => ({
+  const useAuthIdentity = () => ({
     status: capture.doc ? 'signed_in' : 'signed_out',
     userId: 'user',
     workspaceId: 'workspace',
     workspaceScope: capture.doc ? { kind: 'user', userId: 'user', workspaceId: 'workspace' } : null,
   });
-  return { useAuthSession, useAuthIdentity: useAuthSession };
+  return { useAuthIdentity };
 });
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDocDocument: () => ({ doc: capture.doc, localSynced: true, synced: true }),
