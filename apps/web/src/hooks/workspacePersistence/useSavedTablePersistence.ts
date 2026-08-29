@@ -23,6 +23,9 @@ import {
   type SavedTableStateUpdate,
 } from '@/utils/savedTableStateUpdate';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
+import { deleteAllVersions } from '@/utils/tableVersions';
+import { deleteAllReviews } from '@/utils/reviewHistory';
+import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 import { useWorkspaceAuthority } from './useWorkspaceAuthority';
 import { requireReadyWorkspaceStorage } from './useWorkspaceStorageTarget';
 
@@ -145,13 +148,20 @@ export function useSavedTablePersistence() {
     [storage],
   );
 
-  const deleteTableEverywhere = useCallback(
-    async (normalizedName: SavedTableTarget) => {
+  const deleteTablePermanently = useCallback(
+    async (record: SavedTableRecord) => {
       const target = requireReadyWorkspaceStorage(storage);
+      const reference = {
+        tableId: resolveSavedTableId(record),
+        normalizedName: record.normalizedName,
+      };
+      const historyTarget = { ...reference, scope: target.scope };
+
+      await Promise.all([deleteAllVersions(historyTarget), deleteAllReviews(historyTarget)]);
+      await deleteSavedTable(reference, target.scope);
       if (target.kind === 'ydoc') {
-        target.transact((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
+        target.transact((doc) => deleteSavedTableFromYDoc(doc, reference));
       }
-      await deleteSavedTable(normalizedName, target.scope);
     },
     [storage],
   );
@@ -166,6 +176,6 @@ export function useSavedTablePersistence() {
     replaceTable,
     moveTableToTrash,
     cleanupLocalTable,
-    deleteTableEverywhere,
+    deleteTablePermanently,
   };
 }

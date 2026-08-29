@@ -192,12 +192,12 @@ describe('useSavedTables failure states', () => {
     });
   });
 
-  it('永久删除应先清理版本，清理失败时保留表记录', async () => {
+  it('历史清理失败时保留表记录', async () => {
     savedTableMocks.getSavedTable.mockResolvedValueOnce({
       ...createRecord('demo', 'Demo'),
       tableId: 'table-demo',
     });
-    tableVersionMocks.deleteAllVersions.mockRejectedValueOnce(new Error('版本清理失败'));
+    tableVersionMocks.deleteAllVersions.mockRejectedValueOnce(new Error('历史清理失败'));
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -209,38 +209,37 @@ describe('useSavedTables failure states', () => {
     expect(response).toEqual({
       ok: false,
       reason: 'error',
-      message: '版本清理失败',
+      message: '历史清理失败',
     });
     expect(tableVersionMocks.deleteAllVersions).toHaveBeenCalledWith({
       scope: { kind: 'anonymous' },
       tableId: 'table-demo',
       normalizedName: 'demo',
     });
+    expect(reviewHistoryMocks.deleteAllReviews).toHaveBeenCalledWith({
+      scope: { kind: 'anonymous' },
+      tableId: 'table-demo',
+      normalizedName: 'demo',
+    });
     expect(savedTableMocks.deleteSavedTable).not.toHaveBeenCalled();
-    expect(reviewHistoryMocks.deleteAllReviews).not.toHaveBeenCalled();
   });
 
-  it('评审历史清理失败时保留表记录，重试成功后再删除表', async () => {
+  it('永久删除失败后可凭保留的表记录重试', async () => {
     savedTableMocks.getSavedTable.mockResolvedValue({
       ...createRecord('demo', 'Demo'),
       tableId: 'table-demo',
     });
-    reviewHistoryMocks.deleteAllReviews.mockRejectedValueOnce(new Error('评审清理失败'));
+    reviewHistoryMocks.deleteAllReviews.mockRejectedValueOnce(new Error('清理失败'));
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => {
       expect(await result.current.deleteTablePermanently('demo')).toEqual({
         ok: false,
         reason: 'error',
-        message: '评审清理失败',
+        message: '清理失败',
       });
     });
     expect(savedTableMocks.deleteSavedTable).not.toHaveBeenCalled();
-    expect(reviewHistoryMocks.deleteAllReviews).toHaveBeenCalledWith({
-      scope: { kind: 'anonymous' },
-      tableId: 'table-demo',
-      normalizedName: 'demo',
-    });
     await act(async () => {
       expect(await result.current.deleteTablePermanently('demo')).toEqual({
         ok: true,
@@ -248,6 +247,8 @@ describe('useSavedTables failure states', () => {
         tableId: 'table-demo',
       });
     });
+    expect(tableVersionMocks.deleteAllVersions).toHaveBeenCalledTimes(2);
+    expect(reviewHistoryMocks.deleteAllReviews).toHaveBeenCalledTimes(2);
     expect(savedTableMocks.deleteSavedTable).toHaveBeenCalledOnce();
   });
 

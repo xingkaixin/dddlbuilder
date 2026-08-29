@@ -18,9 +18,9 @@ import {
 import { useSavedTablePersistence } from '@/hooks/workspacePersistence/useSavedTablePersistence';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import { localSavedTablesOptions, localTrashedTablesOptions } from '@/queries/workspaceLocal';
-import { countVersions, createVersion, deleteAllVersions } from '@/utils/tableVersions';
+import { countVersions, createVersion } from '@/utils/tableVersions';
 import { resolveSavedTableId } from '@/utils/savedTableIdentity';
-import { deleteAllReviews, migrateReviewsToTable } from '@/utils/reviewHistory';
+import { migrateReviewsToTable } from '@/utils/reviewHistory';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import { reportError } from '@/utils/errorReporter';
 import type { SavedTableStateUpdate } from '@/utils/savedTableStateUpdate';
@@ -66,7 +66,7 @@ export function useSavedTables() {
     replaceTable,
     moveTableToTrash,
     cleanupLocalTable,
-    deleteTableEverywhere,
+    deleteTablePermanently: persistPermanentDeletion,
   } = useSavedTablePersistence();
   const yDocProjection = useWorkspaceYDocProjection(
     yDoc,
@@ -269,14 +269,7 @@ export function useSavedTables() {
         if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await readTable(target);
         if (!record) return { ok: false, reason: 'not_found' };
-        const historyTarget = {
-          scope: currentScope,
-          tableId: resolveSavedTableId(record),
-          normalizedName: record.normalizedName,
-        };
-        await deleteAllVersions(historyTarget);
-        await deleteAllReviews(historyTarget);
-        await deleteTableEverywhere(target);
+        await persistPermanentDeletion(record);
         await refresh();
         return {
           ok: true,
@@ -291,7 +284,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, deleteTableEverywhere, readTable, refresh, t],
+    [currentScope, persistPermanentDeletion, readTable, refresh, t],
   );
 
   const renameTable = useCallback(
