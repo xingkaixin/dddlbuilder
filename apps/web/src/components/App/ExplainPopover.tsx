@@ -6,7 +6,6 @@ import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
-import { logAiStreamDebug } from '@/services/aiStreamDebug';
 import { useTranslation } from 'react-i18next';
 import { useAuthIdentity } from '@/auth/AuthSessionProvider';
 
@@ -25,17 +24,8 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
     bottom: number;
   } | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const {
-    isLoading,
-    isStreaming,
-    isComplete,
-    explanation,
-    error,
-    requestId,
-    debugEnabled,
-    startExplain,
-    clearExplain,
-  } = useDDLExplain();
+  const { isLoading, isStreaming, isComplete, explanation, error, startExplain, clearExplain } =
+    useDDLExplain();
   const popoverRef = useRef<HTMLDivElement>(null);
   const isInteractingRef = useRef(false);
 
@@ -102,24 +92,6 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
     },
     [clearExplain],
   );
-
-  useEffect(() => {
-    if (!showResult || explanation === null) {
-      return;
-    }
-
-    logAiStreamDebug(
-      'ai_explain_render_commit',
-      {
-        route: 'explain',
-        requestId,
-        explanationLength: explanation.length,
-        isStreaming,
-        isComplete,
-      },
-      { force: debugEnabled },
-    );
-  }, [debugEnabled, explanation, isComplete, isStreaming, requestId, showResult]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

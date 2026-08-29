@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useState, useCallback, useMemo } from 'react';
 import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartialJson';
 import { requestDDLReview } from '@/services/reviewService';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -10,6 +9,7 @@ import type {
   DDLReviewStructuredSuggestion,
 } from '@ddlbuilder/shared-types/ddl-review';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { useLatestRequest } from './useLatestRequest';
 
 export type StructuredSuggestion = DDLReviewStructuredSuggestion;
 export type ReviewResult = DDLReviewResult;
@@ -30,31 +30,9 @@ export function useDDLReview(documentKey: string) {
     result: null,
     error: null,
   });
-  const activeRequestRef = useRef<{
-    key: string;
-    controller: AbortController;
-  } | null>(null);
-  useEffect(
-    () => () => {
-      activeRequestRef.current?.controller.abort();
-      activeRequestRef.current = null;
-    },
-    [],
-  );
-  const reviewMutation = useMutation({
-    mutationFn: ({
-      payload,
-      signal,
-      onStreamingText,
-    }: {
-      payload: Parameters<typeof requestDDLReview>[0];
-      signal: AbortSignal;
-      onStreamingText: (streamingText: string) => void;
-    }) => requestDDLReview(payload, { signal, onStreamingText }),
-    retry: false,
-  });
+  const { isPending, run, cancel } = useLatestRequest();
   const isCurrentDocument = state.documentKey === documentKey;
-  const isLoading = isCurrentDocument && reviewMutation.isPending;
+  const isLoading = isCurrentDocument && isPending;
 
   // Parse partial result from streaming text for progressive rendering
   const partialResult: PartialReviewResult | null = useMemo(() => {
@@ -95,81 +73,64 @@ export function useDDLReview(documentKey: string) {
       };
       const requestKey = JSON.stringify([documentKey, requestPayload]);
 
-      if (activeRequestRef.current) {
-        if (activeRequestRef.current.key === requestKey) {
-          return;
-        }
-        activeRequestRef.current.controller.abort();
-      }
-
-      const abortController = new AbortController();
-      activeRequestRef.current = {
-        key: requestKey,
-        controller: abortController,
-      };
-
-      setState({
-        documentKey,
-        streamingText: '',
-        result: null,
-        error: null,
-      });
-
-      try {
-        const result = await reviewMutation.mutateAsync({
-          payload: requestPayload,
-          signal: abortController.signal,
-          onStreamingText: (streamingText) => {
-            if (activeRequestRef.current?.controller !== abortController) return;
-            setState((prev) => ({
-              ...prev,
-              streamingText,
-            }));
-          },
-        });
-
-        if (activeRequestRef.current?.controller !== abortController) return;
-        setState({
-          documentKey,
-          streamingText: '',
-          result,
-          error: null,
-        });
-        requestAccess.refreshCreditsAfterSuccess();
-        return result;
-      } catch (error) {
-        if (activeRequestRef.current?.controller !== abortController) return;
-        if ((error as Error).name === 'AbortError') {
-          return; // Request was cancelled, don't update state
-        }
+      const result = await run(async ({ signal, isCurrent, commitIfCurrent }) => {
         setState({
           documentKey,
           streamingText: '',
           result: null,
-          error: requestAccess.resolveRequestError(error, i18n.t('services.reviewFailed')),
+          error: null,
         });
-      } finally {
-        if (activeRequestRef.current?.controller === abortController) {
-          activeRequestRef.current = null;
+
+        try {
+          const reviewResult = await requestDDLReview(requestPayload, {
+            signal,
+            onStreamingText: (streamingText) => {
+              commitIfCurrent(() => {
+                setState((previous) => ({
+                  ...previous,
+                  streamingText,
+                }));
+              });
+            },
+          });
+
+          commitIfCurrent(() => {
+            setState({
+              documentKey,
+              streamingText: '',
+              result: reviewResult,
+              error: null,
+            });
+            requestAccess.refreshCreditsAfterSuccess();
+          });
+          return reviewResult;
+        } catch (error) {
+          if (!isCurrent() || (error as Error).name === 'AbortError') throw error;
+
+          setState({
+            documentKey,
+            streamingText: '',
+            result: null,
+            error: requestAccess.resolveRequestError(error, i18n.t('services.reviewFailed')),
+          });
+          return undefined;
         }
-      }
+      }, requestKey);
+
+      return result ?? undefined;
     },
-    [documentKey, requestAccess, resolvedLocale, reviewMutation],
+    [documentKey, requestAccess, resolvedLocale, run],
   );
 
   const clearReview = useCallback(() => {
-    if (activeRequestRef.current) {
-      activeRequestRef.current.controller.abort();
-      activeRequestRef.current = null;
-    }
+    cancel();
     setState({
       documentKey,
       streamingText: '',
       result: null,
       error: null,
     });
-    reviewMutation.reset();
-  }, [documentKey, reviewMutation]);
+  }, [cancel, documentKey]);
 
   const setReviewResult = useCallback(
     (result: ReviewResult | null, nextDocumentKey = documentKey) => {

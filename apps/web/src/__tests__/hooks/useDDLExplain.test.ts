@@ -243,6 +243,43 @@ describe('useDDLExplain', () => {
     expect(result.current.explanation).toBe('second explanation');
   });
 
+  it('should ignore streaming updates and completion from a replaced request', async () => {
+    let completeOlder!: (value: string) => void;
+    streamingMocks.readTextStream
+      .mockImplementationOnce(async (_, options) => {
+        options?.onUpdate?.('older partial');
+        return new Promise<string>((resolve) => {
+          completeOlder = resolve;
+        });
+      })
+      .mockResolvedValueOnce('newer explanation');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: new ReadableStream(),
+      json: vi.fn(),
+    } as unknown as Response);
+    const { result } = renderDDLExplainHook();
+
+    let older!: Promise<void>;
+    act(() => {
+      older = result.current.startExplain('older sql');
+    });
+    await waitFor(() => expect(result.current.explanation).toBe('older partial'));
+
+    await act(async () => {
+      await result.current.startExplain('newer sql');
+    });
+    expect(result.current.explanation).toBe('newer explanation');
+
+    await act(async () => {
+      completeOlder('older explanation');
+      await older;
+    });
+    expect(result.current.explanation).toBe('newer explanation');
+    expect(result.current.isComplete).toBe(true);
+  });
+
   it('should clear state and abort active request', async () => {
     let currentSignal: AbortSignal | undefined;
 

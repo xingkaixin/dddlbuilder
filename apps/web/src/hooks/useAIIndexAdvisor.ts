@@ -1,9 +1,9 @@
-import { useCallback, useRef, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
 import type { AIIndexAdvisorRequest, AIIndexAdvisorResult } from '@ddlbuilder/shared-types';
 import { assertAIIndexAdvisorTarget, requestAIIndexAdvice } from '@/services/aiIndexAdvisorService';
 import i18n from '@/i18n';
 import { useAIRequestAccess } from './useAIRequestAccess';
+import { useLatestRequest } from './useLatestRequest';
 
 interface AIIndexAdvisorState {
   result: AIIndexAdvisorResult | null;
@@ -16,12 +16,7 @@ export function useAIIndexAdvisor() {
     result: null,
     error: null,
   });
-  const activeRequestRef = useRef<AbortController | null>(null);
-  const adviceMutation = useMutation({
-    mutationFn: ({ payload, signal }: { payload: AIIndexAdvisorRequest; signal: AbortSignal }) =>
-      requestAIIndexAdvice(payload, signal),
-    retry: false,
-  });
+  const { isPending, run, cancel } = useLatestRequest();
 
   const analyzeIndexes = useCallback(
     async (payload: AIIndexAdvisorRequest): Promise<AIIndexAdvisorResult | null> => {
@@ -39,47 +34,38 @@ export function useAIIndexAdvisor() {
         throw new Error(message);
       }
 
-      activeRequestRef.current?.abort();
-      const abortController = new AbortController();
-      activeRequestRef.current = abortController;
       setState({ result: null, error: null });
 
-      try {
-        const result = await adviceMutation.mutateAsync({
-          payload,
-          signal: abortController.signal,
-        });
-        setState({ result, error: null });
-        requestAccess.refreshCreditsAfterSuccess();
-        return result;
-      } catch (error) {
-        if ((error as Error).name === 'AbortError') {
-          return null;
+      return run(async ({ signal, isCurrent, commitIfCurrent }) => {
+        try {
+          const result = await requestAIIndexAdvice(payload, signal);
+          commitIfCurrent(() => {
+            setState({ result, error: null });
+            requestAccess.refreshCreditsAfterSuccess();
+          });
+          return result;
+        } catch (error) {
+          if (!isCurrent() || (error as Error).name === 'AbortError') throw error;
+
+          const message = requestAccess.resolveRequestError(
+            error,
+            i18n.t('services.generationFailed'),
+          );
+          setState({ result: null, error: message });
+          throw new Error(message);
         }
-        const message = requestAccess.resolveRequestError(
-          error,
-          i18n.t('services.generationFailed'),
-        );
-        setState({ result: null, error: message });
-        throw new Error(message);
-      } finally {
-        if (activeRequestRef.current === abortController) {
-          activeRequestRef.current = null;
-        }
-      }
+      });
     },
-    [adviceMutation, requestAccess],
+    [requestAccess, run],
   );
 
   const clearAdvice = useCallback(() => {
-    activeRequestRef.current?.abort();
-    activeRequestRef.current = null;
-    adviceMutation.reset();
+    cancel();
     setState({ result: null, error: null });
-  }, [adviceMutation]);
+  }, [cancel]);
 
   return {
-    isLoading: adviceMutation.isPending,
+    isLoading: isPending,
     result: state.result,
     error: state.error,
     analyzeIndexes,

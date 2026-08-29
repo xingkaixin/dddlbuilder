@@ -1,6 +1,5 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
-import { useMutation } from '@tanstack/react-query';
 import {
   requestGenerateTable,
   type GenerateTableRequestOptions,
@@ -14,6 +13,7 @@ import { parsePartialTableSchema } from '@/utils/parsePartialTableSchema';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
 import { useAIRequestAccess } from './useAIRequestAccess';
+import { useLatestRequest } from './useLatestRequest';
 
 export type {
   ConversationMessage,
@@ -68,35 +68,13 @@ export function useAIGenerateTable() {
   });
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
   const previousSchemaRef = useRef<GeneratedTableSchema | null>(null);
-  const activeRequestRef = useRef<{
-    key: string;
-    controller: AbortController;
-  } | null>(null);
-  useEffect(
-    () => () => {
-      activeRequestRef.current?.controller.abort();
-      activeRequestRef.current = null;
-    },
-    [],
-  );
-  const generateMutation = useMutation({
-    mutationFn: ({
-      payload,
-      signal,
-      onStreamingText,
-    }: {
-      payload: Parameters<typeof requestGenerateTable>[0];
-      signal: AbortSignal;
-      onStreamingText: (streamingText: string) => void;
-    }) => requestGenerateTable(payload, { signal, onStreamingText }),
-    retry: false,
-  });
+  const { isPending, run, cancel } = useLatestRequest();
   const partialResult = useMemo<PartialTableSchema | null>(() => {
-    if (!generateMutation.isPending || !state.streamingText) {
+    if (!isPending || !state.streamingText) {
       return null;
     }
     return parsePartialTableSchema(state.streamingText);
-  }, [generateMutation.isPending, state.streamingText]);
+  }, [isPending, state.streamingText]);
 
   const generateTable = useCallback(
     async (description: string, dbType: DatabaseType, options?: GenerateTableOptions) => {
@@ -136,75 +114,60 @@ export function useAIGenerateTable() {
       };
       const requestKey = JSON.stringify(requestPayload);
 
-      if (activeRequestRef.current) {
-        if (activeRequestRef.current.key === requestKey) {
-          return false;
-        }
-        activeRequestRef.current.controller.abort();
-      }
-
-      const abortController = new AbortController();
-      activeRequestRef.current = {
-        key: requestKey,
-        controller: abortController,
-      };
-
-      setState({
-        streamingText: '',
-        result: null,
-        resultBaseState: null,
-        previousResult: null,
-        error: null,
-      });
-
-      try {
-        const { fullText, result } = await generateMutation.mutateAsync({
-          payload: requestPayload,
-          signal: abortController.signal,
-          onStreamingText: (streamingText) => {
-            if (activeRequestRef.current?.controller !== abortController) return;
-            setState((prev) => ({
-              ...prev,
-              streamingText,
-            }));
-          },
-        });
-        if (activeRequestRef.current?.controller !== abortController) return false;
-
-        setState({
-          streamingText: '',
-          result,
-          resultBaseState: baseState,
-          previousResult: previousSchema,
-          error: null,
-        });
-        previousSchemaRef.current = result;
-
-        setConversationHistory(() =>
-          appendConversation(baseConversation, normalizedDescription, fullText),
-        );
-        requestAccess.refreshCreditsAfterSuccess();
-        return true;
-      } catch (err) {
-        if (activeRequestRef.current?.controller !== abortController) return false;
-        if ((err as Error).name === 'AbortError') {
-          return false;
-        }
+      const succeeded = await run(async ({ signal, isCurrent, commitIfCurrent }) => {
         setState({
           streamingText: '',
           result: null,
           resultBaseState: null,
           previousResult: null,
-          error: requestAccess.resolveRequestError(err, i18n.t('services.generationFailed')),
+          error: null,
         });
-        return false;
-      } finally {
-        if (activeRequestRef.current?.controller === abortController) {
-          activeRequestRef.current = null;
+
+        try {
+          const { fullText, result } = await requestGenerateTable(requestPayload, {
+            signal,
+            onStreamingText: (streamingText) => {
+              commitIfCurrent(() => {
+                setState((previous) => ({
+                  ...previous,
+                  streamingText,
+                }));
+              });
+            },
+          });
+
+          commitIfCurrent(() => {
+            setState({
+              streamingText: '',
+              result,
+              resultBaseState: baseState,
+              previousResult: previousSchema,
+              error: null,
+            });
+            previousSchemaRef.current = result;
+            setConversationHistory(
+              appendConversation(baseConversation, normalizedDescription, fullText),
+            );
+            requestAccess.refreshCreditsAfterSuccess();
+          });
+          return true;
+        } catch (error) {
+          if (!isCurrent() || (error as Error).name === 'AbortError') throw error;
+
+          setState({
+            streamingText: '',
+            result: null,
+            resultBaseState: null,
+            previousResult: null,
+            error: requestAccess.resolveRequestError(error, i18n.t('services.generationFailed')),
+          });
+          return false;
         }
-      }
+      }, requestKey);
+
+      return succeeded ?? false;
     },
-    [conversationHistory, generateMutation, requestAccess, resolvedLocale],
+    [conversationHistory, requestAccess, resolvedLocale, run],
   );
 
   const clearResult = useCallback(() => {
@@ -223,16 +186,13 @@ export function useAIGenerateTable() {
   }, []);
 
   const cancelGeneration = useCallback(() => {
-    if (activeRequestRef.current) {
-      activeRequestRef.current.controller.abort();
-      activeRequestRef.current = null;
-      generateMutation.reset();
+    if (cancel()) {
       setState((previous) => ({ ...previous, streamingText: '' }));
     }
-  }, [generateMutation]);
+  }, [cancel]);
 
   return {
-    isLoading: generateMutation.isPending,
+    isLoading: isPending,
     streamingText: state.streamingText,
     error: state.error,
     result: state.result,

@@ -1,10 +1,10 @@
-import { useCallback, useRef, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
 import type { AICommentMode, AICommentRequest, AICommentResult } from '@ddlbuilder/shared-types';
 import { requestAIComments, assertAICommentTarget } from '@/services/aiCommentService';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
 import { useAIRequestAccess } from './useAIRequestAccess';
+import { useLatestRequest } from './useLatestRequest';
 
 interface AICommentState {
   error: string | null;
@@ -21,12 +21,7 @@ export function useAIComments() {
   const [state, setState] = useState<AICommentState>({
     error: null,
   });
-  const activeRequestRef = useRef<AbortController | null>(null);
-  const { mutateAsync, reset, isPending } = useMutation({
-    mutationFn: ({ payload, signal }: { payload: AICommentRequest; signal: AbortSignal }) =>
-      requestAIComments(payload, signal),
-    retry: false,
-  });
+  const { isPending, run, cancel } = useLatestRequest();
 
   const generateComments = useCallback(
     async (input: GenerateCommentsInput): Promise<AICommentResult | null> => {
@@ -49,46 +44,35 @@ export function useAIComments() {
         throw new Error(message);
       }
 
-      activeRequestRef.current?.abort();
-      const abortController = new AbortController();
-      activeRequestRef.current = abortController;
       setState({ error: null });
 
-      try {
-        const result = await mutateAsync({
-          payload,
-          signal: abortController.signal,
-        });
-        if (activeRequestRef.current !== abortController) return null;
-        setState({ error: null });
-        requestAccess.refreshCreditsAfterSuccess();
-        return result;
-      } catch (error) {
-        if (activeRequestRef.current !== abortController) return null;
-        if ((error as Error).name === 'AbortError') {
-          return null;
+      return run(async ({ signal, isCurrent, commitIfCurrent }) => {
+        try {
+          const result = await requestAIComments(payload, signal);
+          commitIfCurrent(() => {
+            setState({ error: null });
+            requestAccess.refreshCreditsAfterSuccess();
+          });
+          return result;
+        } catch (error) {
+          if (!isCurrent() || (error as Error).name === 'AbortError') throw error;
+
+          const message = requestAccess.resolveRequestError(
+            error,
+            i18n.t('services.generationFailed'),
+          );
+          setState({ error: message });
+          throw new Error(message);
         }
-        const message = requestAccess.resolveRequestError(
-          error,
-          i18n.t('services.generationFailed'),
-        );
-        setState({ error: message });
-        throw new Error(message);
-      } finally {
-        if (activeRequestRef.current === abortController) {
-          activeRequestRef.current = null;
-        }
-      }
+      });
     },
-    [mutateAsync, requestAccess, resolvedLocale],
+    [requestAccess, resolvedLocale, run],
   );
 
   const cancelComments = useCallback(() => {
-    activeRequestRef.current?.abort();
-    activeRequestRef.current = null;
-    reset();
+    cancel();
     setState({ error: null });
-  }, [reset]);
+  }, [cancel]);
 
   return {
     isLoading: isPending,
