@@ -375,7 +375,15 @@ export const decodeSchemaDocumentState = (value: unknown): SchemaDocumentState |
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 const isOptionalString = (value: unknown) => value === undefined || typeof value === 'string';
+const isOptionalEntityId = (value: unknown): value is string | undefined =>
+  value === undefined || (typeof value === 'string' && value.length > 0);
 const isOptionalFiniteNumber = (value: unknown) => value === undefined || isFiniteNumber(value);
+
+const addUniqueEntityId = (ids: Set<string>, id: string) => {
+  if (ids.has(id)) return false;
+  ids.add(id);
+  return true;
+};
 
 export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | null => {
   if (
@@ -397,6 +405,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
   }
 
   const drafts: WorkspaceSnapshot['drafts'] = [];
+  const draftIds = new Set<string>();
   for (const item of value.drafts) {
     if (
       !isRecord(item) ||
@@ -409,6 +418,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     ) {
       return null;
     }
+    if (!addUniqueEntityId(draftIds, item.draftId)) return null;
     const state = decodeSchemaDocumentState(item.state);
     if (!state) return null;
     drafts.push({
@@ -422,11 +432,14 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
   }
 
   const savedTables: WorkspaceSnapshot['savedTables'] = [];
+  const savedTableIds = new Set<string>();
+  const tableIdsByName = new Map<string, string | null>();
   for (const item of value.savedTables) {
     if (
       !isRecord(item) ||
       typeof item.normalizedName !== 'string' ||
       !item.normalizedName ||
+      !isOptionalEntityId(item.tableId) ||
       typeof item.name !== 'string' ||
       !isOptionalFiniteNumber(item.createdAt) ||
       !isFiniteNumber(item.updatedAt) ||
@@ -435,10 +448,17 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     ) {
       return null;
     }
+    const tableId = item.tableId ?? `legacy:${item.normalizedName}`;
+    if (!addUniqueEntityId(savedTableIds, tableId)) return null;
+    const existingTableId = tableIdsByName.get(item.normalizedName);
+    tableIdsByName.set(
+      item.normalizedName,
+      existingTableId === undefined || existingTableId === tableId ? tableId : null,
+    );
     const state = decodeSchemaDocumentState(item.state);
     if (!state) return null;
     savedTables.push({
-      ...(typeof item.tableId === 'string' ? { tableId: item.tableId } : {}),
+      ...(item.tableId === undefined ? {} : { tableId: item.tableId }),
       normalizedName: item.normalizedName,
       name: item.name,
       state,
@@ -450,21 +470,26 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
   }
 
   const savedDrafts: WorkspaceSnapshot['savedDrafts'] = [];
+  const savedDraftIds = new Set<string>();
   for (const item of value.savedDrafts) {
     if (
       !isRecord(item) ||
       typeof item.normalizedName !== 'string' ||
       !item.normalizedName ||
+      !isOptionalEntityId(item.tableId) ||
       typeof item.tableName !== 'string' ||
       typeof item.baseSignature !== 'string' ||
       !isFiniteNumber(item.updatedAt)
     ) {
       return null;
     }
+    const tableId = item.tableId ?? tableIdsByName.get(item.normalizedName);
+    if (tableId === null) return null;
+    if (!addUniqueEntityId(savedDraftIds, tableId ?? `legacy:${item.normalizedName}`)) return null;
     const state = decodeSchemaDocumentState(item.state);
     if (!state) return null;
     savedDrafts.push({
-      ...(typeof item.tableId === 'string' ? { tableId: item.tableId } : {}),
+      ...(item.tableId === undefined ? {} : { tableId: item.tableId }),
       normalizedName: item.normalizedName,
       tableName: item.tableName,
       ...decodeSavedDraftBase(item),
@@ -474,6 +499,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
   }
 
   const folders: WorkspaceSnapshot['folders'] = [];
+  const folderIds = new Set<string>();
   for (const item of value.folders) {
     if (
       !isRecord(item) ||
@@ -487,6 +513,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     ) {
       return null;
     }
+    if (!addUniqueEntityId(folderIds, item.id)) return null;
     folders.push({
       id: item.id,
       name: item.name,

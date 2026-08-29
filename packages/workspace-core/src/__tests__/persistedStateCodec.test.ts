@@ -649,6 +649,52 @@ describe('decodeWorkspaceSnapshot', () => {
   });
 
   it.each([
+    {
+      collection: 'drafts',
+      duplicate: () => ({ ...completeSnapshot().drafts[0], updatedAt: 8 }),
+    },
+    {
+      collection: 'savedTables',
+      duplicate: () => ({ ...completeSnapshot().savedTables[0], name: 'Duplicate' }),
+    },
+    {
+      collection: 'savedDrafts',
+      duplicate: () => ({ ...completeSnapshot().savedDrafts[0], tableName: 'Duplicate' }),
+    },
+    {
+      collection: 'folders',
+      duplicate: () => ({ ...completeSnapshot().folders[0], name: 'Duplicate' }),
+    },
+  ] as const)('拒绝 $collection 中重复的逻辑实体', ({ collection, duplicate }) => {
+    const snapshot = completeSnapshot();
+    snapshot[collection].push(duplicate() as never);
+
+    expect(decodeWorkspaceSnapshot(snapshot)).toBeNull();
+  });
+
+  it('按唯一表身份拒绝重复的表草稿', () => {
+    const snapshot = completeSnapshot();
+    snapshot.savedTables = [{ ...snapshot.savedTables[0], tableId: 'table-1' }];
+    snapshot.savedDrafts.push({
+      ...snapshot.savedDrafts[0],
+      tableId: 'table-1',
+      normalizedName: 'renamed.users',
+    });
+
+    expect(decodeWorkspaceSnapshot(snapshot)).toBeNull();
+  });
+
+  it('拒绝无法确定所属表的旧表草稿', () => {
+    const snapshot = completeSnapshot();
+    snapshot.savedTables = [
+      { ...snapshot.savedTables[0], tableId: 'table-1' },
+      { ...snapshot.savedTables[0], tableId: 'table-2' },
+    ];
+
+    expect(decodeWorkspaceSnapshot(snapshot)).toBeNull();
+  });
+
+  it.each([
     null,
     {},
     { ...completeSnapshot(), drafts: null },
@@ -679,6 +725,8 @@ describe('decodeWorkspaceSnapshot', () => {
       item: { ...completeSnapshot().savedTables[0], normalizedName: '' },
       path: 'savedTables',
     },
+    { item: { ...completeSnapshot().savedTables[0], tableId: '' }, path: 'savedTables' },
+    { item: { ...completeSnapshot().savedTables[0], tableId: 1 }, path: 'savedTables' },
     { item: { ...completeSnapshot().savedTables[0], name: 1 }, path: 'savedTables' },
     {
       item: { ...completeSnapshot().savedTables[0], createdAt: Number.NaN },
@@ -699,6 +747,8 @@ describe('decodeWorkspaceSnapshot', () => {
       item: { ...completeSnapshot().savedDrafts[0], normalizedName: '' },
       path: 'savedDrafts',
     },
+    { item: { ...completeSnapshot().savedDrafts[0], tableId: '' }, path: 'savedDrafts' },
+    { item: { ...completeSnapshot().savedDrafts[0], tableId: 1 }, path: 'savedDrafts' },
     { item: { ...completeSnapshot().savedDrafts[0], tableName: 1 }, path: 'savedDrafts' },
     {
       item: { ...completeSnapshot().savedDrafts[0], baseSignature: 1 },
