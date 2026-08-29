@@ -2,8 +2,6 @@ import { readSessionAccess } from './auth.js';
 import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
-import * as encoding from 'lib0/encoding';
-import { WORKSPACE_SYNC_MESSAGE } from '@ddlbuilder/shared-types';
 import type {
   WorkspaceMigrationSnapshot,
   WorkspaceSnapshot,
@@ -14,11 +12,14 @@ import {
   getWorkspaceSnapshotForWorkspace,
 } from './workspaceEntities.js';
 import {
+  assertWorkspaceYDocStructure,
   createWorkspaceYDocUpdateFromSnapshot,
+  encodeWorkspaceYDocAcknowledgement,
+  encodeWorkspaceYDocSyncMessage,
   ensureWorkspaceYDocMeta,
   exportWorkspaceYDocToSnapshot,
-  isWorkspaceYDocInitialized,
   mergeWorkspaceSnapshotIntoYDoc,
+  readWorkspaceYDocMessageHeader,
 } from '@ddlbuilder/workspace-core';
 import { logWorkspaceYDocHealth } from './workspaceSyncMetrics.js';
 import { applyWorkspaceMigrationSnapshot } from './workspaceMigration.js';
@@ -49,19 +50,12 @@ type WorkspaceYDocIdentity = {
 
 class WorkspaceYDocIdentityMismatchError extends Error {}
 
-const MESSAGE_SYNC = WORKSPACE_SYNC_MESSAGE.sync;
 const COMPACT_UPDATE_COUNT = 100;
 const COMPACT_UPDATE_BYTES = 512 * 1024;
 const ALARM_DELAY_MS = 60 * 60 * 1000;
 const LAST_AUTOMATIC_ALARM_RETRY = 5;
 const AUTH_CACHE_TTL_MS = 30_000;
-
-const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
-  const encoder = encoding.createEncoder();
-  encoding.writeVarUint(encoder, MESSAGE_SYNC);
-  write(encoder);
-  return encoding.toUint8Array(encoder);
-};
+const MAX_SYNC_MESSAGE_BYTES = 16 * 1024 * 1024;
 
 const isSocketAttachment = (value: unknown): value is WorkspaceYDocSocketAttachment => {
   const record = value as Partial<WorkspaceYDocSocketAttachment> | null;
@@ -70,6 +64,7 @@ const isSocketAttachment = (value: unknown): value is WorkspaceYDocSocketAttachm
 
 export class WorkspaceYDocDurableObject {
   private doc: Y.Doc | null = null;
+  private validationDoc: Y.Doc | null = null;
   private loadPromise: Promise<Y.Doc> | null = null;
   private persistQueue: Promise<void> | null = null;
   private compactQueue: Promise<void> = Promise.resolve();
@@ -129,7 +124,9 @@ export class WorkspaceYDocDurableObject {
       server.serializeAttachment?.(attachment);
       this.state.acceptWebSocket(server, attachment.workspaceId ? [attachment.workspaceId] : []);
       await this.writeMeta();
-      server.send(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, doc)));
+      server.send(
+        encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, doc)),
+      );
       logWorkspaceYDocHealth('connect', {
         workspaceId: this.workspaceId,
         connectedSockets: this.connectedSocketCount(),
@@ -188,7 +185,19 @@ export class WorkspaceYDocDurableObject {
   }
 
   async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
-    if (typeof message === 'string') return;
+    if (typeof message === 'string') {
+      ws.close(1003, 'Binary workspace updates required');
+      return;
+    }
+    if (message.byteLength > MAX_SYNC_MESSAGE_BYTES) {
+      logWorkspaceYDocHealth('rejected_update', {
+        workspaceId: this.workspaceId,
+        messageBytes: message.byteLength,
+        reason: 'message_too_large',
+      });
+      ws.close(1009, 'Workspace update too large');
+      return;
+    }
     let doc: Y.Doc;
     try {
       doc = await this.loadDoc(this.readSocketIdentity(ws));
@@ -201,31 +210,37 @@ export class WorkspaceYDocDurableObject {
     }
     if ((await this.authorizeSockets([ws])).length === 0) return;
     const decoder = decoding.createDecoder(new Uint8Array(message));
-    let messageType = decoding.readVarUint(decoder);
     let requestId: number | undefined;
-    if (messageType === WORKSPACE_SYNC_MESSAGE.syncWithAck) {
-      requestId = decoding.readVarUint(decoder);
-      messageType = decoding.readVarUint(decoder);
+    let response: Uint8Array;
+    try {
+      const header = readWorkspaceYDocMessageHeader(decoder);
+      if (header.kind !== 'sync') return;
+      requestId = header.requestId;
+      this.assertValidSyncMessage(decoder, doc);
+      response = encodeWorkspaceYDocSyncMessage((encoder) => {
+        syncProtocol.readSyncMessage(decoder, encoder, doc, ws, (error) => {
+          throw error;
+        });
+      });
+    } catch (error) {
+      logWorkspaceYDocHealth('invalid_update', {
+        workspaceId: this.workspaceId,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      ws.close(1008, 'Invalid workspace update');
+      return;
     }
-    if (messageType !== MESSAGE_SYNC) return;
-
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_SYNC);
-    syncProtocol.readSyncMessage(decoder, encoder, doc, ws);
     try {
       await this.awaitPersisted();
     } catch (error) {
       ws.close(1011, 'Workspace persistence failed');
       throw error;
     }
-    if (encoding.length(encoder) > 1) {
-      ws.send(encoding.toUint8Array(encoder));
+    if (response.byteLength > 1) {
+      ws.send(response);
     }
     if (requestId !== undefined) {
-      const acknowledgement = encoding.createEncoder();
-      encoding.writeVarUint(acknowledgement, WORKSPACE_SYNC_MESSAGE.persisted);
-      encoding.writeVarUint(acknowledgement, requestId);
-      ws.send(encoding.toUint8Array(acknowledgement));
+      ws.send(encodeWorkspaceYDocAcknowledgement(requestId));
     }
   }
 
@@ -302,11 +317,24 @@ export class WorkspaceYDocDurableObject {
         Y.applyUpdate(doc, update, this);
       }
 
+      const hasStoredDocument = snapshot !== null || updates.size > 0;
       let restoredFromD1 = false;
-      if (!isWorkspaceYDocInitialized(doc)) {
+      if (hasStoredDocument) {
+        assertWorkspaceYDocStructure(doc);
+      } else {
         restoredFromD1 = await this.restoreFromD1(doc);
+        if (!restoredFromD1) {
+          ensureWorkspaceYDocMeta(doc);
+          await compactWorkspaceYDocStorage(
+            this.state.storage,
+            Y.encodeStateAsUpdate(doc),
+            this.storedMeta(),
+          );
+        }
+        assertWorkspaceYDocStructure(doc);
       }
 
+      this.resetValidationDoc(doc);
       doc.on('update', this.handleDocUpdate);
       this.doc = doc;
       logWorkspaceYDocHealth('load', {
@@ -324,6 +352,8 @@ export class WorkspaceYDocDurableObject {
     })()
       .catch((error: unknown) => {
         this.doc = null;
+        this.validationDoc?.destroy();
+        this.validationDoc = null;
         doc.destroy();
         if (!(error instanceof WorkspaceYDocIdentityMismatchError)) {
           console.error('[workspace-yjs-do] load failed', error);
@@ -338,6 +368,7 @@ export class WorkspaceYDocDurableObject {
   }
 
   private readonly handleDocUpdate = (update: Uint8Array, origin: unknown) => {
+    if (this.validationDoc) Y.applyUpdate(this.validationDoc, update);
     this.queuePersistUpdate(update);
     this.state.waitUntil(
       this.broadcastUpdate(update, origin).catch((error: unknown) => {
@@ -458,8 +489,43 @@ export class WorkspaceYDocDurableObject {
     }
   }
 
+  private assertValidSyncMessage(decoder: decoding.Decoder, doc: Y.Doc) {
+    const syncMessageType = decoding.peekVarUint(decoder);
+    if (syncMessageType === syncProtocol.messageYjsSyncStep1) return;
+    if (
+      syncMessageType !== syncProtocol.messageYjsSyncStep2 &&
+      syncMessageType !== syncProtocol.messageYjsUpdate
+    ) {
+      throw new Error('Unknown workspace sync message type');
+    }
+
+    if (!this.validationDoc) this.resetValidationDoc(doc);
+    const candidate = this.validationDoc;
+    if (!candidate) throw new Error('Workspace validation document is unavailable');
+    try {
+      encodeWorkspaceYDocSyncMessage((encoder) => {
+        syncProtocol.readSyncMessage(decoding.clone(decoder), encoder, candidate, null, (error) => {
+          throw error;
+        });
+      });
+      assertWorkspaceYDocStructure(candidate);
+    } catch (error) {
+      this.resetValidationDoc(doc);
+      throw error;
+    }
+  }
+
+  private resetValidationDoc(doc: Y.Doc) {
+    this.validationDoc?.destroy();
+    const validationDoc = new Y.Doc();
+    Y.applyUpdate(validationDoc, Y.encodeStateAsUpdate(doc));
+    this.validationDoc = validationDoc;
+  }
+
   private async broadcastUpdate(update: Uint8Array, origin: unknown) {
-    const message = encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update));
+    const message = encodeWorkspaceYDocSyncMessage((encoder) =>
+      syncProtocol.writeUpdate(encoder, update),
+    );
     const sockets = this.state
       .getWebSockets()
       .filter((socket) => socket !== origin && socket.readyState === WebSocket.OPEN);

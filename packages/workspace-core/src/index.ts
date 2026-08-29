@@ -21,6 +21,13 @@ export {
   type PersistedStateDecodeMode,
 } from './persistedStateCodec';
 export { decodeWorkspaceMigrationPayload } from './workspaceMigrationCodec';
+export {
+  encodeWorkspaceYDocAcknowledgement,
+  encodeWorkspaceYDocSyncMessage,
+  encodeWorkspaceYDocTrackedSyncMessage,
+  readWorkspaceYDocMessageHeader,
+  type WorkspaceYDocMessageHeader,
+} from './workspaceSyncProtocol';
 export { stableStringify } from './stableStringify';
 export {
   type ApplySchemaDocumentStateOptions,
@@ -30,14 +37,18 @@ export {
   tableMetadata,
 } from './workspaceTableDoc';
 export {
+  assertWorkspaceYDocStructure,
   ensureWorkspaceYDocMeta,
   getDraftRecordFromYDoc,
   getWorkspaceRoot,
+  initializeOrMigrateWorkspaceYDoc,
   isWorkspaceYDocEmpty,
   materializeWorkspaceYDoc,
   readFolderRecords,
   upsertTableRecord,
+  WORKSPACE_YDOC_COLLECTIONS,
   WORKSPACE_YDOC_SCHEMA_VERSION,
+  type WorkspaceYDocCollection,
   type WorkspaceYDocDraftRecord,
   writeFolderRecord,
 } from './workspaceYDoc';
@@ -73,5 +84,4 @@ export {
   type WorkspaceSavedDraftRecord,
   type WorkspaceSavedTableRecord,
   type WorkspaceYDocChange,
-  type WorkspaceYDocCollection,
 } from './workspaceRecords';

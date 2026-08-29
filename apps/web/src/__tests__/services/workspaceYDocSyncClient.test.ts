@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
-import * as encoding from 'lib0/encoding';
-import { WORKSPACE_SYNC_MESSAGE } from '@ddlbuilder/shared-types';
+import {
+  encodeWorkspaceYDocAcknowledgement,
+  encodeWorkspaceYDocSyncMessage,
+  readWorkspaceYDocMessageHeader,
+} from '@ddlbuilder/workspace-core';
 import {
   WORKSPACE_YDOC_CONNECT_TIMEOUT_MS,
   WORKSPACE_YDOC_UPDATE_BATCH_MS,
@@ -11,52 +14,38 @@ import {
   type WorkspaceYDocConnectionStatus,
 } from '@/services/workspaceYDocSyncClient';
 
-const MESSAGE_SYNC = 0;
-
-const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
-  const encoder = encoding.createEncoder();
-  encoding.writeVarUint(encoder, MESSAGE_SYNC);
-  write(encoder);
-  return encoding.toUint8Array(encoder);
-};
-
 const applySyncMessage = (doc: Y.Doc, message: ArrayBuffer) => {
   const decoder = decodeSyncMessage(message);
-  const encoder = encoding.createEncoder();
-  encoding.writeVarUint(encoder, MESSAGE_SYNC);
-  syncProtocol.readSyncMessage(decoder, encoder, doc, null);
+  encodeWorkspaceYDocSyncMessage((encoder) => {
+    syncProtocol.readSyncMessage(decoder, encoder, doc, null);
+  });
 };
 
 const respondToSyncMessage = (doc: Y.Doc, message: ArrayBuffer) => {
   const decoder = decodeSyncMessage(message);
-  const encoder = encoding.createEncoder();
-  encoding.writeVarUint(encoder, MESSAGE_SYNC);
-  syncProtocol.readSyncMessage(decoder, encoder, doc, null);
-  return encoding.length(encoder) > 1 ? encoding.toUint8Array(encoder) : null;
+  const response = encodeWorkspaceYDocSyncMessage((encoder) => {
+    syncProtocol.readSyncMessage(decoder, encoder, doc, null);
+  });
+  return response.byteLength > 1 ? response : null;
 };
 
 const decodeSyncMessage = (message: ArrayBuffer) => {
   const decoder = decoding.createDecoder(new Uint8Array(message));
-  let type = decoding.readVarUint(decoder);
-  if (type === WORKSPACE_SYNC_MESSAGE.syncWithAck) {
-    decoding.readVarUint(decoder);
-    type = decoding.readVarUint(decoder);
-  }
-  expect(type).toBe(MESSAGE_SYNC);
+  expect(readWorkspaceYDocMessageHeader(decoder).kind).toBe('sync');
   return decoder;
 };
 
 const acknowledge = (socket: MockWebSocket, message: ArrayBuffer) => {
   const decoder = decoding.createDecoder(new Uint8Array(message));
-  if (decoding.readVarUint(decoder) !== WORKSPACE_SYNC_MESSAGE.syncWithAck) return;
-  const encoder = encoding.createEncoder();
-  encoding.writeVarUint(encoder, WORKSPACE_SYNC_MESSAGE.persisted);
-  encoding.writeVarUint(encoder, decoding.readVarUint(decoder));
-  socket.receive(encoding.toUint8Array(encoder));
+  const header = readWorkspaceYDocMessageHeader(decoder);
+  if (header.kind !== 'sync' || header.requestId === undefined) return;
+  socket.receive(encodeWorkspaceYDocAcknowledgement(header.requestId));
 };
 
 const syncWithServer = (socket: MockWebSocket, serverDoc: Y.Doc) => {
-  socket.receive(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)));
+  socket.receive(
+    encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)),
+  );
   for (const message of socket.sent) {
     const response = respondToSyncMessage(serverDoc, message);
     if (response) socket.receive(response);
@@ -241,7 +230,9 @@ describe('WorkspaceYDocSyncClient', () => {
     socket.open();
     expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
 
-    socket.receive(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)));
+    socket.receive(
+      encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)),
+    );
     await Promise.resolve();
     console.info('sync status before server persistence', statuses.at(-1));
     expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
@@ -422,7 +413,9 @@ describe('WorkspaceYDocSyncClient', () => {
     await client.connect();
     const socket = firstSocket();
     socket.open();
-    socket.receive(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)));
+    socket.receive(
+      encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)),
+    );
     await Promise.resolve();
     syncWithServer(socket, serverDoc);
     expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: true });
@@ -458,7 +451,9 @@ describe('WorkspaceYDocSyncClient', () => {
     await client.connect();
     const socket = firstSocket();
     socket.open();
-    socket.receive(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)));
+    socket.receive(
+      encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)),
+    );
     await Promise.resolve();
 
     expect(socket.sent.length).toBeGreaterThanOrEqual(2);

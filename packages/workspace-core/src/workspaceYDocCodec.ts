@@ -1,9 +1,9 @@
 import * as Y from 'yjs';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import {
-  ensureWorkspaceYDocMeta,
   getDraftRecordFromYDoc,
   getWorkspaceRoot,
+  initializeOrMigrateWorkspaceYDoc,
   readFolderRecords,
   upsertTableRecord,
   writeFolderRecord,
@@ -21,7 +21,7 @@ import { normalizeWorkspaceSnapshot } from './workspaceSnapshotNormalization';
 export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {
   const normalizedSnapshot = normalizeWorkspaceSnapshot(snapshot);
   doc.transact(() => {
-    ensureWorkspaceYDocMeta(doc);
+    initializeOrMigrateWorkspaceYDoc(doc);
     const { drafts } = getWorkspaceRoot(doc);
 
     for (const draft of normalizedSnapshot.drafts) {

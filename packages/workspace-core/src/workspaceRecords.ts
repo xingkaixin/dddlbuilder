@@ -11,6 +11,8 @@ import {
   getWorkspaceRoot,
   readFolderRecords,
   upsertTableRecord,
+  WORKSPACE_YDOC_COLLECTIONS,
+  type WorkspaceYDocCollection,
   writeFolderRecord,
 } from './workspaceYDoc';
 import { getWorkspaceSavedTable, readWorkspaceSavedRecordIdentity } from './workspaceSavedRecords';
@@ -31,7 +33,7 @@ export {
 } from './workspaceSavedRecords';
 
 export type WorkspaceDraftRecord = Omit<WorkspaceSnapshot['drafts'][number], 'draftId'>;
-export type WorkspaceYDocCollection = 'drafts' | 'savedTables' | 'savedDrafts' | 'folders';
+export type { WorkspaceYDocCollection } from './workspaceYDoc';
 export type WorkspaceYDocChange = {
   collection: WorkspaceYDocCollection;
   entityIds: ReadonlySet<string>;
@@ -105,12 +107,7 @@ export const getWorkspaceSourceState = (
 export const subscribeWorkspaceYDoc = (
   doc: Y.Doc,
   notify: (change: WorkspaceYDocChange) => void,
-  collections: readonly WorkspaceYDocCollection[] = [
-    'drafts',
-    'savedTables',
-    'savedDrafts',
-    'folders',
-  ],
+  collections: readonly WorkspaceYDocCollection[] = WORKSPACE_YDOC_COLLECTIONS,
 ) => {
   const roots = getWorkspaceRoot(doc);
   const subscriptions = collections.map((collection) => {

@@ -2,8 +2,11 @@ import type * as Y from 'yjs';
 import { mergeUpdates } from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
-import * as encoding from 'lib0/encoding';
-import { WORKSPACE_SYNC_MESSAGE } from '@ddlbuilder/shared-types';
+import {
+  encodeWorkspaceYDocSyncMessage,
+  encodeWorkspaceYDocTrackedSyncMessage,
+  readWorkspaceYDocMessageHeader,
+} from '@ddlbuilder/workspace-core';
 import { materializeWorkspaceYDoc, WorkspaceYDocOrigin } from '@/services/workspaceYDocAdapter';
 
 export type WorkspaceYDocConnectionState =
@@ -21,7 +24,6 @@ export type WorkspaceYDocConnectionStatus = {
   synced: boolean;
 };
 
-const MESSAGE_SYNC = WORKSPACE_SYNC_MESSAGE.sync;
 const MAX_RECONNECT_DELAY_MS = 10_000;
 export const WORKSPACE_YDOC_CONNECT_TIMEOUT_MS = 8_000;
 export const WORKSPACE_YDOC_UPDATE_IDLE_MS = 2_000;
@@ -34,13 +36,6 @@ const buildWorkspaceYDocPath = (workspaceId: string) =>
 const buildWorkspaceYDocUrl = (workspaceId: string) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}${buildWorkspaceYDocPath(workspaceId)}`;
-};
-
-const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
-  const encoder = encoding.createEncoder();
-  encoding.writeVarUint(encoder, MESSAGE_SYNC);
-  write(encoder);
-  return encoding.toUint8Array(encoder);
 };
 
 export class WorkspaceYDocSyncClient {
@@ -305,7 +300,9 @@ export class WorkspaceYDocSyncClient {
     this.pendingUpdates = [];
     this.pendingUpdatesStartedAt = null;
     const update = updates.length === 1 ? updates[0] : mergeUpdates(updates);
-    const message = encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update));
+    const message = encodeWorkspaceYDocSyncMessage((encoder) =>
+      syncProtocol.writeUpdate(encoder, update),
+    );
     const messageBytes = this.sendImmediate(message, true);
     console.info(
       JSON.stringify({
@@ -357,11 +354,7 @@ export class WorkspaceYDocSyncClient {
     if (!this.isOffline() && this.socket?.readyState === WebSocket.OPEN) {
       if (requireAcknowledgement) {
         const requestId = ++this.nextRequestId;
-        const encoder = encoding.createEncoder();
-        encoding.writeVarUint(encoder, WORKSPACE_SYNC_MESSAGE.syncWithAck);
-        encoding.writeVarUint(encoder, requestId);
-        encoding.writeUint8Array(encoder, message);
-        message = encoding.toUint8Array(encoder);
+        message = encodeWorkspaceYDocTrackedSyncMessage(requestId, message);
         this.pendingAcknowledgements.add(requestId);
       }
       const payload = new Uint8Array(message.byteLength);
@@ -374,7 +367,7 @@ export class WorkspaceYDocSyncClient {
 
   private sendSyncState() {
     this.sendImmediate(
-      encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, this.doc)),
+      encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, this.doc)),
       true,
     );
   }
@@ -446,22 +439,21 @@ export class WorkspaceYDocSyncClient {
     if (!bytes || !this.isCurrentSocket(socket)) return;
 
     const decoder = decoding.createDecoder(bytes);
-    const messageType = decoding.readVarUint(decoder);
-    if (messageType === WORKSPACE_SYNC_MESSAGE.persisted) {
-      const requestId = decoding.readVarUint(decoder);
-      if (this.pendingAcknowledgements.delete(requestId)) {
+    const header = readWorkspaceYDocMessageHeader(decoder);
+    if (header.kind === 'persisted') {
+      if (this.pendingAcknowledgements.delete(header.requestId)) {
         this.notify(this.isOffline() ? 'offline' : 'connected');
       }
       return;
     }
-    if (messageType !== MESSAGE_SYNC) return;
+    if (header.kind !== 'sync') return;
 
     const syncMessageType = decoding.peekVarUint(decoder);
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_SYNC);
-    syncProtocol.readSyncMessage(decoder, encoder, this.doc, WorkspaceYDocOrigin.RemoteSync);
-    if (encoding.length(encoder) > 1) {
-      this.sendImmediate(encoding.toUint8Array(encoder), true);
+    const response = encodeWorkspaceYDocSyncMessage((encoder) => {
+      syncProtocol.readSyncMessage(decoder, encoder, this.doc, WorkspaceYDocOrigin.RemoteSync);
+    });
+    if (response.byteLength > 1) {
+      this.sendImmediate(response, true);
     }
     let materialized = false;
     this.doc.transact(() => {

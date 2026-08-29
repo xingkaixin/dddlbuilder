@@ -13,6 +13,7 @@ import {
   deleteSavedTableFromYDoc,
   ensureWorkspaceYDocMeta,
   exportWorkspaceYDocToSnapshot,
+  upsertDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { WorkspaceYDocSyncClient } from '@/services/workspaceYDocSyncClient';
 import { commitLegacyWorkspaceYDoc } from '@/services/workspaceYDocStorage';
@@ -77,12 +78,14 @@ vi.mock('@/services/workspaceMigrationService', () => ({
 
 const connect = vi.fn(() => Promise.resolve());
 const destroy = vi.fn();
+const retryClient = vi.fn();
 
 vi.mock('@/services/workspaceYDocSyncClient', () => ({
   WorkspaceYDocSyncClient: vi.fn(
     class {
       connect = connect;
       destroy = destroy;
+      retry = retryClient;
     },
   ),
 }));
@@ -168,6 +171,39 @@ describe('WorkspaceYDocProvider', () => {
     const onStatus = call[2];
     act(() => onStatus({ state: 'connected', synced: true }));
     expect(renders).toBe(before);
+  });
+
+  it('waits for the refreshed session before retrying the existing sync client', async () => {
+    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(null);
+    let completeRefresh!: () => void;
+    auth.refreshSession.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        completeRefresh = resolve;
+      }),
+    );
+    const view = await startProvider();
+
+    act(() => view.result.current.retry());
+    expect(retryClient).not.toHaveBeenCalled();
+
+    completeRefresh();
+    await waitFor(() => expect(retryClient).toHaveBeenCalledOnce());
+  });
+
+  it('migrates a structurally valid local document without a schema version', async () => {
+    const legacy = new Y.Doc();
+    upsertDraftInYDoc(legacy, 'legacy', {
+      state: legacySnapshotWithTable().savedTables[0].state,
+      updatedAt: 1,
+    });
+    persistence.update = Y.encodeStateAsUpdate(legacy);
+    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(null);
+
+    const view = await startProvider();
+
+    expect((view.result.current.doc as Y.Doc).getMap('meta').get('schemaVersion')).toBe(1);
+    expect(exportWorkspaceYDocToSnapshot(view.result.current.doc as Y.Doc).drafts).toHaveLength(1);
+    legacy.destroy();
   });
 
   beforeEach(() => {

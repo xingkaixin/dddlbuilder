@@ -23,7 +23,7 @@ import {
 } from '@/services/workspaceLegacyMigrationMarker';
 import { prepareLegacyWorkspaceSnapshot } from '@/services/workspaceMigrationService';
 import {
-  ensureWorkspaceYDocMeta,
+  initializeOrMigrateWorkspaceYDoc,
   mergeWorkspaceSnapshotIntoYDoc,
 } from '@/services/workspaceYDocAdapter';
 import {
@@ -122,8 +122,14 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   }, [bootstrapAttempt]);
   const [timedOutAttempt, setTimedOutAttempt] = useState<number | null>(null);
   const retry = useCallback(() => {
-    void refreshSession();
-    clientRef.current?.retry();
+    const client = clientRef.current;
+    void refreshSession()
+      .then(() => {
+        if (clientRef.current === client) client?.retry();
+      })
+      .catch((error: unknown) => {
+        console.error('[workspace-yjs] failed to refresh session before retry', error);
+      });
   }, [refreshSession]);
   const [value, setValue] = useState<Omit<WorkspaceYDocContextValue, 'retry'>>({
     doc: null,
@@ -176,7 +182,6 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       return;
     }
     const doc = new Y.Doc();
-    ensureWorkspaceYDocMeta(doc);
     const persistence = new IndexeddbPersistence(buildWorkspaceYDocName(workspaceId), doc);
     persistenceRef.current = persistence;
     let disposal: Promise<void> | null = null;
@@ -214,6 +219,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     const initialize = async () => {
       await persistence.whenSynced;
       if (cancelled) return;
+      initializeOrMigrateWorkspaceYDoc(doc);
       if (persistence.db)
         persistence.db.onversionchange = () => {
           void dispose().catch(console.error);

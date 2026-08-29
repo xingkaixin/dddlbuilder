@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import * as encoding from 'lib0/encoding';
 import * as syncProtocol from 'y-protocols/sync';
-import { ensureWorkspaceYDocMeta } from '@ddlbuilder/workspace-core';
-import { WORKSPACE_SYNC_MESSAGE } from '@ddlbuilder/shared-types';
+import {
+  encodeWorkspaceYDocSyncMessage,
+  encodeWorkspaceYDocTrackedSyncMessage,
+  ensureWorkspaceYDocMeta,
+} from '@ddlbuilder/workspace-core';
 import type { ApiEnv } from '../../lib/context.js';
 import { WorkspaceYDocDurableObject } from '../../lib/workspaceYDocDurableObject.js';
 import { disableAdminUser } from '../../lib/adminUsers.js';
@@ -66,12 +68,12 @@ describe('workspace socket authorization', () => {
     value: string,
   ) => {
     doc.getMap('fields').set('name', value);
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, WORKSPACE_SYNC_MESSAGE.syncWithAck);
-    encoding.writeVarUint(encoder, 1);
-    encoding.writeVarUint(encoder, WORKSPACE_SYNC_MESSAGE.sync);
-    syncProtocol.writeUpdate(encoder, Y.encodeStateAsUpdate(doc));
-    const message = encoding.toUint8Array(encoder);
+    const message = encodeWorkspaceYDocTrackedSyncMessage(
+      1,
+      encodeWorkspaceYDocSyncMessage((encoder) =>
+        syncProtocol.writeUpdate(encoder, Y.encodeStateAsUpdate(doc)),
+      ),
+    );
     await target.webSocketMessage(socket as unknown as WebSocket, message.slice().buffer);
   };
 

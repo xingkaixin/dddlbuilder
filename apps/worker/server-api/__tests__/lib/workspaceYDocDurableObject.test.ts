@@ -2,8 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
-import * as encoding from 'lib0/encoding';
-import { WORKSPACE_SYNC_MESSAGE, type PersistedState } from '@ddlbuilder/shared-types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import {
+  encodeWorkspaceYDocSyncMessage,
+  encodeWorkspaceYDocTrackedSyncMessage,
+  readWorkspaceYDocMessageHeader,
+} from '@ddlbuilder/workspace-core';
 import type {
   WorkspaceMigrationSnapshot,
   WorkspaceSnapshot,
@@ -12,26 +16,16 @@ import type { WorkspaceMigrationResult } from '@ddlbuilder/shared-types/api';
 import type { ApiEnv } from '../../lib/context.js';
 import { createDurableObjectState } from '../helpers/durableObjectState';
 
-const MESSAGE_SYNC = 0;
-
-const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
-  const encoder = encoding.createEncoder();
-  encoding.writeVarUint(encoder, MESSAGE_SYNC);
-  write(encoder);
-  return encoding.toUint8Array(encoder);
-};
-
 const toArrayBuffer = (bytes: Uint8Array) =>
   bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 
-const trackedUpdate = (update: Uint8Array, requestId: number) => {
-  const encoder = encoding.createEncoder();
-  encoding.writeVarUint(encoder, WORKSPACE_SYNC_MESSAGE.syncWithAck);
-  encoding.writeVarUint(encoder, requestId);
-  encoding.writeVarUint(encoder, MESSAGE_SYNC);
-  syncProtocol.writeUpdate(encoder, update);
-  return toArrayBuffer(encoding.toUint8Array(encoder));
-};
+const trackedUpdate = (update: Uint8Array, requestId: number) =>
+  toArrayBuffer(
+    encodeWorkspaceYDocTrackedSyncMessage(
+      requestId,
+      encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update)),
+    ),
+  );
 
 const createState = (tableName: string): PersistedState => ({
   schemaName: '',
@@ -183,6 +177,39 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     doc.destroy();
   });
 
+  it('initializes a new document before serving it', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+
+    await object.fetch(new Request('http://localhost/state'));
+    expect(store.has('snapshot')).toBe(true);
+    const coldObject = new WorkspaceYDocDurableObject(state, createEnv());
+    const response = await coldObject.fetch(new Request('http://localhost/state'));
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, new Uint8Array(await response.arrayBuffer()));
+
+    expect(doc.getMap('meta').get('schemaVersion')).toBe(1);
+    doc.destroy();
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['future', 2],
+  ])('rejects a stored document with a %s schema version', async (_name, schemaVersion) => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const doc = new Y.Doc();
+    if (schemaVersion !== undefined) doc.getMap('meta').set('schemaVersion', schemaVersion);
+    store.set('snapshot', Y.encodeStateAsUpdate(doc));
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+
+    await expect(object.fetch(new Request('http://localhost/state'))).rejects.toThrow(
+      `Unsupported workspace schema version: ${String(schemaVersion)}`,
+    );
+    doc.destroy();
+  });
+
   it('closes sockets whose attachment identity differs from the object', async () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
@@ -203,6 +230,127 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     expect(socket.close).toHaveBeenCalledWith(1008, 'Workspace access denied');
     expect(socket.send).not.toHaveBeenCalled();
     doc.destroy();
+  });
+
+  it('keeps valid state after rejecting a malformed update', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
+    const { state, store } = createDurableObjectState();
+    const current = new Y.Doc();
+    current.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(current));
+    const source = new Y.Doc();
+    Y.applyUpdate(source, Y.encodeStateAsUpdate(current));
+    const socket = createWebSocket();
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+    source.getMap('accepted').set('first', true);
+
+    await object.webSocketMessage(socket, trackedUpdate(Y.encodeStateAsUpdate(source), 1));
+    expect(socket.close).not.toHaveBeenCalled();
+    expect(socket.send).toHaveBeenCalledOnce();
+
+    const recovery = new Y.Doc();
+    Y.applyUpdate(recovery, Y.encodeStateAsUpdate(source));
+    socket.send.mockClear();
+    source.getMap<unknown>('drafts').set('bad', 'not-a-map');
+
+    await object.webSocketMessage(socket, trackedUpdate(Y.encodeStateAsUpdate(source), 2));
+
+    expect(socket.close).toHaveBeenCalledWith(1008, 'Invalid workspace update');
+    expect(socket.send).not.toHaveBeenCalled();
+    recovery.getMap('accepted').set('second', true);
+    const recoveredSocket = createWebSocket();
+    await object.webSocketMessage(
+      recoveredSocket,
+      trackedUpdate(Y.encodeStateAsUpdate(recovery), 3),
+    );
+    expect(recoveredSocket.close).not.toHaveBeenCalled();
+    expect(recoveredSocket.send).toHaveBeenCalledOnce();
+
+    const response = await object.fetch(createRequest('/state'));
+    const restored = new Y.Doc();
+    Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
+    const expectedSnapshot = {
+      globalDraft: null,
+      drafts: [],
+      savedTables: [],
+      savedDrafts: [],
+      folders: [],
+    };
+    expect(exportWorkspaceYDocToSnapshot(restored)).toEqual(expectedSnapshot);
+    expect(Object.fromEntries(restored.getMap('accepted').entries())).toEqual({
+      first: true,
+      second: true,
+    });
+
+    const cold = new WorkspaceYDocDurableObject(state, createEnv());
+    const coldResponse = await cold.fetch(createRequest('/state'));
+    const persisted = new Y.Doc();
+    Y.applyUpdate(persisted, new Uint8Array(await coldResponse.arrayBuffer()));
+    expect(exportWorkspaceYDocToSnapshot(persisted)).toEqual(expectedSnapshot);
+    expect(Object.fromEntries(persisted.getMap('accepted').entries())).toEqual({
+      first: true,
+      second: true,
+    });
+    current.destroy();
+    source.destroy();
+    recovery.destroy();
+    restored.destroy();
+    persisted.destroy();
+  });
+
+  it.each([
+    ['remove', undefined],
+    ['replace with a future version', 2],
+  ])('rejects updates that %s the workspace schema version', async (_name, schemaVersion) => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const current = new Y.Doc();
+    current.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(current));
+    const source = new Y.Doc();
+    Y.applyUpdate(source, Y.encodeStateAsUpdate(current));
+    if (schemaVersion === undefined) source.getMap('meta').delete('schemaVersion');
+    else source.getMap('meta').set('schemaVersion', schemaVersion);
+    const socket = createWebSocket();
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+
+    await object.webSocketMessage(socket, trackedUpdate(Y.encodeStateAsUpdate(source), 2));
+
+    expect(socket.close).toHaveBeenCalledWith(1008, 'Invalid workspace update');
+    expect(socket.send).not.toHaveBeenCalled();
+    const response = await object.fetch(createRequest('/state'));
+    const restored = new Y.Doc();
+    Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
+    expect(restored.getMap('meta').get('schemaVersion')).toBe(1);
+    current.destroy();
+    source.destroy();
+    restored.destroy();
+  });
+
+  it('rejects text websocket messages', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+    const socket = createWebSocket();
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+
+    await object.webSocketMessage(socket, 'invalid');
+
+    expect(socket.close).toHaveBeenCalledWith(1003, 'Binary workspace updates required');
+    expect(state.storage.get).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized websocket messages before loading the document', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+    const socket = createWebSocket();
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+
+    await object.webSocketMessage(socket, new ArrayBuffer(16 * 1024 * 1024 + 1));
+
+    expect(socket.close).toHaveBeenCalledWith(1009, 'Workspace update too large');
+    expect(state.storage.get).not.toHaveBeenCalled();
+    expect(state.storage.list).not.toHaveBeenCalled();
   });
 
   it('batches queued updates and reads the alarm only once', async () => {
@@ -261,8 +409,10 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     await processing;
     expect(ws.send).toHaveBeenCalledTimes(1);
     const acknowledgement = decoding.createDecoder(ws.send.mock.calls[0][0]);
-    expect(decoding.readVarUint(acknowledgement)).toBe(WORKSPACE_SYNC_MESSAGE.persisted);
-    expect(decoding.readVarUint(acknowledgement)).toBe(42);
+    expect(readWorkspaceYDocMessageHeader(acknowledgement)).toEqual({
+      kind: 'persisted',
+      requestId: 42,
+    });
 
     const coldObject = new WorkspaceYDocDurableObject(state, createEnv());
     const response = await coldObject.fetch(new Request('http://localhost/state'));
@@ -804,6 +954,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     const ws = createWebSocket();
     const sourceDoc = new Y.Doc();
+    sourceDoc.getMap('meta').set('schemaVersion', 1);
     const recoveryState = sourceDoc.getMap('recovery');
     recoveryState.set('first', true);
     const firstUpdate = Y.encodeStateAsUpdate(sourceDoc);
@@ -813,7 +964,9 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       durableObject.webSocketMessage(
         ws,
         toArrayBuffer(
-          encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, firstUpdate)),
+          encodeWorkspaceYDocSyncMessage((encoder) =>
+            syncProtocol.writeUpdate(encoder, firstUpdate),
+          ),
         ),
       ),
     ).rejects.toThrow('storage temporarily unavailable');
@@ -823,7 +976,9 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     await durableObject.webSocketMessage(
       ws,
       toArrayBuffer(
-        encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, secondUpdate)),
+        encodeWorkspaceYDocSyncMessage((encoder) =>
+          syncProtocol.writeUpdate(encoder, secondUpdate),
+        ),
       ),
     );
 
@@ -954,6 +1109,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const sourceDoc = new Y.Doc();
     const updates: Uint8Array[] = [];
     sourceDoc.on('update', (update) => updates.push(update));
+    sourceDoc.getMap('meta').set('schemaVersion', 1);
 
     const fields = sourceDoc.getMap('fields');
     for (let index = 0; index < 50; index += 1) {
@@ -964,7 +1120,9 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     await durableObject.webSocketMessage(
       origin,
       toArrayBuffer(
-        encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, mergedUpdate)),
+        encodeWorkspaceYDocSyncMessage((encoder) =>
+          syncProtocol.writeUpdate(encoder, mergedUpdate),
+        ),
       ),
     );
 
@@ -1039,17 +1197,19 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     await secondObject.webSocketMessage(
       clientSocket,
       toArrayBuffer(
-        encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, clientDoc)),
+        encodeWorkspaceYDocSyncMessage((encoder) =>
+          syncProtocol.writeSyncStep1(encoder, clientDoc),
+        ),
       ),
     );
 
     const response = sent[0];
     expect(response).toBeDefined();
     const decoder = decoding.createDecoder(response);
-    expect(decoding.readVarUint(decoder)).toBe(MESSAGE_SYNC);
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_SYNC);
-    syncProtocol.readSyncMessage(decoder, encoder, clientDoc, null);
+    expect(readWorkspaceYDocMessageHeader(decoder)).toEqual({ kind: 'sync' });
+    encodeWorkspaceYDocSyncMessage((encoder) => {
+      syncProtocol.readSyncMessage(decoder, encoder, clientDoc, null);
+    });
 
     expect(exportWorkspaceYDocToSnapshot(clientDoc).drafts[0]?.state.tableName).toBe('compacted');
   });
@@ -1078,7 +1238,9 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     await durableObject.webSocketMessage(
       socket,
       toArrayBuffer(
-        encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, clientDoc)),
+        encodeWorkspaceYDocSyncMessage((encoder) =>
+          syncProtocol.writeSyncStep1(encoder, clientDoc),
+        ),
       ),
     );
 
@@ -1088,10 +1250,10 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       throw new Error('Expected sync response');
     }
     const decoder = decoding.createDecoder(sent);
-    expect(decoding.readVarUint(decoder)).toBe(MESSAGE_SYNC);
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_SYNC);
-    syncProtocol.readSyncMessage(decoder, encoder, clientDoc, null);
+    expect(readWorkspaceYDocMessageHeader(decoder)).toEqual({ kind: 'sync' });
+    encodeWorkspaceYDocSyncMessage((encoder) => {
+      syncProtocol.readSyncMessage(decoder, encoder, clientDoc, null);
+    });
 
     expect(getWorkspaceSnapshotForWorkspace).toHaveBeenCalledWith(
       expect.anything(),

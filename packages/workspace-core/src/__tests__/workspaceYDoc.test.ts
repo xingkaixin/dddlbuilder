@@ -18,9 +18,11 @@ import {
   mergeWorkspaceSnapshotIntoYDoc,
 } from '../workspaceYDocCodec';
 import {
+  assertWorkspaceYDocStructure,
   ensureWorkspaceYDocMeta,
   getDraftRecordFromYDoc,
   getWorkspaceRoot,
+  initializeOrMigrateWorkspaceYDoc,
   isWorkspaceYDocEmpty,
   materializeWorkspaceYDoc,
   readFolderRecords,
@@ -319,6 +321,64 @@ describe('workspace YDoc roots', () => {
 
     expect(getWorkspaceRoot(doc).meta.get('schemaVersion')).toBe(WORKSPACE_YDOC_SCHEMA_VERSION);
     expect(updates).toEqual([]);
+  });
+
+  it('rejects missing and future schema versions without rewriting them', () => {
+    const missing = new Y.Doc();
+    ensureWorkspaceYDocMeta(missing);
+    getWorkspaceRoot(missing).meta.delete('schemaVersion');
+
+    expect(() => assertWorkspaceYDocStructure(missing)).toThrow(
+      'Unsupported workspace schema version: undefined',
+    );
+
+    const future = new Y.Doc();
+    getWorkspaceRoot(future).meta.set('schemaVersion', WORKSPACE_YDOC_SCHEMA_VERSION + 1);
+
+    expect(() => ensureWorkspaceYDocMeta(future)).toThrow(
+      'Unsupported workspace schema version: 2',
+    );
+    expect(() => initializeOrMigrateWorkspaceYDoc(future)).toThrow(
+      'Unsupported workspace schema version: 2',
+    );
+    expect(getWorkspaceRoot(future).meta.get('schemaVersion')).toBe(
+      WORKSPACE_YDOC_SCHEMA_VERSION + 1,
+    );
+
+    const invalid = new Y.Doc();
+    getWorkspaceRoot(invalid).meta.set('schemaVersion', null);
+    expect(() => ensureWorkspaceYDocMeta(invalid)).toThrow(
+      'Unsupported workspace schema version: null',
+    );
+    expect(getWorkspaceRoot(invalid).meta.get('schemaVersion')).toBeNull();
+  });
+
+  it('does not initialize an existing document without a schema version', () => {
+    const doc = new Y.Doc();
+    getWorkspaceRoot(doc).drafts.set('broken', new Y.Map());
+
+    expect(() => ensureWorkspaceYDocMeta(doc)).toThrow(
+      'Unsupported workspace schema version: undefined',
+    );
+    expect(getWorkspaceRoot(doc).meta.has('schemaVersion')).toBe(false);
+  });
+
+  it('migrates only structurally valid versionless documents', () => {
+    const legacy = new Y.Doc();
+    setLegacyTableDoc(getWorkspaceRoot(legacy).drafts, 'legacy', 'users');
+
+    initializeOrMigrateWorkspaceYDoc(legacy);
+
+    expect(getWorkspaceRoot(legacy).meta.get('schemaVersion')).toBe(WORKSPACE_YDOC_SCHEMA_VERSION);
+    expect(() => assertWorkspaceYDocStructure(legacy)).not.toThrow();
+
+    const malformed = new Y.Doc();
+    getWorkspaceRoot(malformed).drafts.set('broken', 'not-a-map' as unknown as Y.Map<unknown>);
+
+    expect(() => initializeOrMigrateWorkspaceYDoc(malformed)).toThrow(
+      'drafts entries must be Y.Maps',
+    );
+    expect(getWorkspaceRoot(malformed).meta.has('schemaVersion')).toBe(false);
   });
 
   it('reports emptiness across every collection', () => {
