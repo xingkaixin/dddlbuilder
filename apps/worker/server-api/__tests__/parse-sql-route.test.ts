@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { SqlParser } from '@ddlbuilder/ddl-core/parser';
 import app from '../../api/index';
 import type { ApiEnv } from '../lib/context.js';
 
@@ -88,8 +89,6 @@ describe('parse-sql route', () => {
   });
 
   it('SQL 语法错误时应返回 SQL_PARSE_FAILED', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-
     const env = createEnv();
     const response = await app.fetch(
       createRequest('/api/parse-sql', {
@@ -111,6 +110,27 @@ describe('parse-sql route', () => {
       error: 'SQL parse failed',
       code: 'SQL_PARSE_FAILED',
       requestId: expect.any(String),
+    });
+  });
+
+  it('解析器内部异常时应返回 INTERNAL_ERROR', async () => {
+    vi.spyOn(SqlParser.prototype, 'parseAsync').mockRejectedValueOnce(
+      new Error('unexpected parser failure'),
+    );
+
+    const response = await app.fetch(
+      createRequest('/api/parse-sql', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sql: 'CREATE TABLE users (id INT)', dbType: 'mysql' }),
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
     });
   });
 });

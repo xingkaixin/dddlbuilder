@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import { DATABASE_TYPES, type DatabaseType } from '@ddlbuilder/shared-types';
-import { SqlParser } from '@ddlbuilder/ddl-core/parser';
+import { SqlParseError, SqlParser } from '@ddlbuilder/ddl-core/parser';
 import type { ApiEnv } from '../lib/context.js';
 import {
   errorResponse,
@@ -80,8 +80,10 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
 
       return c.json(withMeta(c, { result }));
     } catch (error) {
-      console.error('[ParseSQL] Failed to parse SQL:', error);
-      return errorResponse(c, 400, 'SQL parse failed', 'SQL_PARSE_FAILED');
+      if (error instanceof SqlParseError) {
+        return errorResponse(c, 400, 'SQL parse failed', 'SQL_PARSE_FAILED');
+      }
+      throw error;
     }
   });
 
@@ -98,26 +100,21 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     if ('errorResponse' in validation) return validation.errorResponse;
     const { sql, dbType } = validation;
 
-    try {
-      const parser = new SqlParser();
-      const { results, failed } = await parser.parseMultiAsync(sql, dbType);
-      if (results.length === 0 && failed.length > 0) {
-        return c.json(
-          {
-            results,
-            failed,
-            error: 'SQL parse failed',
-            code: 'SQL_PARSE_FAILED',
-            requestId: getRequestId(c),
-          },
-          400,
-        );
-      }
-
-      return c.json(withMeta(c, { results, failed }));
-    } catch (error) {
-      console.error('[ParseMultiSQL] Failed to parse SQL:', error);
-      return errorResponse(c, 400, 'SQL parse failed', 'SQL_PARSE_FAILED');
+    const parser = new SqlParser();
+    const { results, failed } = await parser.parseMultiAsync(sql, dbType);
+    if (results.length === 0 && failed.length > 0) {
+      return c.json(
+        {
+          results,
+          failed,
+          error: 'SQL parse failed',
+          code: 'SQL_PARSE_FAILED',
+          requestId: getRequestId(c),
+        },
+        400,
+      );
     }
+
+    return c.json(withMeta(c, { results, failed }));
   });
 }
