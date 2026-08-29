@@ -5,6 +5,7 @@ import {
   type DDLReviewResult,
 } from '@ddlbuilder/shared-types/ddl-review';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import i18n from '@/i18n';
 
 const REVIEW_API_ENDPOINT = '/api/review';
@@ -12,7 +13,7 @@ const REVIEW_API_ENDPOINT = '/api/review';
 type ReviewRequestPayload = {
   ddl: string;
   tableName: string;
-  dbType: string;
+  dbType: DatabaseType;
   locale?: AppLocale;
 };
 

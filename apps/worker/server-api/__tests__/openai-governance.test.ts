@@ -418,6 +418,49 @@ describe.sequential('openai governance', () => {
     expect(authenticateRequestMock).toHaveBeenCalledOnce();
   });
 
+  it('应在限流和额度预留前拒绝 AI 路由的非法数据库类型', async () => {
+    const app = await loadAuthenticatedApp({
+      OPENAI_RATELIMIT_ENABLED: 'true',
+      OPENAI_DAILY_BUDGET_ENABLED: 'true',
+      OPENAI_API_KEY: 'test-key',
+    });
+    const requests = [
+      {
+        path: '/api/generate-table',
+        body: { description: '生成用户表', dbType: 'sqlite' },
+      },
+      {
+        path: '/api/review',
+        body: { ddl: 'CREATE TABLE users(id bigint)', tableName: 'users', dbType: 'sqlite' },
+      },
+      {
+        path: '/api/index-advisor',
+        body: {
+          dbType: 'sqlite',
+          tableName: 'users',
+          fields: [{ fieldName: 'id', fieldType: 'bigint' }],
+          queryPatterns: 'SELECT * FROM users WHERE id = ?',
+        },
+      },
+    ];
+
+    for (const request of requests) {
+      const response = await app.request(request.path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(request.body),
+      });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        code: 'INVALID_DATABASE_TYPE',
+        error: 'Invalid database type',
+      });
+    }
+
+    expect(reserveAIUsageMock).not.toHaveBeenCalled();
+    expect(reserveAIDailyBudgetMock).not.toHaveBeenCalled();
+  });
+
   it('结构化审计日志不应包含 SQL/DDL 原文', async () => {
     const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 

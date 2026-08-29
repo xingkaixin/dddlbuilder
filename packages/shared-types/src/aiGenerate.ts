@@ -1,5 +1,6 @@
 import type { FieldDefaultKind, FieldOnUpdate } from './fieldRow.js';
 import type { AppLocale } from './locale.js';
+import type { DatabaseType } from './database.js';
 
 export interface GeneratedTableSchema {
   schemaName?: string;
@@ -90,7 +91,7 @@ export interface AIIndexAdvisorIndexInput {
 }
 
 export interface AIIndexAdvisorRequest {
-  dbType: string;
+  dbType: DatabaseType;
   schemaName?: string;
   tableName: string;
   tableComment: string;

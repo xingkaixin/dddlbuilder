@@ -7,13 +7,14 @@ import {
 } from '../prompts/generateTable.js';
 import { isAppLocale, type AppLocale } from '@ddlbuilder/shared-types/locale';
 import type { ConversationMessage } from '@ddlbuilder/shared-types/ai-generate';
+import { isDatabaseType, type DatabaseType } from '@ddlbuilder/shared-types';
 
 const MAX_OUTPUT_TOKENS = 4000;
 const REQUEST_BODY_MAX_BYTES = 1024 * 1024;
 
 type GenerateTableRequest = {
   description: string;
-  dbType: string;
+  dbType: DatabaseType;
   locale: AppLocale;
   mode: 'generate' | 'patch';
   templates: unknown[];
@@ -77,6 +78,9 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         bodyMaxBytes: REQUEST_BODY_MAX_BYTES,
         buildMessages,
         parseRequest: (body) => {
+          if (!isDatabaseType(body.dbType)) {
+            return rejectAIRequest('INVALID_DATABASE_TYPE', 'Invalid database type');
+          }
           const description = typeof body.description === 'string' ? body.description : '';
           if (description.trim().length === 0) {
             return rejectAIRequest('DESCRIPTION_REQUIRED', 'Description is required');
@@ -87,7 +91,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
           }
           return {
             description,
-            dbType: typeof body.dbType === 'string' ? body.dbType : '',
+            dbType: body.dbType,
             locale: isAppLocale(body.locale) ? body.locale : 'zh-CN',
             mode: body.mode === 'patch' ? 'patch' : 'generate',
             templates: Array.isArray(body.templates) ? body.templates : [],

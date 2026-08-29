@@ -1,4 +1,5 @@
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import { DDL_REVIEW_SUGGESTION_TYPES } from '@ddlbuilder/shared-types/ddl-review';
 
 const suggestionTypes = DDL_REVIEW_SUGGESTION_TYPES.join(' | ');
@@ -151,7 +152,7 @@ export const REVIEW_SYSTEM_PROMPT: Record<AppLocale, string> = {
 export const buildReviewUserPrompt = (
   ddl: string,
   tableName: string | undefined,
-  dbType: string | undefined,
+  dbType: DatabaseType | undefined,
   locale: AppLocale,
 ) => {
   if (locale !== 'zh-CN') {

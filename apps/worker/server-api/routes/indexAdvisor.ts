@@ -14,6 +14,7 @@ import type {
   AIIndexAdvisorRequest,
   AIIndexAdvisorResult,
 } from '@ddlbuilder/shared-types/ai-generate';
+import { isDatabaseType } from '@ddlbuilder/shared-types';
 
 const MAX_OUTPUT_TOKENS = 2200;
 const MAX_REQUEST_BYTES = 64_000;
@@ -173,6 +174,9 @@ export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
         bodyMaxBytes: MAX_REQUEST_BYTES,
         buildMessages,
         parseRequest: (body) => {
+          if (!isDatabaseType(body.dbType)) {
+            return rejectAIRequest('INVALID_DATABASE_TYPE', 'Invalid database type');
+          }
           const fields = normalizeFields(body.fields);
           const tableName = typeof body.tableName === 'string' ? body.tableName.trim() : '';
           const queryPatterns =
@@ -184,7 +188,7 @@ export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
             return rejectAIRequest('SQL_REQUIRED', 'Query patterns are required');
           }
           return {
-            dbType: typeof body.dbType === 'string' ? body.dbType.trim() : 'mysql',
+            dbType: body.dbType,
             schemaName: typeof body.schemaName === 'string' ? body.schemaName.trim() : undefined,
             tableName,
             tableComment: typeof body.tableComment === 'string' ? body.tableComment.trim() : '',

@@ -1,4 +1,5 @@
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ConversationMessage } from '@ddlbuilder/shared-types/ai-generate';
 
 const BASE_SYSTEM_PROMPT_TEMPLATES: Record<Exclude<AppLocale, 'ja-JP'>, string> = {
@@ -104,7 +105,7 @@ const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
 };
 
 export const buildGenerateTableSystemPrompt = (params: {
-  dbType: string;
+  dbType: DatabaseType;
   locale: AppLocale;
   mode?: 'generate' | 'patch';
   templates?: unknown[];

@@ -4,10 +4,11 @@ import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { saveReview, type ReviewTarget } from '@/utils/reviewHistory';
 import { normalizeSavedTableName } from '@/utils/savedTablesDb';
 import { reportError } from '@/utils/errorReporter';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 interface UseReviewActionsParams {
   documentKey: string;
-  dbType: string;
+  dbType: DatabaseType;
   tableName: string;
   generatedSql: string;
   workspaceScope: WorkspaceScope | null;

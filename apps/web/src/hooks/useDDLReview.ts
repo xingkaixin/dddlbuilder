@@ -9,6 +9,7 @@ import type {
   DDLReviewResult,
   DDLReviewStructuredSuggestion,
 } from '@ddlbuilder/shared-types/ddl-review';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 export type StructuredSuggestion = DDLReviewStructuredSuggestion;
 export type ReviewResult = DDLReviewResult;
@@ -64,7 +65,7 @@ export function useDDLReview(documentKey: string) {
   }, [isLoading, state.streamingText]);
 
   const startReview = useCallback(
-    async (ddl: string, tableName: string, dbType: string) => {
+    async (ddl: string, tableName: string, dbType: DatabaseType) => {
       if (!ddl || ddl.trim().length === 0) {
         setState({
           documentKey,
