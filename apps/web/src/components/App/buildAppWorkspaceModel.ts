@@ -31,7 +31,7 @@ interface BuildAppWorkspaceModelParams {
   navigationActions: ReturnType<typeof useNavigationActions>;
   workspacePresentation: ReturnType<typeof useWorkspacePresentation>;
   editorSurface: ReturnType<typeof useEditorSurfaceModel>;
-  activeEditorSource: WorkspaceController['persistence']['activeSource'];
+  activeEditorSource: WorkspaceController['document']['activeSource'];
   isLoadedDirty: boolean;
   collapseSidebar: () => void;
   expandSidebar: () => void;
@@ -63,11 +63,16 @@ export function buildAppWorkspaceModel({
   handlePlayFireworks,
 }: BuildAppWorkspaceModelParams) {
   const { ui } = domains;
-  const { persistence, savedTableData, folderData, loadedTableNormalizedName } =
-    workspaceController;
+  const {
+    persistenceStatus,
+    drafts,
+    tables,
+    folders,
+    loadedTable: { source: loadedTableSource, normalizedName: loadedTableNormalizedName },
+  } = workspaceController;
   const { shareAction } = schemaController;
   const activeDraftId =
-    !persistence.isShareView && activeEditorSource.kind === 'draft'
+    !persistenceStatus.isShareView && activeEditorSource.kind === 'draft'
       ? activeEditorSource.draftId
       : null;
 
@@ -82,15 +87,15 @@ export function buildAppWorkspaceModel({
     drawer: {
       open: ui.savedTablesDrawerOpen,
       onOpenChange: ui.setSavedTablesDrawerOpen,
-      loading: savedTableData.loading,
-      error: savedTableData.error,
-      items: savedTableData.savedTables,
-      draftItems: persistence.draftSummaries,
+      loading: tables.loading,
+      error: tables.error,
+      items: tables.savedTables,
+      draftItems: drafts.draftSummaries,
       activeDraftId,
-      folders: folderData.folderTree,
-      foldersLoading: folderData.loading,
+      folders: folders.folderTree,
+      foldersLoading: folders.loading,
       activeNormalizedName: loadedTableNormalizedName,
-      activeTableId: workspaceController.loadedTableSource?.tableId,
+      activeTableId: loadedTableSource?.tableId,
       activeDirty: isLoadedDirty,
       tablePresentations: workspacePresentation.tablePresentations,
       onSelectDraft: workspaceTabs.handleSelectDraft,
@@ -106,15 +111,15 @@ export function buildAppWorkspaceModel({
       onDeleteFolder: folderActions.handleOpenDeleteFolderDialog,
     },
     sidebar: {
-      loading: savedTableData.loading || folderData.loading,
-      error: savedTableData.error,
-      items: savedTableData.savedTables,
-      trashedItems: savedTableData.trashedTables,
-      trashedDraftItems: persistence.trashedDrafts,
-      draftItems: persistence.draftSummaries,
-      folders: folderData.folderTree,
+      loading: tables.loading || folders.loading,
+      error: tables.error,
+      items: tables.savedTables,
+      trashedItems: tables.trashedTables,
+      trashedDraftItems: drafts.trashedDrafts,
+      draftItems: drafts.draftSummaries,
+      folders: folders.folderTree,
       activeNormalizedName: loadedTableNormalizedName,
-      activeTableId: workspaceController.loadedTableSource?.tableId,
+      activeTableId: loadedTableSource?.tableId,
       activeDraftId,
       activeDirty: isLoadedDirty,
       tablePresentations: workspacePresentation.tablePresentations,
@@ -123,7 +128,7 @@ export function buildAppWorkspaceModel({
       onCreateFolder: folderActions.handleOpenCreateFolderDialog,
       onSelectDraft: workspaceTabs.handleSelectDraft,
       onDeleteDraft: workspaceTabs.handleDeleteDraft,
-      onMoveDraftToFolder: persistence.moveDraftToFolder,
+      onMoveDraftToFolder: drafts.moveDraftToFolder,
       onSelect: workspaceTabs.handleSelectSavedTable,
       onRename: savedTableFlow.handleOpenRenameDialog,
       onDelete: savedTableFlow.handleOpenDeleteDialog,
@@ -146,7 +151,7 @@ export function buildAppWorkspaceModel({
       onCreateTab: workspaceTabs.handleCreateDraft,
     },
     emptyState: {
-      hasContent: persistence.draftSummaries.length > 0 || savedTableData.savedTables.length > 0,
+      hasContent: drafts.draftSummaries.length > 0 || tables.savedTables.length > 0,
       recentDrafts: workspacePresentation.recentDrafts,
       recentTables: workspacePresentation.recentTables,
       onCreateNewTable: workspaceTabs.handleCreateDraft,
@@ -162,7 +167,7 @@ export function buildAppWorkspaceModel({
       onSaveAsTemplate: tableTemplateActions.handleSaveAsTemplate,
     },
     view: {
-      isShareView: persistence.isShareView,
+      isShareView: persistenceStatus.isShareView,
       shouldShowWorkspaceSkeleton: workspacePresentation.shouldShowWorkspaceSkeleton,
       workspaceSidebarOpen: ui.workspaceSidebarOpen,
       hasTabs: tabLifecycle.tabs.length > 0,

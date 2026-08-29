@@ -10,7 +10,7 @@ describe('dialog template catalog', () => {
         ui: {},
         tableOptions: { tableMiscConfig: {} },
       },
-      workspaceController: { persistence: {}, savedTableData: {}, folderData: {} },
+      workspaceController: { persistenceStatus: {}, tables: {}, folders: {} },
       schemaController: { derived: {}, indexAdvisor: {}, reviewActions: {} },
       folderActions: {},
       templateActions: {},

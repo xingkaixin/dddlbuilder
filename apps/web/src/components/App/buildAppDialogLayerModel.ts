@@ -75,7 +75,7 @@ export function buildAppDialogLayerModel({
   handleSelectTableFromEr,
 }: BuildAppDialogLayerModelParams) {
   const { editor, ui, tableOptions } = domains;
-  const { persistence, savedTableData, folderData, workspaceScope } = workspaceController;
+  const { persistenceStatus, tables, folders, scope: workspaceScope } = workspaceController;
   const { derived, indexAdvisor } = schemaController;
   const versionTarget =
     ui.versionHistoryTarget && workspaceScope
@@ -242,9 +242,9 @@ export function buildAppDialogLayerModel({
         open: ui.isErDialogOpen,
         onOpenChange: ui.setIsErDialogOpen,
         onSelectTable: handleSelectTableFromEr,
-        saveTable: savedTableData.saveTable,
-        overwriteTable: savedTableData.overwriteTable,
-        loadTables: savedTableData.loadTables,
+        saveTable: tables.saveTable,
+        overwriteTable: tables.overwriteTable,
+        loadTables: tables.loadTables,
       },
       emptyTrashDialog: {
         open: trashActions.isEmptyTrashDialogOpen,
@@ -272,14 +272,14 @@ export function buildAppDialogLayerModel({
       onApplyIndex: indexAdvisor.applyRecommendation,
     },
     importDialog: {
-      visible: !persistence.isShareView && ui.isImportDialogOpen,
+      visible: !persistenceStatus.isShareView && ui.isImportDialogOpen,
       currentDbType: editor.dbType,
       onImport: schemaActions.handleImport,
       open: ui.isImportDialogOpen,
       onOpenChange: ui.setIsImportDialogOpen,
-      savedTables: savedTableData.savedTables,
-      folderTree: folderData.folderTree,
-      onBatchImport: savedTableData.importTables,
+      savedTables: tables.savedTables,
+      folderTree: folders.folderTree,
+      onBatchImport: tables.importTables,
       onBatchImportComplete,
     },
   };

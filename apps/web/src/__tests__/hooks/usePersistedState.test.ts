@@ -148,6 +148,11 @@ const createDeferred = <T>() => {
   return { promise, resolve, reject };
 };
 
+const useTestPersistedState = () => {
+  const { status, document, drafts, savedTableDrafts } = usePersistedState();
+  return { ...status, ...document, ...drafts, ...savedTableDrafts };
+};
+
 const createState = (tableName: string) => ({
   schemaName: '',
   tableName,
@@ -197,13 +202,29 @@ const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
 };
 
 describe('usePersistedState', () => {
+  it('groups persistence capabilities by responsibility', () => {
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    expect(Object.keys(result.current)).toEqual([
+      'status',
+      'document',
+      'drafts',
+      'savedTableDrafts',
+    ]);
+    expect(result.current.status).toHaveProperty('hydrated');
+    expect(result.current.document).toHaveProperty('activeSource');
+    expect(result.current.drafts).toHaveProperty('draftSummaries');
+    expect(result.current.savedTableDrafts).toHaveProperty('getSavedTableDraft');
+  });
+
   it('blocks writes after hydration fails and reloads existing data on retry', async () => {
     await writeDraft('default', { state: createState('kept'), updatedAt: 1 });
     const read = vi
       .spyOn(workspaceStateDb, 'readWorkspaceBootstrap')
       .mockRejectedValueOnce(new Error('blocked database'));
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(result.current.hydrationFailed).toBe(true));
     expect(result.current.hydrated).toBe(false);
     act(() =>
@@ -225,7 +246,7 @@ describe('usePersistedState', () => {
     upsertDraftInYDoc(doc, 'default', { state, updatedAt: 1 });
     mockSignedInWorkspaceYDoc(doc);
     const { wrapper } = createQueryClientWrapper();
-    const { result, unmount } = renderHook(() => usePersistedState(), { wrapper });
+    const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(result.current.hydrated).toBe(true));
     let writeError: unknown;
     await act(async () => {
@@ -265,7 +286,7 @@ describe('usePersistedState', () => {
     remote.clientID = 2;
     mockSignedInWorkspaceYDoc(doc);
     const { wrapper } = createQueryClientWrapper();
-    const { result, unmount } = renderHook(() => usePersistedState(), { wrapper });
+    const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(result.current.hydrated).toBe(true));
     const loaded = result.current.resolveWorkspaceSnapshot({
       kind: 'saved_table',
@@ -322,7 +343,7 @@ describe('usePersistedState', () => {
     mockSignedInWorkspaceYDoc(doc);
 
     const { wrapper } = createQueryClientWrapper();
-    const { result, unmount } = renderHook(() => usePersistedState(), { wrapper });
+    const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(result.current.hydrated).toBe(true));
     const source = {
       kind: 'saved_table' as const,
@@ -361,7 +382,7 @@ describe('usePersistedState', () => {
     expect(result.current.persistedState).toEqual(reopened.state);
     unmount();
 
-    const reloaded = renderHook(() => usePersistedState(), { wrapper });
+    const reloaded = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(reloaded.result.current.hydrated).toBe(true));
     expect(reloaded.result.current.persistedState).toEqual(reopened.state);
     expect(reloaded.result.current.resolveWorkspaceSnapshot(source)?.state).toEqual(reopened.state);
@@ -433,7 +454,7 @@ describe('usePersistedState', () => {
       anonymousScope,
     );
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(result.current.hydrated).toBe(true));
     expect(result.current.getSavedTableDraft(target)?.state.tableName).toBe('dirty');
     await act(async () => result.current.removeSavedTableDraft(target));
@@ -467,7 +488,7 @@ describe('usePersistedState', () => {
     );
     mockSignedInWorkspaceYDoc(doc);
     const { wrapper } = createQueryClientWrapper();
-    const { result, unmount } = renderHook(() => usePersistedState(), { wrapper });
+    const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(result.current.hydrated).toBe(true));
     expect(result.current.persistedState?.tableName).toBe('fallback');
     expect(result.current.getSavedTableDraft(targets[0])?.state.tableName).toBe('first-draft');
@@ -487,7 +508,7 @@ describe('usePersistedState', () => {
     );
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -529,7 +550,7 @@ describe('usePersistedState', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -574,7 +595,7 @@ describe('usePersistedState', () => {
       closeAuthDialog: vi.fn(),
     });
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -622,7 +643,7 @@ describe('usePersistedState', () => {
     });
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -659,7 +680,7 @@ describe('usePersistedState', () => {
     });
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -683,7 +704,7 @@ describe('usePersistedState', () => {
 
   it('保存全局草稿时应写入 IndexedDB 全局草稿和工作区会话', async () => {
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -713,7 +734,7 @@ describe('usePersistedState', () => {
     mockSignedInWorkspaceYDoc(doc);
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -746,7 +767,7 @@ describe('usePersistedState', () => {
     const { wrapper } = createQueryClientWrapper();
     const { result, unmount } = renderHook(
       () => {
-        const persistence = usePersistedState();
+        const persistence = useTestPersistedState();
         const editor = useEditorStore();
         const currentState = useMemo(() => toPersistedState(editor), [editor]);
         usePersistedSync({
@@ -796,7 +817,7 @@ describe('usePersistedState', () => {
     const { wrapper } = createQueryClientWrapper();
     const { result, unmount } = renderHook(
       () => {
-        const persistence = usePersistedState();
+        const persistence = useTestPersistedState();
         const editor = useEditorStore();
         const currentState = useMemo(() => toPersistedState(editor), [editor]);
         usePersistedSync({
@@ -841,7 +862,7 @@ describe('usePersistedState', () => {
     upsertDraftInYDoc(doc, 'default', { state: initialState, updatedAt: 100 });
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -890,7 +911,7 @@ describe('usePersistedState', () => {
     upsertDraftInYDoc(doc, 'default', { state: initialState, updatedAt: 100 });
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.persistedState?.tableName).toBe('users');
@@ -915,7 +936,7 @@ describe('usePersistedState', () => {
 
   it('保存已保存表状态时应记录来源并把未保存修改写入 saved draft', async () => {
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
     const savedSource: WorkspaceSavePayload['source'] = {
       kind: 'saved_table',
       normalizedName: 'users',
@@ -948,7 +969,7 @@ describe('usePersistedState', () => {
 
   it('应忽略过期 source 的保存，避免跨工作区污染', async () => {
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
     const savedSource: WorkspaceSavePayload['source'] = {
       kind: 'saved_table',
       normalizedName: 'users',
@@ -1025,7 +1046,7 @@ describe('usePersistedState', () => {
     });
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -1039,7 +1060,7 @@ describe('usePersistedState', () => {
 
   it('setWorkspaceSnapshot 切到草稿箱时应写入会话与全局草稿', async () => {
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
     const globalState = createState('snapshot_global');
 
     await waitFor(() => {
@@ -1061,7 +1082,7 @@ describe('usePersistedState', () => {
 
   it('selectWorkspaceSnapshot 切到草稿标签时应只写入会话', async () => {
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
     const savedDraftState = createState('saved_draft_state');
     const tabSnapshot = createState('tab_snapshot_state');
 
@@ -1093,7 +1114,7 @@ describe('usePersistedState', () => {
 
   it('主工作区 clearState 在 default draft 下应清空草稿与会话', async () => {
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
     const globalState = createState('global_to_clear');
 
     await waitFor(() => {
@@ -1131,7 +1152,7 @@ describe('usePersistedState', () => {
     await writeDraft(DEFAULT_DRAFT_ID, { state: existingGlobal, updatedAt: Date.now() });
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
     const savedSource: WorkspaceSavePayload['source'] = {
       kind: 'saved_table',
       normalizedName: 'users',
@@ -1174,7 +1195,7 @@ describe('usePersistedState', () => {
     window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -1189,7 +1210,7 @@ describe('usePersistedState', () => {
     window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -1230,7 +1251,7 @@ describe('usePersistedState', () => {
     window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -1254,7 +1275,7 @@ describe('usePersistedState', () => {
     window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
     const { wrapper } = createQueryClientWrapper();
-    const { result, rerender } = renderHook(() => usePersistedState(), { wrapper });
+    const { result, rerender } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(toast).toHaveBeenCalledWith('分享链接不存在或已过期，已返回首页');
@@ -1286,7 +1307,7 @@ describe('usePersistedState', () => {
     window.history.replaceState({}, '', '/share/not-uuid');
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -1306,7 +1327,7 @@ describe('usePersistedState', () => {
     window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -1329,7 +1350,7 @@ describe('usePersistedState', () => {
     window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
     const { wrapper } = createQueryClientWrapper();
-    const { result, rerender } = renderHook(() => usePersistedState(), { wrapper });
+    const { result, rerender } = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => {
       expect(result.current.persistedState).toEqual(cachedState);
     });
@@ -1357,7 +1378,7 @@ describe('usePersistedState', () => {
     window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -1383,7 +1404,7 @@ describe('usePersistedState', () => {
     });
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -1403,7 +1424,7 @@ describe('usePersistedState', () => {
     });
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -1422,7 +1443,7 @@ describe('usePersistedState', () => {
     });
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
@@ -1456,7 +1477,7 @@ describe('usePersistedState', () => {
     );
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);

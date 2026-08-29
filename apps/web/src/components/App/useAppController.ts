@@ -38,16 +38,21 @@ export function useAppController() {
   const { editor, ui, auth, sharding, animations, partition, tableOptions } = domains;
   const workspaceController = useWorkspaceController();
   const {
-    persistence,
-    savedTableData,
-    folderData,
-    workspaceScope,
-    loadedTableSource,
-    loadedTable,
-    loadedTableId,
-    loadedTableNormalizedName,
-    loadedTableName,
-    loadedTableSignature,
+    persistenceStatus,
+    document,
+    drafts,
+    savedTableDrafts,
+    tables: savedTableData,
+    folders: folderData,
+    scope: workspaceScope,
+    loadedTable: {
+      source: loadedTableSource,
+      record: loadedTable,
+      id: loadedTableId,
+      normalizedName: loadedTableNormalizedName,
+      name: loadedTableName,
+      signature: loadedTableSignature,
+    },
   } = workspaceController;
   const {
     schemaName,
@@ -109,27 +114,30 @@ export function useAppController() {
 
   const {
     persistedState,
-    hydrated,
     saveState,
     clearState,
     resetWorkspaceSelection,
-    isShareView,
     activeSource,
-    draftSummaries,
-    getDraftState,
     resolveWorkspaceSnapshot,
     setWorkspaceSnapshot,
     selectWorkspaceSnapshot,
+  } = document;
+  const { hydrated, isShareView } = persistenceStatus;
+  const {
+    draftSummaries,
+    getDraftState,
     createDraft,
     deleteDraftById,
+    trashedDrafts,
+    restoreDraftById,
+    permanentlyDeleteDraftById,
+  } = drafts;
+  const {
     getSavedTableDraft,
     removeSavedTableDraft,
     renameSavedTableDraft,
     persistSavedTableDraft,
-    trashedDrafts,
-    restoreDraftById,
-    permanentlyDeleteDraftById,
-  } = persistence;
+  } = savedTableDrafts;
   const { triggerIndexAnimation, triggerFieldTableHighlight } = animations;
 
   const schemaController = useSchemaController({
@@ -504,7 +512,7 @@ export function useAppController() {
   return {
     workspaceView,
     dialogLayer,
-    hydrationFailed: persistence.hydrationFailed,
-    retryHydration: persistence.retryHydration,
+    hydrationFailed: persistenceStatus.hydrationFailed,
+    retryHydration: persistenceStatus.retryHydration,
   };
 }

@@ -7,32 +7,36 @@ import { useSavedTableRecord } from '@/hooks/useSavedTableRecord';
 import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 
 export function useWorkspaceController() {
-  const persistence = usePersistedState();
-  const savedTableData = useSavedTables();
-  const folderData = useFolders();
-  const workspaceScope = useWorkspaceScope();
+  const { status, document, drafts, savedTableDrafts } = usePersistedState();
+  const tables = useSavedTables();
+  const folders = useFolders();
+  const scope = useWorkspaceScope();
 
   useWorkspaceNotifications({
-    hydrated: persistence.hydrated,
-    isShareView: persistence.isShareView,
-    persistenceFailure: persistence.persistenceFailure,
-    retryPersistence: persistence.retryPersistence,
+    hydrated: status.hydrated,
+    isShareView: status.isShareView,
+    persistenceFailure: status.persistenceFailure,
+    retryPersistence: status.retryPersistence,
   });
 
-  const loadedTableSource =
-    persistence.activeSource.kind === 'saved_table' ? persistence.activeSource : null;
-  const loadedTable = useSavedTableRecord(loadedTableSource);
+  const source = document.activeSource.kind === 'saved_table' ? document.activeSource : null;
+  const record = useSavedTableRecord(source);
 
   return {
-    persistence,
-    savedTableData,
-    folderData,
-    workspaceScope,
-    loadedTableSource,
-    loadedTable,
-    loadedTableId: loadedTable ? resolveSavedTableId(loadedTable) : null,
-    loadedTableNormalizedName: loadedTableSource?.normalizedName ?? null,
-    loadedTableName: loadedTableSource?.tableName ?? null,
-    loadedTableSignature: loadedTableSource?.baseSignature ?? null,
+    persistenceStatus: status,
+    document,
+    drafts,
+    savedTableDrafts,
+    tables,
+    folders,
+    scope,
+    loadedTable: {
+      source,
+      record,
+      id: record ? resolveSavedTableId(record) : null,
+      normalizedName: source?.normalizedName ?? null,
+      name: source?.tableName ?? null,
+      signature: source?.baseSignature ?? null,
+    },
   };
 }

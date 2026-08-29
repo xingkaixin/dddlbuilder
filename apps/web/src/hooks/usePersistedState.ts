@@ -51,26 +51,40 @@ import { useWorkspaceStorageTarget } from './workspacePersistence/useWorkspaceSt
 const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
   serializePersistedStateForComparison(left) === serializePersistedStateForComparison(right);
 
-export interface UsePersistedStateReturn {
-  persistedState: PersistedState | null;
+export interface WorkspacePersistenceStatus {
   hydrated: boolean;
   hydrationFailed: boolean;
   retryHydration: () => void;
+  isShareView: boolean;
+  persistenceFailure: PersistenceFailure | null;
+  retryPersistence: () => void;
+}
+
+export interface ActiveWorkspaceDocument {
+  persistedState: PersistedState | null;
   saveState: (payload: WorkspaceSavePayload) => void;
   clearState: () => void;
   resetWorkspaceSelection: () => void;
-  isShareView: boolean;
   activeSource: WorkspaceSelection;
-  draftSummaries: DraftSummary[];
-  getDraftState: (draftId: string) => PersistedState | null;
   resolveWorkspaceSnapshot: (
     source: WorkspaceSelection,
   ) => { source: WorkspaceSelection; state: PersistedState } | null;
   setWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
   selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
+}
+
+export interface WorkspaceDraftCatalog {
+  draftSummaries: DraftSummary[];
+  trashedDrafts: DraftSummary[];
+  getDraftState: (draftId: string) => PersistedState | null;
   createDraft: (draftId: string, state: PersistedState) => string;
   deleteDraftById: (draftId: string) => void;
   moveDraftToFolder: (draftId: string, folderId?: string) => void;
+  restoreDraftById: (draftId: string) => Promise<void>;
+  permanentlyDeleteDraftById: (draftId: string) => Promise<void>;
+}
+
+export interface SavedTableDraftCatalog {
   getSavedTableDraft: (normalizedName: SavedTableTarget) => SavedTableDraftRecord | null;
   persistSavedTableDraft: (normalizedName: SavedTableTarget, record: SavedTableDraftRecord) => void;
   removeSavedTableDraft: (normalizedName: SavedTableTarget) => void;
@@ -79,11 +93,13 @@ export interface UsePersistedStateReturn {
     toNormalizedName: string,
     nextTableName: string,
   ) => void;
-  trashedDrafts: DraftSummary[];
-  restoreDraftById: (draftId: string) => Promise<void>;
-  permanentlyDeleteDraftById: (draftId: string) => Promise<void>;
-  persistenceFailure: PersistenceFailure | null;
-  retryPersistence: () => void;
+}
+
+export interface UsePersistedStateReturn {
+  status: WorkspacePersistenceStatus;
+  document: ActiveWorkspaceDocument;
+  drafts: WorkspaceDraftCatalog;
+  savedTableDrafts: SavedTableDraftCatalog;
 }
 
 export function usePersistedState(): UsePersistedStateReturn {
@@ -367,31 +383,39 @@ export function usePersistedState(): UsePersistedStateReturn {
   );
 
   return {
-    hydrationFailed,
-    retryHydration,
-    persistedState,
-    hydrated,
-    saveState,
-    clearState,
-    resetWorkspaceSelection: resetToDefaultDraft,
-    isShareView: Boolean(shareId),
-    activeSource,
-    draftSummaries,
-    getDraftState,
-    resolveWorkspaceSnapshot,
-    setWorkspaceSnapshot,
-    selectWorkspaceSnapshot,
-    createDraft,
-    deleteDraftById,
-    moveDraftToFolder,
-    getSavedTableDraft,
-    removeSavedTableDraft,
-    renameSavedTableDraft,
-    persistSavedTableDraft,
-    trashedDrafts,
-    restoreDraftById,
-    permanentlyDeleteDraftById,
-    persistenceFailure,
-    retryPersistence,
+    status: {
+      hydrationFailed,
+      retryHydration,
+      hydrated,
+      isShareView: Boolean(shareId),
+      persistenceFailure,
+      retryPersistence,
+    },
+    document: {
+      persistedState,
+      saveState,
+      clearState,
+      resetWorkspaceSelection: resetToDefaultDraft,
+      activeSource,
+      resolveWorkspaceSnapshot,
+      setWorkspaceSnapshot,
+      selectWorkspaceSnapshot,
+    },
+    drafts: {
+      draftSummaries,
+      getDraftState,
+      createDraft,
+      deleteDraftById,
+      moveDraftToFolder,
+      trashedDrafts,
+      restoreDraftById,
+      permanentlyDeleteDraftById,
+    },
+    savedTableDrafts: {
+      getSavedTableDraft,
+      removeSavedTableDraft,
+      renameSavedTableDraft,
+      persistSavedTableDraft,
+    },
   };
 }

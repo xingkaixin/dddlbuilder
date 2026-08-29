@@ -2,7 +2,13 @@ export { useToast } from './useToast';
 export type { UseToastReturn } from './useToast';
 
 export { usePersistedState } from './usePersistedState';
-export type { UsePersistedStateReturn } from './usePersistedState';
+export type {
+  ActiveWorkspaceDocument,
+  SavedTableDraftCatalog,
+  UsePersistedStateReturn,
+  WorkspaceDraftCatalog,
+  WorkspacePersistenceStatus,
+} from './usePersistedState';
 
 export { useSqlGeneration } from './useSqlGeneration';
 export type { UseSqlGenerationReturn } from './useSqlGeneration';
