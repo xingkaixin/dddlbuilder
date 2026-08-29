@@ -24,7 +24,9 @@ describe('dialog template catalog', () => {
       tableTemplateData: { templates: [] },
       dialogStates: {},
       aiGenerateTemplates: templates,
+      aiPatchTargetKey: 'tab-a',
     } as unknown as Parameters<typeof buildAppDialogLayerModel>[0]);
     expect(model.aiPatch.templates).toBe(model.globalDialogs.aiGenerateDialogProps.templates);
+    expect(model.aiPatch.targetKey).toBe('tab-a');
   });
 });

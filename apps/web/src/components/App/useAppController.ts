@@ -490,6 +490,7 @@ export function useAppController() {
     dialogStates,
     aiGenerateExistingConfig,
     aiGenerateTemplates,
+    aiPatchTargetKey: activeTabId ?? 'share-view',
     onBatchImportComplete: navigationActions.handleOpenSavedTablesDrawer,
     handleCopyDiff,
     handleRollbackVersion,

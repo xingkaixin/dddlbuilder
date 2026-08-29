@@ -45,6 +45,7 @@ interface BuildAppDialogLayerModelParams {
   aiGenerateTemplates: Array<
     FieldTemplateData['templates'][number] | TableTemplateData['templates'][number]
   >;
+  aiPatchTargetKey: string;
   handleCopyDiff: () => void;
   onBatchImportComplete: () => void;
   handleRollbackVersion: (state: PersistedState) => void;
@@ -69,6 +70,7 @@ export function buildAppDialogLayerModel({
   dialogStates,
   aiGenerateExistingConfig,
   aiGenerateTemplates,
+  aiPatchTargetKey,
   onBatchImportComplete,
   handleCopyDiff,
   handleRollbackVersion,
@@ -253,6 +255,7 @@ export function buildAppDialogLayerModel({
       },
     },
     aiPatch: {
+      targetKey: aiPatchTargetKey,
       open: ui.isAISchemaPatchOpen,
       onOpenChange: ui.setIsAISchemaPatchOpen,
       currentState: derived.currentPersistedState,

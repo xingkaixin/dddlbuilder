@@ -75,13 +75,25 @@ export function useAISchemaPatchSession({
     return buildPersistedStateFromAISchema(result, { baseState: resultBaseState });
   }, [resultBaseState, result]);
 
-  const changes = useMemo(() => {
+  const originalChanges = useMemo(() => {
     if (!candidateState || !resultBaseState) return [];
-    return buildAISchemaChanges(resultBaseState, candidateState).map((change) => ({
-      ...change,
-      status: statuses[change.id] || 'pending',
-    }));
-  }, [candidateState, resultBaseState, statuses]);
+    return buildAISchemaChanges(resultBaseState, candidateState);
+  }, [candidateState, resultBaseState]);
+
+  const changes = useMemo(() => {
+    if (!candidateState || !expectedState) return [];
+    const applied = originalChanges
+      .filter((change) => statuses[change.id] === 'applied')
+      .map((change) => ({ ...change, status: 'applied' as const }));
+    const appliedIds = new Set(applied.map((change) => change.id));
+    const remaining = buildAISchemaChanges(expectedState, candidateState)
+      .filter((change) => !appliedIds.has(change.id))
+      .map((change) => ({
+        ...change,
+        status: statuses[change.id] || 'pending',
+      }));
+    return [...applied, ...remaining];
+  }, [candidateState, expectedState, originalChanges, statuses]);
 
   const pendingChanges = changes.filter((change) => change.status === 'pending');
   const acceptedChanges = changes.filter((change) => change.status === 'accepted');

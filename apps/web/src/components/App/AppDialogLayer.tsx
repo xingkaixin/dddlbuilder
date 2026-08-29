@@ -24,6 +24,7 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
   const { t } = useTranslation();
   const authSession = useAuthIdentity();
   const { globalDialogs, aiPatch, indexAdvisor, importDialog } = model;
+  const { targetKey: aiPatchTargetKey, ...aiPatchProps } = aiPatch;
   const objectLabel = t(
     model.saveObjectType === 'view'
       ? 'dialogs.save.objectLabels.view'
@@ -52,8 +53,8 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
       <GlobalDialogs {...globalDialogs} saveDialog={saveDialog} />
 
       <AISchemaPatchDialog
-        key={JSON.stringify([authSession.userId, authSession.workspaceId])}
-        {...aiPatch}
+        key={JSON.stringify([authSession.userId, authSession.workspaceId, aiPatchTargetKey])}
+        {...aiPatchProps}
       />
 
       {indexAdvisor.open && <AIIndexAdvisorDialog {...indexAdvisor} />}
