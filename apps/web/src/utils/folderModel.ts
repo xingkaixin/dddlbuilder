@@ -1,3 +1,4 @@
+import { createEntityId } from '@ddlbuilder/shared-types';
 import type { TableFolder } from './workspaceStorageTypes';
 
 export type FolderTreeNode = TableFolder & {
@@ -128,8 +129,7 @@ const nextFolderOrder = (folders: readonly TableFolder[], parentId?: string, exc
     .filter((folder) => folder.parentId === parentId && folder.id !== excludedId)
     .reduce((max, folder) => Math.max(max, folder.order), 0) + 1;
 
-const generateFolderId = () =>
-  `folder_${Date.now()}-${crypto.randomUUID().replaceAll('-', '').slice(0, 9)}`;
+const generateFolderId = () => `folder_${createEntityId()}`;
 
 export const createFolderRecord = (
   folders: readonly TableFolder[],

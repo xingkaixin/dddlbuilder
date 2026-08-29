@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { createEntityId, type PersistedState } from '@ddlbuilder/shared-types';
 import type { DraftSummary, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import { useToast } from '@/hooks/useToast';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
@@ -194,7 +194,7 @@ export function useWorkspaceTabActions({
   const openStateInNewDraftTab = useCallback(
     (initialState: PersistedState) => {
       if (openTabs.length > 0) flushActiveTab();
-      const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const draftId = `draft_${createEntityId()}`;
       const uniqueName = createDraft(draftId, initialState);
       const finalState =
         uniqueName === initialState.tableName

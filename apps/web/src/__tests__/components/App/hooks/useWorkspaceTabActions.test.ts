@@ -171,4 +171,18 @@ describe('useWorkspaceTabActions', () => {
     expect(params.deleteDraftById).toHaveBeenCalledWith('draft-a');
     expect(params.tabs.closeTab).toHaveBeenCalledWith('tab-existing');
   });
+
+  it('新建草稿使用完整 UUID', () => {
+    const params = createParams();
+    const { result } = renderHook(() => useWorkspaceTabActions(params));
+
+    act(() => result.current.handleCreateDraft());
+
+    expect(params.createDraft).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^draft_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      ),
+      expect.any(Object),
+    );
+  });
 });

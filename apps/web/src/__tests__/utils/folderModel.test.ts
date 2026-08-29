@@ -29,6 +29,12 @@ describe('folderModel', () => {
     ).toMatchObject({ id: 'second', parentId: 'root', order: 2 });
   });
 
+  it('generates folder ids with a complete UUID', () => {
+    expect(createFolderRecord([], 'Root').id).toMatch(
+      /^folder_[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+  });
+
   it('rejects moving a folder below itself or a descendant', () => {
     expect(() => moveFolderRecord(folders, 'root', 'root')).toThrow(
       '不能将文件夹移动到自身或其子文件夹下',
