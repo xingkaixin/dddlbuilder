@@ -4,6 +4,7 @@ import { useShareAction } from '@/components/App/hooks/useShareAction';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 
 vi.mock('@/services/shareService', () => ({
   createShare: vi.fn(),
@@ -27,7 +28,7 @@ vi.mock('@/utils/errorReporter', () => ({
 const mockedCreateShare = vi.mocked(createShare);
 const mockedReportError = vi.mocked(reportError);
 
-const SHARE_LINK_CACHE_KEY = 'ddlbuilder:share:last:v1';
+const SHARE_LINK_CACHE_KEY = 'ddlbuilder:share:last:v2';
 
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -67,12 +68,15 @@ const createShareResponse = () => ({
   expiresInSeconds: 604800,
 });
 
-function renderShareAction(showToast: (message: string) => void) {
+function renderShareAction(
+  showToast: (message: string) => void,
+  buildState: () => PersistedState = buildPersistedState,
+) {
   const { wrapper } = createQueryClientWrapper();
   return renderHook(
     () =>
       useShareAction({
-        buildPersistedState,
+        buildPersistedState: buildState,
         showToast,
       }),
     { wrapper },
@@ -159,15 +163,24 @@ describe('useShareAction', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
   });
 
-  it('状态未变化且缓存未过期时应复用链接', async () => {
+  it('规范化后的状态未变化且缓存未过期时应复用链接', async () => {
     mockedCreateShare.mockResolvedValue(createShareResponse());
     const showToast = vi.fn();
+    let state: PersistedState = buildPersistedState();
 
-    const { result } = renderShareAction(showToast);
+    const { result } = renderShareAction(showToast, () => state);
 
     await act(async () => {
       await result.current.handleShare();
     });
+    state = {
+      ...state,
+      objectType: 'table',
+      sqlFormatMode: 'aligned',
+      addCount: 50,
+      foreignKeys: [],
+      fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 3 },
+    };
     await act(async () => {
       await result.current.handleShare();
     });

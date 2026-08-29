@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import i18n from '@/i18n';
 
 type ShareLinkCacheRecord = {
@@ -11,21 +12,7 @@ type ShareLinkCacheRecord = {
   expiresAt: number;
 };
 
-const SHARE_LINK_CACHE_KEY = 'ddlbuilder:share:last:v1';
-
-const hashString = (input: string): string => {
-  let hash = 2166136261;
-  for (let i = 0; i < input.length; i += 1) {
-    hash ^= input.charCodeAt(i);
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
-};
-
-const buildStateSignature = (state: PersistedState): string => {
-  const json = JSON.stringify(state);
-  return `v1:${json.length}:${hashString(json)}`;
-};
+const SHARE_LINK_CACHE_KEY = 'ddlbuilder:share:last:v2';
 
 const readShareLinkCache = (): ShareLinkCacheRecord | null => {
   try {
@@ -78,7 +65,7 @@ export function useShareAction({ buildPersistedState, showToast }: UseShareActio
 
     try {
       const currentState = buildPersistedState();
-      const signature = buildStateSignature(currentState);
+      const signature = serializePersistedStateForComparison(currentState);
       const cached = readShareLinkCache();
       const now = Date.now();
 
