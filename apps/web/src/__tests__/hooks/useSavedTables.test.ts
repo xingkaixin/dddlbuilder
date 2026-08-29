@@ -43,6 +43,7 @@ const mockYDocAdapter = vi.hoisted(() => ({
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthSession: mockUseAuthSession,
+  useAuthIdentity: mockUseAuthSession,
 }));
 
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({

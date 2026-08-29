@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AISchemaPatchDialog } from './AISchemaPatchDialog';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAuthIdentity } from '@/auth/AuthSessionProvider';
 import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import type { AppDialogLayerModel } from './buildAppDialogLayerModel';
@@ -22,7 +22,7 @@ interface AppDialogLayerProps {
 
 export function AppDialogLayer({ model }: AppDialogLayerProps) {
   const { t } = useTranslation();
-  const authSession = useAuthSession();
+  const authSession = useAuthIdentity();
   const { globalDialogs, aiPatch, indexAdvisor, importDialog } = model;
   const objectLabel = t(
     model.saveObjectType === 'view'

@@ -9,13 +9,14 @@ const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
   return testingLibraryRenderHook(render, { wrapper });
 };
 
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: vi.fn(() => ({
+vi.mock('@/auth/AuthSessionProvider', () => {
+  const useAuthSession = vi.fn(() => ({
     status: 'signed_out',
     configured: true,
     userId: null,
-  })),
-}));
+  }));
+  return { useAuthSession, useAuthIdentity: useAuthSession };
+});
 
 const savedTableMocks = vi.hoisted(() => ({
   addSavedTable: vi.fn(),

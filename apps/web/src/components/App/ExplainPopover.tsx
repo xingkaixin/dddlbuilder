@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
 import { logAiStreamDebug } from '@/services/aiStreamDebug';
 import { useTranslation } from 'react-i18next';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAuthIdentity } from '@/auth/AuthSessionProvider';
 
 interface ExplainPopoverProps {
   children: React.ReactNode;
@@ -17,7 +17,7 @@ interface ExplainPopoverProps {
 
 export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) {
   const { t } = useTranslation();
-  const authSession = useAuthSession();
+  const authSession = useAuthIdentity();
   const [selection, setSelection] = useState<{
     text: string;
     x: number;

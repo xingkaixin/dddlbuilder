@@ -10,6 +10,7 @@ import {
 } from '@/services/workspaceIdentity';
 import {
   AuthSessionProvider,
+  useAuthIdentity,
   useAuthSession,
   translateAuthError,
   signedOutState,
@@ -87,6 +88,12 @@ const SessionProbe = () => {
       </button>
     </div>
   );
+};
+
+const IdentityProbe = ({ onRender }: { onRender: () => void }) => {
+  const identity = useAuthIdentity();
+  onRender();
+  return <span data-testid="identity-status">{identity.status}</span>;
 };
 
 describe('AuthSessionProvider', () => {
@@ -799,6 +806,43 @@ describe('AuthSessionProvider', () => {
         expect(screen.getByTestId('credits')).toHaveTextContent('200');
       });
       expect(screen.getByTestId('credits-status')).toHaveTextContent('ready');
+    });
+
+    it('does not rerender identity consumers when only credits change', async () => {
+      const onIdentityRender = vi.fn();
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          Response.json({
+            signedIn: true,
+            user: {
+              userId: 'user-1',
+              email: 'user@example.com',
+              emailVerified: true,
+              name: 'User One',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(Response.json({ balance: 100 }))
+        .mockResolvedValueOnce(Response.json({ workspaceId: 'ws-1' }))
+        .mockResolvedValueOnce(Response.json({ balance: 200 }));
+
+      render(
+        <AuthSessionProvider>
+          <IdentityProbe onRender={onIdentityRender} />
+          <SessionProbe />
+        </AuthSessionProvider>,
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('identity-status')).toHaveTextContent('signed_in'),
+      );
+      await waitFor(() => expect(screen.getByTestId('credits')).toHaveTextContent('100'));
+      const renderCountBeforeRefresh = onIdentityRender.mock.calls.length;
+
+      fireEvent.click(screen.getByTestId('refresh-credits'));
+      await waitFor(() => expect(screen.getByTestId('credits')).toHaveTextContent('200'));
+
+      expect(onIdentityRender).toHaveBeenCalledTimes(renderCountBeforeRefresh);
     });
 
     it('handles credit refresh failure', async () => {

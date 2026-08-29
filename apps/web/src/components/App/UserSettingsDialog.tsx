@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, Coins, RefreshCw, User2 } from '@/components
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAuthActions, useAuthCredits, useAuthIdentity } from '@/auth/AuthSessionProvider';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -170,7 +170,10 @@ function AccountNameForm({
 export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogProps) {
   const { t } = useTranslation();
   const { locale } = useLocale();
-  const authSession = useAuthSession();
+  const authIdentity = useAuthIdentity();
+  const authActions = useAuthActions();
+  const authCredits = useAuthCredits();
+  const authSession = { ...authIdentity, ...authActions, ...authCredits };
   const workspaceYDoc = useWorkspaceYDoc();
   const { success, error } = useToast();
   const [currentPassword, setCurrentPassword] = useState('');

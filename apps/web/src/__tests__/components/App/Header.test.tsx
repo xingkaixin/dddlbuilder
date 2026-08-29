@@ -90,8 +90,8 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipContent: ({ children }: { children: any }) => <>{children}</>,
 }));
 
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: vi.fn(() => ({
+vi.mock('@/auth/AuthSessionProvider', () => {
+  const useAuthSession = vi.fn(() => ({
     status: 'signed_out',
     configured: true,
     userId: null,
@@ -114,8 +114,14 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     refreshCredits: vi.fn(),
     openAuthDialog: openAuthDialogMock,
     closeAuthDialog: closeAuthDialogMock,
-  })),
-}));
+  }));
+  return {
+    useAuthSession,
+    useAuthIdentity: useAuthSession,
+    useAuthActions: useAuthSession,
+    useAuthDialog: useAuthSession,
+  };
+});
 
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDoc: () => mockWorkspaceYDoc.value,

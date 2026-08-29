@@ -98,8 +98,8 @@ vi.mock('@/services/shareService', () => ({
   },
 }));
 
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: vi.fn(() => ({
+vi.mock('@/auth/AuthSessionProvider', () => {
+  const useAuthSession = vi.fn(() => ({
     status: 'signed_out',
     configured: true,
     userId: null,
@@ -121,8 +121,9 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     refreshCredits: vi.fn(),
     openAuthDialog: vi.fn(),
     closeAuthDialog: vi.fn(),
-  })),
-}));
+  }));
+  return { useAuthSession, useAuthIdentity: useAuthSession };
+});
 
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDocDocument: vi.fn(() => ({

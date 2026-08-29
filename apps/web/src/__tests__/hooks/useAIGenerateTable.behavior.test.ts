@@ -14,8 +14,8 @@ vi.mock('@/services/aiGenerateTableService', () => ({
   requestGenerateTable: aiServiceMocks.requestGenerateTable,
 }));
 
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({
+vi.mock('@/auth/AuthSessionProvider', () => {
+  const useAuthSession = () => ({
     status: 'signed_in',
     configured: true,
     userId: 'user-1',
@@ -35,8 +35,14 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     refreshCredits: vi.fn(),
     openAuthDialog: vi.fn(),
     closeAuthDialog: vi.fn(),
-  }),
-}));
+  });
+  return {
+    useAuthSession,
+    useAuthIdentity: useAuthSession,
+    useAuthCredits: useAuthSession,
+    useAuthDialog: useAuthSession,
+  };
+});
 
 function renderAIGenerateTableHook() {
   const { wrapper } = createQueryClientWrapper();

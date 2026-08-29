@@ -1,4 +1,3 @@
-import { markWorkspaceCleanupPending } from '@/services/workspaceCacheRegistry';
 import {
   createContext,
   useCallback,
@@ -12,8 +11,6 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
-import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
-import { prepareWorkspaceSignOut } from '@/services/workspaceYDocStorage';
 import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import {
   readWorkspaceIdentity,
@@ -25,14 +22,17 @@ import {
 import { currentUserOptions, authQueryKeys } from '@/queries/auth';
 import { creditBalanceOptions, creditQueryKeys } from '@/queries/credits';
 import { currentWorkspaceOptions, workspaceQueryKeys } from '@/queries/workspaces';
-import { workspaceMigrationQueryKeys } from '@/queries/workspaceMigration';
 import { fetchCurrentUser } from '@/services/authService';
 import { fetchCreditBalance } from '@/services/creditService';
 import { getBetterAuthClient, isBetterAuthConfigured } from './betterAuthClient';
+import { translateAuthError } from './authErrors';
+import { useAuthAccountActions, type AuthAccountActions } from './useAuthAccountActions';
+import { executeWorkspaceSignOut } from './workspaceSignOut';
 
 export { fetchCurrentUser, fetchCreditBalance };
+export { translateAuthError } from './authErrors';
 
-export type UserSessionState = {
+export type AuthIdentityState = {
   status: 'loading' | 'signed_out' | 'signed_in';
   configured: boolean;
   userId: string | null;
@@ -41,70 +41,42 @@ export type UserSessionState = {
   email: string | null;
   name: string | null;
   emailVerified: boolean;
+};
+
+export type AuthCreditsState = {
   creditBalance: number | null;
   creditsStatus: 'idle' | 'loading' | 'ready' | 'error';
+};
+
+export type AuthDialogState = {
   authDialogOpen: boolean;
 };
 
-type SignUpInput = {
-  name: string;
-  email: string;
-  password: string;
-  turnstileToken: string;
-};
+export type UserSessionState = AuthIdentityState & AuthCreditsState & AuthDialogState;
 
-const verifyEmailCallbackURL = () => `${window.location.origin}/?auth_action=verify-email`;
-
-type AuthSessionContextValue = UserSessionState & {
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (input: SignUpInput) => Promise<void>;
-  updateUserName: (name: string) => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  requestPasswordReset: (email: string) => Promise<void>;
-  resetPassword: (token: string, newPassword: string) => Promise<void>;
-  sendVerificationEmail: (email: string) => Promise<void>;
+export type AuthActions = AuthAccountActions & {
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
+};
+
+export type AuthCreditsContextValue = AuthCreditsState & {
   refreshCredits: () => Promise<void>;
+};
+
+export type AuthDialogContextValue = AuthDialogState & {
   openAuthDialog: () => void;
   closeAuthDialog: () => void;
 };
 
-const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
+export type AuthSessionContextValue = UserSessionState &
+  AuthActions &
+  AuthCreditsContextValue &
+  AuthDialogContextValue;
 
-type AuthError = {
-  code?: string;
-  status?: number;
-};
-
-const authErrorTranslationKeys: Record<string, string> = {
-  EMAIL_NOT_VERIFIED: 'header.auth.emailNotVerified',
-  INVALID_EMAIL: 'header.auth.invalidCredentials',
-  INVALID_PASSWORD: 'header.auth.invalidCredentials',
-  INVALID_EMAIL_OR_PASSWORD: 'header.auth.invalidCredentials',
-  INVALID_USER: 'header.auth.invalidCredentials',
-  USER_NOT_FOUND: 'header.auth.userNotFound',
-  USER_EMAIL_NOT_FOUND: 'header.auth.userNotFound',
-  CREDENTIAL_ACCOUNT_NOT_FOUND: 'header.auth.userNotFound',
-  ACCOUNT_NOT_FOUND: 'header.auth.userNotFound',
-  USER_ALREADY_EXISTS: 'header.auth.userAlreadyExists',
-  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'header.auth.userAlreadyExists',
-  INVALID_TOKEN: 'header.auth.resetTokenInvalid',
-  TOKEN_EXPIRED: 'header.auth.resetTokenInvalid',
-  PASSWORD_TOO_SHORT: 'header.auth.passwordTooShort',
-  RATE_LIMIT_EXCEEDED: 'header.auth.tooManyRequests',
-  USER_DISABLED: 'header.auth.accountDisabled',
-};
-
-export const translateAuthError = (error: AuthError | null, fallbackKey: string): string => {
-  const translationKey =
-    error?.status === 429
-      ? 'header.auth.tooManyRequests'
-      : error?.code
-        ? authErrorTranslationKeys[error.code]
-        : undefined;
-  return i18n.t(translationKey ?? fallbackKey);
-};
+const AuthIdentityContext = createContext<AuthIdentityState | null>(null);
+const AuthActionsContext = createContext<AuthActions | null>(null);
+const AuthCreditsContext = createContext<AuthCreditsContextValue | null>(null);
+const AuthDialogContext = createContext<AuthDialogContextValue | null>(null);
 
 export const signedOutState = (configured: boolean): UserSessionState => ({
   status: 'signed_out',
@@ -179,9 +151,19 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     return () => window.removeEventListener('storage', onStorage);
   }, [queryClient]);
   const refetchCurrentUser = currentUserQuery.refetch;
-  const state = useMemo<UserSessionState>(() => {
-    if (!configured) return signedOutState(false);
-
+  const identity = useMemo<AuthIdentityState>(() => {
+    if (!configured) {
+      return {
+        status: 'signed_out',
+        configured: false,
+        userId: null,
+        workspaceId: null,
+        workspaceScope: null,
+        email: null,
+        name: null,
+        emailVerified: false,
+      };
+    }
     const status = currentUser
       ? 'signed_in'
       : currentUserQuery.isPending
@@ -196,6 +178,10 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       email: currentUser?.email ?? null,
       name: currentUser?.name ?? null,
       emailVerified: currentUser?.emailVerified ?? false,
+    };
+  }, [configured, currentUser, currentUserQuery.isPending, userId, workspaceId, workspaceScope]);
+  const credits = useMemo<AuthCreditsState>(
+    () => ({
       creditBalance: creditBalanceQuery.data ?? null,
       creditsStatus: !userId
         ? 'idle'
@@ -204,20 +190,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           : creditBalanceQuery.isError
             ? 'error'
             : 'ready',
-      authDialogOpen,
-    };
-  }, [
-    authDialogOpen,
-    configured,
-    creditBalanceQuery.data,
-    creditBalanceQuery.isError,
-    creditBalanceQuery.isPending,
-    currentUser,
-    currentUserQuery.isPending,
-    userId,
-    workspaceId,
-    workspaceScope,
-  ]);
+    }),
+    [creditBalanceQuery.data, creditBalanceQuery.isError, creditBalanceQuery.isPending, userId],
+  );
 
   const refreshSession = useCallback(async () => {
     if (!configured) return;
@@ -250,197 +225,55 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     }
   }, [currentWorkspaceQuery.error]);
 
-  const value = useMemo<AuthSessionContextValue>(
-    () => ({
-      ...state,
-      signInWithEmail: async (email: string, password: string) => {
-        if (!client || !configured) {
-          throw new Error(i18n.t('services.authConfigMissing'));
-        }
+  const accountActions = useAuthAccountActions(client, configured, refreshSession);
+  const signOut = useCallback(async () => {
+    if (signingOut) return;
+    if (!client || !configured) {
+      setAuthDialogOpen(false);
+      return;
+    }
 
-        const result = await client.signIn.email({
-          email,
-          password,
-        });
-        if (result.error) {
-          throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));
-        }
-
-        await refreshSession();
-      },
-      signUpWithEmail: async (input: SignUpInput) => {
-        if (!client || !configured) {
-          throw new Error(i18n.t('services.authConfigMissing'));
-        }
-
-        const result = await client.signUp.email(
-          {
-            email: input.email,
-            password: input.password,
-            name: input.name,
-            callbackURL: verifyEmailCallbackURL(),
-          },
-          {
-            headers: {
-              'x-turnstile-token': input.turnstileToken,
-            },
-          },
-        );
-        if (result.error) {
-          throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));
-        }
-      },
-      updateUserName: async (name: string) => {
-        if (!client || !configured) {
-          throw new Error(i18n.t('services.authConfigMissing'));
-        }
-
-        const result = await client.updateUser({
-          name,
-        });
-        if (result.error) {
-          throw new Error(translateAuthError(result.error, 'settings.usernameFailed'));
-        }
-
-        await refreshSession();
-      },
-      changePassword: async (currentPassword: string, newPassword: string) => {
-        if (!client || !configured) {
-          throw new Error(i18n.t('services.authConfigMissing'));
-        }
-
-        const result = await client.changePassword({
-          currentPassword,
-          newPassword,
-          revokeOtherSessions: false,
-        });
-        if (result.error) {
-          throw new Error(translateAuthError(result.error, 'settings.passwordFailed'));
-        }
-      },
-      requestPasswordReset: async (email: string) => {
-        if (!client || !configured) {
-          throw new Error(i18n.t('services.authConfigMissing'));
-        }
-
-        const result = await client.requestPasswordReset({
-          email,
-          redirectTo: `${window.location.origin}/?auth_action=reset-password`,
-        });
-        if (result.error) {
-          throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));
-        }
-      },
-      resetPassword: async (token: string, newPassword: string) => {
-        if (!client || !configured) {
-          throw new Error(i18n.t('services.authConfigMissing'));
-        }
-
-        const result = await client.resetPassword({
-          token,
-          newPassword,
-        });
-        if (result.error) {
-          throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));
-        }
-      },
-      sendVerificationEmail: async (email: string) => {
-        if (!client || !configured) {
-          throw new Error(i18n.t('services.authConfigMissing'));
-        }
-
-        const result = await client.sendVerificationEmail({
-          email,
-          callbackURL: verifyEmailCallbackURL(),
-        });
-        if (result.error) {
-          throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));
-        }
-      },
-      signOut: async () => {
-        if (signingOut) return;
-        if (!client || !configured) {
-          setAuthDialogOpen(false);
-          return;
-        }
-
-        const scope =
-          state.status === 'signed_in' && state.userId && state.workspaceId
-            ? {
-                kind: 'user' as const,
-                userId: state.userId,
-                workspaceId: state.workspaceId,
-              }
-            : null;
-        setSigningOut(true);
-        try {
-          if (scope) {
-            try {
-              await prepareWorkspaceSignOut(scope.workspaceId);
-            } catch (error) {
-              console.error('[workspace-yjs] sign out cancelled to preserve local changes', error);
-              throw new Error(i18n.t('workspaceYDoc.signOut.unsynced'));
-            }
+    const scope =
+      identity.status === 'signed_in' && identity.userId && identity.workspaceId
+        ? {
+            kind: 'user' as const,
+            userId: identity.userId,
+            workspaceId: identity.workspaceId,
           }
+        : null;
+    setSigningOut(true);
+    try {
+      await executeWorkspaceSignOut({
+        scope,
+        userId: identity.userId,
+        queryClient,
+        remoteSignOut: async () => {
           const result = await client.signOut();
           if (result.error) {
             throw new Error(translateAuthError(result.error, 'header.auth.signOutFailed'));
           }
-          await queryClient.cancelQueries({ queryKey: authQueryKeys.me });
-
-          let cleanupRegistered = !scope;
-          if (scope) {
-            try {
-              markWorkspaceCleanupPending(scope);
-              cleanupRegistered = true;
-              await clearLocalWorkspaceData(scope);
-            } catch (error) {
-              console.error(
-                JSON.stringify({
-                  event: 'sign_out_local_cleanup_failure',
-                  userId: scope.userId,
-                  workspaceId: scope.workspaceId,
-                }),
-                error,
-              );
-              toast.error(i18n.t('workspaceYDoc.signOut.cleanupFailed'), {
-                action: {
-                  label: i18n.t('workspaceYDoc.signOut.retryCleanup'),
-                  onClick: () => {
-                    void clearLocalWorkspaceData(scope)
-                      .then(() => {
-                        if (
-                          parseWorkspaceIdentity(readWorkspaceIdentity())?.userId === scope.userId
-                        )
-                          writeWorkspaceIdentity(null);
-                      })
-                      .catch((error: unknown) => {
-                        console.error('[workspace] cleanup retry failed', error);
-                        toast.error(i18n.t('workspaceYDoc.signOut.cleanupFailed'));
-                      });
-                  },
-                },
-              });
-            }
-          }
-          if (state.userId) {
-            queryClient.removeQueries({ queryKey: creditQueryKeys.all(state.userId) });
-            queryClient.removeQueries({ queryKey: workspaceQueryKeys.all(state.userId) });
-            queryClient.removeQueries({ queryKey: workspaceMigrationQueryKeys.all(state.userId) });
-          }
-          queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
-          if (cleanupRegistered) writeWorkspaceIdentity(null);
-          setAuthDialogOpen(false);
-        } finally {
-          setSigningOut(false);
-        }
-      },
-      refreshSession,
-      refreshCredits,
+        },
+      });
+      setAuthDialogOpen(false);
+    } finally {
+      setSigningOut(false);
+    }
+  }, [client, configured, identity, queryClient, signingOut]);
+  const actions = useMemo<AuthActions>(
+    () => ({ ...accountActions, signOut, refreshSession }),
+    [accountActions, refreshSession, signOut],
+  );
+  const creditContext = useMemo<AuthCreditsContextValue>(
+    () => ({ ...credits, refreshCredits }),
+    [credits, refreshCredits],
+  );
+  const dialog = useMemo<AuthDialogContextValue>(
+    () => ({
+      authDialogOpen,
       openAuthDialog: () => setAuthDialogOpen(true),
       closeAuthDialog: () => setAuthDialogOpen(false),
     }),
-    [client, configured, queryClient, refreshCredits, refreshSession, signingOut, state],
+    [authDialogOpen],
   );
 
   useEffect(() => {
@@ -451,26 +284,59 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   return (
-    <AuthSessionContext.Provider value={value}>
-      <div className="contents" inert={signingOut} aria-busy={signingOut}>
-        {children}
-      </div>
-      {signingOut && (
-        <div
-          role="status"
-          className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-md border bg-background px-4 py-2 text-sm text-foreground shadow-sm"
-        >
-          {i18n.t('workspaceYDoc.signOut.saving')}
-        </div>
-      )}
-    </AuthSessionContext.Provider>
+    <AuthIdentityContext.Provider value={identity}>
+      <AuthActionsContext.Provider value={actions}>
+        <AuthCreditsContext.Provider value={creditContext}>
+          <AuthDialogContext.Provider value={dialog}>
+            <div className="contents" inert={signingOut} aria-busy={signingOut}>
+              {children}
+            </div>
+            {signingOut && (
+              <div
+                role="status"
+                className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-md border bg-background px-4 py-2 text-sm text-foreground shadow-sm"
+              >
+                {i18n.t('workspaceYDoc.signOut.saving')}
+              </div>
+            )}
+          </AuthDialogContext.Provider>
+        </AuthCreditsContext.Provider>
+      </AuthActionsContext.Provider>
+    </AuthIdentityContext.Provider>
   );
 }
 
-export const useAuthSession = () => {
-  const context = useContext(AuthSessionContext);
-  if (!context) {
-    throw new Error('useAuthSession must be used within AuthSessionProvider');
-  }
-  return context;
+export const useAuthIdentity = () => {
+  const value = useContext(AuthIdentityContext);
+  if (!value) throw new Error('useAuthIdentity must be used within AuthSessionProvider');
+  return value;
+};
+
+export const useAuthActions = () => {
+  const value = useContext(AuthActionsContext);
+  if (!value) throw new Error('useAuthActions must be used within AuthSessionProvider');
+  return value;
+};
+
+export const useAuthCredits = () => {
+  const value = useContext(AuthCreditsContext);
+  if (!value) throw new Error('useAuthCredits must be used within AuthSessionProvider');
+  return value;
+};
+
+export const useAuthDialog = () => {
+  const value = useContext(AuthDialogContext);
+  if (!value) throw new Error('useAuthDialog must be used within AuthSessionProvider');
+  return value;
+};
+
+export const useAuthSession = (): AuthSessionContextValue => {
+  const identityValue = useAuthIdentity();
+  const actionsValue = useAuthActions();
+  const creditsValue = useAuthCredits();
+  const dialogValue = useAuthDialog();
+  return useMemo(
+    () => ({ ...identityValue, ...actionsValue, ...creditsValue, ...dialogValue }),
+    [actionsValue, creditsValue, dialogValue, identityValue],
+  );
 };

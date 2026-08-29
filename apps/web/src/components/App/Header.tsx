@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useLocale } from '@/i18n/LocaleContext';
 import { getDocsUrl } from '@/utils/docsLink';
 import { useTranslation } from 'react-i18next';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAuthActions, useAuthDialog, useAuthIdentity } from '@/auth/AuthSessionProvider';
 import { useToast } from '@/hooks/useToast';
 import {
   DropdownMenu,
@@ -63,7 +63,10 @@ export const Header = memo<HeaderProps>(
     const { locale, setLocale } = useLocale();
     const { success, error } = useToast();
     const docsUrl = getDocsUrl(locale);
-    const authSession = useAuthSession();
+    const authIdentity = useAuthIdentity();
+    const authActions = useAuthActions();
+    const authDialog = useAuthDialog();
+    const authSession = { ...authIdentity, ...authActions, ...authDialog };
     const { theme, resolvedTheme, setTheme } = useTheme();
     const selectedTheme: 'system' | 'light' | 'dark' =
       theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system';

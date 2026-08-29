@@ -25,13 +25,14 @@ vi.mock('@/utils/tableFolders', () => ({
   updateFolder: vi.fn(),
 }));
 
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({
+vi.mock('@/auth/AuthSessionProvider', () => {
+  const useAuthSession = () => ({
     status: 'signed_out',
     userId: null,
     workspaceId: null,
-  }),
-}));
+  });
+  return { useAuthSession, useAuthIdentity: useAuthSession };
+});
 
 describe('useFolders', () => {
   const mockListFolders = vi.mocked(tableFolders.listFolders);

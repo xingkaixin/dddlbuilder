@@ -8,14 +8,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAuthIdentity } from '@/auth/AuthSessionProvider';
 import { useToast } from '@/hooks/useToast';
 import { useWorkspaceMigration } from '@/hooks/useWorkspaceMigration';
 
 export function WorkspaceMigrationDialog() {
   const { t } = useTranslation();
   const { success, error } = useToast();
-  const authSession = useAuthSession();
+  const authSession = useAuthIdentity();
   const workspaceMigration = useWorkspaceMigration(authSession);
 
   const handleRunWorkspaceMigration = async () => {

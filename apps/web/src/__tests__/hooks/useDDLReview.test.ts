@@ -7,8 +7,8 @@ import { useLocale } from '@/i18n/LocaleContext';
 import { createAITextStream as createStream } from '@/__tests__/utils/aiStream';
 import { encodeAIStreamEvent } from '@ddlbuilder/shared-types';
 
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({
+vi.mock('@/auth/AuthSessionProvider', () => {
+  const useAuthSession = () => ({
     status: 'signed_in',
     configured: true,
     userId: 'user-1',
@@ -28,8 +28,14 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     refreshCredits: vi.fn(),
     openAuthDialog: vi.fn(),
     closeAuthDialog: vi.fn(),
-  }),
-}));
+  });
+  return {
+    useAuthSession,
+    useAuthIdentity: useAuthSession,
+    useAuthCredits: useAuthSession,
+    useAuthDialog: useAuthSession,
+  };
+});
 
 function renderDDLReviewHook() {
   const { wrapper } = createQueryClientWrapper();

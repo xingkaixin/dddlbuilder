@@ -5,15 +5,21 @@ import { fetchCreditLedger } from '@/services/creditService';
 const auth = vi.hoisted(() => ({ userId: 'ledger-user', name: 'Tester' }));
 
 vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ locale: 'zh-CN' }) }));
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({
+vi.mock('@/auth/AuthSessionProvider', () => {
+  const useAuthSession = () => ({
     status: 'signed_in',
     userId: auth.userId,
     name: auth.name,
     creditBalance: 100,
     email: 'user@example.com',
-  }),
-}));
+  });
+  return {
+    useAuthSession,
+    useAuthIdentity: useAuthSession,
+    useAuthActions: useAuthSession,
+    useAuthCredits: useAuthSession,
+  };
+});
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDoc: () => ({
     connectionState: 'synced',

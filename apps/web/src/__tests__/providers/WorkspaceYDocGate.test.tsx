@@ -18,8 +18,8 @@ const authSession = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({
+vi.mock('@/auth/AuthSessionProvider', () => {
+  const useAuthSession = () => ({
     ...authSession.current,
     workspaceScope:
       authSession.current.userId && authSession.current.workspaceId
@@ -29,8 +29,13 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
             workspaceId: authSession.current.workspaceId,
           }
         : null,
-  }),
-}));
+  });
+  return {
+    useAuthSession,
+    useAuthIdentity: useAuthSession,
+    useAuthActions: useAuthSession,
+  };
+});
 
 // whenSynced 的 resolve 由用例掌控，用来复现"本地 update log 还没加载完"的窗口期。
 const localLoad = vi.hoisted(() => ({

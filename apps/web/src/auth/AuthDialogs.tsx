@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAuthActions, useAuthDialog } from '@/auth/AuthSessionProvider';
 import { TurnstileWidget } from '@/auth/TurnstileWidget';
 import { useToast } from '@/hooks/useToast';
 
@@ -35,7 +35,9 @@ const readAuthQuery = () => {
 export function AuthDialogs() {
   const { t } = useTranslation();
   const { success, error } = useToast();
-  const authSession = useAuthSession();
+  const authActions = useAuthActions();
+  const authDialog = useAuthDialog();
+  const authSession = useMemo(() => ({ ...authActions, ...authDialog }), [authActions, authDialog]);
   const [authQuery] = useState(readAuthQuery);
   const [authMode, setAuthMode] = useState<AuthMode>(() =>
     authQuery.action === 'reset-password' && authQuery.token ? 'reset_password' : 'sign_in',

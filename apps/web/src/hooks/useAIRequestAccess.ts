@@ -1,11 +1,12 @@
 import { useCallback, useMemo } from 'react';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAuthCredits, useAuthDialog, useAuthIdentity } from '@/auth/AuthSessionProvider';
 import { useTranslation } from 'react-i18next';
 
 export function useAIRequestAccess() {
   const { t } = useTranslation();
-  const { status, userId, creditsStatus, creditBalance, openAuthDialog, refreshCredits } =
-    useAuthSession();
+  const { status, userId } = useAuthIdentity();
+  const { creditsStatus, creditBalance, refreshCredits } = useAuthCredits();
+  const { openAuthDialog } = useAuthDialog();
 
   const authenticated = status === 'signed_in' && Boolean(userId);
   const accessError = !authenticated

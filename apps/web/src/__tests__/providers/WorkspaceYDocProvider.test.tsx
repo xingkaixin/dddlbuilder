@@ -30,7 +30,11 @@ const auth = vi.hoisted(() => ({
   refreshSession: vi.fn(async () => {}),
 }));
 
-vi.mock('@/auth/AuthSessionProvider', () => ({ useAuthSession: () => auth }));
+vi.mock('@/auth/AuthSessionProvider', () => ({
+  useAuthSession: () => auth,
+  useAuthIdentity: () => auth,
+  useAuthActions: () => auth,
+}));
 
 // 模拟 y-indexeddb 的持久化：同一 workspace 的 Y.Doc 状态（含删除墓碑）跨启动保留。
 const persistence = vi.hoisted(() => ({ update: null as Uint8Array | null, committed: false }));

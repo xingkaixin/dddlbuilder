@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthSession: mocks.useAuthSession,
+  useAuthIdentity: mocks.useAuthSession,
+  useAuthCredits: mocks.useAuthSession,
+  useAuthDialog: mocks.useAuthSession,
 }));
 
 describe('useAIRequestAccess', () => {

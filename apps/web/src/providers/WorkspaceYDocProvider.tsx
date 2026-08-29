@@ -13,7 +13,7 @@ import {
 import * as Y from 'yjs';
 import { fetchUpdates, IndexeddbPersistence } from 'y-indexeddb';
 import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAuthActions, useAuthIdentity } from '@/auth/AuthSessionProvider';
 import { WorkspaceBootstrapScreen } from '@/components/WorkspaceBootstrapScreen';
 import { useShareRoute } from '@/hooks/workspacePersistence/shareRoute';
 import {
@@ -93,8 +93,8 @@ const WorkspaceYDocStatusContext = createContext<WorkspaceYDocStatus>({
 });
 
 export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
-  const authSession = useAuthSession();
-  const { refreshSession } = authSession;
+  const authSession = useAuthIdentity();
+  const { refreshSession } = useAuthActions();
   const { shareId } = useShareRoute();
   const clientRef = useRef<WorkspaceYDocSyncClient | null>(null);
   const persistenceRef = useRef<IndexeddbPersistence | null>(null);

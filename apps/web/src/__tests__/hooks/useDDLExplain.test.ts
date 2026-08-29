@@ -4,8 +4,8 @@ import { useDDLExplain } from '@/hooks/useDDLExplain';
 import { useLocale } from '@/i18n/LocaleContext';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({
+vi.mock('@/auth/AuthSessionProvider', () => {
+  const useAuthSession = () => ({
     status: 'signed_in',
     configured: true,
     userId: 'user-1',
@@ -25,8 +25,14 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     refreshCredits: vi.fn(),
     openAuthDialog: vi.fn(),
     closeAuthDialog: vi.fn(),
-  }),
-}));
+  });
+  return {
+    useAuthSession,
+    useAuthIdentity: useAuthSession,
+    useAuthCredits: useAuthSession,
+    useAuthDialog: useAuthSession,
+  };
+});
 
 const streamingMocks = vi.hoisted(() => ({
   readTextStream: vi.fn(),

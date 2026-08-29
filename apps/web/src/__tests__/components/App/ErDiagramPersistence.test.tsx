@@ -17,14 +17,15 @@ const capture = vi.hoisted(() => ({
   connect: undefined as ReactFlowModule.ReactFlowProps['onConnect'],
   fitView: vi.fn(),
 }));
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({
+vi.mock('@/auth/AuthSessionProvider', () => {
+  const useAuthSession = () => ({
     status: capture.doc ? 'signed_in' : 'signed_out',
     userId: 'user',
     workspaceId: 'workspace',
     workspaceScope: capture.doc ? { kind: 'user', userId: 'user', workspaceId: 'workspace' } : null,
-  }),
-}));
+  });
+  return { useAuthSession, useAuthIdentity: useAuthSession };
+});
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDocDocument: () => ({ doc: capture.doc, localSynced: true, synced: true }),
 }));

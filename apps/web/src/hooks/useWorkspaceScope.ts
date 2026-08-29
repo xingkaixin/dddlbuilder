@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAuthIdentity } from '@/auth/AuthSessionProvider';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 export const useWorkspaceScope = (): WorkspaceScope | null => {
@@ -9,7 +9,7 @@ export const useWorkspaceScope = (): WorkspaceScope | null => {
 };
 
 export const useWorkspaceScopeState = () => {
-  const { status, workspaceScope } = useAuthSession();
+  const { status, workspaceScope } = useAuthIdentity();
 
   return useMemo(() => {
     return {
