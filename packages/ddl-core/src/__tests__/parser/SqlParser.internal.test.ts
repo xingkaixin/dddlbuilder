@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { SqlParser } from '../../parser/SqlParser.js';
+import { SqlParseError } from '../../parser/index.js';
 import type { ParsedResult } from '../../parser/types.js';
 
 function createEmptyResult(): ParsedResult {
@@ -10,12 +11,14 @@ function createEmptyResult(): ParsedResult {
     tableComment: '',
     fields: [],
     indexes: [],
+    foreignKeys: [],
     authObjects: [],
   };
 }
 
 const sqlParserRuntimeImportFiles = [
   '../../parser/SqlParser.ts',
+  '../../parser/SqlParseError.ts',
   '../../parser/preprocessors/index.ts',
   '../../parser/preprocessors/OraclePreprocessor.ts',
   '../../parser/preprocessors/PostgresPreprocessor.ts',
@@ -26,7 +29,9 @@ const sqlParserRuntimeImportFiles = [
   '../../parser/partitionParser.ts',
   '../../parser/preprocessMysql.ts',
   '../../parser/types.ts',
+  '../../configs/reservedKeywords.ts',
   '../../utils/databaseFamily.ts',
+  '../../utils/sqlIdentifiers.ts',
 ].map((relativePath) => fileURLToPath(new URL(relativePath, import.meta.url)));
 
 describe('SqlParser internals', () => {
@@ -57,16 +62,52 @@ describe('SqlParser internals', () => {
     );
   });
 
-  it('parse 应在 astify 异常时返回统一错误信息', () => {
-    const astify = vi.fn().mockImplementation(() => {
-      throw new Error('broken ast');
-    });
-    const parser = new SqlParser({ astify } as any);
+  it('parseAsync 应将 astify 输入错误标记为 SqlParseError', async () => {
+    const parser = new SqlParser();
 
-    expect(() => parser.parse('CREATE TABLE t(id INT);', 'mysql')).toThrow(
-      '无法解析 SQL，请检查语法或数据库类型是否正确。',
+    await expect(
+      parser.parseAsync('CREATE TABLE t(id INT, broken);', 'mysql'),
+    ).rejects.toMatchObject({
+      name: 'SqlParseError',
+      message: '无法解析 SQL，请检查语法或数据库类型是否正确。',
+      parserMessage: expect.stringMatching(/expected/i),
+    });
+  });
+
+  it('parseAsync 应保留 astify 内部异常', async () => {
+    const internalError = new Error('internal failure');
+    const parser = new SqlParser({
+      astify: vi.fn(() => {
+        throw internalError;
+      }),
+    } as any);
+
+    await expect(parser.parseAsync('CREATE TABLE t(id INT);', 'mysql')).rejects.toBe(internalError);
+  });
+
+  it('parseMultiAsync 只把 SqlParseError 计入 failed', async () => {
+    const syntaxResult = await new SqlParser().parseMultiAsync('bad sql', 'mysql');
+    expect(syntaxResult.results).toEqual([]);
+    expect(syntaxResult.failed).toEqual([
+      { statement: 'bad sql', error: expect.stringMatching(/expected/i) },
+    ]);
+
+    const internalParser = new SqlParser({
+      astify: vi.fn(() => ({
+        type: 'create',
+        keyword: 'table',
+        get table() {
+          throw new Error('internal failure');
+        },
+      })),
+    } as any);
+    await expect(internalParser.parseMultiAsync('CREATE TABLE t(id INT)', 'mysql')).rejects.toThrow(
+      'internal failure',
     );
-    expect(astify).toHaveBeenCalledTimes(1);
+  });
+
+  it('SqlParseError 可由 parser 包入口识别', () => {
+    expect(new SqlParseError('detail')).toBeInstanceOf(Error);
   });
 
   it('parse 应在 sqlserver 下回填 GRANT 用户', () => {
@@ -106,9 +147,14 @@ describe('SqlParser internals', () => {
       ],
     };
 
-    (parser as any).mergeComments(result, '新表注释', {
-      id: '主键注释',
-    });
+    (parser as any).mergeComments(
+      result,
+      '新表注释',
+      {
+        id: '主键注释',
+      },
+      'mysql',
+    );
 
     expect(result.tableComment).toBe('已有表注释');
     expect(result.fields[0].comment).toBe('主键注释');

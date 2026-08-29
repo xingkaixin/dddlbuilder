@@ -1,6 +1,6 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
-import { RESERVED_KEYWORDS } from '../configs/reservedKeywords';
-import { getDatabaseFamily, quoteIdentifier } from './databaseFamily';
+import { RESERVED_KEYWORDS } from '../configs/reservedKeywords.js';
+import { getDatabaseFamily, quoteIdentifier } from './databaseFamily.js';
 
 export function unquoteSqlIdentifier(value: string): string {
   const quoted = value.match(/^(?:"((?:[^"]|"")*)"|`((?:[^`]|``)*)`|\[((?:[^\]]|\]\])*)\])$/);
@@ -12,10 +12,16 @@ export function unquoteSqlIdentifier(value: string): string {
   );
 }
 
-/** PostgreSQL 的编辑器名称保留大小写，生成 SQL 时由 formatSqlIdentifier 自动加引号。 */
+/** 生成用于比较标识符恒等性的 key，不改变用户保存的名称。 */
 export function getSqlIdentifierKey(name: string, dbType: DatabaseType): string {
-  const value = unquoteSqlIdentifier(name.trim());
-  return getDatabaseFamily(dbType) === 'postgresql' ? value : value.toLowerCase();
+  const source = name.trim();
+  const value = unquoteSqlIdentifier(source);
+  const family = getDatabaseFamily(dbType);
+  if (family === 'postgresql') return value;
+  if (family === 'oracle' || family === 'dm') {
+    return value === source ? value.toUpperCase() : value;
+  }
+  return value.toLowerCase();
 }
 
 export function formatSqlIdentifier(name: string, dbType: DatabaseType): string {

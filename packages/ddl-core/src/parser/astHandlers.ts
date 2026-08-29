@@ -26,6 +26,7 @@ import {
   normalizeColumnName,
   normalizeLiteral,
 } from './normalizers.js';
+import { unquoteSqlIdentifier } from '../utils/sqlIdentifiers.js';
 
 const MYSQL_ENGINE_NAME_MAP: Record<string, string> = {
   innodb: 'InnoDB',
@@ -34,6 +35,9 @@ const MYSQL_ENGINE_NAME_MAP: Record<string, string> = {
   archive: 'ARCHIVE',
   csv: 'CSV',
 };
+
+const generatedIdentifierPart = (name: string) =>
+  unquoteSqlIdentifier(name).replace(/[^\p{L}\p{N}_$]+/gu, '_');
 
 function pushIndex(result: ParsedResult, name: string, fields: IndexField[], kind: IndexKind) {
   if (fields.length === 0) return;
@@ -85,7 +89,9 @@ function pushForeignKey(result: ParsedResult, def: ForeignKeyNode) {
   const refFieldNames = collectColumnNames(refDef.definition);
   if (refFieldNames.length === 0) return;
 
-  const constraintName = def.constraint || `fk_${result.tableName}_${fieldNames.join('_')}`;
+  const constraintName =
+    def.constraint ||
+    `fk_${generatedIdentifierPart(result.tableName)}_${fieldNames.map(generatedIdentifierPart).join('_')}`;
   const onActions = parseOnAction(refDef.on_action || []);
 
   const fk: ForeignKeyDefinition = {
@@ -109,7 +115,12 @@ function enforceNotNullForFields(result: ParsedResult, fieldNames: string[]) {
 }
 
 function pushPrimaryKey(result: ParsedResult, fields: IndexField[], name?: string | null) {
-  pushIndex(result, name || buildPrimaryKeyName(result.tableName), fields, 'primary');
+  pushIndex(
+    result,
+    name || buildPrimaryKeyName(generatedIdentifierPart(result.tableName)),
+    fields,
+    'primary',
+  );
   enforceNotNullForFields(
     result,
     fields.map((field) => field.name),
@@ -306,7 +317,7 @@ export function parseCreateTable(
         if (def.unique) {
           pushIndex(
             result,
-            def.constraint?.constraint || `uk_${field.name}`,
+            def.constraint?.constraint || `uk_${generatedIdentifierPart(field.name)}`,
             [{ name: field.name, direction: 'ASC' }],
             'unique_constraint',
           );
@@ -317,7 +328,9 @@ export function parseCreateTable(
         } else if (def.constraint_type === 'unique key' || def.constraint_type === 'unique') {
           const fields = buildIndexFields(def.definition || []);
           const indexName =
-            def.constraint || def.index || `uk_${fields.map((f) => f.name).join('_')}`;
+            def.constraint ||
+            def.index ||
+            `uk_${fields.map((field) => generatedIdentifierPart(field.name)).join('_')}`;
           pushIndex(result, indexName, fields, 'unique_constraint');
         } else if (def.constraint_type?.toLowerCase() === 'foreign key') {
           pushForeignKey(result, def);
@@ -392,7 +405,7 @@ export function parseAlterTable(
       case 'unique key':
         pushIndex(
           result,
-          name || `uk_${fields.map((field) => field.name).join('_')}`,
+          name || `uk_${fields.map((field) => generatedIdentifierPart(field.name)).join('_')}`,
           fields,
           'unique_constraint',
         );

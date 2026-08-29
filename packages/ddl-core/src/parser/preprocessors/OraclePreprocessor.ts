@@ -1,5 +1,17 @@
 import type { PreprocessResult } from './types.js';
-import { mapSqlCode } from '../sqlSegments.js';
+import { mapDoubleQuotedSqlIdentifiers, mapSqlCode } from '../sqlSegments.js';
+
+const DELIMITED_IDENTIFIER_PATTERN = String.raw`"(?:[^"]|"")*"`;
+const IDENTIFIER_PATTERN = String.raw`(?:${DELIMITED_IDENTIFIER_PATTERN}|[\p{L}\p{N}_$#]+)`;
+const QUALIFIED_IDENTIFIER_PATTERN = String.raw`${IDENTIFIER_PATTERN}(?:\s*\.\s*${IDENTIFIER_PATTERN})*`;
+const TABLE_COMMENT_PATTERN = new RegExp(
+  String.raw`\bCOMMENT\s+ON\s+TABLE\s+(${QUALIFIED_IDENTIFIER_PATTERN})\s+IS\s+'((?:''|[^'])*)'\s*;`,
+  'giu',
+);
+const COLUMN_COMMENT_PATTERN = new RegExp(
+  String.raw`\bCOMMENT\s+ON\s+COLUMN\s+(${QUALIFIED_IDENTIFIER_PATTERN})\s*\.\s*(${IDENTIFIER_PATTERN})\s+IS\s+'((?:''|[^'])*)'\s*;`,
+  'giu',
+);
 
 /**
  * Preprocess Oracle SQL for parsing
@@ -26,22 +38,15 @@ export function preprocessOracle(sql: string): PreprocessResult {
   };
 
   // Extract and remove COMMENT statements
-  sql = sql.replace(
-    /COMMENT\s+ON\s+TABLE\s+([\w".]+)\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
-    (_m, tableName, comment) => {
-      getTableMetadata(tableName).tableComment = unescapeComment(comment);
-      return '';
-    },
-  );
+  sql = sql.replace(TABLE_COMMENT_PATTERN, (_m, tableName, comment) => {
+    getTableMetadata(tableName).tableComment = unescapeComment(comment);
+    return '';
+  });
 
-  sql = sql.replace(
-    /COMMENT\s+ON\s+COLUMN\s+([\w".]+)\.(["\w]+)\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
-    (_m, tableName, column, comment) => {
-      const colName = column.replace(/"/g, '');
-      getTableMetadata(tableName).columnComments[colName] = unescapeComment(comment);
-      return '';
-    },
-  );
+  sql = sql.replace(COLUMN_COMMENT_PATTERN, (_m, tableName, column, comment) => {
+    getTableMetadata(tableName).columnComments[column] = unescapeComment(comment);
+    return '';
+  });
 
   // Remove synonym creation statements
   sql = sql.replace(/CREATE\s+OR\s+REPLACE\s+PUBLIC\s+SYNONYM[\s\S]*?;/gi, '');
@@ -58,5 +63,20 @@ export function preprocessOracle(sql: string): PreprocessResult {
       .replace(/\bDEFAULT\s+SYSTIMESTAMP\b/gi, 'DEFAULT CURRENT_TIMESTAMP'),
   );
 
-  return { sql: normalizedSql, tableMetadata: Array.from(metadataByTable.values()) };
+  const identifierMappings = new Map<string, string>();
+  let mappingIndex = 0;
+  const parserSql = mapDoubleQuotedSqlIdentifiers(normalizedSql, (identifier) => {
+    let placeholder = '';
+    do {
+      placeholder = `__ddlbuilder_oracle_identifier_${mappingIndex++}__`;
+    } while (normalizedSql.includes(placeholder));
+    identifierMappings.set(placeholder, identifier);
+    return `\`${placeholder}\``;
+  });
+
+  return {
+    sql: parserSql,
+    tableMetadata: Array.from(metadataByTable.values()),
+    identifierMappings,
+  };
 }

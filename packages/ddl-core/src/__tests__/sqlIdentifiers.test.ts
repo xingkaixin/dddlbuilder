@@ -12,12 +12,23 @@ describe('getSqlIdentifierKey', () => {
     },
   );
 
-  it.each(['mysql', 'sqlserver', 'oracle'] as const)(
+  it.each(['mysql', 'sqlserver'] as const)(
     '%s preserves case-insensitive editor matching',
     (dbType) => {
       expect(getSqlIdentifierKey(' UserID ', dbType)).toBe('userid');
       expect(getSqlIdentifierKey('[UserID]', dbType)).toBe('userid');
       expect(getSqlIdentifierKey('`UserID`', dbType)).toBe('userid');
+    },
+  );
+
+  it.each(['oracle', 'oceanbase-oracle', 'dm'] as const)(
+    '%s folds unquoted names and preserves delimited names',
+    (dbType) => {
+      expect(getSqlIdentifierKey(' UserID ', dbType)).toBe('USERID');
+      expect(getSqlIdentifierKey('userid', dbType)).toBe('USERID');
+      expect(getSqlIdentifierKey('"UserID"', dbType)).toBe('UserID');
+      expect(getSqlIdentifierKey('"User""ID"', dbType)).toBe('User"ID');
+      expect(getSqlIdentifierKey('"USERID"', dbType)).toBe(getSqlIdentifierKey('userid', dbType));
     },
   );
 });

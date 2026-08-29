@@ -43,8 +43,7 @@ export function extractStandaloneComments(sql: string): PreprocessResult {
     .replace(
       /COMMENT\s+ON\s+COLUMN\s+([\w".]+)\.(["\w]+)\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
       (_m, tableName, column, comment) => {
-        const colName = column.replace(/"/g, '');
-        getTableMetadata(tableName).columnComments[colName] = unescapeComment(comment);
+        getTableMetadata(tableName).columnComments[column] = unescapeComment(comment);
         return '';
       },
     );

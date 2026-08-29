@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SqlParser } from '../../parser/SqlParser.js';
 import { foldUnquotedPostgresIdentifiers } from '../../parser/preprocessors/PostgresPreprocessor.js';
+import { buildDDL } from '../../utils/ddlGenerators.js';
 
 describe('qualified table ownership', () => {
   it.each([
@@ -63,6 +64,129 @@ describe('qualified table ownership', () => {
       },
     ]);
     expect(results[0].fields[1].defaultValue).toBe('KeepCase');
+  });
+
+  it.each(['oracle', 'oceanbase-oracle', 'dm'] as const)(
+    '%s 区分加引号的表列名并保留对应的索引与注释',
+    async (dbType) => {
+      const { results, failed } = await new SqlParser().parseMultiAsync(
+        `
+      CREATE TABLE "Foo" ("ID" INT);
+      CREATE TABLE "foo" ("id" INT);
+      CREATE INDEX "FooIx" ON "Foo" ("ID");
+      CREATE INDEX "fooIx" ON "foo" ("id");
+      COMMENT ON TABLE "Foo" IS 'Upper';
+      COMMENT ON COLUMN "Foo"."ID" IS 'Upper ID';
+      COMMENT ON TABLE "foo" IS 'Lower';
+      COMMENT ON COLUMN "foo"."id" IS 'Lower id';
+      `,
+        dbType,
+      );
+
+      expect(failed).toEqual([]);
+      expect(
+        results.map((result) => ({
+          tableName: result.tableName,
+          tableComment: result.tableComment,
+          fieldName: result.fields[0].name,
+          fieldComment: result.fields[0].comment,
+          indexes: result.indexes.map((index) => index.name),
+        })),
+      ).toEqual([
+        {
+          tableName: '"Foo"',
+          tableComment: 'Upper',
+          fieldName: '"ID"',
+          fieldComment: 'Upper ID',
+          indexes: ['"FooIx"'],
+        },
+        {
+          tableName: '"foo"',
+          tableComment: 'Lower',
+          fieldName: '"id"',
+          fieldComment: 'Lower id',
+          indexes: ['"fooIx"'],
+        },
+      ]);
+    },
+  );
+
+  it.each(['oracle', 'oceanbase-oracle', 'dm'] as const)(
+    '%s 无损往返特殊引用名称及其归属信息',
+    async (dbType) => {
+      const sql = `
+        CREATE TABLE "Mi X"."Ta$B" (
+          "Co\`L" INT PRIMARY KEY,
+          "Uni#que" INT UNIQUE,
+          "Copy" INT DEFAULT ("Co\`L" + 1)
+        );
+        CREATE INDEX "ix\`tick" ON "Mi X"."Ta$B" ("Co\`L");
+        COMMENT ON TABLE "Mi X"."Ta$B" IS 'Special table';
+        COMMENT ON COLUMN "Mi X"."Ta$B"."Co\`L" IS 'Special column';
+        COMMENT ON COLUMN "Mi X"."Ta$B"."Uni#que" IS 'Hash column';
+        GRANT SELECT ON "Mi X"."Ta$B" TO report_reader;
+      `;
+      const parsed = await new SqlParser().parseMultiAsync(sql, dbType);
+
+      expect(parsed.failed).toEqual([]);
+      expect(parsed.results).toHaveLength(1);
+      const result = parsed.results[0];
+      expect(result).toMatchObject({
+        schemaName: '"Mi X"',
+        tableName: '"Ta$B"',
+        tableComment: 'Special table',
+        authObjects: ['report_reader'],
+      });
+      expect(result.fields.map((field) => [field.name, field.comment])).toEqual([
+        ['"Co`L"', 'Special column'],
+        ['"Uni#que"', 'Hash column'],
+        ['"Copy"', ''],
+      ]);
+      expect(result.fields[2].defaultValue).toBe('("Co`L" + 1)');
+      expect(JSON.stringify(result)).not.toContain('__ddlbuilder_oracle_identifier_');
+      expect(result.indexes.map((index) => index.name)).toEqual([
+        'pk_Ta$B',
+        'uk_Uni_que',
+        '"ix`tick"',
+      ]);
+
+      const generated = buildDDL({
+        dbType,
+        tableName: `${result.schemaName}.${result.tableName}`,
+        tableComment: result.tableComment,
+        fields: result.fields,
+        indexes: result.indexes,
+      });
+      const reparsed = await new SqlParser().parseMultiAsync(generated, dbType);
+      expect(reparsed.failed).toEqual([]);
+      expect(reparsed.results[0]).toMatchObject({
+        schemaName: result.schemaName,
+        tableName: result.tableName,
+        tableComment: result.tableComment,
+      });
+      expect(reparsed.results[0].fields.map((field) => [field.name, field.comment])).toEqual(
+        result.fields.map((field) => [field.name, field.comment]),
+      );
+      expect(reparsed.results[0].fields[2].defaultValue).toBe(result.fields[2].defaultValue);
+      expect(reparsed.results[0].indexes.map((index) => index.name)).toEqual(
+        result.indexes.map((index) => index.name),
+      );
+    },
+  );
+
+  it('Oracle 不应把未闭合引用名称修复成可解析 SQL', async () => {
+    const parsed = await new SqlParser().parseMultiAsync(
+      'CREATE TABLE "unterminated (id INT);',
+      'oracle',
+    );
+
+    expect(parsed.results).toEqual([]);
+    expect(parsed.failed).toEqual([
+      {
+        statement: 'CREATE TABLE "unterminated (id INT);',
+        error: expect.stringMatching(/expected/i),
+      },
+    ]);
   });
 
   it('PostgreSQL 区分加引号的 schema 并折叠未加引号的名称', async () => {

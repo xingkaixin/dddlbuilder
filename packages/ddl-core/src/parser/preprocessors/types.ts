@@ -16,4 +16,6 @@ export type PreprocessResult = {
   sql: string;
   /** Extracted comments grouped by their owning table */
   tableMetadata: PreprocessedTableMetadata[];
+  /** Parser-safe placeholders mapped back to their original SQL spelling. */
+  identifierMappings?: ReadonlyMap<string, string>;
 };

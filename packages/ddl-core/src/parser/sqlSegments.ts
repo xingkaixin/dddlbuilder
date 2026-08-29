@@ -8,6 +8,7 @@ function* sqlSegments(sql: string, { backslashEscapes = true }: SqlScanOptions =
   for (let match = tokens.exec(sql); match; match = tokens.exec(sql)) {
     const token = match[0];
     let end = tokens.lastIndex;
+    let closed = true;
     if (token === '--') {
       while (end < sql.length && !'\r\n'.includes(sql[end])) end++;
     } else if (token === '/*') {
@@ -24,22 +25,26 @@ function* sqlSegments(sql: string, { backslashEscapes = true }: SqlScanOptions =
       end = closing < 0 ? sql.length : closing + token.length;
     } else {
       const quote = token === '[' ? ']' : token.at(-1);
+      closed = false;
       while (end < sql.length) {
         const char = sql[end++];
         if (char === '\\' && (backslashEscapes || token.length === 2))
           end = Math.min(end + 1, sql.length);
         else if (char === quote) {
-          if (sql[end] !== quote) break;
+          if (sql[end] !== quote) {
+            closed = true;
+            break;
+          }
           end++;
         }
       }
     }
-    yield { text: sql.slice(offset, match.index), code: true };
-    yield { text: sql.slice(match.index, end), code: false };
+    yield { text: sql.slice(offset, match.index), code: true, token: '', closed: true };
+    yield { text: sql.slice(match.index, end), code: false, token, closed };
     offset = end;
     tokens.lastIndex = end;
   }
-  yield { text: sql.slice(offset), code: true };
+  yield { text: sql.slice(offset), code: true, token: '', closed: true };
 }
 
 export const mapSqlCode = (
@@ -50,6 +55,14 @@ export const mapSqlCode = (
   Array.from(sqlSegments(sql, options), ({ text, code }) => (code ? transform(text) : text)).join(
     '',
   );
+
+export const mapDoubleQuotedSqlIdentifiers = (
+  sql: string,
+  transform: (identifier: string) => string,
+) =>
+  Array.from(sqlSegments(sql), ({ text, code, token, closed }) =>
+    !code && token === '"' && closed ? transform(text) : text,
+  ).join('');
 
 export const splitSqlStatements = (sql: string, options?: SqlScanOptions): string[] => {
   const statements: string[] = [];

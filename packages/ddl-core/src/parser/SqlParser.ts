@@ -20,6 +20,8 @@ import { loadParserConstructor } from './parserLoader.js';
 import { preprocessMysql } from './preprocessMysql.js';
 import type { ParsedResult, ParserInstance, MultiParsedResult } from './types.js';
 import { getDatabaseFamily, getSqlParserDialect } from '../utils/databaseFamily.js';
+import { getSqlIdentifierKey } from '../utils/sqlIdentifiers.js';
+import { SqlParseError } from './SqlParseError.js';
 
 export type { ParsedResult } from './types.js';
 
@@ -28,27 +30,109 @@ type ScopedGrant = {
   users: string[];
 };
 
-const normalizeIdentifier = (name: string, dbType: DatabaseType) => {
-  const unquoted = name
-    .trim()
-    .replace(/^([`"[])(.*)[`"\]]$/, '$2')
-    .replaceAll('""', '"')
-    .replaceAll('``', '`')
-    .replaceAll(']]', ']');
-  return getDatabaseFamily(dbType) === 'postgresql' ? unquoted : unquoted.toLowerCase();
+type ParserSyntaxError = Error & {
+  expected: unknown[];
+  found: unknown;
+  location: {
+    start: { offset: number };
+    end: { offset: number };
+  };
+};
+
+const isParserSyntaxError = (error: unknown): error is ParserSyntaxError => {
+  if (!(error instanceof Error) || error.name !== 'SyntaxError') return false;
+  const candidate = error as Partial<ParserSyntaxError>;
+  return (
+    Array.isArray(candidate.expected) &&
+    'found' in error &&
+    typeof candidate.location?.start?.offset === 'number' &&
+    typeof candidate.location?.end?.offset === 'number'
+  );
+};
+
+const normalizeIdentifier = (name: string, dbType: DatabaseType) =>
+  getSqlIdentifierKey(name, dbType);
+
+const SQL_IDENTIFIER_PATTERN =
+  '(?:"(?:[^"]|"")*"|`(?:[^`]|``)*`|\\[(?:[^\\]]|\\]\\])*\\]|[\\p{L}\\p{N}_$#*]+)';
+const QUALIFIED_SQL_IDENTIFIER_PATTERN = `${SQL_IDENTIFIER_PATTERN}(?:\\s*\\.\\s*${SQL_IDENTIFIER_PATTERN})*`;
+
+const restoreIdentifierMappings = (value: unknown, mappings: ReadonlyMap<string, string>): void => {
+  if (!value || typeof value !== 'object' || mappings.size === 0) return;
+  if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index++) {
+      const item = value[index];
+      if (typeof item === 'string') value[index] = mappings.get(item) ?? item;
+      else restoreIdentifierMappings(item, mappings);
+    }
+    return;
+  }
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item === 'string') {
+      const restored = mappings.get(item);
+      if (restored !== undefined) (value as Record<string, unknown>)[key] = restored;
+    } else {
+      restoreIdentifierMappings(item, mappings);
+    }
+  }
+};
+
+const protectExpressionIdentifiers = (
+  value: unknown,
+  placeholdersByIdentifier: ReadonlyMap<string, string>,
+): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((item) => protectExpressionIdentifiers(item, placeholdersByIdentifier));
+  }
+  if (!value || typeof value !== 'object') return value;
+  const source = value as Record<string, unknown>;
+  const protectedValue = Object.fromEntries(
+    Object.entries(source).map(([key, item]) => [
+      key,
+      protectExpressionIdentifiers(item, placeholdersByIdentifier),
+    ]),
+  );
+  if (source.type === 'column_ref') {
+    for (const key of ['table', 'column']) {
+      const identifier = source[key];
+      if (typeof identifier === 'string') {
+        protectedValue[key] = placeholdersByIdentifier.get(identifier) ?? identifier;
+      }
+    }
+  }
+  return protectedValue;
+};
+
+const createExpressionSerializer = (
+  parser: ParserInstance,
+  opt: { database: string },
+  mappings: ReadonlyMap<string, string>,
+) => {
+  if (mappings.size === 0) return (value: unknown) => parser.exprToSQL(value, opt);
+  const placeholdersByIdentifier = new Map<string, string>();
+  for (const [placeholder, identifier] of mappings) {
+    if (!placeholdersByIdentifier.has(identifier)) {
+      placeholdersByIdentifier.set(identifier, placeholder);
+    }
+  }
+  return (value: unknown) => {
+    const protectedValue = protectExpressionIdentifiers(value, placeholdersByIdentifier);
+    let sql = parser.exprToSQL(protectedValue, opt);
+    for (const [placeholder, identifier] of mappings) {
+      sql = sql.replaceAll(`\`${placeholder}\``, identifier).replaceAll(placeholder, identifier);
+    }
+    return sql;
+  };
 };
 
 const tableKey = (table: string, schema: string, dbType: DatabaseType) =>
   JSON.stringify([normalizeIdentifier(schema, dbType), normalizeIdentifier(table, dbType)]);
 
-const parseTableReference = (name: string, dbType: DatabaseType): TableRefNode => {
-  const parts = name.match(/"(?:[^"]|"")*"|`(?:[^`]|``)*`|\[(?:[^\]]|\]\])*\]|[^.\s]+/g) ?? [];
+const parseTableReference = (name: string): TableRefNode => {
+  const parts = name.match(new RegExp(SQL_IDENTIFIER_PATTERN, 'gu')) ?? [];
   return {
     table: parts.at(-1) ?? '',
-    schema: parts
-      .slice(0, -1)
-      .map((part) => normalizeIdentifier(part, dbType))
-      .join('.'),
+    schema: parts.slice(0, -1).join('.'),
   };
 };
 
@@ -82,7 +166,10 @@ const cleanGrantUser = (value: string) =>
 
 const extractScopedGrants = (sql: string): ScopedGrant[] => {
   const grants: ScopedGrant[] = [];
-  const grantRegex = /\bGRANT\b[\s\S]*?\bON\s+(?:TABLE\s+)?([`"[\]\w.*]+)\s+\bTO\s+([^;]+)/gi;
+  const grantRegex = new RegExp(
+    `\\bGRANT\\b[\\s\\S]*?\\bON\\s+(?:TABLE\\s+)?(${QUALIFIED_SQL_IDENTIFIER_PATTERN})\\s+\\bTO\\s+([^;]+)`,
+    'giu',
+  );
   for (const match of sql.matchAll(grantRegex)) {
     const users = match[2].split(',').map(cleanGrantUser).filter(Boolean);
     if (users.length > 0) grants.push({ tableName: match[1], users });
@@ -109,13 +196,20 @@ export class SqlParser {
     result: ParsedResult,
     tableComment: string,
     columnComments: Record<string, string>,
+    dbType: DatabaseType,
   ) {
     if (tableComment && !result.tableComment) {
       result.tableComment = tableComment;
     }
-    result.fields = result.fields.map((f) => ({
-      ...f,
-      comment: columnComments[f.name] ?? f.comment,
+    const commentsByIdentifier = new Map(
+      Object.entries(columnComments).map(([name, comment]) => [
+        normalizeIdentifier(name, dbType),
+        comment,
+      ]),
+    );
+    result.fields = result.fields.map((field) => ({
+      ...field,
+      comment: commentsByIdentifier.get(normalizeIdentifier(field.name, dbType)) ?? field.comment,
     }));
   }
 
@@ -127,6 +221,7 @@ export class SqlParser {
     tableMetadata: Map<string, PreprocessedTableMetadata>;
     grants: ScopedGrant[];
     partitionConfigs: Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>;
+    identifierMappings: ReadonlyMap<string, string>;
   } {
     const databaseFamily = getDatabaseFamily(dbType);
     const normalizedSql =
@@ -134,11 +229,12 @@ export class SqlParser {
     let sqlToParse = normalizedSql;
     const tableMetadata = new Map<string, PreprocessedTableMetadata>();
     const partitionConfigs = new Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>();
+    const identifierMappings = new Map<string, string>();
 
     const mergeCommentSource = (source: PreprocessResult | null) => {
       if (!source) return;
       for (const metadata of source.tableMetadata) {
-        const key = referenceKey(parseTableReference(metadata.tableName, dbType), dbType);
+        const key = referenceKey(parseTableReference(metadata.tableName), dbType);
         const existing = tableMetadata.get(key);
         if (!existing) {
           tableMetadata.set(key, {
@@ -153,6 +249,9 @@ export class SqlParser {
         for (const [columnName, comment] of Object.entries(metadata.columnComments)) {
           if (!existing.columnComments[columnName]) existing.columnComments[columnName] = comment;
         }
+      }
+      for (const [placeholder, identifier] of source.identifierMappings ?? []) {
+        identifierMappings.set(placeholder, identifier);
       }
     };
 
@@ -186,6 +285,7 @@ export class SqlParser {
       tableMetadata,
       grants: extractScopedGrants(normalizedSql),
       partitionConfigs,
+      identifierMappings,
     };
   }
 
@@ -218,13 +318,14 @@ export class SqlParser {
 
     for (const metadata of tableMetadata.values()) {
       const result =
-        resolveTable(parseTableReference(metadata.tableName, dbType)) ??
+        resolveTable(parseTableReference(metadata.tableName)) ??
         (tableMetadata.size === 1 ? emptyResult : undefined);
-      if (result) this.mergeComments(result, metadata.tableComment, metadata.columnComments);
+      if (result)
+        this.mergeComments(result, metadata.tableComment, metadata.columnComments, dbType);
     }
     for (const grant of grants) {
       const result =
-        resolveTable(parseTableReference(grant.tableName, dbType)) ??
+        resolveTable(parseTableReference(grant.tableName)) ??
         (grants.length === 1 ? emptyResult : undefined);
       if (!result) continue;
       for (const user of grant.users) {
@@ -233,22 +334,20 @@ export class SqlParser {
     }
 
     for (const [name, config] of partitionConfigs) {
-      const result = resolveTable(parseTableReference(name, dbType));
+      const result = resolveTable(parseTableReference(name));
       if (result) result.mysqlPartitionConfig = config;
     }
   }
 
   private parseWithParser(parser: ParserInstance, sql: string, dbType: DatabaseType): ParsedResult {
-    const { sqlToParse, tableMetadata, grants, partitionConfigs } = this.preprocessSql(sql, dbType);
+    const { sqlToParse, tableMetadata, grants, partitionConfigs, identifierMappings } =
+      this.preprocessSql(sql, dbType);
 
     const opt = this.buildAstifyOpt(dbType);
 
-    let ast: AstStatement | AstStatement[];
-    try {
-      ast = parser.astify(sqlToParse, opt);
-    } catch {
-      throw new Error('无法解析 SQL，请检查语法或数据库类型是否正确。');
-    }
+    const ast = this.astify(parser, sqlToParse, opt);
+    restoreIdentifierMappings(ast, identifierMappings);
+    const serializeExpression = createExpressionSerializer(parser, opt, identifierMappings);
 
     const statements = Array.isArray(ast) ? ast : [ast];
     if (statements.filter(isCreateTableStmt).length > 1) {
@@ -266,7 +365,7 @@ export class SqlParser {
 
     for (const stmt of statements) {
       if (isCreateTableStmt(stmt)) {
-        parseCreateTable(stmt, result, (value) => parser.exprToSQL(value, opt));
+        parseCreateTable(stmt, result, serializeExpression);
       }
     }
 
@@ -290,9 +389,11 @@ export class SqlParser {
       backslashEscapes: getDatabaseFamily(dbType) !== 'postgresql',
     })) {
       try {
-        const { sqlToParse } = this.preprocessSql(original, dbType);
+        const { sqlToParse, identifierMappings } = this.preprocessSql(original, dbType);
         if (!sqlToParse.trim()) continue;
-        const ast = parser.astify(sqlToParse, opt);
+        const ast = this.astify(parser, sqlToParse, opt);
+        restoreIdentifierMappings(ast, identifierMappings);
+        const serializeExpression = createExpressionSerializer(parser, opt, identifierMappings);
         if (!ast) continue;
         const parsed = Array.isArray(ast) ? ast : [ast];
         statements.push(...parsed);
@@ -306,13 +407,14 @@ export class SqlParser {
             foreignKeys: [],
             authObjects: [],
           };
-          parseCreateTable(stmt, tableResult, (value) => parser.exprToSQL(value, opt));
+          parseCreateTable(stmt, tableResult, serializeExpression);
           if (tableResult.tableName) results.push(tableResult);
         }
       } catch (error) {
+        if (!(error instanceof SqlParseError)) throw error;
         failed.push({
           statement: original.trim(),
-          error: error instanceof Error ? error.message : '解析失败',
+          error: error.parserMessage,
         });
       }
     }
@@ -320,6 +422,19 @@ export class SqlParser {
       this.completeTables(results, statements, tableMetadata, grants, partitionConfigs, dbType);
     }
     return { results, failed };
+  }
+
+  private astify(
+    parser: ParserInstance,
+    sql: string,
+    opt: { database: string },
+  ): AstStatement | AstStatement[] {
+    try {
+      return parser.astify(sql, opt);
+    } catch (error) {
+      if (!isParserSyntaxError(error)) throw error;
+      throw new SqlParseError(error.message, error);
+    }
   }
 
   parse(sql: string, dbType: DatabaseType): ParsedResult {

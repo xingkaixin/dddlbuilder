@@ -7,6 +7,7 @@ import type {
 } from '@ddlbuilder/shared-types';
 import type { AstStatement } from './astTypes.js';
 
+/** Identifier fields retain their SQL delimiter spelling when identity depends on it. */
 export type ParsedResult = {
   schemaName?: string;
   tableName: string;
