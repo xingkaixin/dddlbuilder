@@ -1,112 +1,56 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { setupHydratedState } from '../utils';
+
+const configureMySQLTableOptions = async (page: Page) => {
+  await page.getByRole('tab', { name: '杂项设置', exact: true }).click();
+  const panel = page.getByRole('tabpanel', { name: /杂项设置/ });
+  await expect(panel.getByText('启用杂项设置', { exact: true })).toBeVisible();
+  const enableSwitch = panel.getByRole('switch');
+  await expect(enableSwitch).not.toBeChecked();
+  await enableSwitch.click();
+  await expect(enableSwitch).toBeChecked();
+
+  for (const [label, value] of [
+    ['表引擎', 'MyISAM'],
+    ['字符集', 'utf8mb4'],
+    ['排序规则', 'utf8mb4_bin'],
+  ]) {
+    await panel.getByText(label, { exact: true }).locator('..').getByRole('combobox').click();
+    await page.getByRole('option', { name: value, exact: true }).click();
+  }
+
+  return panel;
+};
 
 test.describe('表选项面板功能测试 @panels', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await setupHydratedState(page);
+    await expect(page.getByRole('combobox', { name: '数据库类型', exact: true })).toContainText(
+      'MySQL',
+    );
   });
 
   test('场景：MySQL 数据库应显示并能配置表选项', async ({ page }) => {
-    // 确保使用 MySQL 数据库
-    await page.locator('[data-testid="db-type-selector"]').click();
-    await page.getByRole('option', { name: 'MySQL', exact: true }).click();
-
-    // 填写基本表信息
-    await page.locator('#table-name').fill('test_table_options');
-
-    // 填写一个字段以确保 SQL 生成
-    const firstFieldNameCell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
+    await configureMySQLTableOptions(page);
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
+    await expect(sqlOutput).toContainText('HYDRATED_FIELD INT');
+    await expect(sqlOutput).toContainText(
+      'ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin',
     );
-    await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
-    await page.keyboard.press('Enter');
-
-    const firstFieldTypeCell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
-    );
-    await firstFieldTypeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
-    await page.keyboard.press('Enter');
-
-    // 切换到"表选项"标签页
-    const tableOptionsTab = page.getByRole('tab', { name: /表选项/ });
-    if ((await tableOptionsTab.count()) > 0) {
-      await tableOptionsTab.click();
-
-      // 启用表选项 - 使用 Switch 组件
-      const enableSwitch = page.getByRole('switch', { name: /启用杂项设置/i });
-      if ((await enableSwitch.count()) > 0) {
-        await enableSwitch.click();
-        await expect(enableSwitch).toBeChecked();
-
-        // 验证配置选项可见 - 查找"表引擎"标签
-        const engineLabel = page.getByText(/表引擎/i);
-        if ((await engineLabel.count()) > 0) {
-          // 选择不同的存储引擎
-          // 找到"表引擎"标签后的 Select 组件
-          const engineSelectTrigger = page
-            .locator('div')
-            .filter({ hasText: /表引擎/ })
-            .locator('button[role="combobox"]')
-            .first();
-
-          if ((await engineSelectTrigger.count()) > 0) {
-            await engineSelectTrigger.click();
-            await page.getByRole('option', { name: 'MyISAM' }).click();
-
-            // 验证生成的 SQL 包含表选项
-            const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
-            await expect(sqlOutput).toContainText(/ENGINE=MyISAM/i, {
-              timeout: 10000,
-            });
-          }
-        }
-      }
-    }
   });
 
   test('场景：禁用表选项后不应在 SQL 中生成', async ({ page }) => {
-    await page.locator('[data-testid="db-type-selector"]').click();
-    await page.getByRole('option', { name: 'MySQL', exact: true }).click();
-    await page.locator('#table-name').fill('test_no_options');
-
-    // 填写一个字段
-    const firstFieldNameCell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
+    const panel = await configureMySQLTableOptions(page);
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
+    await expect(sqlOutput).toContainText(
+      'ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin',
     );
-    await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
-    await page.keyboard.press('Enter');
 
-    const firstFieldTypeCell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
-    );
-    await firstFieldTypeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
-    await page.keyboard.press('Enter');
-
-    // 切换到"表选项"标签页
-    const tableOptionsTab = page.getByRole('tab', { name: /表选项/ });
-    if ((await tableOptionsTab.count()) > 0) {
-      await tableOptionsTab.click();
-
-      const enableSwitch = page.getByRole('switch', { name: /启用杂项设置/i });
-      if ((await enableSwitch.count()) > 0) {
-        // 先启用
-        await enableSwitch.click();
-        await expect(enableSwitch).toBeChecked();
-
-        // 再禁用
-        await enableSwitch.click();
-        await expect(enableSwitch).not.toBeChecked();
-
-        // 验证 SQL 可见
-        const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
-        await page.waitForTimeout(500);
-        await expect(sqlOutput).toBeVisible();
-      }
-    }
+    const enableSwitch = panel.getByRole('switch');
+    await enableSwitch.click();
+    await expect(enableSwitch).not.toBeChecked();
+    await expect(sqlOutput).toContainText('HYDRATED_FIELD INT');
+    await expect(sqlOutput).not.toContainText(/\b(?:ENGINE|CHARSET|COLLATE)\s*=/i);
   });
 });
