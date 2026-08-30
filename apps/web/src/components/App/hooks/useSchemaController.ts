@@ -1,12 +1,15 @@
-import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
+import {
+  type SavedTableTarget,
+  type WorkspaceScope,
+  type WorkspaceSelection,
+} from '@ddlbuilder/shared-types/workspace';
 import { useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { DDLReviewResult } from '@ddlbuilder/shared-types/ddl-review';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
-import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useOrmGeneration } from '@/hooks/useOrmGeneration';
-import { useTabStore } from '@/stores/tabStore';
+import { useTabStore, type WorkspaceTab } from '@/stores/tabStore';
 import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { useToast } from '@/hooks/useToast';
@@ -20,6 +23,26 @@ import { useLoadedTablePresentation } from './useLoadedTablePresentation';
 import type { useEditorDomains } from './useEditorDomains';
 
 type EditorDomains = ReturnType<typeof useEditorDomains>;
+
+function getDocumentSourceIdentity(source: WorkspaceSelection) {
+  if (source.kind === 'draft') return ['draft', source.draftId];
+  return source.tableId
+    ? ['saved_table', 'id', source.tableId]
+    : ['saved_table', 'name', source.normalizedName];
+}
+
+function buildDocumentKey(
+  workspaceScope: WorkspaceScope | null,
+  tab: WorkspaceTab | undefined,
+  state: PersistedState,
+) {
+  return JSON.stringify([
+    workspaceScope ? getWorkspaceScopeStorageKey(workspaceScope) : null,
+    tab?.id ?? null,
+    tab ? getDocumentSourceIdentity(tab.source) : null,
+    buildSchemaStateSignature(state),
+  ]);
+}
 
 interface UseSchemaControllerParams {
   domains: EditorDomains;
@@ -136,18 +159,23 @@ export function useSchemaController({
     indexes,
     foreignKeys,
   });
-  const activeTabId = useTabStore((state) => state.activeTabId);
-  const getDocumentKey = (state: PersistedState, tabId = activeTabId) =>
-    JSON.stringify([
-      workspaceScope ? getWorkspaceScopeStorageKey(workspaceScope) : null,
-      tabId,
-      buildSchemaStateSignature(state),
-    ]);
-  const documentKey = getDocumentKey(derived.currentPersistedState);
+  const activeWorkspaceTab = useTabStore((state) =>
+    state.tabs.find((tab) => tab.id === state.activeTabId),
+  );
+  const getCurrentDocumentKey = () =>
+    buildDocumentKey(
+      workspaceScope,
+      useTabStore.getState().getActiveTab(),
+      derived.buildPersistedState(),
+    );
+  const documentKey = buildDocumentKey(
+    workspaceScope,
+    activeWorkspaceTab,
+    derived.currentPersistedState,
+  );
   const aiCommentActions = useAICommentActions({
     documentKey,
-    getCurrentDocumentKey: () =>
-      getDocumentKey(derived.buildPersistedState(), useTabStore.getState().activeTabId),
+    getCurrentDocumentKey,
     schemaName,
     tableName,
     tableComment,
@@ -167,6 +195,7 @@ export function useSchemaController({
   });
   const reviewActions = useReviewActions({
     documentKey,
+    getCurrentDocumentKey,
     dbType,
     tableName: qualifiedTableName,
     generatedSql: sql.generatedSql,
@@ -178,7 +207,10 @@ export function useSchemaController({
   const reviewState = {
     ...reviewActions.reviewState,
     setReviewResult: (result: DDLReviewResult | null, state: PersistedState) =>
-      reviewActions.reviewState.setReviewResult(result, getDocumentKey(state)),
+      reviewActions.reviewState.setReviewResult(
+        result,
+        buildDocumentKey(workspaceScope, useTabStore.getState().getActiveTab(), state),
+      ),
   };
   const schemaLintIssues = useMemo(
     () =>

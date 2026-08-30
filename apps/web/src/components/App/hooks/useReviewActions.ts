@@ -8,6 +8,7 @@ import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 interface UseReviewActionsParams {
   documentKey: string;
+  getCurrentDocumentKey: () => string;
   dbType: DatabaseType;
   tableName: string;
   generatedSql: string;
@@ -19,6 +20,7 @@ interface UseReviewActionsParams {
 
 export function useReviewActions({
   documentKey,
+  getCurrentDocumentKey,
   dbType,
   tableName,
   generatedSql,
@@ -43,7 +45,7 @@ export function useReviewActions({
   );
   const handleStartReview = useCallback(async () => {
     const result = await startReview(generatedSql, tableName, dbType);
-    if (!result || !reviewTarget) return;
+    if (!result || !reviewTarget || getCurrentDocumentKey() !== documentKey) return;
     try {
       await saveReview(reviewTarget, tableName, generatedSql, dbType, result);
     } catch (error) {
@@ -53,7 +55,16 @@ export function useReviewActions({
         metadata: { dbType, tableName, normalizedName },
       });
     }
-  }, [startReview, generatedSql, tableName, dbType, reviewTarget, normalizedName]);
+  }, [
+    startReview,
+    generatedSql,
+    tableName,
+    dbType,
+    reviewTarget,
+    normalizedName,
+    getCurrentDocumentKey,
+    documentKey,
+  ]);
 
   const handleViewReviewHistory = useCallback(() => {
     setIsReviewHistoryOpen(true);

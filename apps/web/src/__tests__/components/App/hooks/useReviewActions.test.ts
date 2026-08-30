@@ -18,28 +18,46 @@ vi.mock('@/hooks/useAIRequestAccess', () => ({
 const review = { score: 8, summary: 'review A', suggestions: [] };
 const scope = { kind: 'anonymous' } as const;
 
-function renderReview() {
+function renderReview({
+  loadedTableId = 'A',
+  loadedTableNormalizedName = 'A',
+}: {
+  loadedTableId?: string | null;
+  loadedTableNormalizedName?: string | null;
+} = {}) {
   const { wrapper } = createQueryClientWrapper();
-  return renderHook(
+  let currentDocumentKey = 'A-v1';
+  const hook = renderHook(
     ({ documentKey, ddl }) =>
       useReviewActions({
         documentKey,
+        getCurrentDocumentKey: () => currentDocumentKey,
         dbType: 'mysql',
         tableName: 'A',
         generatedSql: ddl,
         workspaceScope: scope,
-        loadedTableId: 'A',
-        loadedTableNormalizedName: 'A',
+        loadedTableId,
+        loadedTableNormalizedName,
         setIsReviewHistoryOpen: vi.fn(),
       }),
     { wrapper, initialProps: { documentKey: 'A-v1', ddl: 'ddl-v1' } },
   );
+  return {
+    ...hook,
+    rerender: (props: { documentKey: string; ddl: string }) => {
+      currentDocumentKey = props.documentKey;
+      hook.rerender(props);
+    },
+    setCurrentDocumentKey: (value: string) => {
+      currentDocumentKey = value;
+    },
+  };
 }
 
 beforeEach(() => vi.clearAllMocks());
 
 describe('review request ownership', () => {
-  it('keeps the original DDL in history and hides results after an edit', async () => {
+  it('cancels the request and skips history after an edit', async () => {
     let complete!: (value: typeof review) => void;
     vi.mocked(requestDDLReview).mockImplementation(
       () =>
@@ -52,12 +70,13 @@ describe('review request ownership', () => {
       void result.current.handleStartReview();
     });
     await waitFor(() => expect(requestDDLReview).toHaveBeenCalledOnce());
+    const signal = vi.mocked(requestDDLReview).mock.calls[0][1].signal;
     rerender({ documentKey: 'A-v2', ddl: 'ddl-v2' });
+    expect(signal.aborted).toBe(true);
     await act(async () => {
       complete(review);
     });
-    await waitFor(() => expect(saveReview).toHaveBeenCalledOnce());
-    expect(vi.mocked(saveReview).mock.calls[0][2]).toBe('ddl-v1');
+    expect(saveReview).not.toHaveBeenCalled();
     expect(result.current.reviewState.result).toBeNull();
     expect(result.current.reviewState.isLoading).toBe(false);
   });
@@ -128,7 +147,8 @@ describe('review request ownership', () => {
     expect(result.current.reviewState.result).toBeNull();
     expect(saveReview).toHaveBeenCalledOnce();
   });
-  it('saves a completed review to its original table after switching documents', async () => {
+
+  it('does not persist a late draft review after the same tab is saved', async () => {
     let complete!: (value: typeof review) => void;
     vi.mocked(requestDDLReview).mockImplementation(
       () =>
@@ -136,39 +156,16 @@ describe('review request ownership', () => {
           complete = resolve;
         }),
     );
-    const { wrapper } = createQueryClientWrapper();
-    const { result, rerender } = renderHook(
-      ({ name }) => {
-        const actions = useReviewActions({
-          documentKey: name,
-          dbType: 'mysql',
-          tableName: name,
-          generatedSql: `ddl-${name}`,
-          workspaceScope: scope,
-          loadedTableId: name,
-          loadedTableNormalizedName: name,
-          setIsReviewHistoryOpen: vi.fn(),
-        });
-        return actions;
-      },
-      { wrapper, initialProps: { name: 'A' } },
-    );
+    const hook = renderReview({ loadedTableId: null, loadedTableNormalizedName: null });
+    expect(hook.result.current.reviewTarget?.tableId).toBeUndefined();
     act(() => {
-      void result.current.handleStartReview();
+      void hook.result.current.handleStartReview();
     });
-    await waitFor(() => expect(result.current.reviewState.isLoading).toBe(true));
-    rerender({ name: 'B' });
+    await waitFor(() => expect(hook.result.current.reviewState.isLoading).toBe(true));
+    hook.setCurrentDocumentKey('A-saved-table-id');
     await act(async () => {
       complete(review);
     });
-    await waitFor(() => expect(saveReview).toHaveBeenCalledOnce());
-    expect(saveReview).toHaveBeenCalledWith(
-      { scope, tableId: 'A', normalizedName: 'A' },
-      'A',
-      'ddl-A',
-      'mysql',
-      review,
-    );
-    expect(result.current.reviewState.result).toBeNull();
+    expect(saveReview).not.toHaveBeenCalled();
   });
 });

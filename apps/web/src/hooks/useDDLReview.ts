@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useLayoutEffect, useMemo } from 'react';
 import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartialJson';
 import { requestDDLReview } from '@/services/reviewService';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -33,6 +33,13 @@ export function useDDLReview(documentKey: string) {
   const { isPending, run, cancel } = useLatestRequest();
   const isCurrentDocument = state.documentKey === documentKey;
   const isLoading = isCurrentDocument && isPending;
+
+  useLayoutEffect(
+    () => () => {
+      cancel();
+    },
+    [cancel, documentKey],
+  );
 
   // Parse partial result from streaming text for progressive rendering
   const partialResult: PartialReviewResult | null = useMemo(() => {
