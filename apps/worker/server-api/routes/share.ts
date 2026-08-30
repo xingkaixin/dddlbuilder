@@ -4,6 +4,7 @@ import { decodePersistedState } from '@ddlbuilder/workspace-core';
 import type { ApiEnv } from '../lib/context.js';
 import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
 import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
+import { getRequestLogger, toWorkerError } from '../lib/logging.js';
 
 const SHARE_TTL_SECONDS = 7 * 24 * 60 * 60;
 const SHARE_BODY_MAX_BYTES = 512 * 1024;
@@ -107,7 +108,9 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
     try {
       state = await getShareState(kv, key);
     } catch (error) {
-      console.error('[share] storage read failed', error);
+      getRequestLogger(c)?.error(toWorkerError(error, 'Share storage read failed'), {
+        outcome: { errorCode: 'SHARE_LOAD_FAILED' },
+      });
       return errorResponse(c, 502, 'Share read failed', 'SHARE_LOAD_FAILED');
     }
 

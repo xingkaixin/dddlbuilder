@@ -8,6 +8,7 @@ import {
   listCreditLedger,
 } from '../lib/credits.js';
 import { DomainError, withMeta } from '../lib/http.js';
+import { getRequestLogger, toWorkerError } from '../lib/logging.js';
 
 const parseLedgerLimit = (value: string | undefined) => {
   const parsed = Number.parseInt(value ?? '20', 10);
@@ -47,12 +48,14 @@ const resolveAuthenticatedUser = async (c: Context<ApiEnv>) => {
 };
 
 // 查询路径的意外故障统一按额度服务不可用处理；领域错误（401/402 等）直接冒泡给全局 onError
-const wrapCreditService = async (handler: () => Promise<Response>) => {
+const wrapCreditService = async (c: Context<ApiEnv>, handler: () => Promise<Response>) => {
   try {
     return await handler();
   } catch (error) {
     if (error instanceof DomainError) throw error;
-    console.error('[credits] query failed', error);
+    getRequestLogger(c)?.error(toWorkerError(error, 'Credit query failed'), {
+      outcome: { errorCode: 'SERVICE_UNAVAILABLE' },
+    });
     throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'Credit service unavailable');
   }
 };
@@ -60,7 +63,7 @@ const wrapCreditService = async (handler: () => Promise<Response>) => {
 export function registerCreditRoutes(app: Hono<ApiEnv>) {
   app.get('/credits/balance', async (c) => {
     const user = await resolveAuthenticatedUser(c);
-    return wrapCreditService(async () => {
+    return wrapCreditService(c, async () => {
       await grantSignupCredits(c.env, user);
       const account = await getCreditAccount(c.env, user.userId);
       return c.json(
@@ -75,7 +78,7 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
 
   app.get('/credits/ledger', async (c) => {
     const user = await resolveAuthenticatedUser(c);
-    return wrapCreditService(async () => {
+    return wrapCreditService(c, async () => {
       const limit = parseLedgerLimit(c.req.query('limit'));
       const offset = parseLedgerOffset(c.req.query('offset'));
       const filters = {

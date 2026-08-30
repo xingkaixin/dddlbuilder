@@ -6,6 +6,7 @@ import { createBetterAuth } from '../lib/betterAuth.js';
 import { applyCreditMutation, listCreditLedger } from '../lib/credits.js';
 import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
 import { revokeUserSessions } from '../lib/auth.js';
+import { getRequestLogger, toWorkerError } from '../lib/logging.js';
 import {
   adminUserExists,
   disableAdminUser,
@@ -112,7 +113,9 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
         body: { email: userRow.email, redirectTo: '/?auth_action=reset-password' },
       });
     } catch (error) {
-      console.error('[admin] reset-password failed', error);
+      getRequestLogger(c)?.error(toWorkerError(error, 'Admin password reset failed'), {
+        outcome: { errorCode: 'SERVICE_UNAVAILABLE' },
+      });
       return errorResponse(c, 502, 'Failed to send reset email', 'SERVICE_UNAVAILABLE');
     }
 

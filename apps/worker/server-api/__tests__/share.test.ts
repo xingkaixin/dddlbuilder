@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import { registerShareRoutes } from '../routes/share';
-import type { ApiEnv } from '../lib/context';
+import type { ApiEnv, WorkerRequestLogger } from '../lib/context';
 
 vi.mock('../lib/requestRateLimit', () => ({
   enforceIpRateLimit: vi.fn().mockResolvedValue(null),
@@ -44,16 +44,28 @@ const createMockKV = (): MockKV => {
 describe('share api', () => {
   let app: Hono<ApiEnv>;
   let mockKV: MockKV;
+  let requestLogError: ReturnType<typeof vi.fn>;
 
   afterEach(() => vi.restoreAllMocks());
 
   beforeEach(() => {
     mockKV = createMockKV();
+    requestLogError = vi.fn();
+    const requestLogger = {
+      set: vi.fn(),
+      audit: vi.fn(),
+      error: requestLogError,
+      warn: vi.fn(),
+      setLevel: vi.fn(),
+    } as unknown as WorkerRequestLogger;
     app = new Hono<ApiEnv>().basePath('/api');
     app.use('*', async (c, next) => {
       c.env = {
+        ASSETS: { fetch: globalThis.fetch },
         SHARE_KV: mockKV as unknown as KVNamespace,
+        USER_DB: {} as D1Database,
       };
+      c.set('log', requestLogger);
       await next();
     });
     registerShareRoutes(app);
@@ -242,16 +254,16 @@ describe('share api', () => {
 
   it('读取分享时 KV 故障应返回可重试的 502，而不是链接不存在', async () => {
     const storageError = new Error('KV error');
-    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockKV.get.mockRejectedValueOnce(storageError);
 
     const response = await app.request(`https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`);
     const payload = (await response.json()) as { code: string };
-    console.info('Share storage failure response', { status: response.status, payload });
     expect(response.status).toBe(502);
     expect(payload.code).toBe('SHARE_LOAD_FAILED');
     expect(JSON.stringify(payload)).not.toContain('KV error');
-    expect(errorLog).toHaveBeenCalledWith('[share] storage read failed', storageError);
+    expect(requestLogError).toHaveBeenCalledWith(storageError, {
+      outcome: { errorCode: 'SHARE_LOAD_FAILED' },
+    });
   });
 
   it('GET缺少 KV 配置时应返回 500', async () => {
