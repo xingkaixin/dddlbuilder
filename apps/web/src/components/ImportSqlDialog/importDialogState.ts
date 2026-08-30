@@ -18,9 +18,7 @@ import type {
   WorkspaceStep,
 } from './types';
 
-type ImportOperation =
-  | { kind: 'idle' | 'validating' | 'importing' }
-  | { kind: 'failed'; error: string };
+type ImportOperation = { kind: 'idle' | 'importing' } | { kind: 'failed'; error: string };
 
 interface CommonImportState {
   sourceType: ImportSourceType;
@@ -166,17 +164,23 @@ export function importDialogReducer(
     case 'set_mode':
       return switchMode(state, action.mode);
     case 'set_source_type':
-      return { ...state, sourceType: action.sourceType, file: null, validationResult: null };
+      return {
+        ...state,
+        sourceType: action.sourceType,
+        sql: '',
+        file: null,
+        validationResult: null,
+      };
     case 'set_sql':
-      return { ...state, sql: action.sql, validationResult: null };
+      return { ...state, sql: action.sql, file: null, validationResult: null };
     case 'set_file':
-      return { ...state, file: action.file, validationResult: null };
+      return { ...state, sql: '', file: action.file, validationResult: null };
     case 'set_db_type':
       return { ...state, selectedDbType: action.dbType };
     case 'validation_started':
-      return { ...state, operation: { kind: 'validating' }, validationResult: null };
+      return { ...state, validationResult: null };
     case 'validation_failed':
-      return { ...state, operation: { kind: 'idle' }, validationResult: action.result };
+      return { ...state, validationResult: action.result };
     case 'workspace_validated':
       if (state.mode !== 'workspace') return state;
       return {

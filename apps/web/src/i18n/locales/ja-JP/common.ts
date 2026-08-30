@@ -1032,6 +1032,14 @@ export const jaJPCommon = {
     sqlRequired: 'SQLコンテンツは必須です',
     sqlTooLong: 'SQLが長すぎます。最大 {{max}} 文字が許可されます。',
     contentTooLong: 'インポート内容が長すぎます。最大 {{max}} 文字までです。',
+    excelArchiveRejected:
+      'Excel ファイルは展開後のサイズが大きすぎるか、サポートされていない形式です。',
+    excelLimitsExceeded:
+      'Excel ワークブックがインポート上限を超えています。最大 {{sheets}} シート、各シート {{fields}} フィールド・{{columns}} 列、合計 {{total}} フィールドまでです。',
+    structuredLimitsExceeded:
+      '構造化インポートが上限を超えています。最大 {{tables}} テーブル、各テーブル {{fields}} フィールド、合計 {{total}} フィールドまでです。',
+    jsonSchemaResolutionFailed:
+      'JSON Schema に循環参照があるか、ネストが深すぎるため安全にインポートできません。',
     sqlParseFailed: 'SQLの解析に失敗しました。構文を確認して再試行してください。',
     sqlNoTable: 'SQL から有効なテーブル構造を解析できませんでした。構文を確認してください。',
     importSuccess: 'インポートは成功しました: テーブル {{tableName}} が解析されました',

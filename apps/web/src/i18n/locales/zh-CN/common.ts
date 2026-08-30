@@ -988,6 +988,12 @@ export const zhCNCommon = {
     sqlRequired: 'SQL 内容不能为空',
     sqlTooLong: 'SQL 内容过长，最大允许 {{max}} 个字符',
     contentTooLong: '导入内容过长，最大允许 {{max}} 个字符',
+    excelArchiveRejected: 'Excel 文件解压后过大或压缩包结构不受支持。',
+    excelLimitsExceeded:
+      'Excel 工作簿超过导入规模限制：最多 {{sheets}} 个工作表，每表 {{fields}} 个字段、{{columns}} 列，合计 {{total}} 个字段。',
+    structuredLimitsExceeded:
+      '结构化导入超过规模限制：最多 {{tables}} 张表，每表 {{fields}} 个字段，合计 {{total}} 个字段。',
+    jsonSchemaResolutionFailed: 'JSON Schema 存在循环引用或嵌套过深，无法安全导入。',
     sqlParseFailed: 'SQL 解析失败，请检查 SQL 语法后重试。',
     sqlNoTable: '未能从 SQL 中解析出有效的表结构，请检查 SQL 语法。',
     importSuccess: '导入成功: 成功解析表: {{tableName}}',

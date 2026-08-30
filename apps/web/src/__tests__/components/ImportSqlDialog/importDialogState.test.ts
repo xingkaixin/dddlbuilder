@@ -10,6 +10,7 @@ const parsedResult = {
   tableComment: '',
   fields: [],
   indexes: [],
+  foreignKeys: [],
   authObjects: [],
 };
 
@@ -118,6 +119,29 @@ describe('importDialogReducer', () => {
     });
   });
 
+  it('keeps only the most recently edited input', () => {
+    const initial = createImportDialogState('mysql');
+    const csv = importDialogReducer(initial, { type: 'set_source_type', sourceType: 'csv' });
+    const withText = importDialogReducer(csv, {
+      type: 'set_sql',
+      sql: 'fieldName,fieldType\nid,bigint',
+    });
+    const file = new File(['fieldName,fieldType\naccount_id,bigint'], 'fields.csv');
+    const withFile = importDialogReducer(withText, { type: 'set_file', file });
+    const editedAgain = importDialogReducer(withFile, {
+      type: 'set_sql',
+      sql: 'fieldName,fieldType\nuser_id,bigint',
+    });
+    const switchedSource = importDialogReducer(editedAgain, {
+      type: 'set_source_type',
+      sourceType: 'json',
+    });
+
+    expect(withFile).toMatchObject({ file, sql: '' });
+    expect(editedAgain).toMatchObject({ file: null, sql: expect.stringContaining('user_id') });
+    expect(switchedSource).toMatchObject({ sourceType: 'json', file: null, sql: '' });
+  });
+
   it('handles workspace validation, preview editing, and navigation', () => {
     const initial = createImportDialogState('mysql');
     const withSource = importDialogReducer(initial, { type: 'set_source_type', sourceType: 'csv' });
@@ -158,7 +182,7 @@ describe('importDialogReducer', () => {
     expect(withSource).toMatchObject({ sourceType: 'csv', file: null, validationResult: null });
     expect(withFile.file).toBe(file);
     expect(withDatabase.selectedDbType).toBe('postgresql');
-    expect(validating).toMatchObject({ operation: { kind: 'validating' }, validationResult: null });
+    expect(validating).toMatchObject({ operation: { kind: 'idle' }, validationResult: null });
     expect(failed).toMatchObject({
       operation: { kind: 'idle' },
       validationResult: { success: false },

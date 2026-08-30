@@ -10,6 +10,7 @@ import { CheckCircle2, AlertCircle, Download } from '@/components/icons';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ImportMode, ImportSourceType, ValidationResult } from './types';
 import { useTranslation } from 'react-i18next';
+import { useLayoutEffect, useRef } from 'react';
 
 interface SqlInputStepProps {
   selectedDbType: DatabaseType;
@@ -39,6 +40,11 @@ export function SqlInputStep({
   onImportModeChange,
 }: SqlInputStepProps) {
   const { t } = useTranslation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useLayoutEffect(() => {
+    if (!file && fileInputRef.current) fileInputRef.current.value = '';
+  });
 
   const downloadExcelTemplate = async () => {
     const xlsx = await import('xlsx');
@@ -162,6 +168,7 @@ export function SqlInputStep({
             </div>
           )}
           <input
+            ref={fileInputRef}
             id="import-file"
             type="file"
             accept={

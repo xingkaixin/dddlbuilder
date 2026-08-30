@@ -1026,6 +1026,13 @@ export const enUSCommon = {
     sqlRequired: 'SQL content is required',
     sqlTooLong: 'SQL is too long. Maximum {{max}} characters allowed.',
     contentTooLong: 'Import content is too long. Maximum {{max}} characters allowed.',
+    excelArchiveRejected: 'The Excel file is too large after extraction or is not supported.',
+    excelLimitsExceeded:
+      'The Excel workbook exceeds import limits: up to {{sheets}} sheets, {{fields}} fields and {{columns}} columns per sheet, and {{total}} fields in total.',
+    structuredLimitsExceeded:
+      'The structured import exceeds its limits: up to {{tables}} tables, {{fields}} fields per table, and {{total}} fields in total.',
+    jsonSchemaResolutionFailed:
+      'The JSON Schema contains a reference cycle or is nested too deeply to import safely.',
     sqlParseFailed: 'SQL parse failed. Please check syntax and try again.',
     sqlNoTable: 'No valid table structure could be parsed from SQL. Please check syntax.',
     importSuccess: 'Import succeeded: table {{tableName}} parsed',

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import { useToast } from '@/hooks/useToast';
+import { useLatestRequest } from '@/hooks/useLatestRequest';
 import { requestSqlParse, requestMultiSqlParse } from '@/services/sqlParseService';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { parseExcelImport, parseStructuredImportText } from '@/utils/structuredImportParser';
@@ -31,7 +32,7 @@ import { ConfirmStep } from './ConfirmStep';
 import { TableSelectStep } from './TableSelectStep';
 import { SaveConfigStep } from './SaveConfigStep';
 import { createImportDialogState, importDialogReducer } from './importDialogState';
-import { getImportCharacterLimit, getImportFileByteLimit, toMebibytes } from './importLimits';
+import { getImportCharacterLimit, getImportFileByteLimit, toMebibytes } from '@/utils/importLimits';
 import type { ImportSourceType, ParsedTableItem, PreviewFieldKey } from './types';
 
 interface ImportSqlDialogProps {
@@ -66,6 +67,11 @@ export function ImportSqlDialog({
   });
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const {
+    isPending: isValidating,
+    run: runValidation,
+    cancel: cancelValidation,
+  } = useLatestRequest();
 
   const batchImportSupported = Boolean(savedTables && folderTree && onBatchImport);
 
@@ -82,12 +88,12 @@ export function ImportSqlDialog({
   const failedItems = dialogState.mode === 'saved' ? dialogState.failedItems : [];
   const selectedFolderId = dialogState.mode === 'saved' ? dialogState.selectedFolderId : undefined;
   const conflictStrategy = dialogState.mode === 'saved' ? dialogState.conflictStrategy : 'skip';
-  const isValidating = operation.kind === 'validating';
   const isImporting = operation.kind === 'importing';
 
   const resetDialog = useCallback(() => {
+    cancelValidation();
     dispatch({ type: 'reset', dbType: currentDbType });
-  }, [currentDbType]);
+  }, [cancelValidation, currentDbType]);
 
   const setOpen = useCallback(
     (nextOpen: boolean) => {
@@ -104,17 +110,29 @@ export function ImportSqlDialog({
     [savedTables],
   );
 
-  const handleSourceTypeChange = useCallback((nextSourceType: ImportSourceType) => {
-    dispatch({ type: 'set_source_type', sourceType: nextSourceType });
-  }, []);
+  const handleSourceTypeChange = useCallback(
+    (nextSourceType: ImportSourceType) => {
+      cancelValidation();
+      dispatch({ type: 'set_source_type', sourceType: nextSourceType });
+    },
+    [cancelValidation],
+  );
 
-  const handleDbTypeChange = useCallback((dbType: DatabaseType) => {
-    dispatch({ type: 'set_db_type', dbType });
-  }, []);
+  const handleDbTypeChange = useCallback(
+    (dbType: DatabaseType) => {
+      cancelValidation();
+      dispatch({ type: 'set_db_type', dbType });
+    },
+    [cancelValidation],
+  );
 
-  const handleSqlChange = useCallback((nextSql: string) => {
-    dispatch({ type: 'set_sql', sql: nextSql });
-  }, []);
+  const handleSqlChange = useCallback(
+    (nextSql: string) => {
+      cancelValidation();
+      dispatch({ type: 'set_sql', sql: nextSql });
+    },
+    [cancelValidation],
+  );
 
   const fileSizeError = useCallback(
     (candidate: File): string | null => {
@@ -139,6 +157,7 @@ export function ImportSqlDialog({
 
   const handleFileChange = useCallback(
     (nextFile: File | null) => {
+      cancelValidation();
       if (nextFile) {
         const error = fileSizeError(nextFile);
         if (error) {
@@ -152,109 +171,116 @@ export function ImportSqlDialog({
       }
       dispatch({ type: 'set_file', file: nextFile });
     },
-    [fileSizeError],
+    [cancelValidation, fileSizeError],
   );
 
   const buildStructuredTables = useCallback(async (): Promise<ParsedResult[]> => {
     if (sourceType === 'excel') {
       if (!file) throw new Error(t('importSql.file.required'));
-      const error = fileSizeError(file);
-      if (error) throw new Error(error);
       return parseExcelImport(file);
     }
 
+    const content = file ? await file.text() : sql;
     if (file) {
-      const error = fileSizeError(file);
+      if (!content.trim()) throw new Error(t('importSql.sqlRequired'));
+      const error = contentLengthError(content);
       if (error) throw new Error(error);
     }
-    const content = file ? await file.text() : sql.trim();
-    if (!content.trim()) throw new Error(t('importSql.sqlRequired'));
-    const error = contentLengthError(content);
-    if (error) throw new Error(error);
 
     return parseStructuredImportText(
       sourceType === 'json' ? 'json' : 'csv',
       content,
       file?.name ?? 'imported_table',
     );
-  }, [contentLengthError, file, fileSizeError, sourceType, sql, t]);
+  }, [contentLengthError, file, sourceType, sql, t]);
 
   const validateForWorkspace = useCallback(async () => {
-    dispatch({ type: 'validation_started' });
+    await runValidation(async ({ commitIfCurrent }) => {
+      dispatch({ type: 'validation_started' });
 
-    try {
-      const result =
-        sourceType === 'sql'
-          ? await sqlParseMutation.mutateAsync({
-              sql: sql.trim(),
-              dbType: selectedDbType,
-            })
-          : (await buildStructuredTables())[0];
+      try {
+        const result =
+          sourceType === 'sql'
+            ? await sqlParseMutation.mutateAsync({
+                sql: sql.trim(),
+                dbType: selectedDbType,
+              })
+            : (await buildStructuredTables())[0];
 
-      if (!result || (result.fields.length === 0 && result.tableName === '')) {
-        dispatch({
-          type: 'validation_failed',
-          result: { success: false, error: t('importSql.sqlNoTable') },
-        });
-        return;
+        if (!result || (result.fields.length === 0 && result.tableName === '')) {
+          commitIfCurrent(() =>
+            dispatch({
+              type: 'validation_failed',
+              result: { success: false, error: t('importSql.sqlNoTable') },
+            }),
+          );
+          return;
+        }
+
+        commitIfCurrent(() => dispatch({ type: 'workspace_validated', result }));
+      } catch (err) {
+        commitIfCurrent(() =>
+          dispatch({
+            type: 'validation_failed',
+            result: {
+              success: false,
+              error:
+                sourceType === 'sql'
+                  ? t('importSql.sqlParseFailed')
+                  : err instanceof Error
+                    ? err.message
+                    : t('importSql.sqlParseFailed'),
+            },
+          }),
+        );
       }
-
-      dispatch({
-        type: 'workspace_validated',
-        result,
-      });
-    } catch (err) {
-      dispatch({
-        type: 'validation_failed',
-        result: {
-          success: false,
-          error:
-            sourceType === 'sql'
-              ? t('importSql.sqlParseFailed')
-              : err instanceof Error
-                ? err.message
-                : t('importSql.sqlParseFailed'),
-        },
-      });
-    }
-  }, [sourceType, sql, selectedDbType, buildStructuredTables, sqlParseMutation, t]);
+    });
+  }, [sourceType, sql, selectedDbType, buildStructuredTables, sqlParseMutation, t, runValidation]);
 
   const validateForSaved = useCallback(async () => {
-    dispatch({ type: 'validation_started' });
+    await runValidation(async ({ commitIfCurrent }) => {
+      dispatch({ type: 'validation_started' });
 
-    try {
-      const { results, failed } =
-        sourceType === 'sql'
-          ? await multiSqlParseMutation.mutateAsync({
-              sql: sql.trim(),
-              dbType: selectedDbType,
-            })
-          : { results: await buildStructuredTables(), failed: [] };
+      try {
+        const { results, failed } =
+          sourceType === 'sql'
+            ? await multiSqlParseMutation.mutateAsync({
+                sql: sql.trim(),
+                dbType: selectedDbType,
+              })
+            : { results: await buildStructuredTables(), failed: [] };
 
-      if (results.length === 0) {
-        dispatch({
-          type: 'validation_failed',
-          result: { success: false, error: t('importSql.sqlNoTable') },
-        });
-        return;
+        if (results.length === 0) {
+          commitIfCurrent(() =>
+            dispatch({
+              type: 'validation_failed',
+              result: { success: false, error: t('importSql.sqlNoTable') },
+            }),
+          );
+          return;
+        }
+
+        const items: ParsedTableItem[] = results.map((r: ParsedResult) => ({
+          ...r,
+          selected: true,
+          conflict: savedTableNames.has(normalizeSavedTableName(r.tableName)),
+        }));
+
+        commitIfCurrent(() =>
+          dispatch({ type: 'saved_validated', tables: items, failedItems: failed }),
+        );
+      } catch (err) {
+        commitIfCurrent(() =>
+          dispatch({
+            type: 'validation_failed',
+            result: {
+              success: false,
+              error: err instanceof Error ? err.message : t('importSql.sqlParseFailed'),
+            },
+          }),
+        );
       }
-
-      const items: ParsedTableItem[] = results.map((r: ParsedResult) => ({
-        ...r,
-        selected: true,
-        conflict: savedTableNames.has(normalizeSavedTableName(r.tableName)),
-      }));
-
-      dispatch({ type: 'saved_validated', tables: items, failedItems: failed });
-    } catch (err) {
-      dispatch({
-        type: 'validation_failed',
-        result: {
-          success: false,
-          error: err instanceof Error ? err.message : t('importSql.sqlParseFailed'),
-        },
-      });
-    }
+    });
   }, [
     sourceType,
     sql,
@@ -263,6 +289,7 @@ export function ImportSqlDialog({
     multiSqlParseMutation,
     savedTableNames,
     t,
+    runValidation,
   ]);
 
   const validateAndAdvance = useCallback(() => {
@@ -282,19 +309,7 @@ export function ImportSqlDialog({
       });
       return;
     }
-    const fileError = file ? fileSizeError(file) : null;
-    if (fileError) {
-      dispatch({
-        type: 'validation_failed',
-        result: {
-          success: false,
-          error: fileError,
-          lineNumber: 1,
-        },
-      });
-      return;
-    }
-    const contentError = !file ? contentLengthError(trimmedSql) : null;
+    const contentError = !file ? contentLengthError(sql) : null;
     if (contentError) {
       dispatch({
         type: 'validation_failed',
@@ -316,7 +331,6 @@ export function ImportSqlDialog({
     validateForSaved,
     validateForWorkspace,
     contentLengthError,
-    fileSizeError,
     t,
   ]);
 
@@ -504,7 +518,12 @@ export function ImportSqlDialog({
               validationResult={validationResult}
               importMode={batchImportSupported ? importMode : undefined}
               onImportModeChange={
-                batchImportSupported ? (mode) => dispatch({ type: 'set_mode', mode }) : undefined
+                batchImportSupported
+                  ? (mode) => {
+                      cancelValidation();
+                      dispatch({ type: 'set_mode', mode });
+                    }
+                  : undefined
               }
             />
           )}
