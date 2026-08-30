@@ -220,6 +220,7 @@ describe('AI patch dialog session', () => {
             fieldType: 'bigint',
             fieldComment: '',
             nullable: false,
+            defaultKind: 'none',
           },
         ],
         indexes: [

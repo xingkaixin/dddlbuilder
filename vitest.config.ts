@@ -21,6 +21,7 @@ export default defineConfig({
         'scripts/generate-favicon.ts',
         'scripts/generate-logos.ts',
         'scripts/prepare-e2e-runtime.ts',
+        'scripts/typecheck-tests.ts',
         'scripts/verify-d1-runtime.ts',
         'scripts/verify-server-bundle.ts',
       ],

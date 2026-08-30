@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "webmcp-types", "vitest/globals", "@testing-library/jest-dom"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["src/__tests__", "src/vite-env.d.ts"]
+}

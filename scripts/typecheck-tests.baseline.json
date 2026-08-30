@@ -1,0 +1,3154 @@
+[
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/alter-ddl.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id?: string | undefined; name: string; fields: IndexField[]; kind: IndexKind; }' is not assignable to type 'IndexDefinition'. Types of property 'id' are incompatible. Type 'string | undefined' is not assignable to type 'string'. Type 'undefined' is not assignable to type 'string'.",
+    "sourceFingerprint": "9a16120e6299935b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/alter-ddl.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id?: string | undefined; refSchema?: string; onDelete?: ForeignKeyAction; onUpdate?: ForeignKeyAction; name: string; fields: string[]; refTable: string; refFields: string[]; }' is not assignable to type 'ForeignKeyDefinition'. Types of property 'id' are incompatible. Type 'string | undefined' is not assignable to type 'string'. Type 'undefined' is not assignable to type 'string'.",
+    "sourceFingerprint": "3cd8c00ffc4bb90f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/alter-ddl.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ objectType?: SchemaObjectType; schemaName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; indexes: IndexDefinition[]; ... 10 more ...; rows: { ...; }[]; }' is not assignable to parameter of type 'PersistedState'. Type '{ objectType?: SchemaObjectType; schemaName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; indexes: IndexDefinition[]; ... 10 more ...; rows: { ...; }[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'rows' are incompatible. Type '{ id: string; fieldName: string; fieldType: string; nullable: boolean; }[]' is not assignable to type 'FieldRow[]'. Property 'fieldComment' is missing in type '{ id: string; fieldName: string; fieldType: string; nullable: boolean; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "bbcebd4aedadcf08",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/alter-ddl.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ objectType?: SchemaObjectType; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; indexes: IndexDefinition[]; authInput: string; ... 10 more ...; rows: { ...; }[]; }' is not assignable to parameter of type 'PersistedState'. Type '{ objectType?: SchemaObjectType; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; indexes: IndexDefinition[]; authInput: string; ... 10 more ...; rows: { ...; }[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'rows' are incompatible. Type '{ id: string; fieldName: string; fieldType: string; nullable: boolean; }[]' is not assignable to type 'FieldRow[]'. Property 'fieldComment' is missing in type '{ id: string; fieldName: string; fieldType: string; nullable: boolean; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "de3d5eda0e9a7b96",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.additional.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "0080de4b66e46ea5",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.additional.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "cc1887e84774f78e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.additional.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "e9e8b5f84c4017d6",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.additional.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "fa2b90b69a53c5c0",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "04994510e2155d2c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "1a21b15bfec71add",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "282958b81ef1401d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "35092b621543288f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "382c3b6c5d91f22c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "3f3944f5587599d9",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "495e0b08dc9e9d43",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "4b6cbaa8b35d530b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "523e6484d6cd2b54",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "5bcf4bf2883bf822",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "6c402845553c0f04",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "91838548de2e2618",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "95ca95ccb6393139",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "988d0fdb4065da32",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "a0317879798e7474",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "a8d95f5ded969cbd",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "d97c5539fd2f3380",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "e33f2e90f23188cb",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "ef396fce59852282",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "f08584309cc35797",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/configs/typeMappings.test.ts",
+    "code": "TS2339",
+    "message": "Property 'transform' does not exist on type 'TypeMappingRule'. Property 'transform' does not exist on type '{ mapping: string; maxArgs?: number | undefined; defaultArgs?: string[] | undefined; suffix?: string | undefined; }'.",
+    "sourceFingerprint": "fc40676660ef77cf",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/foreignKeyActions.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ dbType: \"oracle\"; tableName: string; tableComment: string; sqlFormatMode: \"compact\"; rows: never[]; indexes: never[]; foreignKeys: ForeignKeyDefinition[]; addCount: number; authInput: string; authObjects: never[]; }' is not assignable to type 'PersistedState'. Property 'schemaName' is missing in type '{ dbType: \"oracle\"; tableName: string; tableComment: string; sqlFormatMode: \"compact\"; rows: never[]; indexes: never[]; foreignKeys: ForeignKeyDefinition[]; addCount: number; authInput: string; authObjects: never[]; }' but required in type 'SchemaDocumentState'.",
+    "sourceFingerprint": "06f2d111d8ba5b1e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/foreignKeyFields.test.ts",
+    "code": "TS2741",
+    "message": "Property 'schemaName' is missing in type '{ dbType: \"postgresql\"; tableName: string; tableComment: string; rows: never[]; indexes: never[]; authInput: string; authObjects: never[]; foreignKeys: ForeignKeyDefinition[]; }' but required in type 'SchemaDocumentState'.",
+    "sourceFingerprint": "38171dfa1e4e22f3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/mysqlAlterDependencies.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ objectType?: SchemaObjectType; schemaName: string; tableName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; rows: FieldRow[]; ... 9 more ...; indexes: { ...; }[]; }' is not assignable to parameter of type 'PersistedState'. Type '{ objectType?: SchemaObjectType; schemaName: string; tableName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; rows: FieldRow[]; ... 9 more ...; indexes: { ...; }[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'indexes' are incompatible. Type '{ id: string; fields: IndexField[]; name: string; kind: string; }[]' is not assignable to type 'IndexDefinition[]'. Type '{ id: string; fields: IndexField[]; name: string; kind: string; }' is not assignable to type 'IndexDefinition'. Types of property 'kind' are incompatible. Type 'string' is not assignable to type 'IndexKind'.",
+    "sourceFingerprint": "b794a7698cb644b3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/mysqlAlterDependencies.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: { name: string; direction: \"ASC\"; }[]; kind: \"primary\"; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "4ef1ae84c6406f75",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/orm-generators.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id?: string | undefined; name: string; fields: IndexField[]; kind: IndexKind; }' is not assignable to type 'IndexDefinition'. Types of property 'id' are incompatible. Type 'string | undefined' is not assignable to type 'string'. Type 'undefined' is not assignable to type 'string'.",
+    "sourceFingerprint": "af8b5d6ad792e013",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/orm-generators.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [string]; refTable: string; refFields: [string]; onDelete: \"CASCADE\"; }' but required in type 'ForeignKeyDefinition'.",
+    "sourceFingerprint": "fd116c97ead8f702",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/orm-generators.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [string]; refTable: string; refFields: [string]; }' but required in type 'ForeignKeyDefinition'.",
+    "sourceFingerprint": "47bdc760c53f4ca1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/orm-generators.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [{ name: string; direction: \"ASC\"; }, { name: string; direction: \"ASC\"; }]; kind: \"unique_index\"; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "6d568efff651a22f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/orm-generators.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [{ name: string; direction: \"ASC\"; }]; kind: \"index\"; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "383a1d58fbe23d3d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/orm-generators.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [{ name: string; direction: \"ASC\"; }]; kind: \"unique_index\"; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "594847893ee0ccb1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/orm-generators.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [{ name: string; direction: \"ASC\"; }]; kind: \"unique_index\"; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "8932d8cbd17c9506",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/parser/astHandlers.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ constraint_type: string; definition: [{ column: string; }]; }' is not assignable to type 'ConstraintDefNode'. Property 'resource' is missing in type '{ constraint_type: string; definition: [{ column: string; }]; }' but required in type '{ resource: \"constraint\"; constraint_type?: string | undefined; index?: string | null | undefined; }'.",
+    "sourceFingerprint": "a01b4e47b602de4e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/parser/astHandlers.test.ts",
+    "code": "TS2741",
+    "message": "Property 'foreignKeys' is missing in type '{ tableName: string; tableComment: string; fields: never[]; indexes: never[]; authObjects: never[]; }' but required in type 'ParsedResult'.",
+    "sourceFingerprint": "ef228aaaf468e512",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/strategies/abstract-ddl-strategy.test.ts",
+    "code": "TS1294",
+    "message": "This syntax is not allowed when 'erasableSyntaxOnly' is enabled.",
+    "sourceFingerprint": "b29bcd5e856d70c4",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/strategies/hive-strategy.test.ts",
+    "code": "TS2554",
+    "message": "Expected 0 arguments, but got 2.",
+    "sourceFingerprint": "fc57618eca3161a7",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/strategies/postgres-strategy.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ id: string; name: string; kind: string; fields: { name: string; direction: 'ASC'; }[]; }' is not assignable to parameter of type 'IndexDefinition'. Types of property 'kind' are incompatible. Type 'string' is not assignable to type 'IndexKind'.",
+    "sourceFingerprint": "03b23dd82951124d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ objectType?: SchemaObjectType; schemaName?: string | undefined; dbType?: \"dm\" | \"gaussdb\" | \"gbase\" | \"hive\" | \"kingbase\" | \"mariadb\" | \"mysql\" | \"oceanbase\" | \"oceanbase-oracle\" | ... 6 more ... | undefined; ... 14 more ...; foreignKeys: ForeignKeyDefinition[]; }' is not assignable to type 'PersistedState'. Type '{ objectType?: SchemaObjectType; schemaName?: string | undefined; dbType?: \"dm\" | \"gaussdb\" | \"gbase\" | \"hive\" | \"kingbase\" | \"mariadb\" | \"mysql\" | \"oceanbase\" | \"oceanbase-oracle\" | ... 6 more ... | undefined; ... 14 more ...; foreignKeys: ForeignKeyDefinition[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'schemaName' are incompatible. Type 'string | undefined' is not assignable to type 'string'. Type 'undefined' is not assignable to type 'string'.",
+    "sourceFingerprint": "eca07c518b64941b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2352",
+    "message": "Conversion of type '{ fieldName: string; nullable: string; defaultKind: string; onUpdate: string; order?: undefined; fieldType?: undefined; } | { order: number; fieldName: string; fieldType: string; nullable: string; defaultKind: string; onUpdate: string; }' to type 'Partial<FieldRow>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first. Type '{ order: number; fieldName: string; fieldType: string; nullable: string; defaultKind: string; onUpdate: string; }' is not comparable to type 'Partial<FieldRow>'. Types of property 'nullable' are incompatible. Type 'string' is not comparable to type 'boolean | undefined'.",
+    "sourceFingerprint": "20e588eb2a7bd526",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "580ecc83a60d5fff",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'Partial<FieldRow>'.",
+    "sourceFingerprint": "33bbe664436ed03e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ fields: { name: string; direction: 'ASC'; }[]; kind: string; name: string; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "ef281383cac09ee3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [string]; refTable: string; refFields: [string]; }' but required in type 'ForeignKeyDefinition'.",
+    "sourceFingerprint": "2f7c7bb9c7c68186",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [string]; refTable: string; refFields: [string]; }' but required in type 'ForeignKeyDefinition'.",
+    "sourceFingerprint": "45d4b03164b68a91",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [string]; refTable: string; refFields: [string]; }' but required in type 'ForeignKeyDefinition'.",
+    "sourceFingerprint": "b5bd7a40499e0ce2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [{ name: string; direction: \"ASC\"; }]; kind: \"index\"; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "4a6774a9626f7a4f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [{ name: string; direction: \"ASC\"; }]; kind: \"index\"; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "a7a00d9f8ccb04af",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [{ name: string; direction: \"ASC\"; }]; kind: \"index\"; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "ace4bd7af244c6c4",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: { name: string; direction: 'ASC'; }[]; kind: string; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "7b639711ccb5c996",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableDiff-and-factories.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: { name: string; direction: \"ASC\"; }[]; kind: \"index\"; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "2cbc8752f7567284",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableFeatures.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; value: string; }' but required in type 'PartitionDefinition'.",
+    "sourceFingerprint": "1edc594def430bb4",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/ddl-core",
+    "file": "src/__tests__/tableFeatures.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; value: string; }' but required in type 'PartitionDefinition'.",
+    "sourceFingerprint": "37677345852ae83e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/auth/betterAuthClient.test.ts",
+    "code": "TS2540",
+    "message": "Cannot assign to 'VITE_BETTER_AUTH_URL' because it is a read-only property.",
+    "sourceFingerprint": "38579a923da6c270",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/auth/betterAuthClient.test.ts",
+    "code": "TS2540",
+    "message": "Cannot assign to 'VITE_BETTER_AUTH_URL' because it is a read-only property.",
+    "sourceFingerprint": "583eeb7443b57f62",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/auth/betterAuthClient.test.ts",
+    "code": "TS2540",
+    "message": "Cannot assign to 'VITE_BETTER_AUTH_URL' because it is a read-only property.",
+    "sourceFingerprint": "a8299b64d6c9c557",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/auth/betterAuthClient.test.ts",
+    "code": "TS2540",
+    "message": "Cannot assign to 'VITE_BETTER_AUTH_URL' because it is a read-only property.",
+    "sourceFingerprint": "ae7692ef81fa8a28",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/ErDiagramCanvas.test.tsx",
+    "code": "TS2741",
+    "message": "Property 'fieldComment' is missing in type '{ id: string; fieldName: string; fieldType: string; nullable: false; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "fbe9d4270cc9de8c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/ErDiagramPersistence.test.tsx",
+    "code": "TS2322",
+    "message": "Type 'FieldRow | { id: string; fieldName: string; fieldType: string; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; }' is missing the following properties from type 'FieldRow': fieldComment, nullable",
+    "sourceFingerprint": "b304e8b922dfec6f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/ErDiagramPersistence.test.tsx",
+    "code": "TS2739",
+    "message": "Type '{ id: string; fieldName: string; fieldType: string; }' is missing the following properties from type 'FieldRow': fieldComment, nullable",
+    "sourceFingerprint": "a359f5334d6d4703",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/ErDiagramPersistence.test.tsx",
+    "code": "TS2741",
+    "message": "Property 'fieldComment' is missing in type '{ id: string; fieldName: string; fieldType: string; nullable: true; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "7132ea257c4acb9c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/ErDiagramPersistence.test.tsx",
+    "code": "TS2769",
+    "message": "No overload matches this call. The last overload gave the following error. Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.",
+    "sourceFingerprint": "6c2d91b2e258b77c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/ErDiagramPersistence.test.tsx",
+    "code": "TS2769",
+    "message": "No overload matches this call. The last overload gave the following error. Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.",
+    "sourceFingerprint": "de5970ee427a4e19",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/ErDiagramPersistence.test.tsx",
+    "code": "TS2769",
+    "message": "No overload matches this call. The last overload gave the following error. Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.",
+    "sourceFingerprint": "f3945acb4bd5c009",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/FolderDialogs.i18n.test.tsx",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; parentId: string; order: number; createdAt: number; children: []; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; parentId: string; order: number; createdAt: number; children: []; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "7764111984fed8a7",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/SavedTablesDrawer.test.tsx",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; parentId: string; order: number; createdAt: number; children: []; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; parentId: string; order: number; createdAt: number; children: []; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "a5e3d514435f395f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/SavedTablesDrawer.test.tsx",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; parentId: undefined; order: number; createdAt: number; children: never[]; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; parentId: undefined; order: number; createdAt: number; children: never[]; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "de36f3daa57994b7",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/er-diagram/RelationCreationDialog.test.tsx",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "1284903a4d7a9dd5",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/er-diagram/RelationCreationDialog.test.tsx",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "71d7bfba3d11253b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/er-diagram/tableRelationship.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "706d81799953bf2a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/er-diagram/tableRelationship.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "8374effd6b131f55",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/er-diagram/tableRelationship.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'unique' does not exist in type 'IndexDefinition'.",
+    "sourceFingerprint": "d004f47189ea5e79",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/savedTableFlow/renameDeleteActions.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'preview' does not exist in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "15e03423c177df20",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/savedTableFlow/renameDeleteActions.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'preview' does not exist in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "e15bb7e2b061dea0",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useAISchemaPatchFlow.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "3fbadac2f393ccd7",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useFolderActions.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; order: number; createdAt: number; children: FolderTreeNode[]; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; children: FolderTreeNode[]; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "ad09c6f33ccf802c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useFolderActions.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; order: number; createdAt: number; children: never[]; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; children: never[]; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "42e3518af1114096",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useFolderActions.test.ts",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; dbType: string; fieldCount: number; folderId: string; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "e397a3aa15f68556",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2322",
+    "message": "Type 'UseDialogStateReturn<{ name: string; target: null; }>' is not assignable to type 'UseDialogStateReturn<RenameDialogData>'. Types of property 'openDialog' are incompatible. Type '(nextData?: { name: string; target: null; } | undefined) => void' is not assignable to type '(nextData?: RenameDialogData | undefined) => void'. Types of parameters 'nextData' and 'nextData' are incompatible. Type 'RenameDialogData | undefined' is not assignable to type '{ name: string; target: null; } | undefined'. Type 'RenameDialogData' is not assignable to type '{ name: string; target: null; }'. Types of property 'target' are incompatible. Type 'SavedTableMetadata | null' is not assignable to type 'null'. Type 'SavedTableMetadata' is not assignable to type 'null'.",
+    "sourceFingerprint": "40c82d5d25b83da2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2322",
+    "message": "Type 'UseDialogStateReturn<{ name: string; target: null; }>' is not assignable to type 'UseDialogStateReturn<RenameDialogData>'. Types of property 'openDialog' are incompatible. Type '(nextData?: { name: string; target: null; } | undefined) => void' is not assignable to type '(nextData?: RenameDialogData | undefined) => void'. Types of parameters 'nextData' and 'nextData' are incompatible. Type 'RenameDialogData | undefined' is not assignable to type '{ name: string; target: null; } | undefined'. Type 'RenameDialogData' is not assignable to type '{ name: string; target: null; }'. Types of property 'target' are incompatible. Type 'SavedTableMetadata | null' is not assignable to type 'null'. Type 'SavedTableMetadata' is not assignable to type 'null'.",
+    "sourceFingerprint": "914659d056011349",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2322",
+    "message": "Type 'UseDialogStateReturn<{ name: string; target: null; }>' is not assignable to type 'UseDialogStateReturn<RenameDialogData>'. Types of property 'openDialog' are incompatible. Type '(nextData?: { name: string; target: null; } | undefined) => void' is not assignable to type '(nextData?: RenameDialogData | undefined) => void'. Types of parameters 'nextData' and 'nextData' are incompatible. Type 'RenameDialogData | undefined' is not assignable to type '{ name: string; target: null; } | undefined'. Type 'RenameDialogData' is not assignable to type '{ name: string; target: null; }'. Types of property 'target' are incompatible. Type 'SavedTableMetadata | null' is not assignable to type 'null'. Type 'SavedTableMetadata' is not assignable to type 'null'.",
+    "sourceFingerprint": "a772a2ad17929ab1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2322",
+    "message": "Type 'UseDialogStateReturn<{ name: string; target: null; }>' is not assignable to type 'UseDialogStateReturn<RenameDialogData>'. Types of property 'openDialog' are incompatible. Type '(nextData?: { name: string; target: null; } | undefined) => void' is not assignable to type '(nextData?: RenameDialogData | undefined) => void'. Types of parameters 'nextData' and 'nextData' are incompatible. Type 'RenameDialogData | undefined' is not assignable to type '{ name: string; target: null; } | undefined'. Type 'RenameDialogData' is not assignable to type '{ name: string; target: null; }'. Types of property 'target' are incompatible. Type 'SavedTableMetadata | null' is not assignable to type 'null'. Type 'SavedTableMetadata' is not assignable to type 'null'.",
+    "sourceFingerprint": "d7c74cc27aba8487",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2322",
+    "message": "Type 'UseDialogStateReturn<{ name: string; target: { name: string; normalizedName: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }; }>' is not assignable to type 'UseDialogStateReturn<RenameDialogData>'. The types of 'data.target' are incompatible between these types. Property 'tableId' is missing in type '{ name: string; normalizedName: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "f9c5cd80ed0d33bd",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2322",
+    "message": "Type 'UseDialogStateReturn<{ target: null; }>' is not assignable to type 'UseDialogStateReturn<DeleteDialogData>'. Types of property 'openDialog' are incompatible. Type '(nextData?: { target: null; } | undefined) => void' is not assignable to type '(nextData?: DeleteDialogData | undefined) => void'. Types of parameters 'nextData' and 'nextData' are incompatible. Type 'DeleteDialogData | undefined' is not assignable to type '{ target: null; } | undefined'. Type 'DeleteDialogData' is not assignable to type '{ target: null; }'. Types of property 'target' are incompatible. Type 'SavedTableMetadata | null' is not assignable to type 'null'. Type 'SavedTableMetadata' is not assignable to type 'null'.",
+    "sourceFingerprint": "23508592b7cb1426",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2322",
+    "message": "Type 'UseDialogStateReturn<{ target: null; }>' is not assignable to type 'UseDialogStateReturn<DeleteDialogData>'. Types of property 'openDialog' are incompatible. Type '(nextData?: { target: null; } | undefined) => void' is not assignable to type '(nextData?: DeleteDialogData | undefined) => void'. Types of parameters 'nextData' and 'nextData' are incompatible. Type 'DeleteDialogData | undefined' is not assignable to type '{ target: null; } | undefined'. Type 'DeleteDialogData' is not assignable to type '{ target: null; }'. Types of property 'target' are incompatible. Type 'SavedTableMetadata | null' is not assignable to type 'null'. Type 'SavedTableMetadata' is not assignable to type 'null'.",
+    "sourceFingerprint": "863e790f93357dc6",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2322",
+    "message": "Type 'UseDialogStateReturn<{ target: null; }>' is not assignable to type 'UseDialogStateReturn<DeleteDialogData>'. Types of property 'openDialog' are incompatible. Type '(nextData?: { target: null; } | undefined) => void' is not assignable to type '(nextData?: DeleteDialogData | undefined) => void'. Types of parameters 'nextData' and 'nextData' are incompatible. Type 'DeleteDialogData | undefined' is not assignable to type '{ target: null; } | undefined'. Type 'DeleteDialogData' is not assignable to type '{ target: null; }'. Types of property 'target' are incompatible. Type 'SavedTableMetadata | null' is not assignable to type 'null'. Type 'SavedTableMetadata' is not assignable to type 'null'.",
+    "sourceFingerprint": "c284e16ced3ae4c0",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2322",
+    "message": "Type 'UseDialogStateReturn<{ target: null; }>' is not assignable to type 'UseDialogStateReturn<DeleteDialogData>'. Types of property 'openDialog' are incompatible. Type '(nextData?: { target: null; } | undefined) => void' is not assignable to type '(nextData?: DeleteDialogData | undefined) => void'. Types of parameters 'nextData' and 'nextData' are incompatible. Type 'DeleteDialogData | undefined' is not assignable to type '{ target: null; } | undefined'. Type 'DeleteDialogData' is not assignable to type '{ target: null; }'. Types of property 'target' are incompatible. Type 'SavedTableMetadata | null' is not assignable to type 'null'. Type 'SavedTableMetadata' is not assignable to type 'null'.",
+    "sourceFingerprint": "d1a3cd89bac26b1c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2322",
+    "message": "Type 'UseDialogStateReturn<{ target: { name: string; normalizedName: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }; }>' is not assignable to type 'UseDialogStateReturn<DeleteDialogData>'. The types of 'data.target' are incompatible between these types. Property 'tableId' is missing in type '{ name: string; normalizedName: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "fa58b24781f0704a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2339",
+    "message": "Property 'state' does not exist on type 'never'.",
+    "sourceFingerprint": "befb8d4684b4e30d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ name: string; normalizedName: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "071fff368e779b46",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ name: string; normalizedName: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "7a30dc8568aaa452",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableTabIntegration.test.ts",
+    "code": "TS2322",
+    "message": "Type 'Mock<() => Promise<{ ok: true; normalizedName: string; }>>' is not assignable to type '(name: string, state: PersistedState, draftId?: string | undefined) => Promise<SaveTableResult>'. Type 'Promise<{ ok: true; normalizedName: string; }>' is not assignable to type 'Promise<SaveTableResult>'. Type '{ ok: true; normalizedName: string; }' is not assignable to type 'SaveTableResult'. Property 'tableId' is missing in type '{ ok: true; normalizedName: string; }' but required in type '{ ok: true; normalizedName: string; tableId: string; }'.",
+    "sourceFingerprint": "736a9029938c0330",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableTabIntegration.test.ts",
+    "code": "TS2550",
+    "message": "Property 'withResolvers' does not exist on type 'PromiseConstructor'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2024' or later.",
+    "sourceFingerprint": "29e72a7167475af2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSavedTableTabIntegration.test.ts",
+    "code": "TS2741",
+    "message": "Property 'baseState' is missing in type '{ normalizedName: string; displayName: string; baseSignature: string; mode: \"create\"; }' but required in type '{ normalizedName: string; tableId?: string | undefined; displayName: string; baseSignature: string; baseState: PersistedState; mode: \"create\" | \"update\"; }'.",
+    "sourceFingerprint": "19ed7b7e36b1bffb",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSchemaApplyActions.test.ts",
+    "code": "TS2322",
+    "message": "Type '\"pretty\"' is not assignable to type 'SqlFormatMode | undefined'.",
+    "sourceFingerprint": "03eec19b8ae9aad2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSchemaApplyActions.test.ts",
+    "code": "TS2739",
+    "message": "Type '{ name: string; type: string; comment: string; nullable: true; }' is missing the following properties from type 'NormalizedField': defaultKind, defaultValue, onUpdate",
+    "sourceFingerprint": "a1ee896bcae4a521",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useSchemaApplyActions.test.ts",
+    "code": "TS2741",
+    "message": "Property 'foreignKeys' is missing in type '{ tableName: string; tableComment: string; fields: never[]; indexes: never[]; authObjects: never[]; tableMiscConfig: { enabled: true; engine: string; charset: string; collation: string; tablespace: string; }; }' but required in type 'ParsedResult'.",
+    "sourceFingerprint": "a0fdbf55178ce9a3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useShareAction.test.ts",
+    "code": "TS2322",
+    "message": "Type '() => { schemaName: string; tableName: string; tableComment: string; dbType: 'mysql'; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }' is not assignable to type '() => PersistedState'. Type '{ schemaName: string; tableName: string; tableComment: string; dbType: 'mysql'; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }' is not assignable to type 'PersistedState'. Property 'sqlFormatMode' is missing in type '{ schemaName: string; tableName: string; tableComment: string; dbType: 'mysql'; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }' but required in type 'EditorSessionState'.",
+    "sourceFingerprint": "1c0feff443a1167c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useShareAction.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ schemaName: string; tableName: string; tableComment: string; dbType: 'mysql'; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }' is not assignable to type 'PersistedState'. Property 'sqlFormatMode' is missing in type '{ schemaName: string; tableName: string; tableComment: string; dbType: 'mysql'; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }' but required in type 'EditorSessionState'.",
+    "sourceFingerprint": "a10cac5a316fb984",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useWorkspaceTabActions.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type 'PersistedState' is not assignable to parameter of type 'null'.",
+    "sourceFingerprint": "8dd8e3016fd1ec26",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useWorkspaceTabActions.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ draftId: string; name: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }' is not assignable to parameter of type 'never'.",
+    "sourceFingerprint": "42cd8c723b733d06",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useWorkspaceTabActions.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ id: string; title: string; source: { kind: 'saved_table'; normalizedName: string; tableName: string; baseSignature: string; }; stateSnapshot: PersistedState; }' is not assignable to parameter of type 'undefined'.",
+    "sourceFingerprint": "cc9c4320b305bef3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useWorkspaceTabActions.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ id: string; title: string; stateSnapshot: PersistedState; source: { kind: string; draftId: string; }; }' is not assignable to parameter of type 'undefined'.",
+    "sourceFingerprint": "101866c12a6ca89c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useWorkspaceTabActions.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ source: { kind: string; normalizedName: string; tableName: string; baseSignature: string; }; state: PersistedState; version: number; }' is not assignable to parameter of type 'null'.",
+    "sourceFingerprint": "71327f35ac552303",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useWorkspaceTabActions.test.ts",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "145700b770674e29",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useWorkspaceTabActions.test.ts",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "d6a008c1cdf2a200",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useWorkspaceTrashActions.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; order: number; createdAt: number; children: [FolderTreeNode]; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; children: [FolderTreeNode]; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "16cc35f524881ce1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useWorkspaceTrashActions.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; order: number; createdAt: number; children: never[]; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; children: never[]; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "1eb91ed3f0f60695",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/hooks/useWorkspaceTrashActions.test.ts",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; dbType: string; fieldCount: number; folderId: string; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "ec8ed1f9dcdf0813",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/saved-tables/TableItem.test.tsx",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "59a3dbd646a3b600",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/saved-tables/dnd.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; parentId: string; order: number; createdAt: number; children: []; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; parentId: string; order: number; createdAt: number; children: []; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "756b48fe34b779ca",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/saved-tables/dnd.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; parentId: undefined; order: number; createdAt: number; children: []; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; parentId: undefined; order: number; createdAt: number; children: []; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "549a91370038db96",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/saved-tables/useSavedTablesFilter.test.ts",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; folderId: string | undefined; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "3f7f28fadbff97a0",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/table/DataTable.freeze-style.test.tsx",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "0cfd433d40d23cac",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/table/DataTable.freeze-style.test.tsx",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "3a5cc903a34bdc4c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
+    "code": "TS2322",
+    "message": "Type '\"performance\"' is not assignable to type 'AIIndexAdvisorRecommendationCategory'.",
+    "sourceFingerprint": "69e04a4a803587bb",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
+    "code": "TS2322",
+    "message": "Type '\"performance\"' is not assignable to type 'AIIndexAdvisorRecommendationCategory'.",
+    "sourceFingerprint": "c1b422ddcf6e9c37",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
+    "code": "TS2741",
+    "message": "Property 'defaultKind' is missing in type '{ name: string; type: string; comment: string; nullable: false; defaultValue: string; onUpdate: \"none\"; }' but required in type 'NormalizedField'.",
+    "sourceFingerprint": "00c7f0066fc5c980",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
+    "code": "TS2741",
+    "message": "Property 'defaultKind' is missing in type '{ name: string; type: string; comment: string; nullable: false; defaultValue: string; onUpdate: \"none\"; }' but required in type 'NormalizedField'.",
+    "sourceFingerprint": "e200cb5117b6a5ad",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
+    "code": "TS2741",
+    "message": "Property 'name' is missing in type '{ fields: ({ name: string; direction: \"ASC\"; } | { name: string; direction: \"DESC\"; })[]; unique: true; }' but required in type 'AIIndexAdvisorIndexInput'.",
+    "sourceFingerprint": "1fbe58b5bb1de4b9",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
+    "code": "TS2741",
+    "message": "Property 'name' is missing in type '{ fields: { name: string; direction: \"ASC\"; }[]; unique: false; }' but required in type 'AIIndexAdvisorIndexInput'.",
+    "sourceFingerprint": "f627b5be5b4fd3b6",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
+    "code": "TS2741",
+    "message": "Property 'name' is missing in type '{ fields: { name: string; direction: \"ASC\"; }[]; unique: true; }' but required in type 'AIIndexAdvisorIndexInput'.",
+    "sourceFingerprint": "1679bd952e49a9e9",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/workspaceTreeControls.test.tsx",
+    "code": "TS2322",
+    "message": "Type 'FolderTreeNode' is not assignable to type 'never'.",
+    "sourceFingerprint": "4168534df534e32d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/workspaceTreeControls.test.tsx",
+    "code": "TS2322",
+    "message": "Type 'FolderTreeNode' is not assignable to type 'never'.",
+    "sourceFingerprint": "f7ac1fdadffd365c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/workspaceTreeControls.test.tsx",
+    "code": "TS2322",
+    "message": "Type 'FolderTreeNode' is not assignable to type 'never'.",
+    "sourceFingerprint": "f9ed61ff3ecdf95f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/App/workspaceTreeControls.test.tsx",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; children: never[]; createdAt: number; updatedAt: number; }' is not assignable to type 'FolderTreeNode'. Property 'order' is missing in type '{ id: string; name: string; children: never[]; createdAt: number; updatedAt: number; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "ac01f51d542c86dd",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/AppErrorBoundary.test.tsx",
+    "code": "TS2786",
+    "message": "'CrashComponent' cannot be used as a JSX component. Its type '() => void' is not a valid JSX element type. Type '() => void' is not assignable to type '(props: any) => Promise<ReactNode> | ReactNode'. Type 'void' is not assignable to type 'Promise<ReactNode> | ReactNode'.",
+    "sourceFingerprint": "0e7f7c2c478890a3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/FolderTree.a11y.test.tsx",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; parentId: string; order: number; createdAt: number; tableCount: number; children: []; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; parentId: string; order: number; createdAt: number; tableCount: number; children: []; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "8fe6604555da44f8",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/GlobalDialogs.a11y.test.tsx",
+    "code": "TS2739",
+    "message": "Type '{ onCancel: Mock<Procedure>; onConfirm: Mock<Procedure>; }' is missing the following properties from type '{ open: boolean; onOpenChange: (open: boolean) => void; onCancel: () => void; onConfirm: () => void; }': open, onOpenChange",
+    "sourceFingerprint": "77c120565f17f56b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/ImportSqlDialog.test.tsx",
+    "code": "TS2741",
+    "message": "Property 'foreignKeys' is missing in type '{ tableName: string; tableComment: string; fields: { name: string; type: string; comment: string; nullable: boolean; defaultKind: 'none'; defaultValue: string; onUpdate: 'none'; }[]; indexes: never[]; authObjects: string[]; }' but required in type 'ParsedResult'.",
+    "sourceFingerprint": "cf369438a8cd1fcc",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/ImportSqlDialog.test.tsx",
+    "code": "TS2741",
+    "message": "Property 'foreignKeys' is missing in type '{ tableName: string; tableComment: string; fields: { name: string; type: string; comment: string; nullable: false; defaultKind: \"none\"; defaultValue: string; onUpdate: \"none\"; }[]; indexes: never[]; authObjects: never[]; }' but required in type 'ParsedResult'.",
+    "sourceFingerprint": "7ec712476e503404",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/ImportSqlDialog.test.tsx",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
+    "sourceFingerprint": "b4e4fd14113a6ba2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/IndexPanel.a11y.test.tsx",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "1c919568bf37e372",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/IndexPanel.a11y.test.tsx",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "4b41a926f0f28569",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/components/IndexPanel.a11y.test.tsx",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "5d4f85f36dd189fa",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/features/ddl-generators.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ enabled: boolean; type: 'LIST'; columns: string[]; partitions: { name: string; value: string; }[]; }' is not assignable to type 'MysqlPartitionConfig'. Types of property 'partitions' are incompatible. Type '{ name: string; value: string; }[]' is not assignable to type 'PartitionDefinition[]'. Property 'id' is missing in type '{ name: string; value: string; }' but required in type 'PartitionDefinition'.",
+    "sourceFingerprint": "e59b2d63ac53cfb2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/features/ddl-generators.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ enabled: boolean; type: 'RANGE COLUMNS'; columns: string[]; partitions: { name: string; value: string; }[]; }' is not assignable to type 'MysqlPartitionConfig'. Types of property 'partitions' are incompatible. Type '{ name: string; value: string; }[]' is not assignable to type 'PartitionDefinition[]'. Property 'id' is missing in type '{ name: string; value: string; }' but required in type 'PartitionDefinition'.",
+    "sourceFingerprint": "795959b101af3642",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/features/ddl-generators.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ enabled: boolean; type: 'RANGE'; columns: string[]; partitions: { name: string; value: string; }[]; }' is not assignable to type 'MysqlPartitionConfig'. Types of property 'partitions' are incompatible. Type '{ name: string; value: string; }[]' is not assignable to type 'PartitionDefinition[]'. Property 'id' is missing in type '{ name: string; value: string; }' but required in type 'PartitionDefinition'.",
+    "sourceFingerprint": "2f35cfc67d88251f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/features/field-processing.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "25c46840a299c710",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/features/field-processing.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "2c5400999ac95ed7",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/features/field-processing.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "2db66387ba6cef1f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/features/field-processing.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "979d2f61dcb94543",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/features/field-processing.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "9e67b34d04917508",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/features/field-processing.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "b38edb0e9851abcf",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/features/field-processing.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "cb21bf4111ebc637",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useAIGenerateTable.behavior.test.ts",
+    "code": "TS2322",
+    "message": "Type 'Promise<boolean>' is not assignable to type 'Promise<void>'. Type 'boolean' is not assignable to type 'void'.",
+    "sourceFingerprint": "0a6ca8b61908d8d8",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useAIGenerateTable.behavior.test.ts",
+    "code": "TS2322",
+    "message": "Type 'Promise<boolean>' is not assignable to type 'Promise<void>'. Type 'boolean' is not assignable to type 'void'.",
+    "sourceFingerprint": "c1fa8188c8c67773",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useAIGenerateTable.behavior.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ tableName: string; tableComment: string; dbType: \"mysql\"; sqlFormatMode: \"compact\"; rows: never[]; indexes: never[]; addCount: number; authInput: string; authObjects: never[]; }' is not assignable to type 'PersistedState'. Property 'schemaName' is missing in type '{ tableName: string; tableComment: string; dbType: \"mysql\"; sqlFormatMode: \"compact\"; rows: never[]; indexes: never[]; addCount: number; authInput: string; authObjects: never[]; }' but required in type 'SchemaDocumentState'.",
+    "sourceFingerprint": "344c16404117bf84",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useAIGenerateTable.behavior.test.ts",
+    "code": "TS2339",
+    "message": "Property 'aborted' does not exist on type 'never'.",
+    "sourceFingerprint": "394006dbc6d02a97",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useAIGenerateTable.behavior.test.ts",
+    "code": "TS2339",
+    "message": "Property 'aborted' does not exist on type 'never'.",
+    "sourceFingerprint": "717ea9c468748efb",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useFieldTemplates.test.ts",
+    "code": "TS2339",
+    "message": "Property 'reason' does not exist on type 'OperationResult & { template?: FieldTemplate | undefined; }'. Property 'reason' does not exist on type '{ ok: true; } & { template?: FieldTemplate | undefined; }'.",
+    "sourceFingerprint": "f85d8b7481e29f51",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useFieldTemplates.test.ts",
+    "code": "TS2339",
+    "message": "Property 'reason' does not exist on type 'OperationResult'. Property 'reason' does not exist on type '{ ok: true; }'.",
+    "sourceFingerprint": "47149074c263c496",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useFieldTemplates.test.ts",
+    "code": "TS2339",
+    "message": "Property 'reason' does not exist on type 'OperationResult'. Property 'reason' does not exist on type '{ ok: true; }'.",
+    "sourceFingerprint": "d17e4ef07059507d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useFieldTemplates.test.ts",
+    "code": "TS2454",
+    "message": "Variable 'fetched' is used before being assigned.",
+    "sourceFingerprint": "28d2f1658a0c40f7",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useFieldTemplates.test.ts",
+    "code": "TS2454",
+    "message": "Variable 'fetched' is used before being assigned.",
+    "sourceFingerprint": "a11e4007878db8af",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useFieldTemplates.test.ts",
+    "code": "TS2454",
+    "message": "Variable 'fetched' is used before being assigned.",
+    "sourceFingerprint": "a67ec477ee5cc9ae",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useOrmGeneration.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ name: string; fields: [{ name: string; direction: \"ASC\"; }]; kind: \"primary\"; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "af1073356cb3bc54",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/usePersistedState.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ schemaName: string; tableName: string; tableComment: string; dbType: 'mysql'; sqlFormatMode: 'compact'; addCount: number; authInput: string; authObjects: never[]; rows: { order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; }[]; indexes: { ...; }[]; foreignKeys: never[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'rows' are incompatible. Type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; }[]' is not assignable to type 'FieldRow[]'. Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "f38f6d63ecbd512a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/usePersistedState.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'activeState' does not exist in type 'WorkspaceSessionRecord'.",
+    "sourceFingerprint": "060d48945e889952",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/usePersistedState.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'activeState' does not exist in type 'WorkspaceSessionRecord'.",
+    "sourceFingerprint": "d69777e0dc58a229",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/usePersistedState.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'synced' does not exist in type 'WorkspaceYDocDocument'.",
+    "sourceFingerprint": "26f8d32c25a992a0",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/usePersistedState.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableName' does not exist in type '{ kind: \"saved_table\"; normalizedName: string; tableId?: string | undefined; }'.",
+    "sourceFingerprint": "a09b9e9f9fd803d5",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/usePersistedState.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableName' does not exist in type '{ kind: \"saved_table\"; normalizedName: string; tableId?: string | undefined; }'.",
+    "sourceFingerprint": "f91a1218d4e55c26",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/usePersistedState.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldComment: string; nullable: boolean; fieldType: string; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "171f80d6aaf94773",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useTableTemplates.test.ts",
+    "code": "TS2339",
+    "message": "Property 'reason' does not exist on type 'OperationResult'. Property 'reason' does not exist on type '{ ok: true; }'.",
+    "sourceFingerprint": "d17e4ef07059507d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useTableTemplates.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "5b010f7fdc71ae82",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useTableTemplates.test.ts",
+    "code": "TS2454",
+    "message": "Variable 'fetched' is used before being assigned.",
+    "sourceFingerprint": "5fa6fa97052a38c7",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/useTableTemplates.test.ts",
+    "code": "TS2454",
+    "message": "Variable 'fetched' is used before being assigned.",
+    "sourceFingerprint": "e426e398f9083ffe",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/workspacePersistence/hydration.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "5b010f7fdc71ae82",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/workspacePersistence/hydration.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableName' does not exist in type '{ kind: \"saved_table\"; normalizedName: string; tableId?: string | undefined; }'.",
+    "sourceFingerprint": "6b706c8eaed13976",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/workspacePersistence/hydration.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableName' does not exist in type '{ kind: \"saved_table\"; normalizedName: string; tableId?: string | undefined; }'.",
+    "sourceFingerprint": "e3cf97e0b1618f04",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/workspacePersistence/hydration.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableName' does not exist in type '{ kind: \"saved_table\"; normalizedName: string; tableId?: string | undefined; }'.",
+    "sourceFingerprint": "e53c960d3aa6d323",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/workspacePersistence/normalize.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "52c425d4dee1cff0",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/workspacePersistence/normalize.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "f83e715f040e7698",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/hooks/workspacePersistence/useWorkspaceStorageTarget.test.ts",
+    "code": "TS2322",
+    "message": "Type 'Mock<(mutate: (currentDoc: Doc) => unknown) => unknown>' is not assignable to type '<T>(mutate: (doc: Y.Doc) => T) => T'. Type 'unknown' is not assignable to type 'T'. 'T' could be instantiated with an arbitrary type which could be unrelated to 'unknown'.",
+    "sourceFingerprint": "ed829aa390b45c2e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/mocks/handsontable.ts",
+    "code": "TS2686",
+    "message": "'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.",
+    "sourceFingerprint": "048772a0b92e49c5",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/providers/WorkspaceYDocProvider.test.tsx",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'sqlFormatMode' does not exist in type 'SchemaDocumentState'.",
+    "sourceFingerprint": "eb6b9bc833a68ace",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/schemaStateMerge.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; fields: never[]; kind: string; }[]' is not assignable to type 'IndexDefinition[]'. Type '{ id: string; name: string; fields: never[]; kind: string; }' is not assignable to type 'IndexDefinition'. Types of property 'kind' are incompatible. Type 'string' is not assignable to type 'IndexKind'.",
+    "sourceFingerprint": "161dd5d88b3df082",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/schemaStateMerge.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ objectType?: SchemaObjectType; schemaName: string; tableName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; rows: FieldRow[]; ... 9 more ...; indexes: { ...; }[]; }' is not assignable to parameter of type 'PersistedState'. Type '{ objectType?: SchemaObjectType; schemaName: string; tableName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; rows: FieldRow[]; ... 9 more ...; indexes: { ...; }[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'indexes' are incompatible. Type '{ id: string; name: string; fields: ({ name: string; direction: \"ASC\"; } | { name: string; direction: \"DESC\"; })[]; kind: string; }[]' is not assignable to type 'IndexDefinition[]'. Type '{ id: string; name: string; fields: ({ name: string; direction: 'ASC'; } | { name: string; direction: 'DESC'; })[]; kind: string; }' is not assignable to type 'IndexDefinition'. Types of property 'kind' are incompatible. Type 'string' is not assignable to type 'IndexKind'.",
+    "sourceFingerprint": "a1eb25bbaa49b151",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/schemaStateMerge.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ objectType?: SchemaObjectType; schemaName: string; tableName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; rows: FieldRow[]; ... 9 more ...; indexes: { ...; }[]; }' is not assignable to parameter of type 'PersistedState'. Type '{ objectType?: SchemaObjectType; schemaName: string; tableName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; rows: FieldRow[]; ... 9 more ...; indexes: { ...; }[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'indexes' are incompatible. Type '{ id: string; name: string; fields: ({ name: string; direction: \"ASC\"; } | { name: string; direction: \"DESC\"; })[]; kind: string; }[]' is not assignable to type 'IndexDefinition[]'. Type '{ id: string; name: string; fields: ({ name: string; direction: 'ASC'; } | { name: string; direction: 'DESC'; })[]; kind: string; }' is not assignable to type 'IndexDefinition'. Types of property 'kind' are incompatible. Type 'string' is not assignable to type 'IndexKind'.",
+    "sourceFingerprint": "e7f170bf0596501b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/schemaStateMerge.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ objectType?: SchemaObjectType; schemaName: string; tableName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; rows: FieldRow[]; ... 9 more ...; indexes: { ...; }[]; }' is not assignable to parameter of type 'PersistedState'. Type '{ objectType?: SchemaObjectType; schemaName: string; tableName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; rows: FieldRow[]; ... 9 more ...; indexes: { ...; }[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'indexes' are incompatible. Type '{ id: string; name: string; fields: { name: string; direction: \"ASC\"; }[]; kind: string; }[]' is not assignable to type 'IndexDefinition[]'. Type '{ id: string; name: string; fields: { name: string; direction: 'ASC'; }[]; kind: string; }' is not assignable to type 'IndexDefinition'. Types of property 'kind' are incompatible. Type 'string' is not assignable to type 'IndexKind'.",
+    "sourceFingerprint": "a40f3b90f7d9a1d8",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/schemaStateMerge.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "892df7f3a8a1b498",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceMigrationService.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'activeState' does not exist in type 'WorkspaceSessionRecord'.",
+    "sourceFingerprint": "02d32549cbdda36c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceMigrationService.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'activeState' does not exist in type 'WorkspaceSessionRecord'.",
+    "sourceFingerprint": "50865d29a19748c4",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceMigrationService.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'activeState' does not exist in type 'WorkspaceSessionRecord'.",
+    "sourceFingerprint": "85bf58f7b3ade66b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceMigrationService.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'activeState' does not exist in type 'WorkspaceSessionRecord'.",
+    "sourceFingerprint": "8f38ce6467aaa823",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceMigrationService.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'activeState' does not exist in type 'WorkspaceSessionRecord'.",
+    "sourceFingerprint": "8fdd1deb85d5d795",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceMigrationService.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "5b010f7fdc71ae82",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapter.test.ts",
+    "code": "TS2741",
+    "message": "Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "4a95acd4bf53e83a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapter.test.ts",
+    "code": "TS2741",
+    "message": "Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "735e3ffc02b7e271",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapter.test.ts",
+    "code": "TS2741",
+    "message": "Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "c3c8c8d062aad94a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapter.test.ts",
+    "code": "TS2741",
+    "message": "Property 'updatedAt' is missing in type '{ id: string; name: string; parentId: string; order: number; createdAt: number; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "f34d689083928143",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapterRecords.test.ts",
+    "code": "TS2322",
+    "message": "Type '\"saved\"' is not assignable to type '\"draft\" | \"saved_table\"'.",
+    "sourceFingerprint": "0a3e3b1972163c75",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapterRecords.test.ts",
+    "code": "TS2322",
+    "message": "Type '\"saved\"' is not assignable to type '\"draft\" | \"saved_table\"'.",
+    "sourceFingerprint": "941bc151e69d6bb5",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapterRecords.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "14f9682ddec4ac72",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapterRecords.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "5f8ff923afe01768",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapterRecords.test.ts",
+    "code": "TS2741",
+    "message": "Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "c308a3bc78607888",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapterRecords.test.ts",
+    "code": "TS2741",
+    "message": "Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "c6cb63cd4ff92e41",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapterRecords.test.ts",
+    "code": "TS2741",
+    "message": "Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "d00feb6c478abe99",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapterRecords.test.ts",
+    "code": "TS2741",
+    "message": "Property 'updatedAt' is missing in type '{ id: string; name: string; parentId: string; order: number; createdAt: number; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "ab88131fa747a7ee",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/services/workspaceYDocAdapterRecords.test.ts",
+    "code": "TS2741",
+    "message": "Property 'updatedAt' is missing in type '{ id: string; name: string; parentId: string; order: number; createdAt: number; }' but required in type 'TableFolder'.",
+    "sourceFingerprint": "af171b1aeb0aff56",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/setup.ts",
+    "code": "TS2304",
+    "message": "Cannot find name 'global'.",
+    "sourceFingerprint": "c4a1b6a10a313a5e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/appUiStore.test.ts",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; }' but required in type 'VersionHistoryTarget'.",
+    "sourceFingerprint": "d1ad874afd16d1b4",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/appUiStore.test.ts",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; }' but required in type 'VersionHistoryTarget'.",
+    "sourceFingerprint": "e87182155161ceeb",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/editorDocumentValidation.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ fieldName: string; fieldType: string; fieldComment: string; }[]' is not assignable to type 'FieldRow[]'. Type '{ fieldName: string; fieldType: string; fieldComment: string; }' is missing the following properties from type 'FieldRow': id, nullable",
+    "sourceFingerprint": "74aaa577abe119d8",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/editorDocumentValidation.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ fieldName: string; fieldType: string; fieldComment: string; }[]' is not assignable to type 'FieldRow[]'. Type '{ fieldName: string; fieldType: string; fieldComment: string; }' is missing the following properties from type 'FieldRow': id, nullable",
+    "sourceFingerprint": "81aa1730f268e77a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/editorDocumentValidation.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ fieldName: string; fieldType: string; fieldComment: string; }[]' is not assignable to type 'FieldRow[]'. Type '{ fieldName: string; fieldType: string; fieldComment: string; }' is missing the following properties from type 'FieldRow': id, nullable",
+    "sourceFingerprint": "f6d370fc6a3cf410",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/fieldStore.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '({ id: string; fieldComment: string; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; ... 4 more ...; nullable: boolean; } | { ...; })[]' is not assignable to parameter of type 'FieldRow[]'. Type '{ id: string; fieldComment: string; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; ... 4 more ...; nullable: boolean; } | { ...; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldComment: string; onUpdate?: FieldOnUpdate; enumMeta?: EnumValueMeta[]; fieldName: string; fieldType: string; nullable: boolean; defaultKind: string; defaultValue: string; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "3cb1ffe8bdc15d59",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/fieldStore.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '({ id: string; fieldComment: string; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; ... 4 more ...; nullable: boolean; } | { ...; })[]' is not assignable to parameter of type 'FieldRow[]'. Type '{ id: string; fieldComment: string; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; ... 4 more ...; nullable: boolean; } | { ...; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldComment: string; onUpdate?: FieldOnUpdate; enumMeta?: EnumValueMeta[]; fieldName: string; fieldType: string; nullable: boolean; defaultKind: string; defaultValue: string; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "755624ef056c2891",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/fieldStore.test.ts",
+    "code": "TS2554",
+    "message": "Expected 0 arguments, but got 1.",
+    "sourceFingerprint": "15401a8fead34f88",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/fieldStore.test.ts",
+    "code": "TS2554",
+    "message": "Expected 0 arguments, but got 1.",
+    "sourceFingerprint": "c615f96fb4d48666",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/fieldStore.test.ts",
+    "code": "TS2554",
+    "message": "Expected 0 arguments, but got 1.",
+    "sourceFingerprint": "e113071434f92b0b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/fieldStore.test.ts",
+    "code": "TS2554",
+    "message": "Expected 0 arguments, but got 1.",
+    "sourceFingerprint": "f74257b99ac17e37",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/fieldStore.test.ts",
+    "code": "TS2554",
+    "message": "Expected 0 arguments, but got 1.",
+    "sourceFingerprint": "ff4a486703bf2264",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/subscriptionScope.test.tsx",
+    "code": "TS2554",
+    "message": "Expected 0 arguments, but got 1.",
+    "sourceFingerprint": "f0de7764d93769e4",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/subscriptionScope.test.tsx",
+    "code": "TS2741",
+    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; }' but required in type 'VersionHistoryTarget'.",
+    "sourceFingerprint": "02e003b24fa3e77d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/tabStore.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ tableName: string; tableComment: string; rows: never[]; indexes: never[]; foreignKeys: never[]; }' is not assignable to type 'PersistedState'. Type '{ tableName: string; tableComment: string; rows: never[]; indexes: never[]; foreignKeys: never[]; }' is missing the following properties from type 'SchemaDocumentState': schemaName, dbType, authInput, authObjects",
+    "sourceFingerprint": "e841ac041c0ea116",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/tabStore.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableName' does not exist in type '{ kind: \"saved_table\"; normalizedName: string; tableId?: string | undefined; }'.",
+    "sourceFingerprint": "0908c3d15c23af8c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/tabStore.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableName' does not exist in type '{ kind: \"saved_table\"; normalizedName: string; tableId?: string | undefined; }'.",
+    "sourceFingerprint": "6ed3de2807eb92ea",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/tableOptionsStore.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '(prev: HivePartitionConfig) => { enabled: boolean; clustering?: HiveClusteringConfig | undefined; columns: (HivePartitionColumn | { ...; })[]; }' is not assignable to parameter of type 'Setter<HivePartitionConfig>'. Type '(prev: HivePartitionConfig) => { enabled: boolean; clustering?: HiveClusteringConfig | undefined; columns: (HivePartitionColumn | { ...; })[]; }' is not assignable to type '(previous: HivePartitionConfig) => HivePartitionConfig'. Type '{ enabled: boolean; clustering?: HiveClusteringConfig; columns: (HivePartitionColumn | { name: string; type: string; })[]; }' is not assignable to type 'HivePartitionConfig'. Types of property 'columns' are incompatible. Type '(HivePartitionColumn | { name: string; type: string; })[]' is not assignable to type 'HivePartitionColumn[]'. Type 'HivePartitionColumn | { name: string; type: string; }' is not assignable to type 'HivePartitionColumn'. Property 'comment' is missing in type '{ name: string; type: string; }' but required in type 'HivePartitionColumn'.",
+    "sourceFingerprint": "fcbc7ebbfa24766b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/stores/tableOptionsStore.test.ts",
+    "code": "TS2741",
+    "message": "Property 'comment' is missing in type '{ name: string; type: string; }' but required in type 'HivePartitionColumn'.",
+    "sourceFingerprint": "9695b27447f06951",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils.test.ts",
+    "code": "TS2304",
+    "message": "Cannot find name 'FieldRow'.",
+    "sourceFingerprint": "94cbe6002b65e302",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils.test.ts",
+    "code": "TS2304",
+    "message": "Cannot find name 'FieldRow'.",
+    "sourceFingerprint": "a6cddf0b08602aab",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils.test.ts",
+    "code": "TS2304",
+    "message": "Cannot find name 'FieldRow'.",
+    "sourceFingerprint": "c5c57a5135357092",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils.test.ts",
+    "code": "TS2322",
+    "message": "Type 'null' is not assignable to type 'string'.",
+    "sourceFingerprint": "3237b1bb6a4b4eda",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils.test.ts",
+    "code": "TS2322",
+    "message": "Type 'null' is not assignable to type 'string'.",
+    "sourceFingerprint": "a69465d7a3420094",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils.test.ts",
+    "code": "TS2322",
+    "message": "Type 'null' is not assignable to type 'string'.",
+    "sourceFingerprint": "b14d518fabd4f40e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils.test.ts",
+    "code": "TS2322",
+    "message": "Type 'undefined' is not assignable to type 'string'.",
+    "sourceFingerprint": "1d01fa724a9ca95d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; fields: { name: string; direction: 'ASC'; }[]; kind: string; }' is not assignable to type 'IndexDefinition'. Types of property 'kind' are incompatible. Type 'string' is not assignable to type 'IndexKind'.",
+    "sourceFingerprint": "180b65f5da354135",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type 'FieldRow' is not assignable to type 'GeneratedField'. Types of property 'defaultKind' are incompatible. Type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'. Type 'undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'.",
+    "sourceFingerprint": "f5fb324cabd3f2b8",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type 'FieldRow[]' is not assignable to type 'GeneratedField[]'. Type 'FieldRow' is not assignable to type 'GeneratedField'. Types of property 'defaultKind' are incompatible. Type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'. Type 'undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'.",
+    "sourceFingerprint": "70b767d81e7802ee",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'. Type 'undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'.",
+    "sourceFingerprint": "e6f869ec8489cc5d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '\"expanded\"' is not assignable to type 'SqlFormatMode | undefined'.",
+    "sourceFingerprint": "31420bcbe0ef0ae8",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; }[]' is not assignable to type 'GeneratedField[]'. Type '{ fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; }' is not assignable to type 'GeneratedField'. Types of property 'defaultKind' are incompatible. Type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'. Type 'undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'.",
+    "sourceFingerprint": "d69c9757675bc2ad",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; enumMeta?: EnumValueMeta[] | undefined; id: str...' is not assignable to type 'GeneratedField[]'. Type '{ fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: FieldDefaultKind; defaultValue?: string; onUpdate?: FieldOnUpdate; enumMeta?: EnumValueMeta[]; id: string; fieldName: string; }' is not assignable to type 'GeneratedField'. Types of property 'defaultKind' are incompatible. Type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'. Type 'undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'.",
+    "sourceFingerprint": "edb77d06ff365db7",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; enumMeta?: EnumV...' is not assignable to type 'GeneratedField[]'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: FieldDefaultKind; defaultValue?: string; onUpdate?: FieldOnUpdate; enumMeta?: EnumValueMeta[]; isPrimaryKey: boolean; }' is not assignable to type 'GeneratedField'. Types of property 'defaultKind' are incompatible. Type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'. Type 'undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'.",
+    "sourceFingerprint": "1ba9d2cb320189e9",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; enumMeta?: EnumV...' is not assignable to type 'GeneratedField[]'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: FieldDefaultKind; defaultValue?: string; onUpdate?: FieldOnUpdate; enumMeta?: EnumValueMeta[]; isPrimaryKey: boolean; }' is not assignable to type 'GeneratedField'. Types of property 'defaultKind' are incompatible. Type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'. Type 'undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'.",
+    "sourceFingerprint": "5fd04b876ec1996e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; enumMeta?: EnumV...' is not assignable to type 'GeneratedField[]'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: FieldDefaultKind; defaultValue?: string; onUpdate?: FieldOnUpdate; enumMeta?: EnumValueMeta[]; isPrimaryKey: boolean; }' is not assignable to type 'GeneratedField'. Types of property 'defaultKind' are incompatible. Type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'. Type 'undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'.",
+    "sourceFingerprint": "a3f2f3b3d617a525",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; enumMeta?: EnumV...' is not assignable to type 'GeneratedField[]'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: FieldDefaultKind; defaultValue?: string; onUpdate?: FieldOnUpdate; enumMeta?: EnumValueMeta[]; isPrimaryKey: false; }' is not assignable to type 'GeneratedField'. Types of property 'defaultKind' are incompatible. Type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'. Type 'undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'.",
+    "sourceFingerprint": "905b6f6c7c3300dd",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; enumMeta?: EnumV...' is not assignable to type 'GeneratedField[]'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: FieldDefaultKind; defaultValue?: string; onUpdate?: FieldOnUpdate; enumMeta?: EnumValueMeta[]; isPrimaryKey: true; }' is not assignable to type 'GeneratedField'. Types of property 'defaultKind' are incompatible. Type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'. Type 'undefined' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"'.",
+    "sourceFingerprint": "e5ade8427f860739",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; kind: string; fields: ({ name: string; direction: 'DESC'; } | { name: string; direction: 'ASC'; })[]; }' is not assignable to type 'IndexDefinition'. Types of property 'kind' are incompatible. Type 'string' is not assignable to type 'IndexKind'.",
+    "sourceFingerprint": "7bc0477a815bd4af",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; kind: string; fields: ({ name: string; direction: \"DESC\"; } | { name: string; direction: \"ASC\"; })[]; }[]' is not assignable to type 'GeneratedIndex[]'. Property 'unique' is missing in type '{ id: string; name: string; kind: string; fields: ({ name: string; direction: 'DESC'; } | { name: string; direction: 'ASC'; })[]; }' but required in type 'GeneratedIndex'.",
+    "sourceFingerprint": "025e17dd9fe6c244",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "646710a6d00cba9b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "91295925e03bd3d0",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2741",
+    "message": "Property 'unique' is missing in type '{ fields: IndexField[]; kind: IndexKind; id: string; name: string; }' but required in type 'GeneratedIndex'.",
+    "sourceFingerprint": "106ed4e1a60be2e1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2741",
+    "message": "Property 'unique' is missing in type '{ fields: IndexField[]; kind: IndexKind; id: string; name: string; }' but required in type 'GeneratedIndex'.",
+    "sourceFingerprint": "f2fd557a7d59e117",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/aiSchemaChanges.test.ts",
+    "code": "TS2741",
+    "message": "Property 'unique' is missing in type '{ id: string; name: string; kind: IndexKind; fields: [{ name: string; direction: \"ASC\"; }]; }' but required in type 'GeneratedIndex'.",
+    "sourceFingerprint": "d052bba7d5c568ec",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/alterDdlGenerator.test.ts",
+    "code": "TS2741",
+    "message": "Property 'foreignKeys' is missing in type '{ hasChanges: false; tableNameChanged: false; tableCommentChanged: false; miscConfigChanged: false; fields: never[]; indexes: never[]; }' but required in type 'TableDiff'.",
+    "sourceFingerprint": "aade1f44a672a814",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/docsLink.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '\"fr-FR\"' is not assignable to parameter of type '\"en-US\" | \"ja-JP\" | \"zh-CN\" | null | undefined'.",
+    "sourceFingerprint": "d0582db096fcab4c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/generateRollbackDDL.test.ts",
+    "code": "TS2741",
+    "message": "Property 'foreignKeys' is missing in type '{ hasChanges: false; tableNameChanged: false; tableCommentChanged: false; miscConfigChanged: false; fields: never[]; indexes: never[]; }' but required in type 'TableDiff'.",
+    "sourceFingerprint": "aade1f44a672a814",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/mockDataConstraints.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'label' does not exist in type 'EnumValueMeta'.",
+    "sourceFingerprint": "01a0f1c3c8b6e1c3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/mockDataConstraints.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'label' does not exist in type 'EnumValueMeta'.",
+    "sourceFingerprint": "c585a2dfd3735ef3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/savedTableBatchImport.test.ts",
+    "code": "TS2739",
+    "message": "Type '{ id: string; fieldName: string; fieldType: string; }' is missing the following properties from type 'FieldRow': fieldComment, nullable",
+    "sourceFingerprint": "b5b95c2d3d7b8a3e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/schemaLint.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "d3b12dad0028e3d2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ objectType?: SchemaObjectType; schemaName?: string | undefined; viewDefinition?: string; viewCreateOrReplace?: boolean; citusShardingConfig?: CitusShardingConfig; mysqlPartitionConfig?: MysqlPartitionConfig; ... 11 more ...; authObjects: string[]; }' is not assignable to type 'PersistedState'. Type '{ objectType?: SchemaObjectType; schemaName?: string | undefined; viewDefinition?: string; viewCreateOrReplace?: boolean; citusShardingConfig?: CitusShardingConfig; mysqlPartitionConfig?: MysqlPartitionConfig; ... 11 more ...; authObjects: string[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'schemaName' are incompatible. Type 'string | undefined' is not assignable to type 'string'. Type 'undefined' is not assignable to type 'string'.",
+    "sourceFingerprint": "8f62f9797b408c12",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'isPrimary' does not exist in type 'Partial<IndexDefinition>'.",
+    "sourceFingerprint": "4c935cd57cdacf88",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'isPrimary' does not exist in type 'Partial<IndexDefinition>'.",
+    "sourceFingerprint": "ab925c21765eb58f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "049587e170e56be3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "307e6edbe6dd227e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "3e4e3e6a2f6fe993",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "42f38aafcf73f7c5",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "42f619de1f40ee97",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "4eeaf6caeaa39da3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "4fc26c49adcd52be",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "5a6efbdacafaa705",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "66cded87ad569453",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "70477582b915d39e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "73a8cfb09cc4175a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "7898239066e46b05",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "972278144c7c587a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "9ba7ed7036c32141",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "9d57f826e116f4fb",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "a2765afb69618e8a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "a4c59b925ce396f2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "b2f0e21bbb8b68a1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "b7327e873f52dc43",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "b82d38ce50301990",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "c4993d95d87bf1d4",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "cddf4fce0de72706",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "cf24f124117c8f94",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "d1e04d58a4854fa3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "d4e204b0ac57596c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "d61e7951b5e6baa1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "d66ec7195e725830",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "d9be992b1aa8a94d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "dc14bf2d1e9846cc",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "de1f432d292020c8",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "effe3cfc67d852bd",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "fd8aa1e3d5ce3dff",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/tableDiff.test.ts",
+    "code": "TS2741",
+    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\"; defaultValue: string; onUpdate: \"current_timestamp\" | \"none\"; }' but required in type 'FieldRow'.",
+    "sourceFingerprint": "fe094ca337528c3a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/test-data.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "1f6514bd84c19025",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/test-data.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "80b402861a9569de",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/test-data.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "838a8e07bc9c81be",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/test-data.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "88dbaebe83b42178",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/test-data.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "a8a2eccfe38f5cc1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/test-data.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "bcf72ac1cf3ce46e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/test-data.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "cfb5e138eb5a5fed",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/test-utils.tsx",
+    "code": "TS2741",
+    "message": "Property 'currentTarget' is missing in type '{ target: { value: string; }; preventDefault: Mock<Procedure>; stopPropagation: Mock<Procedure>; }' but required in type 'MockEvent'.",
+    "sourceFingerprint": "d05c6a6c77cc5e31",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/workspaceStateDb.test.ts",
+    "code": "TS2339",
+    "message": "Property 'activeState' does not exist on type 'WorkspaceSessionRecord'.",
+    "sourceFingerprint": "4a7f49522568f802",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/workspaceStateDb.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'activeState' does not exist in type 'WorkspaceSessionRecord'.",
+    "sourceFingerprint": "166c9ead31197de7",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/workspaceStateDb.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'activeState' does not exist in type 'WorkspaceSessionRecord'.",
+    "sourceFingerprint": "d04b3fef3373c24b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/utils/workspaceStateDb.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableName' does not exist in type '{ kind: \"saved_table\"; normalizedName: string; tableId?: string | undefined; }'.",
+    "sourceFingerprint": "ad33244400d98497",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/webmcp/schemaPatch.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; kind: \"field.update\"; fieldId: string; changes: {}; } | { id: string; kind: \"field.remove\"; fieldId: string; } | { id: string; kind: \"field.reorder\"; fieldId: string; } | { id: string; kind: \"field.reorder\"; fieldId: string; afterFieldId: string; } | { ...; } | { ...; } | { ...; }' is not assignable to type 'SchemaPatchOperation'. Type '{ id: string; kind: \"index.add\"; index: { name: string; fields: { name: string; direction: \"ASC\"; }[]; unique: boolean; }; }' is not assignable to type 'SchemaPatchOperation'. Type '{ id: string; kind: \"index.add\"; index: { name: string; fields: { name: string; direction: \"ASC\"; }[]; unique: boolean; }; }' is not assignable to type '{ id: string; kind: \"index.add\"; index: Omit<IndexDefinition, \"id\">; }'. Types of property 'index' are incompatible. Property 'kind' is missing in type '{ name: string; fields: { name: string; direction: \"ASC\"; }[]; unique: boolean; }' but required in type 'Omit<IndexDefinition, \"id\">'.",
+    "sourceFingerprint": "e60000e6c44a1a13",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/webmcp/schemaPatch.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'unique' does not exist in type 'Omit<IndexDefinition, \"id\">'.",
+    "sourceFingerprint": "330dd4265a730f37",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/webmcp/schemaPatch.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'unique' does not exist in type 'Omit<IndexDefinition, \"id\">'.",
+    "sourceFingerprint": "79263436282a031f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/webmcp/schemaPatch.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'unique' does not exist in type 'Omit<IndexDefinition, \"id\">'.",
+    "sourceFingerprint": "a86eed74feabf4de",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/web",
+    "file": "src/__tests__/webmcp/schemaPatch.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'unique' does not exist in type 'Partial<Omit<IndexDefinition, \"id\">>'.",
+    "sourceFingerprint": "df7c1bec08ef75fa",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "165c46a8e40df2d8",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "1c4b6456a2830a7a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "2894a6b5b627f300",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "50e0817f933631ea",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "5453af1700b582e9",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "5649807ae11a5f58",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "6ec6668e663f120f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "718efdfb38fc3c51",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "cca8839c2d378f47",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "d04fb5a583839d96",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/admin-route.test.ts",
+    "code": "TS2352",
+    "message": "Conversion of type '{ waitUntil: Mock<Procedure>; passThroughOnException(): void; }' to type 'ExecutionContext<unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first. Type '{ waitUntil: Mock<Procedure>; passThroughOnException(): void; }' is missing the following properties from type 'ExecutionContext<unknown>': exports, props, tracing, abort",
+    "sourceFingerprint": "ecd99fc84f5a2414",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/authCredits.test.ts",
+    "code": "TS18046",
+    "message": "'body' is of type 'unknown'.",
+    "sourceFingerprint": "b2269e8ea3808180",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/generateTablePrompt.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ dbType: string; locale: \"en-US\" | \"ja-JP\" | \"zh-CN\"; existingConfig: { tableName: string; }; previousSchema: { tableName: string; }; mode: \"generate\"; }' is not assignable to parameter of type '{ dbType: \"dm\" | \"gaussdb\" | \"gbase\" | \"hive\" | \"kingbase\" | \"mariadb\" | \"mysql\" | \"oceanbase\" | \"oceanbase-oracle\" | \"oracle\" | \"polardb\" | \"postgresql\" | \"postgresql-citus\" | \"sqlserver\" | \"tidb\"; ... 4 more ...; previousSchema?: unknown; }'. Types of property 'dbType' are incompatible. Type 'string' is not assignable to type '\"dm\" | \"gaussdb\" | \"gbase\" | \"hive\" | \"kingbase\" | \"mariadb\" | \"mysql\" | \"oceanbase\" | \"oceanbase-oracle\" | \"oracle\" | \"polardb\" | \"postgresql\" | \"postgresql-citus\" | \"sqlserver\" | \"tidb\"'.",
+    "sourceFingerprint": "47b163a690a423dc",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/generateTablePrompt.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ dbType: string; locale: \"en-US\" | \"ja-JP\" | \"zh-CN\"; existingConfig: { tableName: string; }; previousSchema: { tableName: string; }; mode: \"patch\"; }' is not assignable to parameter of type '{ dbType: \"dm\" | \"gaussdb\" | \"gbase\" | \"hive\" | \"kingbase\" | \"mariadb\" | \"mysql\" | \"oceanbase\" | \"oceanbase-oracle\" | \"oracle\" | \"polardb\" | \"postgresql\" | \"postgresql-citus\" | \"sqlserver\" | \"tidb\"; ... 4 more ...; previousSchema?: unknown; }'. Types of property 'dbType' are incompatible. Type 'string' is not assignable to type '\"dm\" | \"gaussdb\" | \"gbase\" | \"hive\" | \"kingbase\" | \"mariadb\" | \"mysql\" | \"oceanbase\" | \"oceanbase-oracle\" | \"oracle\" | \"polardb\" | \"postgresql\" | \"postgresql-citus\" | \"sqlserver\" | \"tidb\"'.",
+    "sourceFingerprint": "32a584b659e68f30",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/helpers/sqliteD1.ts",
+    "code": "TS1294",
+    "message": "This syntax is not allowed when 'erasableSyntaxOnly' is enabled.",
+    "sourceFingerprint": "2598d0b424bea102",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/helpers/sqliteD1.ts",
+    "code": "TS1294",
+    "message": "This syntax is not allowed when 'erasableSyntaxOnly' is enabled.",
+    "sourceFingerprint": "b89e84377ab95257",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/helpers/sqliteD1.ts",
+    "code": "TS1294",
+    "message": "This syntax is not allowed when 'erasableSyntaxOnly' is enabled.",
+    "sourceFingerprint": "fa92bf27d3ff9857",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/helpers/sqliteD1.ts",
+    "code": "TS1294",
+    "message": "This syntax is not allowed when 'erasableSyntaxOnly' is enabled.",
+    "sourceFingerprint": "fdd2c5fa257385c3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/helpers/sqliteD1.ts",
+    "code": "TS2345",
+    "message": "Argument of type 'URL' is not assignable to parameter of type 'string | URL'. Type 'URL' is not assignable to type 'import(\"node:url\").URL'. The types of 'searchParams[Symbol.iterator]()' are incompatible between these types. Property '[Symbol.dispose]' is missing in type 'IterableIterator<[key: string, value: string]>' but required in type 'URLSearchParamsIterator<[string, string]>'.",
+    "sourceFingerprint": "3511d7615dafd8ca",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/helpers/sqliteD1.ts",
+    "code": "TS2345",
+    "message": "Argument of type 'unknown' is not assignable to parameter of type 'SQLInputValue'.",
+    "sourceFingerprint": "79809e5d02dafaf0",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/helpers/sqliteD1.ts",
+    "code": "TS2345",
+    "message": "Argument of type 'unknown' is not assignable to parameter of type 'SQLInputValue'.",
+    "sourceFingerprint": "8f1db90a65523446",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/helpers/sqliteD1.ts",
+    "code": "TS2345",
+    "message": "Argument of type 'unknown' is not assignable to parameter of type 'SQLInputValue'.",
+    "sourceFingerprint": "cdf03f1d9dbd3839",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/helpers/sqliteD1.ts",
+    "code": "TS2345",
+    "message": "Argument of type 'unknown' is not assignable to parameter of type 'SQLInputValue'.",
+    "sourceFingerprint": "cea0dede1997d8a9",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/lib/adminAuth.test.ts",
+    "code": "TS2339",
+    "message": "Property 'crypto' does not exist on type 'typeof globalThis'.",
+    "sourceFingerprint": "01fad7c31d55554b",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/lib/adminAuth.test.ts",
+    "code": "TS2339",
+    "message": "Property 'crypto' does not exist on type 'typeof globalThis'.",
+    "sourceFingerprint": "51e1b9a94ca60a6c",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/lib/adminAuth.test.ts",
+    "code": "TS2339",
+    "message": "Property 'crypto' does not exist on type 'typeof globalThis'.",
+    "sourceFingerprint": "cf1b64f8f2ab2d99",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/lib/credits.test.ts",
+    "code": "TS2322",
+    "message": "Type 'string' is not assignable to type 'number'.",
+    "sourceFingerprint": "62276aadfead6329",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/lib/credits.test.ts",
+    "code": "TS2322",
+    "message": "Type 'string' is not assignable to type 'number'.",
+    "sourceFingerprint": "80f4087d1e721053",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/lib/credits.test.ts",
+    "code": "TS2322",
+    "message": "Type 'string' is not assignable to type 'number'.",
+    "sourceFingerprint": "9d753d23a99ebdc2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/lib/credits.test.ts",
+    "code": "TS2322",
+    "message": "Type 'string' is not assignable to type 'number'.",
+    "sourceFingerprint": "d9133923c3742aff",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/lib/workspaceMigration.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; kind: string; fields: { name: string; direction: 'ASC'; }[]; }' is not assignable to type 'IndexDefinition'. Types of property 'kind' are incompatible. Type 'string' is not assignable to type 'IndexKind'.",
+    "sourceFingerprint": "7ba976fc947e070f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/lib/workspaceYDocDurableObject.test.ts",
+    "code": "TS2322",
+    "message": "Type 'unknown[]' is not assignable to type 'WorkspaceMigrationResult[]'. Type 'unknown' is not assignable to type 'WorkspaceMigrationResult'.",
+    "sourceFingerprint": "32708447776acf40",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/lib/workspaceYDocDurableObject.test.ts",
+    "code": "TS2493",
+    "message": "Tuple type '[]' of length '0' has no element at index '0'.",
+    "sourceFingerprint": "9511a9caa3526948",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/parse-multi-sql-route.test.ts",
+    "code": "TS18046",
+    "message": "'payload' is of type 'unknown'.",
+    "sourceFingerprint": "31f8f91665ddc1f2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/parse-multi-sql-route.test.ts",
+    "code": "TS18046",
+    "message": "'payload' is of type 'unknown'.",
+    "sourceFingerprint": "4ecddb82652e9bd1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/parse-multi-sql-route.test.ts",
+    "code": "TS18046",
+    "message": "'payload' is of type 'unknown'.",
+    "sourceFingerprint": "8394927c98fb8350",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/parse-multi-sql-route.test.ts",
+    "code": "TS18046",
+    "message": "'payload' is of type 'unknown'.",
+    "sourceFingerprint": "889dec31d15f6678",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/parse-multi-sql-route.test.ts",
+    "code": "TS18046",
+    "message": "'payload' is of type 'unknown'.",
+    "sourceFingerprint": "c109fd649eea1643",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/worker",
+    "file": "server-api/__tests__/userSystemConfig.test.ts",
+    "code": "TS2790",
+    "message": "The operand of a 'delete' operator must be optional.",
+    "sourceFingerprint": "17e1d90390e08198",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/concurrentFieldEdits.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
+    "sourceFingerprint": "9ca296176e3283a8",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ state?: undefined; updatedAt?: undefined; } | { state: { tableName: string; tableComment: string; dbType: string; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }; updatedAt: number; } | { ...; }' is not assignable to type 'null'. Type '{ state?: {}; updatedAt?: undefined; }' is not assignable to type 'null'.",
+    "sourceFingerprint": "1696a8d3a7b28000",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ state: { tableName: string; tableComment: string; dbType: string; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }; createdAt: number; updatedAt: number; folderId: string; draftId: number; } | ... 21 more ... | null' is not assignable to parameter of type '{ draftId: string; state: { tableName: string; tableComment: string; dbType: string; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }; createdAt: number; updatedAt: number; folderId: string; }'. Type 'null' is not assignable to type '{ draftId: string; state: { tableName: string; tableComment: string; dbType: string; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }; createdAt: number; updatedAt: number; folderId: string; }'.",
+    "sourceFingerprint": "84e93775de58f423",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableId' does not exist in type '{ normalizedName: string; name: string; state: { tableName: string; tableComment: string; dbType: string; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }; createdAt: number; updatedAt: number; folderId: string; }'.",
+    "sourceFingerprint": "4099a8555fa2a130",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableId' does not exist in type '{ normalizedName: string; name: string; state: { tableName: string; tableComment: string; dbType: string; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }; createdAt: number; updatedAt: number; folderId: string; }'.",
+    "sourceFingerprint": "b9b9b8f158cec26f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableId' does not exist in type '{ normalizedName: string; name: string; state: { tableName: string; tableComment: string; dbType: string; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }; createdAt: number; updatedAt: number; folderId: string; }'.",
+    "sourceFingerprint": "ba1b4bc933cadb8d",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'tableId' does not exist in type '{ normalizedName: string; tableName: string; baseSignature: string; state: { tableName: string; tableComment: string; dbType: string; rows: never[]; addCount: number; indexes: never[]; authInput: string; authObjects: never[]; }; updatedAt: number; }'.",
+    "sourceFingerprint": "d92fb3ddd27982f9",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2790",
+    "message": "The operand of a 'delete' operator must be optional.",
+    "sourceFingerprint": "0f6ad547af3432d5",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2790",
+    "message": "The operand of a 'delete' operator must be optional.",
+    "sourceFingerprint": "2325d9c3d07990ac",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2790",
+    "message": "The operand of a 'delete' operator must be optional.",
+    "sourceFingerprint": "280dfc731b8cd496",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2790",
+    "message": "The operand of a 'delete' operator must be optional.",
+    "sourceFingerprint": "30652ff3b0a0b198",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2790",
+    "message": "The operand of a 'delete' operator must be optional.",
+    "sourceFingerprint": "574581ecb214b369",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/persistedStateCodec.test.ts",
+    "code": "TS2790",
+    "message": "The operand of a 'delete' operator must be optional.",
+    "sourceFingerprint": "9c1b9fd39159c171",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/savedDraftBase.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ tableId: string; normalizedName: string; name: string; state: PersistedState; updatedAt: number; }' is not assignable to parameter of type 'WorkspaceSavedTableRecord'. Property 'createdAt' is missing in type '{ tableId: string; normalizedName: string; name: string; state: PersistedState; updatedAt: number; }' but required in type '{ tableId: string; createdAt: number; }'.",
+    "sourceFingerprint": "61b25069e1941a92",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/savedDraftBase.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ tableId: string; normalizedName: string; name: string; state: { objectType?: SchemaObjectType; tableName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; ... 11 more ...; schemaName: string; }; updatedAt: number; }' is not assignable to parameter of type 'WorkspaceSavedTableRecord'. Property 'createdAt' is missing in type '{ tableId: string; normalizedName: string; name: string; state: { objectType?: SchemaObjectType; tableName: string; tableComment: string; dbType: DatabaseType; viewDefinition?: string; viewCreateOrReplace?: boolean; ... 11 more ...; schemaName: string; }; updatedAt: number; }' but required in type '{ tableId: string; createdAt: number; }'.",
+    "sourceFingerprint": "febd8686e11175a6",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceRecords.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ normalizedName: string; name: string; state: SchemaDocumentState; createdAt: number; updatedAt: number; trashedAt: number; }' is not assignable to parameter of type 'WorkspaceSavedTableRecord'. Property 'tableId' is missing in type '{ normalizedName: string; name: string; state: SchemaDocumentState; createdAt: number; updatedAt: number; trashedAt: number; }' but required in type '{ tableId: string; createdAt: number; }'.",
+    "sourceFingerprint": "56654c2663fbd6ee",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceRecords.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ normalizedName: string; name: string; state: SchemaDocumentState; createdAt: number; updatedAt: number; }' is not assignable to parameter of type 'WorkspaceSavedTableRecord'. Property 'tableId' is missing in type '{ normalizedName: string; name: string; state: SchemaDocumentState; createdAt: number; updatedAt: number; }' but required in type '{ tableId: string; createdAt: number; }'.",
+    "sourceFingerprint": "1d857aee58ad3186",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceRecords.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'sqlFormatMode' does not exist in type 'SchemaDocumentState'.",
+    "sourceFingerprint": "799621ec9218d89e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type '(FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; })[]' is not assignable to type 'FieldRow[]'. Type 'FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "1ff4adb5224c1972",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type '(FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; })[]' is not assignable to type 'FieldRow[]'. Type 'FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "654952ea2f7c9f0f",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type '(FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; })[]' is not assignable to type 'FieldRow[]'. Type 'FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "660f7ef70ddb0da2",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type '(FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; })[]' is not assignable to type 'FieldRow[]'. Type 'FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "d8e2974a8c879db3",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type 'FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "23a8d7fac96fba14",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type 'FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "47d71000eb7b46a7",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type 'FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "6262ba3622d3a582",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type 'FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "653d5fa2a4d85236",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type 'FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "a00ffcf9643d3940",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type 'FieldRow | { id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; enumMeta: { ...; }[]; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "d9f1963c1b62f9a1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; enumMeta: { ...;...' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string; defaultKind: string; onUpdate: string; enumMeta: { value: string; color: string; }[]; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "2a3df6c8d090ea73",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; } | { ...; }' is not assignable to type 'FieldRow'. Type '{ id: string; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultValue?: string | undefined; defaultKind: string; onUpdate: string; }' is not assignable to type 'FieldRow'. Types of property 'defaultKind' are incompatible. Type 'string' is not assignable to type '\"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined'.",
+    "sourceFingerprint": "8bb92a51691ceb5a",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2322",
+    "message": "Type '{ id: string; name: string; fields: { name: string; direction: \"ASC\"; }[]; }[]' is not assignable to type 'IndexDefinition[]'. Property 'kind' is missing in type '{ id: string; name: string; fields: { name: string; direction: 'ASC'; }[]; }' but required in type 'IndexDefinition'.",
+    "sourceFingerprint": "a30be5a55792db19",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type '{ rows: { fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; defaultKind?: \"auto_increment\" | \"constant\" | \"current_timestamp\" | \"expression\" | \"none\" | \"uuid\" | undefined; defaultValue?: string | undefined; onUpdate?: \"current_timestamp\" | ... 1 more ... | undefined; enumMeta?: EnumValue...' is not assignable to parameter of type 'Partial<PersistedState> | undefined'. Type '{ indexes: { id: string; name: string; fields: never[]; kind: string; }[]; }' is not assignable to type 'Partial<PersistedState>'. Types of property 'indexes' are incompatible. Type '{ id: string; name: string; fields: never[]; kind: string; }[]' is not assignable to type 'IndexDefinition[]'. Type '{ id: string; name: string; fields: never[]; kind: string; }' is not assignable to type 'IndexDefinition'. Types of property 'kind' are incompatible. Type 'string' is not assignable to type 'IndexKind'.",
+    "sourceFingerprint": "5fa4c288dd84691e",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'enabled' does not exist in type 'CitusShardingConfig'.",
+    "sourceFingerprint": "26d891e922a5b1d0",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2353",
+    "message": "Object literal may only specify known properties, and 'sqlFormatMode' does not exist in type 'SchemaDocumentState'.",
+    "sourceFingerprint": "370d2b93162458fc",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2739",
+    "message": "Type '{ fieldName: string; fieldType: string; nullable: false; }' is missing the following properties from type 'FieldRow': id, fieldComment",
+    "sourceFingerprint": "b07510d12e4cd5e1",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2741",
+    "message": "Property 'enabled' is missing in type '{ engine: string; }' but required in type 'TableMiscConfig'.",
+    "sourceFingerprint": "08e401b5de9500e6",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDoc.test.ts",
+    "code": "TS2741",
+    "message": "Property 'enabled' is missing in type '{ engine: string; }' but required in type 'TableMiscConfig'.",
+    "sourceFingerprint": "09bcb98027aff494",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceTableDocSequences.test.ts",
+    "code": "TS2741",
+    "message": "Property 'enabled' is missing in type '{ engine: string; }' but required in type 'TableMiscConfig'.",
+    "sourceFingerprint": "c325b016dcdec549",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceYDocCodec.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type 'SchemaDocumentState' is not assignable to parameter of type 'PersistedState'. Type 'SchemaDocumentState' is missing the following properties from type 'EditorSessionState': sqlFormatMode, addCount",
+    "sourceFingerprint": "3a56ddb73d2f1564",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceYDocCodec.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type 'SchemaDocumentState' is not assignable to parameter of type 'PersistedState'. Type 'SchemaDocumentState' is missing the following properties from type 'EditorSessionState': sqlFormatMode, addCount",
+    "sourceFingerprint": "a751edf31fcc3189",
+    "count": 1
+  },
+  {
+    "package": "@ddlbuilder/workspace-core",
+    "file": "src/__tests__/workspaceYDocCodec.test.ts",
+    "code": "TS2345",
+    "message": "Argument of type 'SchemaDocumentState' is not assignable to parameter of type 'PersistedState'. Type 'SchemaDocumentState' is missing the following properties from type 'EditorSessionState': sqlFormatMode, addCount",
+    "sourceFingerprint": "a94fa3012b13fdae",
+    "count": 1
+  }
+]

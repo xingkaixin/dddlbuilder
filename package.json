@@ -37,7 +37,10 @@
     "test:coverage": "turbo run test:coverage && vitest run --coverage --project scripts",
     "test:e2e": "playwright test && playwright test --config playwright.runtime.config.ts",
     "deploy:cf": "pnpm run build && pnpm exec tsx scripts/deploy.ts",
-    "typecheck": "turbo run typecheck && tsc --noEmit -p tsconfig.node.json",
+    "typecheck": "turbo run typecheck && tsc --noEmit -p tsconfig.node.json && pnpm run typecheck:tests",
+    "typecheck:tests": "tsx scripts/typecheck-tests.ts",
+    "typecheck:tests:baseline": "tsx scripts/typecheck-tests.ts --write-baseline",
+    "typecheck:tests:baseline:init": "tsx scripts/typecheck-tests.ts --initialize-baseline",
     "test:runtime": "pnpm exec tsx scripts/verify-d1-runtime.ts",
     "test:e2e:runtime": "playwright test --config playwright.runtime.config.ts"
   },
