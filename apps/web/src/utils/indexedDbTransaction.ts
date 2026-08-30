@@ -31,7 +31,11 @@ export const runIndexedDbTransaction = <T>(
     try {
       const tx = db.transaction(storeNames, mode);
       transaction = tx;
-      tx.onerror = () => fail(tx.error ?? new Error('IndexedDB 事务失败'));
+      tx.onerror = (event?: Event) => {
+        const requestError = (event?.target as IDBRequest | null)?.error;
+        event?.preventDefault();
+        fail(requestError ?? tx.error ?? new Error('IndexedDB 事务失败'));
+      };
       tx.onabort = () => fail(tx.error ?? new Error('IndexedDB 事务被中止'));
       tx.oncomplete = () => {
         if (settled) return;

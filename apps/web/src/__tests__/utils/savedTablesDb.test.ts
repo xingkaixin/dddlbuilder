@@ -146,7 +146,10 @@ describe('savedTablesDb', () => {
     };
 
     await addSavedTable(record, anonymousScope);
-    await expect(addSavedTable(record, anonymousScope)).rejects.toThrow('ConstraintError');
+    await expect(addSavedTable(record, anonymousScope)).rejects.toHaveProperty(
+      'name',
+      'ConstraintError',
+    );
   });
 
   it('should list metadata without loading full state', async () => {
@@ -157,14 +160,14 @@ describe('savedTablesDb', () => {
         dbType: 'postgresql',
         rows: [
           {
-            order: 1,
+            id: 'field-id',
             fieldName: 'id',
             fieldType: 'int',
             fieldComment: '',
             nullable: false,
           },
           {
-            order: 2,
+            id: 'field-name',
             fieldName: 'name',
             fieldType: 'varchar',
             fieldComment: '',

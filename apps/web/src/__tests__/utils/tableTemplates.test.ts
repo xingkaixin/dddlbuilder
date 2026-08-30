@@ -21,7 +21,7 @@ const state: PersistedState = {
   sqlFormatMode: 'compact',
   rows: [
     {
-      order: 1,
+      id: 'field-id',
       fieldName: 'id',
       fieldType: 'bigint',
       fieldComment: 'ID',
@@ -31,7 +31,7 @@ const state: PersistedState = {
       onUpdate: 'none',
     },
     {
-      order: 2,
+      id: 'field-empty',
       fieldName: '',
       fieldType: '',
       fieldComment: '',
@@ -58,7 +58,7 @@ const state: PersistedState = {
 describe('tableTemplates', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
   });
 
@@ -119,7 +119,7 @@ describe('tableTemplates', () => {
     expect(next.tableComment).toBe('新订单表');
     expect(next.authObjects).toEqual(['readonly']);
     expect(next.rows).toHaveLength(1);
-    expect(next.rows[0].order).toBe(1);
+    expect(next.rows[0].fieldName).toBe('id');
     expect(next.indexes).toHaveLength(1);
   });
 

@@ -16,7 +16,7 @@ import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fak
 describe('fieldTemplates', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
   });
 

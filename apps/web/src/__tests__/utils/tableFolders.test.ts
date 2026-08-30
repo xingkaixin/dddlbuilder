@@ -43,7 +43,7 @@ const createState = (): PersistedState => ({
 describe('tableFolders', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
   });
 
@@ -120,8 +120,8 @@ describe('tableFolders', () => {
   it('deletes only the selected visible root when stored folders form a cycle', async () => {
     await bulkPutFolders(
       [
-        { id: 'a', name: 'A', parentId: 'b', order: 1, createdAt: 1 },
-        { id: 'b', name: 'B', parentId: 'a', order: 2, createdAt: 1 },
+        { id: 'a', name: 'A', parentId: 'b', order: 1, createdAt: 1, updatedAt: 1 },
+        { id: 'b', name: 'B', parentId: 'a', order: 2, createdAt: 1, updatedAt: 1 },
       ],
       anonymousScope,
     );
@@ -151,8 +151,14 @@ describe('tableFolders', () => {
     const workspaceA = { kind: 'user' as const, userId: 'u1', workspaceId: 'ws-a' };
     const workspaceB = { kind: 'user' as const, userId: 'u1', workspaceId: 'ws-b' };
 
-    await bulkPutFolders([{ id: 'folder-1', name: 'A', order: 1, createdAt: 1 }], workspaceA);
-    await bulkPutFolders([{ id: 'folder-1', name: 'B', order: 1, createdAt: 1 }], workspaceB);
+    await bulkPutFolders(
+      [{ id: 'folder-1', name: 'A', order: 1, createdAt: 1, updatedAt: 1 }],
+      workspaceA,
+    );
+    await bulkPutFolders(
+      [{ id: 'folder-1', name: 'B', order: 1, createdAt: 1, updatedAt: 1 }],
+      workspaceB,
+    );
 
     expect((await listFolders(workspaceA)).map((item) => item.name)).toEqual(['A']);
     expect((await listFolders(workspaceB)).map((item) => item.name)).toEqual(['B']);

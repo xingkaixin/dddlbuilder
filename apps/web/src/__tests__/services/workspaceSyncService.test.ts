@@ -79,7 +79,6 @@ describe('workspaceSyncService', () => {
     await writeWorkspaceSession(
       {
         activeSource: { kind: 'draft', draftId: 'default' },
-        activeState: createState('session_state'),
         updatedAt: 10,
       },
       scope,
@@ -128,10 +127,11 @@ describe('workspaceSyncService', () => {
             name: '云端文件夹',
             order: 1,
             createdAt: 230,
+            updatedAt: 230,
           },
         ],
       },
-      { overwrite: true, scope },
+      { scope },
     );
 
     const globalDraft = await readDraft(DEFAULT_DRAFT_ID, scope);
@@ -142,7 +142,9 @@ describe('workspaceSyncService', () => {
     const folders = await listFolders(scope);
 
     expect(globalDraft?.state.tableName).toBe('cloud_draft');
-    expect(drafts.map((item) => item.draftId)).toEqual(['default', 'cloud-draft']);
+    expect(new Set(drafts.map((item) => item.draftId))).toEqual(
+      new Set(['default', 'cloud-draft']),
+    );
     expect(drafts.find((item) => item.draftId === 'cloud-draft')?.record.folderId).toBe('folder_1');
     expect(savedTables.map((item) => item.normalizedName)).toEqual(['users']);
     expect(savedTables[0]?.tableId).toBe('table-users');
