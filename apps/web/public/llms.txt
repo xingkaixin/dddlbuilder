@@ -16,9 +16,14 @@
 - Generate table DDL from form-based schema configuration.
 - Generate privilege DCL for authorization scenarios.
 - Support multiple database dialects: MySQL, PostgreSQL, PostgreSQL (Citus), SQL Server, Oracle, MariaDB, TiDB, Dameng, OceanBase (MySQL), OceanBase (Oracle), Kingbase, GBase, PolarDB, and GaussDB.
-- Configure fields, indexes, constraints, and table-level options.
+- Configure fields, indexes, constraints, logical enums, and table-level options.
 - Create table relationships by dragging between fields in the ER diagram, then confirm cardinality, optionality, referential actions, and indexes in the relationship wizard.
-- Import SQL and parse schema-related statements back into editable config.
+- Generate typed ORM models for Prisma, TypeORM, SQLAlchemy, GORM, and JPA.
+- Generate DDL for views and skeleton code for stored procedures, functions, and triggers.
+- Automatically lint schemas for naming conventions, data type hazards, and redundant indexes.
+- Generate synthetic mock test data and export as SQL INSERT, CSV, or JSON.
+- Bootstrap schemas with pre-built table blueprint templates (User, Order, Audit Log, etc.).
+- Import SQL and parse schema-related statements back into editable config, or import from CSV, Excel, and JSON Schema.
 - Use AI-assisted table design to produce draft schemas from natural language.
 - Use AI Modify to adjust the current table with reviewable field, index, and table-level changes.
 - Use AI Index Advisor to analyze typical query SQL and add recommended indexes.
@@ -45,27 +50,37 @@
 - [Core Concepts](https://ddl.xingkaixin.me/docs/en/basic/core-concepts)
   Definitions of workspace, draft, saved table, share copy, DDL, and DCL.
 - [Table and Field Configuration](https://ddl.xingkaixin.me/docs/en/basic/table-and-fields)
-  How to model table metadata and field-level configuration.
+  How to model table metadata, field-level configuration, enums, and capacity estimation.
 - [Indexes, Privileges, and Misc](https://ddl.xingkaixin.me/docs/en/basic/index-auth-misc)
   How to configure indexes, use AI Index Advisor for query-based index recommendations, manage access control, and set table-level options.
 - [DDL Output and Sharing](https://ddl.xingkaixin.me/docs/en/basic/ddl-and-share)
   How to copy SQL outputs and collaborate through share links.
-- [Saved Tables and Draft box](https://ddl.xingkaixin.me/docs/en/basic/saved-tables)
+- [Saved Tables and Drafts](https://ddl.xingkaixin.me/docs/en/basic/saved-tables)
   How to persist, reload, and organize schema versions.
 - [Import and Parse SQL](https://ddl.xingkaixin.me/docs/en/advanced/import-and-parse)
-  How to import existing SQL and convert it into editable configuration.
-- [AI-Assisted Table Design Workflow](https://ddl.xingkaixin.me/docs/en/advanced/ai-workflow)
-  How to generate schema drafts through AI conversation and refine existing tables through reviewable AI changes.
+  How to import existing SQL or data files and convert them into editable configuration.
 - [WebMCP Agent Workflow](https://ddl.xingkaixin.me/docs/en/advanced/webmcp)
   How browser agents use anonymous tools, sign-in handoff, schema previews, and confirmed writes.
+- [AI-Assisted Table Design Workflow](https://ddl.xingkaixin.me/docs/en/advanced/ai-workflow)
+  How to generate schema drafts through AI conversation and refine existing tables through reviewable AI changes.
 - [Review and Explain SQL](https://ddl.xingkaixin.me/docs/en/advanced/review-and-explain)
   How to use AI review and SQL explanation for quality checks.
-- [Partitioning and Sharding Configuration](https://ddl.xingkaixin.me/docs/en/advanced/partition-and-sharding)
+- [Partitioning and Sharding](https://ddl.xingkaixin.me/docs/en/advanced/partition-and-sharding)
   How to use partition and sharding related features by database type.
-- [Foreign Key Configuration and ER Diagram](https://ddl.xingkaixin.me/docs/en/advanced/foreign-key-and-er)
-  How to create foreign keys manually or through the ER relationship wizard and validate relationship semantics.
 - [Change Diff and Rollback](https://ddl.xingkaixin.me/docs/en/advanced/diff-and-rollback)
   How to inspect schema differences and rollback-related SQL outputs.
+- [Foreign Key Configuration and ER Diagram](https://ddl.xingkaixin.me/docs/en/advanced/foreign-key-and-er)
+  How to create foreign keys manually or through the ER relationship wizard and validate relationship semantics.
+- [ORM Model Generation](https://ddl.xingkaixin.me/docs/en/advanced/orm-generation)
+  How to export typed model code for Prisma, TypeORM, SQLAlchemy, GORM, and JPA.
+- [View and Routine Configuration](https://ddl.xingkaixin.me/docs/en/advanced/view-and-routine)
+  How to define views and scaffold procedure, function, and trigger DDL.
+- [Schema Lint](https://ddl.xingkaixin.me/docs/en/advanced/schema-lint)
+  How to run automated static schema audits for naming, types, and redundant indexes.
+- [Mock Data and Logical Enums](https://ddl.xingkaixin.me/docs/en/advanced/mock-data-and-enum)
+  How to generate test datasets and configure domain enum metadata.
+- [Table Blueprint Templates](https://ddl.xingkaixin.me/docs/en/advanced/blueprint-templates)
+  How to bootstrap common business schemas from pre-built templates.
 - [Errors and Failure Handling](https://ddl.xingkaixin.me/docs/en/faq/common-errors)
   Troubleshooting guide for common failures and recovery paths.
 - [Feature Entry and Visibility](https://ddl.xingkaixin.me/docs/en/faq/feature-visibility)
@@ -98,9 +113,14 @@
 - 通过表单化的结构配置生成建表 DDL。
 - 针对授权场景生成权限 DCL。
 - 支持多种数据库方言：MySQL、PostgreSQL、PostgreSQL (Citus)、SQL Server、Oracle、MariaDB、TiDB、Dameng、OceanBase (MySQL)、OceanBase (Oracle)、Kingbase、GBase、PolarDB 和 GaussDB。
-- 配置字段、索引、约束以及表级选项。
+- 配置字段、索引、约束、逻辑枚举以及表级选项。
 - 在 ER 图中拖动字段连接点创建表关系，并通过关系向导确认基数、可选性、引用动作和索引。
-- 导入 SQL，并将结构相关语句解析回可编辑配置。
+- 一键导出 Prisma、TypeORM、SQLAlchemy、GORM 与 JPA 框架的 ORM 模型代码。
+- 生成视图 DDL 与存储过程、函数、触发器的代码骨架。
+- 自动进行 Schema 规范检查（Lint），排查命名违规、危险类型与冗余索引。
+- 一键生成 Mock 测试数据并支持以 SQL INSERT、CSV、JSON 格式导出。
+- 通过预置表蓝图模板（用户表、订单表、操作日志表等）秒级初始化业务表结构。
+- 导入 SQL，并将结构相关语句解析回可编辑配置，支持从 CSV、Excel、JSON Schema 导入。
 - 通过 AI 辅助建表，用自然语言生成表结构草稿。
 - 通过 AI 修改当前表，生成可审阅的字段、索引与表级变更。
 - 通过 AI 索引顾问分析典型查询 SQL，并添加推荐索引。
@@ -127,7 +147,7 @@
 - [核心概念](https://ddl.xingkaixin.me/docs/zh/basic/core-concepts)
   了解工作区、草稿、已保存表、分享副本、DDL、DCL 等核心概念。
 - [表与字段配置](https://ddl.xingkaixin.me/docs/zh/basic/table-and-fields)
-  说明如何配置表元信息和字段级属性。
+  说明如何配置表元信息、字段级属性、逻辑枚举与存储容量估算。
 - [索引、权限与杂项](https://ddl.xingkaixin.me/docs/zh/basic/index-auth-misc)
   说明如何配置索引、使用 AI 索引顾问获取基于查询的索引建议、配置权限控制和表级选项。
 - [DDL 输出与分享](https://ddl.xingkaixin.me/docs/zh/basic/ddl-and-share)
@@ -135,19 +155,29 @@
 - [已保存表与草稿箱](https://ddl.xingkaixin.me/docs/zh/basic/saved-tables)
   说明如何持久化、重新加载和整理不同版本的表结构。
 - [导入与解析 SQL](https://ddl.xingkaixin.me/docs/zh/advanced/import-and-parse)
-  说明如何导入已有 SQL，并转换为可编辑配置。
-- [AI 辅助建表流程](https://ddl.xingkaixin.me/docs/zh/advanced/ai-workflow)
-  说明如何通过 AI 对话生成表结构草稿，并通过可审阅的 AI 变更细化已有表。
+  说明如何导入已有 SQL 或数据文件，并转换为可编辑配置。
 - [WebMCP Agent 协作](https://ddl.xingkaixin.me/docs/zh/advanced/webmcp)
   说明浏览器 Agent 如何使用匿名能力、登录交接、结构预览和人工确认写入。
+- [AI 辅助建表流程](https://ddl.xingkaixin.me/docs/zh/advanced/ai-workflow)
+  说明如何通过 AI 对话生成表结构草稿，并通过可审阅的 AI 变更细化已有表。
 - [评审与解释 SQL](https://ddl.xingkaixin.me/docs/zh/advanced/review-and-explain)
   说明如何使用 AI 评审和 SQL 解释能力做质量检查。
 - [分区与分片配置](https://ddl.xingkaixin.me/docs/zh/advanced/partition-and-sharding)
   说明如何按数据库类型使用分区与分片相关能力。
-- [外键配置与 ER 图](https://ddl.xingkaixin.me/docs/zh/advanced/foreign-key-and-er)
-  说明如何手工配置外键，或通过 ER 关系向导创建关系并校验关系语义。
 - [变更对比与回滚](https://ddl.xingkaixin.me/docs/zh/advanced/diff-and-rollback)
   说明如何查看结构差异以及回滚相关 SQL 输出。
+- [外键配置与 ER 图](https://ddl.xingkaixin.me/docs/zh/advanced/foreign-key-and-er)
+  说明如何手工配置外键，或通过 ER 关系向导创建关系并校验关系语义。
+- [ORM 模型生成](https://ddl.xingkaixin.me/docs/zh/advanced/orm-generation)
+  说明如何一键生成主流 ORM 框架的模型定义代码。
+- [视图与 Routine 配置](https://ddl.xingkaixin.me/docs/zh/advanced/view-and-routine)
+  说明如何配置视图定义并生成存储过程、函数与触发器骨架。
+- [Schema 规范检查](https://ddl.xingkaixin.me/docs/zh/advanced/schema-lint)
+  说明如何利用内置规则引擎进行表结构静态审查。
+- [Mock 数据与逻辑枚举](https://ddl.xingkaixin.me/docs/zh/advanced/mock-data-and-enum)
+  说明如何批量生成测试数据以及配置业务枚举元数据。
+- [表蓝图模板](https://ddl.xingkaixin.me/docs/zh/advanced/blueprint-templates)
+  说明如何利用通用场景模板快速初始化表结构。
 - [常见错误与失败处理](https://ddl.xingkaixin.me/docs/zh/faq/common-errors)
   常见失败场景和恢复路径的排查说明。
 - [功能入口与显示规则](https://ddl.xingkaixin.me/docs/zh/faq/feature-visibility)
@@ -170,7 +200,7 @@
 - [コアコンセプト](https://ddl.xingkaixin.me/docs/ja/basic/core-concepts)
   ワークスペース、下書き、保存済みテーブル、共有コピー、DDL、DCL の説明です。
 - [テーブルとフィールドの設定](https://ddl.xingkaixin.me/docs/ja/basic/table-and-fields)
-  テーブル情報とフィールド属性の設定方法です。
+  テーブル情報とフィールド属性、列挙型、ストレージ見積もりの設定方法です。
 - [インデックス、権限、その他](https://ddl.xingkaixin.me/docs/ja/basic/index-auth-misc)
   インデックス、アクセス権限、テーブル単位のオプションを設定する方法です。
 - [DDL 出力と共有](https://ddl.xingkaixin.me/docs/ja/basic/ddl-and-share)
@@ -178,19 +208,29 @@
 - [保存済みテーブルと下書き](https://ddl.xingkaixin.me/docs/ja/basic/saved-tables)
   スキーマを保存、再読み込み、整理する方法です。
 - [SQL のインポートと解析](https://ddl.xingkaixin.me/docs/ja/advanced/import-and-parse)
-  既存の SQL を編集可能な設定へ変換する方法です。
-- [AI 支援テーブル設計](https://ddl.xingkaixin.me/docs/ja/advanced/ai-workflow)
-  自然言語からスキーマを生成し、AI の変更提案で既存テーブルを調整する方法です。
+  既存の SQL やデータファイルを編集可能な設定へ変換する方法です。
 - [WebMCP Agent ワークフロー](https://ddl.xingkaixin.me/docs/ja/advanced/webmcp)
   匿名ツール、ログイン移行、スキーマプレビュー、確認付き書き込みについて説明します。
+- [AI 支援テーブル設計](https://ddl.xingkaixin.me/docs/ja/advanced/ai-workflow)
+  自然言語からスキーマを生成し、AI の変更提案で既存テーブルを調整する方法です。
 - [SQL のレビューと説明](https://ddl.xingkaixin.me/docs/ja/advanced/review-and-explain)
   AI レビューと SQL 説明機能を使う方法です。
 - [パーティションとシャーディング](https://ddl.xingkaixin.me/docs/ja/advanced/partition-and-sharding)
   データベースごとのパーティションおよびシャーディング機能について説明します。
-- [外部キーと ER 図](https://ddl.xingkaixin.me/docs/ja/advanced/foreign-key-and-er)
-  外部キーと ER 関係ウィザードを使う方法です。
 - [差分とロールバック](https://ddl.xingkaixin.me/docs/ja/advanced/diff-and-rollback)
   スキーマ差分とロールバック SQL を確認する方法です。
+- [外部キーと ER 図](https://ddl.xingkaixin.me/docs/ja/advanced/foreign-key-and-er)
+  外部キーと ER 関係ウィザードを使う方法です。
+- [ORM モデル生成](https://ddl.xingkaixin.me/docs/ja/advanced/orm-generation)
+  Prisma、TypeORM、SQLAlchemy、GORM、JPA 向けのモデルコードを生成する方法です。
+- [ビューと Routine の設定](https://ddl.xingkaixin.me/docs/ja/advanced/view-and-routine)
+  ビュー DDL およびプロシージャ・関数・トリガーの骨格を生成する方法です。
+- [Schema Lint](https://ddl.xingkaixin.me/docs/ja/advanced/schema-lint)
+  命名規則やデータ型リスクを静的解析するルールエンジンの使い方です。
+- [Mock データと論理列挙](https://ddl.xingkaixin.me/docs/ja/advanced/mock-data-and-enum)
+  検証用データの生成とカラー付き論理列挙型の設定方法です。
+- [テーブル設計テンプレート](https://ddl.xingkaixin.me/docs/ja/advanced/blueprint-templates)
+  標準的な業務テンプレートから即座にテーブルを構築する方法です。
 - [エラーと失敗への対処](https://ddl.xingkaixin.me/docs/ja/faq/common-errors)
   よくあるエラーと復旧手順です。
 - [機能の場所と表示条件](https://ddl.xingkaixin.me/docs/ja/faq/feature-visibility)
