@@ -1,5 +1,6 @@
 const TRIGGERS_SECTION = /(?:^|\n)\s*\[triggers\]\s*(?:#.*)?\n([\s\S]*?)(?=\n\s*\[|$)/;
 const CRONS_ASSIGNMENT = /(?:^|\n)\s*crons\s*=\s*\[/;
+const AI_USAGE_RECOVERY_CRON = '*/10 * * * *';
 
 const stripTomlComments = (input: string) => {
   let result = '';
@@ -111,7 +112,9 @@ export const assertAIUsageCronConfigured = (config: string, configPath: string) 
   const triggers = TRIGGERS_SECTION.exec(stripTomlComments(config))?.[1];
   const crons = triggers ? readCronsArray(triggers) : null;
   const values = crons === null ? null : parseTomlStringArray(crons);
-  if (!values?.some((value) => value.trim().length > 0)) {
-    throw new Error(`${configPath} must configure a non-empty [triggers].crons schedule`);
+  if (!values?.includes(AI_USAGE_RECOVERY_CRON)) {
+    throw new Error(
+      `${configPath} must include "${AI_USAGE_RECOVERY_CRON}" in [triggers].crons for AI usage recovery`,
+    );
   }
 };
