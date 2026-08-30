@@ -7,7 +7,7 @@ export default defineConfig(sharedPlaywrightConfig, {
   fullyParallel: false,
   workers: 1,
   webServer: {
-    command: 'pnpm run e2e:serve',
+    command: process.env.CI ? 'pnpm run e2e:serve:built' : 'pnpm run e2e:serve',
     url: 'http://127.0.0.1:3000/api/health',
     reuseExistingServer: false,
     timeout: 120_000,

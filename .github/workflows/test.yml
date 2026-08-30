@@ -204,6 +204,11 @@ jobs:
           name: dist-build
           path: apps
 
+      - name: Verify downloaded build artifact
+        run: |
+          test -f apps/web/dist/client/index.html
+          pnpm exec tsx scripts/verify-server-bundle.ts
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
