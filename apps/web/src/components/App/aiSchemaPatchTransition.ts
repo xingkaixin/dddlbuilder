@@ -14,6 +14,7 @@ import {
 import { validateDocumentFields } from '@/stores/editorDocumentValidation';
 
 type FieldChange = Extract<AISchemaChange, { kind: 'field' }>;
+type IndexChange = Extract<AISchemaChange, { kind: 'index' }>;
 
 const upsertIndex = (
   indexes: IndexDefinition[],
@@ -122,22 +123,32 @@ export const applyAISchemaChanges = (
   const tableChanges: Partial<Pick<PersistedState, 'schemaName' | 'tableName' | 'tableComment'>> =
     {};
   for (const change of changes) {
-    if (change.kind === 'table') {
-      const key = (
-        {
-          schema_name: 'schemaName',
-          table_name: 'tableName',
-          table_comment: 'tableComment',
-        } as const
-      )[change.type];
-      tableChanges[key] = change.newValue;
-      continue;
-    }
+    if (change.kind !== 'table') continue;
+    const key = (
+      {
+        schema_name: 'schemaName',
+        table_name: 'tableName',
+        table_comment: 'tableComment',
+      } as const
+    )[change.type];
+    tableChanges[key] = change.newValue;
+  }
 
-    if (change.kind === 'field') {
-      continue;
-    }
+  const indexChanges = changes.filter((change): change is IndexChange => change.kind === 'index');
+  for (const change of indexChanges) {
+    if (change.type !== 'remove') continue;
+    const indexes = nextState.indexes || [];
+    nextState = {
+      ...nextState,
+      indexes: indexes.filter((index) =>
+        change.oldIndex?.id
+          ? index.id !== change.oldIndex.id
+          : normalizedName(index.name) !== normalizedName(change.indexName),
+      ),
+    };
+  }
 
+  for (const change of indexChanges) {
     const indexes = nextState.indexes || [];
     if (change.type === 'add' && change.newIndex) {
       const exists = indexes.some(
@@ -151,15 +162,6 @@ export const applyAISchemaChanges = (
       nextState = {
         ...nextState,
         indexes: upsertIndex(indexes, change.indexName, change.newIndex, currentState.dbType),
-      };
-    } else if (change.type === 'remove') {
-      nextState = {
-        ...nextState,
-        indexes: indexes.filter((index) =>
-          change.oldIndex?.id
-            ? index.id !== change.oldIndex.id
-            : normalizedName(index.name) !== normalizedName(change.indexName),
-        ),
       };
     }
   }

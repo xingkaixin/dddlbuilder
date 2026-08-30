@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
+import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import { applyAISchemaChanges } from '@/components/App/aiSchemaPatchTransition';
 import { buildAISchemaChanges } from '@/utils/aiSchemaChanges';
 
-const row = (fieldName: string, order: number): FieldRow => ({
-  order,
+const row = (fieldName: string, position: number): FieldRow => ({
+  id: `field-${position}`,
   fieldName,
   fieldType: 'bigint',
   fieldComment: '',
@@ -38,10 +38,7 @@ describe('AI field changes', () => {
       },
     ]);
 
-    expect(result.rows.map(({ fieldName, order }) => ({ fieldName, order }))).toEqual([
-      { fieldName: 'id', order: 1 },
-      { fieldName: 'email', order: 2 },
-    ]);
+    expect(result.rows.map(({ fieldName }) => fieldName)).toEqual(['id', 'email']);
   });
 
   it('renames a field case-insensitively', () => {
@@ -198,7 +195,7 @@ describe('applyAISchemaChanges', () => {
     const current = createState([{ ...row('id', 1), id: 'original' }]);
     const candidate = createState([
       { ...row('id', 1), id: 'new' },
-      { ...current.rows[0], fieldName: 'legacy_id', order: 2 },
+      { ...current.rows[0], fieldName: 'legacy_id' },
     ]);
     const changes = buildAISchemaChanges(current, candidate);
     if (reverse) changes.reverse();
@@ -219,7 +216,7 @@ describe('applyAISchemaChanges', () => {
 
   it.each(['add', 'modify'] as const)('rejects a selected index %s without its field', (type) => {
     const current = createState();
-    const index = {
+    const index: IndexDefinition = {
       id: 'email-index',
       name: 'idx_email',
       kind: 'index',
@@ -278,6 +275,53 @@ describe('applyAISchemaChanges', () => {
     },
   );
 
+  it('replaces an auto-renamed index independently of change order', () => {
+    const oldRow = { ...row('old_name', 1), id: 'f1' };
+    const newRow = { ...oldRow, fieldName: 'new_name' };
+    const oldIndex: IndexDefinition = {
+      id: 'i1',
+      name: 'idx_old_name',
+      kind: 'index' as const,
+      fields: [{ name: 'old_name', direction: 'ASC' as const }],
+    };
+    const newIndex: IndexDefinition = {
+      id: 'i2',
+      name: 'idx_new_name',
+      kind: 'index' as const,
+      fields: [{ name: 'new_name', direction: 'ASC' as const }],
+    };
+    const current = { ...createState([oldRow]), indexes: [oldIndex] };
+    const candidate = { ...current, rows: [newRow], indexes: [newIndex] };
+
+    const next = applyAISchemaChanges(current, candidate, [
+      {
+        id: 'field:rename:old_name:new_name',
+        kind: 'field',
+        type: 'rename',
+        fieldName: 'new_name',
+        oldFieldName: 'old_name',
+        oldRow,
+        newRow,
+      },
+      {
+        id: 'index:add:idx_new_name',
+        kind: 'index',
+        type: 'add',
+        indexName: newIndex.name,
+        newIndex,
+      },
+      {
+        id: 'index:remove:idx_old_name',
+        kind: 'index',
+        type: 'remove',
+        indexName: oldIndex.name,
+        oldIndex,
+      },
+    ]);
+
+    expect(next.indexes).toEqual([newIndex]);
+  });
+
   it.each([false, true])('cleans field references when applying removals (all=%s)', (all) => {
     const current: PersistedState = {
       ...createState([row('id', 1), row('user_id', 2)]),
@@ -317,7 +361,7 @@ describe('applyAISchemaChanges', () => {
   it('applies a selected batch as one state transition and stays idempotent', () => {
     const current = createState();
     const email = row('email', 2);
-    const index = {
+    const index: IndexDefinition = {
       id: 'idx-email',
       name: 'idx_users_email',
       fields: [{ name: 'email', direction: 'ASC' as const }],
