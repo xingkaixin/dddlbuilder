@@ -782,14 +782,17 @@ describe('usePersistedState', () => {
     expect(result.current.persistedState?.tableName).toBe('initial_from_ydoc');
   });
 
-  it('YDoc 结构变更合入时应静默应用最新状态', async () => {
+  it('YDoc 结构变更合入时应静默应用最新状态，初始化完成后不应回滚', async () => {
+    const bootstrap =
+      createDeferred<Awaited<ReturnType<typeof workspaceStateDb.readWorkspaceBootstrap>>>();
+    vi.spyOn(workspaceStateDb, 'readWorkspaceBootstrap').mockReturnValue(bootstrap.promise);
     const doc = new Y.Doc();
     mockSignedInWorkspaceYDoc(doc);
-    const initialState = {
+    const initialState: PersistedState = {
       ...createState('users'),
       rows: [
         {
-          order: 1,
+          id: 'field-id',
           fieldName: 'id',
           fieldType: 'bigint',
           fieldComment: '主键',
@@ -809,26 +812,35 @@ describe('usePersistedState', () => {
     upsertDraftInYDoc(doc, 'default', { state: initialState, updatedAt: 100 });
 
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => useTestPersistedState(), { wrapper });
+    const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.persistedState?.tableName).toBe('users');
     });
+    expect(result.current.hydrated).toBe(false);
 
     act(() => {
-      upsertDraftInYDoc(doc, 'default', {
-        state: {
-          ...initialState,
-          rows: [{ ...initialState.rows[0], fieldType: 'uuid' }],
-          indexes: [],
-        },
-        updatedAt: 200,
+      doc.transact(() => {
+        upsertDraftInYDoc(doc, 'default', {
+          state: {
+            ...initialState,
+            rows: [{ ...initialState.rows[0], fieldType: 'uuid' }],
+            indexes: [],
+          },
+          updatedAt: 200,
+        });
       });
     });
 
-    await waitFor(() => {
-      expect(result.current.persistedState?.rows[0]?.fieldType).toBe('uuid');
+    expect(result.current.persistedState?.rows[0]?.fieldType).toBe('uuid');
+    expect(result.current.persistedState?.indexes).toEqual([]);
+    await act(async () => {
+      bootstrap.resolve({ globalDraft: null, drafts: [], session: null, savedTable: null });
     });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    unmount();
+    doc.destroy();
+    expect(result.current.persistedState?.rows[0]?.fieldType).toBe('uuid');
     expect(result.current.persistedState?.indexes).toEqual([]);
   });
 

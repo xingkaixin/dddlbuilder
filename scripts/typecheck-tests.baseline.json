@@ -1314,14 +1314,6 @@
   {
     "package": "@ddlbuilder/web",
     "file": "src/__tests__/hooks/usePersistedState.test.ts",
-    "code": "TS2322",
-    "message": "Type '{ schemaName: string; tableName: string; tableComment: string; dbType: 'mysql'; sqlFormatMode: 'compact'; addCount: number; authInput: string; authObjects: never[]; rows: { order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; }[]; indexes: { ...; }[]; foreignKeys: never[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'rows' are incompatible. Type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; }[]' is not assignable to type 'FieldRow[]'. Property 'id' is missing in type '{ order: number; fieldName: string; fieldType: string; fieldComment: string; nullable: boolean; }' but required in type 'FieldRow'.",
-    "sourceFingerprint": "f38f6d63ecbd512a",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
-    "file": "src/__tests__/hooks/usePersistedState.test.ts",
     "code": "TS2353",
     "message": "Object literal may only specify known properties, and 'activeState' does not exist in type 'WorkspaceSessionRecord'.",
     "sourceFingerprint": "060d48945e889952",
@@ -1357,14 +1349,6 @@
     "code": "TS2353",
     "message": "Object literal may only specify known properties, and 'tableName' does not exist in type '{ kind: \"saved_table\"; normalizedName: string; tableId?: string | undefined; }'.",
     "sourceFingerprint": "f91a1218d4e55c26",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
-    "file": "src/__tests__/hooks/usePersistedState.test.ts",
-    "code": "TS2741",
-    "message": "Property 'id' is missing in type '{ order: number; fieldName: string; fieldComment: string; nullable: boolean; fieldType: string; }' but required in type 'FieldRow'.",
-    "sourceFingerprint": "171f80d6aaf94773",
     "count": 1
   },
   {

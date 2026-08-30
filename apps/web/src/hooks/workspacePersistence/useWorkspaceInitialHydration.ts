@@ -96,11 +96,11 @@ export function useWorkspaceInitialHydration({
     const hydrateYDocWorkspace = async () => {
       if (!yDoc) return false;
       replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc));
-      const drafts = listDraftRecordsFromYDoc(yDoc);
       if (cancelled) return true;
 
       const { session } = await getWorkspaceBootstrap(currentScope);
       if (cancelled) return true;
+      const drafts = listDraftRecordsFromYDoc(yDoc);
       applyHydration(
         resolveWorkspaceHydration({
           drafts,
