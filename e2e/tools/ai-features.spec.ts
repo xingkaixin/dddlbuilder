@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
 import { setupHydratedState } from '../utils';
 import { encodeAIStreamEvent } from '../../packages/shared-types/src/aiStream';
 import type { PersistedState } from '../../packages/shared-types/src/index';
@@ -9,6 +9,17 @@ const streamedResponse = (value: unknown) => ({
     encodeAIStreamEvent({ type: 'delta', text: JSON.stringify(value) }) +
     encodeAIStreamEvent({ type: 'done' }),
 });
+
+const expectAppliedPatchHistory = async (dialog: Locator, count: number) => {
+  await expect(
+    dialog.getByText(`0 项待确认，0 项已选择，${count} 项已应用`, { exact: true }),
+  ).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '切换变更选择' })).toHaveCount(count);
+  await expect(dialog.getByRole('button', { name: '切换变更选择', disabled: true })).toHaveCount(
+    count,
+  );
+  await expect(dialog.getByRole('button', { name: '应用 0 项变更', exact: true })).toBeDisabled();
+};
 
 test('AI 修改保留字段身份，将改名应用为单个变更', async ({ page }) => {
   await page.route('**/api/**', async (route) => {
@@ -57,7 +68,7 @@ test('AI 修改保留字段身份，将改名应用为单个变更', async ({ pa
   await expect(dialog.getByText('字段 HYDRATED_FIELD 改名为 renamed_field')).toBeVisible();
   await dialog.getByRole('button', { name: '切换变更选择' }).click();
   await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
-  await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
+  await expectAppliedPatchHistory(dialog, 1);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('data-table')).toContainText('renamed_field');
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('renamed_field INT');
@@ -130,7 +141,7 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
     .getByRole('button', { name: '切换变更选择' })
     .click();
   await dialog.getByRole('button', { name: '应用 2 项变更' }).click();
-  await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
+  await expectAppliedPatchHistory(dialog, 2);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('data-table')).not.toContainText('HYDRATED_FIELD');
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('occupied INT');
@@ -195,7 +206,13 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
   await expect(changes).toHaveCount(2);
   await changes.first().click();
   await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
-  await expect(changes).toHaveCount(1);
+  await expect(changes).toHaveCount(2);
+  await expect(dialog.getByText('1 项待确认，0 项已选择，1 项已应用')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '切换变更选择', disabled: true })).toHaveCount(1);
+  await expect(dialog.getByRole('button', { name: '切换变更选择', disabled: false })).toHaveCount(
+    1,
+  );
+  await expect(dialog.getByRole('button', { name: '应用 0 项变更', exact: true })).toBeDisabled();
   await dialog.locator('#ai-patch-input').fill('保留当前字段，只增加 new_field');
   await dialog.getByRole('button', { name: '继续修改', exact: true }).click();
   await expect(
@@ -204,7 +221,7 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
   await expect(changes).toHaveCount(1);
   await changes.click();
   await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
-  await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
+  await expectAppliedPatchHistory(dialog, 1);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('data-table')).toContainText('HYDRATED_FIELD');
   await expect(page.getByTestId('data-table')).toContainText('new_field');
@@ -511,7 +528,7 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
   await changes.first().click();
   await expect(dialog.getByRole('alert')).toHaveCount(0);
   await dialog.getByRole('button', { name: '应用 2 项变更' }).click();
-  await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
+  await expectAppliedPatchHistory(dialog, 2);
   await page.keyboard.press('Escape');
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('INDEX email_lookup');
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('email VARCHAR(255)');

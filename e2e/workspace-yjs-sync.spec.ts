@@ -799,7 +799,9 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
     await dialog.getByRole('button', { name: '继续修改', exact: true }).click();
     await dialog.getByRole('button', { name: '切换变更选择' }).click();
     await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
-    await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
+    await expect(dialog.getByText('0 项待确认，0 项已选择，1 项已应用')).toBeVisible();
+    await expect(dialog.getByRole('button', { name: '切换变更选择' })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: '应用 0 项变更', exact: true })).toBeDisabled();
     await expect(
       pageB.getByTestId('data-table').locator('tbody tr').first().locator('td').nth(3),
     ).toHaveText('INT');
