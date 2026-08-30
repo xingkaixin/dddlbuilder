@@ -8,7 +8,10 @@ function mockOpen() {
     onerror: null as (() => void) | null,
     onabort: null as (() => void) | null,
     oncomplete: null as (() => void) | null,
-    objectStore: () => ({ put: vi.fn() }),
+    objectStore: () => ({
+      get: () => ({ onerror: null, onsuccess: null }),
+      put: vi.fn(),
+    }),
   };
   const db = {
     close: vi.fn(),

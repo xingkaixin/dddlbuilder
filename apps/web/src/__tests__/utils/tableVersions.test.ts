@@ -11,15 +11,21 @@ import {
 import * as dbUtils from '@/utils/workspaceDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
+import {
+  beginWorkspaceEntityDeletion,
+  cancelWorkspaceEntityDeletion,
+} from '@/utils/workspaceEntityDeletion';
 
 function createMockState(overrides: Partial<PersistedState> = {}): PersistedState {
   return {
+    schemaName: '',
     tableName: 'test_table',
     tableComment: '',
     dbType: 'mysql',
+    sqlFormatMode: 'compact',
     rows: [
       {
-        order: 1,
+        id: 'field-1',
         fieldName: 'id',
         fieldType: 'BIGINT',
         fieldComment: '',
@@ -36,6 +42,12 @@ function createMockState(overrides: Partial<PersistedState> = {}): PersistedStat
     ...overrides,
   };
 }
+
+const createPersistedVersion = async (...args: Parameters<typeof createVersion>) => {
+  const version = await createVersion(...args);
+  if (!version) throw new Error('Expected version to be persisted');
+  return version;
+};
 
 describe('tableVersions', () => {
   it('decodes index kinds from legacy version snapshots', async () => {
@@ -55,7 +67,7 @@ describe('tableVersions', () => {
         },
       ] as unknown as PersistedState['indexes'],
     });
-    const version = await createVersion(target, state);
+    const version = await createPersistedVersion(target, state);
     const loaded = await getVersion(version.id, target);
     expect(loaded?.state.indexes[0]).toMatchObject({ kind: 'unique_constraint' });
   });
@@ -82,13 +94,36 @@ describe('tableVersions', () => {
     it('创建版本快照', async () => {
       const testTableName = getTestTableName();
       const state = createMockState();
-      const version = await createVersion(testTableName, state, '初始版本');
+      const version = await createPersistedVersion(testTableName, state, '初始版本');
 
       expect(version.id).toBeDefined();
       expect(version.tableNormalizedName).toBe(testTableName.normalizedName);
       expect(version.state).toEqual(state);
       expect(version.message).toBe('初始版本');
       expect(version.createdAt).toBeGreaterThan(0);
+    });
+
+    it('删除标记存在时不写入迟到版本', async () => {
+      const target = getTestTableName();
+      await beginWorkspaceEntityDeletion(target);
+
+      expect(await createVersion(target, createMockState())).toBeNull();
+      expect(await listVersions(target)).toEqual([]);
+    });
+
+    it('同一删除 marker 释放前不能被新操作接管', async () => {
+      const target = getTestTableName();
+      const firstOperationId = await beginWorkspaceEntityDeletion(target);
+
+      await expect(beginWorkspaceEntityDeletion(target)).rejects.toThrow('表正在永久删除');
+      await cancelWorkspaceEntityDeletion(target, firstOperationId);
+      const secondOperationId = await beginWorkspaceEntityDeletion(target);
+
+      await cancelWorkspaceEntityDeletion(target, firstOperationId);
+
+      expect(await createVersion(target, createMockState())).toBeNull();
+      await cancelWorkspaceEntityDeletion(target, secondOperationId);
+      expect(await createVersion(target, createMockState())).not.toBeNull();
     });
   });
 
@@ -120,9 +155,11 @@ describe('tableVersions', () => {
         normalizedName,
       };
       const userTarget = {
-        scope: { kind: 'user' } as const,
-        userId: 'user-1',
-        workspaceId: 'workspace-1',
+        scope: {
+          kind: 'user' as const,
+          userId: 'user-1',
+          workspaceId: 'workspace-1',
+        },
         tableId: 'shared-id',
         normalizedName,
       };
@@ -205,7 +242,7 @@ describe('tableVersions', () => {
     it('获取单个版本', async () => {
       const testTableName = getTestTableName();
       const state = createMockState();
-      const created = await createVersion(testTableName, state);
+      const created = await createPersistedVersion(testTableName, state);
 
       const fetched = await getVersion(created.id, testTableName);
       expect(fetched).not.toBeNull();
@@ -222,7 +259,7 @@ describe('tableVersions', () => {
     it('删除版本', async () => {
       const testTableName = getTestTableName();
       const state = createMockState();
-      const version = await createVersion(testTableName, state);
+      const version = await createPersistedVersion(testTableName, state);
 
       await deleteVersion(version.id, testTableName);
       const result = await getVersion(version.id, testTableName);

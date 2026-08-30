@@ -21,9 +21,11 @@ const scope = { kind: 'anonymous' } as const;
 function renderReview({
   loadedTableId = 'A',
   loadedTableNormalizedName = 'A',
+  draftId,
 }: {
   loadedTableId?: string | null;
   loadedTableNormalizedName?: string | null;
+  draftId?: string;
 } = {}) {
   const { wrapper } = createQueryClientWrapper();
   let currentDocumentKey = 'A-v1';
@@ -37,6 +39,7 @@ function renderReview({
         generatedSql: ddl,
         workspaceScope: scope,
         loadedTableId,
+        draftId,
         loadedTableNormalizedName,
         setIsReviewHistoryOpen: vi.fn(),
       }),
@@ -156,8 +159,13 @@ describe('review request ownership', () => {
           complete = resolve;
         }),
     );
-    const hook = renderReview({ loadedTableId: null, loadedTableNormalizedName: null });
+    const hook = renderReview({
+      loadedTableId: null,
+      loadedTableNormalizedName: null,
+      draftId: 'active-draft-id',
+    });
     expect(hook.result.current.reviewTarget?.tableId).toBeUndefined();
+    expect(hook.result.current.reviewTarget?.draftId).toBe('active-draft-id');
     act(() => {
       void hook.result.current.handleStartReview();
     });

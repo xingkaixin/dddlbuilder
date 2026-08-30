@@ -1,10 +1,15 @@
-import { savedTableReference, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
+import {
+  savedTableReference,
+  type SavedTableTarget,
+  type WorkspaceScope,
+} from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
 import {
   deleteSavedTableFromYDoc,
   getSavedTableFromYDoc,
   listSavedTableRecordsFromYDoc,
   listTrashedSavedTableRecordsFromYDoc,
+  recreateSavedTableInYDoc,
   upsertSavedTableInYDoc,
   renameSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
@@ -14,6 +19,7 @@ import {
   getSavedTable,
   listSavedTables,
   listTrashedSavedTables,
+  replaceSavedTable,
   updateSavedTable,
   updateSavedTables,
   updateSavedTableState,
@@ -23,11 +29,35 @@ import {
   type SavedTableStateUpdate,
 } from '@/utils/savedTableStateUpdate';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
-import { deleteAllVersions } from '@/utils/tableVersions';
-import { deleteAllReviews } from '@/utils/reviewHistory';
+import {
+  deleteIndexedDbSavedTablePermanently,
+  finalizeWorkspaceEntityDeletion,
+} from '@/services/workspaceHistoryCleanup';
+import {
+  beginWorkspaceEntityDeletion,
+  ensureWorkspaceEntityDeletion,
+  runWorkspaceEntityUpdate,
+  runWorkspaceEntityWrites,
+  type WorkspaceEntityWrite,
+} from '@/utils/workspaceEntityDeletion';
 import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 import { useWorkspaceAuthority } from './useWorkspaceAuthority';
 import { requireReadyWorkspaceStorage } from './useWorkspaceStorageTarget';
+
+const entityTargetForRecord = (record: SavedTableRecord, scope: WorkspaceScope) => ({
+  scope,
+  tableId: resolveSavedTableId(record),
+  normalizedName: record.normalizedName,
+});
+
+const entityWriteForRecord = (
+  record: SavedTableRecord,
+  scope: WorkspaceScope,
+  mode: WorkspaceEntityWrite['mode'],
+): WorkspaceEntityWrite => ({
+  target: entityTargetForRecord(record, scope),
+  mode,
+});
 
 export function useSavedTablePersistence() {
   const authority = useWorkspaceAuthority();
@@ -57,46 +87,82 @@ export function useSavedTablePersistence() {
   }, [storage]);
 
   const putTable = useCallback(
-    async (record: SavedTableRecord, mode: 'add' | 'update' = 'update') => {
+    async (
+      record: SavedTableRecord,
+      mode: 'add' | 'update' = 'update',
+      entityMode: WorkspaceEntityWrite['mode'] = mode === 'add' ? 'activate' : 'update',
+    ) => {
       const target = requireReadyWorkspaceStorage(storage);
       if (target.kind === 'ydoc') {
-        target.transact((doc) => upsertSavedTableInYDoc(doc, record));
-        return;
+        const entityTarget = entityTargetForRecord(record, target.scope);
+        await runWorkspaceEntityWrites([{ target: entityTarget, mode: entityMode }], [], () =>
+          target.transact((doc) =>
+            entityMode === 'activate'
+              ? recreateSavedTableInYDoc(doc, record)
+              : upsertSavedTableInYDoc(doc, record),
+          ),
+        );
+      } else {
+        await (mode === 'add'
+          ? addSavedTable(record, target.scope, entityMode)
+          : updateSavedTable(record, target.scope, entityMode));
       }
-      await (mode === 'add'
-        ? addSavedTable(record, target.scope)
-        : updateSavedTable(record, target.scope));
     },
     [storage],
   );
 
   const putTables = useCallback(
-    async (records: SavedTableRecord[]) => {
+    async (records: SavedTableRecord[], activatedTableIds: ReadonlySet<string> = new Set()) => {
       const target = requireReadyWorkspaceStorage(storage);
       if (target.kind === 'ydoc') {
-        target.transact((doc) => {
-          for (const record of records) upsertSavedTableInYDoc(doc, record);
-        });
-        return;
+        await runWorkspaceEntityWrites(
+          records.map((record) =>
+            entityWriteForRecord(
+              record,
+              target.scope,
+              activatedTableIds.has(resolveSavedTableId(record)) ? 'activate' : 'update',
+            ),
+          ),
+          [],
+          () =>
+            target.transact((doc) => {
+              for (const record of records) {
+                if (activatedTableIds.has(resolveSavedTableId(record))) {
+                  recreateSavedTableInYDoc(doc, record);
+                } else {
+                  upsertSavedTableInYDoc(doc, record);
+                }
+              }
+            }),
+        );
+      } else {
+        await updateSavedTables(records, target.scope, activatedTableIds);
       }
-      await updateSavedTables(records, target.scope);
     },
     [storage],
   );
 
   const updateTableState = useCallback(
-    (target: SavedTableTarget, update: SavedTableStateUpdate) => {
+    async (target: SavedTableTarget, update: SavedTableStateUpdate) => {
       const destination = requireReadyWorkspaceStorage(storage);
       if (destination.kind === 'ydoc') {
-        return Promise.resolve(
-          destination.transact((doc) => {
-            const record = applySavedTableStateUpdate(target, update, (reference) =>
-              getSavedTableFromYDoc(doc, reference),
-            );
-            if (record) upsertSavedTableInYDoc(doc, record);
-            return record;
-          }),
+        const current = getSavedTableFromYDoc(destination.yDoc, target);
+        if (!current) return null;
+        let updated: SavedTableRecord | null = null;
+        await runWorkspaceEntityUpdate(
+          [entityTargetForRecord(current, destination.scope)],
+          [],
+          () => {
+            updated = destination.transact((doc) => {
+              const record = applySavedTableStateUpdate(target, update, (reference) =>
+                getSavedTableFromYDoc(doc, reference),
+              );
+              if (record) upsertSavedTableInYDoc(doc, record);
+              return record;
+            });
+          },
         );
+        return updated;
       }
       return updateSavedTableState(target, update, destination.scope);
     },
@@ -104,18 +170,24 @@ export function useSavedTablePersistence() {
   );
 
   const replaceTable = useCallback(
-    async (previousNormalizedName: string, record: SavedTableRecord) => {
+    async (
+      previousNormalizedName: string,
+      record: SavedTableRecord,
+      entityMode: WorkspaceEntityWrite['mode'] = 'update',
+    ) => {
       const target = requireReadyWorkspaceStorage(storage);
       if (target.kind === 'ydoc') {
-        target.transact((doc) => renameSavedTableInYDoc(doc, previousNormalizedName, record));
-        return;
+        const entityTarget = entityTargetForRecord(record, target.scope);
+        await runWorkspaceEntityWrites([{ target: entityTarget, mode: entityMode }], [], () =>
+          target.transact((doc) =>
+            entityMode === 'activate'
+              ? recreateSavedTableInYDoc(doc, record)
+              : renameSavedTableInYDoc(doc, previousNormalizedName, record),
+          ),
+        );
+      } else {
+        await replaceSavedTable(previousNormalizedName, record, target.scope, entityMode);
       }
-      if (record.normalizedName === previousNormalizedName) {
-        await updateSavedTable(record, target.scope);
-        return;
-      }
-      await addSavedTable(record, target.scope);
-      await deleteSavedTable(previousNormalizedName, target.scope);
     },
     [storage],
   );
@@ -155,13 +227,28 @@ export function useSavedTablePersistence() {
         tableId: resolveSavedTableId(record),
         normalizedName: record.normalizedName,
       };
-      const historyTarget = { ...reference, scope: target.scope };
+      const entityTarget = entityTargetForRecord(record, target.scope);
 
-      await Promise.all([deleteAllVersions(historyTarget), deleteAllReviews(historyTarget)]);
-      await deleteSavedTable(reference, target.scope);
-      if (target.kind === 'ydoc') {
-        target.transact((doc) => deleteSavedTableFromYDoc(doc, reference));
+      if (target.kind === 'indexeddb') {
+        await deleteIndexedDbSavedTablePermanently(entityTarget);
+        return;
       }
+
+      let operationId: string;
+      try {
+        operationId = await beginWorkspaceEntityDeletion(entityTarget, () =>
+          target.transact((doc) => deleteSavedTableFromYDoc(doc, reference)),
+        );
+      } catch (error) {
+        if (getSavedTableFromYDoc(target.yDoc, reference)) throw error;
+        operationId = (await ensureWorkspaceEntityDeletion(entityTarget)).operationId;
+      }
+      await deleteSavedTable(reference, target.scope).catch((error: unknown) =>
+        console.error('[workspace] table cache cleanup failed', error),
+      );
+      await finalizeWorkspaceEntityDeletion(entityTarget, operationId).catch((error: unknown) =>
+        console.error('[workspace] table history cleanup failed', error),
+      );
     },
     [storage],
   );

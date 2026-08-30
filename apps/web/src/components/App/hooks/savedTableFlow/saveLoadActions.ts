@@ -19,6 +19,7 @@ interface UseSaveLoadActionsParams {
   hasLoadedTable: boolean;
   canSaveCurrent: boolean;
   loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
+  sourceDraftId?: string;
   setLoadedTableVersion: (version: number, normalizedName?: SavedTableTarget) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   buildPersistedState: () => PersistedState;
@@ -28,7 +29,7 @@ interface UseSaveLoadActionsParams {
     name: string;
     state: PersistedState;
   } | null>;
-  saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
+  saveTable: (name: string, state: PersistedState, draftId?: string) => Promise<SaveTableResult>;
   overwriteTable: (
     normalizedName: SavedTableTarget,
     state: PersistedState,
@@ -57,6 +58,7 @@ export function useSaveLoadActions({
   hasLoadedTable,
   canSaveCurrent,
   loadedTableSource,
+  sourceDraftId,
   setLoadedTableVersion,
   saveDialog,
   buildPersistedState,
@@ -140,7 +142,7 @@ export function useSaveLoadActions({
       saveMode = 'update';
       showToast(t('savedTables.toast.tableUpdated', { name: loadedTableName ?? saveName }));
     } else {
-      const result = await saveTable(saveName, nextState);
+      const result = await saveTable(saveName, nextState, sourceDraftId);
       if (!result.ok) {
         if (result.reason === 'duplicate') {
           saveDialog.setError(t('savedTables.toast.nameExists'));
@@ -199,6 +201,7 @@ export function useSaveLoadActions({
     buildPersistedState,
     hasLoadedTable,
     loadedTableSource,
+    sourceDraftId,
     overwriteTable,
     loadedTableName,
     saveName,

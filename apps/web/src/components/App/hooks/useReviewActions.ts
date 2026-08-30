@@ -14,6 +14,7 @@ interface UseReviewActionsParams {
   generatedSql: string;
   workspaceScope: WorkspaceScope | null;
   loadedTableId: string | null;
+  draftId?: string;
   loadedTableNormalizedName: string | null;
   setIsReviewHistoryOpen: (open: boolean) => void;
 }
@@ -26,6 +27,7 @@ export function useReviewActions({
   generatedSql,
   workspaceScope,
   loadedTableId,
+  draftId,
   loadedTableNormalizedName,
   setIsReviewHistoryOpen,
 }: UseReviewActionsParams) {
@@ -38,16 +40,24 @@ export function useReviewActions({
         ? {
             scope: workspaceScope,
             tableId: loadedTableId ?? undefined,
+            draftId: loadedTableId ? undefined : draftId,
             normalizedName,
           }
         : null,
-    [loadedTableId, normalizedName, workspaceScope],
+    [draftId, loadedTableId, normalizedName, workspaceScope],
   );
   const handleStartReview = useCallback(async () => {
     const result = await startReview(generatedSql, tableName, dbType);
     if (!result || !reviewTarget || getCurrentDocumentKey() !== documentKey) return;
     try {
-      await saveReview(reviewTarget, tableName, generatedSql, dbType, result);
+      await saveReview(
+        reviewTarget,
+        tableName,
+        generatedSql,
+        dbType,
+        result,
+        () => getCurrentDocumentKey() === documentKey,
+      );
     } catch (error) {
       reportError(error, {
         scope: 'App',

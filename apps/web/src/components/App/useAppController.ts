@@ -245,6 +245,7 @@ export function useAppController() {
     hasLoadedTable,
     canSaveCurrent,
     loadedTableSource,
+    sourceDraftId: activeEditorSource.kind === 'draft' ? activeEditorSource.draftId : undefined,
     setLoadedTableVersion,
     saveDialog,
     renameDialog,

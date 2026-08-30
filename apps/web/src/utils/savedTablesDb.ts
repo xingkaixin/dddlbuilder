@@ -9,6 +9,11 @@ import { openDb, STORE_NAME } from './workspaceDb';
 import type { SavedTableMetadata, SavedTableRecord } from './workspaceStorageTypes';
 import { resolveSavedTableId } from './savedTableIdentity';
 import { applySavedTableStateUpdate, type SavedTableStateUpdate } from './savedTableStateUpdate';
+import {
+  runWorkspaceEntityWrites,
+  type WorkspaceEntityTarget,
+  type WorkspaceEntityWrite,
+} from './workspaceEntityDeletion';
 
 export { openDb } from './workspaceDb';
 export {
@@ -44,6 +49,34 @@ export const DEFAULT_SAVED_TABLE_NAME = '未命名表';
 
 const withScopeKey = (scope: WorkspaceScope, normalizedName: string) =>
   buildScopedWorkspaceKey(scope, normalizedName);
+
+const encodeScopedTableRecord = (
+  record: SavedTableRecord,
+  scope: WorkspaceScope,
+): SavedTableRecord => ({
+  ...record,
+  normalizedName: withScopeKey(scope, record.normalizedName),
+  scope: getWorkspaceScopeStorageKey(scope),
+});
+
+const tableTarget = (record: SavedTableRecord, scope: WorkspaceScope): WorkspaceEntityTarget => ({
+  scope,
+  tableId: resolveSavedTableId(record),
+  normalizedName: record.normalizedName,
+});
+
+const tableWrite = (
+  record: SavedTableRecord,
+  scope: WorkspaceScope,
+  mode: WorkspaceEntityWrite['mode'],
+): WorkspaceEntityWrite => ({
+  target: tableTarget(record, scope),
+  mode,
+});
+
+const rejectFailedWrite = (request: IDBRequest, fail: (error: unknown) => void) => {
+  request.onerror = () => fail(request.error ?? new Error('IndexedDB 写入失败'));
+};
 
 const decodeScopedTableRecord = (
   record: SavedTableRecord,
@@ -160,46 +193,80 @@ export const getSavedTable = async (
 export const addSavedTable = async (
   record: SavedTableRecord,
   scope: WorkspaceScope,
+  entityMode: WorkspaceEntityWrite['mode'] = 'activate',
 ): Promise<void> => {
-  await runWithStore<IDBValidKey>('readwrite', (store) =>
-    store.add({
-      ...record,
-      normalizedName: withScopeKey(scope, record.normalizedName),
-      scope: getWorkspaceScopeStorageKey(scope),
-    } satisfies SavedTableRecord),
+  await runWorkspaceEntityWrites(
+    [tableWrite(record, scope, entityMode)],
+    STORE_NAME,
+    (tx, fail) => {
+      rejectFailedWrite(
+        tx.objectStore(STORE_NAME).add(encodeScopedTableRecord(record, scope)),
+        fail,
+      );
+    },
   );
 };
 
 export const updateSavedTable = async (
   record: SavedTableRecord,
   scope: WorkspaceScope,
+  entityMode: WorkspaceEntityWrite['mode'] = 'update',
 ): Promise<void> => {
-  await runWithStore<IDBValidKey>('readwrite', (store) =>
-    store.put({
-      ...record,
-      normalizedName: withScopeKey(scope, record.normalizedName),
-      scope: getWorkspaceScopeStorageKey(scope),
-    } satisfies SavedTableRecord),
+  await runWorkspaceEntityWrites(
+    [tableWrite(record, scope, entityMode)],
+    STORE_NAME,
+    (tx, fail) => {
+      rejectFailedWrite(
+        tx.objectStore(STORE_NAME).put(encodeScopedTableRecord(record, scope)),
+        fail,
+      );
+    },
   );
 };
 
 export const updateSavedTables = async (
   records: SavedTableRecord[],
   scope: WorkspaceScope,
+  activatedTableIds: ReadonlySet<string> = new Set(),
 ): Promise<void> => {
   if (records.length === 0) return;
-  const db = await openDb();
-  await runIndexedDbTransaction(db, STORE_NAME, 'readwrite', (tx) => {
-    const store = tx.objectStore(STORE_NAME);
-    for (const record of records) {
-      store.put({
-        ...record,
-        normalizedName: withScopeKey(scope, record.normalizedName),
-        scope: getWorkspaceScopeStorageKey(scope),
-      } satisfies SavedTableRecord);
-    }
-    return () => undefined;
-  });
+  await runWorkspaceEntityWrites(
+    records.map((record) =>
+      tableWrite(
+        record,
+        scope,
+        activatedTableIds.has(resolveSavedTableId(record)) ? 'activate' : 'update',
+      ),
+    ),
+    STORE_NAME,
+    (tx, fail) => {
+      const store = tx.objectStore(STORE_NAME);
+      for (const record of records) {
+        rejectFailedWrite(store.put(encodeScopedTableRecord(record, scope)), fail);
+      }
+    },
+  );
+};
+
+export const replaceSavedTable = async (
+  previousNormalizedName: string,
+  record: SavedTableRecord,
+  scope: WorkspaceScope,
+  entityMode: WorkspaceEntityWrite['mode'] = 'update',
+): Promise<void> => {
+  await runWorkspaceEntityWrites(
+    [tableWrite(record, scope, entityMode)],
+    STORE_NAME,
+    (tx, fail) => {
+      const store = tx.objectStore(STORE_NAME);
+      if (record.normalizedName === previousNormalizedName) {
+        rejectFailedWrite(store.put(encodeScopedTableRecord(record, scope)), fail);
+        return;
+      }
+      rejectFailedWrite(store.add(encodeScopedTableRecord(record, scope)), fail);
+      rejectFailedWrite(store.delete(withScopeKey(scope, previousNormalizedName)), fail);
+    },
+  );
 };
 
 export const updateSavedTableState = async (

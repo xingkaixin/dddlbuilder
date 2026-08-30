@@ -28,6 +28,7 @@ const savedTableMocks = vi.hoisted(() => ({
   listTrashedSavedTables: vi.fn(),
   listTrashedSavedTableMetadata: vi.fn(),
   normalizeSavedTableName: vi.fn((name: string) => name.trim().toLowerCase()),
+  replaceSavedTable: vi.fn(),
   updateSavedTable: vi.fn(),
   updateSavedTables: vi.fn(),
   updateSavedTableState: vi.fn(),
@@ -35,9 +36,13 @@ const savedTableMocks = vi.hoisted(() => ({
 const tableVersionMocks = vi.hoisted(() => ({
   countVersions: vi.fn(),
   createVersion: vi.fn(),
-  deleteAllVersions: vi.fn(),
 }));
-const reviewHistoryMocks = vi.hoisted(() => ({ deleteAllReviews: vi.fn() }));
+const historyCleanupMocks = vi.hoisted(() => ({
+  deleteIndexedDbSavedTablePermanently: vi.fn(),
+}));
+const reviewHistoryMocks = vi.hoisted(() => ({
+  migrateReviewsToTable: vi.fn(),
+}));
 
 vi.mock('@/utils/savedTablesDb', () => ({
   addSavedTable: savedTableMocks.addSavedTable,
@@ -49,6 +54,7 @@ vi.mock('@/utils/savedTablesDb', () => ({
   listTrashedSavedTables: savedTableMocks.listTrashedSavedTables,
   listTrashedSavedTableMetadata: savedTableMocks.listTrashedSavedTableMetadata,
   normalizeSavedTableName: savedTableMocks.normalizeSavedTableName,
+  replaceSavedTable: savedTableMocks.replaceSavedTable,
   updateSavedTable: savedTableMocks.updateSavedTable,
   updateSavedTables: savedTableMocks.updateSavedTables,
   updateSavedTableState: savedTableMocks.updateSavedTableState,
@@ -57,18 +63,23 @@ vi.mock('@/utils/savedTablesDb', () => ({
 vi.mock('@/utils/tableVersions', () => ({
   countVersions: tableVersionMocks.countVersions,
   createVersion: tableVersionMocks.createVersion,
-  deleteAllVersions: tableVersionMocks.deleteAllVersions,
 }));
 
 vi.mock('@/utils/reviewHistory', () => ({
-  migrateReviewsToTable: vi.fn().mockResolvedValue(undefined),
-  deleteAllReviews: reviewHistoryMocks.deleteAllReviews,
+  migrateReviewsToTable: reviewHistoryMocks.migrateReviewsToTable,
+}));
+
+vi.mock('@/services/workspaceHistoryCleanup', () => ({
+  deleteIndexedDbSavedTablePermanently: historyCleanupMocks.deleteIndexedDbSavedTablePermanently,
+  finalizeWorkspaceEntityDeletion: vi.fn(),
 }));
 
 const createState = (name: string) => ({
+  schemaName: '',
   tableName: name,
   tableComment: '测试',
   dbType: 'mysql' as const,
+  sqlFormatMode: 'compact' as const,
   rows: [],
   addCount: 1,
   indexes: [],
@@ -111,8 +122,8 @@ describe('useSavedTables failure states', () => {
     savedTableMocks.listTrashedSavedTableMetadata.mockResolvedValue([]);
     savedTableMocks.listTrashedSavedTables.mockResolvedValue([]);
     savedTableMocks.getSavedTable.mockResolvedValue(null);
-    tableVersionMocks.deleteAllVersions.mockResolvedValue(undefined);
-    reviewHistoryMocks.deleteAllReviews.mockResolvedValue(undefined);
+    historyCleanupMocks.deleteIndexedDbSavedTablePermanently.mockResolvedValue(undefined);
+    reviewHistoryMocks.migrateReviewsToTable.mockResolvedValue(undefined);
   });
 
   it('should return error result when saveTable throws', async () => {
@@ -131,6 +142,20 @@ describe('useSavedTables failure states', () => {
       reason: 'error',
       message: '写入失败',
     });
+  });
+
+  it('评审身份绑定失败时不报告保存成功', async () => {
+    reviewHistoryMocks.migrateReviewsToTable.mockRejectedValueOnce(new Error('绑定失败'));
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let response: SaveResult | undefined;
+    await act(async () => {
+      response = await result.current.saveTable('demo', createState('demo'), 'draft-demo');
+    });
+
+    expect(savedTableMocks.addSavedTable).toHaveBeenCalledOnce();
+    expect(response).toEqual({ ok: false, reason: 'error', message: '绑定失败' });
   });
 
   it('should return null when loadTable cannot find record', async () => {
@@ -197,7 +222,9 @@ describe('useSavedTables failure states', () => {
       ...createRecord('demo', 'Demo'),
       tableId: 'table-demo',
     });
-    tableVersionMocks.deleteAllVersions.mockRejectedValueOnce(new Error('历史清理失败'));
+    historyCleanupMocks.deleteIndexedDbSavedTablePermanently.mockRejectedValueOnce(
+      new Error('历史清理失败'),
+    );
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -211,12 +238,7 @@ describe('useSavedTables failure states', () => {
       reason: 'error',
       message: '历史清理失败',
     });
-    expect(tableVersionMocks.deleteAllVersions).toHaveBeenCalledWith({
-      scope: { kind: 'anonymous' },
-      tableId: 'table-demo',
-      normalizedName: 'demo',
-    });
-    expect(reviewHistoryMocks.deleteAllReviews).toHaveBeenCalledWith({
+    expect(historyCleanupMocks.deleteIndexedDbSavedTablePermanently).toHaveBeenCalledWith({
       scope: { kind: 'anonymous' },
       tableId: 'table-demo',
       normalizedName: 'demo',
@@ -229,17 +251,18 @@ describe('useSavedTables failure states', () => {
       ...createRecord('demo', 'Demo'),
       tableId: 'table-demo',
     });
-    reviewHistoryMocks.deleteAllReviews.mockRejectedValueOnce(new Error('清理失败'));
+    historyCleanupMocks.deleteIndexedDbSavedTablePermanently.mockRejectedValueOnce(
+      new Error('删除失败'),
+    );
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => {
       expect(await result.current.deleteTablePermanently('demo')).toEqual({
         ok: false,
         reason: 'error',
-        message: '清理失败',
+        message: '删除失败',
       });
     });
-    expect(savedTableMocks.deleteSavedTable).not.toHaveBeenCalled();
     await act(async () => {
       expect(await result.current.deleteTablePermanently('demo')).toEqual({
         ok: true,
@@ -247,9 +270,7 @@ describe('useSavedTables failure states', () => {
         tableId: 'table-demo',
       });
     });
-    expect(tableVersionMocks.deleteAllVersions).toHaveBeenCalledTimes(2);
-    expect(reviewHistoryMocks.deleteAllReviews).toHaveBeenCalledTimes(2);
-    expect(savedTableMocks.deleteSavedTable).toHaveBeenCalledOnce();
+    expect(historyCleanupMocks.deleteIndexedDbSavedTablePermanently).toHaveBeenCalledTimes(2);
   });
 
   it('renameTable should cover not_found and duplicate branches', async () => {
@@ -295,7 +316,7 @@ describe('useSavedTables failure states', () => {
     expect(changedName).toEqual({ ok: true, normalizedName: 'gamma', tableId: 'legacy:alpha' });
 
     savedTableMocks.getSavedTable.mockResolvedValueOnce(sourceRecord);
-    savedTableMocks.updateSavedTable.mockRejectedValueOnce(new Error('重命名异常'));
+    savedTableMocks.replaceSavedTable.mockRejectedValueOnce(new Error('重命名异常'));
     let failed: SaveResult | undefined;
     await act(async () => {
       failed = await result.current.renameTable('alpha', ' alpha ');
@@ -366,6 +387,11 @@ describe('useSavedTables failure states', () => {
         expect.objectContaining({ normalizedName: 'beta', folderId: 'folder-a' }),
       ],
       { kind: 'anonymous' },
+      new Set(
+        savedTableMocks.updateSavedTables.mock.calls[0][0].map(
+          (record: SavedTableRecord) => record.tableId,
+        ),
+      ),
     );
 
     savedTableMocks.updateSavedTables.mockRejectedValueOnce(new Error('事务失败'));

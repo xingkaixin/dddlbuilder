@@ -9,6 +9,7 @@ import { runIndexedDbRequest, runIndexedDbTransaction } from './indexedDbTransac
 import { getWorkspaceScopeStorageKey } from './workspaceScope';
 import { openDb, VERSION_STORE_NAME } from './workspaceDb';
 import type { TableVersion } from './workspaceStorageTypes';
+import { addWorkspaceEntityHistoryRecord } from './workspaceEntityDeletion';
 
 export type TableVersionTarget = {
   scope: WorkspaceScope;
@@ -19,7 +20,7 @@ export type TableVersionTarget = {
 export const MAX_VERSIONS_PER_TABLE = 20;
 export const INITIAL_VERSION_MESSAGE_KEY = 'initial_version';
 
-const getTableKey = ({ scope, tableId }: TableVersionTarget) =>
+export const getTableVersionKey = ({ scope, tableId }: TableVersionTarget) =>
   `${getWorkspaceScopeStorageKey(scope)}::${tableId}`;
 
 const decodeVersion = (version: TableVersion): TableVersion => ({
@@ -43,7 +44,7 @@ async function runWithStore<T>(
 
 const readVersions = async (target: TableVersionTarget): Promise<TableVersion[]> => {
   const versions = await runWithStore<TableVersion[]>('readonly', (store) =>
-    store.index('tableKey').getAll(getTableKey(target)),
+    store.index('tableKey').getAll(getTableVersionKey(target)),
   );
   return versions.sort((a, b) => b.createdAt - a.createdAt).map(decodeVersion);
 };
@@ -52,10 +53,10 @@ export async function createVersion(
   target: TableVersionTarget,
   state: PersistedState,
   message?: string,
-): Promise<TableVersion> {
+): Promise<TableVersion | null> {
   const version: TableVersion = {
     id: createEntityId(),
-    tableKey: getTableKey(target),
+    tableKey: getTableVersionKey(target),
     tableId: target.tableId,
     tableNormalizedName: target.normalizedName,
     state,
@@ -63,7 +64,8 @@ export async function createVersion(
     createdAt: Date.now(),
   };
 
-  await runWithStore<IDBValidKey>('readwrite', (store) => store.add(version));
+  const saved = await addWorkspaceEntityHistoryRecord(target, VERSION_STORE_NAME, version);
+  if (!saved) return null;
   await pruneOldVersions(target, MAX_VERSIONS_PER_TABLE);
   return version;
 }
@@ -77,7 +79,7 @@ export async function getVersion(
   target: TableVersionTarget,
 ): Promise<TableVersion | null> {
   const result = await runWithStore<TableVersion | undefined>('readonly', (store) => store.get(id));
-  return result?.tableKey === getTableKey(target) ? decodeVersion(result) : null;
+  return result?.tableKey === getTableVersionKey(target) ? decodeVersion(result) : null;
 }
 
 export async function deleteVersion(id: string, target: TableVersionTarget): Promise<void> {

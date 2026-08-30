@@ -7,7 +7,12 @@ import { writeWorkspaceIdentity, readWorkspaceIdentity } from '@/services/worksp
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import * as Y from 'yjs';
 import { watchWorkspaceHistory } from '@/services/workspaceHistoryCleanup';
-import { upsertSavedTableInYDoc, deleteSavedTableFromYDoc } from '@/services/workspaceYDocAdapter';
+import {
+  upsertSavedTableInYDoc,
+  recreateSavedTableInYDoc,
+  deleteSavedTableFromYDoc,
+  getSavedTableFromYDoc,
+} from '@/services/workspaceYDocAdapter';
 import { createVersion, listVersions } from '@/utils/tableVersions';
 import { saveReview, listReviews } from '@/utils/reviewHistory';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,7 +23,11 @@ import {
   retryPendingWorkspaceCleanup,
   fetchCurrentWorkspace,
 } from '@/services/workspaceAccountService';
-import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
+import { addSavedTable, listSavedTables, updateSavedTable } from '@/utils/savedTablesDb';
+import {
+  beginWorkspaceEntityDeletion,
+  WORKSPACE_ENTITY_DELETION_LEASE_MS,
+} from '@/utils/workspaceEntityDeletion';
 import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
 import { readDraft, writeDraft } from '@/utils/workspaceStateDb';
 
@@ -72,7 +81,7 @@ describe('workspaceAccountService', () => {
     expect(readWorkspaceIdentity()).toBeNull();
   });
 
-  it('cleans history after a remote permanent deletion and retains trashed tables', async () => {
+  it('远端永久删除清理历史，旧副本重现实体也不自动清 deleted marker', async () => {
     const doc = new Y.Doc();
     const remote = new Y.Doc();
     const deleted = { scope, tableId: 'deleted', normalizedName: 'deleted' };
@@ -95,9 +104,116 @@ describe('workspaceAccountService', () => {
     Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote');
     await vi.waitFor(async () => expect(await listVersions(deleted)).toEqual([]));
     expect(await listVersions(trashed)).toHaveLength(1);
+    expect(await createVersion(deleted, createState('late-version'))).toBeNull();
+    expect(
+      await saveReview(deleted, 'deleted', 'late-ddl', 'mysql', {
+        score: 8,
+        summary: 'late',
+        suggestions: [],
+      }),
+    ).toBeNull();
+
+    upsertSavedTableInYDoc(doc, {
+      tableId: deleted.tableId,
+      normalizedName: deleted.normalizedName,
+      name: deleted.normalizedName,
+      state: createState(deleted.normalizedName),
+      createdAt: 1,
+      updatedAt: 3,
+    });
+    await vi.waitFor(async () =>
+      expect(await createVersion(deleted, createState('still-blocked'))).toBeNull(),
+    );
     stop();
     doc.destroy();
     remote.destroy();
+  });
+
+  it('并发重新激活不会被巡检重删，lease 后保留历史并恢复写入', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(1_000);
+    const doc = new Y.Doc();
+    const stale = new Y.Doc();
+    const target = { scope, tableId: 'crashed-delete', normalizedName: 'crashed-delete' };
+    const record = {
+      tableId: target.tableId,
+      normalizedName: target.normalizedName,
+      name: target.normalizedName,
+      state: createState(target.normalizedName),
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    upsertSavedTableInYDoc(doc, record);
+    Y.applyUpdate(stale, Y.encodeStateAsUpdate(doc));
+    await addSavedTable(record, scope);
+    await createVersion(target, createState('before-delete'));
+    await beginWorkspaceEntityDeletion(target, () => deleteSavedTableFromYDoc(doc, target));
+    recreateSavedTableInYDoc(stale, {
+      ...record,
+      state: { ...record.state, tableComment: 'restored' },
+      updatedAt: 2,
+    });
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(stale));
+    const stop = watchWorkspaceHistory(doc, scope);
+
+    try {
+      expect(getSavedTableFromYDoc(doc, target)?.state.tableComment).toBe('restored');
+      expect(await createVersion(target, createState('blocked'))).toBeNull();
+
+      await vi.advanceTimersByTimeAsync(WORKSPACE_ENTITY_DELETION_LEASE_MS);
+
+      expect(getSavedTableFromYDoc(doc, target)?.state.tableComment).toBe('restored');
+      await vi.waitFor(async () => expect(await listVersions(target)).toHaveLength(1));
+      await vi.waitFor(async () =>
+        expect(updateSavedTable({ ...record, updatedAt: 3 }, scope)).resolves.toBeUndefined(),
+      );
+    } finally {
+      stop();
+      doc.destroy();
+      stale.destroy();
+      vi.useRealTimers();
+    }
+  });
+
+  it('启动历史巡检保留未保存文档的 name-key 评审', async () => {
+    const doc = new Y.Doc();
+    const draftTarget = { scope, normalizedName: 'draft-only' };
+    const review = await saveReview(draftTarget, 'draft-only', 'ddl', 'mysql', {
+      score: 8,
+      summary: 'draft',
+      suggestions: [],
+    });
+    if (!review) throw new Error('Expected draft review to be persisted');
+
+    const stop = watchWorkspaceHistory(doc, scope);
+
+    await vi.waitFor(async () =>
+      expect((await listReviews(draftTarget)).map((item) => item.id)).toEqual([review.id]),
+    );
+    stop();
+    doc.destroy();
+  });
+
+  it('离线远端删除后启动巡检清 stable 历史并保留 legacy name 评审', async () => {
+    const doc = new Y.Doc();
+    const target = { scope, tableId: 'offline-deleted', normalizedName: 'users' };
+    const draftTarget = { scope, normalizedName: target.normalizedName };
+    await createVersion(target, createState('users'));
+    await saveReview(draftTarget, 'users', 'old-ddl', 'mysql', {
+      score: 8,
+      summary: 'old',
+      suggestions: [],
+    });
+
+    const stop = watchWorkspaceHistory(doc, scope);
+
+    try {
+      await vi.waitFor(async () => expect(await listVersions(target)).toEqual([]));
+      await vi.waitFor(async () => expect(await listReviews(draftTarget)).toHaveLength(1));
+    } finally {
+      stop();
+      doc.destroy();
+    }
   });
 
   it('preserves history while cleaning migrated legacy table snapshots', async () => {
@@ -183,7 +299,10 @@ describe('workspaceAccountService', () => {
       },
       scope,
     );
-    await bulkPutFolders([{ id: 'folder-1', name: 'Folder', order: 1, createdAt: 1 }], scope);
+    await bulkPutFolders(
+      [{ id: 'folder-1', name: 'Folder', order: 1, createdAt: 1, updatedAt: 1 }],
+      scope,
+    );
 
     await clearLocalWorkspaceData(scope);
 

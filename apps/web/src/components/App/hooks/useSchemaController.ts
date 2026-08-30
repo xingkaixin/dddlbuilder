@@ -201,6 +201,8 @@ export function useSchemaController({
     generatedSql: sql.generatedSql,
     workspaceScope,
     loadedTableId,
+    draftId:
+      activeWorkspaceTab?.source.kind === 'draft' ? activeWorkspaceTab.source.draftId : undefined,
     loadedTableNormalizedName,
     setIsReviewHistoryOpen,
   });

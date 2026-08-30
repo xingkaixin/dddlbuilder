@@ -181,10 +181,10 @@ describe('useSaveLoadActions', () => {
 
   it('resolveSavedTable 只解析目标标签数据，不修改当前编辑器', async () => {
     const savedState = {
+      ...persistedState,
       tableName: 'background',
-      dbType: 'mysql',
       rows: [],
-    } as PersistedState;
+    } satisfies PersistedState;
     loadTable.mockResolvedValue({
       normalizedName: 'background',
       name: 'Background',
@@ -247,10 +247,9 @@ describe('useSaveLoadActions', () => {
       } as PersistedState;
       const { result } = loadWithDraft(draftState, JSON.stringify(legacySavedState));
 
-      let snapshot: Awaited<ReturnType<typeof result.current.resolveSavedTable>> = null;
-      await act(async () => {
-        snapshot = await result.current.resolveSavedTable({ normalizedName: 'orders' } as any);
-      });
+      const snapshot = await act(() =>
+        result.current.resolveSavedTable({ normalizedName: 'orders' } as any),
+      );
 
       expect(snapshot?.state).toBe(draftState);
     });
@@ -263,10 +262,9 @@ describe('useSaveLoadActions', () => {
       });
       const { result } = loadWithDraft(draftState, staleBase);
 
-      let snapshot: Awaited<ReturnType<typeof result.current.resolveSavedTable>> = null;
-      await act(async () => {
-        snapshot = await result.current.resolveSavedTable({ normalizedName: 'orders' } as any);
-      });
+      const snapshot = await act(() =>
+        result.current.resolveSavedTable({ normalizedName: 'orders' } as any),
+      );
 
       expect(snapshot?.state).toEqual(normalizePersistedRows(legacySavedState));
     });
@@ -390,12 +388,14 @@ describe('useSaveLoadActions', () => {
     saveDialog.data = { name: '   new_name   ' }; // Should trim
     const { result } = getHook({
       hasLoadedTable: false,
+      sourceDraftId: 'active-draft-id',
     });
     await act(async () => {
       await result.current.handleConfirmSave();
     });
 
     expect(showToast).toHaveBeenCalledWith('已保存：new_name');
+    expect(saveTable).toHaveBeenCalledWith('   new_name   ', persistedState, 'active-draft-id');
     expect(setLoadedTableVersion).toHaveBeenCalledWith(1, {
       normalizedName: 'new_norm',
       tableId: undefined,

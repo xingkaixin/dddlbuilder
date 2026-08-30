@@ -22,7 +22,6 @@ import { countVersions, createVersion } from '@/utils/tableVersions';
 import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 import { migrateReviewsToTable } from '@/utils/reviewHistory';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
-import { reportError } from '@/utils/errorReporter';
 import type { SavedTableStateUpdate } from '@/utils/savedTableStateUpdate';
 
 export type SavedTableSummary = SavedTableMetadata;
@@ -99,14 +98,18 @@ export function useSavedTables() {
     : null;
 
   const persistActiveTable = useCallback(
-    async (record: SavedTableRecord, mode: 'add' | 'update' = 'update') => {
-      await putTable(record, mode);
+    async (
+      record: SavedTableRecord,
+      mode: 'add' | 'update' = 'update',
+      entityMode: 'update' | 'activate' = 'update',
+    ) => {
+      await putTable(record, mode, entityMode);
     },
     [putTable],
   );
 
   const saveTable = useCallback(
-    async (name: string, state: PersistedState): Promise<SaveTableResult> => {
+    async (name: string, state: PersistedState, draftId?: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const displayName = ensureSavedTableName(name);
@@ -129,16 +132,16 @@ export function useSavedTables() {
             updatedAt: now,
           },
           existing?.trashedAt ? 'update' : 'add',
+          'activate',
         );
         await migrateReviewsToTable(
           { scope: currentScope, tableId, normalizedName },
-          normalizeSavedTableName(buildQualifiedTableName(state.schemaName ?? '', state.tableName)),
-        ).catch((error) =>
-          reportError(error, {
-            scope: 'useSavedTables',
-            action: 'migrateReviewsToTable',
-            metadata: { tableId, normalizedName },
-          }),
+          {
+            draftId,
+            normalizedName: normalizeSavedTableName(
+              buildQualifiedTableName(state.schemaName ?? '', state.tableName),
+            ),
+          },
         );
         await refresh();
         return { ok: true, normalizedName, tableId };
@@ -244,7 +247,7 @@ export function useSavedTables() {
           updatedAt: Date.now(),
         };
 
-        await replaceTable(record.normalizedName, restoredRecord);
+        await replaceTable(record.normalizedName, restoredRecord, 'activate');
         await cleanupLocalTable(target);
         await refresh();
         return {
@@ -354,9 +357,16 @@ export function useSavedTables() {
     [resolveVersionTarget],
   );
   const createTableVersion = useCallback(
-    async (normalizedName: SavedTableTarget, state: PersistedState, message?: string) =>
-      createVersion(await resolveVersionTarget(normalizedName), state, message),
-    [resolveVersionTarget],
+    async (normalizedName: SavedTableTarget, state: PersistedState, message?: string) => {
+      const version = await createVersion(
+        await resolveVersionTarget(normalizedName),
+        state,
+        message,
+      );
+      if (!version) throw new Error(t('savedTables.toast.tableNotFound'));
+      return version;
+    },
+    [resolveVersionTarget, t],
   );
 
   // 移动表到指定文件夹
@@ -407,7 +417,11 @@ export function useSavedTables() {
         );
         skipCount = plan.skipCount;
 
-        await putTables(plan.records);
+        const activeTableIds = new Set(activeRecords.map(resolveSavedTableId));
+        const activatedTableIds = new Set(
+          plan.records.map(resolveSavedTableId).filter((tableId) => !activeTableIds.has(tableId)),
+        );
+        await putTables(plan.records, activatedTableIds);
         await refresh();
 
         return {

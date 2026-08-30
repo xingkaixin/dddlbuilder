@@ -24,6 +24,7 @@ interface UseSavedTableFlowActionsParams {
   hasLoadedTable: boolean;
   canSaveCurrent: boolean;
   loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
+  sourceDraftId?: string;
   setLoadedTableVersion: (version: number, normalizedName?: SavedTableTarget) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   renameDialog: UseDialogStateReturn<RenameDialogData>;
@@ -37,7 +38,7 @@ interface UseSavedTableFlowActionsParams {
   } | null>;
   renameTable: (normalizedName: SavedTableTarget, newName: string) => Promise<SaveTableResult>;
   deleteTable: (normalizedName: SavedTableTarget) => Promise<SaveTableResult>;
-  saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
+  saveTable: (name: string, state: PersistedState, draftId?: string) => Promise<SaveTableResult>;
   overwriteTable: (
     normalizedName: SavedTableTarget,
     state: PersistedState,
@@ -78,6 +79,7 @@ export function useSavedTableFlowActions({
   hasLoadedTable,
   canSaveCurrent,
   loadedTableSource,
+  sourceDraftId,
   setLoadedTableVersion,
   saveDialog,
   renameDialog,
@@ -105,6 +107,7 @@ export function useSavedTableFlowActions({
     hasLoadedTable,
     canSaveCurrent,
     loadedTableSource,
+    sourceDraftId,
     setLoadedTableVersion,
     saveDialog,
     buildPersistedState,

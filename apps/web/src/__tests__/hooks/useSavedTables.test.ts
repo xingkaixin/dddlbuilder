@@ -7,6 +7,10 @@ import { flushPromises } from '@/__tests__/utils/test-utils';
 import { getSavedTable } from '@/utils/savedTablesDb';
 import { listVersions } from '@/utils/tableVersions';
 import { listReviews, saveReview } from '@/utils/reviewHistory';
+import {
+  beginWorkspaceEntityDeletion,
+  cancelWorkspaceEntityDeletion,
+} from '@/utils/workspaceEntityDeletion';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import type * as WorkspaceYDocAdapter from '@/services/workspaceYDocAdapter';
 
@@ -36,6 +40,7 @@ const mockYDocAdapter = vi.hoisted(() => ({
   listSavedTableRecordsFromYDoc: vi.fn(),
   listTrashedSavedTableMetadataFromYDoc: vi.fn(),
   listTrashedSavedTableRecordsFromYDoc: vi.fn(),
+  recreateSavedTableInYDoc: vi.fn(),
   subscribeWorkspaceYDoc: vi.fn(),
   upsertSavedTableInYDoc: vi.fn(),
   renameSavedTableInYDoc: vi.fn(),
@@ -61,6 +66,7 @@ vi.mock('@/services/workspaceYDocAdapter', async (importOriginal) => ({
   listSavedTableRecordsFromYDoc: mockYDocAdapter.listSavedTableRecordsFromYDoc,
   listTrashedSavedTableMetadataFromYDoc: mockYDocAdapter.listTrashedSavedTableMetadataFromYDoc,
   listTrashedSavedTableRecordsFromYDoc: mockYDocAdapter.listTrashedSavedTableRecordsFromYDoc,
+  recreateSavedTableInYDoc: mockYDocAdapter.recreateSavedTableInYDoc,
   subscribeWorkspaceYDoc: mockYDocAdapter.subscribeWorkspaceYDoc,
   upsertSavedTableInYDoc: mockYDocAdapter.upsertSavedTableInYDoc,
   renameSavedTableInYDoc: mockYDocAdapter.renameSavedTableInYDoc,
@@ -102,6 +108,7 @@ describe('useSavedTables', () => {
     mockYDocAdapter.listSavedTableRecordsFromYDoc.mockReset().mockReturnValue([]);
     mockYDocAdapter.listTrashedSavedTableMetadataFromYDoc.mockReset().mockReturnValue([]);
     mockYDocAdapter.listTrashedSavedTableRecordsFromYDoc.mockReset().mockReturnValue([]);
+    mockYDocAdapter.recreateSavedTableInYDoc.mockReset();
     mockYDocAdapter.subscribeWorkspaceYDoc.mockReset().mockReturnValue(vi.fn());
     mockYDocAdapter.upsertSavedTableInYDoc.mockReset();
     mockYDocAdapter.renameSavedTableInYDoc.mockReset();
@@ -133,18 +140,24 @@ describe('useSavedTables', () => {
 
   it('保存名称不同于 SQL 表名时仍迁移评审历史，并支持立即重命名', async () => {
     const scope = { kind: 'anonymous' } as const;
+    const draftId = 'public-users-draft';
     const review = await saveReview(
-      { scope, normalizedName: 'public.users' },
+      { scope, draftId, normalizedName: 'public.users' },
       'public.users',
       'ddl',
       'mysql',
       { score: 8, summary: 'ok', suggestions: [] },
     );
+    if (!review) throw new Error('Expected review to be persisted');
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => {
       expect(
-        await result.current.saveTable('用户表', { ...createState('users'), schemaName: 'public' }),
+        await result.current.saveTable(
+          '用户表',
+          { ...createState('users'), schemaName: 'public' },
+          draftId,
+        ),
       ).toEqual({ ok: true, normalizedName: '用户表', tableId: expect.any(String) });
       expect(await result.current.renameTable('用户表', '用户归档')).toEqual({
         ok: true,
@@ -237,6 +250,29 @@ describe('useSavedTables', () => {
     expect(result.current.trashedTables).toEqual([]);
   });
 
+  it('版本被删除 marker 拒绝时不返回不存在的版本', async () => {
+    const { result } = renderHook(() => useSavedTables());
+    await act(async () => {
+      await result.current.saveTable('Blocked Version', createState('blocked_version'));
+      await flushPromises();
+    });
+    const saved = result.current.savedTables[0];
+    if (!saved) throw new Error('未创建保存表');
+    const target = {
+      scope: { kind: 'anonymous' } as const,
+      tableId: saved.tableId,
+      normalizedName: saved.normalizedName,
+    };
+    const operationId = await beginWorkspaceEntityDeletion(target);
+
+    await expect(
+      result.current.createTableVersion(saved.normalizedName, createState('blocked_version')),
+    ).rejects.toThrow('未找到保存的表');
+    expect(await listVersions(target)).toEqual([]);
+
+    await cancelWorkspaceEntityDeletion(target, operationId);
+  });
+
   it('should overwrite existing record', async () => {
     const { result } = renderHook(() => useSavedTables());
 
@@ -292,7 +328,7 @@ describe('useSavedTables', () => {
       await flushPromises();
     });
 
-    expect(mockYDocAdapter.upsertSavedTableInYDoc).toHaveBeenCalledWith(
+    expect(mockYDocAdapter.recreateSavedTableInYDoc).toHaveBeenCalledWith(
       doc,
       expect.objectContaining({ normalizedName: 'pending' }),
     );
@@ -406,7 +442,7 @@ describe('useSavedTables', () => {
       await flushPromises();
     });
 
-    expect(mockYDocAdapter.upsertSavedTableInYDoc).toHaveBeenCalled();
+    expect(mockYDocAdapter.recreateSavedTableInYDoc).toHaveBeenCalled();
     expect(mockMigrationMarker.invalidateLegacyWorkspaceMigration).not.toHaveBeenCalled();
   });
 
@@ -582,9 +618,8 @@ describe('useSavedTables', () => {
       await flushPromises();
     });
 
-    expect(mockYDocAdapter.renameSavedTableInYDoc).toHaveBeenCalledWith(
+    expect(mockYDocAdapter.recreateSavedTableInYDoc).toHaveBeenCalledWith(
       doc,
-      'archived',
       expect.objectContaining({
         normalizedName: 'archived',
         folderId: 'folder-1',
