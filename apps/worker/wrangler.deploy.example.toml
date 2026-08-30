@@ -18,6 +18,9 @@ binding = "USER_DB"
 database_name = "YOUR_D1_DATABASE_NAME"
 database_id = "YOUR_D1_DATABASE_ID"
 
+[triggers]
+crons = ["*/10 * * * *"]
+
 [[durable_objects.bindings]]
 name = "WORKSPACE_YDOC"
 class_name = "WorkspaceYDocDurableObject"
@@ -27,6 +30,7 @@ tag = "v1"
 new_sqlite_classes = ["WorkspaceYDocDurableObject"]
 
 [vars]
+ENVIRONMENT = "production"
 CORS_ALLOWED_ORIGINS = "https://example.com"
 BETTER_AUTH_URL = "https://example.com"
 RESEND_FROM_EMAIL = "noreply@example.com"

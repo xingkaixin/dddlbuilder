@@ -118,27 +118,26 @@ describe('telegram notifier', () => {
     expect(text).toContain('actualTotalTokens: n/a');
   });
 
-  it('应在发送失败时吞掉异常并记录 warning', async () => {
+  it('应在发送失败时向调用方传递异常', async () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('fail', { status: 500 }));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    dispatchTelegramAuditNotification(
-      createEnv({
-        TELEGRAM_NOTIFY_ENABLED: 'true',
-        TELEGRAM_BOT_TOKEN: 'bot-token',
-        TELEGRAM_CHAT_ID: 'chat-id',
-      }),
-      auditPayload,
-    );
+    try {
+      const task = dispatchTelegramAuditNotification(
+        createEnv({
+          TELEGRAM_NOTIFY_ENABLED: 'true',
+          TELEGRAM_BOT_TOKEN: 'bot-token',
+          TELEGRAM_CHAT_ID: 'chat-id',
+        }),
+        auditPayload,
+      );
 
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    await vi.waitFor(() => {
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-    });
-
-    fetchSpy.mockRestore();
-    warnSpy.mockRestore();
+      expect(task).not.toBeNull();
+      await expect(task).rejects.toThrow('TELEGRAM_SEND_FAILED:500:fail');
+      expect(fetchSpy).toHaveBeenCalledOnce();
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });

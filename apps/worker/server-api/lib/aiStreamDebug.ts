@@ -1,4 +1,5 @@
 import type { AIRouteKey } from './aiRouteKey.js';
+import type { WorkerRequestLogger } from './context.js';
 
 type StreamDebugLoggerOptions = {
   enabled: boolean;
@@ -7,6 +8,7 @@ type StreamDebugLoggerOptions = {
   model: string;
   startedAt: number;
   input: Record<string, unknown>;
+  log?: WorkerRequestLogger;
 };
 
 type ChunkSnapshot = {
@@ -15,20 +17,6 @@ type ChunkSnapshot = {
   totalChars: number;
   elapsedMs: number;
   firstChunkLatencyMs: number | null;
-};
-
-const logEvent = (enabled: boolean, event: string, payload: Record<string, unknown>) => {
-  if (!enabled) {
-    return;
-  }
-
-  console.info(
-    JSON.stringify({
-      event,
-      ts: new Date().toISOString(),
-      ...payload,
-    }),
-  );
 };
 
 const shouldLogChunk = (chunkIndex: number) => chunkIndex <= 5 || chunkIndex % 20 === 0;
@@ -40,11 +28,13 @@ export const createOpenAIStreamDebugLogger = ({
   model,
   startedAt,
   input,
+  log,
 }: StreamDebugLoggerOptions) => {
   let connectedAt: number | null = null;
   let firstChunkAt: number | null = null;
   let chunkCount = 0;
   let totalChars = 0;
+  let terminal = false;
 
   const basePayload = {
     requestId,
@@ -53,6 +43,11 @@ export const createOpenAIStreamDebugLogger = ({
   };
 
   const getElapsedMs = () => Date.now() - startedAt;
+
+  const setDebug = (payload: Record<string, unknown>) => {
+    if (!enabled || terminal) return;
+    log?.set({ ai: { streamDebug: { ...basePayload, ...payload } } });
+  };
 
   const getChunkSnapshot = (content: string): ChunkSnapshot => ({
     chunkIndex: chunkCount,
@@ -64,17 +59,16 @@ export const createOpenAIStreamDebugLogger = ({
 
   return {
     start() {
-      logEvent(enabled, 'ai_stream_start', {
-        ...basePayload,
-        stream: true,
-        input,
+      setDebug({
+        phase: 'started',
+        debugInput: input,
         elapsedMs: 0,
       });
     },
     connected() {
       connectedAt = Date.now();
-      logEvent(enabled, 'ai_stream_openai_connected', {
-        ...basePayload,
+      setDebug({
+        phase: 'connected',
         elapsedMs: connectedAt - startedAt,
       });
     },
@@ -84,8 +78,8 @@ export const createOpenAIStreamDebugLogger = ({
 
       if (firstChunkAt === null) {
         firstChunkAt = Date.now();
-        logEvent(enabled, 'ai_stream_first_chunk', {
-          ...basePayload,
+        setDebug({
+          phase: 'streaming',
           ...getChunkSnapshot(content),
         });
         return;
@@ -95,28 +89,30 @@ export const createOpenAIStreamDebugLogger = ({
         return;
       }
 
-      logEvent(enabled, 'ai_stream_chunk', {
-        ...basePayload,
+      setDebug({
+        phase: 'streaming',
         ...getChunkSnapshot(content),
       });
     },
     complete() {
-      logEvent(enabled, 'ai_stream_complete', {
-        ...basePayload,
+      if (terminal) return;
+      setDebug({
+        phase: 'completed',
         chunkCount,
         totalChars,
         elapsedMs: getElapsedMs(),
         firstChunkLatencyMs: firstChunkAt === null ? null : firstChunkAt - startedAt,
         connectedLatencyMs: connectedAt === null ? null : connectedAt - startedAt,
-        reason: 'done',
       });
+      terminal = true;
     },
     error(error: unknown) {
+      if (terminal) return;
       const message = error instanceof Error ? error.message : 'Unknown stream error';
       const stage = connectedAt !== null || chunkCount > 0 ? 'during_stream' : 'before_stream';
 
-      logEvent(enabled, 'ai_stream_error', {
-        ...basePayload,
+      setDebug({
+        phase: 'failed',
         stage,
         chunkCount,
         totalChars,
@@ -125,6 +121,7 @@ export const createOpenAIStreamDebugLogger = ({
         connectedLatencyMs: connectedAt === null ? null : connectedAt - startedAt,
         errorMessage: message,
       });
+      terminal = true;
     },
   };
 };

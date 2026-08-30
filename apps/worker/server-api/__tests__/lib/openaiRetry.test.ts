@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { APIConnectionError, APIConnectionTimeoutError, APIUserAbortError } from 'openai';
 import type { ApiEnv } from '../../lib/context.js';
 import { buildOpenAIConfig, withOpenAIRetry } from '../../openaiControl.js';
 
@@ -8,12 +9,6 @@ const createStatusError = (status: number, headers?: Headers) =>
   Object.assign(new Error(`HTTP ${status}`), { status, headers });
 
 describe('withOpenAIRetry', () => {
-  let warnSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-  });
-
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -24,9 +19,8 @@ describe('withOpenAIRetry', () => {
 
     await expect(
       withOpenAIRetry(operation, { scope: 'test', maxAttempts: 3 }, config),
-    ).resolves.toEqual({ data: 'ok', attempts: 1 });
+    ).resolves.toEqual({ data: 'ok', attempts: 1, retryCount: 0 });
     expect(operation).toHaveBeenCalledOnce();
-    expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it('retries a transient HTTP failure and reports the total attempts', async () => {
@@ -35,31 +29,43 @@ describe('withOpenAIRetry', () => {
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(createStatusError(503))
       .mockResolvedValue('ok');
+    const onRetry = vi.fn();
 
     const result = withOpenAIRetry(
       operation,
-      { scope: 'completion', maxAttempts: 3, baseDelayMs: 10, maxDelayMs: 10 },
+      {
+        scope: 'completion',
+        maxAttempts: 3,
+        baseDelayMs: 10,
+        maxDelayMs: 10,
+        onRetry,
+      },
       config,
     );
     await vi.runAllTimersAsync();
 
-    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2 });
+    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2, retryCount: 1 });
     expect(operation).toHaveBeenCalledTimes(2);
-    expect(warnSpy).toHaveBeenCalledOnce();
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[completion] OpenAI request failed (attempt 1/3, status=503), retrying in 10ms',
-    );
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(onRetry).toHaveBeenCalledWith({
+      error: expect.objectContaining({ status: 503 }),
+      attempt: 1,
+      maxAttempts: 3,
+      status: 503,
+      waitMs: 10,
+    });
   });
 
   it('does not retry a non-transient HTTP failure and preserves its identity', async () => {
     const error = createStatusError(400);
     const operation = vi.fn<() => Promise<never>>().mockRejectedValue(error);
+    const onRetry = vi.fn();
 
     await expect(
-      withOpenAIRetry(operation, { scope: 'test', maxAttempts: 3 }, config),
+      withOpenAIRetry(operation, { scope: 'test', maxAttempts: 3, onRetry }, config),
     ).rejects.toBe(error);
     expect(operation).toHaveBeenCalledOnce();
-    expect(warnSpy).not.toHaveBeenCalled();
+    expect(onRetry).not.toHaveBeenCalled();
   });
 
   it('preserves the final error after exhausting the retry budget', async () => {
@@ -72,10 +78,17 @@ describe('withOpenAIRetry', () => {
       .mockRejectedValueOnce(firstError)
       .mockRejectedValueOnce(secondError)
       .mockRejectedValue(finalError);
+    const onRetry = vi.fn();
 
     const result = withOpenAIRetry(
       operation,
-      { scope: 'test', maxAttempts: 3, baseDelayMs: 100, maxDelayMs: 1_000 },
+      {
+        scope: 'test',
+        maxAttempts: 3,
+        baseDelayMs: 100,
+        maxDelayMs: 1_000,
+        onRetry,
+      },
       config,
     );
     const rejection = result.catch((error: unknown) => error);
@@ -83,11 +96,16 @@ describe('withOpenAIRetry', () => {
 
     await expect(rejection).resolves.toBe(finalError);
     expect(operation).toHaveBeenCalledTimes(3);
-    expect(warnSpy).toHaveBeenCalledTimes(2);
-    const warnings = warnSpy.mock.calls.map(([message]) => String(message));
-    const waits = warnings.map((message) => Number(/retrying in (\d+)ms$/.exec(message)?.[1]));
-    expect(warnings[0]).toContain('(attempt 1/3, status=503)');
-    expect(warnings[1]).toContain('(attempt 2/3, status=503)');
+    expect(onRetry).toHaveBeenCalledTimes(2);
+    const events = onRetry.mock.calls.map(([event]) => event);
+    const waits = events.map(({ waitMs }) => waitMs);
+    expect(events[0]).toMatchObject({ error: firstError, attempt: 1, maxAttempts: 3, status: 503 });
+    expect(events[1]).toMatchObject({
+      error: secondError,
+      attempt: 2,
+      maxAttempts: 3,
+      status: 503,
+    });
     expect(waits[0]).toBeGreaterThanOrEqual(100);
     expect(waits[0]).toBeLessThanOrEqual(120);
     expect(waits[1]).toBeGreaterThanOrEqual(160);
@@ -101,18 +119,74 @@ describe('withOpenAIRetry', () => {
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(networkError)
       .mockResolvedValue('ok');
+    const onRetry = vi.fn();
 
     const result = withOpenAIRetry(
       operation,
-      { scope: 'stream', maxAttempts: 2, baseDelayMs: 1, maxDelayMs: 1 },
+      { scope: 'stream', maxAttempts: 2, baseDelayMs: 1, maxDelayMs: 1, onRetry },
       config,
     );
     await vi.runAllTimersAsync();
 
-    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2 });
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[stream] OpenAI request failed (attempt 1/2, status=unknown), retrying in 1ms',
+    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2, retryCount: 1 });
+    expect(onRetry).toHaveBeenCalledWith({
+      error: networkError,
+      attempt: 1,
+      maxAttempts: 2,
+      status: null,
+      waitMs: 1,
+    });
+  });
+
+  it.each([
+    ['APIConnectionError', new APIConnectionError({ cause: new Error('socket closed') })],
+    ['APIConnectionTimeoutError', new APIConnectionTimeoutError({ message: 'connect timed out' })],
+  ])('retries OpenAI SDK %s without relying on instanceof', async (_label, connectionError) => {
+    vi.useFakeTimers();
+    const operation = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(connectionError)
+      .mockResolvedValue('ok');
+
+    const result = withOpenAIRetry(
+      operation,
+      { scope: 'sdk-connection', maxAttempts: 2, baseDelayMs: 1, maxDelayMs: 1 },
+      config,
     );
+    await vi.runAllTimersAsync();
+
+    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2, retryCount: 1 });
+    expect(operation).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries a known network code nested in an error cause', async () => {
+    vi.useFakeTimers();
+    const nestedError = new Error('fetch failed', {
+      cause: Object.assign(new Error('socket reset'), { code: 'ECONNRESET' }),
+    });
+    const operation = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(nestedError)
+      .mockResolvedValue('ok');
+
+    const result = withOpenAIRetry(
+      operation,
+      { scope: 'nested-network', maxAttempts: 2, baseDelayMs: 1, maxDelayMs: 1 },
+      config,
+    );
+    await vi.runAllTimersAsync();
+
+    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2, retryCount: 1 });
+  });
+
+  it('does not retry an OpenAI user abort', async () => {
+    const abortError = new APIUserAbortError();
+    const operation = vi.fn<() => Promise<never>>().mockRejectedValue(abortError);
+
+    await expect(
+      withOpenAIRetry(operation, { scope: 'user-abort', maxAttempts: 3 }, config),
+    ).rejects.toBe(abortError);
+    expect(operation).toHaveBeenCalledOnce();
   });
 
   it('honors Retry-After while capping it to the configured maximum delay', async () => {
@@ -122,23 +196,28 @@ describe('withOpenAIRetry', () => {
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(error)
       .mockResolvedValue('ok');
+    const onRetry = vi.fn();
 
     const result = withOpenAIRetry(
       operation,
-      { scope: 'test', maxAttempts: 2, baseDelayMs: 10, maxDelayMs: 250 },
+      { scope: 'test', maxAttempts: 2, baseDelayMs: 10, maxDelayMs: 250, onRetry },
       config,
     );
     await vi.advanceTimersByTimeAsync(0);
     expect(operation).toHaveBeenCalledOnce();
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[test] OpenAI request failed (attempt 1/2, status=429), retrying in 250ms',
-    );
+    expect(onRetry).toHaveBeenCalledWith({
+      error,
+      attempt: 1,
+      maxAttempts: 2,
+      status: 429,
+      waitMs: 250,
+    });
 
     await vi.advanceTimersByTimeAsync(249);
     expect(operation).toHaveBeenCalledOnce();
     await vi.advanceTimersByTimeAsync(1);
 
-    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2 });
+    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2, retryCount: 1 });
     expect(operation).toHaveBeenCalledTimes(2);
   });
 
@@ -151,19 +230,24 @@ describe('withOpenAIRetry', () => {
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(error)
       .mockResolvedValue('ok');
+    const onRetry = vi.fn();
 
     const result = withOpenAIRetry(
       operation,
-      { scope: 'test', maxAttempts: 2, baseDelayMs: 100, maxDelayMs: 6_000 },
+      { scope: 'test', maxAttempts: 2, baseDelayMs: 100, maxDelayMs: 6_000, onRetry },
       config,
     );
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[test] OpenAI request failed (attempt 1/2, status=503), retrying in 5000ms',
-    );
+    expect(onRetry).toHaveBeenCalledWith({
+      error,
+      attempt: 1,
+      maxAttempts: 2,
+      status: 503,
+      waitMs: 5_000,
+    });
     await vi.runAllTimersAsync();
-    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2 });
+    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2, retryCount: 1 });
   });
 
   it('retries a transient error thrown synchronously by the operation', async () => {
@@ -183,18 +267,19 @@ describe('withOpenAIRetry', () => {
     );
     await vi.runAllTimersAsync();
 
-    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2 });
+    await expect(result).resolves.toEqual({ data: 'ok', attempts: 2, retryCount: 1 });
     expect(operation).toHaveBeenCalledTimes(2);
   });
 
   it('does not schedule a retry when only one attempt is allowed', async () => {
     const error = createStatusError(503);
     const operation = vi.fn<() => Promise<never>>().mockRejectedValue(error);
+    const onRetry = vi.fn();
 
     await expect(
-      withOpenAIRetry(operation, { scope: 'test', maxAttempts: 1 }, config),
+      withOpenAIRetry(operation, { scope: 'test', maxAttempts: 1, onRetry }, config),
     ).rejects.toBe(error);
     expect(operation).toHaveBeenCalledOnce();
-    expect(warnSpy).not.toHaveBeenCalled();
+    expect(onRetry).not.toHaveBeenCalled();
   });
 });

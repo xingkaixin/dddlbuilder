@@ -8,11 +8,21 @@ type RetryOptions = {
   maxAttempts?: number;
   baseDelayMs?: number;
   maxDelayMs?: number;
+  onRetry?: (event: OpenAIRetryEvent) => void;
 };
 
 export type OpenAIRetryResult<T> = {
   data: T;
   attempts: number;
+  retryCount: number;
+};
+
+export type OpenAIRetryEvent = {
+  error: unknown;
+  attempt: number;
+  maxAttempts: number;
+  status: number | null;
+  waitMs: number;
 };
 
 const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
@@ -23,6 +33,12 @@ const RETRYABLE_NETWORK_CODES = new Set([
   'ENOTFOUND',
   'ECONNREFUSED',
 ]);
+const RETRYABLE_CONNECTION_ERROR_NAMES = new Set([
+  'APIConnectionError',
+  'APIConnectionTimeoutError',
+]);
+const ABORT_ERROR_NAMES = new Set(['AbortError', 'APIUserAbortError']);
+const ERROR_CAUSE_DEPTH_LIMIT = 8;
 
 const parseRetryAfterMs = (
   retryAfterHeader: string | null | undefined,
@@ -71,15 +87,44 @@ const getRetryAfterFromError = (error: unknown, now: number): number | null => {
   return parseRetryAfterMs(readHeaderFromUnknown(headers, 'retry-after'), now);
 };
 
+const readErrorName = (error: object) => {
+  const name = Reflect.get(error, 'name');
+  if (typeof name === 'string' && name !== 'Error') return name;
+  const constructor = Reflect.get(error, 'constructor');
+  if (!constructor || typeof constructor !== 'function') return null;
+  return typeof constructor.name === 'string' ? constructor.name : null;
+};
+
+const getErrorChain = (error: unknown) => {
+  const chain: object[] = [];
+  const seen = new Set<object>();
+  let current = error;
+  while (
+    current !== null &&
+    typeof current === 'object' &&
+    chain.length < ERROR_CAUSE_DEPTH_LIMIT &&
+    !seen.has(current)
+  ) {
+    chain.push(current);
+    seen.add(current);
+    current = Reflect.get(current, 'cause');
+  }
+  return chain;
+};
+
 const isRetryableError = (error: unknown): boolean => {
   const status = getErrorStatus(error);
   if (status !== null) {
     return RETRYABLE_STATUS_CODES.has(status);
   }
 
-  if (!error || typeof error !== 'object') return false;
-  const code = (error as { code?: unknown }).code;
-  return typeof code === 'string' && RETRYABLE_NETWORK_CODES.has(code);
+  const chain = getErrorChain(error);
+  if (chain.some((item) => ABORT_ERROR_NAMES.has(readErrorName(item) ?? ''))) return false;
+  return chain.some((item) => {
+    if (RETRYABLE_CONNECTION_ERROR_NAMES.has(readErrorName(item) ?? '')) return true;
+    const code = Reflect.get(item, 'code');
+    return typeof code === 'string' && RETRYABLE_NETWORK_CODES.has(code.toUpperCase());
+  });
 };
 
 const createRetrySchedule = (options: {
@@ -87,6 +132,7 @@ const createRetrySchedule = (options: {
   maxAttempts: number;
   baseDelayMs: number;
   maxDelayMs: number;
+  onRetry?: (event: OpenAIRetryEvent) => void;
 }) =>
   Schedule.exponential(Duration.millis(options.baseDelayMs)).pipe(
     Schedule.setInputType<unknown>(),
@@ -107,9 +153,13 @@ const createRetrySchedule = (options: {
       Effect.sync(() => {
         const status = getErrorStatus(input);
         const waitMs = Duration.toMillis(duration);
-        console.warn(
-          `[${options.scope}] OpenAI request failed (attempt ${attempt}/${options.maxAttempts}, status=${status ?? 'unknown'}), retrying in ${waitMs}ms`,
-        );
+        options.onRetry?.({
+          error: input,
+          attempt,
+          maxAttempts: options.maxAttempts,
+          status,
+          waitMs,
+        });
       }),
     ),
   );
@@ -140,12 +190,13 @@ export async function withOpenAIRetry<T>(
     maxAttempts,
     baseDelayMs,
     maxDelayMs,
+    onRetry: options.onRetry,
   });
 
   return Effect.runPromise(
     operationEffect.pipe(
       Effect.retry(schedule),
-      Effect.map((data) => ({ data, attempts })),
+      Effect.map((data) => ({ data, attempts, retryCount: Math.max(0, attempts - 1) })),
     ),
   );
 }

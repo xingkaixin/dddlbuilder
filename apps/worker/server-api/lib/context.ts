@@ -12,6 +12,10 @@ export type WorkerRequestLogFields = {
   outcome: {
     errorCode: ApiErrorCode;
   };
+  ai: Record<string, unknown>;
+  deployment: {
+    environment: string;
+  };
 };
 
 export type WorkerRequestLogger = AuditableLogger<WorkerRequestLogFields>;
@@ -29,6 +33,7 @@ export type ApiEnv = {
     WORKSPACE_YDOC?: DurableObjectNamespace;
     EVLOG_REQUEST_LOG?: WorkerRequestLogger;
     // Environment variables
+    ENVIRONMENT?: string;
     CORS_ALLOWED_ORIGINS?: string;
     BETTER_AUTH_SECRET?: string;
     BETTER_AUTH_URL?: string;
@@ -72,6 +77,7 @@ type EnvVariableKey = {
 }[keyof ApiEnv['Bindings']];
 
 export const ENV_VARIABLE_KEYS = [
+  'ENVIRONMENT',
   'CORS_ALLOWED_ORIGINS',
   'BETTER_AUTH_SECRET',
   'BETTER_AUTH_URL',

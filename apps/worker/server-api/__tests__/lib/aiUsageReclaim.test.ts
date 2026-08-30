@@ -14,7 +14,7 @@ describe('reclaimStaleAIUsage with SQLite timestamps', () => {
   it.each(['2026-08-27T12:15:00.000Z', '2026-08-28T00:01:00.000Z'])(
     'only refunds expired reservations and preserves normal settlement at %s',
     async (timestamp) => {
-      const { reserveAIUsage, reclaimStaleAIUsage, completeAIUsage } =
+      const { reserveAIUsage, reclaimStaleAIUsage, completeAIUsage, recordAIUsageAttempt } =
         await import('../../lib/aiUsage.js');
       const { applyCreditMutation, getCreditAccount } = await import('../../lib/credits.js');
       const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
@@ -54,13 +54,26 @@ describe('reclaimStaleAIUsage with SQLite timestamps', () => {
         expect(await reclaimStaleAIUsage(env, { now, ttlMs })).toEqual({
           scanned: 1,
           reclaimed: 1,
+          failures: [],
         });
-        expect((await getCreditAccount(env, 'user-1'))?.balance).toBe(700);
+        expect((await getCreditAccount(env, 'user-1'))?.balance).toBe(800);
 
-        await completeAIUsage(env, fresh, 60);
-        await completeAIUsage(env, boundary, 60);
+        await recordAIUsageAttempt(env, fresh);
+        await recordAIUsageAttempt(env, boundary);
+        await completeAIUsage(env, fresh, {
+          observedTotalTokens: 60,
+          chargedTokens: 60,
+          providerBudgetTokens: 60,
+          usageEstimated: false,
+        });
+        await completeAIUsage(env, boundary, {
+          observedTotalTokens: 60,
+          chargedTokens: 60,
+          providerBudgetTokens: 60,
+          usageEstimated: false,
+        });
 
-        expect((await getCreditAccount(env, 'user-1'))?.balance).toBe(780);
+        expect((await getCreditAccount(env, 'user-1'))?.balance).toBe(880);
         expect(
           sqlite.prepare('SELECT request_id, status FROM usage_events ORDER BY request_id').all(),
         ).toEqual([
@@ -89,10 +102,20 @@ describe('legacy usage recovery', () => {
     try {
       await f.reserve();
       f.sqlite
-        .prepare('UPDATE usage_events SET status = ?, actual_total_tokens = ?, created_at = 1')
+        .prepare(`UPDATE usage_events SET
+          status = ?, actual_total_tokens = ?, charged_tokens = NULL,
+          attempt_count = NULL, usage_is_estimated = NULL, created_at = 1`)
         .run(status, actual);
-      expect(await reclaimStaleAIUsage(f.env)).toEqual({ scanned: 1, reclaimed: 1 });
-      expect(await reclaimStaleAIUsage(f.env)).toEqual({ scanned: 0, reclaimed: 0 });
+      expect(await reclaimStaleAIUsage(f.env)).toEqual({
+        scanned: 1,
+        reclaimed: 1,
+        failures: [],
+      });
+      expect(await reclaimStaleAIUsage(f.env)).toEqual({
+        scanned: 0,
+        reclaimed: 0,
+        failures: [],
+      });
       expect(await f.balance()).toBe(expected);
       expect(f.sqlite.prepare('SELECT status FROM usage_events').get()?.status).toBe(terminal);
     } finally {
@@ -107,6 +130,92 @@ describe('legacy usage recovery', () => {
       );
       await reclaimStaleAIUsage(f.env);
       expect(await f.balance()).toBe(1000);
+    } finally {
+      f.sqlite.close();
+    }
+  });
+
+  it('defers failed settlements so later recoverable rows are not starved', async () => {
+    const f = await createCreditFixture();
+    try {
+      f.sqlite.exec('BEGIN');
+      for (let index = 0; index < 200; index += 1) {
+        const suffix = String(index).padStart(3, '0');
+        const userId = `debt-user-${suffix}`;
+        const usageId = `debt-usage-${suffix}`;
+        f.sqlite
+          .prepare(
+            'INSERT INTO user (id, name, email, created_at, updated_at) VALUES (?, ?, ?, 1, 1)',
+          )
+          .run(userId, userId, `${userId}@example.com`);
+        f.sqlite
+          .prepare('INSERT INTO credit_accounts (user_id, balance, version) VALUES (?, 1, 0)')
+          .run(userId);
+        f.sqlite
+          .prepare(`INSERT INTO usage_events (
+            id, user_id, route_key, request_id, estimated_tokens, actual_total_tokens,
+            charged_tokens, attempt_count, usage_is_estimated, status, created_at
+          ) VALUES (?, ?, 'explain', ?, 1, 2, 2, 1, 0, 'settling_succeeded', 1)`)
+          .run(usageId, userId, `request-${usageId}`);
+        f.sqlite
+          .prepare(`INSERT INTO credit_ledger (
+            id, user_id, kind, source, amount, balance_after, idempotency_key,
+            related_usage_id, created_at
+          ) VALUES (?, ?, 'consume', 'ai_explain', 1, 0, ?, ?, 1)`)
+          .run(`reserve-${usageId}`, userId, `${usageId}:reserve`, usageId);
+      }
+      f.sqlite.exec(`INSERT INTO usage_events (
+        id, user_id, route_key, request_id, estimated_tokens, charged_tokens,
+        attempt_count, usage_is_estimated, status, created_at
+      ) VALUES ('recoverable', 'user-1', 'explain', 'recoverable-request', 1, 0, 0, 0, 'pending', 1)`);
+      f.sqlite.exec('COMMIT');
+
+      const first = await reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0 });
+      expect(first).toMatchObject({ scanned: 200, reclaimed: 0 });
+      expect(first.failures).toHaveLength(200);
+
+      expect(await reclaimStaleAIUsage(f.env, { now: 1_001, ttlMs: 0 })).toEqual({
+        scanned: 1,
+        reclaimed: 1,
+        failures: [],
+      });
+      expect(
+        f.sqlite.prepare("SELECT status FROM usage_events WHERE id = 'recoverable'").get(),
+      ).toEqual({ status: 'failed' });
+    } finally {
+      f.sqlite.close();
+    }
+  });
+
+  it('prioritizes a due retry over newly prepared settlements', async () => {
+    const f = await createCreditFixture();
+    try {
+      const due = await f.reserve();
+      const fresh = await f.reserve();
+      f.sqlite
+        .prepare(`UPDATE usage_events SET
+          status = 'settling_failed', charged_tokens = 0, provider_budget_tokens = 0,
+          attempt_count = 0, usage_is_estimated = 0, created_at = 1, recovery_after = 100
+          WHERE id = ?`)
+        .run(due.usageEventId);
+      f.sqlite
+        .prepare(`UPDATE usage_events SET
+          status = 'settling_failed', charged_tokens = 0, provider_budget_tokens = 0,
+          attempt_count = 0, usage_is_estimated = 0, created_at = 999, recovery_after = NULL
+          WHERE id = ?`)
+        .run(fresh.usageEventId);
+
+      expect(await reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0, limit: 1 })).toEqual({
+        scanned: 1,
+        reclaimed: 1,
+        failures: [],
+      });
+      expect(
+        f.sqlite.prepare('SELECT status FROM usage_events WHERE id = ?').get(due.usageEventId),
+      ).toEqual({ status: 'failed' });
+      expect(
+        f.sqlite.prepare('SELECT status FROM usage_events WHERE id = ?').get(fresh.usageEventId),
+      ).toEqual({ status: 'settling_failed' });
     } finally {
       f.sqlite.close();
     }

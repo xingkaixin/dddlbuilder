@@ -1,24 +1,37 @@
 import type { Context } from 'hono';
 import { matchedRoutes } from 'hono/route';
+import { createLogger } from 'evlog';
 import { initWorkersLogger, withEvlog, type EvlogWorkersOptions } from 'evlog/workers';
 import type { ApiEnv, WorkerRequestLogger } from './context.js';
 
 const REQUEST_ID_PATTERN = /^[a-zA-Z0-9._:-]{1,128}$/;
 const API_PATH_PREFIX = '/api';
 
+const getRuntimeProcess = () =>
+  Reflect.get(globalThis, 'process') as { env?: Record<string, string | undefined> } | undefined;
+
 const isVitest = () => {
-  const runtimeProcess = Reflect.get(globalThis, 'process') as
-    | { env?: Record<string, string | undefined> }
-    | undefined;
+  const runtimeProcess = getRuntimeProcess();
   return runtimeProcess?.env?.VITEST === 'true';
 };
 
-export const configureWorkerLogging = (enabled = !isVitest()) => {
+const getRuntimeEnvironment = () => {
+  const runtimeEnv = getRuntimeProcess()?.env;
+  return runtimeEnv?.ENVIRONMENT?.trim() || runtimeEnv?.NODE_ENV?.trim() || undefined;
+};
+
+let configuredEnvironment: string | undefined;
+
+export const configureWorkerLogging = (
+  enabled = !isVitest(),
+  environment = getRuntimeEnvironment(),
+) => {
+  configuredEnvironment = environment;
   initWorkersLogger({
     enabled,
     env: {
       service: 'ddlbuilder-worker',
-      environment: 'production',
+      ...(environment ? { environment } : {}),
     },
     redact: {
       paths: [
@@ -37,6 +50,7 @@ export const configureWorkerLogging = (enabled = !isVitest()) => {
         '**.messages',
         '**.requestBody',
         '**.responseBody',
+        '**.debugInput',
         '**.state',
         '**.snapshot',
         '**.yjsUpdate',
@@ -46,6 +60,12 @@ export const configureWorkerLogging = (enabled = !isVitest()) => {
 };
 
 configureWorkerLogging();
+
+const configureWorkerLoggingFromEnvironment = (environment: string | undefined) => {
+  const normalized = environment?.trim() || undefined;
+  if (!normalized || normalized === configuredEnvironment) return;
+  configureWorkerLogging(!isVitest(), normalized);
+};
 
 export const WORKER_LOGGING_OPTIONS = {
   include: ['/api/**'],
@@ -78,6 +98,9 @@ type WorkerFetch = (
 
 export const withWorkerRequestLogging = (handler: WorkerFetch): WorkerFetch => {
   const loggedWorker = withEvlog<ApiEnv['Bindings']>(async (request, env, ctx, log) => {
+    if (env.ENVIRONMENT) {
+      log.set({ deployment: { environment: env.ENVIRONMENT } });
+    }
     const response = await handler(
       request,
       {
@@ -91,12 +114,41 @@ export const withWorkerRequestLogging = (handler: WorkerFetch): WorkerFetch => {
     return response;
   }, WORKER_LOGGING_OPTIONS);
 
-  return (request, env, ctx) =>
-    loggedWorker.fetch(normalizeApiRequestId(request), env, ctx as ExecutionContext);
+  return (request, env, ctx) => {
+    configureWorkerLoggingFromEnvironment(env.ENVIRONMENT);
+    return loggedWorker.fetch(normalizeApiRequestId(request), env, ctx as ExecutionContext);
+  };
 };
 
 export const getRequestLogger = (c: Context<ApiEnv>): WorkerRequestLogger | undefined =>
   c.get('log');
+
+export const toWorkerError = (error: unknown, fallback: string) => {
+  if (error instanceof Error) return error;
+  if (typeof error === 'string') return new Error(error);
+  return new Error(fallback);
+};
+
+export const logWorkerBackgroundError = (
+  error: unknown,
+  context: Record<string, unknown>,
+  waitUntil?: (promise: Promise<unknown>) => void,
+  environment?: string,
+) => {
+  configureWorkerLoggingFromEnvironment(environment);
+  const log = createLogger({ background: context }, { waitUntil });
+  log.error(toWorkerError(error, 'Worker background task failed'));
+  log.emit();
+};
+
+export const createWorkerBackgroundLogger = (
+  context: Record<string, unknown>,
+  waitUntil: (promise: Promise<unknown>) => void,
+  environment?: string,
+) => {
+  configureWorkerLoggingFromEnvironment(environment);
+  return createLogger(context, { waitUntil });
+};
 
 const getCanonicalRequestPath = (c: Context<ApiEnv>) => {
   const routes = matchedRoutes(c);

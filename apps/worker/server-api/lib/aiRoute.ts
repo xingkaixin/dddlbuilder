@@ -7,8 +7,10 @@ import OpenAI from 'openai';
 import {
   type AIRouteKey,
   type AIUsageReservation,
-  completeAIUsage,
-  failAIUsage,
+  type AIUsageSettlement,
+  finalizeAIUsageSettlement,
+  prepareAIUsageSettlement,
+  recordAIUsageAttempt,
   reserveAIUsage,
 } from './aiUsage.js';
 import type { ApiEnv } from './context.js';
@@ -17,7 +19,6 @@ import {
   enforceOpenAIDailyBudget,
   enforceOpenAIRateLimit,
   estimateRequestTokens,
-  estimateResponseTokensFromText,
   getOpenAIGovernanceSnapshot,
   logOpenAIAudit,
   readUsageFromStreamChunk,
@@ -34,8 +35,20 @@ import {
 import { createOpenAIStreamDebugLogger } from './aiStreamDebug.js';
 import { settleAIDailyBudget } from './aiBudget.js';
 import { enforceIpRateLimit } from './requestRateLimit.js';
+import { getRequestLogger, logWorkerBackgroundError, toWorkerError } from './logging.js';
 
 const DEFAULT_MODEL = 'gpt-4o-mini';
+const SETTLEMENT_INTENT_MAX_ATTEMPTS = 3;
+
+class AIUsageAttemptPersistenceError extends Error {
+  readonly cause: unknown;
+
+  constructor(cause: unknown) {
+    super('AI usage attempt could not be persisted');
+    this.name = 'AIUsageAttemptPersistenceError';
+    this.cause = cause;
+  }
+}
 
 // 兼容层：部分上游按这两个键关闭思维链，OpenAI 官方类型里没有它们
 const THINKING_DISABLED = { thinking: { type: 'disabled' }, enable_thinking: false };
@@ -134,6 +147,13 @@ export const withAIGovernance = async <Request>(
 
   let estimatedTokens = 0;
   let usage: OpenAIUsageSnapshot | null = null;
+  let chargedTokens: number | null = null;
+  let providerBudgetTokens: number | null = null;
+  let usageEstimated: boolean | null = null;
+  let accountingSnapshotReliable = false;
+  let accountingFinalized = false;
+  let attemptCount = 0;
+  let auditUserId: string | null = null;
   let rateLimitRemaining: number | null = governance.rateLimitLimit;
   let budgetUsedTokens: number | null = null;
 
@@ -152,11 +172,17 @@ export const withAIGovernance = async <Request>(
         status,
         latencyMs: Date.now() - startedAt,
         retryCount,
+        attemptCount,
         rateLimitHit,
         estimatedTokens,
         actualPromptTokens: usage?.promptTokens ?? null,
         actualCompletionTokens: usage?.completionTokens ?? null,
         actualTotalTokens: usage?.totalTokens ?? null,
+        chargedTokens: accountingSnapshotReliable ? chargedTokens : null,
+        providerBudgetTokens: accountingSnapshotReliable ? providerBudgetTokens : null,
+        usageEstimated: accountingSnapshotReliable ? usageEstimated : null,
+        accountingFinalized,
+        userId: auditUserId,
         model,
         maxOutputTokens,
         rateLimitEnabled: governance.rateLimitEnabled,
@@ -193,10 +219,13 @@ export const withAIGovernance = async <Request>(
       audit(error.status, 0, false, false, error.code);
       return errorResponse(c, error.status, error.message, error.code);
     }
-    console.error(`[${route}] authentication failed`, error);
+    getRequestLogger(c)?.error(toWorkerError(error, 'Authentication failed'), {
+      ai: { failurePhase: 'authentication' },
+    });
     audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
     return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
   }
+  auditUserId = user.userId;
 
   const parsedBody = await parseJsonBodyWithLimit<Record<string, unknown>>(c, spec.bodyMaxBytes);
   if (!parsedBody.ok) {
@@ -247,27 +276,137 @@ export const withAIGovernance = async <Request>(
       audit(error.status, 0, false, false, error.code);
       return errorResponse(c, error.status, error.message, error.code);
     }
-    console.error(`[${route}] credit reservation failed`, error);
+    getRequestLogger(c)?.error(toWorkerError(error, 'Credit reservation failed'), {
+      ai: { failurePhase: 'credit_reservation' },
+    });
     audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
     return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
   }
 
-  const settleBudget = (actualTokens: number | null) =>
+  let requestAborted = false;
+
+  const getProviderBudgetTokens = (observedTokens: number | null) => {
+    if (attemptCount === 0) return 0;
+    const baseTokens = observedTokens ?? 0;
+    const unknownAttempts = observedTokens === null ? attemptCount : attemptCount - 1;
+    const remaining = Number.MAX_SAFE_INTEGER - baseTokens;
+    if (unknownAttempts > Math.floor(remaining / reservation.reservedTokens)) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    return baseTokens + unknownAttempts * reservation.reservedTokens;
+  };
+
+  const createSettlement = (): AIUsageSettlement => {
+    if (usage) {
+      chargedTokens =
+        attemptCount > 1
+          ? Math.max(usage.totalTokens, reservation.reservedTokens)
+          : usage.totalTokens;
+      providerBudgetTokens = getProviderBudgetTokens(usage.totalTokens);
+      usageEstimated = attemptCount > 1;
+      return {
+        observedTotalTokens: usage.totalTokens,
+        chargedTokens,
+        providerBudgetTokens,
+        usageEstimated,
+      };
+    }
+    if (attemptCount === 0) {
+      chargedTokens = 0;
+      providerBudgetTokens = 0;
+      usageEstimated = false;
+      return {
+        observedTotalTokens: 0,
+        chargedTokens,
+        providerBudgetTokens,
+        usageEstimated,
+      };
+    }
+    chargedTokens = reservation.reservedTokens;
+    providerBudgetTokens = getProviderBudgetTokens(null);
+    usageEstimated = true;
+    return {
+      observedTotalTokens: null,
+      chargedTokens,
+      providerBudgetTokens,
+      usageEstimated,
+    };
+  };
+
+  const settleBudget = (tokens: number) =>
     governance.budgetLimitTokens !== null
-      ? settleAIDailyBudget(c.env, reservation.usageEventId, actualTokens)
+      ? settleAIDailyBudget(c.env, reservation.usageEventId, tokens)
       : Promise.resolve(null);
 
-  const refund = async (code: ApiErrorCode, fallbackTokens: number | null = null) => {
-    const actualTokens = usage?.totalTokens ?? fallbackTokens;
+  const reportSettlementError = (
+    error: unknown,
+    failurePhase: string,
+    outcome: 'succeeded' | 'failed',
+  ) => {
+    const context = { ai: { failurePhase, settlementOutcome: outcome } };
+    if (requestAborted) {
+      logWorkerBackgroundError(
+        error,
+        {
+          job: 'ai-stream-settlement',
+          requestId,
+          route,
+          failurePhase,
+          settlementOutcome: outcome,
+        },
+        waitUntil,
+        c.env.ENVIRONMENT,
+      );
+      return;
+    }
+    getRequestLogger(c)?.error(
+      error instanceof Error ? error : new Error('Unknown error'),
+      context,
+    );
+  };
+
+  const persistSettlementIntent = async (
+    outcome: 'succeeded' | 'failed',
+    settlement: AIUsageSettlement,
+    code: ApiErrorCode | null,
+  ) => {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= SETTLEMENT_INTENT_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        return await prepareAIUsageSettlement(c.env, reservation, outcome, settlement, code);
+      } catch (error) {
+        lastError = error;
+        if (error instanceof DomainError) break;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('AI usage settlement intent failed');
+  };
+
+  const settleUsage = async (outcome: 'succeeded' | 'failed', code: ApiErrorCode | null) => {
+    const settlement = createSettlement();
+    let prepared;
+    try {
+      prepared = await persistSettlementIntent(outcome, settlement, code);
+      chargedTokens = prepared.chargedTokens;
+      providerBudgetTokens = prepared.providerBudgetTokens;
+      accountingSnapshotReliable = true;
+    } catch (error) {
+      reportSettlementError(error, 'credit_settlement_intent', outcome);
+      return;
+    }
     const [creditResult, budgetResult] = await Promise.allSettled([
-      failAIUsage(c.env, reservation, code, actualTokens),
-      settleBudget(actualTokens ?? 0),
+      prepared.needsFinalization
+        ? finalizeAIUsageSettlement(c.env, reservation, outcome, code)
+        : Promise.resolve(false),
+      settleBudget(prepared.providerBudgetTokens),
     ]);
     if (creditResult.status === 'rejected') {
-      console.error(`[${route}] failed to refund credits`, creditResult.reason);
+      reportSettlementError(creditResult.reason, 'credit_settlement', outcome);
+    } else {
+      accountingFinalized = !prepared.needsFinalization || creditResult.value;
     }
     if (budgetResult.status === 'rejected') {
-      console.error(`[${route}] failed to release budget`, budgetResult.reason);
+      reportSettlementError(budgetResult.reason, 'budget_settlement', outcome);
     } else if (budgetResult.value !== null) {
       budgetUsedTokens = budgetResult.value;
     }
@@ -282,20 +421,23 @@ export const withAIGovernance = async <Request>(
     );
     budgetUsedTokens = budget.usedTokens;
     if (budget.response) {
-      await refund('BUDGET_EXCEEDED');
+      await settleUsage('failed', 'BUDGET_EXCEEDED');
       audit(429, 0, false, true, 'BUDGET_EXCEEDED');
       return budget.response;
     }
   } catch (error) {
-    await refund('SERVICE_UNAVAILABLE');
-    console.error(`[${route}] budget reservation failed`, error);
+    await settleUsage('failed', 'SERVICE_UNAVAILABLE');
+    getRequestLogger(c)?.error(toWorkerError(error, 'Budget reservation failed'), {
+      ai: { failurePhase: 'budget_reservation' },
+    });
     audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
     return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
   }
 
   let settled = false;
-  // 流式响应在流结束前就会从 run 返回，包装器看到 streamed 就不能代为结算——那时 usage 还没读到
+  let terminalAudit: { status: number; errorCode?: ApiErrorCode } | null = null;
   let streamed = false;
+  let streamAuditComplete = false;
   let retryCount = 0;
   const openai = new OpenAI({
     baseURL: c.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
@@ -303,60 +445,98 @@ export const withAIGovernance = async <Request>(
     maxRetries: 0,
     timeout: config.requestTimeoutMs,
   });
+  const openAIAbortController = new AbortController();
   const reportUsage = (next: OpenAIUsageSnapshot | null | undefined) => {
     if (next) usage = next;
   };
-  const settleSuccess = (retryCount: number) => {
+  const runOpenAIAttempt = async <T>(operation: () => Promise<T>) => {
+    try {
+      attemptCount = await recordAIUsageAttempt(c.env, reservation);
+    } catch (error) {
+      throw new AIUsageAttemptPersistenceError(error);
+    }
+    retryCount = Math.max(0, attemptCount - 1);
+    return operation();
+  };
+  const classifyFailure = (error: unknown) => {
+    if (error instanceof AIUsageAttemptPersistenceError) {
+      return {
+        code: 'SERVICE_UNAVAILABLE' as const,
+        status: 503 as const,
+        message: 'AI usage service unavailable',
+      };
+    }
+    if (error instanceof DomainError) {
+      return { code: error.code, status: 502 as const, message: error.message };
+    }
+    return {
+      code: 'UPSTREAM_OPENAI_ERROR' as const,
+      status: 502 as const,
+      message: 'Upstream OpenAI error',
+    };
+  };
+  const onRetry = (event: { attempt: number; status: number | null; waitMs: number }) => {
+    if (requestAborted) return;
+    getRequestLogger(c)?.warn('OpenAI request retrying', {
+      ai: {
+        retries: [
+          {
+            attempt: event.attempt,
+            status: event.status,
+            waitMs: event.waitMs,
+          },
+        ],
+      },
+    });
+  };
+  const settleSuccess = async (completedRetryCount: number, streamResponse = false) => {
     if (settled) return;
     settled = true;
-    // 结算晚于响应返回，必须挂 waitUntil，否则线上 isolate 提前结束会丢账
-    const settlement = Promise.allSettled([
-      completeAIUsage(c.env, reservation, usage?.totalTokens ?? null),
-      settleBudget(usage?.totalTokens ?? null),
-    ]).then(([creditResult, budgetResult]) => {
-      if (creditResult.status === 'rejected') {
-        console.error(`[${route}] credit settlement failed`, creditResult.reason);
-      }
-      if (budgetResult.status === 'rejected') {
-        console.error(`[${route}] budget settlement failed`, budgetResult.reason);
-      } else if (budgetResult.value !== null) {
-        budgetUsedTokens = budgetResult.value;
-      }
-      audit(200, retryCount, false, false);
-    });
-    waitUntil(settlement);
+    terminalAudit = { status: 200 };
+    await settleUsage('succeeded', null);
+    if (!streamResponse || !requestAborted) {
+      audit(200, completedRetryCount, false, false);
+      if (streamResponse) streamAuditComplete = true;
+    }
   };
-  const settleFailure = (
+  const settleFailure = async (
     code: ApiErrorCode,
     status: number,
-    retryCount: number,
-    fallbackTokens: number | null = null,
+    completedRetryCount: number,
+    streamResponse = false,
   ) => {
     if (settled) return;
     settled = true;
-    const settlement = refund(code, fallbackTokens).then(() =>
-      audit(status, retryCount, false, false, code),
-    );
-    waitUntil(settlement);
+    terminalAudit = { status, errorCode: code };
+    await settleUsage('failed', code);
+    if (!streamResponse || !requestAborted) {
+      audit(status, completedRetryCount, false, false, code);
+      if (streamResponse) streamAuditComplete = true;
+    }
   };
 
   const session: AISession<Request> = {
     request: parsed,
     completeJson: async ({ scope, temperature }) => {
-      const { data: response, attempts } = await withOpenAIRetry(
-        async () =>
-          openai.chat.completions.create({
-            model,
-            messages,
-            response_format: { type: 'json_object' },
-            temperature,
-            max_tokens: maxOutputTokens,
-            ...(THINKING_DISABLED as Record<string, unknown>),
-          }),
-        { scope },
+      const { data: response } = await withOpenAIRetry(
+        () =>
+          runOpenAIAttempt(() =>
+            openai.chat.completions.create(
+              {
+                model,
+                messages,
+                response_format: { type: 'json_object' },
+                temperature,
+                max_tokens: maxOutputTokens,
+                ...(THINKING_DISABLED as Record<string, unknown>),
+              },
+              { signal: openAIAbortController.signal },
+            ),
+          ),
+        { scope, onRetry },
         config,
       );
-      retryCount = attempts;
+      retryCount = Math.max(0, attemptCount - 1);
       const usageSnapshot = response.usage;
       reportUsage(
         usageSnapshot
@@ -372,11 +552,12 @@ export const withAIGovernance = async <Request>(
       try {
         return readCompletedContent(content, choice?.finish_reason, true);
       } catch (error) {
-        console.error(`[${route}] invalid completion`, {
-          requestId,
-          finishReason: choice?.finish_reason,
-          contentLength: content.length,
-          error,
+        getRequestLogger(c)?.error(toWorkerError(error, 'Completion validation failed'), {
+          ai: {
+            failurePhase: 'completion_validation',
+            finishReason: choice?.finish_reason ?? null,
+            contentLength: content.length,
+          },
         });
         throw error;
       }
@@ -397,6 +578,7 @@ export const withAIGovernance = async <Request>(
         model,
         startedAt,
         input: debugInput,
+        log: getRequestLogger(c),
       });
 
       c.header('Content-Type', 'application/x-ndjson; charset=utf-8');
@@ -404,23 +586,46 @@ export const withAIGovernance = async <Request>(
       return stream(c, async (stream) => {
         streamDebug.start();
         let fullText = '';
+        stream.onAbort(() => {
+          requestAborted = true;
+          openAIAbortController.abort();
+          const settlementTask = settled
+            ? null
+            : settleFailure('UPSTREAM_OPENAI_ERROR', 499, retryCount, true);
+          if (!streamAuditComplete) {
+            const claimedAudit = terminalAudit ?? {
+              status: 499,
+              errorCode: 'UPSTREAM_OPENAI_ERROR' as const,
+            };
+            audit(claimedAudit.status, retryCount, false, false, claimedAudit.errorCode);
+            streamAuditComplete = true;
+          }
+          if (!settlementTask) return;
+          streamDebug.error(new Error('Client aborted AI stream'));
+          waitUntil(settlementTask);
+        });
         try {
-          const { data: response, attempts } = await withOpenAIRetry(
-            async () =>
-              openai.chat.completions.create({
-                model,
-                messages,
-                ...(jsonResponse ? { response_format: { type: 'json_object' as const } } : {}),
-                temperature,
-                max_tokens: maxOutputTokens,
-                stream: true,
-                stream_options: { include_usage: true },
-                ...(THINKING_DISABLED as Record<string, unknown>),
-              }),
-            { scope },
+          const { data: response } = await withOpenAIRetry(
+            () =>
+              runOpenAIAttempt(() =>
+                openai.chat.completions.create(
+                  {
+                    model,
+                    messages,
+                    ...(jsonResponse ? { response_format: { type: 'json_object' as const } } : {}),
+                    temperature,
+                    max_tokens: maxOutputTokens,
+                    stream: true,
+                    stream_options: { include_usage: true },
+                    ...(THINKING_DISABLED as Record<string, unknown>),
+                  },
+                  { signal: openAIAbortController.signal },
+                ),
+              ),
+            { scope, onRetry },
             config,
           );
-          retryCount = attempts;
+          retryCount = Math.max(0, attemptCount - 1);
           streamDebug.connected();
 
           let finishReason: string | null = null;
@@ -437,23 +642,25 @@ export const withAIGovernance = async <Request>(
           }
 
           readCompletedContent(fullText, finishReason, Boolean(jsonResponse));
-          await stream.write(encodeAIStreamEvent({ type: 'done' }));
           streamDebug.complete();
-          settleSuccess(retryCount);
+          await settleSuccess(retryCount, true);
+          await stream.write(encodeAIStreamEvent({ type: 'done' }));
         } catch (error) {
+          if (requestAborted) return;
           streamDebug.error(error);
-          console.error(`[${route}] stream failed`, error);
-          const code = error instanceof DomainError ? error.code : 'UPSTREAM_OPENAI_ERROR';
-          const fallbackTokens = fullText
-            ? Math.max(0, estimatedTokens - maxOutputTokens) +
-              estimateResponseTokensFromText(fullText)
-            : null;
-          settleFailure(code, 502, retryCount, fallbackTokens);
+          getRequestLogger(c)?.error(
+            error instanceof Error ? error : new Error('Unknown stream error'),
+            {
+              ai: { failurePhase: 'stream' },
+            },
+          );
+          const failure = classifyFailure(error);
+          await settleFailure(failure.code, failure.status, retryCount, true);
           await stream.write(
             encodeAIStreamEvent({
               type: 'error',
-              error: error instanceof DomainError ? error.message : 'Upstream OpenAI error',
-              code,
+              error: failure.message,
+              code: failure.code,
               requestId,
             }),
           );
@@ -466,17 +673,14 @@ export const withAIGovernance = async <Request>(
 
   try {
     const response = await run(session);
-    if (!streamed) settleSuccess(retryCount);
+    if (!streamed) await settleSuccess(retryCount);
     return response;
   } catch (error) {
-    console.error(`[${route}] failed`, error);
-    const code = error instanceof DomainError ? error.code : 'UPSTREAM_OPENAI_ERROR';
-    settleFailure(code, 502, retryCount);
-    return errorResponse(
-      c,
-      502,
-      error instanceof DomainError ? error.message : 'Upstream OpenAI error',
-      code,
-    );
+    getRequestLogger(c)?.error(toWorkerError(error, 'AI request failed'), {
+      ai: { failurePhase: 'request' },
+    });
+    const failure = classifyFailure(error);
+    await settleFailure(failure.code, failure.status, retryCount);
+    return errorResponse(c, failure.status, failure.message, failure.code);
   }
 };

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiEnv } from '../lib/context.js';
-import type { Hono } from 'hono';
+import type { ApiEnv, WorkerRequestLogger } from '../lib/context.js';
+import type { Context, Hono } from 'hono';
 import { createSqliteD1Database } from './helpers/sqliteD1.js';
 
 const ORIGINAL_ENV = { ...process.env };
@@ -73,9 +73,9 @@ const createAppWrapper = (
         : `http://localhost${path.startsWith('/') ? path : `/${path}`}`;
       const request = new Request(url, options);
       return app.fetch(request, env, {
-        waitUntil: (task) => waitUntilTasks.push(task),
+        waitUntil: (task: Promise<unknown>) => waitUntilTasks.push(task),
         passThroughOnException: () => {},
-      } as ExecutionContext);
+      } as unknown as ExecutionContext);
     },
   };
 };
@@ -101,10 +101,68 @@ let reserveAIUsageMock = vi.fn().mockImplementation(async (_env, input) => ({
   requestId: input.requestId,
   reservedTokens: input.estimatedTokens,
 }));
-let completeAIUsageMock = vi.fn().mockResolvedValue(undefined);
-let failAIUsageMock = vi.fn().mockResolvedValue(undefined);
+let recordAIUsageAttemptMock = vi.fn().mockResolvedValue(1);
+let prepareAIUsageSettlementMock = vi.fn().mockResolvedValue({
+  chargedTokens: 0,
+  providerBudgetTokens: 0,
+  needsFinalization: true,
+});
+let finalizeAIUsageSettlementMock = vi.fn().mockResolvedValue(true);
 let reserveAIDailyBudgetMock = vi.fn();
 let settleAIDailyBudgetMock = vi.fn();
+let requestLogSetMock = vi.fn();
+let requestLogAuditMock = vi.fn();
+let requestLogErrorMock = vi.fn();
+let requestLogWarnMock = vi.fn();
+let logWorkerBackgroundErrorMock = vi.fn();
+
+const createRequestLogger = (): WorkerRequestLogger =>
+  ({
+    set: requestLogSetMock,
+    audit: requestLogAuditMock,
+    error: requestLogErrorMock,
+    warn: requestLogWarnMock,
+    setLevel: vi.fn(),
+  }) as unknown as WorkerRequestLogger;
+
+const mockLoggingModule = () => {
+  requestLogSetMock = vi.fn();
+  requestLogAuditMock = vi.fn();
+  requestLogErrorMock = vi.fn();
+  requestLogWarnMock = vi.fn();
+  logWorkerBackgroundErrorMock = vi.fn();
+  const requestLogger = createRequestLogger();
+
+  vi.doMock('../lib/logging.js', () => ({
+    normalizeIncomingRequestId: (value: string | undefined) => value?.trim() || null,
+    withWorkerRequestLogging:
+      (
+        handler: (
+          request: Request,
+          env: ApiEnv['Bindings'],
+          ctx?: ExecutionContext,
+        ) => Response | Promise<Response>,
+      ) =>
+      (request: Request, env: ApiEnv['Bindings'], ctx?: ExecutionContext) =>
+        handler(request, { ...env, EVLOG_REQUEST_LOG: requestLogger }, ctx),
+    getRequestLogger: (c: Context<ApiEnv>) => c.get('log'),
+    completeRequestLogContext: (c: Context<ApiEnv>, requestId: string) =>
+      c.get('log')?.set({ requestId }),
+    createWorkerBackgroundLogger: () => ({
+      set: vi.fn(),
+      error: vi.fn(),
+      emit: vi.fn(),
+    }),
+    toWorkerError: (error: unknown, fallback: string) =>
+      error instanceof Error ? error : new Error(typeof error === 'string' ? error : fallback),
+    logWorkerBackgroundError: logWorkerBackgroundErrorMock,
+  }));
+};
+
+const getAIAuditPayload = () =>
+  requestLogSetMock.mock.calls
+    .map(([fields]) => (fields as { ai?: Record<string, unknown> }).ai)
+    .find((payload): payload is Record<string, unknown> => payload !== undefined);
 
 const mockAIBudgetModule = () => {
   const reservations = new Map<string, number>();
@@ -173,8 +231,20 @@ const mockAIUsageModule = async (options?: {
         reservedTokens: input.estimatedTokens,
       }));
 
-  completeAIUsageMock = vi.fn().mockResolvedValue(undefined);
-  failAIUsageMock = vi.fn().mockResolvedValue(undefined);
+  const attempts = new Map<string, number>();
+  recordAIUsageAttemptMock = vi.fn().mockImplementation(async (_env, reservation) => {
+    const next = (attempts.get(reservation.usageEventId) ?? 0) + 1;
+    attempts.set(reservation.usageEventId, next);
+    return next;
+  });
+  prepareAIUsageSettlementMock = vi
+    .fn()
+    .mockImplementation(async (_env, _reservation, _outcome, settlement) => ({
+      chargedTokens: settlement.chargedTokens,
+      providerBudgetTokens: settlement.providerBudgetTokens,
+      needsFinalization: true,
+    }));
+  finalizeAIUsageSettlementMock = vi.fn().mockResolvedValue(true);
 
   vi.doMock('../lib/auth.js', () => ({ authenticateRequest: authenticateRequestMock }));
   vi.doMock('../lib/credits.js', () => ({
@@ -182,8 +252,10 @@ const mockAIUsageModule = async (options?: {
   }));
   vi.doMock('../lib/aiUsage.js', () => ({
     reserveAIUsage: reserveAIUsageMock,
-    completeAIUsage: completeAIUsageMock,
-    failAIUsage: failAIUsageMock,
+    recordAIUsageAttempt: recordAIUsageAttemptMock,
+    prepareAIUsageSettlement: prepareAIUsageSettlementMock,
+    finalizeAIUsageSettlement: finalizeAIUsageSettlementMock,
+    reclaimStaleAIUsage: vi.fn().mockResolvedValue({ scanned: 0, reclaimed: 0, failures: [] }),
   }));
 };
 
@@ -205,6 +277,7 @@ const loadAppWithOpenAIMock = async (
   }
 
   vi.resetModules();
+  mockLoggingModule();
   await mockAIUsageModule(aiUsageOptions);
   mockAIBudgetModule();
   vi.doMock('openai', () => ({
@@ -218,7 +291,7 @@ const loadAppWithOpenAIMock = async (
   }));
 
   const module = await import('../../api/index');
-  const app = module.default as Hono<ApiEnv>;
+  const app = module.default as unknown as Hono<ApiEnv>;
   const env = createEnv(
     Object.fromEntries(Object.entries(envConfig).filter(([, v]) => v !== undefined)) as Partial<
       ApiEnv['Bindings']
@@ -229,7 +302,7 @@ const loadAppWithOpenAIMock = async (
 };
 
 const loadAuthenticatedApp = async (
-  envConfig: Record<string, string | undefined>,
+  envConfig: Partial<ApiEnv['Bindings']>,
   aiUsageOptions?: {
     authenticateError?: string;
     reserveError?: string;
@@ -241,19 +314,17 @@ const loadAuthenticatedApp = async (
       delete process.env[key];
       continue;
     }
+    if (typeof value !== 'string') continue;
     process.env[key] = value;
   }
 
   vi.resetModules();
+  mockLoggingModule();
   await mockAIUsageModule(aiUsageOptions);
   mockAIBudgetModule();
   const module = await import('../../api/index');
-  const app = module.default as Hono<ApiEnv>;
-  const env = createEnv(
-    Object.fromEntries(Object.entries(envConfig).filter(([, v]) => v !== undefined)) as Partial<
-      ApiEnv['Bindings']
-    >,
-  );
+  const app = module.default as unknown as Hono<ApiEnv>;
+  const env = createEnv(envConfig);
 
   return createAppWrapper(app, env);
 };
@@ -263,6 +334,7 @@ afterEach(() => {
   vi.doUnmock('openai');
   vi.doUnmock('../lib/aiUsage.js');
   vi.doUnmock('../lib/aiBudget.js');
+  vi.doUnmock('../lib/logging.js');
   restoreEnv();
   vi.resetModules();
 });
@@ -387,6 +459,25 @@ describe.sequential('openai governance', () => {
       code: 'BUDGET_EXCEEDED',
       requestId: expect.any(String),
     });
+    expect(recordAIUsageAttemptMock).not.toHaveBeenCalled();
+    expect(prepareAIUsageSettlementMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ routeKey: 'generate-table' }),
+      'failed',
+      {
+        observedTotalTokens: 0,
+        chargedTokens: 0,
+        providerBudgetTokens: 0,
+        usageEstimated: false,
+      },
+      'BUDGET_EXCEEDED',
+    );
+    expect(finalizeAIUsageSettlementMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ routeKey: 'generate-table' }),
+      'failed',
+      'BUDGET_EXCEEDED',
+    );
   });
 
   it.each([
@@ -463,6 +554,7 @@ describe.sequential('openai governance', () => {
 
   it('结构化审计日志不应包含 SQL/DDL 原文', async () => {
     const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
@@ -490,16 +582,8 @@ describe.sequential('openai governance', () => {
 
     expect(response.status).toBe(503);
 
-    const loggedText = consoleInfoSpy.mock.calls.map((args) => args.join(' ')).join('\n');
-
-    expect(loggedText).toContain('openai_audit');
-    expect(loggedText).not.toContain(sensitiveDDL);
-
-    const auditPayloadRaw = consoleInfoSpy.mock.calls[0]?.[0];
-    expect(typeof auditPayloadRaw).toBe('string');
-    const auditPayload = JSON.parse(String(auditPayloadRaw)) as Record<string, unknown>;
+    const auditPayload = getAIAuditPayload();
     expect(auditPayload).toMatchObject({
-      event: 'openai_audit',
       route: 'review',
       model: expect.any(String),
       maxOutputTokens: expect.any(Number),
@@ -509,6 +593,21 @@ describe.sequential('openai governance', () => {
     });
     expect(auditPayload).toHaveProperty('budgetLimitTokens');
     expect(auditPayload).toHaveProperty('budgetUsedTokens');
+    expect(JSON.stringify(requestLogSetMock.mock.calls)).not.toContain(sensitiveDDL);
+    expect(requestLogAuditMock).toHaveBeenCalledWith({
+      action: 'ai.request',
+      actor: { type: 'user', id: 'user-1' },
+      target: {
+        type: 'ai_route',
+        id: 'review',
+        model: expect.any(String),
+      },
+      outcome: 'failure',
+      reason: 'SERVICE_UNAVAILABLE',
+      correlationId: expect.any(String),
+    });
+    expect(consoleInfoSpy).not.toHaveBeenCalled();
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 
   it('开启 Telegram 通知后应在审计时异步发送消息', async () => {
@@ -544,7 +643,10 @@ describe.sequential('openai governance', () => {
     expect(app.waitUntilTasks).toHaveLength(1);
     await Promise.all(app.waitUntilTasks);
 
-    expect(consoleInfoSpy).toHaveBeenCalled();
+    expect(requestLogAuditMock).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'ai.request', outcome: 'failure' }),
+    );
+    expect(consoleInfoSpy).not.toHaveBeenCalled();
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://api.telegram.org/botbot-token/sendMessage');
@@ -553,7 +655,7 @@ describe.sequential('openai governance', () => {
   });
 
   it('Telegram 发送失败时不应影响主请求', async () => {
-    vi.spyOn(console, 'info').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
@@ -588,7 +690,17 @@ describe.sequential('openai governance', () => {
     await Promise.all(app.waitUntilTasks);
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(logWorkerBackgroundErrorMock).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        job: 'telegram-ai-audit',
+        route: 'explain',
+      }),
+      expect.any(Function),
+      undefined,
+    );
+    expect(infoSpy).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it('separates users behind one IP and preserves their quota when the IP changes', async () => {
@@ -701,7 +813,7 @@ describe.sequential('openai governance', () => {
         OPENAI_RATELIMIT_ENABLED: 'true',
         OPENAI_RATELIMIT_REVIEW_MAX: '20',
         OPENAI_DAILY_BUDGET_ENABLED: 'true',
-        OPENAI_DAILY_BUDGET_MAX_TOKENS: '3000',
+        OPENAI_DAILY_BUDGET_MAX_TOKENS: '100000',
         OPENAI_API_KEY: 'test-key',
       },
       createCompletionMock,
@@ -735,12 +847,104 @@ describe.sequential('openai governance', () => {
     expect(successfulResponse.status).toBe(200);
     await successfulResponse.text();
     expect(reserveAIDailyBudgetMock).toHaveBeenCalledTimes(1);
+    const successfulEstimate = reserveAIUsageMock.mock.calls[1]?.[1].estimatedTokens as number;
+    expect(reserveAIDailyBudgetMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringMatching(/^usage:/),
+      successfulEstimate * 3,
+      100000,
+    );
     expect(settleAIDailyBudgetMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.stringMatching(/^usage:/),
       20,
     );
+    expect(recordAIUsageAttemptMock).toHaveBeenCalledOnce();
+    expect(prepareAIUsageSettlementMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ routeKey: 'review' }),
+      'succeeded',
+      {
+        observedTotalTokens: 20,
+        chargedTokens: 20,
+        providerBudgetTokens: 20,
+        usageEstimated: false,
+      },
+      null,
+    );
     expect(createCompletionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('重试成功后应将未知调用计入提供商预算', async () => {
+    const retryableError = Object.assign(new Error('temporary upstream failure'), { status: 503 });
+    const createCompletionMock = vi
+      .fn()
+      .mockRejectedValueOnce(retryableError)
+      .mockResolvedValueOnce(
+        createMockStream([
+          {
+            choices: [{ delta: { content: '{"ok":true}' }, finish_reason: 'stop' }],
+          },
+          {
+            choices: [],
+            usage: {
+              prompt_tokens: 10,
+              completion_tokens: 10,
+              total_tokens: 20,
+            },
+          },
+        ]),
+      );
+    const app = await loadAppWithOpenAIMock(
+      {
+        OPENAI_RATELIMIT_ENABLED: 'false',
+        OPENAI_DAILY_BUDGET_ENABLED: 'true',
+        OPENAI_DAILY_BUDGET_MAX_TOKENS: '100000',
+        OPENAI_RETRY_MAX_ATTEMPTS: '2',
+        OPENAI_RETRY_BASE_DELAY_MS: '1',
+        OPENAI_RETRY_MAX_DELAY_MS: '1',
+        OPENAI_API_KEY: 'test-key',
+      },
+      createCompletionMock,
+    );
+
+    const response = await app.request('https://ddlbuilder.test/api/review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ddl: 'CREATE TABLE t1(id bigint);',
+        tableName: 't1',
+        dbType: 'mysql',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    await response.text();
+
+    const reservedInput = reserveAIUsageMock.mock.calls[0]?.[1] as { estimatedTokens: number };
+    const providerBudgetTokens = reservedInput.estimatedTokens + 20;
+    expect(recordAIUsageAttemptMock).toHaveBeenCalledTimes(2);
+    expect(prepareAIUsageSettlementMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ routeKey: 'review' }),
+      'succeeded',
+      {
+        observedTotalTokens: 20,
+        chargedTokens: reservedInput.estimatedTokens,
+        providerBudgetTokens,
+        usageEstimated: true,
+      },
+      null,
+    );
+    expect(settleAIDailyBudgetMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.stringMatching(/^usage:/),
+      providerBudgetTokens,
+    );
+    expect(requestLogWarnMock).toHaveBeenCalledWith(
+      'OpenAI request retrying',
+      expect.objectContaining({ ai: { retries: [expect.objectContaining({ status: 503 })] } }),
+    );
   });
 
   it('流式响应应请求真实 usage，且不透传 usage chunk', async () => {
@@ -814,17 +1018,19 @@ describe.sequential('openai governance', () => {
       },
     });
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await Promise.all(app.waitUntilTasks);
 
-    const auditPayload = consoleInfoSpy.mock.calls
-      .map(([value]) => JSON.parse(String(value)) as Record<string, unknown>)
-      .find((payload) => payload.event === 'openai_audit');
+    const auditPayload = getAIAuditPayload();
 
     expect(auditPayload).toMatchObject({
       actualPromptTokens: 13,
       actualCompletionTokens: 26,
       actualTotalTokens: 39,
+      chargedTokens: 39,
+      providerBudgetTokens: 39,
+      usageEstimated: false,
+      attemptCount: 1,
+      retryCount: 0,
       estimatedTokens: expect.any(Number),
     });
 
@@ -833,13 +1039,40 @@ describe.sequential('openai governance', () => {
     expect(String(fetchSpy.mock.calls[0]?.[1]?.body)).toContain('estimatedTokens:');
     expect(authenticateRequestMock).toHaveBeenCalledTimes(1);
     expect(reserveAIUsageMock).toHaveBeenCalledTimes(1);
-    expect(completeAIUsageMock).toHaveBeenCalledWith(
+    expect(recordAIUsageAttemptMock).toHaveBeenCalledWith(
       expect.any(Object),
       expect.objectContaining({
         routeKey: 'review',
       }),
-      39,
     );
-    expect(failAIUsageMock).not.toHaveBeenCalled();
+    expect(prepareAIUsageSettlementMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ routeKey: 'review' }),
+      'succeeded',
+      {
+        observedTotalTokens: 39,
+        chargedTokens: 39,
+        providerBudgetTokens: 39,
+        usageEstimated: false,
+      },
+      null,
+    );
+    expect(finalizeAIUsageSettlementMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ routeKey: 'review' }),
+      'succeeded',
+      null,
+    );
+
+    const completionInput = createCompletionMock.mock.calls[0]?.[0] as {
+      messages: unknown;
+      max_tokens: number;
+    };
+    const reservedInput = reserveAIUsageMock.mock.calls[0]?.[1] as { estimatedTokens: number };
+    const utf8MessageBytes = new TextEncoder().encode(
+      JSON.stringify(completionInput.messages),
+    ).length;
+    expect(reservedInput.estimatedTokens).toBe(utf8MessageBytes + completionInput.max_tokens);
+    expect(consoleInfoSpy).not.toHaveBeenCalled();
   });
 });

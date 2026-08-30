@@ -22,8 +22,11 @@ export type OpenAIConfig = {
 
 const readEnvInt = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
-  if (!value || Number.isNaN(parsed) || parsed <= 0) return fallback;
-  return Math.floor(parsed);
+  if (!value || !Number.isFinite(parsed) || parsed <= 0 || parsed > Number.MAX_SAFE_INTEGER) {
+    return fallback;
+  }
+  const normalized = Math.floor(parsed);
+  return Number.isSafeInteger(normalized) ? normalized : fallback;
 };
 
 export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {

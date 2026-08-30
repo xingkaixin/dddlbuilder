@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { completeAIUsage, failAIUsage } from '../../lib/aiUsage.js';
+import { completeAIUsage, failAIUsage, recordAIUsageAttempt } from '../../lib/aiUsage.js';
 import { createCreditFixture } from '../helpers/creditFixture.js';
 
 describe('usage identity and terminal state', () => {
+  const observedUsage = (tokens: number) => ({
+    observedTotalTokens: tokens,
+    chargedTokens: tokens,
+    providerBudgetTokens: tokens,
+    usageEstimated: false,
+  });
+
+  const failedUsage = {
+    observedTotalTokens: null,
+    chargedTokens: 100,
+    providerBudgetTokens: 100,
+    usageEstimated: true,
+  };
+
   it('uses server identities even when request ids are reused', async () => {
     const f = await createCreditFixture();
     try {
@@ -22,14 +36,15 @@ describe('usage identity and terminal state', () => {
       const f = await createCreditFixture();
       try {
         const reservation = await f.reserve();
+        await recordAIUsageAttempt(f.env, reservation);
         if (successFirst) {
-          await completeAIUsage(f.env, reservation, 50);
-          await failAIUsage(f.env, reservation, 'failure');
+          await completeAIUsage(f.env, reservation, observedUsage(50));
+          await failAIUsage(f.env, reservation, 'failure', failedUsage);
         } else {
-          await failAIUsage(f.env, reservation, 'failure');
-          await completeAIUsage(f.env, reservation, 50);
+          await failAIUsage(f.env, reservation, 'failure', failedUsage);
+          await completeAIUsage(f.env, reservation, observedUsage(50));
         }
-        expect(await f.balance()).toBe(successFirst ? 950 : 1000);
+        expect(await f.balance()).toBe(successFirst ? 950 : 900);
         expect(f.sqlite.prepare('SELECT status FROM usage_events').get()?.status).toBe(
           successFirst ? 'succeeded' : 'failed',
         );
@@ -43,7 +58,7 @@ describe('usage identity and terminal state', () => {
     const f = await createCreditFixture();
     try {
       const reservation = await f.reserve();
-      await failAIUsage(f.env, { ...reservation, userId: 'another-user' }, 'failure');
+      await failAIUsage(f.env, { ...reservation, userId: 'another-user' }, 'failure', failedUsage);
       expect(await f.balance()).toBe(900);
       expect(f.sqlite.prepare('SELECT status FROM usage_events').get()?.status).toBe('reserved');
     } finally {

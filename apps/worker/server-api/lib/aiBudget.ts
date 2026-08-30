@@ -33,6 +33,21 @@ const readBudgetValue = async (env: ApiEnv['Bindings'], windowId: string) => {
 const isBudgetExceeded = (error: unknown) =>
   error instanceof Error && error.message.includes('BUDGET_EXCEEDED');
 
+const normalizeBudgetReservationTokens = (value: number, minimum: number) => {
+  const normalized = Math.max(minimum, Math.ceil(value));
+  if (value < 0 || !Number.isFinite(value) || !Number.isSafeInteger(normalized)) {
+    throw new Error('INVALID_BUDGET_TOKEN_AMOUNT');
+  }
+  return normalized;
+};
+
+const normalizeBudgetActualTokens = (value: number) => {
+  if (value < 0 || !Number.isSafeInteger(value)) {
+    throw new Error('INVALID_BUDGET_TOKEN_AMOUNT');
+  }
+  return value;
+};
+
 export const reserveAIDailyBudget = async (
   env: ApiEnv['Bindings'],
   usageEventId: string,
@@ -40,7 +55,8 @@ export const reserveAIDailyBudget = async (
   limitTokens: number,
 ) => {
   const windowId = getCurrentUtcDateKey();
-  const reservedTokens = Math.max(1, Math.floor(estimatedTokens));
+  const reservedTokens = normalizeBudgetReservationTokens(estimatedTokens, 1);
+  const normalizedLimitTokens = normalizeBudgetReservationTokens(limitTokens, 1);
 
   try {
     await env.USER_DB.prepare(
@@ -58,7 +74,14 @@ export const reserveAIDailyBudget = async (
         VALUES (?, ?, ?, NULL, ?, ?, NULL, ?)
       `,
     )
-      .bind(usageEventId, windowId, reservedTokens, limitTokens, getBudgetExpiry(), Date.now())
+      .bind(
+        usageEventId,
+        windowId,
+        reservedTokens,
+        normalizedLimitTokens,
+        getBudgetExpiry(),
+        Date.now(),
+      )
       .run();
   } catch (error) {
     if (isBudgetExceeded(error)) return null;
@@ -73,6 +96,8 @@ export const settleAIDailyBudget = async (
   usageEventId: string,
   actualTokens: number | null,
 ) => {
+  const normalizedActualTokens =
+    actualTokens === null ? null : normalizeBudgetActualTokens(actualTokens);
   const reservation = await env.USER_DB.prepare(
     `
       UPDATE ai_budget_reservations
@@ -83,11 +108,7 @@ export const settleAIDailyBudget = async (
       RETURNING window_id AS windowId
     `,
   )
-    .bind(
-      actualTokens == null ? null : Math.max(0, Math.round(actualTokens)),
-      Date.now(),
-      usageEventId,
-    )
+    .bind(normalizedActualTokens, Date.now(), usageEventId)
     .first<{ windowId: string }>();
 
   return reservation ? readBudgetValue(env, reservation.windowId) : null;
@@ -99,18 +120,21 @@ export const reconcileTerminalAIBudgets = async (env: ApiEnv['Bindings']) => {
       UPDATE ai_budget_reservations
       SET
         actual_tokens = COALESCE(
+          (SELECT provider_budget_tokens FROM usage_events WHERE id = usage_event_id),
+          (SELECT charged_tokens FROM usage_events WHERE id = usage_event_id),
           (SELECT actual_total_tokens FROM usage_events WHERE id = usage_event_id),
           CASE
-          WHEN (
-            SELECT status FROM usage_events WHERE id = usage_event_id
-          ) = 'succeeded' THEN reserved_tokens
-          ELSE 0
+            WHEN COALESCE((
+              SELECT attempt_count FROM usage_events WHERE id = usage_event_id
+            ), 0) > 0 THEN reserved_tokens
+            ELSE 0
           END
         ),
         settled_at = ?
       WHERE actual_tokens IS NULL
         AND usage_event_id IN (
-          SELECT id FROM usage_events WHERE status IN ('succeeded', 'failed')
+          SELECT id FROM usage_events
+          WHERE status IN ('settling_succeeded', 'settling_failed', 'succeeded', 'failed')
         )
     `,
   )

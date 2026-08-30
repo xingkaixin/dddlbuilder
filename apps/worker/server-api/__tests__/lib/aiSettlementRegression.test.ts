@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
-import { failAIUsage, reclaimStaleAIUsage, reserveAIUsage } from '../../lib/aiUsage.js';
+import {
+  failAIUsage,
+  reclaimStaleAIUsage,
+  recordAIUsageAttempt,
+  reserveAIUsage,
+} from '../../lib/aiUsage.js';
 import { applyCreditMutation, getCreditAccount } from '../../lib/credits.js';
 import { reconcileTerminalAIBudgets, reserveAIDailyBudget } from '../../lib/aiBudget.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
@@ -53,7 +58,13 @@ describe('AI settlement regressions', () => {
     const { env, sqlite, reservation } = await fixture();
     try {
       await reserveAIDailyBudget(env, reservation.usageEventId, 100, 1000);
-      await failAIUsage(env, reservation, 'UPSTREAM_OPENAI_ERROR', 60);
+      await recordAIUsageAttempt(env, reservation);
+      await failAIUsage(env, reservation, 'UPSTREAM_OPENAI_ERROR', {
+        observedTotalTokens: 60,
+        chargedTokens: 60,
+        providerBudgetTokens: 60,
+        usageEstimated: false,
+      });
       await reconcileTerminalAIBudgets(env);
       const balance = (await getCreditAccount(env, 'user-1'))?.balance;
       const usage = sqlite.prepare('SELECT status, actual_total_tokens FROM usage_events').get();
@@ -75,6 +86,7 @@ describe('AI settlement regressions', () => {
       sqlite
         .prepare('UPDATE usage_events SET status = ?, created_at = 1 WHERE id = ?')
         .run(status, reservation.usageEventId);
+      if (status === 'reserved') await recordAIUsageAttempt(env, reservation);
       await reclaimStaleAIUsage(env);
       const balance = (await getCreditAccount(env, 'user-1'))?.balance;
       expect(balance).toBe(status === 'reserved' ? 900 : 1000);

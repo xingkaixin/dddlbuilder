@@ -5,6 +5,7 @@ import { errorResponse, type ApiErrorCode } from './lib/http.js';
 import type { AIRouteKey } from './lib/aiRouteKey.js';
 import { reserveAIDailyBudget } from './lib/aiBudget.js';
 import type { OpenAIConfig } from './lib/openaiConfig.js';
+import { logWorkerBackgroundError } from './lib/logging.js';
 
 export { buildOpenAIConfig } from './lib/openaiConfig.js';
 export { withOpenAIRetry } from './lib/openaiRetry.js';
@@ -16,11 +17,17 @@ export type AuditLogPayload = {
   status: number;
   latencyMs: number;
   retryCount: number;
+  attemptCount: number;
   rateLimitHit: boolean;
   estimatedTokens: number;
   actualPromptTokens: number | null;
   actualCompletionTokens: number | null;
   actualTotalTokens: number | null;
+  chargedTokens: number | null;
+  providerBudgetTokens: number | null;
+  usageEstimated: boolean | null;
+  accountingFinalized: boolean;
+  userId: string | null;
   model?: string;
   maxOutputTokens?: number;
   rateLimitEnabled: boolean;
@@ -54,29 +61,29 @@ export type GovernanceSnapshot = {
 
 const toUtf8Bytes = (input: string) => new TextEncoder().encode(input).length;
 
-const estimateValueChars = (value: unknown): number => {
+const estimateValueBytes = (value: unknown): number => {
   if (value == null) return 0;
-  if (typeof value === 'string') return value.length;
+  if (typeof value === 'string') return toUtf8Bytes(value);
   if (
     typeof value === 'number' ||
     typeof value === 'boolean' ||
     typeof value === 'bigint' ||
     typeof value === 'symbol'
   ) {
-    return String(value).length;
+    return toUtf8Bytes(String(value));
   }
   try {
-    return JSON.stringify(value)?.length ?? 0;
+    const serialized = JSON.stringify(value);
+    return serialized ? toUtf8Bytes(serialized) : 0;
   } catch {
     return 0;
   }
 };
 
 export const estimateRequestTokens = (payload: unknown, maxOutputTokens = 0): number => {
-  const estimatedInputChars = estimateValueChars(payload);
-  const estimatedInputTokens = Math.max(1, Math.ceil(estimatedInputChars / 4));
+  const estimatedInputTokens = Math.max(1, estimateValueBytes(payload));
   const outputTokens = Math.max(0, Math.floor(maxOutputTokens));
-  return estimatedInputTokens + outputTokens;
+  return Math.min(Number.MAX_SAFE_INTEGER, estimatedInputTokens + outputTokens);
 };
 
 export const getOpenAIGovernanceSnapshot = (
@@ -224,10 +231,15 @@ export async function enforceOpenAIDailyBudget(
     };
   }
 
+  const maximumAttemptBudget =
+    estimatedTokens > Math.floor(Number.MAX_SAFE_INTEGER / config.retryMaxAttempts)
+      ? Number.MAX_SAFE_INTEGER
+      : estimatedTokens * config.retryMaxAttempts;
+
   const usedTokens = await reserveAIDailyBudget(
     c.env,
     usageEventId,
-    estimatedTokens,
+    maximumAttemptBudget,
     config.dailyBudgetMaxTokens,
   );
 
@@ -256,24 +268,47 @@ export function logOpenAIAudit(
   payload: AuditLogPayload,
   waitUntil: WaitUntilFn,
 ) {
-  console.info(
-    JSON.stringify({
-      event: 'openai_audit',
-      ts: new Date().toISOString(),
-      ...payload,
-    }),
-  );
+  const log = env.EVLOG_REQUEST_LOG;
+  log?.set({ ai: payload });
+  log?.audit({
+    action: 'ai.request',
+    actor: payload.userId
+      ? { type: 'user', id: payload.userId }
+      : { type: 'api', id: payload.requestId },
+    target: {
+      type: 'ai_route',
+      id: payload.route,
+      ...(payload.model ? { model: payload.model } : {}),
+    },
+    outcome:
+      payload.status < 400
+        ? 'success'
+        : payload.status === 401 || payload.status === 402 || payload.status === 429
+          ? 'denied'
+          : 'failure',
+    ...(payload.errorCode ? { reason: payload.errorCode } : {}),
+    correlationId: payload.requestId,
+  });
 
   const notifyTask = dispatchTelegramAuditNotification(env, payload);
 
-  if (notifyTask) waitUntil(notifyTask);
+  if (notifyTask) {
+    waitUntil(
+      notifyTask.catch((error) => {
+        logWorkerBackgroundError(
+          error,
+          {
+            job: 'telegram-ai-audit',
+            requestId: payload.requestId,
+            route: payload.route,
+          },
+          waitUntil,
+          env.ENVIRONMENT,
+        );
+      }),
+    );
+  }
 }
-
-export const estimateResponseTokensFromText = (text: string) => {
-  const safeText = typeof text === 'string' ? text : '';
-  const bytes = toUtf8Bytes(safeText);
-  return Math.max(1, Math.ceil(bytes / 4));
-};
 
 export const readUsageFromStreamChunk = (chunk: unknown): OpenAIUsageSnapshot | null => {
   if (!chunk || typeof chunk !== 'object') {

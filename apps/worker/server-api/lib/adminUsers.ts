@@ -20,6 +20,10 @@ export type AdminUsageEvent = {
   requestId: string;
   estimatedTokens: number;
   actualTotalTokens: number | null;
+  chargedTokens: number | null;
+  providerBudgetTokens: number | null;
+  attemptCount: number | null;
+  usageEstimated: boolean | null;
   status: string;
   errorCode: string | null;
   createdAt: string;
@@ -40,12 +44,22 @@ const toUserSummary = (row: Record<string, unknown>): AdminUserSummary => ({
   disabled: row.disabled === 1 || row.disabled === true,
 });
 
+const toNullableNumber = (value: unknown) =>
+  value === null || value === undefined ? null : Number(value);
+
 const toUsageEvent = (row: Record<string, unknown>): AdminUsageEvent => ({
   id: String(row.id),
   routeKey: String(row.routeKey),
   requestId: String(row.requestId),
   estimatedTokens: Number(row.estimatedTokens),
-  actualTotalTokens: row.actualTotalTokens !== null ? Number(row.actualTotalTokens) : null,
+  actualTotalTokens: toNullableNumber(row.actualTotalTokens),
+  chargedTokens: toNullableNumber(row.chargedTokens),
+  providerBudgetTokens: toNullableNumber(row.providerBudgetTokens),
+  attemptCount: toNullableNumber(row.attemptCount),
+  usageEstimated:
+    row.usageEstimated === null || row.usageEstimated === undefined
+      ? null
+      : Number(row.usageEstimated) === 1,
   status: String(row.status),
   errorCode: typeof row.errorCode === 'string' ? row.errorCode : null,
   createdAt: toIsoTimestamp(row.createdAt),
@@ -167,6 +181,10 @@ export const listAdminUsageEvents = async (
             request_id AS requestId,
             estimated_tokens AS estimatedTokens,
             actual_total_tokens AS actualTotalTokens,
+            charged_tokens AS chargedTokens,
+            provider_budget_tokens AS providerBudgetTokens,
+            attempt_count AS attemptCount,
+            usage_is_estimated AS usageEstimated,
             status,
             error_code AS errorCode,
             created_at AS createdAt

@@ -17,9 +17,20 @@ vi.mock('../lib/auth.js', () => ({
 }));
 vi.mock('../lib/credits.js', () => ({ grantSignupCredits: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../lib/aiUsage.js', () => ({
-  reserveAIUsage: vi.fn().mockResolvedValue({ usageEventId: 'usage-1', userId: 'user-1' }),
-  completeAIUsage: vi.fn().mockResolvedValue(undefined),
-  failAIUsage: vi.fn().mockResolvedValue(undefined),
+  reserveAIUsage: vi.fn().mockImplementation(async (_env, input) => ({
+    usageEventId: 'usage-1',
+    userId: 'user-1',
+    routeKey: input.routeKey,
+    requestId: input.requestId,
+    reservedTokens: input.estimatedTokens,
+  })),
+  recordAIUsageAttempt: vi.fn().mockResolvedValue(1),
+  prepareAIUsageSettlement: vi.fn().mockResolvedValue({
+    chargedTokens: 15,
+    providerBudgetTokens: 15,
+    needsFinalization: true,
+  }),
+  finalizeAIUsageSettlement: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock('../lib/aiBudget.js', () => ({
@@ -80,7 +91,10 @@ const requestAdvice = async (index?: unknown) => {
       }),
     }),
     env,
-    { waitUntil: (task) => tasks.push(task), passThroughOnException: () => {} } as ExecutionContext,
+    {
+      waitUntil: (task: Promise<unknown>) => tasks.push(task),
+      passThroughOnException: () => {},
+    } as unknown as ExecutionContext,
   );
   await Promise.all(tasks);
   expect(response.status).toBe(200);

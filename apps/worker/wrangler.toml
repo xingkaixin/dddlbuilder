@@ -35,3 +35,6 @@ class_name = "WorkspaceYDocDurableObject"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["WorkspaceYDocDurableObject"]
+
+[vars]
+ENVIRONMENT = "development"

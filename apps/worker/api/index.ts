@@ -6,8 +6,10 @@ import { DomainError, errorResponse, withMeta } from '../server-api/lib/http.js'
 import { parseAllowedOrigins } from '../server-api/lib/env.js';
 import {
   completeRequestLogContext,
+  createWorkerBackgroundLogger,
   getRequestLogger,
   normalizeIncomingRequestId,
+  toWorkerError,
   withWorkerRequestLogging,
 } from '../server-api/lib/logging.js';
 import { registerParseSqlRoute } from '../server-api/routes/parseSql.js';
@@ -137,20 +139,48 @@ app.get('*', async (c) => {
 
 const workerFetch = withWorkerRequestLogging((request, env, ctx) => app.fetch(request, env, ctx));
 
+export const runAIUsageRecovery = async (
+  env: ApiEnv['Bindings'],
+  waitUntil: (promise: Promise<unknown>) => void,
+) => {
+  const log = createWorkerBackgroundLogger(
+    { job: { name: 'ai-usage-recovery' } },
+    waitUntil,
+    env.ENVIRONMENT,
+  );
+  try {
+    const { scanned, reclaimed, failures } = await reclaimStaleAIUsage(env);
+    const reconciledBudgets = await reconcileTerminalAIBudgets(env);
+    await cleanupAIGovernance(env);
+    log.set({
+      job: {
+        name: 'ai-usage-recovery',
+        scanned,
+        reclaimed,
+        failed: failures.length,
+        reconciledBudgets,
+      },
+    });
+    if (failures.length > 0) {
+      const firstFailure = failures[0];
+      log.error(toWorkerError(firstFailure?.error, 'AI usage recovery failed'), {
+        job: {
+          name: 'ai-usage-recovery',
+          failedUsageIds: failures.map((failure) => failure.usageEventId),
+        },
+      });
+    }
+  } catch (error) {
+    log.error(toWorkerError(error, 'AI usage recovery failed'));
+    throw error;
+  } finally {
+    log.emit();
+  }
+};
+
 export default {
   fetch: workerFetch,
   async scheduled(_event: ScheduledEvent, env: ApiEnv['Bindings'], ctx: ExecutionContext) {
-    ctx.waitUntil(
-      (async () => {
-        const { scanned, reclaimed } = await reclaimStaleAIUsage(env);
-        const reconciledBudgets = await reconcileTerminalAIBudgets(env);
-        await cleanupAIGovernance(env);
-        if (scanned > 0 || reconciledBudgets > 0) {
-          console.log(
-            `[ai-usage] reclaim scanned=${scanned} reclaimed=${reclaimed} budgets=${reconciledBudgets}`,
-          );
-        }
-      })(),
-    );
+    ctx.waitUntil(runAIUsageRecovery(env, ctx.waitUntil.bind(ctx)));
   },
 };

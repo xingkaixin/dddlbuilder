@@ -104,6 +104,48 @@ describe('AI daily budget lifecycle', () => {
     expect(reservation).toEqual({ reservedTokens: 80, actualTokens: 15 });
   });
 
+  it.each([1.4, -1, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects invalid actual token facts %s',
+    async (actualTokens) => {
+      const { reserveAIDailyBudget, settleAIDailyBudget } = await import('../../lib/aiBudget.js');
+      const { env, sqlite, addUsage } = createFixture();
+      try {
+        addUsage('usage-1');
+        await reserveAIDailyBudget(env, 'usage-1', 10, 100);
+        await expect(settleAIDailyBudget(env, 'usage-1', actualTokens)).rejects.toThrow(
+          'INVALID_BUDGET_TOKEN_AMOUNT',
+        );
+        expect(
+          sqlite
+            .prepare('SELECT actual_tokens FROM ai_budget_reservations WHERE usage_event_id = ?')
+            .get('usage-1'),
+        ).toEqual({ actual_tokens: null });
+      } finally {
+        sqlite.close();
+      }
+    },
+  );
+
+  it('rejects a budget counter overflow atomically', async () => {
+    const { reserveAIDailyBudget, settleAIDailyBudget } = await import('../../lib/aiBudget.js');
+    const { env, sqlite, addUsage } = createFixture();
+    try {
+      addUsage('usage-1');
+      await reserveAIDailyBudget(env, 'usage-1', 1, Number.MAX_SAFE_INTEGER);
+      sqlite.prepare('UPDATE ai_governance_counters SET value = ?').run(Number.MAX_SAFE_INTEGER);
+      await expect(settleAIDailyBudget(env, 'usage-1', 2)).rejects.toThrow(
+        'BUDGET_COUNTER_OVERFLOW',
+      );
+      expect(
+        sqlite
+          .prepare('SELECT actual_tokens FROM ai_budget_reservations WHERE usage_event_id = ?')
+          .get('usage-1'),
+      ).toEqual({ actual_tokens: null });
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it('releases abandoned reservations after usage reaches a terminal status', async () => {
     const { reconcileTerminalAIBudgets, reserveAIDailyBudget } =
       await import('../../lib/aiBudget.js');
