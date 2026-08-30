@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -8,11 +8,14 @@ import {
   runPendingMigrations,
   verifyRequiredD1Tables,
 } from './d1-utils';
+import { assertAIUsageCronConfigured } from './deploy-config';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const configPath = path.join(repoRoot, 'apps', 'worker', 'wrangler.deploy.toml');
 const secretsFile = process.env.WRANGLER_SECRETS_FILE ?? path.join(repoRoot, '.deploy.secrets');
 const hasSecretsFile = existsSync(secretsFile);
+
+assertAIUsageCronConfigured(readFileSync(configPath, 'utf8'), configPath);
 
 const runWrangler = (args: string[], captureOutput = false) => {
   const result = spawnSync('pnpm', ['exec', 'wrangler', ...args], {
