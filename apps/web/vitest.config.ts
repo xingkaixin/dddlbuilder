@@ -20,48 +20,28 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text'],
       thresholds: {
-        branches: 70,
-        functions: 80,
-        lines: 80,
-        statements: 80,
+        branches: 60,
+        functions: 67,
+        lines: 71,
+        statements: 70,
       },
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/**/*.{test,spec}.{ts,tsx}',
-        'src/__tests__/**/*', // Exclude all test files and helpers
-        'src/components/**/*.tsx', // Exclude presentational React components
-        // Exclude not-yet-covered heavy visual-effect internals.
-        'src/components/fireworks/**/*.ts',
-        // Exclude component-level orchestration hooks pending dedicated tests.
-        'src/components/App/hooks/useAppSelectors.ts',
-        'src/components/App/hooks/useApplySavedState.ts',
-        'src/components/App/hooks/useClearAllActions.ts',
-        'src/components/App/hooks/useDerivedTableState.ts',
-        'src/components/App/hooks/useDialogStates.ts',
-        'src/components/App/hooks/useFireworksIntro.ts',
-        'src/components/App/hooks/useFolderActions.ts',
-        'src/components/App/hooks/useNavigationActions.ts',
-        'src/components/App/hooks/useReviewActions.ts',
-        'src/components/App/hooks/useTemplateActions.ts',
-        'src/components/App/useAppController.ts',
-        // Exclude complex grid helpers pending interaction-test expansion.
-        'src/components/App/table/useDataTableClipboard.ts',
-        'src/components/App/table/useDataTableNavigation.ts',
-        'src/scripts/**/*', // Exclude utility scripts
-        'src/interfaces/**/*', // Exclude TypeScript interfaces
-        'src/types/**/*', // Exclude TypeScript type definitions
-        'src/**/index.ts', // Exclude barrel exports
-        // Exclude backward-compatible re-export barrels (no business logic).
-        'src/utils/alterDdlGenerator.ts',
+        'src/__tests__/**/*',
+        'src/i18n/locales/en-US/common.ts',
+        'src/i18n/locales/ja-JP/common.ts',
+        'src/i18n/locales/zh-CN/common.ts',
+        'src/components/App/er-diagram/types.ts',
+        'src/components/ImportSqlDialog/types.ts',
+        'src/components/App/table/index.ts',
+        'src/hooks/index.ts',
+        'src/stores/index.ts',
+        'src/utils/constants/index.ts',
         'src/utils/constants.ts',
-        'src/**/types.ts', // Exclude type-only files
         'src/main.tsx',
-        'src/App.tsx', // Entry component, not suitable for unit tests
+        'src/App.tsx',
         'src/vite-env.d.ts',
-        'src/admin/**/*',
-        'src/auth/AuthSessionProvider.tsx',
-        'src/services/workspaceMigrationService.ts',
-        'src/services/workspaceSyncService.ts',
       ],
     },
   },
