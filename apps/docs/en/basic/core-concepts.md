@@ -1,41 +1,73 @@
 # Core Concepts
 
-## Who this is for
+A thorough understanding of DDLBuilder's foundational architecture helps you navigate complex data modeling, team collaboration, and cross-device workflows with confidence.
 
-For users who can already click through the UI but are not fully clear about "Draft box", "Saved Tables", "Shared copy", "DDL/DCL", and the new multi-tab workspace.
+## Conceptual Architecture
 
-## What this solves
+```mermaid
+graph TD
+    Workspace[Workspace] --> Tabs[Multi-tab Management]
+    Workspace --> Drafts[Named Drafts]
+    Workspace --> SavedTables[Saved Tables]
+    SavedTables --> Folders[Folder Categories]
+    SavedTables --> Trash[Trash Bin]
+    
+    Tabs --> Output[Artifact Outputs]
+    Output --> DDL[DDL Table / Index / Partitioning]
+    Output --> DCL[DCL Privilege Control]
+    Output --> ORM[ORM Models]
+    Output --> Routine[Views & Routine Skeletons]
+    
+    Workspace -. Real-time Sync Y.Doc .-> Account[User Account & Cloud Storage]
+    Tabs -. Generate Share Link .-> Share[Read-only Share Link]
+    Share -. Fork as Copy .-> Workspace
+```
 
-After understanding these concepts, you can tell where current changes are stored, whether others can edit shared content, which SQL block should be copied, and how the multi-tab workspace operates.
+---
 
-## Steps
+## Detailed Concepts
 
-1. Confirm the "workspace" concept first: your full current configuration is in one workspace, which supports multiple tabs; each tab independently manages one table. Result: you know all current inputs within a tab belong to that tab's table design, and switching tabs does not affect each other.
-2. Understand "Draft box": if no specific saved table is loaded, you are in Draft box; the draft box supports multiple named drafts managed through the left workspace sidebar. Result: temporary designs go to Draft box by default and do not overwrite saved tables; multiple drafts can coexist and be switched as needed.
-3. Understand "Saved Tables": after manual save, you get a named snapshot that can be loaded repeatedly; saved tables support soft deletion, moving to trash after deletion, with options to restore or permanently empty. Result: you can manage stable versions and temporary drafts separately, with a recovery window for accidental deletions.
-4. Understand "Shared copy (read-only)": pages opened by share links are not directly editable by default. Result: you know you must click "Save as copy and edit" before making changes.
-5. Understand "DDL / DCL": DDL is table creation SQL, and DCL is privilege SQL. Result: you can copy the correct output by scenario and avoid mixing them.
-6. Understand "ORM / View / Routine": ORM is model code generated for the target framework; View is the CREATE VIEW statement; Routine is skeleton code for stored procedures, functions, and triggers. Result: you can select the output type based on delivery target.
-7. Understand "User account and workspace sync": after signing in, data is bound to your account. Drafts, saved tables, folders, and trash sync incrementally, while Settings still provides "Sync now", "Upload to cloud", and "Download from cloud" as recovery tools. Result: when switching devices, you know to sign in first and then wait for automatic sync or trigger a manual sync.
-8. Understand "AI credits": AI table generation, AI modify current table, AI index advisor, DDL review, SQL explanation, and AI comment generation consume credits based on actual token usage. Result: you know you need sufficient credits to continue using AI features, and anonymous users must sign in first to use AI.
-9. Understand "Trash": deleted saved tables do not disappear immediately but enter the trash for a retention period. Result: accidentally deleted tables can be recovered from trash; bulk emptying trash should be confirmed first.
+### 1. Workspace & Multi-Tab Editing
+- **Workspace**: The top-level container for your active session, holding all active table designs, drafts, and configuration state.
+- **Multiple Tabs**: Work on several independent tables concurrently within the same workspace. Switching tabs maintains local state without cross-table interference.
+- Closing a tab with uncommitted changes triggers a confirmation prompt to prevent accidental data loss.
 
-## Done when
+### 2. Drafts
+- Unsaved temporary table designs live in the **Drafts** section by default.
+- The workspace sidebar lets you create and manage **multiple named drafts**, enabling you to experiment with alternate schema designs without mutating your established tables.
 
-- You can clearly tell whether you are in Draft box or a saved table.
-- You know tables in multi-tab mode are independent, and switching tabs won't lose unsaved content (but closing tabs will prompt).
-- You know shared pages cannot be edited directly and must be converted to a copy first.
-- You know structure changes are in DDL, privilege grants are in DCL, and business models look at ORM.
-- You know the workspace syncs automatically after signing in, and that Settings can run a manual sync or recovery action.
-- You know AI features require credits and are unavailable without signing in.
-- You know deleted saved tables can be recovered from trash.
+### 3. Saved Tables, Folders, and Trash
+- **Saved Tables**: Named, versioned snapshots that can be searched and loaded from the sidebar drawer at any time.
+- **Folders**: Organize tables by domain, business module, or project using intuitive drag-and-drop management.
+- **Soft Deletes & Trash**: Deleted tables are moved to the Trash bin and retained for a recovery period, allowing single-click restoration before permanent deletion.
 
-## Common pitfalls
+### 4. Read-Only Sharing & Forking Copies
+- URLs generated via the **Share Link** button are **strictly read-only**, protecting your original schema from external modification.
+- Recipients can click **Save as Copy and Start Editing** in the banner to branch the shared schema into their personal workspace as an editable copy.
 
-- Mistaking "Draft box auto-save" for "Saved Tables" can make named versions appear missing later.
-- Editing directly in a shared page has no effect because the shared view is read-only.
-- Looking only at DDL and not DCL can cause missed privilege grants.
-- AI features prompt you to sign in when anonymous, and are restricted when credits are insufficient after signing in.
-- When editing the same workspace across devices, Settings may show sync conflict notices; inspect the conflict items first, then decide whether to use manual upload or download to overwrite the full workspace.
-- Without signing in, clearing browser data will erase local drafts and saved tables. Important data should be synced to the cloud after signing in.
-- Closing a tab with unsaved changes without saving will lose those changes (draft auto-save only applies to the currently active tab).
+### 5. Multi-Paradigm Artifact Outputs (DDL / DCL / ORM / Routine)
+- **DDL (Data Definition Language)**: Generates complete `CREATE TABLE` scripts with columns, constraints, indexes, and partitioning clauses.
+- **DCL (Data Control Language)**: Generates corresponding `GRANT` statements so privilege provisioning never lags behind schema rollout.
+- **ORM Models**: Maps table schemas into typed models for Prisma, TypeORM, SQLAlchemy, GORM, and JPA.
+- **Views and Routines**: Provides DDL for `CREATE VIEW` and structural code skeletons for stored procedures, functions, and triggers.
+
+### 6. User Accounts & Real-Time CRDT Cloud Sync
+- Signing in binds your workspace to your account using **CRDT (Yjs Y.Doc)** for state synchronization.
+- Drafts, saved tables, folder hierarchies, and trash entries sync **incrementally and automatically in the background** across devices.
+- The Settings page provides manual tools ("Sync Now", "Sync to Cloud", "Download from Cloud") along with detailed conflict inspection if concurrent multi-device edits diverge.
+
+### 7. AI Credits & Intelligent Capabilities
+- DDLBuilder incorporates a complete AI suite: Master Workshop, AI Modify, AI Index Advisor, DDL Reviewer, SQL Explanations, and Smart Comments.
+- AI operations consume credits proportional to actual Token consumption. Check your balance and ledger anytime in your user profile or the Settings panel.
+
+---
+
+## Quick Reference Summary
+
+| Question / Scenario | Key Takeaway |
+|---|---|
+| **Where are changes saved?** | Temporary edits remain in Drafts; click the Save icon to create a named Saved Table. |
+| **Can viewers edit a shared link?** | No. Shared links are read-only. Viewers must fork a copy to make edits. |
+| **How does multi-device sync work?** | Sign into your account for automatic incremental background sync, or use the Settings page for manual backups. |
+| **Will data be lost if I switch machines?** | Guest data is stored locally in the browser. Sign in to guarantee secure cloud persistence. |
+| **Can deleted tables be recovered?** | Yes. Deleted tables move to the Trash bin and can be restored before clearing the trash. |

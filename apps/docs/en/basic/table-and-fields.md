@@ -1,41 +1,54 @@
 # Table and Field Configuration
 
-## Who this is for
+This guide details how to configure table-level metadata, column definitions, data types, business constraints, and advanced field features to generate reliable DDL.
 
-For users who are already on the editor page and want to turn a table from "blank" into "DDL-ready".
+## Overview
 
-## What this solves
+Use the visual editor to design greenfield database tables or evolve existing schemas while guaranteeing conformance to your chosen database dialect's syntax and type rules.
 
-You can complete table-level and field-level input in one screen and quickly produce a table schema draft ready for review.
+---
 
-## Steps
+## Configuration Walkthrough
 
-1. In "Table Config", fill in `Schema Name` when needed, together with `Table Name`, `Table Comment`, and `Database Type`. Result: the system generates subsequent SQL with the target database syntax; when `Schema Name` is not empty, table objects are emitted as `schema.table`.
-2. In "Fields", enter `Field Name`, `Comment`, and `Type` row by row. Result: the base field structure appears in the DDL on the right in real time.
-3. Configure `Nullable`, `Default Kind`, `Default Value`, and `On Update` based on field rules. Result: constraints and default behavior are written into SQL.
-4. When configuring logical enums, expand the enum editor within the field row, add enum items, set color identifiers, and drag to reorder. Result: the field carries enum metadata for unified value specification during team collaboration.
-5. Use `Add Rows` in the toolbar for bulk field input. Enable `Freeze` when needed to keep key columns visible, or switch to `Compact Layout` for higher information density on small screens. Result: editing large tables becomes faster and horizontal scrolling is less error-prone.
-6. To reuse fields, use `Apply Template` to select an existing template, or save current fields as a template. Result: similar tables can quickly reuse a standardized field set.
-7. To estimate volume, click `Estimate Size` and adjust expected row count. Result: you get per-row and total-size estimates that now include index volume, closer to actual physical usage.
-8. To check design standards, open the `Schema Lint` panel. Result: the system scans current table structure against built-in naming conventions and type rules, highlighting potential issues.
-9. To quickly fill test data, click `Mock Data` to generate sample data by field type and export. Result: development and testing phases can quickly obtain data conforming to the structure.
-10. To establish table relationships, either enter one manually in `Foreign Key Configuration`, or save the source and target tables first and drag between field handles in `ER Diagram` to confirm cardinality, optionality, referential actions, and indexes in the wizard. Result: the system generates foreign key constraint DDL and displays the relationship in the ER diagram.
+### 1. Table-Level Metadata
+Configure table identifiers in the top configuration header:
+- **Database Type**: Select your target database dialect (e.g., MySQL, PostgreSQL, Oracle, SQL Server).
+- **Table Name & Display Name**: Enter the physical table name (e.g., `order_item`) and descriptive business label (e.g., `Order Item Details`).
+- **Schema Name (Optional)**: If your database uses namespace isolation (e.g., `sales.order_item`), enter the schema name in the dedicated input. Do not manually prefix the table name.
 
-## Done when
+### 2. Columns and Constraints
+Define column properties in the **Field Configuration** table:
+- **Field Name & Label**: Specify the column identifier and its business description.
+- **Data Type**: Select from dialect-aware data types (such as `BIGINT`, `VARCHAR(255)`, `DECIMAL(10,2)`, `JSON`).
+- **Nullability**: Explicitly mark columns as `NOT NULL` or `NULL`.
+- **Default Type & Default Value**: Choose from constant values, empty strings, current timestamp (`CURRENT_TIMESTAMP`), UUIDs, or dialect-specific expressions.
+- **Update Policy**: Configure automatic update triggers for timestamp columns (e.g., `ON UPDATE CURRENT_TIMESTAMP`).
 
-- The field list covers core fields for this table, and each row has complete field information.
-- DDL on the right updates in real time as fields change, with no blank structure.
-- If `Schema Name` is used, SQL on the right already shows the qualified table name.
-- If templates are used, template fields are successfully applied to the current table.
-- If enums are configured, enum items are saved and color identifiers match expectations.
-- Schema lint panel shows no error-level issues, or warnings are acknowledged.
+### 3. Productivity & Layout Features
+- **Batch Row Insertion & Reordering**: Click "Add Rows" to quickly insert multiple column rows. Drag rows by their left handles to reorder columns in the DDL.
+- **Frozen Columns & Compact Layout**: Pin key identifier columns with "Freeze Columns" when scrolling horizontally. Toggle "Compact Layout" on smaller displays to maximize visible information density.
+- **Field Templates**: Click "Apply Template" to insert standard audit column bundles (e.g., `created_at`, `updated_at`, `created_by`), or save current columns as a reusable team template.
 
-## Common pitfalls
+### 4. Advanced Metadata & Tools
+- **Logical Enums**: For finite status columns, expand the inline enum editor to specify valid values, labels, and visual color badges. This metadata persists with the table to document business rules.
+- **Storage Capacity Estimation**: Click "Estimate Storage" and input projected row counts. The tool computes physical disk usage including row width and index overhead.
+- **Schema Lint**: Run the built-in Schema Lint checker to catch naming convention violations, problematic data types, or missing primary keys.
+- **Mock Data Generator**: Click "Mock Data" to generate realistic sample datasets based on column types, exportable as SQL INSERT statements, CSV, or JSON.
 
-- Duplicate field names or reserved keywords will trigger warnings. Rename first before continuing.
-- When `Schema Name` is empty, generation keeps the original bare table name behavior. Keep the table field for the table name only, and do not mix `schema.table` into it.
-- Filling only field names without setting field types leads to incomplete structure information.
-- After large paste operations, spot-check "Default Kind" and "On Update" by column to avoid misalignment.
-- When modifying existing field types, if the system warns of data compatibility risks (e.g., truncation, precision loss), confirm whether the current database already has data before proceeding.
-- When configuring foreign keys, associated field types must be compatible; otherwise generated foreign key DDL may fail on the target database.
-- In the ER relationship wizard, the target field must be a single-column primary or unique key; one-to-one relationships also require a unique constraint on the source field.
+---
+
+## Verification Checklist
+
+- [ ] All core domain fields are accurately defined with appropriate types and lengths.
+- [ ] Primary key and non-null constraints are correctly applied.
+- [ ] The DDL output panel updates in real time with syntactically valid SQL.
+- [ ] The Schema Lint panel reports no critical errors.
+
+## Common Traps and Guidance
+
+::: warning Column Type Migrations
+Modifying data types on established tables may trigger compatibility warnings (such as truncation or precision loss). Carefully inspect warnings before applying changes.
+:::
+
+- **Reserved Keywords**: When a column name matches a database reserved word (e.g., `order`, `status`, `group`), the system displays a warning and automatically quotes the identifier in generated DDL.
+- **Foreign Key Requirements**: When configuring foreign keys or drawing relationship lines in the ER diagram, target columns must be single-column primary keys or unique index targets with matching data types.

@@ -1,36 +1,61 @@
 # Quick Start
 
-## Who this is for
+This guide helps first-time DDLBuilder users design their first database table in minutes and export production-ready SQL DDL, DCL, and ORM models.
 
-For first-time DDLBuilder users who want to quickly finish one table creation statement and copy it for use.
+## Overview
 
-## What this solves
+Eliminate the tedium of handcrafting SQL for multiple database dialects. With DDLBuilder's visual interface, you can model table schemas, define constraints, and instantly obtain accurate DDL, DCL, ORM models, and routine skeletons.
 
-You do not need to handwrite SQL from scratch. With page-based configuration, you can get usable table DDL, privilege DCL, ORM model code, and view/routine skeletons in minutes.
+## Step-by-Step Walkthrough
 
-## Steps
+### 1. Select Dialect and Basic Information
+- Select your target **Database Type** in the table configuration header (e.g., MySQL, PostgreSQL, Oracle, TiDB).
+- Enter the **Table Name** (e.g., `user_account`) and optional **Display Name** (e.g., `User Account Table`).
+- **Schema Name** (Optional): If your database supports namespaces (such as PostgreSQL, Oracle, or SQL Server), entering a schema name automatically formats SQL object identifiers as `schema.table`.
 
-1. In the Table Config area, select the database type and fill in `Schema Name` when needed, together with table name and table comment. Result: the system locks the target database syntax and initializes the current table object; if `Schema Name` is filled, subsequent SQL uses the qualified `schema.table` name.
-2. In "Fields", fill in field name, field type, nullable, and default kind. Result: "Table DDL" on the right starts generating readable SQL in real time.
-3. Switch to "Indexes", "Privileges", "Foreign Keys", and "Misc" as needed to complete additional settings. Result: DDL, DCL, and foreign key statements update automatically with your configuration.
-4. When you need a quick start, click "Table Blueprint" at the top to select a common business template (e.g., user, order, log), apply it, then adjust as needed. Result: From blank to usable structure takes only seconds.
-5. When importing existing structures, click "Import SQL" or "Import Data" at the top, supporting SQL, CSV, Excel, and JSON Schema sources. Result: The system automatically parses fields and types and fills them into the workspace.
-6. In the output area on the right, click "Copy DDL" or "Copy DCL"; you can also switch to "ORM" to generate Prisma, TypeORM, and other model codes, or switch to "View/Routine" to generate corresponding skeletons. Result: The required code is copied to clipboard, ready for review or execution.
-7. If you need long-term retention, click the save button next to the table name and provide a name. Result: the table is added to "Saved Tables" and can be loaded anytime later; the same workspace can have multiple tabs, each managing an independent table.
+::: tip Table Name Convention
+Enter only the bare table name into the `Table Name` field. When namespace scoping is required, use the dedicated `Schema Name` input rather than manually prefixing `schema.table`.
+:::
 
-## Done when
+### 2. Configure Columns and Constraints
+- Add columns in the **Field Configuration** table with column names, display labels, and data types.
+- Specify nullability (**Null / Not Null**), **Default Type** (such as constants, current timestamp, UUID), and default values.
+- The **Table DDL** panel on the right updates in real time with formatted SQL.
 
-- A complete `CREATE TABLE` statement appears in the right output area.
-- If `Schema Name` is filled, DDL / DCL already uses the schema-qualified table name.
-- You see the "Copied" feedback after clicking copy.
-- You can see the newly saved table in "Saved Tables".
-- If a blueprint template was used, the template fields have been successfully applied and can be further adjusted.
+### 3. Add Indexes, Privileges, and Options
+- **Indexes**: Quickly configure primary keys, unique constraints, and composite query indexes to ensure optimal query performance.
+- **Privileges**: Enter grantee roles or users to automatically generate standard `GRANT` (DCL) statements.
+- **Misc Options**: Configure storage engines, character sets, collations, or tablespace parameters as needed.
 
-## Common pitfalls
+### 4. Kickstart with Table Blueprints (Optional)
+When modeling standard domain entities (such as user accounts, orders, or audit logs), click **Table Blueprint** in the top navigation to apply a pre-built template with one click, then customize it for your needs.
 
-- If the database type is wrong, generated statements will not match your target database. Fix the database type before continuing.
-- `Schema Name` is optional. Keep the table input for the bare table name only, and do not paste `schema.table` into the table name field.
-- If you configure fields but no grantees, "Privilege DCL" may be empty. This is expected.
-- If you close a tab without saving, drafts are still auto-preserved, but it is recommended to manually save a named table at key points.
-- For cross-device use or to protect against data loss, sign up and sign in via the top-right account menu. After signing in, you can sync your workspace to the cloud from Settings.
-- In multi-tab mode, switching tabs with unsaved changes will prompt you to save, preventing accidental loss.
+### 5. Reverse-Engineer Existing Schemas (Optional)
+If you already have SQL scripts or data files, click **Import SQL** or **Import Data** (CSV, Excel, JSON Schema) to automatically parse columns, types, and indexes into your workspace.
+
+### 6. Copy and Export Artifacts
+- Click **Copy DDL** or **Copy DCL** in the output panel to copy SQL directly to your clipboard.
+- Switch to the **ORM** tab to export models for Prisma, TypeORM, SQLAlchemy, GORM, or JPA.
+- Switch to the **View/Routine** tab to generate view definitions or procedure/function/trigger templates.
+
+### 7. Save and Multi-Tab Management
+- Click the **Save icon** next to the table name to save the current table into your "Saved Tables" drawer.
+- The workspace supports **multiple tabs** simultaneously, letting you design separate tables in isolation.
+
+---
+
+## Verification Checklist
+
+- [ ] The output panel shows a complete, syntactically valid `CREATE TABLE` statement.
+- [ ] If a `Schema Name` is specified, the DDL/DCL outputs reflect the fully qualified table name.
+- [ ] Clicking copy buttons triggers a successful "Copied" toast notification.
+- [ ] The newly saved table is visible in the "Saved Tables" drawer.
+
+## Tips and Common Traps
+
+::: warning Database Dialect Matching
+Switching the database type recalculates type mappings and syntax constraints. Always confirm the target database type before extensive editing.
+:::
+
+- **Account Sign-In & Cloud Sync**: In guest mode, data is kept in your local browser storage. Sign in with your email account to enable automatic real-time cloud synchronization across devices.
+- **Unsaved Changes**: Closing a tab with unsaved edits will trigger a confirmation dialog to safeguard your work against accidental loss.

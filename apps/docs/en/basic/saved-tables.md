@@ -1,54 +1,55 @@
-# Saved Tables and Draft box
+# Saved Tables and Drafts
 
-## Who this is for
+This guide covers managing saved table snapshots, folder structures, the soft-delete trash bin, multiple named drafts, and cross-device real-time cloud synchronization.
 
-For users who maintain multiple tables long term, switch plans repeatedly, and organize schemas by project.
+## Overview
 
-## What this solves
+Manage multi-project schemas over long lifecycles, organize domain tables into structured folders, and switch between design variations across multiple workstations without risk of data loss.
 
-You can manage temporary designs and formally saved versions separately, reduce accidental operation risks through folders and trash, and explore different schemes in parallel via multiple drafts.
+---
 
-## Steps
+## Operations Walkthrough
 
-1. In the Table Config area, click save and enter a name. Result: the current table is added to "Saved Tables" and can be loaded repeatedly; if the table uses `Schema Name`, it is saved together with the rest of the table config.
-2. Click `Saved Tables` to open the side drawer, then search by name or database type. Result: you can locate target tables quickly.
-3. Select a saved table and load it into the workspace. Result: the current editing area switches to that table and shows loaded status; `Schema Name`, table name, fields, and indexes are restored together.
-4. For renaming, run `Rename` from the list. Result: naming becomes cleaner.
-5. For cleanup, run `Delete` from the list. Result: the table moves to trash instead of disappearing immediately; if deleted by mistake, click `Restore` from trash.
-6. For thorough cleanup, enter trash and execute `Empty Trash`. Result: tables in trash are permanently deleted and cannot be recovered; please confirm before proceeding.
-7. Use `Create folder`, drag table items, and drag folders to organize structure. Result: tables in the same business domain can be grouped and the list becomes clearer.
-8. To return to temporary work, switch to `Draft box` or a draft in the left workspace sidebar. Result: you can continue unnamed drafts without affecting saved tables; draft `Schema Name` is also preserved with the workspace. Multiple drafts can coexist and be quickly switched via the sidebar.
-9. After signing in, folder structure, trash state, and drafts sync incrementally with saved tables. Result: when you sign in on another device, saved tables, folder groupings, trash, and drafts are restored automatically.
-10. When you need to check sync status, click your profile in the header, open `Settings`, go to the `Workspace Sync` tab, and click `Sync now`. Result: the system pulls cloud changes, pushes local pending changes, and refreshes local sync state; if conflicts appear, Settings shows the pending count and conflict details.
-11. When you need to manually back up or restore, use `Upload to cloud` or `Download from cloud` in the `Workspace Sync` tab. Result: you can upload the full workspace (saved tables, drafts, folders, and trash) from this device to the cloud, or download from the cloud to overwrite the current device; both actions require confirmation to avoid accidental overwrite.
-12. When signing in for the first time, if anonymous local data exists in the browser, a migration prompt appears. Result: after starting the migration, saved tables, drafts, and folders from the anonymous workspace are bound to your account; if there are naming conflicts, the system automatically saves copies without overwriting existing cloud content.
+### 1. Saving and Loading Named Tables
+- **Save Table**: Click the Save icon next to the table name and assign a title to record a named snapshot in "Saved Tables".
+- **Search and Filter**: Open the "Saved Tables" drawer to filter tables by name, display label, or database dialect.
+- **Load to Workspace**: Click any table card to load its columns, indexes, comments, and schema names into your active tab.
+- **Rename and Update**: Rename tables via the card menu. Editing a loaded table enables the Save button to update the existing record.
 
-## Local copies and cloud sync
+### 2. Folder Hierarchy Management
+- **Create Folders**: Click "New Folder" in the drawer to establish domain directories (e.g., `Auth Module`, `Billing Engine`).
+- **Drag-and-Drop Organization**: Drag tables into folders or reorder folder hierarchies to maintain a clean workspace layout.
 
-After opening an account workspace in the same browser, refreshing restores its local copy first. Authentication checks and cloud sync run in the background, so you can continue without waiting for cloud content.
+### 3. Soft-Delete and Trash Recovery
+- **Safe Removal**: Selecting "Delete" moves a table to the **Trash bin** rather than destroying it immediately.
+- **Restore**: Navigate to the Trash tab and click "Restore" to reinstate any accidentally removed table.
+- **Purge**: Click "Empty Trash" to permanently remove all discarded schemas.
 
-- Local content remains readable and editable when the network or authentication endpoint is temporarily unavailable. If your session has expired, sign back into the original account to resume cloud sync. Switching accounts does not transfer the previous account's content.
-- A new device that has not downloaded cloud content shows “Initial sync is not complete.” This does not mean the cloud workspace is empty. Stay signed in and connected; you can also create content locally and let it merge later.
-- Signing out pauses editing on the current page while waiting for cloud confirmation. If confirmation fails, sign-out is cancelled and local data is retained. Restore sync and try again. Successful sign-out removes the account's local copy.
-- “Local copy opened” does not mean “Cloud synced.” Do not clear browser data before synchronization completes.
+### 4. Multiple Parallel Drafts
+- Temporary, unsaved tables remain safely inside **Drafts**.
+- Use the workspace sidebar to create and toggle between **multiple named drafts**, letting you iterate on alternate models without polluting formal table repositories.
 
-These behaviors require the page to load and browser storage to be available. Reopening or refreshing the entire site without a network connection is not currently guaranteed.
+### 5. Account Sign-In & Real-Time Cloud Synchronization
+- **Automatic Incremental Sync**: Signing in binds your workspace to your account, continuously synchronizing drafts, saved tables, folders, and trash state in the background via Y.Doc.
+- **Local-First & Offline Resilience**: Signed-in sessions load instant local cache copies on startup, ensuring that network fluctuations never stall your modeling flow.
+- **Sync Settings Hub**: Visit "Settings > Workspace Sync" to monitor status, trigger an immediate push/pull ("Sync Now"), or inspect conflict details when concurrent edits occur.
+- **Manual Backup and Overwrite**: Use "Sync to Cloud" (push entire local workspace to cloud) or "Download from Cloud" (overwrite local state from cloud) as explicit disaster recovery mechanisms.
+- **First-Time Migration**: When logging in on a browser containing guest data, an onboarding prompt assists in promoting local tables to your account without overwriting existing cloud assets.
 
-## Done when
+---
 
-- Frequently used tables are saved with names and can be loaded from the list reliably.
-- Folder hierarchy is organized by project or business domain.
-- After switching between Draft box and saved tables, workspace state matches expectation.
-- If the table uses a schema, the combination of `Schema Name` and table name remains consistent after reload.
-- After signing in, folders, drafts, and saved tables stay consistent across devices; `Sync now` in Settings refreshes sync state.
-- Deleted tables can be found in trash and restored as needed.
+## Verification Checklist
 
-## Common pitfalls
+- [ ] Core schemas are named, saved, and easily retrievable from the drawer.
+- [ ] Related tables are categorized into logical domain folders.
+- [ ] Logging into another machine or browser faithfully restores all folders, drafts, and tables.
+- [ ] Deleted tables can be promptly located and restored from the Trash bin.
 
-- For a loaded but unmodified table, the save button may be disabled. This prevents meaningless overwrite.
-- If older data used `schema.table` inside the table name itself, the system will split it into `Schema Name` and bare table name when loading. Spot-check once after load.
-- Deleted tables default to trash, not permanent deletion; only emptying trash makes them unrecoverable.
-- If you mistake a draft for a saved table, the named record may look missing after refresh. Manually save at key milestones.
-- Without signing in, folders, drafts, and saved tables are kept only in the current browser's local storage. They cannot be recovered after switching devices or clearing browser data. Sign in first if you want cross-device access.
-- In multi-tab mode, loading a new table while the current tab has unsaved changes will prompt to save, preventing accidental loss.
-- Manual `Upload to cloud` and `Download from cloud` overwrite the full workspace in the selected direction, so confirm which version is the target before running them.
+## Tips and Common Traps
+
+::: warning Manual Full Overwrites
+"Sync to Cloud" and "Download from Cloud" perform full workspace overwrites. Verify which side holds the definitive dataset before proceeding. Routine editing is reliably handled by automatic incremental sync.
+:::
+
+- **Drafts vs. Saved Tables**: Drafts are scratchpads. Always save milestones explicitly as named tables.
+- **Guest Data Storage**: Guest sessions store data strictly within browser local storage. Clearing browser cache will wipe guest data; sign in to safeguard work in the cloud.

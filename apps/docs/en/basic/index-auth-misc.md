@@ -1,34 +1,55 @@
 # Indexes, Privileges, and Misc
 
-## Who this is for
+This guide explains how to design high-performance indexing strategies, configure access privileges (DCL), fine-tune storage engine options, and generate routine skeleton code.
 
-For users who have finished field input and now want to complete query performance, access privileges, and table-level options.
+## Overview
 
-## What this solves
+Once basic columns are configured, define indexing strategies for query optimization, declare access control grants, and set physical storage parameters to prepare schemas for production deployment.
 
-You can move from "table can be created" to "closer to production-ready", keeping indexes, privileges, and table-level parameters aligned with real query scenarios.
+---
 
-## Steps
+## Configuration Walkthrough
 
-1. Open "Indexes", enter field names, and select from suggestions. Result: you can quickly assemble index field combinations.
-2. Choose `Add Index`, `Add Unique Index`, or `Add Primary Key` based on your goal. Result: corresponding index definitions are immediately added to DDL.
-3. If index naming needs adjustment, edit the index name directly. Result: output SQL uses your confirmed naming.
-4. If you need to derive indexes from queries, click `AI Index Advisor` and paste typical query SQL or slow query snippets. Result: the system recommends missing indexes, redundant indexes, field order optimizations, and query rewrites based on current fields and existing indexes.
-5. Click `Add Index` for recommendations that match your scenario. Result: the recommended field combination enters index configuration, and DDL on the right updates immediately.
-6. Open "Privileges", enter grantees, and add them. Result: matching grant statements are generated automatically in "Privilege DCL".
-7. Open "Misc", enable the switch first, then configure engine, charset, collation, tablespace, fillfactor, or Oracle-specific storage options. Result: supported databases include these table-level options in DDL.
-8. If Routine skeletons are needed, select stored procedure, function, or trigger templates in Misc and adjust parameters. Result: the Routine output area generates corresponding skeleton code.
+### 1. Index Configuration
+Open the **Indexes** tab to establish query acceleration and uniqueness constraints:
+- **Primary Key**: Designate one or more primary key columns (standard tables accept exactly one primary key).
+- **Unique Indexes**: Guarantee business uniqueness (such as phone numbers, emails, or tenant-scoped identifiers).
+- **Secondary Indexes**: Select columns from autocomplete recommendations to construct single or **composite indexes**.
+- **Custom Index Naming**: Edit or double-click index names to customize them. If left blank, DDLBuilder automatically generates compliant identifiers (e.g., `idx_table_columns`).
 
-## Done when
+### 2. AI Index Advisor
+When fine-tuning indexes for complex or slow query workloads:
+1. Click the **AI Index Advisor** button.
+2. Paste typical business queries or slow query SQL snippets.
+3. The AI analyzes table columns, existing indexes, and query predicate structures to provide **missing index recommendations**, **redundant index detection**, **column ordering optimizations**, and **query rewrite tips**.
+4. Click **Add Index** on any recommended action to immediately incorporate it into your configuration and update your DDL.
 
-- Key query fields have indexes configured, and the primary key strategy is clear.
-- If AI Index Advisor was used, recommended indexes have been reviewed against query scenarios and added to index configuration.
-- Objects that need privilege grants appear in the grantee list.
-- After enabling Misc settings, corresponding options are visible in DDL on the right.
+### 3. Privilege Configuration (DCL)
+Open the **Privileges** tab to manage data access permissions:
+- Enter target **user or role identifiers** (e.g., `app_user`, `readonly_role`).
+- The right-hand **Privilege DCL** panel automatically outputs standard `GRANT SELECT, INSERT, UPDATE, DELETE ON table TO user;` statements.
+- If a `Schema Name` is defined, privilege statements automatically inherit the fully qualified table identifier.
 
-## Common pitfalls
+### 4. Miscellaneous Settings (Storage & Dialect Parameters)
+Open the **Misc** tab and toggle the switch to configure low-level engine parameters:
+- **Engine & Charset**: Set MySQL/MariaDB `ENGINE` (e.g., InnoDB), `CHARACTER SET` (e.g., `utf8mb4`), and `COLLATE`.
+- **Physical Storage**: Configure `TABLESPACE`, PostgreSQL `fillfactor`, Oracle `PCTFREE`, `INITRANS`, and other dialect-specific clauses.
+- **Routine Skeletons**: Select templates for Stored Procedures, Functions, or Triggers to generate structured code skeletons directly in the output panel.
 
-- Usually only one primary key is allowed. If one already exists, do not add another.
-- AI Index Advisor needs a table name, fields, and typical query SQL; complete the context before analysis when any part is missing.
-- If Misc is not enabled, selected options will not be written into DDL.
-- If grantee is empty, an empty DCL is normal and not a system issue.
+---
+
+## Verification Checklist
+
+- [ ] Critical filter and join columns are indexed, and business keys have unique constraints.
+- [ ] Index names follow naming conventions and have no duplicate or empty column sets.
+- [ ] Authorized roles are listed, and valid DCL statements appear in the output panel.
+- [ ] Enabled storage options correctly render at the end of the `CREATE TABLE` DDL.
+
+## Tips and Common Traps
+
+::: tip Activating Misc Parameters
+If parameter changes in the Misc tab do not appear in the DDL, ensure the master **Enable Misc Options** toggle at the top of the tab is switched on.
+:::
+
+- **Single Primary Key**: Relational databases enforce a single primary key per table. Do not attempt to add multiple independent primary key constraints.
+- **Empty DCL Output**: An empty DCL panel indicates that no grantee users or roles have been added. This is normal behavior and does not invalidate your DDL.

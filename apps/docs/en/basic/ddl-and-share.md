@@ -1,43 +1,53 @@
 # DDL Output and Sharing
 
-## Who this is for
+This guide details how to review and export table DDL, DCL privilege scripts, ORM model classes, and routine skeletons, as well as how to collaborate securely via read-only share links.
 
-For users who have finished schema configuration and are preparing external review, collaboration confirmation, or SQL delivery.
+## Overview
 
-## What this solves
+After completing your schema model, export the generated artifacts to database review systems, deploy them via change tickets, embed ORM models in application repositories, or share links for team alignment.
 
-You can make clear what to copy and what others can do after sharing, avoiding wrong handoff content or the assumption that shared pages are directly editable.
+---
 
-## Steps
+## Operations Walkthrough
 
-1. In the output area on the right, check `Table DDL` first. Result: you can confirm whether `CREATE TABLE` matches your expected structure; if `Schema Name` is filled, the output uses the schema-qualified table name.
-2. Switch to `Privilege DCL` and check grant statements. Result: you can deliver table creation and privileges separately and reduce execution omissions; if a schema exists, grant targets follow the same qualified table name.
-3. Switch to `ORM` and select the target framework (Prisma, TypeORM, SQLAlchemy, GORM, JPA) to generate corresponding model code. Result: you can directly paste model code into business projects, reducing manual translation.
-4. Switch to `View/Routine` to check configured view DDL or stored procedure, function, trigger skeletons. Result: you can obtain associated object statements beyond tables in one go.
-5. Click `Copy DDL`, `Copy DCL`, `Copy ORM`, or `Copy View/Routine` as needed. Result: SQL is copied to clipboard and can be pasted directly into review docs or execution systems.
-6. When more editing space is needed, click the collapse button at the top of the output panel to hide the right area. Result: the field configuration table gets more visible area for large table editing.
-7. Click `Share` in the top bar. Result: the system generates an accessible read-only link and copies it automatically, with a default validity window; shared content preserves the current `Schema Name` and table structure.
-8. If the recipient needs to continue editing after opening the link, click `Save as copy and edit` in the page prompt. Result: the system returns to home and loads an editable copy without changing the original shared view.
-9. During collaboration, use top entries such as `Docs`, `Language`, and `Theme`. Result: collaborators can quickly check guidance, open locale-matched docs, and adjust reading preferences.
+### 1. Review and Switch Multi-Target Artifacts
+The right-hand output panel lets you toggle between specialized views:
+- **Table DDL**: Review the complete `CREATE TABLE` script, primary key, column constraints, comments, indexes, and partitioning clauses. If a `Schema Name` is present, the table identifier renders as `schema.table`.
+- **Privilege DCL**: Inspect generated `GRANT` permission statements for configured roles.
+- **ORM Models**: Switch seamlessly between **Prisma, TypeORM, SQLAlchemy, GORM, and JPA** to generate typed models with appropriate annotations.
+- **View/Routine**: Inspect generated `CREATE VIEW` definitions and skeleton code for stored procedures, functions, and triggers.
 
-## Done when
+### 2. Copying and Output Formatting
+- Click **Copy DDL**, **Copy DCL**, **Copy ORM**, or **Copy View/Routine** to instantly copy code to your clipboard.
+- Use the toolbar toggle to switch between **Compact** and **Aligned** SQL formatting modes. Copied output reflects your chosen preview format.
 
-- Required DDL, DCL, ORM, or View/Routine has been copied and sent correctly.
-- The share link has been verified as accessible and the recipient can view complete read-only content.
-- If the current table uses a schema, both copied SQL and the shared page still show the qualified table name.
-- When further edits are required, it has been successfully converted into an editable copy.
-- Output panel collapse/expand state matches current working habits.
+### 3. Collapsible Output Panel for Wide Tables
+When editing tables with many columns, click the **Collapse icon** at the top of the output panel to hide it and maximize horizontal editing space. Click the expand handle to restore it at any time.
 
-## Common pitfalls
+### 4. Generating Read-Only Share Links
+1. Click the **Share Link** button in the top navigation bar.
+2. DDLBuilder generates a time-limited **read-only URL** and copies it to your clipboard.
+3. The shared snapshot encapsulates the table name, schema name, column definitions, constraints, indexes, and miscellaneous settings.
 
-- Shared pages are read-only by default and cannot be used directly as online editors.
-- If schema is part of your environment boundary, verify that DDL / DCL already carries the expected qualified table name before copying.
-- Copying only DDL but not DCL may lead to table creation without synchronized privilege grants.
-- Share links expire. Regenerate links again for critical review windows.
-- ORM model code is generated from current field structure snapshot; field changes require re-copying, not automatically synced to business projects.
+### 5. Collaboration and Forking Copies
+- Collaborators accessing the share link view a **strictly read-only protected page** that prevents accidental changes to your original design.
+- To iterate on the shared schema, recipients can click **Save as Copy and Start Editing** in the top banner, which loads an independent editable replica into their workspace.
 
-## Database versions and object scope
+---
 
-- Oracle table DDL no longer creates a `PUBLIC SYNONYM` automatically. If your application needs a synonym, have an administrator with the required privileges create it separately. A public synonym name has no schema qualifier; its target table may have one.
-- Constant defaults for MySQL TEXT, BLOB, JSON and related types use expression syntax, such as `DEFAULT ('{}')`, which requires MySQL 8.0.13 or later. Remove these defaults on older versions and verify support on compatible databases against the version you deploy.
-- MySQL family strings are generated with backslash escaping enabled. Check string semantics before executing them in a session with `NO_BACKSLASH_ESCAPES`.
+## Dialect Version & Syntax Specifics
+
+::: info Database Dialect Details
+- **Oracle Synonyms**: Generated DDL no longer automatically includes `PUBLIC SYNONYM`. If required, manage synonyms separately with appropriate DBA privileges.
+- **MySQL Complex Defaults**: Constant default values for TEXT, BLOB, or JSON types use parenthesized expression syntax (e.g., `DEFAULT ('{}')`), requiring MySQL 8.0.13 or newer.
+- **Escaping Behavior**: MySQL string literals assume standard backslash escaping. Verify syntax if your database session enforces `NO_BACKSLASH_ESCAPES`.
+:::
+
+---
+
+## Verification Checklist
+
+- [ ] Copied SQL executes successfully in target database management tools.
+- [ ] Qualified schema prefixes appear accurately across all relevant outputs.
+- [ ] Share links open as read-only snapshots in incognito browser windows.
+- [ ] Clicking "Save as Copy" successfully initializes an editable workspace tab.
