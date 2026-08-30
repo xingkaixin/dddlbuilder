@@ -1,115 +1,66 @@
 # Errors and Failure Handling
 
-## Share link unavailable
+This page collects common errors, failure symptoms, and actionable troubleshooting steps encountered when using DDLBuilder.
+
+---
+
+## 1. Share Link Unavailable or Expired
 
 ### Symptoms
+Opening a shared link displays an alert stating "Share link does not exist or has expired" and redirects to the home page.
 
-After opening a share link, you see "Share link not found or expired" and are redirected to home.
+### Troubleshooting Steps
+1. **Verify Link Integrity**: Ensure the URL was not truncated or modified by messaging apps (e.g., Slack, Teams, WeChat). Copy and paste the full URL directly into the address bar.
+2. **Check Time-to-Live**: Share links are time-limited (typically valid for 7 days). If expired, ask the sender to generate a fresh link.
+3. **Regenerate Link**: As the sender, reopen the table and click **Share Link** again to produce an active URL.
 
-### Quick checks
+---
 
-- Whether the link is older than 7 days.
-- Whether the link is truncated or contains extra characters.
-
-### Steps
-
-1. Copy the full original link and open it again. Result: this rules out link truncation by chat tools.
-2. If it still fails, go back to the current table and click `Share` again. Result: the system generates a valid link and copies it to clipboard.
-3. Send the new link to collaborators and ask them to retry. Result: most expiration or invalidation issues are resolved.
-
-### If still unresolved
-
-First open the new link yourself under the same network environment. If it also fails locally, contact product support with time and page message details.
-
-## SQL import failed or abnormal result
+## 2. SQL Import Failure or Incomplete Parsing
 
 ### Symptoms
+- Validation step reports "SQL Parse Failed" or a syntax error.
+- Certain columns, indexes, or privilege grants are missing after import.
 
-- "SQL parse failed" appears during validation.
-- After import, fields, indexes, or grantees are incomplete.
+### Troubleshooting Steps
+1. **Verify Source Dialect**: Confirm that the "Source Database" selected in the import modal matches the SQL script's dialect (e.g., avoid parsing Oracle DDL with the MySQL engine).
+2. **Isolate Core DDL**: Import the foundational `CREATE TABLE` statements first to establish core table definitions.
+3. **Batch Complex Statements**: For long scripts containing triggers, procedures, or complex alter scripts, import in smaller sections to isolate faulty syntax.
+4. **Remove Session Directives**: Strip non-standard client environment commands (e.g., `USE database;`, `SET NAMES utf8mb4;`) before importing.
 
-### Quick checks
+---
 
-- Whether SQL is empty or too long.
-- Whether `Source Database` matches the SQL dialect.
-
-### Steps
-
-1. In the import dialog, confirm `Source Database` is correct. Result: the system re-parses with the target dialect.
-2. Import the core `CREATE TABLE` statement first. Result: the main structure is recognized first.
-3. Then append `CREATE INDEX`, `ALTER TABLE`, and `GRANT` step by step. Result: you can quickly locate which segment triggers the issue.
-4. If SQL is very long, split it and import in batches. Result: this avoids validation failures from oversized text.
-
-### If still unresolved
-
-Keep a minimal reproducible SQL segment and selected database type, then submit to product support.
-
-## AI request failed (generate, review, explain)
+## 3. AI Request Failures (Workshop, Modify, Review, Explain)
 
 ### Symptoms
+- Master Workshop reports generation timeout or failure.
+- Master Review or "Explain Selected" does not respond or displays an error banner.
 
-- AI Table Workshop generation fails.
-- AI Review fails.
-- Explain selection fails.
+### Troubleshooting Steps
+1. **Transient Network Hiccup**: Refresh the browser and retry the operation.
+2. **Decompose Prompts**: Avoid requesting dozens of complex tables in a single prompt. Use incremental turns (core columns → indexes → constraints).
+3. **Check Credit Balance**: Navigate to "Settings > Credit Center" and confirm you have sufficient AI credits. Recharge or top up if the balance is exhausted.
 
-### Quick checks
+---
 
-- Whether this is short-term network jitter.
-- Whether AI requests are triggered too frequently in a short period.
-
-### Steps
-
-1. Refresh the page and retry the same action once. Result: this rules out temporary session anomalies.
-2. Split one long request into multiple short requests. Result: success rate is usually higher.
-3. Retry outside peak hours. Result: this reduces failures caused by service congestion.
-
-### If still unresolved
-
-Record failed action name (generate/review/explain) and trigger time, then contact product support.
-
-## Sign-in or sync failed
+## 4. Authentication & Sync Issues
 
 ### Symptoms
+- Sign-in displays "Email not verified" or "Too many requests".
+- Workspace reports "Sync Failed" or presents conflict alerts.
 
-- Sign-in shows "Email not verified", "Invalid email or password", or "Too many requests".
-- Workspace sync shows "Sync failed".
-- AI features show "Insufficient credits".
+### Troubleshooting Steps
+1. **Email Verification**: Check your inbox (including spam folders) for the activation link and click it to activate your account.
+2. **Rate Limiting Guard**: If prompted with "Too many requests", wait 1–2 minutes before retrying to clear temporary security rate limits.
+3. **Trigger Manual Sync**: Go to "Settings > Workspace Sync", click "Sync Now", and review conflict details if multi-device edits diverged.
 
-### Quick checks
+---
 
-- Whether the email and password are correct.
-- Whether the current network is stable.
-- Whether sign-in or sync was attempted too many times in a short period.
-
-### Steps
-
-1. Double-check the email and password, then retry. Result: this rules out input errors.
-2. If "Email not verified" appears, check your inbox (including spam) and click the verification link. Result: you can sign in normally after verification.
-3. If "Too many requests" appears, wait 1–2 minutes and retry. Result: this bypasses rate-limiting protection.
-4. When sync fails, refresh the page to confirm you are still signed in, then retry upload or download. Result: this rules out expired sessions.
-5. If AI features report insufficient credits, open Settings and check the Credit tab for usage history. Result: you can confirm the balance and breakdown; recharge when the channel opens.
-
-### If still unresolved
-
-Record the exact error message, operation time, and network environment, then contact product support.
-
-## Copy failed
+## 5. Clipboard Copy Failures
 
 ### Symptoms
+Clicking "Copy DDL" or "Copy DCL" triggers a "Copy failed, please retry" alert.
 
-After clicking `Copy DDL` or `Copy DCL`, you see "Copy failed, please try again".
-
-### Quick checks
-
-- Whether clipboard permission is blocked in current browser.
-- Whether you are in a restricted environment (remote desktop or managed browser policy).
-
-### Steps
-
-1. Retry the copy button once. Result: this rules out occasional failure.
-2. If it still fails, manually select SQL text on the right and use system copy shortcuts. Result: delivery continues without blocking the process.
-3. If necessary, switch to a commonly used browser and copy again. Result: this avoids policy restrictions in the current browser.
-
-### If still unresolved
-
-Confirm whether your work environment restricts clipboard access, and contact local IT administration if needed.
+### Troubleshooting Steps
+1. **Browser Permissions**: Verify that your browser has not blocked clipboard write permissions for the current domain.
+2. **Manual Keyboard Fallback**: In restricted corporate or remote desktop environments, select the SQL text in the output editor and press `Ctrl+C` (or `Cmd+C`) to copy manually.
