@@ -1,50 +1,69 @@
 # WebMCP Agent 协作
 
-## 使用对象
+本指南介绍如何利用 **WebMCP（Web Model Context Protocol）** 协议，让浏览器端 AI Agent 直接与筑表师进行结构化交互，实现自动化表结构审查、逆向导入与安全变更。
 
-适合使用支持 WebMCP 的浏览器 Agent，并希望让 Agent 在当前 DDLBuilder 页面中读取结构、导入 SQL、检查规范或提出可审阅变更的使用者。
+## 适用场景
 
-## 解决问题
+适用于在支持 WebMCP 的浏览器（如启用了 Experimental 特性的 Chrome）中使用 AI 助手（如 Gemini Nano、Claude 等浏览器 Agent），让 Agent 理解你正在设计的数据库表结构，并执行自动化检查或提出经你确认的修改建议。
 
-WebMCP 把 DDLBuilder 的领域操作声明为结构化工具。Agent 不需要从截图或 DOM 猜测按钮含义，就能可靠地读取当前结构、生成分页输出并提出事务式修改。
+---
 
-## 前置条件
+## 协议能力与工具清单
 
-- 使用实现了 `document.modelContext` 的浏览器。WebMCP 仍处于实验阶段，Chrome 可通过 Origin Trial 或本地实验开关启用，具体版本要求以 [Chrome WebMCP 文档](https://developer.chrome.com/docs/ai/webmcp) 为准。
-- DDLBuilder 页面必须保持打开；关闭页面后，WebMCP 工具不再可用。
-- 写入操作需要用户在页面中确认，Agent 不能绕过确认窗口。
+筑表师将核心领域能力封装为结构化工具，Agent 无需解析 DOM 或依赖截图即可精准调用：
 
-## 可用能力
+| 工具名称 | 工具作用与说明 |
+|---|---|
+| `inspect_active_schema` | 分页读取当前活动表的概要信息、字段列表、索引、关系及表级存储参数 |
+| `lint_active_schema` | 对当前表结构执行确定性的 Schema Lint 规则审查，返回问题清单 |
+| `read_generated_output` | 分段读取当前表生成的 DDL、DCL、ORM 模型、ALTER 语句或回滚脚本 |
+| `preview_schema_patch` | 接收 Agent 提议的字段与索引修改，生成差异预览而不直接写入工作区 |
+| `import_sql_preview` | 传入 SQL 脚本并按指定方言生成逆向解析预览 |
+| `apply_schema_patch` | 在用户于界面中点击确认后，原子应用补丁（带版本签名防冲突校验） |
+| `get_auth_status` | 检查当前登录状态及可用能力组（出于隐私保护，不暴露邮箱与点数） |
+| `start_sign_in` | 唤起前端登录弹窗，密码与人机验证完全由用户在安全界面中完成 |
 
-- `get_auth_status`：读取当前登录状态和可用能力组，不返回邮箱、姓名或点数。
-- `start_sign_in`：打开登录窗口。密码、人机验证和邮箱验证必须由用户在页面中完成。
-- `inspect_active_schema`：分页读取当前表的概要、字段、索引、关系和表级选项。
-- `lint_active_schema`：运行确定性的 Schema 规范检查。
-- `read_generated_output`：分段读取 DDL、DCL、ORM、ALTER 或回滚 SQL。
-- `preview_schema_patch`：预览表、字段和索引修改，不直接写入工作区。
-- `import_sql_preview`：按指定数据库方言解析 SQL，并生成导入预览。
-- `apply_schema_patch`：等待用户确认后应用预览；如果文档在确认前已经变化，操作会被拒绝。
+---
 
-## 登录与匿名工作区
+## 安全变更工作流
 
-1. 未登录时，Agent 仍可编辑当前浏览器中的匿名草稿、导入 SQL、运行检查并读取输出。结果：本地设计流程不会被登录阻断。
-2. 当任务需要云同步、账号已保存表或付费 AI 时，Agent 调用 `start_sign_in`。结果：页面打开登录窗口。
-3. 用户通过页面或密码管理器填写凭据并完成验证。结果：密码不会进入 Agent 参数或工具输出。
-4. 登录成功后，页面刷新 WebMCP 工具和工作区状态。结果：Agent 可以继续原任务，匿名数据可按页面提示迁移到账号工作区。
+为防止 Agent 产生非预期的幻觉修改或多端并发覆盖，WebMCP 采用基于**版本签名（`baseSignature`）**的乐观并发控制：
 
-## 结构变更流程
+```mermaid
+sequenceDiagram
+    participant Agent as 浏览器 AI Agent
+    participant WebMCP as WebMCP 工具层
+    participant User as 用户确认界面
+    participant Workspace as 筑表师工作区
 
-1. Agent 调用 `inspect_active_schema` 获取当前结构和 `baseSignature`。结果：修改基于一个明确版本。
-2. Agent 携带 `baseSignature` 调用 `preview_schema_patch` 或 `import_sql_preview`。结果：页面展示结构差异和 Schema 检查结果。
-3. Agent 调用 `apply_schema_patch`。结果：工具等待用户在页面中确认。
-4. 用户确认后，系统再次检查当前文档签名。结果：签名一致时写入，不一致时返回冲突并要求重新读取。
+    Agent->>WebMCP: inspect_active_schema()
+    WebMCP-->>Agent: 返回当前表结构 + baseSignature
+    Agent->>WebMCP: preview_schema_patch(baseSignature, patch)
+    WebMCP->>User: 界面弹出变更差异与 Lint 检查结果
+    Agent->>WebMCP: apply_schema_patch(baseSignature, patchId)
+    User->>Workspace: 用户人工点击「确认应用」
+    alt 签名一致
+        Workspace-->>Agent: 应用成功，工作区更新
+    else 结构已被人工修改 (CONFLICT)
+        Workspace-->>Agent: 拒绝变更，提示重新读取最新签名
+    end
+```
 
-## 易错点与失败处理
+---
 
-- 浏览器不支持 WebMCP：页面仍可正常人工使用，但 Agent 看不到 WebMCP 工具。
-- 登录窗口已打开但任务没有继续：先由用户完成登录，再让 Agent 重新读取登录状态。
-- 返回 `CONFLICT`：当前结构在预览后发生变化，重新读取结构并生成新的预览。
-- 分享页面无法修改：只读分享页只允许读取和检查，不允许应用结构变更。
-- WebMCP 不是后台接口：无头或云端 Agent 若没有当前浏览器标签页，应使用带授权的后端 MCP，而不是依赖 WebMCP。
+## 校验与完成标志
 
-索引数据使用 `kind` 表达类型：`index`（普通索引）、`unique_index`（唯一索引）、`unique_constraint`（唯一约束）、`primary`（主键）。工具输出和新写入应使用 `kind`；旧保存数据中的 `unique`、`isPrimary`、`isUniqueConstraint` 会在读取时兼容转换。
+- [ ] 浏览器控制台中能识别 `document.modelContext` 及 DDLBuilder 注册的工具。
+- [ ] Agent 可通过工具顺利读取当前活动表的字段与索引。
+- [ ] 变更补丁需要用户在页面弹窗中人工点击确认方可生效。
+- [ ] 只读分享页面能被 Agent 读取，但会阻止任何写入尝试。
+
+## 常见注意事项与约束
+
+::: warning 安全与人工确认
+Agent 永远无法绕过前端确认窗口直接篡改你的表结构。所有通过 `apply_schema_patch` 提交的变更均需经过人工二次复核。
+:::
+
+- **浏览器支持度**：WebMCP 目前处于 Web 标准演进阶段，具体支持情况与本地开关请参考 [Chrome WebMCP 官方文档](https://developer.chrome.com/docs/ai/webmcp)。
+- **页面生命周期**：WebMCP 依赖当前活跃的前端标签页，关闭或刷新页面后工具上下文会被重置。
+- **无头/服务端场景**：如果是 CLI、自动化 CI 管道或云端无头 Agent，请使用后端的标准 MCP 接口，而非依赖浏览器 WebMCP。

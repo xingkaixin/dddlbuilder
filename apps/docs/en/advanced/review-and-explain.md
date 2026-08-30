@@ -1,37 +1,42 @@
 # Review and Explain SQL
 
-## Who this is for
+This guide covers how to execute expert-grade schema quality audits using **Master Review** and decode complex dialect-specific clauses using the **SQL Explanation** tool.
 
-For users who have generated SQL and now need quality evaluation, risk inspection, and team communication support.
+## Overview
 
-## What this solves
+Perform pre-flight architecture reviews before submitting DDL to DBA approval boards, identify hidden performance bottlenecks, and rapidly understand legacy or unfamiliar database syntax.
 
-You can use `AI Review` to identify structural risk first, then use `Explain selection` to quickly clarify key statement intent and reduce review communication cost.
+---
 
-## Prerequisites
+## Operations Walkthrough
 
-- Valid DDL output already exists on the right side.
-- You want quality review or segment explanation for current SQL.
+### 1. Master Review (Architect-Level Quality Audit)
+1. Ensure the active table has valid columns configured and renders valid DDL in the output panel.
+2. Click **Master Review** in the DDL header.
+3. **Inspect Multidimensional Quality Scoring**:
+   - The engine audits schemas across key pillars: **Naming Conventions**, **Data Type Choices**, **Index Efficiency**, **Integrity Constraints**, **Extensibility**, and **Performance Risks**, delivering a composite score (1–10).
+   - Issues are prioritized into high-risk bugs, optimization recommendations, and best-practice notices with detailed reasoning.
+4. **One-Click Remediation**: For structural recommendations (such as missing composite indexes or sub-optimal numeric types), click **Apply** on the suggestion card to write the fix directly back to your columns or index configuration.
+5. **Audit History**: Click the history icon to inspect previous review snapshots and track score improvements over time.
 
-## Steps
+### 2. Explain Selected SQL
+1. In the DDL output code editor, highlight any SQL snippet or complex clause (such as custom partitioning expressions, dialect-specific storage clauses, or index options).
+2. An **Explain Selected** tooltip will appear adjacent to your selection.
+3. Click "Explain Selected" to prompt the AI for an immediate breakdown of the clause's **execution semantics**, **engine behavior**, and **business context**.
 
-1. In the `Table DDL` area, click `AI Review`. Result: the system analyzes current DDL and generates scores and suggestions.
-2. Inspect issue descriptions and suggestions in the review result. Result: you can quickly identify high-risk points and improvements.
-3. Click `Apply` on executable suggestions. Result: suggestions are written back into field or index configuration and become ready for further verification.
-4. Click the history icon in the review area. Result: you can view historical review records for the same table and revisit suggestions.
-5. Select one SQL snippet in the code area. Result: the `Explain selection` entry appears.
-6. Click `Explain selection` to view AI explanation. Result: you can quickly understand snippet intent and use it in review communication.
-7. When you need to supplement comments for tables or fields, request AI to generate Chinese business comments. Result: AI automatically generates Chinese comments for tables and fields and fills them into the corresponding positions.
+---
 
-## Done when
+## Verification Checklist
 
-- Current DDL has completed at least one review round with readable conclusions.
-- Key suggestions are either applied as needed or explicitly marked as not adopted.
-- Team members can understand key SQL snippets through explanations.
+- [ ] The schema has completed a Master Review cycle with all high-risk items resolved.
+- [ ] Accepted recommendations are accurately applied to the configuration table.
+- [ ] Complex SQL clauses have verified explanations ready for architecture reviews.
 
-## Common pitfalls and failure handling
+## Tips and Best Practices
 
-- No valid DDL means review cannot run: complete table structure and generate DDL first.
-- "Applicable" does not mean "must apply": suggestions involving business rules require manual confirmation.
-- No response from `Explain selection`: confirm the selected content is actually SQL text.
-- Empty review history: usually this table has not completed a successful review yet.
+::: tip Reviewing Suggestions in Domain Context
+Master Review suggestions are rooted in general database best practices. Always evaluate suggestions (such as normalizing a denormalized caching column) against your specific business requirements before applying.
+:::
+
+- **Valid DDL Requirement**: A schema must have a table name and at least one valid column to generate DDL before triggering a review.
+- **Accurate Selection**: When using "Explain Selected", highlight complete syntactic blocks for the most context-aware explanations.

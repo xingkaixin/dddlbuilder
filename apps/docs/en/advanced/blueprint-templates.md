@@ -1,42 +1,49 @@
 # Table Blueprint Templates
 
-## Who this is for
+This guide explains how to use DDLBuilder's built-in **Table Blueprint Templates** to bootstrap domain schemas rapidly using industry-standard architectures.
 
-For users who don't want to configure fields from scratch and prefer to quickly generate table structures based on common business scenarios.
+## Overview
 
-## What this solves
+Eliminate repetitive manual entry when modeling common business entities (such as user profiles, order headers, RBAC permissions, and audit logs) by starting from hardened baseline blueprints.
 
-You can reduce the initialization cost of "user tables, order tables, log tables" and other common structures to a few seconds, then fine-tune as needed.
+---
 
-## Prerequisites
+## Standard Built-in Blueprints
 
-- The current workspace is in an editable state (draft box or saved table both work).
-- The target business scenario is already identified.
+| Blueprint Domain | Typical Column Definitions | Standard Indexes & Keys |
+|---|---|---|
+| **User Account** (`user_account`) | `user_id`, `username`, `email`, `phone`, `password_hash`, `status`, `created_at` | Primary Key, `username` unique, `email` unique, `status` filter index |
+| **Order Master** (`order_master`) | `order_id`, `order_no`, `user_id`, `total_amount`, `pay_amount`, `status`, `paid_at`, `created_at` | Primary Key, `order_no` unique, `user_id` query index, `created_at` date-range index |
+| **Audit Log** (`sys_audit_log`) | `log_id`, `trace_id`, `operator_id`, `action`, `method`, `ip`, `status`, `duration_ms`, `created_at` | Primary Key, `trace_id` tracing index, `operator_id` index, `created_at` range/partition index |
 
-## Steps
+---
 
-1. Click the `Table Blueprint` button in the top action area. Result: the blueprint template selection dialog opens.
-2. Browse the template list and select a template matching the target scenario (such as `User Table`, `Order Table`, `Operation Log Table`). Result: the dialog shows a preview of that template's structure (field list, indexes, primary keys).
-3. After confirming the preview meets expectations, click `Apply Blueprint`. Result: the blueprint structure opens in a new draft tab, preserving the original tab's content.
-4. Return to the field configuration table and add, remove, or adjust fields and indexes as needed. Result: the template-generated structure is personalized for business requirements.
-5. Save as a named table. Result: the table enters the saved tables list for repeated loading later.
+## Operations Walkthrough
 
-## Built-in template examples
+1. Click the **Table Blueprint** button in the top navigation bar.
+2. **Browse and Preview Templates**:
+   - Explore standard templates across domain categories.
+   - Click any template card to preview its columns, data types, nullability, primary keys, and index configurations.
+3. **Apply Blueprint**:
+   - Once satisfied with the preview, click **Apply Blueprint**.
+   - The system expands the schema into a **brand-new workspace tab**, keeping your existing tabs untouched.
+4. **Customize for Domain Needs**:
+   - Add/remove columns, modify string lengths, or change default constraints to fit your domain.
+   - Click the Save icon to persist the tailored schema as a named Saved Table.
 
-| Template            | Typical Fields                                      | Typical Indexes                                        |
-| ------------------- | --------------------------------------------------- | ------------------------------------------------------ |
-| User Table          | user_id, username, email, password_hash, created_at | Primary key, username unique index, email unique index |
-| Order Table         | order_id, user_id, amount, status, created_at       | Primary key, user_id index, status index               |
-| Operation Log Table | log_id, operator, action, target, created_at        | Primary key, operator index, created_at index          |
+---
 
-## Done when
+## Verification Checklist
 
-- The template has been successfully applied to the current workspace.
-- Fields, indexes, and primary keys have been adjusted according to actual business needs.
-- DDL output on the right meets expectations and can enter review directly.
+- [ ] The blueprint schema loads cleanly into a new workspace tab.
+- [ ] Column lengths, precisions, and defaults reflect specific business rules.
+- [ ] The generated DDL complies with your target dialect standards.
 
-## Common pitfalls
+## Tips and Common Traps
 
-- Blueprint templates are generic designs; after applying, be sure to adjust field length, nullable, default values, and other details according to actual business requirements.
-- Blueprints do not save or inherit foreign keys. Configure relationships in the new table after applying to avoid references to the original table's fields.
-- Field Chinese names in blueprints are generic descriptions; replace them with accurate naming within your business domain.
+::: tip Customizing General Defaults
+Blueprint templates provide general domain baselines. Always tailor nullability, field lengths, and compliance policies (such as encrypted PII fields) to your specific production requirements.
+:::
+
+- **Foreign Key Reconnection**: Blueprints are self-contained single-table definitions. Configure cross-table relations in the Foreign Keys tab or ER Diagram canvas after applying.
+- **Terminology Alignment**: Update generic display labels and comments to align with your organization's internal data dictionary.

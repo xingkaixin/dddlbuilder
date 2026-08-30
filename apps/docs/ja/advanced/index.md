@@ -1,34 +1,31 @@
-# 上級ガイド
+# 上級ガイド概要
 
-## これは誰に向けたものですか
+DDLBuilder 上級ガイドへようこそ。このセクションでは、大規模システムのアーキテクチャ設計、開発プロセスの自動化、スキーマ統制、チーム共同作業などを深く実践するための高度な機能を網羅しています。
 
-通常のテーブル作成はすでに完了しており、既存の SQL のインポート、AI コラボレーション、スキーマ変更制御、パーティショニング/シャーディング戦略、外部キーと ER 図、ORM 生成などの複雑なシナリオを処理する必要があるユーザー向け。
+---
 
-## これで解決すること
+## トピック一覧
 
-アドバンスト ガイドは、「SQL を生成できる」から「安定した再利用、共同レビュー、変更リスクの管理、および下流プロジェクトの統合」に移行するのに役立ちます。
+| トピック | 主な機能と解決できる課題 | ガイドリンク |
+|---|---|---|
+| **SQL・データインポート** | 既存 SQL の逆解析、CSV / Excel / JSON Schema からの構造自動取り込み | [SQL のインポートと解析](/ja/advanced/import-and-parse) |
+| **WebMCP Agent 連携** | WebMCP による AI Agent からの構造読み込み・検証・安全なパッチ適用 | [WebMCP Agent ワークフロー](/ja/advanced/webmcp) |
+| **AI フルアシスト設計** | 対話型テーブル生成、段階的な変更パッチレビュー、スマートコメント付与 | [AI 支援テーブル設計](/ja/advanced/ai-workflow) |
+| **SQL レビューと解説** | アーキテクチャ品質スコアリング、潜在リスク診断、SQL 構文解説 | [SQL のレビューと説明](/ja/advanced/review-and-explain) |
+| **パーティションと分散設計** | MySQL/TiDB パーティション戦略および PostgreSQL Citus 分散テーブル設計 | [パーティションとシャーディング](/ja/advanced/partition-and-sharding) |
+| **スキーマ差分とロールバック** | 変更差分のビジュアル比較、正向 ALTER スクリプトおよび安全なロールバック DDL | [差分とロールバック](/ja/advanced/diff-and-rollback) |
+| **リレーション設計と ER 図** | 直感的な接続モデリング、カーディナリティウィザード、関係トポロジー表示 | [外部キーと ER 図](/ja/advanced/foreign-key-and-er) |
+| **ORM コード生成** | Prisma、TypeORM、SQLAlchemy、GORM、JPA 向けコードのワンクリック生成 | [ORM モデル生成](/ja/advanced/orm-generation) |
+| **高度な DB オブジェクト** | ビュー DDL（`CREATE VIEW`）およびプロシージャ・関数・トリガーの骨格生成 | [ビューと Routine の設定](/ja/advanced/view-and-routine) |
+| **Schema Lint 規約監査** | 命名規則、危険なデータ型、冗長インデックスを自動検出する Lint エンジン | [Schema Lint](/ja/advanced/schema-lint) |
+| **テストデータと論理列挙** | モックテストデータの自動生成とカラム値のカラーバッジ付き論理列挙管理 | [Mock データと論理列挙](/ja/advanced/mock-data-and-enum) |
+| **業務ブループリント** | ユーザー、注文、操作ログなどの業界標準テーブルテンプレートの即時活用 | [テーブル設計テンプレート](/ja/advanced/blueprint-templates) |
 
-## 前提条件
+---
 
-・基本ガイドの通常のテーブル作成の流れは完了です。
-- ページで DDL、DCL、ORM、およびビュー/ルーチン出力を表示する方法を理解している。
+## 目的別おすすめパス
 
-## 推奨される読む順序
-
-1. [SQL のインポートと解析](/ja/advanced/import-and-parse)
-2. [WebMCP Agent ワークフロー](/ja/advanced/webmcp)
-3. [AI 支援テーブル設計ワークフロー](/ja/advanced/ai-workflow)
-4. [SQL の確認と説明](/ja/advanced/review-and-explain)
-5. [パーティショニングとシャーディングの構成](/ja/advanced/partition-and-sharding)
-6. [差分とロールバックの変更](/ja/advanced/diff-and-rollback)
-7. [外部キーの構成とER図](/ja/advanced/foreign-key-and-er)
-8. [ORMモデルの生成](/ja/advanced/orm-generation)
-9. [ビューとルーチンの設定](/ja/advanced/view-and-routine)
-10. [スキーマ lint](/ja/advanced/schema-lint)
-11. [モックデータと論理列挙型](/ja/advanced/mock-data-and-enum)
-12. [テーブル ブループリント テンプレート](/ja/advanced/blueprint-templates)
-
-## 境界と基本ガイド
-
-- 基本ガイドでは、1 つのテーブルの標準構成と出力を完了する方法に焦点を当てています。
-- 上級ガイドは、品質の向上、リスクの管理、コラボレーション効率の向上、複雑なシナリオにおける下流開発との統合に重点を置いています。
+- **既存システムの移行**: [SQL のインポートと解析](/ja/advanced/import-and-parse) から始め、手元の DDL を取り込みます。
+- **データモデリング**: [外部キーと ER 図](/ja/advanced/foreign-key-and-er) および [テーブル設計テンプレート](/ja/advanced/blueprint-templates) を活用して全体設計を構築します。
+- **品質と安全性の確保**: 本番反映前に [Schema Lint](/ja/advanced/schema-lint) と [SQL のレビューと説明](/ja/advanced/review-and-explain) を実行します。
+- **変更管理とリリース**: [差分とロールバック](/ja/advanced/diff-and-rollback) を利用して、移行用 ALTER スクリプトと切り戻し手順を準備します。

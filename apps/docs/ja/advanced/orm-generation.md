@@ -1,46 +1,57 @@
-# ORM モデルの生成
+# ORM モデル生成
 
-## これは誰に向けたものですか
+このガイドでは、DDLBuilder で設計したテーブル構造を主要な ORM フレームワークのモデル定義コードへワンクリックで変換・エクスポートする手順を解説します。
 
-ビジネス プロジェクトのテーブル構造を ORM モデル コードに直接変換する必要があるユーザー向け。
+## 概要
 
-## これで解決すること
+データベース設計からバックエンド開発への橋渡しとして、アノテーションや型定義を手動でコーディングする手間を省き、型安全で精度の高いエンティティコードを即座に取得できます。
 
-DDL モデルと ORM モデルの間で手動で変換する必要はありません。システムはターゲット フレームワークのモデル コードを直接生成できるため、重複作業や型の不一致のリスクが軽減されます。
+---
 
-## 前提条件
+## 主な操作手順
 
-- 現在のテーブルはフィールド構成が完了しており、右側に DDL が生成されています。
-- ビジネス プロジェクトで使用される ORM フレームワークがすでに特定されています。
+### 1. 対象フレームワークの選択
+1. 右側の出力パネルで **ORM** タブをクリックします。
+2. セレクターから使用するフレームワークを選択します。
+   - **Prisma**（Node.js / TypeScript）
+   - **TypeORM**（TypeScript / NestJS）
+   - **SQLAlchemy**（Python / FastAPI / Django）
+   - **GORM**（Go / Gin / Fiber）
+   - **JPA / Hibernate**（Java / Spring Boot）
+3. コードエリアに、各フレームワークの規約に準拠したモデル定義コードがリアルタイム出力されます。
 
-## ステップ
+### 2. プロジェクトへのコード反映
+パネル内の**「ORM コピー」**ボタンをクリックし、クリップボードにコピーしたコードをバックエンドプロジェクトのエンティティ/モデルファイルへ貼り付けます。
 
-1. 右側の出力領域の「`ORM`」タブをクリックします。結果: フレームワーク セレクターと生成されたコードが表示されます。
-2. フレームワークセレクターでターゲットを切り替えます (Prisma、TypeORM、SQLAlchemy、GORM、JPA)。結果: コードはフレームワークの構文に従ってリアルタイムで更新されます。
-3. 生成された結果のフィールド タイプのマッピング、主キーの定義、およびインデックスの注釈を確認します。結果: 型マッピングは、`varchar` → Prisma の `String`、TypeORM の `varchar`、JPA の `@Column` など、各フレームワークの規則に従います。
-4. 「`Copy ORM`」をクリックします。結果: コードがクリップボードにコピーされ、ビジネス プロジェクトに貼り付ける準備が整います。
+---
 
-## サポートされているフレームワークとマッピングのハイライト
+## サポートフレームワークとマッピング仕様
 
-|フレームワーク |ファイル形式 |典型的なマッピング |
+| ORM フレームワーク | 出力形式 | 主な型・アノテーション対応 |
 |---|---|---|
-| Prisma | `.prisma` スキーマ | `String`、`Int`、`DateTime`、`@id`、`@index` |
-| TypeORM | TypeScript デコレータ | `@Entity()`、`@Column()`、`@PrimaryGeneratedColumn()` |
-| SQLAlchemy | Python クラス | `Column()`、`Integer()`、`String()`、`relationship()` |
-| GORM | Go 構造体 | `gorm.Model`、タグ形式の `gorm:"column;type"` |
-| JPA | Java アノテーション | `@Entity`、`@Table`、`@Id`、`@Column`、`@Index` |
+| **Prisma** | `.prisma` スキーマ | `@id`, `@default()`, `@map()`, `@unique`, `@@index`, `@@schema` |
+| **TypeORM** | TypeScript エンティティ | `@Entity()`, `@PrimaryGeneratedColumn()`, `@Column({ type, precision })`, `@Index()` |
+| **SQLAlchemy** | Python クラス | `Column()`, `Integer()`, `String()`, `DECIMAL()`, `__table_args__` |
+| **GORM** | Go 構造体 | `gorm.Model`, `gorm:"column:xxx;type:xxx;primaryKey;uniqueIndex"` |
+| **JPA** | Java エンティティ | `@Entity`, `@Table(name, schema)`, `@Id`, `@Column(name, nullable)`, `@Index` |
 
-## いつ完了するか
+---
 
-- ORM コードがクリップボードに正常にコピーされました。
-- フィールドのタイプ、主キー、インデックスは ORM コードで表現されます。
-- ビジネスプロジェクトに貼り付けた後、大規模な調整なしで直接コンパイル/実行できます。
+## 高精度な型変換とスキーマ名前空間の保護
 
-## よくある落とし穴
+::: info 型安全と名前空間の注意点
+- **64bit 整数と高精度小数**: TypeORM では、JavaScript の `Number` による浮点数桁落ちを防ぐため、`bigint` および `decimal/numeric` カラムを `string` 型プロパティとしてマッピングします。
+- **Schema 名前空間**:
+  - **Prisma**: PostgreSQL / SQL Server において `@@schema("schemaName")` を出力します。
+  - **SQLAlchemy**: `__table_args__` に `schema='schemaName'` を定義します。
+  - **JPA**: `@Table(schema = "schemaName")` で指定します。
+  - **GORM**: 限定修飾名を返す `TableName()` メソッドを出力します。
+:::
 
-- ORM の生成は、現在のテーブル構造のスナップショットに基づいています。フィールドの変更は再コピーする必要があり、自動的には同期されません。
-- 一部のフレームワーク (多対多の中間テーブルなど) の複雑なリレーションシップでは、追加の手動調整が必要になる場合があります。
-- 列挙型は ORM によって大きく異なります (例: Prisma 列挙型と JPA `@Enumerated`)。生成後にレビューすることをお勧めします。
-- TypeORM は列のデータベース型、長さ、精度、小数桁数を明示します。`bigint` と MySQL/PostgreSQL の固定小数点数は `string` プロパティとし、通常の `number` による精度の損失を避けます。安全に表現できない型パラメータには手動マッピングの案内を表示します。
-- `Schema Name` は物理テーブルのマッピングにのみ使用し、モデル、クラス、構造体の名前には含めません。TypeORM は schema/database、SQLAlchemy は `__table_args__`、JPA は schema/catalog、GORM は修飾テーブル名を使用します。
-- Prisma は PostgreSQL と SQL Server で `@@schema` を生成します。データソースの `schemas` リストにも対象スキーマを追加してください。MySQL では接続設定でデータベースを指定し、`@@schema` は生成しません。
+---
+
+## 完了のチェックリスト
+
+- [ ] 出力された ORM コードのカラム名、型定義、主キー制約がテーブル設定と一致している。
+- [ ] プロジェクトへ貼り付けた後、型チェックやコンパイルが正常に通る。
+- [ ] スキーマ名前空間の設定が各 ORM のアノテーションに正しく反映されている。

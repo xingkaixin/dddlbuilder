@@ -1,46 +1,57 @@
 # ORM 模型生成
 
-## 使用对象
+本指南介绍如何使用筑表师将表结构一键转换为主流 ORM 框架的模型代码，打通数据库设计到后端工程开发的最后一公里。
 
-适合需要把表结构直接翻译成业务项目 ORM 模型代码的使用者。
+## 适用场景
 
-## 解决问题
+适用于在表结构设计完成后，无需手动编写重复繁琐的模型类与注解，直接生成类型完备、映射精准的代码并无缝粘贴至项目工程中。
 
-你不需要在 DDL 和 ORM 模型之间手动翻译，系统可按目标框架直接生成模型代码，减少重复劳动与类型不一致风险。
+---
 
-## 前置条件
+## 核心操作指引
 
-- 当前表已完成字段配置，右侧 DDL 已生成。
-- 已明确业务项目使用的 ORM 框架。
+### 1. 切换与选择目标框架
+1. 在右侧输出面板中点击 **ORM** 标签页。
+2. 在框架选择器中切换所需的目标框架：
+   - **Prisma**（Node.js / TypeScript）
+   - **TypeORM**（TypeScript / NestJS）
+   - **SQLAlchemy**（Python / FastAPI / Django）
+   - **GORM**（Go / Gin / Fiber）
+   - **JPA / Hibernate**（Java / Spring Boot）
+3. 代码区将实时渲染符合对应框架惯例与类型规范的模型代码。
 
-## 操作步骤
+### 2. 复制代码至项目工程
+点击面板中的**复制ORM**按钮，一键将生成代码存入剪贴板，直接粘贴到项目的实体/模型文件中即可。
 
-1. 在右侧输出区点击 `ORM` 标签。结果：出现框架选择器与生成代码。
-2. 在框架选择器中切换目标（Prisma、TypeORM、SQLAlchemy、GORM、JPA）。结果：代码按该框架语法实时刷新。
-3. 检查生成结果中的字段类型映射、主键定义、索引注解是否符合预期。结果：类型映射遵循各框架惯例，如 `varchar` → Prisma 的 `String`、TypeORM 的 `varchar`、JPA 的 `@Column` 等。
-4. 点击 `复制ORM`。结果：代码进入剪贴板，可直接粘贴到业务项目。
+---
 
-## 支持框架与映射要点
+## 支持框架与映射规范
 
-| 框架 | 文件格式 | 典型映射 |
+| ORM 框架 | 文件格式 | 典型类型与注解映射 |
 |---|---|---|
-| Prisma | `.prisma` schema | `String`、`Int`、`DateTime`、`@id`、`@index` |
-| TypeORM | TypeScript 装饰器 | `@Entity()`、`@Column()`、`@PrimaryGeneratedColumn()` |
-| SQLAlchemy | Python class | `Column()`、`Integer()`、`String()`、`relationship()` |
-| GORM | Go struct | `gorm.Model`、tag 形式的 `gorm:"column;type"` |
-| JPA | Java 注解 | `@Entity`、`@Table`、`@Id`、`@Column`、`@Index` |
+| **Prisma** | `.prisma` schema | `@id`, `@default()`, `@map()`, `@unique`, `@@index`, `@@schema` |
+| **TypeORM** | TypeScript 实体类 | `@Entity()`, `@PrimaryGeneratedColumn()`, `@Column({ type, precision })`, `@Index()` |
+| **SQLAlchemy** | Python 类（Declarative） | `Column()`, `Integer()`, `String()`, `DECIMAL()`, `__table_args__` |
+| **GORM** | Go 结构体 | `gorm.Model`, `gorm:"column:xxx;type:xxx;primaryKey;uniqueIndex"` |
+| **JPA** | Java 实体类 | `@Entity`, `@Table(name, schema)`, `@Id`, `@Column(name, nullable)`, `@Index` |
 
-## 完成标志
+---
 
-- ORM 代码已成功复制到剪贴板。
-- 字段类型、主键、索引在 ORM 代码中都有对应表达。
-- 粘贴到业务项目后可直接编译/运行，无需大规模调整。
+## 高精度类型与 Schema 命名空间安全
 
-## 易错点
+::: info 类型安全与精度防丢失
+- **大整数与高精度小数**：TypeORM 映射中，`bigint` 及精确小数（`decimal/numeric`）默认映射为 `string` 属性类型，防止 JavaScript 原生 `Number` 浮点数精度溢出。
+- **Schema 命名空间**：
+  - **Prisma**：在 PostgreSQL/SQL Server 下自动生成 `@@schema("schemaName")`。
+  - **SQLAlchemy**：在 `__table_args__` 中声明 `schema='schemaName'`。
+  - **JPA**：在 `@Table(schema = "schemaName")` 中指定命名空间。
+  - **GORM**：直接生成带有限定名的 `TableName()` 绑定方法。
+:::
 
-- ORM 生成基于当前表结构快照，字段变更后需重新复制，不会自动同步。
-- 部分框架的复杂关系（如多对多中间表）可能需要额外手工调整。
-- 枚举类型在不同 ORM 中的表达差异较大（如 Prisma enum vs JPA `@Enumerated`），生成后建议复核。
-- TypeORM 显式保留数据库列类型、长度、精度和小数位；`bigint` 以及 MySQL/PostgreSQL 的精确小数使用 `string` 属性，避免按普通 `number` 处理造成精度丢失。无法安全表达的类型参数会提示手动映射。
-- `Schema Name` 只影响物理表映射，不会拼入模型、类或结构体名称。TypeORM 使用 schema/database，SQLAlchemy 使用 `__table_args__`，JPA 使用 schema/catalog，GORM 使用限定表名。
-- Prisma 在 PostgreSQL、SQL Server 下生成 `@@schema`，需要同时把该 schema 加入数据源的 `schemas` 列表；MySQL 则需要在连接配置中选择对应数据库，不生成 `@@schema`。
+---
+
+## 校验与完成标志
+
+- [ ] 生成的 ORM 代码字段名、类型映射与主键约束与表配置保持一致。
+- [ ] 复制代码粘贴至后端工程后能够顺利通过类型检查与编译。
+- [ ] 涉及 Schema 命名空间的配置在 ORM 代码中得到正确表达。

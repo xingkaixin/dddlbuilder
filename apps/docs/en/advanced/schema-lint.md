@@ -1,40 +1,61 @@
 # Schema Lint
 
-## Who this is for
+This guide details how to use DDLBuilder's built-in **Schema Lint** rule engine to perform automated static audits and eliminate naming issues, type defects, and redundant indexes at design time.
 
-For users who want to discover naming non-compliance, improper type choices, and other potential issues during the design phase.
+## Overview
 
-## What this solves
+Enforce team-wide database standards automatically, preventing naming mistakes, floating-point currency hazards, and orphaned indexes before DDL hits staging or production.
 
-You can turn "whether it meets team standards" from manual checking into automatic checking, reducing rework during the review phase.
+---
 
-## Prerequisites
+## Core Rule Dimensions
 
-- The current table has at least one field or one index.
-- Basic team naming conventions are already understood (built-in rules cover common scenarios).
+The Schema Lint engine audits designs against industry best practices across four key dimensions:
 
-## Steps
+```mermaid
+graph TD
+    Lint[Schema Lint Audit] --> Naming[Naming Conventions]
+    Lint --> Types[Data Types & Precision]
+    Lint --> Indexes[Index Validity & Redundancy]
+    Lint --> Risks[Compatibility & Risks]
+    
+    Naming --> N1[Enforce snake_case naming]
+    Naming --> N2[Standard prefixes: idx_ / fk_]
+    
+    Types --> T1[Block FLOAT / DOUBLE for financial values]
+    Types --> T2[Audit large TEXT / BLOB storage]
+    Types --> T3[Match auto-increment types to dialect]
+    
+    Indexes --> I1[Flag duplicate or covered redundant indexes]
+    Indexes --> I2[Detect empty column index definitions]
+```
 
-1. Click `Schema Lint` or `Lint` in the table configuration area. Result: the lint panel opens, listing all detected issues.
-2. Review each issue's description, risk level (info/warning/error), and suggested fix. Result: you can quickly locate non-compliant items.
-3. For high-priority items (error level), return to field or index configuration to modify. Result: after modification, re-click lint and the issue list refreshes.
-4. For acceptable low-priority items, choose to ignore or mark as acknowledged. Result: the lint panel retains history for later review.
+---
 
-## Built-in check rules (examples)
+## Operations Walkthrough
 
-- **Naming conventions**: whether field names use lowercase + underscore (snake_case); whether index names contain table name prefix; whether foreign key names are standardized.
-- **Type rules**: whether large text fields use appropriate types; whether monetary fields avoid `FLOAT` / `DOUBLE`; whether auto-increment field types match target database conventions.
-- **Redundancy detection**: whether duplicate indexes exist; whether empty indexes with no fields exist.
-- **Risk alerts**: data compatibility risks when changing field types (linked with field-level risk prompts).
+1. Click the **Schema Lint** button in the table configuration header.
+2. **Review Diagnostic Reports**:
+   - Issues are categorized by severity: **Error**, **Warning**, and **Info**.
+   - Each item includes the violation cause, affected column/index, and recommended remediation.
+3. **Remediate Issues**:
+   - Address all **Error** level items first (such as imprecise `FLOAT` financial columns or missing primary keys).
+   - Adjust configurations in the field or index table; the diagnostic report refreshes in real time.
+4. **Dismiss & Acknowledge**: For valid domain exceptions (such as legacy columns), mark items as acknowledged to preserve the audit trail.
 
-## Done when
+---
 
-- No error-level issues in the lint panel.
-- Warning and info-level issues are either confirmed or fixed.
-- Generated DDL has passed team standard review.
+## Verification Checklist
 
-## Common pitfalls
+- [ ] The Schema Lint panel reports zero blocking Error-level issues.
+- [ ] Remaining Warnings have been reviewed and accepted by data architects.
+- [ ] Column names, index prefixes, and data types conform to team engineering guidelines.
 
-- Schema lint is based on built-in rules and may not cover all special team conventions; manual review is recommended for critical projects.
-- Some rules have different judgment criteria across database types (e.g., Oracle's `NUMBER` vs MySQL's `DECIMAL`); recheck after switching databases.
-- Ignored issues do not disappear automatically; periodic review of ignored items is recommended.
+## Tips and Best Practices
+
+::: tip Dialect-Aware Linting
+Rules adjust automatically to match active database dialects (e.g., Oracle `NUMBER` vs. MySQL `DECIMAL`). Changing dialects re-evaluates rules against the new engine's constraints.
+:::
+
+- **Minimum Schema**: A table must have at least one column configured to run a valid Lint scan.
+- **Pairing with Master Review**: Static linting checks structural syntax; combine it with Master Review for comprehensive semantic and architecture feedback.

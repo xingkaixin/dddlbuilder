@@ -1,45 +1,50 @@
 # AI-Assisted Table Design Workflow
 
-## Who this is for
+This guide explains how to leverage DDLBuilder's AI suite (Master Workshop, AI Modify, AI Index Advisor, and Smart Comments) for intelligent schema modeling and refactoring.
 
-For users who need to quickly generate table schema drafts and progressively refine them through conversational input or small-step table edits.
+## Overview
 
-## What this solves
+Transform ambiguous product requirements into production-ready schemas, or safely refactor established legacy tables using conversational guidance, structured patch reviews, and domain-aware recommendations.
 
-You can turn business requirements into executable field and index drafts, or ask AI to generate a reviewable change list from the current table, then manually review key constraints.
+---
 
-## Prerequisites
+## Core AI Workflows
 
-- You have defined the business entity, key primary key, and core query scenarios.
-- `AI Table Workshop` or `AI Modify` can be opened normally on the current page.
+### 1. Master Table Workshop (Conversational Green-Field Design)
+1. Click **Master Workshop** in the table header to open the AI panel.
+2. **Describe Your Business Domain**: Input entities, constraints, and query patterns (e.g., *"Design a multi-tenant e-commerce order table with tenant ID, order code, status, price, discount amounts, optimized for date-range queries"*).
+3. **Template Integration**: Check template bundles to instruct the AI to incorporate standard audit columns (e.g., `created_at`, `updated_by`).
+4. **Review Architecture Decisions**: The AI generates a complete schema accompanied by rationale notes explaining data type choices and indexing strategies.
+5. **Iterate Across Turns**: Refine the design naturally (e.g., *"Add a soft-delete column"*, *"Change price columns to high-precision decimals"*).
+6. Click **Apply to Table** to populate your workspace with columns, indexes, and schema settings.
 
-## Steps
+### 2. AI Modify Current Table (Structured Patch Review)
+When iterating on existing schemas without overwriting prior work:
+1. Click **AI Modify** in the top navigation bar.
+2. Specify the desired changes (e.g., *"Add openid column, and change phone unique index to a composite unique index on (tenant_id, phone)"*).
+3. **Inspect the Generated Diff**: The AI computes fine-grained diff items categorized into table, column, and index mutations.
+4. **Approve or Reject Items**: Individually accept or reject each proposed modification to maintain full manual control.
+5. Click **Apply Selected Changes** to update the table atomically.
 
-1. Click `AI Table Workshop` in the table configuration area. Result: the AI conversation panel opens.
-2. Enter your first requirement with clear object, key fields, constraints, and index preferences. Result: AI returns the first schema draft, with design decision explanations (such as why a certain type was chosen, why an index was set).
-3. If current configuration already exists, continue with instructions like "add fields", "adjust types", and "add indexes". Result: AI generates continuously based on existing context without re-describing everything; if the workspace already has `Schema Name`, it is also passed in as table-level context.
-4. If you need standard field reuse, select templates before generating. Result: AI prioritizes template fields and improves structural consistency.
-5. After confirming the result, click `Apply to table config`. Result: fields and indexes are written into workspace and become editable; if AI returns `schemaName` or a schema-qualified table name, the system splits and fills `Schema Name` and `Table Name` automatically.
-6. Return to the main interface and manually review key items. Result: types, nullable, default values, index naming, and business constraints are finally confirmed.
-7. When an existing table needs a local adjustment, click `AI Modify` in the header and describe the target change, such as "add a deleted_at soft-delete field and change the phone unique index to phone plus tenant ID". Result: AI generates table-level, field, and index change details based on the current table.
-8. In the `AI Modify` panel, accept or reject each change, then click `Apply selected changes`. Result: accepted changes are written into the current table configuration, while unaccepted changes remain unapplied.
-9. When you need to supplement comments for tables and fields, request AI to generate Chinese business comments. Result: AI infers semantics based on field names and types, generates concise Chinese comments, and fills them into `Table Chinese Name` and `Field Chinese Name`.
+### 3. Smart Business Comment Generation
+- Click **Generate AI Comments** on any active or imported table.
+- The AI infers semantics from naming patterns (e.g., `is_deleted`, `pay_channel`) and data types, automatically populating descriptive labels to streamline data dictionary documentation.
 
-## Done when
+---
 
-- AI results have been successfully applied to the current table configuration.
-- When using AI Modify, target changes have been reviewed item by item and written into the workspace.
-- Field and index count, naming, and constraints match the target business scenario.
-- If this design requires a schema, `Schema Name` is aligned with the target table after apply.
-- If AI comments were used, table and field Chinese names are supplemented and semantically accurate.
-- DDL output on the right is ready to enter the review flow.
+## Verification Checklist
 
-## Common pitfalls and failure handling
+- [ ] AI-generated columns, data types, and indexes accurately populate the workspace.
+- [ ] In AI Modify mode, all targeted changes are individually reviewed and applied.
+- [ ] Critical constraints (nullability, uniqueness, precision) are manually verified.
+- [ ] Generated comments and labels reflect clear domain terminology.
 
-- Input is too short: AI output becomes generic. Add business semantics, field roles, and constraints, then retry.
-- If you need a schema-qualified table, state the schema directly in the prompt, or fill `Schema Name` in the workspace before continuing the conversation.
-- Generation fails or is interrupted: keep current prompt and retry once directly; if needed, split into smaller requests.
-- Direct execution risk: AI output is a draft. Do not skip manual review before execution.
-- History drifts from target: use `Restart` to clear context and rebuild requirements with the new goal.
-- AI comments are semantic inferences and may have deviations; manual review of key business field comment accuracy is recommended after generation.
-- AI Modify works best for small-step schema edits. For changes involving business meaning, compatibility, or index strategy, inspect each change detail before applying.
+## Tips and Best Practices
+
+::: tip Prompt Quality and Precision
+Detailed prompts specifying query filters, workload characteristics, and key constraints yield significantly higher-quality indexing and type recommendations.
+:::
+
+- **Draft Verification**: AI output represents a high-quality initial draft; always review constraints before deploying DDL to production databases.
+- **Account & Credits**: AI features consume account credits based on token usage. Guest users will be prompted to sign in before initiating requests.
+- **Resetting Context**: If a multi-turn conversation drifts off topic, click "Start Over" to clear the session context and restart with a clean prompt.

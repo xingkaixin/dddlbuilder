@@ -1,46 +1,57 @@
 # ORM Model Generation
 
-## Who this is for
+This guide details how to export schema designs directly into strongly typed model classes across industry-standard ORM frameworks.
 
-For users who need to translate table structures directly into ORM model code for business projects.
+## Overview
 
-## What this solves
+Bridge database modeling and backend engineering by generating clean, typed, and annotated model code without manual transcription errors.
 
-You don't need to manually translate between DDL and ORM models; the system can generate model code for the target framework directly, reducing duplicate work and type inconsistency risks.
+---
 
-## Prerequisites
+## Operations Walkthrough
 
-- The current table has completed field configuration, and DDL has been generated on the right.
-- The ORM framework used by the business project is already identified.
+### 1. Select Target Framework
+1. Switch to the **ORM** tab in the right-hand output panel.
+2. Select your framework from the dropdown:
+   - **Prisma** (Node.js / TypeScript)
+   - **TypeORM** (TypeScript / NestJS)
+   - **SQLAlchemy** (Python / FastAPI / Django)
+   - **GORM** (Go / Gin / Fiber)
+   - **JPA / Hibernate** (Java / Spring Boot)
+3. The editor immediately renders framework-compliant entity definitions.
 
-## Steps
+### 2. Copy Code to Your Project
+Click **Copy ORM** to copy the generated class or schema to your clipboard, then paste it directly into your application codebase.
 
-1. Click the `ORM` tab in the right output area. Result: a framework selector and generated code appear.
-2. Switch the target in the framework selector (Prisma, TypeORM, SQLAlchemy, GORM, JPA). Result: code refreshes in real time according to that framework's syntax.
-3. Check field type mappings, primary key definitions, and index annotations in the generated result. Result: type mappings follow each framework's conventions, such as `varchar` → Prisma's `String`, TypeORM's `varchar`, JPA's `@Column`, etc.
-4. Click `Copy ORM`. Result: code is copied to clipboard, ready to paste into the business project.
+---
 
-## Supported frameworks and mapping highlights
+## Frameworks and Type Mapping Specifications
 
-| Framework | File Format | Typical Mapping |
+| Framework | Output Format | Common Annotations and Constructs |
 |---|---|---|
-| Prisma | `.prisma` schema | `String`, `Int`, `DateTime`, `@id`, `@index` |
-| TypeORM | TypeScript decorators | `@Entity()`, `@Column()`, `@PrimaryGeneratedColumn()` |
-| SQLAlchemy | Python class | `Column()`, `Integer()`, `String()`, `relationship()` |
-| GORM | Go struct | `gorm.Model`, tag-style `gorm:"column;type"` |
-| JPA | Java annotations | `@Entity`, `@Table`, `@Id`, `@Column`, `@Index` |
+| **Prisma** | `.prisma` schema file | `@id`, `@default()`, `@map()`, `@unique`, `@@index`, `@@schema` |
+| **TypeORM** | TypeScript Entity class | `@Entity()`, `@PrimaryGeneratedColumn()`, `@Column({ type, precision })`, `@Index()` |
+| **SQLAlchemy** | Python Declarative class | `Column()`, `Integer()`, `String()`, `DECIMAL()`, `__table_args__` |
+| **GORM** | Go Struct | `gorm.Model`, `gorm:"column:xxx;type:xxx;primaryKey;uniqueIndex"` |
+| **JPA** | Java Entity class | `@Entity`, `@Table(name, schema)`, `@Id`, `@Column(name, nullable)`, `@Index` |
 
-## Done when
+---
 
-- ORM code has been successfully copied to clipboard.
-- Field types, primary keys, and indexes are expressed in the ORM code.
-- After pasting into the business project, it can compile/run directly without large-scale adjustments.
+## Precision Safety & Schema Namespace Details
 
-## Common pitfalls
+::: info Type Safety and Namespaces
+- **High-Precision Decimals & BigInt**: In TypeORM outputs, `bigint` and `decimal/numeric` types are mapped to `string` properties to prevent JavaScript float precision truncation.
+- **Schema Namespaces**:
+  - **Prisma**: Appends `@@schema("schemaName")` for PostgreSQL and SQL Server.
+  - **SQLAlchemy**: Declares `schema='schemaName'` in `__table_args__`.
+  - **JPA**: Binds `schema = "schemaName"` within `@Table`.
+  - **GORM**: Implements a custom `TableName()` method returning the qualified table name.
+:::
 
-- ORM generation is based on current table structure snapshot; field changes require re-copying, not automatically synced.
-- Complex relationships in some frameworks (such as many-to-many intermediate tables) may require additional manual adjustments.
-- Enum types vary greatly across ORMs (e.g., Prisma enum vs JPA `@Enumerated`); review after generation is recommended.
-- TypeORM explicitly preserves database column types, lengths, precision, and scale. `bigint` and MySQL/PostgreSQL exact decimals use `string` properties to avoid precision loss from ordinary `number` handling. Type parameters that cannot be represented safely produce a manual-mapping notice.
-- `Schema Name` only affects physical table mapping, not model, class, or struct names. TypeORM uses schema/database, SQLAlchemy uses `__table_args__`, JPA uses schema/catalog, and GORM uses a qualified table name.
-- Prisma emits `@@schema` for PostgreSQL and SQL Server; also add that schema to the data source's `schemas` list. For MySQL, select the database in the connection configuration; no `@@schema` is generated.
+---
+
+## Verification Checklist
+
+- [ ] Generated ORM fields, primary keys, and column attributes match table configurations.
+- [ ] Pasted model files compile and pass static type checks cleanly.
+- [ ] Schema namespaces are appropriately declared in framework-specific configurations.
