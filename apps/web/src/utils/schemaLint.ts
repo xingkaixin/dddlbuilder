@@ -55,9 +55,10 @@ function createIssue(
   severity: SchemaLintSeverity,
   target: string,
   params: Readonly<Record<string, string>> = {},
+  identity: string = target,
 ): SchemaLintIssue {
   return {
-    id: `${ruleId}:${target}`,
+    id: `${ruleId}:${identity}`,
     ruleId,
     severity,
     target,
@@ -142,7 +143,7 @@ export function lintSchema({
   for (const row of filledRows) {
     const fieldName = row.fieldName.trim();
     if (!isSnakeCaseName(fieldName)) {
-      issues.push(createIssue('field-name-snake-case', 'warning', fieldName));
+      issues.push(createIssue('field-name-snake-case', 'warning', fieldName, {}, row.id));
     }
   }
 
@@ -156,9 +157,13 @@ export function lintSchema({
       const expectedPrefix = buildExpectedIndexPrefix(normalizedTableName, index);
       if (!index.name.trim().startsWith(expectedPrefix)) {
         issues.push(
-          createIssue('index-name-convention', 'warning', index.name || expectedPrefix, {
-            expectedPrefix,
-          }),
+          createIssue(
+            'index-name-convention',
+            'warning',
+            index.name || expectedPrefix,
+            { expectedPrefix },
+            index.id,
+          ),
         );
       }
     }
@@ -194,19 +199,19 @@ export function lintSchema({
     const defaultValue = row.defaultValue?.trim() ?? '';
 
     if (/^(var)?char$/i.test(fieldType)) {
-      issues.push(createIssue('string-length-required', 'warning', fieldName));
+      issues.push(createIssue('string-length-required', 'warning', fieldName, {}, row.id));
     }
 
     if (MONEY_FIELD_PATTERN.test(fieldName) && FLOAT_TYPE_PATTERN.test(fieldType)) {
-      issues.push(createIssue('money-decimal-required', 'warning', fieldName));
+      issues.push(createIssue('money-decimal-required', 'warning', fieldName, {}, row.id));
     }
 
     if (ZERO_DATE_PATTERN.test(defaultValue)) {
-      issues.push(createIssue('zero-date-default', 'warning', fieldName));
+      issues.push(createIssue('zero-date-default', 'warning', fieldName, {}, row.id));
     }
 
     if (indexedFieldNames.has(fieldName.toLowerCase()) && LARGE_TYPE_PATTERN.test(fieldType)) {
-      issues.push(createIssue('large-type-index', 'warning', fieldName));
+      issues.push(createIssue('large-type-index', 'warning', fieldName, {}, row.id));
     }
   }
 

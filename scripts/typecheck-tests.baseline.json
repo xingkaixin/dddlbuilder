@@ -2081,14 +2081,6 @@
   },
   {
     "package": "@ddlbuilder/web",
-    "file": "src/__tests__/utils/schemaLint.test.ts",
-    "code": "TS2353",
-    "message": "Object literal may only specify known properties, and 'order' does not exist in type 'FieldRow'.",
-    "sourceFingerprint": "d3b12dad0028e3d2",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
     "file": "src/__tests__/utils/tableDiff.test.ts",
     "code": "TS2322",
     "message": "Type '{ objectType?: SchemaObjectType; schemaName?: string | undefined; viewDefinition?: string; viewCreateOrReplace?: boolean; citusShardingConfig?: CitusShardingConfig; mysqlPartitionConfig?: MysqlPartitionConfig; ... 11 more ...; authObjects: string[]; }' is not assignable to type 'PersistedState'. Type '{ objectType?: SchemaObjectType; schemaName?: string | undefined; viewDefinition?: string; viewCreateOrReplace?: boolean; citusShardingConfig?: CitusShardingConfig; mysqlPartitionConfig?: MysqlPartitionConfig; ... 11 more ...; authObjects: string[]; }' is not assignable to type 'SchemaDocumentState'. Types of property 'schemaName' are incompatible. Type 'string | undefined' is not assignable to type 'string'. Type 'undefined' is not assignable to type 'string'.",
