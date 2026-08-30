@@ -7,6 +7,7 @@ import {
   getWorkspaceSavedDraft,
   getWorkspaceSavedTable,
   listWorkspaceSavedTables,
+  recreateWorkspaceSavedTable,
   renameWorkspaceSavedTable,
   subscribeWorkspaceYDoc,
   upsertWorkspaceSavedDraft,
@@ -139,6 +140,38 @@ describe('saved table identity', () => {
     ]);
     doc.destroy();
     peer.destroy();
+  });
+
+  it('重新激活记录不会被过期副本上的并发父节点删除吞掉', () => {
+    const deleting = new Y.Doc();
+    const stale = new Y.Doc();
+    const record = {
+      tableId: 'table-users',
+      normalizedName: 'users',
+      name: 'Users',
+      state: toSchemaDocumentState(createState('users')),
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    upsertWorkspaceSavedTable(deleting, record);
+    Y.applyUpdate(stale, Y.encodeStateAsUpdate(deleting));
+
+    deleteWorkspaceSavedTable(deleting, record);
+    recreateWorkspaceSavedTable(stale, {
+      ...record,
+      state: { ...record.state, tableComment: 'restored' },
+      updatedAt: 2,
+    });
+    const deletionUpdate = Y.encodeStateAsUpdate(deleting);
+    const recreationUpdate = Y.encodeStateAsUpdate(stale);
+    Y.applyUpdate(deleting, recreationUpdate);
+    Y.applyUpdate(stale, deletionUpdate);
+
+    for (const replica of [deleting, stale]) {
+      expect(getWorkspaceSavedTable(replica, record)?.state.tableComment).toBe('restored');
+    }
+    deleting.destroy();
+    stale.destroy();
   });
 
   it.each(['id-key', 'legacy-key', 'legacy-without-id'])(

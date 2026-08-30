@@ -76,6 +76,7 @@ export {
   listWorkspaceTrashedDrafts,
   listWorkspaceTrashedSavedTables,
   subscribeWorkspaceYDoc,
+  recreateWorkspaceSavedTable,
   upsertWorkspaceDraft,
   upsertWorkspaceFolder,
   upsertWorkspaceSavedDraft,

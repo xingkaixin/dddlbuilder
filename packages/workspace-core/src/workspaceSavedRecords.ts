@@ -1,4 +1,4 @@
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 import { decodeSavedDraftBase } from './persistedStateCodec';
 import {
   savedTableReference,
@@ -77,17 +77,33 @@ const savedTableMetadata = (record: WorkspaceSavedTableRecord) => ({
   trashedAt: record.trashedAt,
 });
 
+const writeWorkspaceSavedTable = (
+  doc: Y.Doc,
+  record: WorkspaceSavedTableRecord,
+  recreate: boolean,
+  options?: ApplySchemaDocumentStateOptions,
+) => {
+  const { savedTables } = getWorkspaceRoot(doc);
+  const key =
+    findSavedTableEntry(doc, record)?.[0] ?? availableRecordKey(savedTables, record.tableId);
+  if (recreate) savedTables.set(key, new Y.Map<unknown>());
+  upsertTableRecord(savedTables, key, record.state, savedTableMetadata(record), options);
+};
+
 export const upsertWorkspaceSavedTable = (
   doc: Y.Doc,
   record: WorkspaceSavedTableRecord,
   options?: ApplySchemaDocumentStateOptions,
 ) => {
   // Legacy nodes keep their original key: moving a Y.Map would discard concurrent child edits.
-  const { savedTables } = getWorkspaceRoot(doc);
-  const key =
-    findSavedTableEntry(doc, record)?.[0] ?? availableRecordKey(savedTables, record.tableId);
-  upsertTableRecord(savedTables, key, record.state, savedTableMetadata(record), options);
+  writeWorkspaceSavedTable(doc, record, false, options);
 };
+
+export const recreateWorkspaceSavedTable = (
+  doc: Y.Doc,
+  record: WorkspaceSavedTableRecord,
+  options?: ApplySchemaDocumentStateOptions,
+) => writeWorkspaceSavedTable(doc, record, true, options);
 
 export const deleteWorkspaceSavedTable = (doc: Y.Doc, target: SavedTableTarget) => {
   const entry = findSavedTableEntry(doc, target);

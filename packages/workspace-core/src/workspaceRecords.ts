@@ -18,6 +18,7 @@ import {
 import { getWorkspaceSavedTable, readWorkspaceSavedRecordIdentity } from './workspaceSavedRecords';
 export {
   upsertWorkspaceSavedTable,
+  recreateWorkspaceSavedTable,
   deleteWorkspaceSavedTable,
   getWorkspaceSavedTable,
   listWorkspaceSavedTables,

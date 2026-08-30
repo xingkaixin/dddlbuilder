@@ -42,6 +42,7 @@ import {
   listWorkspaceTrashedSavedTables,
   materializeWorkspaceYDoc,
   mergeWorkspaceSnapshotIntoYDoc,
+  recreateWorkspaceSavedTable,
   subscribeWorkspaceYDoc,
   upsertWorkspaceDraft,
   upsertWorkspaceFolder,
@@ -129,6 +130,12 @@ export const upsertSavedTableInYDoc = (
   record: Omit<SavedTableRecord, 'state'> & { state: SchemaDocumentState },
   options?: ApplySchemaDocumentStateOptions,
 ) => upsertWorkspaceSavedTable(doc, { ...record, tableId: resolveSavedTableId(record) }, options);
+
+export const recreateSavedTableInYDoc = (
+  doc: Y.Doc,
+  record: Omit<SavedTableRecord, 'state'> & { state: SchemaDocumentState },
+  options?: ApplySchemaDocumentStateOptions,
+) => recreateWorkspaceSavedTable(doc, { ...record, tableId: resolveSavedTableId(record) }, options);
 
 export const renameSavedTableInYDoc = (
   doc: Y.Doc,
