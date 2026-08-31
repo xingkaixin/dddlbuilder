@@ -2,7 +2,6 @@ import * as Y from 'yjs';
 import {
   type FieldRow,
   type ForeignKeyDefinition,
-  type IndexDefinition,
   type SchemaDocumentState,
   ensureFieldId,
   normalizeFieldDefaultKind,
@@ -26,6 +25,11 @@ import {
   writeOrderedMap,
 } from './yMapJson';
 import { stableStringify } from './stableStringify';
+import {
+  decodeIndexFieldReferences,
+  encodeIndexFieldReferences,
+  type StoredIndexDefinition,
+} from './workspaceIndexReferences';
 
 const TABLE_SCALAR_KEYS = [
   'objectType',
@@ -186,6 +190,10 @@ export const applySchemaDocumentStateToTableDoc = (
     'foreignKeys',
   );
   const previousSnapshot = readStateSnapshot(tableDoc);
+  const previousIndexes = hasIndexDoc(tableDoc)
+    ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')
+    : (previousSnapshot?.indexes ?? []);
+  const encodedIndexes = encodeIndexFieldReferences(documentState.indexes ?? [], nextRows);
   const containsEditorSessionState = hasEditorSessionState(tableDoc);
   if (
     options.compactSnapshotBase !== true ||
@@ -248,10 +256,9 @@ export const applySchemaDocumentStateToTableDoc = (
   if (
     writeAllKeys ||
     hasIndexDoc(tableDoc) ||
-    stableStringify(previousSnapshot?.indexes ?? []) !==
-      stableStringify(documentState.indexes ?? [])
+    stableStringify(previousIndexes) !== stableStringify(encodedIndexes)
   ) {
-    writeOrderedMap(tableDoc, 'indexes', 'indexOrder', documentState.indexes ?? []);
+    writeOrderedMap(tableDoc, 'indexes', 'indexOrder', encodedIndexes);
   }
   if (
     writeAllKeys ||
@@ -312,9 +319,12 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
           })
           .filter((row): row is FieldRow => row != null)
       : [];
-  const indexes = hasIndexDoc(tableDoc)
-    ? readOrderedMap<IndexDefinition>(tableDoc, 'indexes', 'indexOrder')
-    : (state.indexes ?? []);
+  const indexes = decodeIndexFieldReferences(
+    hasIndexDoc(tableDoc)
+      ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')
+      : (state.indexes ?? []),
+    rows,
+  );
   const foreignKeys = hasForeignKeyDoc(tableDoc)
     ? readOrderedMap<ForeignKeyDefinition>(tableDoc, 'foreignKeys', 'foreignKeyOrder')
     : state.foreignKeys;
@@ -323,7 +333,16 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
 };
 
 export const materializeTableDoc = (tableDoc: Y.Map<unknown>) => {
-  if (hasFineGrainedTableDoc(tableDoc)) return false;
+  if (hasFineGrainedTableDoc(tableDoc)) {
+    const state = tableDocToSchemaDocumentState(tableDoc);
+    const indexes = hasIndexDoc(tableDoc)
+      ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')
+      : state.indexes;
+    const encoded = encodeIndexFieldReferences(state.indexes, state.rows);
+    if (stableStringify(indexes) === stableStringify(encoded)) return false;
+    writeOrderedMap(tableDoc, 'indexes', 'indexOrder', encoded);
+    return true;
+  }
   const stateSnapshot = readStateSnapshot(tableDoc);
   if (!stateSnapshot) return false;
   applySchemaDocumentStateToTableDoc(tableDoc, tableDocToSchemaDocumentState(tableDoc), {
