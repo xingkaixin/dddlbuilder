@@ -23,6 +23,52 @@ describe('SQLAlchemy defaults', () => {
     );
   });
 
+  it.each(['postgresql', 'mysql'] as const)(
+    'preserves imported non-generated integer primary keys for %s',
+    async (dbType) => {
+      const parsed = await new SqlParser().parseAsync(
+        'CREATE TABLE events (id INT PRIMARY KEY, label VARCHAR(30))',
+        dbType,
+      );
+      const model = buildORM('sqlalchemy', { dbType, ...parsed });
+      expect(model).toContain('id = Column(Integer, primary_key=True, autoincrement=False)');
+    },
+  );
+
+  it.each([
+    ['int', 'auto_increment', 'Integer', 'True'],
+    ['bigint', 'none', 'BigInteger', 'False'],
+    ['smallint', 'none', 'SmallInteger', 'False'],
+    ['serial', 'none', 'Integer', 'True'],
+    ['bigserial', 'none', 'BigInteger', 'True'],
+  ] as const)('preserves generation intent for %s with %s', (type, defaultKind, ormType, auto) => {
+    const model = buildORM('sqlalchemy', {
+      dbType: 'postgresql',
+      tableName: 'events',
+      tableComment: '',
+      fields: [
+        {
+          name: 'id',
+          type,
+          nullable: false,
+          comment: '',
+          defaultKind,
+          defaultValue: '',
+          onUpdate: 'none',
+        },
+      ],
+      indexes: [
+        {
+          id: 'pk',
+          name: 'pk_events',
+          kind: 'primary',
+          fields: [{ name: 'id', direction: 'ASC' }],
+        },
+      ],
+    });
+    expect(model).toContain(`id = Column(${ormType}, primary_key=True, autoincrement=${auto})`);
+  });
+
   it('keeps numeric precision and string literals in their SQL forms', () => {
     const field: NormalizedField = {
       name: 'amount',

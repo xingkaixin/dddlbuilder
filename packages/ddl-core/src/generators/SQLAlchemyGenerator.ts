@@ -1,6 +1,7 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { buildORMPropertyNames } from './ormNames.js';
 import { buildDialectDefaultClause } from '../strategies/dialectColumn.js';
+import { getCanonicalBaseType } from '../utils/databaseTypeMapping.js';
 import { getORMTypeWithArgs } from '../utils/ormTypeResolver.js';
 import { buildIndexFieldLookup, escapePythonString, formatLineComment } from './shared.js';
 
@@ -74,7 +75,9 @@ export class SQLAlchemyGenerator implements ORMGenerator {
     for (const field of fields) {
       const colType = getORMTypeWithArgs('sqlalchemy', field.type);
       const isPk = primaryFields.has(field.name);
-      const isAutoInc = field.defaultKind === 'auto_increment';
+      const isAutoInc =
+        field.defaultKind === 'auto_increment' ||
+        ['serial', 'bigserial'].includes(getCanonicalBaseType(field.type));
       const isNullable = field.nullable && !isPk;
 
       const propertyName = names.field(field.name);
@@ -83,10 +86,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
         colType,
       ];
       if (isPk) {
-        args.push('primary_key=True');
-        if (isAutoInc) {
-          args.push('autoincrement=True');
-        }
+        args.push('primary_key=True', `autoincrement=${isAutoInc ? 'True' : 'False'}`);
       }
       if (isNullable) {
         args.push('nullable=True');
