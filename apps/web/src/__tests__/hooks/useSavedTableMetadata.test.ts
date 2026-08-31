@@ -4,6 +4,7 @@ import * as Y from 'yjs';
 import {
   deleteWorkspaceSavedTable,
   getWorkspaceSavedTable,
+  updateWorkspaceSavedTableMetadata,
   upsertWorkspaceSavedTable,
 } from '@ddlbuilder/workspace-core';
 import { useSavedTables } from '@/hooks/useSavedTables';
@@ -65,6 +66,44 @@ describe('saved table metadata writes', () => {
     workspace.doc?.destroy();
     workspace.doc = null;
     teardownFakeIndexedDB();
+  });
+
+  it('rename preserves remote folder and trash changes received while awaiting persistence', async () => {
+    const doc = workspace.doc;
+    if (!doc) throw new Error('Workspace not initialized');
+    const peer = new Y.Doc();
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
+    updateWorkspaceSavedTableMetadata(peer, record, {
+      folderId: 'remote-folder',
+      trashedAt: 12345,
+      updatedAt: 2,
+    });
+    const remoteUpdate = Y.encodeStateAsUpdate(peer, Y.encodeStateVector(doc));
+    const { wrapper, queryClient } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(() => useSavedTables(), { wrapper });
+
+    await act(async () => {
+      const pending = result.current.renameTable(record, 'Renamed Users');
+      await Promise.resolve();
+      Y.applyUpdate(doc, remoteUpdate);
+      expect(await pending).toEqual({
+        ok: true,
+        normalizedName: 'renamed users',
+        tableId: record.tableId,
+      });
+    });
+
+    expect(getWorkspaceSavedTable(doc, record)).toMatchObject({
+      tableId: record.tableId,
+      normalizedName: 'renamed users',
+      name: 'Renamed Users',
+      folderId: 'remote-folder',
+      trashedAt: 12345,
+      createdAt: record.createdAt,
+    });
+    unmount();
+    queryClient.clear();
+    peer.destroy();
   });
 
   it.each(['move', 'trash'] as const)(

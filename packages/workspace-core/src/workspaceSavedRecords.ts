@@ -12,7 +12,7 @@ import {
 } from './workspaceTableDoc';
 import { getWorkspaceRoot, upsertTableRecord } from './workspaceYDoc';
 import { readWorkspaceCreatedAt, readWorkspaceTimestamp } from './workspaceMetadata';
-import { ensureMap, writeJsonMap, writeJsonMapPatch } from './yMapJson';
+import { ensureMap, writeJsonMapPatch } from './yMapJson';
 
 export type WorkspaceSavedTableRecord = Omit<
   WorkspaceSnapshot['savedTables'][number],
@@ -272,7 +272,11 @@ export const renameWorkspaceSavedTable = (
   doc.transact(() => {
     const entry = findSavedTableEntry(doc, record);
     if (!entry) throw new Error('Saved table not found');
-    writeJsonMap(ensureMap(entry[1], 'metadata'), savedTableMetadata(record));
+    writeJsonMapPatch(ensureMap(entry[1], 'metadata'), {
+      normalizedName: record.normalizedName,
+      name: record.name,
+      updatedAt: record.updatedAt,
+    });
     renameWorkspaceSavedDraft(
       doc,
       { tableId: record.tableId, normalizedName: previousName },
