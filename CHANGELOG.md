@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.22.0] - 2026-08-27
+### Added
+- **WebMCP browser-side agent tools**: Exposes Model Context Protocol (MCP) tools in the browser so external AI agents can read the active workspace and propose structured schema, field, index, and relationship changes. All proposed updates require manual confirmation through a change review dialog before being applied.
+- **Manual migration guidance in schema diff**: The schema comparison and version history tools now detect destructive changes that cannot be safely executed via automatic `ALTER` DDL (such as breaking renames or incompatible type conversions) and provide actionable manual migration instructions.
+
+### Improved
+- **Stable entity identity and sync convergence**: Drafts, saved tables, fields, version history, and review records are now bound to stable entity IDs, preserving references across renames, drag-and-drop reordering, and branch migrations. Yjs real-time sync reports a synced state only after persistence is confirmed, preventing rapid tab switches or reconnects from reverting edits.
+- **Atomic recursive folder actions and trash reliability**: Deleting a folder recursively soft-deletes all contained drafts and tables while cleaning up associated history, backed by explicit persistence confirmation and retry handling.
+- **Dialect SQL parsing and DDL generation accuracy**: Distinguishes literal defaults from SQL expression or function defaults, accurately mapping them across Prisma, TypeORM, SQLAlchemy, GORM, and JPA models. Improves PostgreSQL identifier casing preservation and `IDENTITY` column lifecycle transitions.
+- **Alter DDL dependency ordering and rollback generation**: Generated `ALTER` statements sort table, column, foreign key, and index modifications by topological dependency, dropping constraints before mutating referenced elements, and generate precise reverse rollback DDL from forward diffs.
+
+### Fixed
+- **AI patch validation and stream lifecycle recovery**: AI index suggestions and batch schema patches validate field dependencies before application and strip obsolete references. Interrupted or cancelled streaming requests cleanly reset without leaving partial modifications.
+- **Safe AI credit settlement and daily budget isolation**: Applies safe integer constraints and isolated daily retry budgets to prevent balance inconsistencies or duplicate credit debits during unexpected connection drops.
+- **Storage isolation and connection cleanup**: Ensures all associated version and review records are permanently purged when tables are deleted, and hardens IndexedDB transaction lifecycles against connection leaks during upgrades or aborts.
+
 ## [0.21.0] - 2026-08-25
 ### Added
 - **Japanese product and documentation support**: The application, AI-generated content, help links, and documentation site are now available in Japanese, with locale switching and localized search metadata.
