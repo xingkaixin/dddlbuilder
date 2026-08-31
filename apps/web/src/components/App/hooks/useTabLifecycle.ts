@@ -95,6 +95,10 @@ export function useTabLifecycle({
 
   const showTab = useCallback(
     (tab: WorkspaceTab) => {
+      if (tab.isLoading) {
+        activateTab(tab.id);
+        return;
+      }
       const snapshot = resolveWorkspaceSnapshot(tab.source) ?? {
         source: tab.source,
         state: tab.stateSnapshot,
