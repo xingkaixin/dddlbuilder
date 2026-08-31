@@ -198,7 +198,8 @@ export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
   }
 };
 
-export const supportsDefaultCurrentTimestamp = (db: DatabaseType, canonical: string) => {
+export const supportsDefaultCurrentTimestamp = (db: DatabaseType, fieldType: string) => {
+  const canonical = getCanonicalBaseType(getFieldTypeForDatabase(db, fieldType));
   switch (getDatabaseFamily(db)) {
     case 'mysql':
       return new Set(['timestamp', 'datetime']).has(canonical);
@@ -208,13 +209,14 @@ export const supportsDefaultCurrentTimestamp = (db: DatabaseType, canonical: str
       return new Set(['datetime', 'datetime2', 'datetimeoffset', 'timestamp']).has(canonical);
     case 'oracle':
     case 'dm':
-      return new Set(['timestamp', 'date']).has(canonical);
+      return new Set(['timestamp', 'timestamptz', 'date']).has(canonical);
     default:
       return false;
   }
 };
 
-export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, canonical: string) => {
+export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, fieldType: string) => {
+  const canonical = getCanonicalBaseType(getFieldTypeForDatabase(db, fieldType));
   switch (getDatabaseFamily(db)) {
     // MySQL 5.6.5+、MariaDB 10.1.2+、TiDB、OceanBase MySQL 模式支持 DATETIME 的 ON UPDATE CURRENT_TIMESTAMP
     case 'mysql':

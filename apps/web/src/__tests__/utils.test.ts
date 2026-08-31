@@ -470,6 +470,13 @@ describe('Utils', () => {
       expect(result).toContain('current_timestamp');
     });
 
+    it.each(['postgresql', 'oracle'] as const)(
+      '切换到 %s 后保留 datetime 的当前时间选项',
+      (dbType) => {
+        expect(getUiDefaultKindOptions(dbType, 'datetime')).toContain('current_timestamp');
+      },
+    );
+
     it('应该为不支持的类型只返回基本选项', () => {
       const result = getUiDefaultKindOptions('mysql', 'float');
       expect(result).toEqual(['none', 'constant', 'expression']);
@@ -499,6 +506,10 @@ describe('Utils', () => {
     it('应该为 MySQL datetime 类型返回当前时间选项', () => {
       const result = getUiOnUpdateOptions('mysql', 'datetime');
       expect(result).toEqual(['none', 'current_timestamp']);
+    });
+
+    it('应为映射到 MySQL datetime 的类型保留当前时间选项', () => {
+      expect(getUiOnUpdateOptions('mysql', 'datetime2')).toEqual(['none', 'current_timestamp']);
     });
 
     it('应该为非 MySQL 数据库只返回无选项', () => {
