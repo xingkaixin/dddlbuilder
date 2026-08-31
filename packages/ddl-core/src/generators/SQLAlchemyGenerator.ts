@@ -1,9 +1,11 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
+import { buildDialectDefaultClause } from '../strategies/dialectColumn.js';
 import { getORMTypeWithArgs } from '../utils/ormTypeResolver.js';
 import { buildIndexFieldLookup, escapePythonString, formatLineComment } from './shared.js';
 
 export class SQLAlchemyGenerator implements ORMGenerator {
   generateModel({
+    dbType,
     schemaName = '',
     tableName,
     tableComment,
@@ -38,6 +40,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       'JSON',
       'Index',
       ...(fields.some((field) => field.defaultKind === 'current_timestamp') ? ['func'] : []),
+      ...(fields.some((field) => field.defaultKind === 'constant') ? ['literal_column'] : []),
       ...(fields.some((field) => field.defaultKind === 'expression') ? ['text'] : []),
       ...(foreignKeys.length > 0 ? ['ForeignKeyConstraint'] : []),
     ];
@@ -80,7 +83,11 @@ export class SQLAlchemyGenerator implements ORMGenerator {
         args.push('nullable=False');
       }
       if (field.defaultKind === 'constant') {
-        args.push(`default='${escapePythonString(field.defaultValue)}'`);
+        const defaultClause = buildDialectDefaultClause(field, dbType);
+        if (defaultClause) {
+          const literal = defaultClause.slice('DEFAULT '.length);
+          args.push(`server_default=literal_column('${escapePythonString(literal)}')`);
+        }
       } else if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
         args.push(`server_default=text('${escapePythonString(field.defaultValue)}')`);
       } else if (field.defaultKind === 'current_timestamp') {

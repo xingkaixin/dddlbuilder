@@ -84,7 +84,12 @@ describe('buildORM', () => {
   it.each([
     ['prisma', '@default("")', '@default("now()")', '@default(dbgenerated("lower(\'X\')"))'],
     ['typeorm', "default: ''", "default: 'now()'", 'default: () => "lower(\'X\')"'],
-    ['sqlalchemy', "default=''", "default='now()'", "server_default=text('lower(\\'X\\')')"],
+    [
+      'sqlalchemy',
+      "server_default=literal_column('(\\'\\')')",
+      "server_default=literal_column('(\\'now()\\')')",
+      "server_default=text('lower(\\'X\\')')",
+    ],
   ] as const)(
     'preserves literal and expression defaults in %s',
     (target, empty, literal, expression) => {
