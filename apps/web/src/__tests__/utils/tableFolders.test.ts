@@ -14,6 +14,7 @@ import * as dbUtils from '@/utils/workspaceDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 import { addSavedTable, listTrashedSavedTables } from '@/utils/savedTablesDb';
+import { listDrafts, listTrashedDrafts, readDraft, writeDraft } from '@/utils/workspaceStateDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 
 const anonymousScope = getAnonymousWorkspaceScope();
@@ -109,6 +110,59 @@ describe('tableFolders', () => {
       normalizedName: 'users',
       folderId: child.id,
       trashedAt: expect.any(Number),
+    });
+  });
+
+  it('trashes nested drafts without changing other scopes or existing trash', async () => {
+    const root = await createFolder('Root');
+    const child = await createFolder('Child', root.id);
+    const kept = await createFolder('Kept');
+    const otherScope = { kind: 'user', userId: 'u1', workspaceId: 'other' } as const;
+    for (const [draftId, folderId] of [
+      ['root-draft', root.id],
+      ['child-draft', child.id],
+      ['kept-draft', kept.id],
+    ]) {
+      await writeDraft(
+        draftId,
+        { state: createState(), folderId, createdAt: 1, updatedAt: 1 },
+        anonymousScope,
+      );
+    }
+    const alreadyTrashed = {
+      state: createState(),
+      folderId: child.id,
+      createdAt: 1,
+      updatedAt: 2,
+      trashedAt: 0,
+    };
+    await writeDraft('already-trashed', alreadyTrashed, anonymousScope);
+    await writeDraft(
+      'root-draft',
+      { state: createState(), folderId: root.id, createdAt: 1, updatedAt: 1 },
+      otherScope,
+    );
+
+    await deleteFolder(root.id);
+
+    expect((await listDrafts(anonymousScope)).map(({ draftId }) => draftId)).toEqual([
+      'kept-draft',
+    ]);
+    expect(
+      new Set((await listTrashedDrafts(anonymousScope)).map(({ draftId }) => draftId)),
+    ).toEqual(new Set(['root-draft', 'child-draft', 'already-trashed']));
+    expect(await readDraft('child-draft', anonymousScope)).toMatchObject({
+      state: createState(),
+      folderId: child.id,
+      createdAt: 1,
+      updatedAt: Date.now(),
+      trashedAt: Date.now(),
+    });
+    expect(await readDraft('already-trashed', anonymousScope)).toMatchObject(alreadyTrashed);
+    expect(await readDraft('root-draft', otherScope)).toMatchObject({
+      folderId: root.id,
+      updatedAt: 1,
+      trashedAt: undefined,
     });
   });
 

@@ -47,19 +47,19 @@ export const getFolderDescendantIds = (
 };
 
 export const buildFolderDeletionPlan = <
-  Table extends { folderId?: string; trashedAt?: number; updatedAt: number },
+  Item extends { folderId?: string; trashedAt?: number; updatedAt: number },
 >(
   folders: readonly TableFolder[],
-  tables: readonly Table[],
+  items: readonly Item[],
   folderId: string,
   now = Date.now(),
 ) => {
   const folderIds = [folderId, ...getFolderDescendantIds(folders, folderId)];
   const affected = new Set(folderIds);
-  const tablesToTrash = tables
-    .filter((table) => table.folderId && affected.has(table.folderId) && !table.trashedAt)
-    .map((table) => ({ ...table, trashedAt: now, updatedAt: now }));
-  return { folderIds, tablesToTrash };
+  const itemsToTrash = items
+    .filter((item) => item.folderId && affected.has(item.folderId) && item.trashedAt == null)
+    .map((item) => ({ ...item, trashedAt: now, updatedAt: now }));
+  return { folderIds, itemsToTrash };
 };
 
 const findInvalidFolderIds = (foldersById: ReadonlyMap<string, TableFolder>) => {

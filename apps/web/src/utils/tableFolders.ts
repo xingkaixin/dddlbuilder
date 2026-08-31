@@ -1,5 +1,11 @@
-import { FOLDER_STORE_NAME, openDb, STORE_NAME } from './workspaceDb';
+import {
+  FOLDER_STORE_NAME,
+  openDb,
+  STORE_NAME,
+  WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
+} from './workspaceDb';
 import type { SavedTableRecord, TableFolder } from './workspaceStorageTypes';
+import type { WorkspaceDraftRecord } from './workspaceStateDb';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspaceScope';
 import { runIndexedDbRequest } from './indexedDbTransaction';
@@ -145,19 +151,24 @@ export async function moveFolder(
  */
 
 /**
- * 删除文件夹及后代，并把其中仍生效的表移入回收站
+ * 删除文件夹及后代，并把其中仍生效的表和草稿移入回收站
  */
 export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<string[]> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([FOLDER_STORE_NAME, STORE_NAME], 'readwrite');
+    const transaction = db.transaction(
+      [FOLDER_STORE_NAME, STORE_NAME, WORKSPACE_GLOBAL_DRAFT_STORE_NAME],
+      'readwrite',
+    );
     const folderStore = transaction.objectStore(FOLDER_STORE_NAME);
     const tableStore = transaction.objectStore(STORE_NAME);
+    const draftStore = transaction.objectStore(WORKSPACE_GLOBAL_DRAFT_STORE_NAME);
     const folderRequest = folderStore.getAll();
     const tableRequest = tableStore.getAll();
+    const draftRequest = draftStore.getAll();
+    const requests = [folderRequest, tableRequest, draftRequest];
     let affectedFolderIds: string[] = [];
-    let foldersLoaded = false;
-    let tablesLoaded = false;
+    let pendingReads = requests.length;
     let settled = false;
 
     const fail = (error: unknown, message: string) => {
@@ -168,16 +179,23 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
     };
 
     const applyDeletion = () => {
-      if (!foldersLoaded || !tablesLoaded) return;
+      pendingReads -= 1;
+      if (pendingReads > 0) return;
       const folders = folderRequest.result
         .map((folder) => decodeScopedFolder(folder, scope))
         .filter((folder): folder is TableFolder => folder != null);
       const tables = (tableRequest.result as SavedTableRecord[]).filter((record) =>
         decodeWorkspaceScopedKey(record.normalizedName, record.scope, scope),
       );
-      const plan = buildFolderDeletionPlan(folders, tables, id);
+      const drafts = (draftRequest.result as Array<WorkspaceDraftRecord & { id: string }>).filter(
+        (record) => decodeWorkspaceScopedKey(record.id, record.scope, scope),
+      );
+      const plan = buildFolderDeletionPlan(folders, [...tables, ...drafts], id);
       affectedFolderIds = plan.folderIds;
-      for (const record of plan.tablesToTrash) tableStore.put(record);
+      for (const record of plan.itemsToTrash) {
+        if ('id' in record) draftStore.put(record);
+        else tableStore.put(record);
+      }
 
       for (const folderId of affectedFolderIds) {
         folderStore.delete(withScopeKey(scope, folderId));
@@ -185,14 +203,7 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
       }
     };
 
-    folderRequest.onsuccess = () => {
-      foldersLoaded = true;
-      applyDeletion();
-    };
-    tableRequest.onsuccess = () => {
-      tablesLoaded = true;
-      applyDeletion();
-    };
+    for (const request of requests) request.onsuccess = applyDeletion;
     transaction.onerror = () => fail(transaction.error, '事务失败');
     transaction.onabort = () => fail(transaction.error, '事务被中止');
     transaction.oncomplete = () => {

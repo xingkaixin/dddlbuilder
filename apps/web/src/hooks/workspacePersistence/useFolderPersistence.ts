@@ -1,8 +1,10 @@
 import { useCallback } from 'react';
 import {
   deleteFolderFromYDoc,
+  listDraftRecordsFromYDoc,
   listFoldersFromYDoc,
   listSavedTableRecordsFromYDoc,
+  upsertDraftInYDoc,
   upsertFolderInYDoc,
   upsertSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
@@ -59,10 +61,23 @@ export function useFolderPersistence() {
         return target.transact((doc) => {
           const plan = buildFolderDeletionPlan(
             listFoldersFromYDoc(doc),
-            listSavedTableRecordsFromYDoc(doc),
+            [
+              ...listSavedTableRecordsFromYDoc(doc),
+              ...listDraftRecordsFromYDoc(doc).map(({ draftId, record }) => ({
+                ...record,
+                draftId,
+              })),
+            ],
             id,
           );
-          for (const table of plan.tablesToTrash) upsertSavedTableInYDoc(doc, table);
+          for (const item of plan.itemsToTrash) {
+            if ('draftId' in item) {
+              const { draftId, ...record } = item;
+              upsertDraftInYDoc(doc, draftId, record);
+            } else {
+              upsertSavedTableInYDoc(doc, item);
+            }
+          }
           for (const folderId of plan.folderIds) deleteFolderFromYDoc(doc, folderId);
           return plan.folderIds;
         });

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
+import { getAllFolderTreeNodeIds } from '@/utils/folderModel';
 
 type UseSavedTablesFilterParams = {
   items: SavedTableSummary[];
@@ -37,9 +38,10 @@ export function useSavedTablesFilter({ items, folders, searchQuery }: UseSavedTa
       : items;
     const grouped = new Map<string, SavedTableSummary[]>();
     const ungrouped: SavedTableSummary[] = [];
+    const folderIds = new Set(getAllFolderTreeNodeIds(folders));
 
     for (const item of filtered) {
-      if (!item.folderId) {
+      if (!item.folderId || !folderIds.has(item.folderId)) {
         ungrouped.push(item);
         continue;
       }
@@ -56,7 +58,7 @@ export function useSavedTablesFilter({ items, folders, searchQuery }: UseSavedTa
       itemsByFolder: grouped,
       ungroupedItems: ungrouped,
     };
-  }, [items, searchQuery]);
+  }, [folders, items, searchQuery]);
 
   const isSearching = searchQuery.trim().length > 0;
 

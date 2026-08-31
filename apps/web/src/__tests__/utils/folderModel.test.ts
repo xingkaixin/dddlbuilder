@@ -97,12 +97,12 @@ describe('folderModel', () => {
       console.info('folder deletion scope after concurrent moves', {
         displayedIds,
         deletedIds: plan.folderIds,
-        trashedTableIds: plan.tablesToTrash.map((table) => table.id),
+        trashedTableIds: plan.itemsToTrash.map((table) => table.id),
       });
 
       expect(tree.map((folder) => folder.id)).toEqual(['a', 'b']);
       expect(plan.folderIds).toEqual(displayedIds);
-      expect(plan.tablesToTrash.map((table) => table.id)).toEqual(['table-a']);
+      expect(plan.itemsToTrash.map((table) => table.id)).toEqual(['table-a']);
     } finally {
       original.destroy();
       left.destroy();
@@ -179,13 +179,13 @@ describe('folderModel', () => {
     expect(getAllFolderTreeNodeIds(tree)).toEqual(['root', 'child', 'leaf']);
   });
 
-  it('builds one deletion plan for folders and active tables', () => {
+  it('builds one deletion plan for active folder contents', () => {
     expect(
       buildFolderDeletionPlan(
         folders,
         [
           { id: 'active', folderId: 'leaf', updatedAt: 1 },
-          { id: 'trashed', folderId: 'child', trashedAt: 2, updatedAt: 2 },
+          { id: 'trashed', folderId: 'child', trashedAt: 0, updatedAt: 2 },
           { id: 'other', updatedAt: 1 },
         ],
         'root',
@@ -193,7 +193,7 @@ describe('folderModel', () => {
       ),
     ).toEqual({
       folderIds: ['root', 'child', 'leaf'],
-      tablesToTrash: [{ id: 'active', folderId: 'leaf', trashedAt: 10, updatedAt: 10 }],
+      itemsToTrash: [{ id: 'active', folderId: 'leaf', trashedAt: 10, updatedAt: 10 }],
     });
   });
 });

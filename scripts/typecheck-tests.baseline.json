@@ -657,30 +657,6 @@
   },
   {
     "package": "@ddlbuilder/web",
-    "file": "src/__tests__/components/App/hooks/useFolderActions.test.ts",
-    "code": "TS2322",
-    "message": "Type '{ id: string; name: string; order: number; createdAt: number; children: FolderTreeNode[]; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; children: FolderTreeNode[]; }' but required in type 'TableFolder'.",
-    "sourceFingerprint": "ad09c6f33ccf802c",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
-    "file": "src/__tests__/components/App/hooks/useFolderActions.test.ts",
-    "code": "TS2322",
-    "message": "Type '{ id: string; name: string; order: number; createdAt: number; children: never[]; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; order: number; createdAt: number; children: never[]; }' but required in type 'TableFolder'.",
-    "sourceFingerprint": "42e3518af1114096",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
-    "file": "src/__tests__/components/App/hooks/useFolderActions.test.ts",
-    "code": "TS2741",
-    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; dbType: string; fieldCount: number; folderId: string; createdAt: number; updatedAt: number; }' but required in type 'SavedTableMetadata'.",
-    "sourceFingerprint": "e397a3aa15f68556",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
     "file": "src/__tests__/components/App/hooks/useSavedTableFlowActions.test.ts",
     "code": "TS2322",
     "message": "Type 'UseDialogStateReturn<{ name: string; target: null; }>' is not assignable to type 'UseDialogStateReturn<RenameDialogData>'. Types of property 'openDialog' are incompatible. Type '(nextData?: { name: string; target: null; } | undefined) => void' is not assignable to type '(nextData?: RenameDialogData | undefined) => void'. Types of parameters 'nextData' and 'nextData' are incompatible. Type 'RenameDialogData | undefined' is not assignable to type '{ name: string; target: null; } | undefined'. Type 'RenameDialogData' is not assignable to type '{ name: string; target: null; }'. Types of property 'target' are incompatible. Type 'SavedTableMetadata | null' is not assignable to type 'null'. Type 'SavedTableMetadata' is not assignable to type 'null'.",
@@ -949,14 +925,6 @@
     "code": "TS2322",
     "message": "Type '{ id: string; name: string; parentId: undefined; order: number; createdAt: number; children: []; }' is not assignable to type 'FolderTreeNode'. Property 'updatedAt' is missing in type '{ id: string; name: string; parentId: undefined; order: number; createdAt: number; children: []; }' but required in type 'TableFolder'.",
     "sourceFingerprint": "549a91370038db96",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
-    "file": "src/__tests__/components/App/saved-tables/useSavedTablesFilter.test.ts",
-    "code": "TS2741",
-    "message": "Property 'tableId' is missing in type '{ normalizedName: string; name: string; dbType: string; fieldCount: number; createdAt: number; updatedAt: number; folderId: string | undefined; }' but required in type 'SavedTableMetadata'.",
-    "sourceFingerprint": "3f7f28fadbff97a0",
     "count": 1
   },
   {

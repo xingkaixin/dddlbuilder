@@ -10,7 +10,13 @@ import {
   upsertDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
-import { deleteDraft, readDraft, writeDraft } from '@/utils/workspaceStateDb';
+import {
+  deleteDraft,
+  listDrafts,
+  listTrashedDrafts,
+  readDraft,
+  writeDraft,
+} from '@/utils/workspaceStateDb';
 import {
   buildPersistedStateSignature,
   buildSchemaStateSignature,
@@ -92,6 +98,15 @@ export function useDraftRecords({
     (drafts: DraftEntry[]) => replaceLocalRecords(drafts, true),
     [replaceLocalRecords],
   );
+  const refreshDrafts = useCallback(async () => {
+    if (disabled || storage.kind !== 'indexeddb') return;
+    const [drafts, trashed] = await Promise.all([
+      listDrafts(storage.scope),
+      listTrashedDrafts(storage.scope),
+    ]);
+    replaceDrafts(drafts);
+    replaceTrashedDrafts(trashed);
+  }, [disabled, replaceDrafts, replaceTrashedDrafts, storage]);
   const getRecord = useCallback(
     (draftId: string) =>
       yDoc ? getDraftRecordFromYDoc(yDoc, draftId) : localRecordsRef.current.get(draftId),
@@ -259,6 +274,7 @@ export function useDraftRecords({
   return {
     draftSummaries,
     trashedDrafts,
+    refreshDrafts,
     replaceDrafts,
     replaceTrashedDrafts,
     getDraftState,

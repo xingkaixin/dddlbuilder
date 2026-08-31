@@ -74,6 +74,7 @@ export interface ActiveWorkspaceDocument {
 export interface WorkspaceDraftCatalog {
   draftSummaries: DraftSummary[];
   trashedDrafts: DraftSummary[];
+  refreshDrafts: () => Promise<void>;
   getDraftState: (draftId: string) => PersistedState | null;
   createDraft: (draftId: string, state: PersistedState) => string;
   deleteDraftById: (draftId: string) => void;
@@ -149,6 +150,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   const {
     draftSummaries,
     trashedDrafts,
+    refreshDrafts,
     replaceDrafts,
     replaceTrashedDrafts,
     getDraftState,
@@ -393,6 +395,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     },
     drafts: {
       draftSummaries,
+      refreshDrafts,
       getDraftState,
       createDraft,
       deleteDraftById,

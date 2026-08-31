@@ -204,6 +204,8 @@ export function useAppController() {
   const folderActions = useFolderActions({
     folderTree,
     savedTables,
+    drafts,
+    closeTab: tabLifecycle.closeTab,
     createFolder,
     renameFolder,
     moveFolder,

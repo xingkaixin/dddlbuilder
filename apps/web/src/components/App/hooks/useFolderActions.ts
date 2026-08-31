@@ -3,12 +3,16 @@ import { useCallback, useMemo, useState } from 'react';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { TableFolder } from '@/utils/workspaceStorageTypes';
+import type { WorkspaceDraftCatalog } from '@/hooks/usePersistedState';
+import { useTabStore } from '@/stores';
 import { findFolderTreeNode, getFolderTreeNodeIds } from '@/utils/folderModel';
 import i18n from '@/i18n';
 
 interface UseFolderActionsParams {
   folderTree: FolderTreeNode[];
   savedTables: SavedTableSummary[];
+  drafts: Pick<WorkspaceDraftCatalog, 'draftSummaries' | 'getDraftState' | 'refreshDrafts'>;
+  closeTab: (tabId: string) => void;
   createFolder: (name: string, parentId?: string) => Promise<TableFolder>;
   renameFolder: (id: string, name: string) => Promise<void>;
   moveFolder: (id: string, parentId?: string) => Promise<void>;
@@ -23,6 +27,8 @@ interface UseFolderActionsParams {
 export function useFolderActions({
   folderTree,
   savedTables,
+  drafts: { draftSummaries, getDraftState, refreshDrafts },
+  closeTab,
   createFolder,
   renameFolder,
   moveFolder,
@@ -90,7 +96,26 @@ export function useFolderActions({
     if (!deleteFolderTarget) return;
 
     try {
+      const openDraftIds = new Set(
+        useTabStore
+          .getState()
+          .tabs.filter((tab) => tab.source.kind === 'draft' && getDraftState(tab.source.draftId))
+          .map((tab) => tab.id),
+      );
       await deleteFolderAction(deleteFolderTarget.id);
+      await refreshDrafts();
+      const { tabs, activeTabId } = useTabStore.getState();
+      const removedTabs = tabs.filter(
+        (tab) =>
+          openDraftIds.has(tab.id) &&
+          tab.source.kind === 'draft' &&
+          !getDraftState(tab.source.draftId),
+      );
+      // 先移除后台标签，避免活动标签切换到即将删除的草稿。
+      for (const tab of removedTabs) {
+        if (tab.id !== activeTabId) closeTab(tab.id);
+      }
+      if (activeTabId && removedTabs.some((tab) => tab.id === activeTabId)) closeTab(activeTabId);
       showToast(
         i18n.t('savedTables.toast.deletedFolder', {
           name: deleteFolderTarget.name,
@@ -101,15 +126,16 @@ export function useFolderActions({
         error instanceof Error ? error.message : i18n.t('savedTables.toast.deleteFolderFailed'),
       );
     }
-  }, [deleteFolderTarget, deleteFolderAction, showToast]);
+  }, [closeTab, deleteFolderTarget, deleteFolderAction, getDraftState, refreshDrafts, showToast]);
 
   const deleteFolderTableCount = useMemo(() => {
     if (!deleteFolderTarget) return 0;
     const affectedFolderIds = new Set(getFolderTreeNodeIds(deleteFolderTarget));
 
-    return savedTables.filter((table) => table.folderId && affectedFolderIds.has(table.folderId))
-      .length;
-  }, [deleteFolderTarget, savedTables]);
+    return [...savedTables, ...draftSummaries].filter(
+      (item) => item.folderId && affectedFolderIds.has(item.folderId),
+    ).length;
+  }, [deleteFolderTarget, draftSummaries, savedTables]);
 
   const handleMoveTableToFolder = useCallback(
     async (item: SavedTableSummary, folderId?: string) => {
