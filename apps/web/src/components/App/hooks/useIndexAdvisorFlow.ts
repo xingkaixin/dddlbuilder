@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import {
   createEntityId,
   type AIIndexAdvisorRecommendation,
@@ -12,12 +12,15 @@ import { useToast } from '@/hooks/useToast';
 import {
   buildIndexName,
   getIdentifierNameMaxLength as getIndexNameMaxLength,
+  getSqlIdentifierKey,
 } from '@ddlbuilder/ddl-core';
 import { insertIndexDefinition } from '@/stores/indexDefinitionMutations';
 import { buildNormalizedFields, useEditorStore } from '@/stores';
 import { useTranslation } from 'react-i18next';
 
 interface UseIndexAdvisorFlowParams {
+  documentKey: string;
+  getCurrentDocumentKey: () => string;
   dbType: DatabaseType;
   schemaName: string;
   tableName: string;
@@ -26,11 +29,11 @@ interface UseIndexAdvisorFlowParams {
   indexes: IndexDefinition[];
 }
 
-const hasSameIndexFields = (left: IndexField[], right: IndexField[]) =>
+const hasSameIndexFields = (left: IndexField[], right: IndexField[], dbType: DatabaseType) =>
   left.length === right.length &&
   left.every(
     (field, index) =>
-      field.name.trim().toLowerCase() === right[index]?.name.trim().toLowerCase() &&
+      getSqlIdentifierKey(field.name, dbType) === getSqlIdentifierKey(right[index].name, dbType) &&
       field.direction === right[index]?.direction,
   );
 
@@ -55,6 +58,8 @@ export const buildSuggestedIndexQuery = (
 };
 
 export function useIndexAdvisorFlow({
+  documentKey,
+  getCurrentDocumentKey,
   dbType,
   schemaName,
   tableName,
@@ -64,8 +69,10 @@ export function useIndexAdvisorFlow({
 }: UseIndexAdvisorFlowParams) {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { isLoading, result, error, analyzeIndexes, clearAdvice } = useAIIndexAdvisor();
+  const { isLoading, result, error, analyzeIndexes, clearAdvice } = useAIIndexAdvisor(documentKey);
   const [open, setOpen] = useState(false);
+
+  useLayoutEffect(() => () => setOpen(false), [documentKey]);
 
   const blockingMessage = useMemo(() => {
     if (!tableName.trim()) return t('aiIndexAdvisor.tableNameRequired');
@@ -90,6 +97,7 @@ export function useIndexAdvisorFlow({
     (queryPatterns: string) => {
       void (async () => {
         try {
+          if (getCurrentDocumentKey() !== documentKey) return;
           if (blockingMessage) {
             showToast(blockingMessage);
             return;
@@ -123,7 +131,9 @@ export function useIndexAdvisorFlow({
       analyzeIndexes,
       blockingMessage,
       dbType,
+      documentKey,
       fields,
+      getCurrentDocumentKey,
       indexes,
       schemaName,
       showToast,
@@ -135,17 +145,27 @@ export function useIndexAdvisorFlow({
 
   const applyRecommendation = useCallback(
     (recommendation: AIIndexAdvisorRecommendation) => {
+      if (
+        getCurrentDocumentKey() !== documentKey ||
+        !result?.recommendations.includes(recommendation)
+      ) {
+        return;
+      }
       const recommendedIndex = recommendation.index;
       if (!recommendedIndex) return;
 
       const current = useEditorStore.getState();
       const availableFieldNames = new Set(
-        buildNormalizedFields(current.rows).map((field) => field.name),
+        buildNormalizedFields(current.rows).map((field) =>
+          getSqlIdentifierKey(field.name, current.dbType),
+        ),
       );
       const recommendedFields = recommendedIndex.fields;
       if (
         recommendedFields.length === 0 ||
-        recommendedFields.some((field) => !availableFieldNames.has(field.name))
+        recommendedFields.some(
+          (field) => !availableFieldNames.has(getSqlIdentifierKey(field.name, current.dbType)),
+        )
       ) {
         showToast(t('aiIndexAdvisor.invalidIndexFields'));
         return;
@@ -154,7 +174,7 @@ export function useIndexAdvisorFlow({
       if (
         current.indexes.some(
           (index) =>
-            hasSameIndexFields(index.fields, recommendedFields) &&
+            hasSameIndexFields(index.fields, recommendedFields, current.dbType) &&
             (!recommendedIndex.unique || index.kind !== 'index'),
         )
       ) {
@@ -184,7 +204,7 @@ export function useIndexAdvisorFlow({
       current.setActiveTab('indexes');
       showToast(t('aiIndexAdvisor.indexApplied'));
     },
-    [showToast, t],
+    [documentKey, getCurrentDocumentKey, result, showToast, t],
   );
 
   return {

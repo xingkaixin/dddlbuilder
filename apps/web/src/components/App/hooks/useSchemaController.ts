@@ -31,15 +31,24 @@ function getDocumentSourceIdentity(source: WorkspaceSelection) {
     : ['saved_table', 'name', source.normalizedName];
 }
 
+function buildDocumentIdentityKey(
+  workspaceScope: WorkspaceScope | null,
+  tab: WorkspaceTab | undefined,
+) {
+  return JSON.stringify([
+    workspaceScope ? getWorkspaceScopeStorageKey(workspaceScope) : null,
+    tab?.id ?? null,
+    tab ? getDocumentSourceIdentity(tab.source) : null,
+  ]);
+}
+
 function buildDocumentKey(
   workspaceScope: WorkspaceScope | null,
   tab: WorkspaceTab | undefined,
   state: PersistedState,
 ) {
   return JSON.stringify([
-    workspaceScope ? getWorkspaceScopeStorageKey(workspaceScope) : null,
-    tab?.id ?? null,
-    tab ? getDocumentSourceIdentity(tab.source) : null,
+    buildDocumentIdentityKey(workspaceScope, tab),
     buildSchemaStateSignature(state),
   ]);
 }
@@ -182,6 +191,9 @@ export function useSchemaController({
     setRows,
   });
   const indexAdvisor = useIndexAdvisorFlow({
+    documentKey: buildDocumentIdentityKey(workspaceScope, activeWorkspaceTab),
+    getCurrentDocumentKey: () =>
+      buildDocumentIdentityKey(workspaceScope, useTabStore.getState().getActiveTab()),
     dbType,
     schemaName,
     tableName,

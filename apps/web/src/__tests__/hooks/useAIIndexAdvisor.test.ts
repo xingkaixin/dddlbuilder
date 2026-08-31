@@ -53,7 +53,7 @@ describe('useAIIndexAdvisor', () => {
       )
       .mockResolvedValueOnce(response('newer'));
     const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => useAIIndexAdvisor(), { wrapper });
+    const { result } = renderHook(() => useAIIndexAdvisor('workspace-1:users-draft'), { wrapper });
 
     let older!: Promise<AIIndexAdvisorResult | null>;
     act(() => {
@@ -72,5 +72,58 @@ describe('useAIIndexAdvisor', () => {
     });
 
     expect(result.current.result?.summary).toBe('newer');
+  });
+
+  it.each(['workspace-1:other-users-draft', 'workspace-2:users-draft'])(
+    'cancels advice when the document changes to %s',
+    async (nextDocumentKey) => {
+      let finish!: (value: AIIndexAdvisorResult) => void;
+      serviceMocks.requestAIIndexAdvice.mockReturnValueOnce(
+        new Promise<AIIndexAdvisorResult>((resolve) => {
+          finish = resolve;
+        }),
+      );
+      const { wrapper } = createQueryClientWrapper();
+      const { result, rerender } = renderHook(({ key }) => useAIIndexAdvisor(key), {
+        wrapper,
+        initialProps: { key: 'workspace-1:users-draft' },
+      });
+      let pending!: Promise<AIIndexAdvisorResult | null>;
+      act(() => {
+        pending = result.current.analyzeIndexes(request('email lookup'));
+      });
+      const signal = serviceMocks.requestAIIndexAdvice.mock.calls[0][1] as AbortSignal;
+      expect(result.current.isLoading).toBe(true);
+
+      rerender({ key: nextDocumentKey });
+
+      expect(signal.aborted).toBe(true);
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.result).toBeNull();
+      await act(async () => {
+        finish(response('old document'));
+        expect(await pending).toBeNull();
+      });
+      expect(result.current.result).toBeNull();
+      expect(result.current.error).toBeNull();
+    },
+  );
+
+  it('discards completed advice when leaving and returning to a document', async () => {
+    serviceMocks.requestAIIndexAdvice.mockResolvedValueOnce(response('users advice'));
+    const { wrapper } = createQueryClientWrapper();
+    const { result, rerender } = renderHook(({ key }) => useAIIndexAdvisor(key), {
+      wrapper,
+      initialProps: { key: 'workspace-1:users-draft' },
+    });
+    await act(async () => {
+      await result.current.analyzeIndexes(request('email lookup'));
+    });
+    expect(result.current.result?.summary).toBe('users advice');
+
+    rerender({ key: 'workspace-1:other-users-draft' });
+    expect(result.current.result).toBeNull();
+    rerender({ key: 'workspace-1:users-draft' });
+    expect(result.current.result).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useLayoutEffect, useState } from 'react';
 import type { AIIndexAdvisorRequest, AIIndexAdvisorResult } from '@ddlbuilder/shared-types';
 import { assertAIIndexAdvisorTarget, requestAIIndexAdvice } from '@/services/aiIndexAdvisorService';
 import i18n from '@/i18n';
@@ -6,13 +6,15 @@ import { useAIRequestAccess } from './useAIRequestAccess';
 import { useLatestRequest } from './useLatestRequest';
 
 interface AIIndexAdvisorState {
+  documentKey: string;
   result: AIIndexAdvisorResult | null;
   error: string | null;
 }
 
-export function useAIIndexAdvisor() {
+export function useAIIndexAdvisor(documentKey: string) {
   const requestAccess = useAIRequestAccess();
   const [state, setState] = useState<AIIndexAdvisorState>({
+    documentKey,
     result: null,
     error: null,
   });
@@ -22,7 +24,7 @@ export function useAIIndexAdvisor() {
     async (payload: AIIndexAdvisorRequest): Promise<AIIndexAdvisorResult | null> => {
       const accessError = requestAccess.getAccessError();
       if (accessError) {
-        setState({ result: null, error: accessError });
+        setState({ documentKey, result: null, error: accessError });
         throw new Error(accessError);
       }
 
@@ -30,17 +32,17 @@ export function useAIIndexAdvisor() {
         assertAIIndexAdvisorTarget(payload);
       } catch (error) {
         const message = (error as Error).message;
-        setState({ result: null, error: message });
+        setState({ documentKey, result: null, error: message });
         throw new Error(message);
       }
 
-      setState({ result: null, error: null });
+      setState({ documentKey, result: null, error: null });
 
       return run(async ({ signal, isCurrent, commitIfCurrent }) => {
         try {
           const result = await requestAIIndexAdvice(payload, signal);
           commitIfCurrent(() => {
-            setState({ result, error: null });
+            setState({ documentKey, result, error: null });
             requestAccess.refreshCreditsAfterSuccess();
           });
           return result;
@@ -51,23 +53,27 @@ export function useAIIndexAdvisor() {
             error,
             i18n.t('services.generationFailed'),
           );
-          setState({ result: null, error: message });
+          setState({ documentKey, result: null, error: message });
           throw new Error(message);
         }
       });
     },
-    [requestAccess, run],
+    [documentKey, requestAccess, run],
   );
 
   const clearAdvice = useCallback(() => {
     cancel();
-    setState({ result: null, error: null });
-  }, [cancel]);
+    setState({ documentKey, result: null, error: null });
+  }, [cancel, documentKey]);
+
+  useLayoutEffect(() => clearAdvice, [clearAdvice]);
+
+  const isCurrentDocument = state.documentKey === documentKey;
 
   return {
-    isLoading: isPending,
-    result: state.result,
-    error: state.error,
+    isLoading: isCurrentDocument && isPending,
+    result: isCurrentDocument ? state.result : null,
+    error: isCurrentDocument ? state.error : null,
     analyzeIndexes,
     clearAdvice,
   };
