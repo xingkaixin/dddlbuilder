@@ -22,6 +22,7 @@ export type ColumnTypeNode = {
   length?: number | string;
   scale?: number | string | null;
   suffix?: unknown[] | null;
+  expr?: unknown;
 };
 
 export type ColumnDefNode = {
@@ -36,6 +37,10 @@ export type ColumnDefNode = {
   auto_increment?: unknown;
   default_val?: { value?: unknown };
   on_update?: { value?: unknown };
+  generated?: unknown;
+  check?: unknown;
+  character_set?: unknown;
+  collate?: unknown;
 };
 
 export type OnActionNode = {

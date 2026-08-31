@@ -27,8 +27,17 @@ const CONSTRAINT_STARTERS = new Set([
   'collate',
 ]);
 
+// ENUM/SET 字面量中的逗号、括号和约束关键字属于参数内容。
+const QUOTED_TYPE_ARGUMENT = String.raw`'(?:''|\\.|[^'\\])*'|"(?:""|\\.|[^"\\])*"`;
+const TYPE_TOKENS = new RegExp(`(?:${QUOTED_TYPE_ARGUMENT}|\\S)+`, 'g');
+const TYPE_WITH_ARGS = new RegExp(
+  `^([a-z0-9_\\s]+?)(?:\\(((?:${QUOTED_TYPE_ARGUMENT}|[^'"\\)])*)\\))?(\\s+(?:with|without)\\s+time\\s+zone)?$`,
+  'i',
+);
+const TYPE_ARGUMENTS = new RegExp(`(?:${QUOTED_TYPE_ARGUMENT}|[^,])+`, 'g');
+
 const stripTrailingConstraints = (type: string): string => {
-  const tokens = type.trim().split(/\s+/);
+  const tokens = type.match(TYPE_TOKENS) ?? [];
   if (tokens.length === 0) return '';
 
   let end = tokens.length;
@@ -52,14 +61,12 @@ const parseUnsigned = (type: string): { clean: string; isUnsigned: boolean } => 
 
 // 辅助函数：提取类型名称和参数
 const extractTypeAndArgs = (type: string): { baseType: string; args: string[] } | null => {
-  const match = type.match(
-    /^([a-z0-9_\s]+?)(?:\(([^)]*)\))?(\s+(?:with|without)\s+time\s+zone)?$/i,
-  );
+  const match = type.match(TYPE_WITH_ARGS);
   if (!match) return null;
 
   const [, baseType, argString, suffix = ''] = match;
   const cleanBaseType = (baseType + suffix).trim().toLowerCase().replace(/\s+/g, ' ');
-  const args = argString ? argString.split(',').map((arg) => arg.trim()) : [];
+  const args = argString?.match(TYPE_ARGUMENTS)?.map((arg) => arg.trim()) ?? [];
 
   return { baseType: cleanBaseType, args };
 };

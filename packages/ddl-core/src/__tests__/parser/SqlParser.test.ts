@@ -650,7 +650,7 @@ describe('SqlParser', () => {
     expect(createdAtField?.defaultKind).toBe('current_timestamp');
   });
 
-  it('能够解析带 CHECK 约束的表', async () => {
+  it('拒绝无法保留的 CHECK 约束', async () => {
     const sql = `
     CREATE TABLE check_test (
       id INT PRIMARY KEY,
@@ -661,10 +661,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = await parser.parseAsync(sql, 'mysql');
-
-    expect(result.tableName).toBe('check_test');
-    expect(result.fields).toHaveLength(3);
+    await expect(parser.parseAsync(sql, 'mysql')).rejects.toThrow('暂不支持导入 CHECK 约束');
   });
 
   it('能够解析带外键约束的表', async () => {
@@ -707,7 +704,7 @@ describe('SqlParser', () => {
     expect(uniqueIndex).toBeDefined();
   });
 
-  it('能够解析带 GENERATED ALWAYS AS 的列', async () => {
+  it('拒绝无法保留的 GENERATED 生成列', async () => {
     const sql = `
     CREATE TABLE generated_test (
       id INT PRIMARY KEY,
@@ -718,13 +715,10 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = await parser.parseAsync(sql, 'mysql');
-
-    expect(result.tableName).toBe('generated_test');
-    expect(result.fields.length).toBeGreaterThanOrEqual(3);
+    await expect(parser.parseAsync(sql, 'mysql')).rejects.toThrow('暂不支持导入 GENERATED 生成列');
   });
 
-  it('能够解析带 COLLATE 的字符列', async () => {
+  it('拒绝无法保留的列级 COLLATE', async () => {
     const sql = `
     CREATE TABLE collate_test (
       id INT PRIMARY KEY,
@@ -734,13 +728,10 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = await parser.parseAsync(sql, 'mysql');
-
-    expect(result.tableName).toBe('collate_test');
-    expect(result.fields).toHaveLength(3);
+    await expect(parser.parseAsync(sql, 'mysql')).rejects.toThrow('暂不支持导入 列级 COLLATE');
   });
 
-  it('能够解析带 CHARACTER SET 的列', async () => {
+  it('拒绝无法保留的列级 CHARACTER SET', async () => {
     const sql = `
     CREATE TABLE charset_test (
       id INT PRIMARY KEY,
@@ -750,13 +741,12 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = await parser.parseAsync(sql, 'mysql');
-
-    expect(result.tableName).toBe('charset_test');
-    expect(result.fields).toHaveLength(3);
+    await expect(parser.parseAsync(sql, 'mysql')).rejects.toThrow(
+      '暂不支持导入 列级 CHARACTER SET',
+    );
   });
 
-  it('能够解析带 ZEROFILL 的数字列', async () => {
+  it('拒绝无法保留的 ZEROFILL', async () => {
     const sql = `
     CREATE TABLE zerofill_test (
       id INT PRIMARY KEY,
@@ -766,10 +756,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = await parser.parseAsync(sql, 'mysql');
-
-    expect(result.tableName).toBe('zerofill_test');
-    expect(result.fields).toHaveLength(3);
+    await expect(parser.parseAsync(sql, 'mysql')).rejects.toThrow('暂不支持导入 ZEROFILL');
   });
 
   it('能够解析带 AUTO_INCREMENT 和起始值的列', async () => {

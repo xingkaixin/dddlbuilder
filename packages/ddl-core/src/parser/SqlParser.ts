@@ -433,7 +433,11 @@ export class SqlParser {
       return parser.astify(sql, opt);
     } catch (error) {
       if (!isParserSyntaxError(error)) throw error;
-      throw new SqlParseError(error.message, error);
+      throw new SqlParseError(
+        '无法解析 SQL，请检查语法或数据库类型是否正确。',
+        error.message,
+        error,
+      );
     }
   }
 

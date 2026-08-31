@@ -27,6 +27,7 @@ import {
   normalizeLiteral,
 } from './normalizers.js';
 import { unquoteSqlIdentifier } from '../utils/sqlIdentifiers.js';
+import { SqlParseError } from './SqlParseError.js';
 
 const MYSQL_ENGINE_NAME_MAP: Record<string, string> = {
   innodb: 'InnoDB',
@@ -35,6 +36,13 @@ const MYSQL_ENGINE_NAME_MAP: Record<string, string> = {
   archive: 'ARCHIVE',
   csv: 'CSV',
 };
+
+const UNSUPPORTED_COLUMN_ATTRIBUTES = [
+  ['generated', 'GENERATED 生成列'],
+  ['check', 'CHECK 约束'],
+  ['character_set', '列级 CHARACTER SET'],
+  ['collate', '列级 COLLATE'],
+] as const;
 
 const generatedIdentifierPart = (name: string) =>
   unquoteSqlIdentifier(name).replace(/[^\p{L}\p{N}_$]+/gu, '_');
@@ -153,8 +161,11 @@ function mapColumnToField(
   colDef: ColumnDefNode,
   serializeExpression: (value: unknown) => string,
 ): NormalizedField {
+  for (const [attribute, feature] of UNSUPPORTED_COLUMN_ATTRIBUTES) {
+    if (colDef[attribute]) throw SqlParseError.unsupported(feature);
+  }
   const name = normalizeColumnName(colDef.column);
-  const typeStr = buildTypeString(colDef.definition);
+  const typeStr = buildTypeString(colDef.definition, serializeExpression);
 
   // Comment
   let comment = '';
@@ -334,6 +345,8 @@ export function parseCreateTable(
           pushIndex(result, indexName, fields, 'unique_constraint');
         } else if (def.constraint_type?.toLowerCase() === 'foreign key') {
           pushForeignKey(result, def);
+        } else if (def.constraint_type?.toLowerCase() === 'check') {
+          throw SqlParseError.unsupported('CHECK 约束');
         }
       } else if (def.resource === 'index') {
         const fields = buildIndexFields(def.definition || []);

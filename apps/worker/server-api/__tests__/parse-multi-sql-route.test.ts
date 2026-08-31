@@ -129,7 +129,45 @@ describe('parse-multi-sql route', () => {
     const payload = await response.json();
     expect(response.status).toBe(400);
     expect(payload).toMatchObject({
-      error: 'SQL parse failed',
+      error: expect.stringMatching(/expected|syntax/i),
+      code: 'SQL_PARSE_FAILED',
+      requestId: expect.any(String),
+    });
+  });
+
+  it('全部定义解析失败时应展示首个具体失败原因并保留失败列表', async () => {
+    const failed = [
+      {
+        statement: 'CREATE TABLE totals (total INT GENERATED ALWAYS AS (1) STORED)',
+        error: '暂不支持导入 生成列，无法完整保留该定义。',
+      },
+      {
+        statement: 'CREATE TABLE broken (id INT, missing)',
+        error: '无法解析 SQL，请检查语法或数据库类型是否正确。',
+      },
+    ];
+    vi.spyOn(SqlParser.prototype, 'parseMultiAsync').mockResolvedValueOnce({
+      results: [],
+      failed,
+    });
+
+    const response = await app.fetch(
+      createRequest('/api/parse-multi-sql', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sql: failed.map(({ statement }) => statement).join(';'),
+          dbType: 'mysql',
+        }),
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      results: [],
+      failed,
+      error: '暂不支持导入 生成列，无法完整保留该定义。',
       code: 'SQL_PARSE_FAILED',
       requestId: expect.any(String),
     });
@@ -150,9 +188,11 @@ describe('parse-multi-sql route', () => {
     );
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toMatchObject({
+    const payload = await response.json();
+    expect(payload).toMatchObject({
       error: 'Internal server error',
       code: 'INTERNAL_ERROR',
     });
+    expect(JSON.stringify(payload)).not.toContain('unexpected parser failure');
   });
 });

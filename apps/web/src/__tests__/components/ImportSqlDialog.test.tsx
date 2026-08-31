@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@/__tests__/utils/test-utils';
 import { ImportSqlDialog } from '@/components/ImportSqlDialog';
 import { requestMultiSqlParse, requestSqlParse } from '@/services/sqlParseService';
+import { ApiError } from '@/services/apiError';
 
 vi.mock('@/services/sqlParseService', () => ({
   requestSqlParse: vi.fn(),
@@ -144,21 +145,67 @@ describe('ImportSqlDialog', () => {
     expect(mockedRequestSqlParse).not.toHaveBeenCalled();
   });
 
-  it('应使用统一友好文案展示解析失败信息', async () => {
-    mockedRequestSqlParse.mockRejectedValue(new Error('parser-stack-detail-should-not-be-exposed'));
+  it.each([
+    ['workspace', new Error('parser-stack-detail-should-not-be-exposed')],
+    ['saved', new Error('parser-stack-detail-should-not-be-exposed')],
+    ['workspace', new ApiError('parser-stack-detail-should-not-be-exposed', 400, 'INTERNAL_ERROR')],
+    ['saved', new ApiError('parser-stack-detail-should-not-be-exposed', 500, 'SQL_PARSE_FAILED')],
+  ] as const)('%s 模式应使用统一友好文案屏蔽未知解析错误 %s', async (mode, error) => {
+    mockedRequestSqlParse.mockRejectedValue(error);
+    mockedRequestMultiSqlParse.mockRejectedValue(error);
     render(
-      <ImportSqlDialog currentDbType="mysql" onImport={vi.fn()} open onOpenChange={vi.fn()} />,
+      <ImportSqlDialog
+        currentDbType="mysql"
+        onImport={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
+        savedTables={[]}
+        folderTree={[]}
+        onBatchImport={vi.fn()}
+      />,
     );
-    const textarea = await screen.findByLabelText('SQL 内容');
-    fireEvent.change(textarea, {
+    if (mode === 'saved') fireEvent.click(await screen.findByLabelText('保存为已保存表'));
+    fireEvent.change(screen.getByLabelText('SQL 内容'), {
       target: { value: 'CREATE TABLE demo (id INT);' },
     });
     fireEvent.click(screen.getByRole('button', { name: '下一步' }));
 
-    const errorText = await screen.findByText('SQL 解析失败，请检查 SQL 语法后重试。');
-    expect(errorText).toBeInTheDocument();
+    expect(await screen.findByText('SQL 解析失败，请检查 SQL 语法后重试。')).toBeInTheDocument();
     expect(screen.queryByText('parser-stack-detail-should-not-be-exposed')).toBeNull();
   });
+
+  it.each(['workspace', 'saved'] as const)(
+    '%s 模式应展示不支持定义的具体原因并阻止导入',
+    async (mode) => {
+      const message = '暂不支持导入 生成列，无法完整保留该定义。';
+      const error = new ApiError(message, 400, 'SQL_PARSE_FAILED');
+      mockedRequestSqlParse.mockRejectedValue(error);
+      mockedRequestMultiSqlParse.mockRejectedValue(error);
+      const onImport = vi.fn();
+      const onBatchImport = vi.fn();
+      render(
+        <ImportSqlDialog
+          currentDbType="mysql"
+          onImport={onImport}
+          open
+          onOpenChange={vi.fn()}
+          savedTables={[]}
+          folderTree={[]}
+          onBatchImport={onBatchImport}
+        />,
+      );
+      if (mode === 'saved') fireEvent.click(await screen.findByLabelText('保存为已保存表'));
+      fireEvent.change(screen.getByLabelText('SQL 内容'), {
+        target: { value: 'CREATE TABLE totals (total INT GENERATED ALWAYS AS (1) STORED);' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: '确认导入' })).toBeNull();
+      expect(onImport).not.toHaveBeenCalled();
+      expect(onBatchImport).not.toHaveBeenCalled();
+    },
+  );
 
   it('应在正常输入时继续走解析流程并进入预览', async () => {
     mockedRequestSqlParse.mockResolvedValue({

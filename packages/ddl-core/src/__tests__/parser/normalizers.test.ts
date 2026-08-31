@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { Parser } from 'node-sql-parser';
 import {
   buildIndexFields,
-  buildTypeString,
+  buildTypeString as serializeType,
   extractFunctionName,
   normalizeColumnName,
   normalizeLiteral,
 } from '../../parser/normalizers.js';
+import type { ColumnTypeNode } from '../../parser/astTypes.js';
+
+const parser = new Parser();
+const buildTypeString = (definition: ColumnTypeNode) =>
+  serializeType(definition, (expression) => parser.exprToSQL(expression));
 
 describe('sql-parser normalizers', () => {
   describe('normalizeColumnName', () => {
@@ -30,7 +36,7 @@ describe('sql-parser normalizers', () => {
       expect(buildTypeString({ dataType: 'NUMERIC', length: 10, scale: 2 })).toBe('NUMERIC(10,2)');
       expect(buildTypeString({ dataType: 'DECIMAL', length: 8, scale: 'null' })).toBe('DECIMAL(8)');
       expect(buildTypeString({ dataType: 'TIMESTAMP', suffix: ['WITH TIME ZONE'] })).toBe(
-        'TIMESTAMP(WITH TIME ZONE)',
+        'TIMESTAMP WITH TIME ZONE',
       );
       expect(buildTypeString({ dataType: 'DATE', suffix: [null, 'null'] })).toBe('DATE');
       expect(buildTypeString({ dataType: 'TEXT' })).toBe('TEXT');

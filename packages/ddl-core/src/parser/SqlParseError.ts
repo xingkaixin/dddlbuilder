@@ -1,9 +1,13 @@
 export class SqlParseError extends Error {
   readonly parserMessage: string;
 
-  constructor(parserMessage: string, cause?: unknown) {
-    super('无法解析 SQL，请检查语法或数据库类型是否正确。', { cause });
+  constructor(message: string, parserMessage = message, cause?: unknown) {
+    super(message, { cause });
     this.name = 'SqlParseError';
     this.parserMessage = parserMessage;
+  }
+
+  static unsupported(feature: string): SqlParseError {
+    return new SqlParseError(`暂不支持导入 ${feature}，无法完整保留该定义。`);
   }
 }

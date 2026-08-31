@@ -5,6 +5,7 @@ import {
   type ColumnListNode,
   type ColumnTypeNode,
 } from './astTypes.js';
+import { SqlParseError } from './SqlParseError.js';
 
 export function normalizeColumnName(column: unknown): string {
   if (column === undefined || column === null) return '';
@@ -26,30 +27,29 @@ export function normalizeColumnName(column: unknown): string {
   return stringifyAstValue(column);
 }
 
-export function buildTypeString(definition: ColumnTypeNode | undefined): string {
+export function buildTypeString(
+  definition: ColumnTypeNode | undefined,
+  serializeExpression: (value: unknown) => string,
+): string {
   const baseType = definition?.dataType || '';
   const length = definition?.length;
   const scale = definition?.scale;
-  const suffix = definition?.suffix;
+  const suffix = (definition?.suffix ?? [])
+    .filter((value) => value !== null && value !== undefined)
+    .map(stringifyAstValue)
+    .filter((value) => value.toLowerCase() !== 'null')
+    .join(' ');
+  if (/\bZEROFILL\b/i.test(suffix)) throw SqlParseError.unsupported('ZEROFILL');
+
   const normalizedScale =
     scale === null || scale === undefined || scale === 'null' ? undefined : scale;
-
-  if (length && normalizedScale !== undefined) {
-    return `${baseType}(${length},${normalizedScale})`;
+  let parameters = '';
+  if (definition?.expr) {
+    parameters = serializeExpression(definition.expr);
+  } else if (length !== undefined && length !== null) {
+    parameters = `(${length}${normalizedScale === undefined ? '' : `,${normalizedScale}`})`;
   }
-  if (length) {
-    return `${baseType}(${length})`;
-  }
-  if (Array.isArray(suffix) && suffix.length > 0) {
-    const suffixValues = suffix.filter(
-      (v) => v !== null && v !== undefined && stringifyAstValue(v).toLowerCase() !== 'null',
-    );
-    if (suffixValues.length > 0) {
-      return `${baseType}(${suffixValues.join(',')})`;
-    }
-    return baseType;
-  }
-  return baseType;
+  return `${baseType}${parameters}${suffix ? ` ${suffix}` : ''}`;
 }
 
 export function extractFunctionName(val: unknown): string | null {

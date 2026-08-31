@@ -81,7 +81,7 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
       return c.json(withMeta(c, { result }));
     } catch (error) {
       if (error instanceof SqlParseError) {
-        return errorResponse(c, 400, 'SQL parse failed', 'SQL_PARSE_FAILED');
+        return errorResponse(c, 400, error.message, 'SQL_PARSE_FAILED');
       }
       throw error;
     }
@@ -107,7 +107,7 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
         {
           results,
           failed,
-          error: 'SQL parse failed',
+          error: failed[0].error,
           code: 'SQL_PARSE_FAILED',
           requestId: getRequestId(c),
         },

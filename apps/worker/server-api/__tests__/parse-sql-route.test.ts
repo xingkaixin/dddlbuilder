@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SqlParser } from '@ddlbuilder/ddl-core/parser';
+import { SqlParseError, SqlParser } from '@ddlbuilder/ddl-core/parser';
 import app from '../../api/index';
 import type { ApiEnv } from '../lib/context.js';
 
@@ -107,10 +107,34 @@ describe('parse-sql route', () => {
     expect(response.status).toBe(400);
     const payload = await response.json();
     expect(payload).toMatchObject({
-      error: 'SQL parse failed',
+      error: '无法解析 SQL，请检查语法或数据库类型是否正确。',
       code: 'SQL_PARSE_FAILED',
       requestId: expect.any(String),
     });
+  });
+
+  it('不支持的定义应返回安全原因且不泄露解析器诊断', async () => {
+    vi.spyOn(SqlParser.prototype, 'parseAsync').mockRejectedValueOnce(
+      new SqlParseError('暂不支持导入 生成列，无法完整保留该定义。', 'internal parser diagnostic'),
+    );
+
+    const response = await app.fetch(
+      createRequest('/api/parse-sql', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sql: 'CREATE TABLE users (id INT)', dbType: 'mysql' }),
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(400);
+    const payload = await response.json();
+    expect(payload).toMatchObject({
+      error: '暂不支持导入 生成列，无法完整保留该定义。',
+      code: 'SQL_PARSE_FAILED',
+      requestId: expect.any(String),
+    });
+    expect(JSON.stringify(payload)).not.toContain('internal parser diagnostic');
   });
 
   it('解析器内部异常时应返回 INTERNAL_ERROR', async () => {
@@ -128,9 +152,11 @@ describe('parse-sql route', () => {
     );
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toMatchObject({
+    const payload = await response.json();
+    expect(payload).toMatchObject({
       error: 'Internal server error',
       code: 'INTERNAL_ERROR',
     });
+    expect(JSON.stringify(payload)).not.toContain('unexpected parser failure');
   });
 });

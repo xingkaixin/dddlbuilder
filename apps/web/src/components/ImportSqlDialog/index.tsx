@@ -15,6 +15,7 @@ import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import { useToast } from '@/hooks/useToast';
 import { useLatestRequest } from '@/hooks/useLatestRequest';
 import { requestSqlParse, requestMultiSqlParse } from '@/services/sqlParseService';
+import { ApiError } from '@/services/apiError';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { parseExcelImport, parseStructuredImportText } from '@/utils/structuredImportParser';
 import { ArrowRight, Check } from '@/components/icons';
@@ -44,6 +45,21 @@ interface ImportSqlDialogProps {
   onBatchImportComplete?: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+function getValidationErrorMessage(
+  error: unknown,
+  sourceType: ImportSourceType,
+  fallback: string,
+): string {
+  if (
+    error instanceof Error &&
+    (sourceType !== 'sql' ||
+      (error instanceof ApiError && error.status === 400 && error.code === 'SQL_PARSE_FAILED'))
+  ) {
+    return error.message;
+  }
+  return fallback;
 }
 
 export function ImportSqlDialog({
@@ -224,12 +240,7 @@ export function ImportSqlDialog({
             type: 'validation_failed',
             result: {
               success: false,
-              error:
-                sourceType === 'sql'
-                  ? t('importSql.sqlParseFailed')
-                  : err instanceof Error
-                    ? err.message
-                    : t('importSql.sqlParseFailed'),
+              error: getValidationErrorMessage(err, sourceType, t('importSql.sqlParseFailed')),
             },
           }),
         );
@@ -275,7 +286,7 @@ export function ImportSqlDialog({
             type: 'validation_failed',
             result: {
               success: false,
-              error: err instanceof Error ? err.message : t('importSql.sqlParseFailed'),
+              error: getValidationErrorMessage(err, sourceType, t('importSql.sqlParseFailed')),
             },
           }),
         );
