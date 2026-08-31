@@ -115,7 +115,7 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(sql).toContainText('CREATE UNIQUE INDEX idx_userid ON users (userid ASC)');
   });
 
-  test('场景：编辑主键字段名同步更新自引用外键', async ({ page }) => {
+  test('场景：编辑和清空主键字段名同步维护自引用外键', async ({ page }) => {
     await page.route('**/api/parse-sql', (route) =>
       route.fulfill({
         json: {
@@ -174,6 +174,19 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(sql).toContainText('CREATE TABLE staff');
     await expect(sql).toContainText('REFERENCES staff (employee_id)');
     await expect(sql).not.toContainText('REFERENCES employees');
+
+    await nameCell.dblclick();
+    await nameCell.locator('input').fill('');
+    await page.locator('#table-name').click();
+    await expect(sql).not.toContainText('PRIMARY KEY');
+    await expect(sql).not.toContainText('FOREIGN KEY');
+
+    await nameCell.dblclick();
+    await nameCell.locator('input').fill('staff_id');
+    await page.keyboard.press('Enter');
+    await expect(sql).toContainText(/staff_id\s+INT/);
+    await expect(sql).not.toContainText('employee_id');
+    await expect(sql).not.toContainText('REFERENCES staff');
   });
 
   test('场景：重新导入已有表不删除重建字段', async ({ page }) => {

@@ -51,26 +51,28 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
   const key = (name: string) => getSqlIdentifierKey(name, state.dbType);
   const previousNames = new Map(state.rows.map((row) => [row.id, row.fieldName.trim()]));
   const renames = new Map<string, string>();
+  const clearedNames: string[] = [];
   for (const row of rows) {
     if (!row.id) continue;
     const oldName = previousNames.get(row.id);
     const newName = row.fieldName.trim();
+    if (oldName && !newName) clearedNames.push(oldName);
     if (oldName && newName && oldName !== newName) renames.set(key(oldName), newName);
   }
-  if (renames.size === 0) return { ...state, rows };
+  const document = removeFieldReferences({ ...state, rows }, clearedNames);
+  if (renames.size === 0) return document;
 
   const rename = (name: string) => renames.get(key(name)) ?? name;
   const renameIndexField = <T extends { name: string }>(field: T): T => {
     const name = rename(field.name);
     return name === field.name ? field : { ...field, name };
   };
-  const tableMiscConfig = state.tableMiscConfig;
+  const tableMiscConfig = document.tableMiscConfig;
   const partitions = tableMiscConfig?.partitions;
   const clustering = partitions?.clustering;
   return {
-    ...state,
-    rows,
-    indexes: state.indexes.map((index) => {
+    ...document,
+    indexes: document.indexes.map((index) => {
       const indexRenames = new Map(
         index.fields
           .filter((field) => renames.has(key(field.name)))
@@ -87,34 +89,34 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
         fields: index.fields.map(renameIndexField),
       };
     }),
-    foreignKeys: state.foreignKeys?.map((foreignKey) => ({
+    foreignKeys: document.foreignKeys?.map((foreignKey) => ({
       ...foreignKey,
       fields: foreignKey.fields.map(rename),
       refFields: referencesCurrentTable(state, foreignKey)
         ? foreignKey.refFields.map(rename)
         : foreignKey.refFields,
     })),
-    mysqlPartitionConfig: state.mysqlPartitionConfig
+    mysqlPartitionConfig: document.mysqlPartitionConfig
       ? {
-          ...state.mysqlPartitionConfig,
-          columns: state.mysqlPartitionConfig.columns.map(
+          ...document.mysqlPartitionConfig,
+          columns: document.mysqlPartitionConfig.columns.map(
             (column) =>
               renames.get(key(column)) ?? renameSqlExpressionFields(column, renames, state.dbType),
           ),
-          expression: state.mysqlPartitionConfig.expression
+          expression: document.mysqlPartitionConfig.expression
             ? renameSqlExpressionFields(
-                state.mysqlPartitionConfig.expression,
+                document.mysqlPartitionConfig.expression,
                 renames,
                 state.dbType,
               )
             : undefined,
         }
       : undefined,
-    citusShardingConfig: state.citusShardingConfig
+    citusShardingConfig: document.citusShardingConfig
       ? {
-          ...state.citusShardingConfig,
-          distributionColumn: state.citusShardingConfig.distributionColumn
-            ? rename(state.citusShardingConfig.distributionColumn)
+          ...document.citusShardingConfig,
+          distributionColumn: document.citusShardingConfig.distributionColumn
+            ? rename(document.citusShardingConfig.distributionColumn)
             : undefined,
         }
       : undefined,
@@ -135,16 +137,18 @@ export function removeFieldsFromDocument(
   state: PersistedState,
   shouldRemove: (row: FieldRow, index: number) => boolean,
 ): PersistedState {
-  const removedFieldNames = state.rows
-    .filter(shouldRemove)
-    .map((row) => getSqlIdentifierKey(row.fieldName, state.dbType))
-    .filter(Boolean);
+  const removedFieldNames = state.rows.filter(shouldRemove).map((row) => row.fieldName);
   const remainingRows = state.rows.filter((row, index) => !shouldRemove(row, index));
   const rows = remainingRows.length > 0 ? remainingRows : [createEmptyRow()];
+  return removeFieldReferences({ ...state, rows }, removedFieldNames);
+}
 
-  if (removedFieldNames.length === 0) return { ...state, rows };
-
+function removeFieldReferences(state: PersistedState, fieldNames: string[]): PersistedState {
+  const removedFieldNames = fieldNames
+    .map((name) => getSqlIdentifierKey(name, state.dbType))
+    .filter(Boolean);
   const removedNames = new Set(removedFieldNames);
+  if (removedNames.size === 0) return state;
   const matchesRemovedField = (name: string) =>
     removedNames.has(getSqlIdentifierKey(name, state.dbType));
   const referencesRemovedField = (expression: string) =>
@@ -196,7 +200,6 @@ export function removeFieldsFromDocument(
 
   return {
     ...state,
-    rows,
     indexes: state.indexes.filter(
       (index) => !index.fields.some((field) => matchesRemovedField(field.name)),
     ),

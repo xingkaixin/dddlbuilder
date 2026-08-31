@@ -231,6 +231,47 @@ describe('editor document references', () => {
     expect(ddl).not.toContain('REFERENCES users (id)');
   });
 
+  it('clears dependencies when a field name is emptied before being entered again', () => {
+    useEditorStore.getState().replaceDocument(
+      createState({
+        foreignKeys: [
+          { ...parentForeignKey },
+          { ...parentForeignKey, id: 'external', name: 'fk_account', refTable: 'accounts' },
+        ],
+        mysqlPartitionConfig: {
+          enabled: true,
+          type: 'HASH',
+          columns: ['id'],
+        },
+      }),
+    );
+    useEditorStore
+      .getState()
+      .setRows((rows) => rows.map((row) => (row.id === 'id' ? { ...row, fieldName: '' } : row)));
+    const cleared = useEditorStore.getState();
+    expect(cleared.rows[0]).toMatchObject({ id: 'id', fieldName: '' });
+    expect(cleared.indexes).toEqual([]);
+    expect(cleared.foreignKeys.map((foreignKey) => foreignKey.id)).toEqual(['external']);
+    expect(cleared.mysqlPartitionConfig).toMatchObject({ enabled: false, columns: [] });
+
+    cleared.setRows((rows) =>
+      rows.map((row) => (row.id === 'id' ? { ...row, fieldName: 'user_id' } : row)),
+    );
+    const state = useEditorStore.getState();
+    const ddl = buildDDL({
+      dbType: state.dbType,
+      tableName: state.tableName,
+      tableComment: '',
+      fields: buildNormalizedFields(state.rows),
+      indexes: state.indexes,
+      foreignKeys: state.foreignKeys,
+    });
+    expect(ddl).toContain('user_id');
+    expect(ddl).not.toContain('PRIMARY KEY');
+    expect(ddl).not.toContain('REFERENCES users');
+    expect(ddl).toContain('REFERENCES accounts (id)');
+  });
+
   it.each([
     { schemaName: 'audit', refSchema: 'audit', refTable: 'users', self: true },
     { schemaName: 'audit', refSchema: undefined, refTable: 'audit.users', self: true },
