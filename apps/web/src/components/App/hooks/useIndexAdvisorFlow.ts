@@ -14,8 +14,8 @@ import {
   getIdentifierNameMaxLength as getIndexNameMaxLength,
 } from '@ddlbuilder/ddl-core';
 import { insertIndexDefinition } from '@/stores/indexDefinitionMutations';
+import { buildNormalizedFields, useEditorStore } from '@/stores';
 import { useTranslation } from 'react-i18next';
-import type { BuilderTab } from '@/utils/tabUtils';
 
 interface UseIndexAdvisorFlowParams {
   dbType: DatabaseType;
@@ -24,10 +24,6 @@ interface UseIndexAdvisorFlowParams {
   tableComment: string;
   fields: NormalizedField[];
   indexes: IndexDefinition[];
-  setIndexes: (
-    indexes: IndexDefinition[] | ((current: IndexDefinition[]) => IndexDefinition[]),
-  ) => void;
-  setActiveTab: (tab: BuilderTab) => void;
 }
 
 const hasSameIndexFields = (left: IndexField[], right: IndexField[]) =>
@@ -65,8 +61,6 @@ export function useIndexAdvisorFlow({
   tableComment,
   fields,
   indexes,
-  setIndexes,
-  setActiveTab,
 }: UseIndexAdvisorFlowParams) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -141,10 +135,14 @@ export function useIndexAdvisorFlow({
 
   const applyRecommendation = useCallback(
     (recommendation: AIIndexAdvisorRecommendation) => {
-      if (!recommendation.index) return;
+      const recommendedIndex = recommendation.index;
+      if (!recommendedIndex) return;
 
-      const availableFieldNames = new Set(fields.map((field) => field.name));
-      const recommendedFields = recommendation.index.fields;
+      const current = useEditorStore.getState();
+      const availableFieldNames = new Set(
+        buildNormalizedFields(current.rows).map((field) => field.name),
+      );
+      const recommendedFields = recommendedIndex.fields;
       if (
         recommendedFields.length === 0 ||
         recommendedFields.some((field) => !availableFieldNames.has(field.name))
@@ -153,7 +151,13 @@ export function useIndexAdvisorFlow({
         return;
       }
 
-      if (indexes.some((index) => hasSameIndexFields(index.fields, recommendedFields))) {
+      if (
+        current.indexes.some(
+          (index) =>
+            hasSameIndexFields(index.fields, recommendedFields) &&
+            (!recommendedIndex.unique || index.kind !== 'index'),
+        )
+      ) {
         showToast(t('aiIndexAdvisor.indexExists'));
         return;
       }
@@ -161,23 +165,26 @@ export function useIndexAdvisorFlow({
       const nextIndex: IndexDefinition = {
         id: createEntityId(),
         name: buildIndexName(
-          recommendation.index.unique ? 'uk' : 'idx',
-          tableName.trim() || 'current_table',
+          recommendedIndex.unique ? 'uk' : 'idx',
+          current.tableName.trim() || 'current_table',
           recommendedFields.map((field) => field.name),
-          getIndexNameMaxLength(dbType),
+          getIndexNameMaxLength(current.dbType),
         ),
         fields: recommendedFields,
-        kind: recommendation.index.unique ? 'unique_index' : 'index',
+        kind: recommendedIndex.unique ? 'unique_index' : 'index',
       };
 
-      setIndexes((current) => {
-        const result = insertIndexDefinition(current, nextIndex);
-        return result.ok ? result.indexes : current;
-      });
-      setActiveTab('indexes');
+      const writeResult = insertIndexDefinition(current.indexes, nextIndex);
+      if (!writeResult.ok) {
+        showToast(t('indexPanel.duplicateName'));
+        return;
+      }
+
+      current.setIndexes(writeResult.indexes);
+      current.setActiveTab('indexes');
       showToast(t('aiIndexAdvisor.indexApplied'));
     },
-    [dbType, fields, indexes, setActiveTab, setIndexes, showToast, t, tableName],
+    [showToast, t],
   );
 
   return {

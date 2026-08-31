@@ -1,10 +1,16 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types';
+import type {
+  AIIndexAdvisorRecommendation,
+  IndexDefinition,
+  NormalizedField,
+} from '@ddlbuilder/shared-types';
 import {
   buildSuggestedIndexQuery,
   useIndexAdvisorFlow,
 } from '@/components/App/hooks/useIndexAdvisorFlow';
+import { useEditorStore } from '@/stores/editorStore';
+import { createEmptyRow } from '@/utils/helpers';
 
 const mocks = vi.hoisted(() => ({
   analyzeIndexes: vi.fn(),
@@ -57,23 +63,36 @@ const index: IndexDefinition = {
 };
 
 const renderFlow = (overrides: Partial<Parameters<typeof useIndexAdvisorFlow>[0]> = {}) => {
-  const setIndexes = vi.fn();
-  const setActiveTab = vi.fn();
-  const hook = renderHook(() =>
-    useIndexAdvisorFlow({
-      dbType: 'mysql',
-      schemaName: 'public',
-      tableName: 'users',
-      tableComment: 'Users',
-      fields,
-      indexes: [],
-      setIndexes,
-      setActiveTab,
-      ...overrides,
-    }),
-  );
-  return { ...hook, setIndexes, setActiveTab };
+  const params: Parameters<typeof useIndexAdvisorFlow>[0] = {
+    dbType: 'mysql',
+    schemaName: 'public',
+    tableName: 'users',
+    tableComment: 'Users',
+    fields,
+    indexes: [],
+    ...overrides,
+  };
+  useEditorStore.setState({
+    dbType: params.dbType,
+    tableName: params.tableName,
+    rows: params.fields.map((field) => ({
+      ...createEmptyRow(),
+      fieldName: field.name,
+      fieldType: field.type,
+    })),
+    indexes: params.indexes,
+  });
+  return renderHook(() => useIndexAdvisorFlow(params));
 };
+
+const emailRecommendation = (unique: boolean): AIIndexAdvisorRecommendation => ({
+  id: 'email',
+  category: 'missing_index',
+  title: 'Email lookup',
+  rationale: '',
+  confidence: 'high',
+  index: { name: 'idx_email', fields: [{ name: 'email', direction: 'ASC' }], unique },
+});
 
 describe('buildSuggestedIndexQuery', () => {
   it('builds a qualified query around identifier and timestamp fields', () => {
@@ -97,6 +116,7 @@ describe('buildSuggestedIndexQuery', () => {
 describe('useIndexAdvisorFlow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useEditorStore.getState().resetDocument();
     mocks.analyzeIndexes.mockResolvedValue(null);
   });
 
@@ -154,7 +174,7 @@ describe('useIndexAdvisorFlow', () => {
   it.each([{ names: [] }, { names: ['unknown'] }, { names: ['tenant_id', 'email'] }])(
     'rejects incomplete index fields: $names',
     ({ names }) => {
-      const { result, setIndexes, setActiveTab } = renderFlow();
+      const { result } = renderFlow();
       act(() =>
         result.current.applyRecommendation({
           id: 'missing',
@@ -163,46 +183,119 @@ describe('useIndexAdvisorFlow', () => {
           rationale: '',
           confidence: 'medium',
           index: {
+            name: 'invalid_index',
             fields: names.map((name) => ({ name, direction: 'ASC' })),
             unique: true,
           },
         }),
       );
-      expect(setIndexes).not.toHaveBeenCalled();
-      expect(setActiveTab).not.toHaveBeenCalled();
+      expect(useEditorStore.getState().indexes).toEqual([]);
+      expect(useEditorStore.getState().activeTab).toBe('fields');
       expect(mocks.showToast).toHaveBeenCalledWith('aiIndexAdvisor.invalidIndexFields');
     },
   );
 
-  it('rejects an existing index', () => {
-    const duplicate = renderFlow({ indexes: [index] });
-    act(() =>
-      duplicate.result.current.applyRecommendation({
-        id: 'duplicate',
-        category: 'performance',
-        title: 'Duplicate',
-        rationale: '',
-        priority: 'medium',
-        index: {
-          fields: [{ name: 'email', direction: 'ASC' }],
-          unique: false,
-        },
+  it.each(['index', 'unique_index', 'unique_constraint', 'primary'] as const)(
+    'uses an existing %s for an ordinary recommendation',
+    (kind) => {
+      const existing = { ...index, kind };
+      const { result } = renderFlow({ indexes: [existing] });
+
+      act(() => result.current.applyRecommendation(emailRecommendation(false)));
+
+      expect(useEditorStore.getState().indexes).toEqual([existing]);
+      expect(useEditorStore.getState().activeTab).toBe('fields');
+      expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith('aiIndexAdvisor.indexExists');
+    },
+  );
+
+  it.each(['unique_index', 'unique_constraint', 'primary'] as const)(
+    'uses an existing %s for a unique recommendation',
+    (kind) => {
+      const existing = { ...index, kind };
+      const { result } = renderFlow({ indexes: [existing] });
+
+      act(() => result.current.applyRecommendation(emailRecommendation(true)));
+
+      expect(useEditorStore.getState().indexes).toEqual([existing]);
+      expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith('aiIndexAdvisor.indexExists');
+    },
+  );
+
+  it('adds unique enforcement when only an ordinary index exists', () => {
+    const { result } = renderFlow({ indexes: [index] });
+
+    act(() => result.current.applyRecommendation(emailRecommendation(true)));
+
+    expect(useEditorStore.getState().indexes).toEqual([
+      index,
+      expect.objectContaining({
+        name: 'uk_users_email',
+        kind: 'unique_index',
+        fields: index.fields,
       }),
-    );
-    expect(mocks.showToast).toHaveBeenCalledWith('aiIndexAdvisor.indexExists');
+    ]);
+    expect(useEditorStore.getState().activeTab).toBe('indexes');
+    expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith('aiIndexAdvisor.indexApplied');
+  });
+
+  it('reports a name conflict without claiming the different-direction index was applied', () => {
+    const { result } = renderFlow({ indexes: [index] });
+    const recommendation: AIIndexAdvisorRecommendation = {
+      ...emailRecommendation(false),
+      index: {
+        name: 'idx_email_desc',
+        fields: [{ name: 'email', direction: 'DESC' }],
+        unique: false,
+      },
+    };
+
+    act(() => result.current.applyRecommendation(recommendation));
+
+    expect(useEditorStore.getState().indexes).toEqual([index]);
+    expect(useEditorStore.getState().activeTab).toBe('fields');
+    expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith('indexPanel.duplicateName');
+  });
+
+  it('uses the latest indexes when the same recommendation is applied twice before rendering', () => {
+    const { result } = renderFlow();
+    const recommendation = emailRecommendation(false);
+
+    act(() => {
+      result.current.applyRecommendation(recommendation);
+      result.current.applyRecommendation(recommendation);
+    });
+
+    expect(useEditorStore.getState().indexes).toHaveLength(1);
+    expect(mocks.showToast.mock.calls).toEqual([
+      ['aiIndexAdvisor.indexApplied'],
+      ['aiIndexAdvisor.indexExists'],
+    ]);
+  });
+
+  it('rejects fields removed from the document after the recommendation was rendered', () => {
+    const { result } = renderFlow();
+    useEditorStore.getState().setRows([]);
+
+    act(() => result.current.applyRecommendation(emailRecommendation(false)));
+
+    expect(useEditorStore.getState().indexes).toEqual([]);
+    expect(useEditorStore.getState().activeTab).toBe('fields');
+    expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith('aiIndexAdvisor.invalidIndexFields');
   });
 
   it('applies a valid recommendation and opens the index tab', () => {
-    const { result, setIndexes, setActiveTab } = renderFlow();
+    const { result } = renderFlow();
 
     act(() =>
       result.current.applyRecommendation({
         id: 'email',
-        category: 'performance',
+        category: 'missing_index',
         title: 'Email lookup',
         rationale: '',
-        priority: 'high',
+        confidence: 'high',
         index: {
+          name: 'uk_id_email',
           fields: [
             { name: 'id', direction: 'ASC' },
             { name: 'email', direction: 'DESC' },
@@ -212,16 +305,14 @@ describe('useIndexAdvisorFlow', () => {
       }),
     );
 
-    const updater = setIndexes.mock.calls[0]?.[0] as (
-      current: IndexDefinition[],
-    ) => IndexDefinition[];
-    expect(updater([])[0]).toMatchObject({
+    expect(useEditorStore.getState().indexes[0]).toMatchObject({
       fields: [
         { name: 'id', direction: 'ASC' },
         { name: 'email', direction: 'DESC' },
       ],
       kind: 'unique_index',
     });
-    expect(setActiveTab).toHaveBeenCalledWith('indexes');
+    expect(useEditorStore.getState().activeTab).toBe('indexes');
+    expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith('aiIndexAdvisor.indexApplied');
   });
 });

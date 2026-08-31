@@ -83,9 +83,7 @@ export function useSchemaController({
     rows,
     setRows,
     setTableComment,
-    setActiveTab,
     indexes,
-    setIndexes,
     foreignKeys,
     fieldTableFreezeEnabled,
     fieldTableFreezeColumns,
@@ -190,8 +188,6 @@ export function useSchemaController({
     tableComment,
     fields: derived.normalizedFields,
     indexes,
-    setIndexes,
-    setActiveTab,
   });
   const reviewActions = useReviewActions({
     documentKey,

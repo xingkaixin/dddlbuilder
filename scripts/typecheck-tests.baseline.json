@@ -978,22 +978,6 @@
   {
     "package": "@ddlbuilder/web",
     "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
-    "code": "TS2322",
-    "message": "Type '\"performance\"' is not assignable to type 'AIIndexAdvisorRecommendationCategory'.",
-    "sourceFingerprint": "69e04a4a803587bb",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
-    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
-    "code": "TS2322",
-    "message": "Type '\"performance\"' is not assignable to type 'AIIndexAdvisorRecommendationCategory'.",
-    "sourceFingerprint": "c1b422ddcf6e9c37",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
-    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
     "code": "TS2741",
     "message": "Property 'defaultKind' is missing in type '{ name: string; type: string; comment: string; nullable: false; defaultValue: string; onUpdate: \"none\"; }' but required in type 'NormalizedField'.",
     "sourceFingerprint": "00c7f0066fc5c980",
@@ -1005,30 +989,6 @@
     "code": "TS2741",
     "message": "Property 'defaultKind' is missing in type '{ name: string; type: string; comment: string; nullable: false; defaultValue: string; onUpdate: \"none\"; }' but required in type 'NormalizedField'.",
     "sourceFingerprint": "e200cb5117b6a5ad",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
-    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
-    "code": "TS2741",
-    "message": "Property 'name' is missing in type '{ fields: ({ name: string; direction: \"ASC\"; } | { name: string; direction: \"DESC\"; })[]; unique: true; }' but required in type 'AIIndexAdvisorIndexInput'.",
-    "sourceFingerprint": "1fbe58b5bb1de4b9",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
-    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
-    "code": "TS2741",
-    "message": "Property 'name' is missing in type '{ fields: { name: string; direction: \"ASC\"; }[]; unique: false; }' but required in type 'AIIndexAdvisorIndexInput'.",
-    "sourceFingerprint": "f627b5be5b4fd3b6",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/web",
-    "file": "src/__tests__/components/App/useIndexAdvisorFlow.test.ts",
-    "code": "TS2741",
-    "message": "Property 'name' is missing in type '{ fields: { name: string; direction: \"ASC\"; }[]; unique: true; }' but required in type 'AIIndexAdvisorIndexInput'.",
-    "sourceFingerprint": "1679bd952e49a9e9",
     "count": 1
   },
   {
