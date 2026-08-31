@@ -18,7 +18,9 @@ export const buildCitusShardingDDL = (tableName: string, config: CitusShardingCo
 };
 
 export const buildMysqlPartitionClause = (config: MysqlPartitionConfig): string => {
-  const partitionKey = config.expression || config.columns.join(', ');
+  const partitionKey =
+    config.expression ||
+    config.columns.map((name) => formatSqlIdentifier(name, 'mysql')).join(', ');
   if (!config.enabled || !partitionKey) return '';
 
   switch (config.type) {
@@ -40,7 +42,7 @@ export const buildMysqlPartitionClause = (config: MysqlPartitionConfig): string 
           const values = isRange
             ? `VALUES LESS THAN (${partition.value})`
             : `VALUES IN (${partition.value})`;
-          return `  PARTITION ${partition.name} ${values}`;
+          return `  PARTITION ${formatSqlIdentifier(partition.name, 'mysql')} ${values}`;
         })
         .join(',\n');
 

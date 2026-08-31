@@ -108,6 +108,51 @@ describe('tableFeatures', () => {
     ).toContain('PARTITION p_active VALUES IN (1, 2)');
   });
 
+  it.each(['KEY', 'RANGE COLUMNS', 'LIST COLUMNS'] as const)(
+    'quotes column identifiers and partition names in %s',
+    (type) => {
+      const sql = buildDDL({
+        dbType: 'mysql',
+        tableName: 'events',
+        tableComment: '',
+        fields: ['order', 'batch`id'].map((name) => ({
+          name,
+          type: 'int',
+          nullable: false,
+          comment: '',
+          defaultKind: 'none',
+          defaultValue: '',
+          onUpdate: 'none',
+        })),
+        mysqlPartitionConfig: {
+          enabled: true,
+          type,
+          columns: ['order', 'batch`id'],
+          partitionCount: 2,
+          partitions: [
+            { id: '1', name: 'range', value: type === 'LIST COLUMNS' ? '(10, 10)' : '10, 10' },
+            { id: '2', name: 'batch`name', value: type === 'LIST COLUMNS' ? '(20, 20)' : '20, 20' },
+          ],
+        },
+      });
+      expect(sql).toContain(`PARTITION BY ${type}(\`order\`, \`batch\`\`id\`)`);
+      expect(sql.includes('PARTITION `range` VALUES')).toBe(type !== 'KEY');
+      expect(sql.includes('PARTITION `batch``name` VALUES')).toBe(type !== 'KEY');
+    },
+  );
+
+  it('preserves partition expressions as SQL', () => {
+    expect(
+      buildMysqlPartitionClause({
+        enabled: true,
+        type: 'HASH',
+        columns: ['created_at'],
+        expression: 'YEAR(created_at)',
+        partitionCount: 8,
+      }),
+    ).toBe('\nPARTITION BY HASH(YEAR(created_at))\nPARTITIONS 8');
+  });
+
   it('忽略未知分区类型', () => {
     expect(
       buildMysqlPartitionClause({
