@@ -51,7 +51,6 @@ interface UseSavedTableFlowActionsParams {
   ) => Promise<unknown>;
   showToast: (message: string) => void;
   getSavedTableDraft?: (normalizedName: SavedTableTarget) => SavedTableDraftRecord | null;
-  setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
   renameSavedTableDraft?: (
     fromNormalizedName: SavedTableTarget,
     toNormalizedName: string,
@@ -94,7 +93,6 @@ export function useSavedTableFlowActions({
   createTableVersion,
   showToast,
   getSavedTableDraft,
-  setWorkspaceSnapshot,
   renameSavedTableDraft,
   removeSavedTableDraft,
   onSaveSuccess,
@@ -123,14 +121,11 @@ export function useSavedTableFlowActions({
   });
 
   const renameDeleteActions = useRenameDeleteActions({
-    loadedTableSource,
     renameDialog,
     deleteDialog,
-    buildPersistedState,
     renameTable,
     deleteTable,
     showToast,
-    setWorkspaceSnapshot,
     renameSavedTableDraft,
     removeSavedTableDraft,
     onTabRename,

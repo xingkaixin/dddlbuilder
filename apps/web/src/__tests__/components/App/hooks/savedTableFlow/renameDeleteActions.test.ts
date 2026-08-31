@@ -8,10 +8,9 @@ describe('useRenameDeleteActions', () => {
   let renameTable: any;
   let deleteTable: any;
   let showToast: any;
-  let setWorkspaceSnapshot: any;
+  let onTabRename: any;
   let renameSavedTableDraft: any;
   let removeSavedTableDraft: any;
-  let buildPersistedState: any;
 
   beforeEach(() => {
     renameDialog = {
@@ -37,28 +36,20 @@ describe('useRenameDeleteActions', () => {
     renameTable = vi.fn();
     deleteTable = vi.fn();
     showToast = vi.fn();
-    setWorkspaceSnapshot = vi.fn();
+    onTabRename = vi.fn();
     renameSavedTableDraft = vi.fn();
     removeSavedTableDraft = vi.fn();
-    buildPersistedState = vi.fn().mockReturnValue({ test: 1 });
   });
 
   const getHook = (overrides = {}) =>
     renderHook(() =>
       useRenameDeleteActions({
-        loadedTableSource: {
-          kind: 'saved_table',
-          normalizedName: 'test_table',
-          tableName: 'test table',
-          baseSignature: 'sig',
-        },
         renameDialog,
         deleteDialog,
-        buildPersistedState,
         renameTable,
         deleteTable,
         showToast,
-        setWorkspaceSnapshot,
+        onTabRename,
         renameSavedTableDraft,
         removeSavedTableDraft,
         ...overrides,
@@ -156,7 +147,7 @@ describe('useRenameDeleteActions', () => {
     expect(showToast).toHaveBeenCalledWith('Custom fallback');
   });
 
-  it('handleConfirmRename successfully updates name and loaded state when operating on loaded table', async () => {
+  it('handleConfirmRename updates the draft and delegates tab renaming', async () => {
     renameDialog.data = {
       name: '  new_name  ',
       target: { name: 'old', normalizedName: 'test_table' },
@@ -178,15 +169,7 @@ describe('useRenameDeleteActions', () => {
       'new_name',
     );
 
-    expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
-      {
-        kind: 'saved_table',
-        normalizedName: 'new_name_norm',
-        tableName: 'new_name',
-        baseSignature: 'sig',
-      },
-      { test: 1 },
-    );
+    expect(onTabRename).toHaveBeenCalledWith(renameDialog.data.target, 'new_name_norm', 'new_name');
     expect(renameDialog.closeDialog).toHaveBeenCalled();
   });
 
@@ -206,7 +189,6 @@ describe('useRenameDeleteActions', () => {
     });
 
     expect(showToast).toHaveBeenCalledWith('已重命名为：未命名表');
-    expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
   });
 
   it('handleOpenDeleteDialog sets delete dialog data', () => {
@@ -293,7 +275,6 @@ describe('useRenameDeleteActions', () => {
 
     expect(removeSavedTableDraft).toHaveBeenCalledWith(deleteDialog.data.target);
     expect(showToast).toHaveBeenCalledWith('已移入回收站：old');
-    expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
     expect(deleteDialog.closeDialog).toHaveBeenCalled();
   });
 
@@ -309,7 +290,6 @@ describe('useRenameDeleteActions', () => {
     });
 
     expect(removeSavedTableDraft).toHaveBeenCalledWith(deleteDialog.data.target);
-    expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
     expect(deleteDialog.closeDialog).toHaveBeenCalled();
   });
 });

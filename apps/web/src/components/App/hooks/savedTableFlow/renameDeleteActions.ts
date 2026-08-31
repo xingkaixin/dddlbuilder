@@ -1,12 +1,9 @@
-import { isSameSavedTable, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
+import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 type RenameDialogData = {
   name: string;
@@ -18,14 +15,11 @@ type DeleteDialogData = {
 };
 
 interface UseRenameDeleteActionsParams {
-  loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
   renameDialog: UseDialogStateReturn<RenameDialogData>;
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
-  buildPersistedState: () => PersistedState;
   renameTable: (normalizedName: SavedTableTarget, newName: string) => Promise<SaveTableResult>;
   deleteTable: (normalizedName: SavedTableTarget) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
-  setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
   renameSavedTableDraft?: (
     fromNormalizedName: SavedTableTarget,
     toNormalizedName: string,
@@ -41,21 +35,17 @@ interface UseRenameDeleteActionsParams {
 }
 
 export function useRenameDeleteActions({
-  loadedTableSource,
   renameDialog,
   deleteDialog,
-  buildPersistedState,
   renameTable,
   deleteTable,
   showToast,
-  setWorkspaceSnapshot,
   renameSavedTableDraft,
   removeSavedTableDraft,
   onTabRename,
   onTabRemove,
 }: UseRenameDeleteActionsParams) {
   const { t } = useTranslation();
-  const loadedTableSignature = loadedTableSource?.baseSignature ?? null;
   const renameName = renameDialog.data.name;
   const renameTarget = renameDialog.data.target;
   const deleteTarget = deleteDialog.data.target;
@@ -94,20 +84,6 @@ export function useRenameDeleteActions({
     showToast(t('savedTables.toast.tableRenamed', { name: displayName }));
     renameSavedTableDraft?.(renameTarget, result.normalizedName, displayName);
     onTabRename?.(renameTarget, result.normalizedName, displayName);
-    if (loadedTableSource && isSameSavedTable(renameTarget, loadedTableSource)) {
-      const currentState = buildPersistedState();
-      const nextSignature = loadedTableSignature ?? buildSchemaStateSignature(currentState);
-      setWorkspaceSnapshot?.(
-        {
-          kind: 'saved_table',
-          tableId: renameTarget.tableId,
-          normalizedName: result.normalizedName,
-          tableName: displayName,
-          baseSignature: nextSignature,
-        },
-        currentState,
-      );
-    }
     renameDialog.closeDialog();
   }, [
     renameTarget,
@@ -116,10 +92,6 @@ export function useRenameDeleteActions({
     renameDialog,
     showToast,
     t,
-    loadedTableSource,
-    loadedTableSignature,
-    setWorkspaceSnapshot,
-    buildPersistedState,
     renameSavedTableDraft,
     onTabRename,
   ]);

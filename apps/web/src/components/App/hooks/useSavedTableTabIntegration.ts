@@ -1,4 +1,8 @@
-import { savedTableReference, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
+import {
+  isSameSavedTable,
+  savedTableReference,
+  type SavedTableTarget,
+} from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
@@ -134,6 +138,23 @@ export function useSavedTableTabIntegration({
     ],
   );
 
+  const onTabRename = useCallback(
+    (target: SavedTableTarget, normalizedName: string, tableName: string) => {
+      const activeTab = getActiveTab();
+      renameSavedTableTabs(target, normalizedName, tableName);
+      if (
+        activeTab?.source.kind !== 'saved_table' ||
+        activeTab.isLoading ||
+        !isSameSavedTable(activeTab.source, target)
+      ) {
+        return;
+      }
+      const renamedTab = getTabById(activeTab.id);
+      if (renamedTab) selectWorkspaceSnapshot(renamedTab.source, buildPersistedState());
+    },
+    [buildPersistedState, getActiveTab, getTabById, renameSavedTableTabs, selectWorkspaceSnapshot],
+  );
+
   const onTabRemove = useCallback(
     (target: SavedTableTarget) => {
       closeTabBySource({ kind: 'saved_table', ...savedTableReference(target) });
@@ -141,5 +162,5 @@ export function useSavedTableTabIntegration({
     [closeTabBySource],
   );
 
-  return { onSaveSuccess, onTabRename: renameSavedTableTabs, onTabRemove };
+  return { onSaveSuccess, onTabRename, onTabRemove };
 }

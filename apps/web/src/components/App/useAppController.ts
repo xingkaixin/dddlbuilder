@@ -260,7 +260,6 @@ export function useAppController() {
     createTableVersion,
     showToast,
     getSavedTableDraft,
-    setWorkspaceSnapshot,
     renameSavedTableDraft,
     removeSavedTableDraft,
     ...savedTableTabIntegration,
