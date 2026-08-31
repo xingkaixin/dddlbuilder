@@ -19,6 +19,10 @@ export type WorkspaceSavedTableRecord = Omit<
   'createdAt' | 'tableId'
 > & { tableId: string; createdAt: number };
 export type WorkspaceSavedDraftRecord = WorkspaceSnapshot['savedDrafts'][number];
+export type WorkspaceSavedTableMetadataUpdate = Pick<
+  WorkspaceSavedTableRecord,
+  'folderId' | 'trashedAt' | 'updatedAt'
+>;
 
 const savedTableName = (key: string, tableDoc: Y.Map<unknown>) => {
   const name = tableMetadata(tableDoc).normalizedName;
@@ -116,6 +120,17 @@ export const getWorkspaceSavedTable = (
 ): WorkspaceSavedTableRecord | null => {
   const entry = findSavedTableEntry(doc, target);
   return entry ? readSavedTableRecord(...entry) : null;
+};
+
+export const updateWorkspaceSavedTableMetadata = (
+  doc: Y.Doc,
+  target: SavedTableTarget,
+  update: WorkspaceSavedTableMetadataUpdate,
+): WorkspaceSavedTableRecord | null => {
+  const entry = findSavedTableEntry(doc, target);
+  if (!entry) return null;
+  writeJsonMapPatch(ensureMap(entry[1], 'metadata'), update);
+  return readSavedTableRecord(...entry);
 };
 
 export const listWorkspaceSavedTableRecords = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>

@@ -66,6 +66,7 @@ export {
   deleteWorkspaceSavedTable,
   getWorkspaceSavedDraft,
   getWorkspaceSavedTable,
+  updateWorkspaceSavedTableMetadata,
   renameWorkspaceSavedTable,
   renameWorkspaceSavedDraft,
   getWorkspaceSourceState,
@@ -84,5 +85,6 @@ export {
   type WorkspaceDraftRecord,
   type WorkspaceSavedDraftRecord,
   type WorkspaceSavedTableRecord,
+  type WorkspaceSavedTableMetadataUpdate,
   type WorkspaceYDocChange,
 } from './workspaceRecords';

@@ -4,6 +4,7 @@ import {
   type WorkspaceScope,
 } from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
+import type { WorkspaceSavedTableMetadataUpdate } from '@ddlbuilder/workspace-core';
 import {
   deleteSavedTableFromYDoc,
   getSavedTableFromYDoc,
@@ -12,6 +13,7 @@ import {
   recreateSavedTableInYDoc,
   upsertSavedTableInYDoc,
   renameSavedTableInYDoc,
+  updateSavedTableMetadataInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import {
   addSavedTable,
@@ -23,6 +25,7 @@ import {
   updateSavedTable,
   updateSavedTables,
   updateSavedTableState,
+  updateSavedTableMetadata,
 } from '@/utils/savedTablesDb';
 import {
   applySavedTableStateUpdate,
@@ -169,6 +172,26 @@ export function useSavedTablePersistence() {
     [storage],
   );
 
+  const updateTableMetadata = useCallback(
+    async (target: SavedTableTarget, update: WorkspaceSavedTableMetadataUpdate) => {
+      const destination = requireReadyWorkspaceStorage(storage);
+      if (destination.kind === 'indexeddb') {
+        return updateSavedTableMetadata(target, update, destination.scope);
+      }
+      const current = getSavedTableFromYDoc(destination.yDoc, target);
+      if (!current) return null;
+      const entityTarget = entityTargetForRecord(current, destination.scope);
+      let updated: SavedTableRecord | null = null;
+      await runWorkspaceEntityUpdate([entityTarget], [], () => {
+        updated = destination.transact((doc) =>
+          updateSavedTableMetadataInYDoc(doc, entityTarget, update),
+        );
+      });
+      return updated;
+    },
+    [storage],
+  );
+
   const replaceTable = useCallback(
     async (
       previousNormalizedName: string,
@@ -194,8 +217,6 @@ export function useSavedTablePersistence() {
 
   const moveTableToTrash = useCallback(
     async (normalizedName: SavedTableTarget) => {
-      const record = await readTable(normalizedName);
-      if (!record) return null;
       const timestamp = Date.now();
       console.info(
         JSON.stringify({
@@ -206,10 +227,12 @@ export function useSavedTablePersistence() {
           yDocReady: storage.kind === 'ydoc',
         }),
       );
-      await putTable({ ...record, trashedAt: timestamp, updatedAt: timestamp });
-      return record;
+      return updateTableMetadata(normalizedName, {
+        trashedAt: timestamp,
+        updatedAt: timestamp,
+      });
     },
-    [putTable, readTable, storage.kind],
+    [updateTableMetadata, storage.kind],
   );
 
   const cleanupLocalTable = useCallback(
@@ -260,6 +283,7 @@ export function useSavedTablePersistence() {
     putTable,
     putTables,
     updateTableState,
+    updateTableMetadata,
     replaceTable,
     moveTableToTrash,
     cleanupLocalTable,

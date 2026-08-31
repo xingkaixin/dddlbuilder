@@ -1,4 +1,8 @@
-import { decodeIndexDefinitions, decodeMysqlPartitionConfig } from '@ddlbuilder/workspace-core';
+import {
+  decodeIndexDefinitions,
+  decodeMysqlPartitionConfig,
+  type WorkspaceSavedTableMetadataUpdate,
+} from '@ddlbuilder/workspace-core';
 import { savedTableReference, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspaceScope';
@@ -306,6 +310,35 @@ export const updateSavedTableState = async (
     };
     return () => updated;
   });
+};
+
+export const updateSavedTableMetadata = async (
+  target: SavedTableTarget,
+  update: WorkspaceSavedTableMetadataUpdate,
+  scope: WorkspaceScope,
+): Promise<SavedTableRecord | null> => {
+  const current = await getSavedTable(target, scope);
+  if (!current) return null;
+  const tableId = resolveSavedTableId(current);
+  let updated: SavedTableRecord | null = null;
+  await runWorkspaceEntityWrites([tableWrite(current, scope, 'update')], STORE_NAME, (tx, fail) => {
+    const store = tx.objectStore(STORE_NAME);
+    const request: IDBRequest<SavedTableRecord[]> = store.getAll();
+    request.onerror = () => fail(request.error);
+    request.onsuccess = () => {
+      try {
+        const record = request.result
+          .map((item) => decodeScopedTableRecord(item, scope))
+          .find((item) => item?.tableId === tableId);
+        if (!record) return;
+        updated = { ...record, ...update };
+        rejectFailedWrite(store.put(encodeScopedTableRecord(updated, scope)), fail);
+      } catch (error) {
+        fail(error);
+      }
+    };
+  });
+  return updated;
 };
 
 export const deleteSavedTable = async (

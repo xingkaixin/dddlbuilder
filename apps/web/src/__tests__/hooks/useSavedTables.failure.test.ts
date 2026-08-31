@@ -32,6 +32,7 @@ const savedTableMocks = vi.hoisted(() => ({
   updateSavedTable: vi.fn(),
   updateSavedTables: vi.fn(),
   updateSavedTableState: vi.fn(),
+  updateSavedTableMetadata: vi.fn(),
 }));
 const tableVersionMocks = vi.hoisted(() => ({
   countVersions: vi.fn(),
@@ -58,6 +59,7 @@ vi.mock('@/utils/savedTablesDb', () => ({
   updateSavedTable: savedTableMocks.updateSavedTable,
   updateSavedTables: savedTableMocks.updateSavedTables,
   updateSavedTableState: savedTableMocks.updateSavedTableState,
+  updateSavedTableMetadata: savedTableMocks.updateSavedTableMetadata,
 }));
 
 vi.mock('@/utils/tableVersions', () => ({
@@ -199,8 +201,7 @@ describe('useSavedTables failure states', () => {
   });
 
   it('deleteTable should return error when deletion throws', async () => {
-    savedTableMocks.getSavedTable.mockResolvedValueOnce(createRecord('demo', 'Demo'));
-    savedTableMocks.updateSavedTable.mockRejectedValueOnce(new Error('删除失败'));
+    savedTableMocks.updateSavedTableMetadata.mockRejectedValueOnce(new Error('删除失败'));
 
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -332,18 +333,15 @@ describe('useSavedTables failure states', () => {
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    savedTableMocks.getSavedTable.mockResolvedValueOnce(null);
+    savedTableMocks.updateSavedTableMetadata.mockResolvedValueOnce(null);
     let notFound: SaveResult | undefined;
     await act(async () => {
       notFound = await result.current.moveTableToFolder('missing', 'folder-1');
     });
     expect(notFound).toEqual({ ok: false, reason: 'not_found' });
 
-    savedTableMocks.getSavedTable
+    savedTableMocks.updateSavedTableMetadata
       .mockResolvedValueOnce(createRecord('alpha', 'Alpha'))
-      .mockResolvedValueOnce(createRecord('alpha', 'Alpha'));
-    savedTableMocks.updateSavedTable
-      .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('移动异常'));
 
     let success: SaveResult | undefined;

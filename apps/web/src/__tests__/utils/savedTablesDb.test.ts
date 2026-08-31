@@ -9,6 +9,7 @@ import {
   normalizeSavedTableName,
   openDb,
   updateSavedTable,
+  updateSavedTableMetadata,
   updateSavedTables,
   DEFAULT_SAVED_TABLE_NAME,
   STORE_NAME,
@@ -134,6 +135,33 @@ describe('savedTablesDb', () => {
       folderId: 'folder-1',
       updatedAt: 2,
     });
+  });
+
+  it('merges concurrent metadata updates without replacing schema or other metadata', async () => {
+    const record = {
+      tableId: 'metadata-table',
+      normalizedName: 'metadata',
+      name: 'Metadata',
+      state: createState({ tableComment: 'saved schema' }),
+      folderId: 'original-folder',
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    await addSavedTable(record, anonymousScope);
+
+    await Promise.all([
+      updateSavedTableMetadata(record, { folderId: undefined, updatedAt: 2 }, anonymousScope),
+      updateSavedTableMetadata(record, { trashedAt: 3, updatedAt: 3 }, anonymousScope),
+    ]);
+
+    const updated = await getSavedTable(record, anonymousScope);
+    expect(updated).toMatchObject({
+      name: record.name,
+      state: record.state,
+      createdAt: record.createdAt,
+      trashedAt: 3,
+    });
+    expect(updated?.folderId).toBeUndefined();
   });
 
   it('should reject duplicate add', async () => {

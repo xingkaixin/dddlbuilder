@@ -21,6 +21,7 @@ export {
   recreateWorkspaceSavedTable,
   deleteWorkspaceSavedTable,
   getWorkspaceSavedTable,
+  updateWorkspaceSavedTableMetadata,
   listWorkspaceSavedTables,
   listWorkspaceTrashedSavedTables,
   upsertWorkspaceSavedDraft,
@@ -30,6 +31,7 @@ export {
   renameWorkspaceSavedDraft,
   renameWorkspaceSavedTable,
   type WorkspaceSavedTableRecord,
+  type WorkspaceSavedTableMetadataUpdate,
   type WorkspaceSavedDraftRecord,
 } from './workspaceSavedRecords';
 

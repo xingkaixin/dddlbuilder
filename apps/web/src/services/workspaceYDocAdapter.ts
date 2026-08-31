@@ -28,6 +28,8 @@ import {
   getDraftRecordFromYDoc as getSchemaDraftRecordFromYDoc,
   getWorkspaceSavedDraft,
   getWorkspaceSavedTable,
+  updateWorkspaceSavedTableMetadata,
+  type WorkspaceSavedTableMetadataUpdate,
   renameWorkspaceSavedTable,
   renameWorkspaceSavedDraft,
   getWorkspaceSourceState,
@@ -153,6 +155,15 @@ export const getSavedTableFromYDoc = (
   normalizedName: SavedTableTarget,
 ): SavedTableRecord | null => {
   const record = getWorkspaceSavedTable(doc, normalizedName);
+  return record ? toSavedTableRecord(record) : null;
+};
+
+export const updateSavedTableMetadataInYDoc = (
+  doc: Y.Doc,
+  target: SavedTableTarget,
+  update: WorkspaceSavedTableMetadataUpdate,
+): SavedTableRecord | null => {
+  const record = updateWorkspaceSavedTableMetadata(doc, target, update);
   return record ? toSavedTableRecord(record) : null;
 };
 

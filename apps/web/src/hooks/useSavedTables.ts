@@ -62,6 +62,7 @@ export function useSavedTables() {
     putTable,
     putTables,
     updateTableState,
+    updateTableMetadata,
     replaceTable,
     moveTableToTrash,
     cleanupLocalTable,
@@ -374,16 +375,10 @@ export function useSavedTables() {
     async (target: SavedTableTarget, folderId?: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
-        const record = await readTable(target);
+        const record = await updateTableMetadata(target, { folderId, updatedAt: Date.now() });
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
-        const updatedRecord: SavedTableRecord = {
-          ...record,
-          folderId,
-          updatedAt: Date.now(),
-        };
-        await persistActiveTable(updatedRecord);
         await refresh();
         return {
           ok: true,
@@ -398,7 +393,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, persistActiveTable, readTable, refresh, t],
+    [currentScope, updateTableMetadata, refresh, t],
   );
 
   const importTables = useCallback(

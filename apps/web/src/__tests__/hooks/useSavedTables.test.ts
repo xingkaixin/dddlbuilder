@@ -43,6 +43,7 @@ const mockYDocAdapter = vi.hoisted(() => ({
   recreateSavedTableInYDoc: vi.fn(),
   subscribeWorkspaceYDoc: vi.fn(),
   upsertSavedTableInYDoc: vi.fn(),
+  updateSavedTableMetadataInYDoc: vi.fn(),
   renameSavedTableInYDoc: vi.fn(),
 }));
 
@@ -69,6 +70,7 @@ vi.mock('@/services/workspaceYDocAdapter', async (importOriginal) => ({
   recreateSavedTableInYDoc: mockYDocAdapter.recreateSavedTableInYDoc,
   subscribeWorkspaceYDoc: mockYDocAdapter.subscribeWorkspaceYDoc,
   upsertSavedTableInYDoc: mockYDocAdapter.upsertSavedTableInYDoc,
+  updateSavedTableMetadataInYDoc: mockYDocAdapter.updateSavedTableMetadataInYDoc,
   renameSavedTableInYDoc: mockYDocAdapter.renameSavedTableInYDoc,
 }));
 
@@ -111,6 +113,7 @@ describe('useSavedTables', () => {
     mockYDocAdapter.recreateSavedTableInYDoc.mockReset();
     mockYDocAdapter.subscribeWorkspaceYDoc.mockReset().mockReturnValue(vi.fn());
     mockYDocAdapter.upsertSavedTableInYDoc.mockReset();
+    mockYDocAdapter.updateSavedTableMetadataInYDoc.mockReset();
     mockYDocAdapter.renameSavedTableInYDoc.mockReset();
   });
 
@@ -478,9 +481,10 @@ describe('useSavedTables', () => {
       await flushPromises();
     });
 
-    expect(mockYDocAdapter.upsertSavedTableInYDoc).toHaveBeenCalledWith(
+    expect(mockYDocAdapter.updateSavedTableMetadataInYDoc).toHaveBeenCalledWith(
       doc,
-      expect.objectContaining({ normalizedName: 'orders', trashedAt: expect.any(Number) }),
+      expect.objectContaining({ tableId: 'legacy:orders', normalizedName: 'orders' }),
+      { trashedAt: expect.any(Number), updatedAt: expect.any(Number) },
     );
     expect(mockYDocAdapter.deleteSavedTableFromYDoc).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith(expect.stringContaining('"target":"ydoc"'));
