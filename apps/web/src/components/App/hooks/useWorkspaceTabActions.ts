@@ -123,9 +123,9 @@ export function useWorkspaceTabActions({
       }
 
       hydrateTab(newTabId, result.source, result.state);
-      if (useTabStore.getState().activeTabId === newTabId) {
-        applySavedState(result.state);
-        selectWorkspaceSnapshot(result.source, result.state);
+      const loadedTab = getActiveTab();
+      if (loadedTab?.id === newTabId) {
+        showTab(loadedTab);
         showToast(`已加载：${result.source.tableName} (v${result.version})`);
       }
     },
@@ -144,7 +144,6 @@ export function useWorkspaceTabActions({
       showTab,
       showToast,
       switchToTab,
-      selectWorkspaceSnapshot,
     ],
   );
 
