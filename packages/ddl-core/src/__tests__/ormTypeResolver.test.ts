@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mapCanonicalToORMType, getORMTypeWithArgs } from '../utils/ormTypeResolver';
+import { buildORM } from '../utils/ormGenerators';
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
 
 describe('mapCanonicalToORMType', () => {
@@ -86,17 +87,58 @@ describe('mapCanonicalToORMType', () => {
     expect(mapCanonicalToORMType('typeorm', 'decimal(10,2)')).toBe('number');
   });
 
-  it('returns String for unknown type', () => {
-    expect(mapCanonicalToORMType('prisma', 'unknown_type')).toBe('String');
-    expect(mapCanonicalToORMType('jpa', 'unknown_type')).toBe('String');
-  });
+  it.each(['prisma', 'typeorm', 'sqlalchemy', 'gorm', 'jpa'] as const)(
+    'reports unsupported types without substituting strings for %s',
+    (target) => {
+      for (const type of ['unknown_type', '', '__proto__', 'constructor']) {
+        expect(() => mapCanonicalToORMType(target, type)).toThrow('Unsupported');
+        expect(() => getORMTypeWithArgs(target, type)).toThrow('Unsupported');
+        expect(
+          buildORM(target, {
+            dbType: 'mysql',
+            tableName: 'samples',
+            tableComment: '',
+            fields: [
+              {
+                name: 'value',
+                type,
+                comment: '',
+                nullable: false,
+                defaultKind: 'none',
+                defaultValue: '',
+                onUpdate: 'none',
+              },
+            ],
+          }),
+        ).toContain(`Manual mapping required: column "value" has unsupported ${target} type`);
+      }
+    },
+  );
 
-  it('returns String for unknown ORM target', () => {
-    expect(mapCanonicalToORMType('unknown' as any, 'varchar')).toBe('String');
-  });
-
-  it('handles empty string', () => {
-    expect(mapCanonicalToORMType('prisma', '')).toBe('String');
+  it('maps national character fields to the target language', () => {
+    expect(mapCanonicalToORMType('prisma', 'nchar(10)')).toBe('String');
+    expect(mapCanonicalToORMType('typeorm', 'nchar(10)')).toBe('string');
+    expect(getORMTypeWithArgs('sqlalchemy', 'nchar(10)')).toBe('String(10)');
+    expect(mapCanonicalToORMType('gorm', 'national char(10)')).toBe('string');
+    expect(mapCanonicalToORMType('jpa', 'nchar(10)')).toBe('String');
+    expect(
+      buildORM('gorm', {
+        dbType: 'mysql',
+        tableName: 'events',
+        tableComment: '',
+        fields: [
+          {
+            name: 'code',
+            type: 'nchar(10)',
+            comment: '',
+            nullable: false,
+            defaultKind: 'none',
+            defaultValue: '',
+            onUpdate: 'none',
+          },
+        ],
+      }),
+    ).toMatch(/Code\s+string\s+`gorm:"column:code"`/);
   });
 });
 

@@ -6,13 +6,16 @@ import { canonicalizeBaseType } from './typeAliases.js';
 export function mapCanonicalToORMType(ormTarget: ORMTarget, fieldType: string): string {
   const parsed = parseFieldType(fieldType);
   const canonical = canonicalizeBaseType(parsed.baseType);
-  return ORM_TYPE_MAPPINGS[ormTarget]?.[canonical] ?? 'String';
+  const mappings = ORM_TYPE_MAPPINGS[ormTarget];
+  if (!mappings || !Object.hasOwn(mappings, canonical)) {
+    throw new Error(`Unsupported ${ormTarget} field type: ${fieldType}`);
+  }
+  return mappings[canonical];
 }
 
 export function getORMTypeWithArgs(ormTarget: ORMTarget, fieldType: string): string {
   const parsed = parseFieldType(fieldType);
-  const canonical = canonicalizeBaseType(parsed.baseType);
-  const baseMapped = ORM_TYPE_MAPPINGS[ormTarget]?.[canonical] ?? 'String';
+  const baseMapped = mapCanonicalToORMType(ormTarget, fieldType);
 
   if (ormTarget === 'sqlalchemy') {
     // SQLAlchemy needs args for String, Numeric, etc.
