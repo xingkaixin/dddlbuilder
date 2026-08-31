@@ -1,4 +1,5 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
+import { buildORMPropertyNames } from './ormNames.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { buildQualifiedTableName } from '../utils/databaseTypeMapping.js';
 import { buildIndexFieldLookup, toPascalCase, formatLineComment } from './shared.js';
@@ -19,6 +20,12 @@ export class GORMGenerator implements ORMGenerator {
       return '// 请补充字段信息';
     }
 
+    const names = buildORMPropertyNames('gorm', {
+      tableName,
+      schemaName,
+      fields,
+      foreignKeys,
+    });
     const lines: string[] = [];
     const { primaryFields, singleUniqueFields } = buildIndexFieldLookup(indexes);
     const needsTime = fields.some((f) =>
@@ -40,7 +47,7 @@ export class GORMGenerator implements ORMGenerator {
     lines.push(`type ${structName} struct {`);
 
     for (const field of fields) {
-      const fieldName = toPascalCase(field.name);
+      const fieldName = names.field(field.name);
       const goType = mapCanonicalToORMType('gorm', field.type);
       const isPk = primaryFields.has(field.name);
       const isAutoInc = field.defaultKind === 'auto_increment';
@@ -75,13 +82,15 @@ export class GORMGenerator implements ORMGenerator {
     }
 
     for (const foreignKey of foreignKeys) {
-      const fieldName = toPascalCase(foreignKey.name || `${foreignKey.refTable}_relation`);
+      const fieldName = names.relation(foreignKey);
       const referencedType = toPascalCase(foreignKey.refTable);
       const isNullable = foreignKey.fields.some(
         (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,
       );
-      const localFields = foreignKey.fields.map(toPascalCase).join(',');
-      const referencedFields = foreignKey.refFields.map(toPascalCase).join(',');
+      const localFields = foreignKey.fields.map(names.field).join(',');
+      const referencedFields = foreignKey.refFields
+        .map((name) => names.reference(foreignKey, name))
+        .join(',');
       const constraints = [
         ...(foreignKey.onUpdate ? [`OnUpdate:${foreignKey.onUpdate}`] : []),
         ...(foreignKey.onDelete ? [`OnDelete:${foreignKey.onDelete}`] : []),

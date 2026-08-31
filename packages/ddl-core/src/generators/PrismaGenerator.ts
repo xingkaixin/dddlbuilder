@@ -1,9 +1,9 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
+import { buildORMPropertyNames } from './ormNames.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { escapeSqlString, getDatabaseFamily } from '../utils/databaseFamily.js';
 import {
   buildIndexFieldLookup,
-  toCamelCase,
   toPascalCase,
   escapePrismaDefault,
   formatLineComment,
@@ -33,6 +33,12 @@ export class PrismaGenerator implements ORMGenerator {
       return '-- 请补充字段信息';
     }
 
+    const names = buildORMPropertyNames('prisma', {
+      tableName,
+      schemaName,
+      fields,
+      foreignKeys,
+    });
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
     const modelName = toPascalCase(tableName.trim());
@@ -53,7 +59,7 @@ export class PrismaGenerator implements ORMGenerator {
     lines.push(`model ${modelName} {`);
 
     for (const field of fields) {
-      const fieldName = toCamelCase(field.name);
+      const fieldName = names.field(field.name);
       const prismaType = mapCanonicalToORMType('prisma', field.type);
       const isPk = primaryFields.has(field.name);
       const isAutoInc = field.defaultKind === 'auto_increment';
@@ -96,7 +102,7 @@ export class PrismaGenerator implements ORMGenerator {
     }
 
     if (primaryFields.size > 1) {
-      lines.push(`  @@id([${[...primaryFields].map(toCamelCase).join(', ')}])`);
+      lines.push(`  @@id([${[...primaryFields].map(names.field).join(', ')}])`);
     }
 
     // Composite unique indexes
@@ -104,7 +110,7 @@ export class PrismaGenerator implements ORMGenerator {
       (i) => i.kind !== 'index' && i.fields.length > 1 && i.kind !== 'primary',
     );
     for (const idx of compositeUniques) {
-      const fieldNames = idx.fields.map((f) => toCamelCase(f.name)).join(', ');
+      const fieldNames = idx.fields.map((f) => names.field(f.name)).join(', ');
       lines.push(`  @@unique([${fieldNames}])`);
     }
 
@@ -114,19 +120,19 @@ export class PrismaGenerator implements ORMGenerator {
     );
 
     for (const idx of regularIndexes) {
-      const fieldNames = idx.fields.map((f) => toCamelCase(f.name)).join(', ');
+      const fieldNames = idx.fields.map((f) => names.field(f.name)).join(', ');
       lines.push(`  @@index([${fieldNames}])`);
     }
 
     for (const idx of singleUniques) {
-      const fieldNames = idx.fields.map((f) => toCamelCase(f.name)).join(', ');
+      const fieldNames = idx.fields.map((f) => names.field(f.name)).join(', ');
       lines.push(`  @@unique([${fieldNames}])`);
     }
 
     for (const fk of foreignKeys) {
-      const localFields = fk.fields.map((f) => toCamelCase(f)).join(', ');
-      const refFields = fk.refFields.map((f) => toCamelCase(f)).join(', ');
-      const relationName = toCamelCase(fk.name || `${fk.refTable}_relation`);
+      const localFields = fk.fields.map((f) => names.field(f)).join(', ');
+      const refFields = fk.refFields.map((f) => names.reference(fk, f)).join(', ');
+      const relationName = names.relation(fk);
       const relationType = toPascalCase(fk.refTable);
       const isNullable = fk.fields.some(
         (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,

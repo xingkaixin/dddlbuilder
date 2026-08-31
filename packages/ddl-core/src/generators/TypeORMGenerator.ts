@@ -1,9 +1,9 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
+import { buildORMPropertyNames } from './ormNames.js';
 import { DIALECT_PROFILES } from '../strategies/dialectProfiles.js';
 import { getDatabaseFamily } from '../utils/databaseFamily.js';
 import {
   buildIndexFieldLookup,
-  toCamelCase,
   toPascalCase,
   tsStringLiteral,
   formatLineComment,
@@ -27,6 +27,12 @@ export class TypeORMGenerator implements ORMGenerator {
       return '-- 请补充字段信息';
     }
 
+    const names = buildORMPropertyNames('typeorm', {
+      tableName,
+      schemaName,
+      fields,
+      foreignKeys,
+    });
     const lines: string[] = [];
     const { primaryFields, singleUniqueFields } = buildIndexFieldLookup(indexes);
 
@@ -67,7 +73,7 @@ export class TypeORMGenerator implements ORMGenerator {
     // Collect composite unique and normal indexes
     for (const idx of indexes) {
       if (idx.kind === 'primary') continue;
-      const fieldNames = idx.fields.map((f) => tsStringLiteral(toCamelCase(f.name))).join(', ');
+      const fieldNames = idx.fields.map((f) => tsStringLiteral(names.field(f.name))).join(', ');
       if (idx.kind !== 'index' && idx.fields.length > 1) {
         classIndexes.push(`@Index([${fieldNames}], { unique: true })`);
       } else if (idx.kind === 'index') {
@@ -86,7 +92,7 @@ export class TypeORMGenerator implements ORMGenerator {
       if (!column) {
         return `// Manual mapping required: column ${JSON.stringify(field.name)} has unsupported type parameters in ${JSON.stringify(field.type)}.`;
       }
-      const propName = toCamelCase(field.name);
+      const propName = names.field(field.name);
       const tsType = column.propertyType;
       const isPk = primaryFields.has(field.name);
       const isAutoInc = column.autoIncrement;
@@ -132,7 +138,7 @@ export class TypeORMGenerator implements ORMGenerator {
 
     for (const foreignKey of foreignKeys) {
       const referencedClass = toPascalCase(foreignKey.refTable);
-      const propertyName = toCamelCase(foreignKey.name || `${foreignKey.refTable}_relation`);
+      const propertyName = names.relation(foreignKey);
       const isNullable = foreignKey.fields.some(
         (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,
       );
@@ -147,7 +153,7 @@ export class TypeORMGenerator implements ORMGenerator {
       const joinColumns = foreignKey.fields.map((fieldName, index) => {
         const parts = [
           `name: ${tsStringLiteral(fieldName)}`,
-          `referencedColumnName: ${tsStringLiteral(toCamelCase(foreignKey.refFields[index] ?? ''))}`,
+          `referencedColumnName: ${tsStringLiteral(names.reference(foreignKey, foreignKey.refFields[index] ?? ''))}`,
           ...(index === 0 && foreignKey.name
             ? [`foreignKeyConstraintName: ${tsStringLiteral(foreignKey.name)}`]
             : []),

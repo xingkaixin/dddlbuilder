@@ -1,9 +1,9 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
+import { buildORMPropertyNames } from './ormNames.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { getDatabaseFamily } from '../utils/databaseFamily.js';
 import {
   buildIndexFieldLookup,
-  toCamelCase,
   toPascalCase,
   escapeJavaString,
   formatLineComment,
@@ -26,6 +26,12 @@ export class JPAGenerator implements ORMGenerator {
       return '// 请补充字段信息';
     }
 
+    const names = buildORMPropertyNames('jpa', {
+      tableName,
+      schemaName,
+      fields,
+      foreignKeys,
+    });
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
 
@@ -64,7 +70,7 @@ export class JPAGenerator implements ORMGenerator {
     lines.push('');
 
     for (const field of fields) {
-      const propName = toCamelCase(field.name);
+      const propName = names.field(field.name);
       const javaType = mapCanonicalToORMType('jpa', field.type);
       const isPk = primaryFields.has(field.name);
       const isAutoInc = field.defaultKind === 'auto_increment';
@@ -92,7 +98,7 @@ export class JPAGenerator implements ORMGenerator {
 
     for (const foreignKey of foreignKeys) {
       const referencedType = toPascalCase(foreignKey.refTable);
-      const propertyName = toCamelCase(foreignKey.name || `${foreignKey.refTable}_relation`);
+      const propertyName = names.relation(foreignKey);
       const isNullable = foreignKey.fields.some(
         (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,
       );
@@ -119,10 +125,10 @@ export class JPAGenerator implements ORMGenerator {
     }
 
     for (const field of fields) {
-      const propName = toCamelCase(field.name);
+      const propName = names.field(field.name);
       const javaType = mapCanonicalToORMType('jpa', field.type);
-      const getterName = `get${toPascalCase(field.name)}`;
-      const setterName = `set${toPascalCase(field.name)}`;
+      const getterName = `get${toPascalCase(propName)}`;
+      const setterName = `set${toPascalCase(propName)}`;
 
       lines.push(`    public ${javaType} ${getterName}() {`);
       lines.push(`        return this.${propName};`);
@@ -136,7 +142,7 @@ export class JPAGenerator implements ORMGenerator {
 
     for (const foreignKey of foreignKeys) {
       const referencedType = toPascalCase(foreignKey.refTable);
-      const propertyName = toCamelCase(foreignKey.name || `${foreignKey.refTable}_relation`);
+      const propertyName = names.relation(foreignKey);
       const accessorName = toPascalCase(propertyName);
       lines.push(`    public ${referencedType} get${accessorName}() {`);
       lines.push(`        return this.${propertyName};`);

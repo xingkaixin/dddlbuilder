@@ -1,4 +1,5 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
+import { buildORMPropertyNames } from './ormNames.js';
 import { buildDialectDefaultClause } from '../strategies/dialectColumn.js';
 import { getORMTypeWithArgs } from '../utils/ormTypeResolver.js';
 import { buildIndexFieldLookup, escapePythonString, formatLineComment } from './shared.js';
@@ -20,6 +21,12 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       return '# 请补充字段信息';
     }
 
+    const names = buildORMPropertyNames('sqlalchemy', {
+      tableName,
+      schemaName,
+      fields,
+      foreignKeys,
+    });
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
 
@@ -70,7 +77,11 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       const isAutoInc = field.defaultKind === 'auto_increment';
       const isNullable = field.nullable && !isPk;
 
-      const args: string[] = [colType];
+      const propertyName = names.field(field.name);
+      const args: string[] = [
+        ...(propertyName !== field.name ? [`'${escapePythonString(field.name)}'`] : []),
+        colType,
+      ];
       if (isPk) {
         args.push('primary_key=True');
         if (isAutoInc) {
@@ -97,7 +108,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
         args.push(`comment='${escapePythonString(field.comment.trim())}'`);
       }
 
-      lines.push(`    ${field.name} = Column(${args.join(', ')})`);
+      lines.push(`    ${propertyName} = Column(${args.join(', ')})`);
     }
 
     // Indexes
