@@ -78,23 +78,19 @@ export const buildTableOptionsClause = (dbType: DatabaseType, config?: TableMisc
   if (supportsCollationOption(dbType) && collation) {
     parts.push(`COLLATE=${collation}`);
   }
-  if (supportsTablespaceOption(dbType) && tablespace) {
-    parts.push(`TABLESPACE ${tablespace}`);
-  }
   if (supportsFillfactorOption(dbType) && normalizedConfig.fillfactor != null) {
     parts.push(`WITH (fillfactor = ${normalizedConfig.fillfactor})`);
   }
   if (supportsOracleStorageOption(dbType)) {
-    const storageParts: string[] = [];
     if (normalizedConfig.pctfree != null) {
-      storageParts.push(`PCTFREE ${normalizedConfig.pctfree}`);
+      parts.push(`PCTFREE ${normalizedConfig.pctfree}`);
     }
     if (normalizedConfig.initrans != null) {
-      storageParts.push(`INITRANS ${normalizedConfig.initrans}`);
+      parts.push(`INITRANS ${normalizedConfig.initrans}`);
     }
-    if (storageParts.length > 0) {
-      parts.push(`STORAGE (${storageParts.join(' ')})`);
-    }
+  }
+  if (supportsTablespaceOption(dbType) && tablespace) {
+    parts.push(`TABLESPACE ${tablespace}`);
   }
 
   if (parts.length === 0) return '';

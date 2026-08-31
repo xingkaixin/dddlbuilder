@@ -830,9 +830,9 @@ describe('tableOptions', () => {
     expect(clause).toBe(' WITH (fillfactor = 80)');
   });
 
-  it('buildTableOptionsClause includes oracle storage options', () => {
+  it('buildTableOptionsClause includes oracle physical attributes', () => {
     const clause = buildTableOptionsClause('oracle', { enabled: true, pctfree: 10, initrans: 2 });
-    expect(clause).toBe(' STORAGE (PCTFREE 10 INITRANS 2)');
+    expect(clause).toBe(' PCTFREE 10 INITRANS 2');
   });
 
   it('buildTableOptionsClause clamps out-of-range numeric options', () => {
@@ -840,7 +840,7 @@ describe('tableOptions', () => {
       ' WITH (fillfactor = 10)',
     );
     expect(buildTableOptionsClause('oracle', { enabled: true, pctfree: 500, initrans: 0 })).toBe(
-      ' STORAGE (PCTFREE 99 INITRANS 1)',
+      ' PCTFREE 99 INITRANS 1',
     );
   });
 
