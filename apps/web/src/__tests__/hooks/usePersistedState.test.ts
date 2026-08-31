@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { usePersistedSync } from '@/components/App/hooks/usePersistedSync';
 import { useEditorStore } from '@/stores/editorStore';
+import { useTabStore } from '@/stores/tabStore';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
 import { buildPersistedStateSignature } from '@/utils/persistedStateSignature';
 import * as Y from 'yjs';
@@ -35,6 +36,7 @@ import {
   upsertSavedDraftInYDoc,
   getSavedDraftFromYDoc,
   deleteSavedDraftFromYDoc,
+  deleteDraftFromYDoc,
 } from '@/services/workspaceYDocAdapter';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
@@ -188,6 +190,165 @@ const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
 };
 
 describe('usePersistedState', () => {
+  describe('remote draft removal', () => {
+    beforeEach(() => useTabStore.setState({ tabs: [], activeTabId: null }));
+    afterEach(() => {
+      useTabStore.setState({ tabs: [], activeTabId: null });
+      useEditorStore.getState().resetDocument();
+    });
+
+    const renderSyncedWorkspace = async (doc: Y.Doc) => {
+      mockSignedInWorkspaceYDoc(doc);
+      const { wrapper } = createQueryClientWrapper();
+      const getCurrentState = () => toPersistedState(useEditorStore.getState());
+      const hook = renderHook(
+        () => {
+          const persistence = useTestPersistedState();
+          const editor = useEditorStore();
+          const tab = useTabStore((store) => store.getActiveTab());
+          const currentState = useMemo(() => toPersistedState(editor), [editor]);
+          usePersistedSync({
+            hydrated: persistence.hydrated,
+            enabled: tab != null && !tab.isLoading,
+            persistedState: persistence.persistedState,
+            activeSource: tab?.source ?? persistence.activeSource,
+            saveState: persistence.saveState,
+            currentState,
+            getCurrentState,
+            applyPersistedState: editor.replaceDocument,
+          });
+          return persistence;
+        },
+        { wrapper },
+      );
+      await waitFor(() => expect(hook.result.current.hydrated).toBe(true));
+      return hook;
+    };
+
+    it.each([
+      ['trash', 'none'],
+      ['delete', 'none'],
+      ['trash', 'draft'],
+      ['delete', 'saved'],
+      ['trash', 'loading'],
+    ] as const)('closes a %s draft and selects the %s neighbor', async (operation, neighbor) => {
+      const doc = new Y.Doc();
+      const remote = new Y.Doc();
+      const base = createState('removed');
+      const next = createState('neighbor');
+      upsertDraftInYDoc(doc, 'default', { state: base, createdAt: 1, updatedAt: 1 });
+      const tabs = useTabStore.getState();
+      const removedTabId = tabs.addTab({
+        title: 'removed',
+        source: { kind: 'draft', draftId: 'default' },
+        stateSnapshot: base,
+      });
+      if (neighbor === 'draft') {
+        upsertDraftInYDoc(doc, 'neighbor', { state: next, createdAt: 2, updatedAt: 2 });
+        tabs.addTab({
+          title: 'neighbor',
+          source: { kind: 'draft', draftId: 'neighbor' },
+          stateSnapshot: next,
+        });
+      } else if (neighbor !== 'none') {
+        const record = {
+          tableId: 'neighbor-table',
+          normalizedName: 'neighbor',
+          name: 'neighbor',
+          state: next,
+          createdAt: 2,
+          updatedAt: 2,
+        };
+        upsertSavedTableInYDoc(doc, record);
+        tabs.addTab({
+          title: 'neighbor',
+          source: {
+            kind: 'saved_table',
+            tableId: record.tableId,
+            normalizedName: record.normalizedName,
+            tableName: record.name,
+            baseSignature: '',
+          },
+          stateSnapshot: base,
+          isLoading: neighbor === 'loading',
+        });
+      }
+      tabs.activateTab(removedTabId);
+      Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+      const { result, unmount } = await renderSyncedWorkspace(doc);
+      const delayedSave = result.current.saveState;
+      await act(async () => {
+        if (operation === 'trash')
+          upsertDraftInYDoc(remote, 'default', {
+            state: base,
+            createdAt: 1,
+            updatedAt: 3,
+            trashedAt: 3,
+          });
+        else deleteDraftFromYDoc(remote, 'default');
+        Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote');
+      });
+      expect(useTabStore.getState().getTabById(removedTabId)).toBeUndefined();
+      const activeTab = useTabStore.getState().getActiveTab();
+      const hasLoadedNeighbor = neighbor === 'draft' || neighbor === 'saved';
+      expect(activeTab?.title).toBe(neighbor === 'none' ? undefined : 'neighbor');
+      expect(activeTab?.isLoading ?? false).toBe(neighbor === 'loading');
+      expect(result.current.persistedState?.tableName ?? null).toBe(
+        hasLoadedNeighbor ? 'neighbor' : null,
+      );
+      expect(useEditorStore.getState().tableName).toBe(hasLoadedNeighbor ? 'neighbor' : 'removed');
+      await act(async () =>
+        delayedSave({
+          source: { kind: 'draft', draftId: 'default' },
+          state: { ...base, tableComment: 'late input' },
+        }),
+      );
+      expect(result.current.getDraftState('default')).toBeNull();
+      if (operation === 'trash' && neighbor === 'none') {
+        await act(async () => result.current.restoreDraftById('default'));
+      }
+      expect(result.current.getDraftState('default')?.tableName).toBe(
+        operation === 'trash' && neighbor === 'none' ? 'removed' : undefined,
+      );
+      unmount();
+      doc.destroy();
+      remote.destroy();
+    });
+
+    it('removes a background draft tab without replaying the active snapshot', async () => {
+      const doc = new Y.Doc();
+      const remote = new Y.Doc();
+      const active = createState('active');
+      upsertDraftInYDoc(doc, 'default', { state: active, updatedAt: 1 });
+      upsertDraftInYDoc(doc, 'background', { state: createState('background'), updatedAt: 1 });
+      Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+      const tabs = useTabStore.getState();
+      const activeId = tabs.addTab({
+        title: 'active',
+        source: { kind: 'draft', draftId: 'default' },
+        stateSnapshot: active,
+      });
+      const backgroundId = tabs.addTab({
+        title: 'background',
+        source: { kind: 'draft', draftId: 'background' },
+        stateSnapshot: createState('background'),
+      });
+      tabs.activateTab(activeId);
+      const { unmount } = await renderSyncedWorkspace(doc);
+      await act(async () => useEditorStore.getState().setTableComment('keep current input'));
+      await act(async () => {
+        deleteDraftFromYDoc(remote, 'background');
+        Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote');
+      });
+      expect(useTabStore.getState().getTabById(backgroundId)).toBeUndefined();
+      expect(useTabStore.getState().activeTabId).toBe(activeId);
+      expect(useEditorStore.getState().tableComment).toBe('keep current input');
+      unmount();
+      doc.destroy();
+      remote.destroy();
+    });
+  });
+
   it('groups persistence capabilities by responsibility', () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
@@ -588,6 +749,7 @@ describe('usePersistedState', () => {
     };
 
     act(() => {
+      result.current.createDraft('default', createState('global'));
       result.current.saveState(payload);
     });
 
@@ -627,6 +789,7 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
+      result.current.createDraft('default', createState('pending'));
       result.current.saveState({
         state: createState('pending_remote_draft'),
         source: { kind: 'draft', draftId: 'default' },

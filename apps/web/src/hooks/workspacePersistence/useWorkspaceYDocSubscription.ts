@@ -13,6 +13,7 @@ import {
   getSavedDraftFromYDoc,
   getSavedTableFromYDoc,
   getStateForWorkspaceSource,
+  getWorkspaceSnapshotFromYDoc,
   listDraftRecordsFromYDoc,
   listSavedDraftsFromYDoc,
   subscribeWorkspaceYDoc,
@@ -26,6 +27,7 @@ import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 import { isSameWorkspaceSource } from './normalize';
 import { useEditorStore } from '@/stores';
 import { toEditorSessionSnapshot } from '@/stores/editorDocumentCodec';
+import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 
 export interface PendingLocalSave {
   source: WorkspaceSelection;
@@ -76,6 +78,35 @@ export function useWorkspaceYDocSubscription({
         replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc));
       }
       if (change?.origin === WorkspaceYDocOrigin.LocalEdit) return;
+      if (change?.collection === 'drafts') {
+        const tabs = useTabStore.getState();
+        const previousActiveId = tabs.activeTabId;
+        for (const tab of tabs.tabs) {
+          if (tab.source.kind === 'draft' && !getStateForWorkspaceSource(yDoc, tab.source)) {
+            tabs.closeTab(tab.id);
+          }
+        }
+        if (previousActiveId !== useTabStore.getState().activeTabId) {
+          const nextTab = tabs.getActiveTab();
+          const snapshot =
+            nextTab && !nextTab.isLoading
+              ? (getWorkspaceSnapshotFromYDoc(
+                  yDoc,
+                  nextTab.source,
+                  toEditorSessionSnapshot(useEditorStore.getState()),
+                ) ?? { source: nextTab.source, state: nextTab.stateSnapshot })
+              : null;
+          if (nextTab && snapshot) {
+            tabs.hydrateTab(nextTab.id, snapshot.source, snapshot.state);
+            syncActiveSource(snapshot.source);
+            applyRemoteState(snapshot.state);
+          } else {
+            syncActiveSource(nextTab?.source ?? { kind: 'draft', draftId: DEFAULT_DRAFT_ID });
+            setPersistedStateIfChanged(null);
+          }
+          return;
+        }
+      }
       for (const rename of change?.renamedTables ?? []) {
         useTabStore
           .getState()

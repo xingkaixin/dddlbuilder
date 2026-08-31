@@ -303,6 +303,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (!isSameWorkspaceSource(payload.source, currentSource)) {
         return;
       }
+      if (payload.source.kind === 'draft' && !getDraftState(payload.source.draftId)) return;
       if (payload.source.kind === 'saved_table' && persistedStateRef.current) {
         lastLocalSaveRef.current = {
           source: payload.source,
@@ -339,6 +340,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     [
       dropSavedTableDraft,
       getSavedTableDraft,
+      getDraftState,
       hydrated,
       persistSavedTableDraft,
       saveDraftState,

@@ -855,6 +855,67 @@ test('workspace yjs sync converges realtime edits and IndexedDB restore', async 
   await contextB.close();
 });
 
+test('remote draft removal switches to the remaining tab without reviving the deleted draft', async ({
+  browser,
+}) => {
+  const workspaceId = `ws-draft-removal-${Date.now()}`;
+  const server = new MockWorkspaceYjsServer();
+  seedDefaultDraft(server.doc, 'shared_draft', 'id');
+  const contextA = await browser.newContext({ locale: 'zh-CN' });
+  const contextB = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(contextA, server, workspaceId, 'deleting-client');
+  await mockSignedInWorkspace(contextB, server, workspaceId, 'editing-client');
+  const pageA = await contextA.newPage();
+  const pageB = await contextB.newPage();
+  const remainingDraft = () =>
+    Array.from(server.doc.getMap<Y.Map<unknown>>('drafts').values())
+      .map(readTableDocState)
+      .find((state) => state?.tableName === 'remaining_draft');
+
+  try {
+    await pageA.goto('/');
+    await pageB.goto('/');
+    await openDraftByName(pageA, 'shared_draft');
+    await openDraftByName(pageB, 'shared_draft');
+    await pageB.getByRole('button', { name: /新建草稿/i }).click();
+    await tableNameInput(pageB).fill('remaining_draft');
+    await pageB.locator('#table-comment').fill('keep this draft');
+    await expect.poll(() => remainingDraft()?.tableComment).toBe('keep this draft');
+    await openDraftByName(pageB, 'shared_draft');
+
+    await openSavedTables(pageA);
+    await getSavedTableRow(pageA, DEFAULT_DRAFT_ID)
+      .getByRole('button', { name: '更多操作' })
+      .click();
+    await pageA.getByRole('menuitem', { name: '删除', exact: true }).click();
+
+    await expect(tableNameInput(pageB)).toHaveValue('remaining_draft');
+    await expect(pageB.locator('#table-comment')).toHaveValue('keep this draft');
+    await expect(pageB.getByRole('button', { name: /shared_draft/ })).toHaveCount(0);
+    await pageB.locator('#table-comment').fill('edited after remote removal');
+    await expect.poll(() => remainingDraft()?.tableComment).toBe('edited after remote removal');
+    expect(
+      readMetadata(server.doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID))?.get(
+        'trashedAt',
+      ),
+    ).toEqual(expect.any(Number));
+
+    await pageB.reload();
+    await openDraftByName(pageB, 'remaining_draft');
+    await expect(pageB.locator('#table-comment')).toHaveValue('edited after remote removal');
+    await expect(pageB.getByRole('button', { name: /shared_draft/ })).toHaveCount(0);
+    expect(
+      readMetadata(server.doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID))?.get(
+        'trashedAt',
+      ),
+    ).toEqual(expect.any(Number));
+  } finally {
+    await contextA.close();
+    await contextB.close();
+    server.doc.destroy();
+  }
+});
+
 test('workspace yjs sync converges saved table lifecycle and folder moves across contexts', async ({
   browser,
 }) => {
