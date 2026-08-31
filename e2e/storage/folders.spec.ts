@@ -132,9 +132,7 @@ test.describe('文件夹管理验证 @storage', () => {
 
     await saveTable(page, tableNameA);
 
-    await page.getByRole('button', { name: /清空/i }).click();
-    await page.getByRole('button', { name: /确认清空/i }).click();
-    await expect(page.locator('#table-name')).toHaveValue('');
+    await page.getByRole('button', { name: /新建草稿|new draft/i }).click();
 
     await saveTable(page, tableNameB);
     await openSavedTables(page);

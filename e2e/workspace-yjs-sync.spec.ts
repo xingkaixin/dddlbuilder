@@ -18,6 +18,7 @@ import type { WorkspaceMigrationPayload } from '../packages/shared-types/src/wor
 import { applyWorkspaceMigrationSnapshot } from '../apps/worker/server-api/lib/workspaceMigration';
 import {
   getWorkspaceSavedTable,
+  listWorkspaceDrafts,
   upsertWorkspaceSavedTable,
 } from '../packages/workspace-core/src/index';
 
@@ -855,7 +856,7 @@ test('workspace yjs sync converges realtime edits and IndexedDB restore', async 
   await contextB.close();
 });
 
-test('remote draft removal switches to the remaining tab without reviving the deleted draft', async ({
+test('remote draft removal cancels index advice when switching to a same-name draft', async ({
   browser,
 }) => {
   const workspaceId = `ws-draft-removal-${Date.now()}`;
@@ -865,12 +866,39 @@ test('remote draft removal switches to the remaining tab without reviving the de
   const contextB = await browser.newContext({ locale: 'zh-CN' });
   await mockSignedInWorkspace(contextA, server, workspaceId, 'deleting-client');
   await mockSignedInWorkspace(contextB, server, workspaceId, 'editing-client');
+  let finishResponse = () => {};
+  const responseReady = new Promise<void>((resolve) => {
+    finishResponse = resolve;
+  });
+  await contextB.route('**/api/index-advisor', async (route) => {
+    await responseReady;
+    await route.fulfill({
+      json: {
+        summary: 'Advice for the deleted draft',
+        recommendations: [
+          {
+            id: 'unique-id',
+            category: 'missing_index',
+            title: 'Unique ID for the deleted draft',
+            rationale: 'The original draft requires unique IDs',
+            confidence: 'high',
+            index: {
+              name: 'uk_shared_draft_id',
+              fields: [{ name: 'id', direction: 'ASC' }],
+              unique: true,
+            },
+          },
+        ],
+      },
+    });
+  });
   const pageA = await contextA.newPage();
   const pageB = await contextB.newPage();
   const remainingDraft = () =>
-    Array.from(server.doc.getMap<Y.Map<unknown>>('drafts').values())
-      .map(readTableDocState)
-      .find((state) => state?.tableName === 'remaining_draft');
+    listWorkspaceDrafts(server.doc).find(({ draftId }) => draftId !== DEFAULT_DRAFT_ID)?.record
+      .state;
+  const sharedDraftTabs = pageB.locator('div[role="button"]').filter({ hasText: /^shared_draft/ });
+  const advisor = pageB.getByRole('dialog', { name: 'AI 索引优化顾问' });
 
   try {
     await pageA.goto('/');
@@ -878,10 +906,25 @@ test('remote draft removal switches to the remaining tab without reviving the de
     await openDraftByName(pageA, 'shared_draft');
     await openDraftByName(pageB, 'shared_draft');
     await pageB.getByRole('button', { name: /新建草稿/i }).click();
-    await tableNameInput(pageB).fill('remaining_draft');
+    await tableNameInput(pageB).fill('shared_draft');
+    await editFirstFieldName(pageB, 'id');
+    await editFirstFieldType(pageB, 'BIGINT');
     await pageB.locator('#table-comment').fill('keep this draft');
     await expect.poll(() => remainingDraft()?.tableComment).toBe('keep this draft');
-    await openDraftByName(pageB, 'shared_draft');
+    await expect(sharedDraftTabs).toHaveCount(2);
+    await openSavedTables(pageB);
+    await getSavedTableRow(pageB, DEFAULT_DRAFT_ID).getByTestId('table-select:default').click();
+    await expect(pageB.locator('#table-comment')).toHaveValue('');
+
+    await pageB.getByRole('button', { name: 'AI 索引顾问', exact: true }).click();
+    await advisor
+      .locator('#ai-index-query-patterns')
+      .fill('SELECT * FROM shared_draft WHERE id = ?');
+    const requestStarted = pageB.waitForRequest('**/api/index-advisor');
+    await advisor.getByRole('button', { name: '分析索引', exact: true }).click();
+    const request = await requestStarted;
+    expect(request.postDataJSON().tableName).toBe('shared_draft');
+    const cancelled = pageB.waitForEvent('requestfailed', (failed) => failed === request);
 
     await openSavedTables(pageA);
     await getSavedTableRow(pageA, DEFAULT_DRAFT_ID)
@@ -889,9 +932,18 @@ test('remote draft removal switches to the remaining tab without reviving the de
       .click();
     await pageA.getByRole('menuitem', { name: '删除', exact: true }).click();
 
-    await expect(tableNameInput(pageB)).toHaveValue('remaining_draft');
+    await expect(advisor).toBeHidden();
+    finishResponse();
+    await cancelled;
+    await expect(tableNameInput(pageB)).toHaveValue('shared_draft');
     await expect(pageB.locator('#table-comment')).toHaveValue('keep this draft');
-    await expect(pageB.getByRole('button', { name: /shared_draft/ })).toHaveCount(0);
+    await expect(sharedDraftTabs).toHaveCount(1);
+    await pageB.getByRole('button', { name: 'AI 索引顾问', exact: true }).click();
+    await expect(advisor).toBeVisible();
+    await expect(advisor.getByText('Advice for the deleted draft')).toHaveCount(0);
+    await expect(advisor.getByRole('button', { name: '添加索引', exact: true })).toHaveCount(0);
+    await advisor.getByRole('button', { name: '取消', exact: true }).click();
+    expect(remainingDraft()?.indexes).toEqual([]);
     await pageB.locator('#table-comment').fill('edited after remote removal');
     await expect.poll(() => remainingDraft()?.tableComment).toBe('edited after remote removal');
     expect(
@@ -901,15 +953,17 @@ test('remote draft removal switches to the remaining tab without reviving the de
     ).toEqual(expect.any(Number));
 
     await pageB.reload();
-    await openDraftByName(pageB, 'remaining_draft');
+    await openDraftByName(pageB, 'shared_draft');
     await expect(pageB.locator('#table-comment')).toHaveValue('edited after remote removal');
-    await expect(pageB.getByRole('button', { name: /shared_draft/ })).toHaveCount(0);
+    await expect(sharedDraftTabs).toHaveCount(1);
+    expect(remainingDraft()?.indexes).toEqual([]);
     expect(
       readMetadata(server.doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID))?.get(
         'trashedAt',
       ),
     ).toEqual(expect.any(Number));
   } finally {
+    finishResponse();
     await contextA.close();
     await contextB.close();
     server.doc.destroy();

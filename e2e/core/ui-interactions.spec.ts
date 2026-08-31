@@ -65,7 +65,10 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await page.locator('#table-name').fill('work_after_clear');
     await page.locator('#table-comment').fill('清空后继续编辑');
     await page.reload();
-    await ensureBuilderVisible(page);
+    await page
+      .getByTestId('workspace-content')
+      .getByRole('button', { name: /work_after_clear/ })
+      .click();
     await expect(page.locator('#table-name')).toHaveValue('work_after_clear');
     await expect(page.locator('#table-comment')).toHaveValue('清空后继续编辑');
   });
