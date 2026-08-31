@@ -61,11 +61,11 @@ export class PrismaGenerator implements ORMGenerator {
 
       const decorations: string[] = [];
 
-      if (isPk) {
-        if (primaryFields.size === 1) decorations.push('@id');
-        if (isAutoInc) {
-          decorations.push('@default(autoincrement())');
-        }
+      if (isPk && primaryFields.size === 1) {
+        decorations.push('@id');
+      }
+      if (isAutoInc) {
+        decorations.push('@default(autoincrement())');
       } else if (field.defaultKind === 'uuid') {
         decorations.push('@default(uuid())');
       } else if (field.defaultKind === 'current_timestamp') {

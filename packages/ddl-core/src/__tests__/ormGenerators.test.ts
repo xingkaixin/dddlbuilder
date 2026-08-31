@@ -156,6 +156,66 @@ describe('ORMGeneratorFactory', () => {
   });
 });
 
+describe('primary key defaults', () => {
+  it.each([
+    ['uuid', 'uuid', '', '@default(uuid())', "default: () => 'gen_random_uuid()'"],
+    ['current_timestamp', 'timestamp', '', '@default(now())', "default: () => 'CURRENT_TIMESTAMP'"],
+    ['constant', 'varchar(30)', 'pending', '@default("pending")', "default: 'pending'"],
+    [
+      'expression',
+      'uuid',
+      'gen_random_uuid()',
+      '@default(dbgenerated("gen_random_uuid()"))',
+      'default: () => "gen_random_uuid()"',
+    ],
+  ] as const)(
+    'preserves %s defaults alongside the primary key constraint',
+    (defaultKind, type, defaultValue, prismaDefault, typeormDefault) => {
+      const input = {
+        dbType: 'postgresql' as const,
+        tableName: 'defaults',
+        tableComment: '',
+        fields: [{ ...sampleFields[0], type, defaultKind, defaultValue }],
+        indexes: [sampleIndexes[0]],
+      };
+      expect(buildORM('prisma', input)).toContain(`@id ${prismaDefault}`);
+      const typeorm = buildORM('typeorm', input);
+      expect(typeorm).toContain('@PrimaryColumn(');
+      expect(typeorm).toContain(typeormDefault);
+    },
+  );
+
+  it('preserves defaults on composite primary key fields', () => {
+    const input = {
+      dbType: 'postgresql' as const,
+      tableName: 'defaults',
+      tableComment: '',
+      fields: [
+        { ...sampleFields[0], type: 'uuid', defaultKind: 'uuid' as const },
+        { ...sampleFields[1], nullable: false, defaultKind: 'constant' as const, defaultValue: '' },
+      ],
+      indexes: [
+        {
+          ...sampleIndexes[0],
+          fields: [
+            { name: 'id', direction: 'ASC' as const },
+            { name: 'name', direction: 'ASC' as const },
+          ],
+        },
+      ],
+    };
+    const prisma = buildORM('prisma', input);
+    expect(prisma).toContain('@@id([id, name])');
+    expect(prisma).toContain('@default(uuid())');
+    expect(prisma).toContain('@default("")');
+    const typeorm = buildORM('typeorm', input);
+    expect(typeorm).toContain(
+      `@PrimaryColumn({ type: "uuid", default: () => 'gen_random_uuid()' })`,
+    );
+    expect(typeorm).toContain(`@PrimaryColumn({ type: "varchar", length: 255, default: '' })`);
+  });
+});
+
 describe('PrismaGenerator', () => {
   it('generates Prisma model', () => {
     const result = buildORM('prisma', {
@@ -220,6 +280,20 @@ describe('PrismaGenerator', () => {
 });
 
 describe('TypeORMGenerator', () => {
+  it.each([
+    ['mysql', '(UUID())'],
+    ['postgresql', 'gen_random_uuid()'],
+    ['sqlserver', 'NEWID()'],
+  ] as const)('uses the %s UUID default for non-primary columns', (dbType, expression) => {
+    const result = buildORM('typeorm', {
+      dbType,
+      tableName: 'defaults',
+      tableComment: '',
+      fields: [{ ...sampleFields[1], type: 'uuid', defaultKind: 'uuid' }],
+    });
+    expect(result).toContain(`default: () => '${expression}'`);
+  });
+
   it('generates TypeORM entity', () => {
     const result = buildORM('typeorm', {
       dbType: 'mysql',

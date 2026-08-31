@@ -1,4 +1,5 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
+import { DIALECT_PROFILES } from '../strategies/dialectProfiles.js';
 import { getDatabaseFamily } from '../utils/databaseFamily.js';
 import {
   buildIndexFieldLookup,
@@ -109,15 +110,17 @@ export class TypeORMGenerator implements ORMGenerator {
         if (field.comment.trim()) {
           optionsParts.push(`comment: ${tsStringLiteral(field.comment.trim())}`);
         }
-        if (field.defaultKind === 'constant') {
-          optionsParts.push(`default: ${tsStringLiteral(field.defaultValue)}`);
-        } else if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
-          optionsParts.push(`default: () => ${JSON.stringify(field.defaultValue)}`);
-        } else if (field.defaultKind === 'current_timestamp') {
-          optionsParts.push(`default: () => 'CURRENT_TIMESTAMP'`);
-        } else if (field.defaultKind === 'uuid') {
-          optionsParts.push(`default: () => 'uuid()'`);
-        }
+      }
+      if (field.defaultKind === 'constant') {
+        optionsParts.push(`default: ${tsStringLiteral(field.defaultValue)}`);
+      } else if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
+        optionsParts.push(`default: () => ${JSON.stringify(field.defaultValue)}`);
+      } else if (field.defaultKind === 'current_timestamp') {
+        optionsParts.push(`default: () => 'CURRENT_TIMESTAMP'`);
+      } else if (field.defaultKind === 'uuid' && DIALECT_PROFILES[dbType].uuidFunction) {
+        optionsParts.push(
+          `default: () => ${tsStringLiteral(DIALECT_PROFILES[dbType].uuidFunction)}`,
+        );
       }
       const decorator = isPk ? (isAutoInc ? 'PrimaryGeneratedColumn' : 'PrimaryColumn') : 'Column';
       const opts = optionsParts.length > 0 ? `{ ${optionsParts.join(', ')} }` : '';
