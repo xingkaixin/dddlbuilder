@@ -30,6 +30,9 @@ import {
   generateTableOptionsChangeNotice,
 } from '../utils/alter-ddl/tableStatements';
 
+const dependencyNotice =
+  '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.\n\n';
+
 const createField = (overrides: Partial<NormalizedField> = {}): NormalizedField => ({
   name: 'id',
   type: 'int',
@@ -105,7 +108,8 @@ describe('generateAlterDDL', () => {
         ],
       });
       expect(generateAlterDDL('audit.users', diff, [], dbType)).toBe(
-        "COMMENT ON TABLE audit.users IS 'it''s new';\n\nALTER TABLE audit.users DROP CONSTRAINT users_pkey;\n\nDROP INDEX audit.idx_name;",
+        dependencyNotice +
+          "COMMENT ON TABLE audit.users IS 'it''s new';\n\nALTER TABLE audit.users DROP CONSTRAINT users_pkey;\n\nDROP INDEX audit.idx_name;",
       );
       expect(generateRollbackDDL('audit.users', diff, [], dbType)).toBe(
         "COMMENT ON TABLE audit.users IS 'before';\n\nALTER TABLE audit.users ADD CONSTRAINT users_pkey PRIMARY KEY (name);\n\nCREATE INDEX idx_name ON audit.users (name ASC);",
@@ -158,7 +162,8 @@ describe('generateAlterDDL', () => {
     });
     const diff = diffPersistedState(before, { ...before, indexes: [] });
     expect(generateAlterDDL('users', diff, [], 'postgresql')).toBe(
-      'ALTER TABLE users DROP CONSTRAINT uq_users_email;\n\nDROP INDEX ix_users_email;',
+      dependencyNotice +
+        'ALTER TABLE users DROP CONSTRAINT uq_users_email;\n\nDROP INDEX ix_users_email;',
     );
     expect(generateRollbackDDL('users', diff, [], 'postgresql')).toBe(
       'ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email);\n\nCREATE UNIQUE INDEX ix_users_email ON users (email ASC);',
@@ -228,7 +233,7 @@ describe('generateAlterDDL', () => {
       'ALTER TABLE "Audit"."Users" ADD COLUMN "TenantId" INTEGER;',
     );
     expect(generateRollbackDDL('Audit.Users', diff, [], 'postgresql')).toBe(
-      'ALTER TABLE "Audit"."Users" DROP COLUMN "TenantId";',
+      dependencyNotice + 'ALTER TABLE "Audit"."Users" DROP COLUMN "TenantId";',
     );
   });
 
@@ -249,7 +254,7 @@ describe('generateAlterDDL', () => {
     });
     const diff = diffPersistedState(before, { ...before, indexes: [] });
     expect(generateAlterDDL('users', diff, [], 'postgresql')).toBe(
-      'ALTER TABLE users DROP CONSTRAINT users_identity;',
+      dependencyNotice + 'ALTER TABLE users DROP CONSTRAINT users_identity;',
     );
     expect(generateRollbackDDL('users', diff, [], 'postgresql')).toBe(
       'ALTER TABLE users ADD CONSTRAINT users_identity PRIMARY KEY (id);',
@@ -292,7 +297,7 @@ describe('generateAlterDDL', () => {
       const rollback = generateRollbackDDL(after.tableName, diff, [], dbType);
       expect(sql.startsWith(forwardMove)).toBe(true);
       expect(sql).toContain('ALTER TABLE archive.archived_orders ADD');
-      expect(rollback.startsWith(reverseMove)).toBe(true);
+      expect(rollback.startsWith(dependencyNotice + reverseMove)).toBe(true);
       expect(rollback).toContain('ALTER TABLE public.orders DROP COLUMN id;');
     },
   );
@@ -384,7 +389,7 @@ describe('generateAlterDDL', () => {
       ],
     });
     const sql = generateAlterDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('ALTER TABLE users DROP COLUMN age;');
+    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP COLUMN age;');
   });
 
   it('generates rename column statement for mysql', () => {
@@ -523,7 +528,7 @@ describe('generateAlterDDL', () => {
       ],
     });
     const sql = generateAlterDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('ALTER TABLE users MODIFY COLUMN age BIGINT NOT NULL;');
+    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users MODIFY COLUMN age BIGINT NOT NULL;');
   });
 
   it('generates add index statement', () => {
@@ -549,7 +554,7 @@ describe('generateAlterDDL', () => {
       ],
     });
     const sql = generateAlterDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('ALTER TABLE users DROP INDEX idx_age;');
+    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP INDEX idx_age;');
   });
 
   it('generates drop primary key statement', () => {
@@ -566,7 +571,7 @@ describe('generateAlterDDL', () => {
       ],
     });
     const sql = generateAlterDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('ALTER TABLE users DROP PRIMARY KEY;');
+    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP PRIMARY KEY;');
   });
 
   it('generates add primary key statement', () => {
@@ -694,6 +699,7 @@ describe('generateAlterDDL', () => {
     const sql = generateAlterDDL('users', diff, [], 'mysql');
     const lines = sql.split('\n\n');
     expect(lines).toEqual([
+      dependencyNotice.trim(),
       'ALTER TABLE users DROP FOREIGN KEY fk_user;',
       'ALTER TABLE users\n  DROP INDEX idx_old,\n  DROP COLUMN old_col,\n  ADD COLUMN new_col VARCHAR(255) NULL,\n  ADD INDEX idx_new (new_col ASC);',
       'ALTER TABLE users ADD CONSTRAINT fk_user FOREIGN KEY (new_col) REFERENCES users (id);',
@@ -712,7 +718,7 @@ describe('generateRollbackDDL', () => {
       indexes: [{ type: 'add', index: createIndex({ name: 'idx_age' }) }],
     });
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('ALTER TABLE users DROP INDEX idx_age;');
+    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP INDEX idx_age;');
   });
 
   it('rollback: restore modified field', () => {
@@ -728,7 +734,7 @@ describe('generateRollbackDDL', () => {
       ],
     });
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('ALTER TABLE users MODIFY COLUMN age INT NOT NULL;');
+    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users MODIFY COLUMN age INT NOT NULL;');
   });
 
   it('rollback: delete added field', () => {
@@ -742,7 +748,7 @@ describe('generateRollbackDDL', () => {
       ],
     });
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('ALTER TABLE users DROP COLUMN age;');
+    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP COLUMN age;');
   });
 
   it('rollback: reverse renamed field', () => {
@@ -831,7 +837,9 @@ describe('generateRollbackDDL', () => {
     const sql = generateRollbackDDL('accounts', diff, [], 'mysql');
 
     expect(sql).toBe(
-      'ALTER TABLE accounts RENAME TO users;\n\n' + 'ALTER TABLE users DROP COLUMN age;',
+      dependencyNotice +
+        'ALTER TABLE accounts RENAME TO users;\n\n' +
+        'ALTER TABLE users DROP COLUMN age;',
     );
   });
 
@@ -873,6 +881,7 @@ describe('generateRollbackDDL', () => {
     });
 
     expect(generateRollbackDDL('orders', diff, [], 'mysql').split('\n\n')).toEqual([
+      dependencyNotice.trim(),
       'ALTER TABLE orders DROP FOREIGN KEY fk_user;',
       'ALTER TABLE orders\n  DROP INDEX idx_user,\n  DROP COLUMN user_id,\n  ADD COLUMN owner_id INT NOT NULL,\n  ADD INDEX idx_owner (owner_id ASC);',
       'ALTER TABLE orders ADD CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES users (id);',

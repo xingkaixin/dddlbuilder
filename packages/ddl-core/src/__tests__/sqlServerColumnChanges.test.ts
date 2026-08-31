@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { withDefaultEditorSession, type FieldRow } from '@ddlbuilder/shared-types';
 import { diffPersistedState, generateAlterDDL, generateRollbackDDL } from '../index';
 
+const dependencyNotice =
+  '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.\n\n';
+
 const field: FieldRow = {
   id: 'id',
   fieldName: 'id',
@@ -178,7 +181,9 @@ describe('SQL Server column changes', () => {
   it('changes an identity column type without repeating IDENTITY', () => {
     const before = { ...field, defaultKind: 'auto_increment' as const };
     const sql = sqlFor(before, { ...before, fieldType: 'bigint' });
-    expect(sql.forward).toBe('ALTER TABLE users ALTER COLUMN id BIGINT NOT NULL;');
-    expect(sql.rollback).toBe('ALTER TABLE users ALTER COLUMN id INT NOT NULL;');
+    expect(sql.forward).toBe(
+      dependencyNotice + 'ALTER TABLE users ALTER COLUMN id BIGINT NOT NULL;',
+    );
+    expect(sql.rollback).toBe(dependencyNotice + 'ALTER TABLE users ALTER COLUMN id INT NOT NULL;');
   });
 });

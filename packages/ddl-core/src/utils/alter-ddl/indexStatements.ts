@@ -1,4 +1,4 @@
-import type { DatabaseType } from '@ddlbuilder/shared-types';
+import type { DatabaseType, IndexDefinition } from '@ddlbuilder/shared-types';
 import { formatSqlIdentifier } from '../sqlIdentifiers';
 import { getDatabaseFamily } from '../databaseFamily';
 import type { IndexDiff } from '../tableDiff';
@@ -64,4 +64,23 @@ export function generateAddIndex(
     .join(', ');
   const indexType = index.kind !== 'index' ? 'UNIQUE INDEX' : 'INDEX';
   return `CREATE ${indexType} ${indexName} ON ${tableName} (${fieldList});`;
+}
+
+export function generateRenameIndex(
+  tableName: string,
+  oldIndex: IndexDefinition,
+  newIndex: IndexDefinition,
+  dbType: DatabaseType,
+): string {
+  const oldName = formatSqlIdentifier(oldIndex.name, dbType);
+  const newName = formatSqlIdentifier(newIndex.name, dbType);
+  if (oldIndex.kind === 'primary' || oldIndex.kind === 'unique_constraint') {
+    return `ALTER TABLE ${tableName} RENAME CONSTRAINT ${oldName} TO ${newName};`;
+  }
+  const qualifiedIndex = buildQualifiedTableName(
+    getSchemaAndTable(tableName).schema,
+    oldIndex.name,
+    dbType,
+  );
+  return `ALTER INDEX ${qualifiedIndex} RENAME TO ${newName};`;
 }

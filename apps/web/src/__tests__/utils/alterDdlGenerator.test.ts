@@ -341,7 +341,8 @@ describe('generateAlterDDL', () => {
       };
       const result = generateAlterDDL('users', diff, [], 'mysql');
       expect(result).toBe(
-        'ALTER TABLE users\n  DROP INDEX idx_old,\n  ADD COLUMN new_field VARCHAR(100) NULL,\n  ADD INDEX idx_new (new_field ASC);',
+        '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.\n\n' +
+          'ALTER TABLE users\n  DROP INDEX idx_old,\n  ADD COLUMN new_field VARCHAR(100) NULL,\n  ADD INDEX idx_new (new_field ASC);',
       );
     });
   });

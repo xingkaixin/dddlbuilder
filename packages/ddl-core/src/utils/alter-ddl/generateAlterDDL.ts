@@ -7,7 +7,7 @@ import {
   generateAddColumn,
   generateModifyColumn,
 } from './columnStatements';
-import { generateDropIndex, generateAddIndex } from './indexStatements';
+import { generateDropIndex, generateAddIndex, generateRenameIndex } from './indexStatements';
 import { generateDropForeignKey, generateAddForeignKey } from './foreignKeyStatements';
 import {
   generateRenameTable,
@@ -19,6 +19,7 @@ import { getDatabaseFamily } from '../databaseFamily';
 import { generateMysqlAlterStatement } from './mysqlAlterStatement';
 import { getForeignKeyIssue } from '../foreignKeys';
 import { getSqlIdentifierKey } from '../sqlIdentifiers';
+import { planDependencies } from './planDependencies';
 
 const MANUAL_CHANGE_DESCRIPTIONS: Record<ManualSchemaChange, string> = {
   objectType: 'schema object type',
@@ -83,6 +84,17 @@ export function generateAlterDDL(
     return `-- Manual migration required: cyclic column renames in ${oldTableName} (${dbType}). No automatic changes generated.`;
   }
 
+  const dependencies = planDependencies(oldTableName, diff, dbType);
+  if (dependencies.error !== undefined) {
+    return `-- Manual migration required: ${dependencies.error} in ${oldTableName} (${dbType}). No automatic changes generated.`;
+  }
+  const { indexes, foreignKeys, indexRenames } = dependencies;
+  if (dependencies.needsExternalDependencyReview) {
+    statements.push(
+      '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.',
+    );
+  }
+
   if (diff.schemaNameChanged) {
     const newSchema = diff.newSchemaName ?? '';
     const statement = generateTableSchemaChange(oldTableName, newSchema, dbType);
@@ -114,8 +126,8 @@ export function generateAlterDDL(
     }
   }
 
-  for (const fkDiff of (diff.foreignKeys || []).filter((f) => f.type === 'remove')) {
-    const replacement = diff.foreignKeys?.find(
+  for (const fkDiff of foreignKeys.filter((f) => f.type === 'remove')) {
+    const replacement = foreignKeys.find(
       (change) =>
         change.type === 'add' &&
         getSqlIdentifierKey(change.foreignKey.name, dbType) ===
@@ -125,10 +137,14 @@ export function generateAlterDDL(
     statements.push(generateDropForeignKey(activeTableName, fkDiff, dbType));
   }
 
+  for (const { oldIndex, newIndex } of indexRenames) {
+    statements.push(generateRenameIndex(activeTableName, oldIndex, newIndex, dbType));
+  }
+
   if (getDatabaseFamily(dbType) === 'mysql') {
-    statements.push(generateMysqlAlterStatement(activeTableName, diff, dbType));
+    statements.push(generateMysqlAlterStatement(activeTableName, { ...diff, indexes }, dbType));
   } else {
-    for (const idxDiff of diff.indexes.filter((i) => i.type === 'remove')) {
+    for (const idxDiff of indexes.filter((i) => i.type === 'remove')) {
       statements.push(generateDropIndex(activeTableName, idxDiff, dbType));
     }
 
@@ -166,13 +182,13 @@ export function generateAlterDDL(
     }
 
     // 6. 处理新增的索引
-    for (const idxDiff of diff.indexes.filter((i) => i.type === 'add')) {
+    for (const idxDiff of indexes.filter((i) => i.type === 'add')) {
       statements.push(generateAddIndex(activeTableName, idxDiff, dbType));
     }
   }
 
   // 7. 处理新增的外键
-  for (const fkDiff of (diff.foreignKeys || []).filter((f) => f.type === 'add')) {
+  for (const fkDiff of foreignKeys.filter((f) => f.type === 'add')) {
     statements.push(generateAddForeignKey(activeTableName, fkDiff, dbType));
   }
 

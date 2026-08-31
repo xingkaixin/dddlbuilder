@@ -94,7 +94,8 @@ describe('generateRollbackDDL', () => {
 
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
     expect(sql).toBe(
-      "ALTER TABLE users COMMENT = '旧注释';\n\n" +
+      '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.\n\n' +
+        "ALTER TABLE users COMMENT = '旧注释';\n\n" +
         'ALTER TABLE users\n' +
         '  DROP INDEX idx_new,\n' +
         '  MODIFY COLUMN nick VARCHAR(50) NULL,\n' +

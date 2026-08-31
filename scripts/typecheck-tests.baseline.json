@@ -257,14 +257,6 @@
   },
   {
     "package": "@ddlbuilder/ddl-core",
-    "file": "src/__tests__/mysqlAlterDependencies.test.ts",
-    "code": "TS2741",
-    "message": "Property 'id' is missing in type '{ name: string; fields: { name: string; direction: \"ASC\"; }[]; kind: \"primary\"; }' but required in type 'IndexDefinition'.",
-    "sourceFingerprint": "4ef1ae84c6406f75",
-    "count": 1
-  },
-  {
-    "package": "@ddlbuilder/ddl-core",
     "file": "src/__tests__/orm-generators.test.ts",
     "code": "TS2322",
     "message": "Type '{ id?: string | undefined; name: string; fields: IndexField[]; kind: IndexKind; }' is not assignable to type 'IndexDefinition'. Types of property 'id' are incompatible. Type 'string | undefined' is not assignable to type 'string'. Type 'undefined' is not assignable to type 'string'.",

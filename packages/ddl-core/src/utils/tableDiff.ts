@@ -93,7 +93,9 @@ export type TableDiff = {
   newMiscConfig?: TableMiscConfig;
   fields: FieldDiff[];
   indexes: IndexDiff[];
+  unchangedIndexes?: IndexDefinition[];
   foreignKeys: ForeignKeyDiff[];
+  unchangedForeignKeys?: ForeignKeyDefinition[];
 };
 
 /**
@@ -445,6 +447,8 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     if (!newIndexSigs.has(sig)) {
       result.indexes.push({ type: 'remove', index: idx });
       result.hasChanges = true;
+    } else {
+      (result.unchangedIndexes ??= []).push(idx);
     }
   }
 
@@ -475,6 +479,8 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     if (!newFkSigs.has(sig)) {
       result.foreignKeys.push({ type: 'remove', foreignKey: fk });
       result.hasChanges = true;
+    } else {
+      (result.unchangedForeignKeys ??= []).push(fk);
     }
   }
 
