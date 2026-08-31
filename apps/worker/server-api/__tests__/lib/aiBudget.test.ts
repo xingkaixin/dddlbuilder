@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
@@ -34,7 +34,11 @@ const createFixture = () => {
 };
 
 describe('AI daily budget lifecycle', () => {
-  it('cleans expired counters and only settled budget reservations after retention', async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('retains expired budget windows until their reservations can be removed', async () => {
     const { reserveAIDailyBudget, settleAIDailyBudget, cleanupAIGovernance } =
       await import('../../lib/aiBudget.js');
     const { env, sqlite, addUsage } = createFixture();
@@ -49,7 +53,11 @@ describe('AI daily budget lifecycle', () => {
       sqlite
         .prepare('UPDATE ai_budget_reservations SET expires_at = ? WHERE usage_event_id != ?')
         .run(now - 8 * 86_400_000, 'recent');
-      sqlite.prepare('UPDATE ai_governance_counters SET expires_at = ?').run(now - 1);
+      sqlite
+        .prepare(`INSERT INTO ai_governance_counters
+          (scope, subject, window_id, value, expires_at) VALUES (?, ?, ?, ?, ?)`)
+        .run('rate:explain', 'user-1', 'w', 1, now - 1);
+      sqlite.prepare('UPDATE ai_daily_budget_counters SET expires_at = ?').run(now - 1);
       sqlite
         .prepare(
           'INSERT INTO request_rate_limits (scope,subject,window_id,value,expires_at) VALUES (?,?,?,?,?)',
@@ -63,6 +71,12 @@ describe('AI daily budget lifecycle', () => {
       ).toEqual([{ usage_event_id: 'active' }, { usage_event_id: 'recent' }]);
       expect(sqlite.prepare('SELECT COUNT(*) AS n FROM ai_governance_counters').get()?.n).toBe(0);
       expect(sqlite.prepare('SELECT COUNT(*) AS n FROM request_rate_limits').get()?.n).toBe(0);
+      expect(sqlite.prepare('SELECT value FROM ai_daily_budget_counters').get()?.value).toBe(20);
+
+      expect(await settleAIDailyBudget(env, 'active', 2)).toBe(12);
+      await cleanupAIGovernance(env, now + 9 * 86_400_000);
+      expect(sqlite.prepare('SELECT COUNT(*) AS n FROM ai_budget_reservations').get()?.n).toBe(0);
+      expect(sqlite.prepare('SELECT COUNT(*) AS n FROM ai_daily_budget_counters').get()?.n).toBe(0);
     } finally {
       sqlite.close();
     }
@@ -79,11 +93,9 @@ describe('AI daily budget lifecycle', () => {
     expect(await settleAIDailyBudget(env, 'usage-1', 20)).toBe(20);
     expect(await reserveAIDailyBudget(env, 'usage-2', 70, 100)).toBe(90);
 
-    const counter = sqlite
-      .prepare(
-        "SELECT value FROM ai_governance_counters WHERE scope = 'daily-budget' AND subject = 'global'",
-      )
-      .get() as { value: number };
+    const counter = sqlite.prepare('SELECT value FROM ai_daily_budget_counters').get() as {
+      value: number;
+    };
     expect(counter.value).toBe(90);
   });
 
@@ -132,7 +144,7 @@ describe('AI daily budget lifecycle', () => {
     try {
       addUsage('usage-1');
       await reserveAIDailyBudget(env, 'usage-1', 1, Number.MAX_SAFE_INTEGER);
-      sqlite.prepare('UPDATE ai_governance_counters SET value = ?').run(Number.MAX_SAFE_INTEGER);
+      sqlite.prepare('UPDATE ai_daily_budget_counters SET value = ?').run(Number.MAX_SAFE_INTEGER);
       await expect(settleAIDailyBudget(env, 'usage-1', 2)).rejects.toThrow(
         'BUDGET_COUNTER_OVERFLOW',
       );
@@ -156,11 +168,82 @@ describe('AI daily budget lifecycle', () => {
     sqlite.prepare("UPDATE usage_events SET status = 'failed' WHERE id = ?").run('usage-1');
 
     expect(await reconcileTerminalAIBudgets(env)).toBe(1);
-    const counter = sqlite
-      .prepare(
-        "SELECT value FROM ai_governance_counters WHERE scope = 'daily-budget' AND subject = 'global'",
-      )
-      .get() as { value: number };
+    const counter = sqlite.prepare('SELECT value FROM ai_daily_budget_counters').get() as {
+      value: number;
+    };
     expect(counter.value).toBe(0);
+  });
+
+  it('keeps daily capacity isolated when a previous-day request arrives late', async () => {
+    const { reserveAIDailyBudget, settleAIDailyBudget, reconcileTerminalAIBudgets } =
+      await import('../../lib/aiBudget.js');
+    const { env, sqlite, addUsage } = createFixture();
+    try {
+      vi.useFakeTimers();
+      vi.setSystemTime('2026-08-31T23:59:59.990Z');
+      for (const id of ['old-late', 'new-first', 'new-second', 'old-extra']) addUsage(id);
+
+      let releaseOld = () => {};
+      const waitForOld = new Promise<void>((resolve) => {
+        releaseOld = resolve;
+      });
+      const prepare = env.USER_DB.prepare.bind(env.USER_DB);
+      const delayedEnv = {
+        ...env,
+        USER_DB: {
+          prepare(sql: string) {
+            const statement = prepare(sql);
+            return {
+              bind(...bindings: unknown[]) {
+                const bound = statement.bind(...bindings);
+                return new Proxy(bound, {
+                  get(target, key) {
+                    if (
+                      key === 'run' &&
+                      sql.includes('INSERT INTO ai_budget_reservations') &&
+                      bindings[0] === 'old-late'
+                    ) {
+                      return async () => {
+                        await waitForOld;
+                        return target.run();
+                      };
+                    }
+                    const value = Reflect.get(target, key);
+                    return typeof value === 'function' ? value.bind(target) : value;
+                  },
+                });
+              },
+            };
+          },
+        } as D1Database,
+      };
+
+      const oldPending = reserveAIDailyBudget(delayedEnv, 'old-late', 80, 100);
+      vi.setSystemTime('2026-09-01T00:00:00.010Z');
+      expect(await reserveAIDailyBudget(env, 'new-first', 80, 100)).toBe(80);
+      releaseOld();
+      expect(await oldPending).toBe(80);
+      expect(await reserveAIDailyBudget(env, 'new-second', 80, 100)).toBeNull();
+
+      expect(await settleAIDailyBudget(env, 'old-late', 30)).toBe(30);
+      expect(await reserveAIDailyBudget(env, 'new-second', 30, 100)).toBeNull();
+
+      vi.setSystemTime('2026-08-31T23:59:59.990Z');
+      expect(await reserveAIDailyBudget(env, 'old-extra', 50, 100)).toBe(80);
+      vi.setSystemTime('2026-09-01T00:00:00.010Z');
+      sqlite.prepare("UPDATE usage_events SET status = 'failed' WHERE id = ?").run('old-extra');
+      expect(await reconcileTerminalAIBudgets(env)).toBe(1);
+      expect(await reserveAIDailyBudget(env, 'new-second', 30, 100)).toBeNull();
+      expect(
+        sqlite
+          .prepare('SELECT window_id, value FROM ai_daily_budget_counters ORDER BY window_id')
+          .all(),
+      ).toEqual([
+        { window_id: '20260831', value: 30 },
+        { window_id: '20260901', value: 80 },
+      ]);
+    } finally {
+      sqlite.close();
+    }
   });
 });

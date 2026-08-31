@@ -1,8 +1,5 @@
 import type { ApiEnv } from './context.js';
 
-const DAILY_BUDGET_SCOPE = 'daily-budget';
-const DAILY_BUDGET_SUBJECT = 'global';
-
 const getCurrentUtcDateKey = () => {
   const now = new Date();
   const year = now.getUTCFullYear();
@@ -21,11 +18,11 @@ const readBudgetValue = async (env: ApiEnv['Bindings'], windowId: string) => {
   const row = await env.USER_DB.prepare(
     `
       SELECT value
-      FROM ai_governance_counters
-      WHERE scope = ? AND subject = ? AND window_id = ?
+      FROM ai_daily_budget_counters
+      WHERE window_id = ?
     `,
   )
-    .bind(DAILY_BUDGET_SCOPE, DAILY_BUDGET_SUBJECT, windowId)
+    .bind(windowId)
     .first<{ value: number }>();
   return row ? Number(row.value) : null;
 };
@@ -150,5 +147,10 @@ export const cleanupAIGovernance = async (env: ApiEnv['Bindings'], now = Date.no
     env.USER_DB.prepare('DELETE FROM ai_governance_counters WHERE expires_at < ?').bind(now),
     env.USER_DB.prepare(`DELETE FROM ai_budget_reservations
       WHERE settled_at IS NOT NULL AND expires_at < ?`).bind(now - 7 * 86_400_000),
+    env.USER_DB.prepare(`DELETE FROM ai_daily_budget_counters
+      WHERE expires_at < ? AND NOT EXISTS (
+        SELECT 1 FROM ai_budget_reservations
+        WHERE window_id = ai_daily_budget_counters.window_id
+      )`).bind(now),
   ]);
 };
