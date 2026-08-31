@@ -1,4 +1,4 @@
-import type { SavedTableRecord } from './workspaceStorageTypes';
+import type { SavedTableRecord, TableVersion } from './workspaceStorageTypes';
 import {
   buildScopedWorkspaceKey,
   getAnonymousWorkspaceScope,
@@ -6,7 +6,7 @@ import {
 } from './workspaceScope';
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 15;
+export const DB_VERSION = 16;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
@@ -25,6 +25,63 @@ const LEGACY_SCOPE = getWorkspaceScopeStorageKey(getAnonymousWorkspaceScope());
 
 const ensureIndexedDb = () => {
   if (typeof indexedDB === 'undefined') throw new Error('IndexedDB 不可用');
+};
+
+const migrateLegacyTableHistory = (transaction: IDBTransaction) => {
+  const tablesRequest: IDBRequest<SavedTableRecord[]> = transaction
+    .objectStore(STORE_NAME)
+    .getAll();
+  tablesRequest.onsuccess = () => {
+    const tables = tablesRequest.result.map((record) => {
+      const scope = record.scope ?? LEGACY_SCOPE;
+      const prefix = `${scope}::`;
+      const name = record.normalizedName.startsWith(prefix)
+        ? record.normalizedName.slice(prefix.length)
+        : record.normalizedName;
+      return { record, scope, name, tableId: record.tableId ?? `legacy:${name}` };
+    });
+    const tableKeys = new Set(tables.map(({ scope, tableId }) => `${scope}::${tableId}`));
+    const aliases = new Map<string, string>();
+    for (const { record, scope, name, tableId } of tables) {
+      const legacyKey = `${scope}::legacy:${name}`;
+      // Only the stored scoped name proves this ID came from the old decode order.
+      if (
+        record.normalizedName === `${scope}::${name}` &&
+        tableId === `legacy:${record.normalizedName}` &&
+        !tableKeys.has(legacyKey)
+      ) {
+        aliases.set(legacyKey, tableId);
+      }
+    }
+
+    for (const storeName of [VERSION_STORE_NAME, REVIEW_STORE_NAME]) {
+      const cursorRequest = transaction.objectStore(storeName).openCursor();
+      cursorRequest.onsuccess = () => {
+        const cursor = cursorRequest.result;
+        if (!cursor) return;
+        const record = cursor.value as TableVersion;
+        const previousId = record.tableId ?? `legacy:${record.tableNormalizedName}`;
+        const previousKey = record.tableKey ?? `${LEGACY_SCOPE}::${previousId}`;
+        const separator = previousKey.indexOf('::');
+        const scope = previousKey.slice(0, separator);
+        const key = previousKey.slice(separator + 2);
+        const isReview = storeName === REVIEW_STORE_NAME;
+        if (
+          separator !== -1 &&
+          (key === previousId || (isReview && key === `table:${previousId}`))
+        ) {
+          const alias = aliases.get(`${scope}::${previousId}`);
+          const tableId = alias ?? previousId;
+          const isTableReview = isReview && (alias != null || key === `table:${previousId}`);
+          const tableKey = `${scope}::${isTableReview ? 'table:' : ''}${tableId}`;
+          if (record.tableId !== tableId || record.tableKey !== tableKey) {
+            cursor.update({ ...record, tableId, tableKey });
+          }
+        }
+        cursor.continue();
+      };
+    }
+  };
 };
 
 export const openDb = (): Promise<IDBDatabase> =>
@@ -66,21 +123,6 @@ export const openDb = (): Promise<IDBDatabase> =>
         }
 
         const transaction = request.transaction;
-        if (transaction && oldVersion < 15) {
-          for (const storeName of [VERSION_STORE_NAME, REVIEW_STORE_NAME]) {
-            const cursorRequest = transaction.objectStore(storeName).openCursor();
-            cursorRequest.onsuccess = () => {
-              const cursor = cursorRequest.result;
-              if (!cursor) return;
-              const record = cursor.value;
-              if (!record.tableKey) {
-                const tableId = `legacy:${record.tableNormalizedName}`;
-                cursor.update({ ...record, tableId, tableKey: `${LEGACY_SCOPE}::${tableId}` });
-              }
-              cursor.continue();
-            };
-          }
-        }
         if (transaction && db.objectStoreNames.contains(VERSION_STORE_NAME)) {
           const store = transaction.objectStore(VERSION_STORE_NAME);
           if (!store.indexNames.contains('tableKey')) {
@@ -168,6 +210,7 @@ export const openDb = (): Promise<IDBDatabase> =>
             cursor.continue();
           };
         }
+        if (transaction && oldVersion < 16) migrateLegacyTableHistory(transaction);
       };
       request.onsuccess = () => {
         const db = request.result;

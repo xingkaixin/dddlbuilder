@@ -90,7 +90,7 @@ const decodeScopedTableRecord = (
   if (!decoded) return null;
   return {
     ...record,
-    tableId: resolveSavedTableId(record),
+    tableId: resolveSavedTableId({ ...record, normalizedName: decoded.key }),
     normalizedName: decoded.key,
     scope: decoded.scope,
     state: {

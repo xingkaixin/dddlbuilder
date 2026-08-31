@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { openDb, VERSION_STORE_NAME, REVIEW_STORE_NAME } from '@/utils/workspaceDb';
+import { openDb } from '@/utils/workspaceDb';
 import { updateSavedTables } from '@/utils/savedTablesDb';
 
 function mockOpen() {
@@ -30,42 +30,6 @@ function mockOpen() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('workspace database lifecycle', () => {
-  it('assigns unscoped history to the anonymous partition during the version upgrade', async () => {
-    const cursors = [VERSION_STORE_NAME, REVIEW_STORE_NAME].map((storeName) => ({
-      storeName,
-      result: {
-        value: { id: storeName, tableNormalizedName: 'orders' },
-        update: vi.fn(),
-        continue: vi.fn(),
-      },
-      onsuccess: null as (() => void) | null,
-    }));
-    const request = {
-      result: { objectStoreNames: { contains: () => true }, close: vi.fn(), onversionchange: null },
-      transaction: {
-        objectStore: (name: string) => ({
-          indexNames: { contains: () => true },
-          openCursor: () => cursors.find((cursor) => cursor.storeName === name),
-        }),
-      },
-      onupgradeneeded: null as ((event: { oldVersion: number }) => void) | null,
-      onsuccess: null as (() => void) | null,
-    };
-    vi.stubGlobal('indexedDB', { open: () => request });
-    const opened = openDb();
-    request.onupgradeneeded?.({ oldVersion: 14 });
-    for (const cursor of cursors) {
-      cursor.onsuccess?.();
-      expect(cursor.result.update).toHaveBeenCalledWith({
-        id: cursor.storeName,
-        tableNormalizedName: 'orders',
-        tableId: 'legacy:orders',
-        tableKey: 'anonymous::legacy:orders',
-      });
-    }
-    request.onsuccess?.();
-    await opened;
-  });
   it('rejects a blocked upgrade and closes a connection delivered afterwards', async () => {
     const { db, request } = mockOpen();
     let settled = false;

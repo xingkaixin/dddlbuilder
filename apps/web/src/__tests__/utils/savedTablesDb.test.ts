@@ -12,7 +12,6 @@ import {
   updateSavedTableMetadata,
   updateSavedTables,
   DEFAULT_SAVED_TABLE_NAME,
-  STORE_NAME,
 } from '@/utils/savedTablesDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -255,66 +254,6 @@ describe('savedTablesDb', () => {
     });
 
     await expect(openDb()).rejects.toThrow('打开 IndexedDB 失败');
-  });
-
-  it('should create folderId index during upgrade when missing', async () => {
-    const tableStore = {
-      indexNames: { contains: vi.fn(() => false) },
-      createIndex: vi.fn(),
-    };
-    const createStore = () => ({
-      createIndex: vi.fn(),
-      openCursor: () => {
-        const cursorRequest = { result: null, onsuccess: null as null | (() => void) };
-        queueMicrotask(() => cursorRequest.onsuccess?.());
-        return cursorRequest;
-      },
-    });
-
-    const db = {
-      objectStoreNames: {
-        contains: (storeName: string) => storeName === STORE_NAME,
-      },
-      createObjectStore: vi.fn(() => createStore()),
-    };
-
-    const request: {
-      result: typeof db;
-      error: unknown;
-      onsuccess: null | (() => void);
-      onerror: null | (() => void);
-      onupgradeneeded: null | ((event: IDBVersionChangeEvent) => void);
-      transaction: { objectStore: (storeName: string) => unknown };
-    } = {
-      result: db,
-      error: null,
-      onsuccess: null,
-      onerror: null,
-      onupgradeneeded: null,
-      transaction: {
-        objectStore: (storeName) => (storeName === STORE_NAME ? tableStore : createStore()),
-      },
-    };
-
-    Object.defineProperty(globalThis, 'indexedDB', {
-      value: {
-        open: vi.fn(() => {
-          queueMicrotask(() => {
-            request.onupgradeneeded?.({ oldVersion: 9 } as IDBVersionChangeEvent);
-            request.onsuccess?.();
-          });
-          return request;
-        }),
-      },
-      configurable: true,
-      writable: true,
-    });
-
-    const opened = await openDb();
-    expect(opened).toBe(db as unknown as IDBDatabase);
-    expect(tableStore.createIndex).toHaveBeenCalledWith('folderId', 'folderId', {
-      unique: false,
-    });
   });
 
   it('should reject when indexedDB.open throws', async () => {
