@@ -1,8 +1,11 @@
 import { useCallback } from 'react';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import { useEditorStore } from '@/stores/editorStore';
+import { toPersistedState } from '@/stores/editorDocumentCodec';
 
 interface UseClearAllActionsParams {
   setIsClearDialogOpen: (open: boolean) => void;
-  clearState: () => void;
+  clearState: (state: PersistedState) => void;
   resetDocument: () => void;
 }
 
@@ -21,7 +24,7 @@ export function useClearAllActions({
 
   const confirmClearAll = useCallback(() => {
     resetDocument();
-    clearState();
+    clearState(toPersistedState(useEditorStore.getState()));
     cancelClearAll();
   }, [resetDocument, clearState, cancelClearAll]);
 

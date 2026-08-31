@@ -4,10 +4,16 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { usePersistedSync } from '@/components/App/hooks/usePersistedSync';
+import { useTabLifecycle } from '@/components/App/hooks/useTabLifecycle';
+import { useClearAllActions } from '@/components/App/hooks/useClearAllActions';
+import { applySavedState } from '@/components/App/applySavedState';
 import { useEditorStore } from '@/stores/editorStore';
 import { useTabStore } from '@/stores/tabStore';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
-import { buildPersistedStateSignature } from '@/utils/persistedStateSignature';
+import {
+  buildPersistedStateSignature,
+  buildSchemaStateSignature,
+} from '@/utils/persistedStateSignature';
 import * as Y from 'yjs';
 import { usePersistedState } from '@/hooks';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
@@ -31,6 +37,7 @@ import { addSavedTable as addSavedTableInScope } from '@/utils/savedTablesDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 import {
   getDraftRecordFromYDoc,
+  getSavedTableFromYDoc,
   upsertDraftInYDoc,
   upsertSavedTableInYDoc,
   upsertSavedDraftInYDoc,
@@ -190,6 +197,153 @@ const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
 };
 
 describe('usePersistedState', () => {
+  describe('clear active document', () => {
+    beforeEach(() => {
+      useTabStore.setState({ tabs: [], activeTabId: null });
+      useEditorStore.getState().resetDocument();
+    });
+    afterEach(() => {
+      useTabStore.setState({ tabs: [], activeTabId: null });
+      useEditorStore.getState().resetDocument();
+    });
+
+    it.each(['default', 'draft_explicit', 'saved_table'] as const)(
+      'persists clearing and subsequent edits for %s without changing its identity',
+      async (documentKind) => {
+        const doc = new Y.Doc();
+        const base = createState('before_clear');
+        const source: WorkspaceSavePayload['source'] =
+          documentKind === 'saved_table'
+            ? {
+                kind: 'saved_table',
+                tableId: 'saved-before-clear',
+                normalizedName: 'before_clear',
+                tableName: base.tableName,
+                baseSignature: buildSchemaStateSignature(base),
+              }
+            : { kind: 'draft', draftId: documentKind };
+        if (source.kind === 'saved_table') {
+          upsertSavedTableInYDoc(doc, {
+            tableId: source.tableId,
+            normalizedName: source.normalizedName,
+            name: base.tableName,
+            state: base,
+            createdAt: 1,
+            updatedAt: 1,
+          });
+          upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, {
+            state: createState('unrelated_draft'),
+            createdAt: 2,
+            updatedAt: 2,
+          });
+        } else {
+          upsertDraftInYDoc(doc, source.draftId, {
+            state: base,
+            folderId: 'existing-folder',
+            createdAt: 1,
+            updatedAt: 1,
+          });
+        }
+        mockSignedInWorkspaceYDoc(doc);
+        await writeWorkspaceSession(
+          { activeSource: source, updatedAt: 1 },
+          { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
+        );
+        const tabId = useTabStore.getState().addTab({
+          title: base.tableName,
+          source,
+          stateSnapshot: base,
+        });
+        const getStoredState = () =>
+          source.kind === 'draft'
+            ? getDraftRecordFromYDoc(doc, source.draftId)?.state
+            : getSavedDraftFromYDoc(doc, source)?.state;
+        const getPreservedRecords = () => {
+          if (source.kind === 'saved_table') {
+            return {
+              savedTable: getSavedTableFromYDoc(doc, source),
+              unrelatedDraft: getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID),
+            };
+          }
+          const draft = getDraftRecordFromYDoc(doc, source.draftId);
+          return { folderId: draft?.folderId, createdAt: draft?.createdAt };
+        };
+        const preservedRecords = getPreservedRecords();
+        const { wrapper } = createQueryClientWrapper();
+        const getCurrentState = () => toPersistedState(useEditorStore.getState());
+        const { result, unmount } = renderHook(
+          () => {
+            const persistence = useTestPersistedState();
+            const editor = useEditorStore();
+            const currentState = useMemo(() => toPersistedState(editor), [editor]);
+            const tabs = useTabLifecycle({
+              enabled: persistence.hydrated && !persistence.isShareView,
+              activeTableName: editor.tableName,
+              getCurrentState,
+              saveState: persistence.saveState,
+              selectWorkspaceSnapshot: persistence.selectWorkspaceSnapshot,
+              resolveWorkspaceSnapshot: persistence.resolveWorkspaceSnapshot,
+              resetWorkspaceSelection: persistence.resetWorkspaceSelection,
+            });
+            usePersistedSync({
+              hydrated: persistence.hydrated,
+              enabled: tabs.activeWorkspaceTab != null && !tabs.activeWorkspaceTab.isLoading,
+              persistedState: persistence.persistedState,
+              activeSource: tabs.activeWorkspaceTab?.source ?? persistence.activeSource,
+              saveState: persistence.saveState,
+              currentState,
+              getCurrentState,
+              applyPersistedState: applySavedState,
+            });
+            const clear = useClearAllActions({
+              setIsClearDialogOpen: vi.fn(),
+              clearState: persistence.clearState,
+              resetDocument: editor.resetDocument,
+            });
+            return { persistence, tabs, clear };
+          },
+          { wrapper },
+        );
+        await waitFor(() => expect(result.current.persistence.hydrated).toBe(true));
+        await waitFor(() => expect(useEditorStore.getState().tableName).toBe('before_clear'));
+
+        act(() => result.current.clear.confirmClearAll());
+        expect(useEditorStore.getState().tableName).toBe('');
+        await waitFor(() => expect(getStoredState()?.tableName).toBe(''));
+        expect(result.current.persistence.activeSource).toEqual(source);
+        expect(useTabStore.getState().getActiveTab()?.source).toEqual(source);
+        expect(useTabStore.getState().activeTabId).toBe(tabId);
+        expect(getPreservedRecords()).toEqual(preservedRecords);
+
+        act(() => {
+          useEditorStore.getState().setTableName('work_after_clear');
+          useEditorStore.getState().setTableComment('new work survives refresh');
+        });
+        act(() => window.dispatchEvent(new Event('blur')));
+        act(() => result.current.tabs.flushActiveTab());
+        await waitFor(() =>
+          expect(getStoredState()).toMatchObject({
+            tableName: 'work_after_clear',
+            tableComment: 'new work survives refresh',
+          }),
+        );
+        unmount();
+        useTabStore.setState({ tabs: [], activeTabId: null });
+        useEditorStore.getState().resetDocument();
+
+        const reloaded = renderHook(() => useTestPersistedState(), { wrapper });
+        await waitFor(() => expect(reloaded.result.current.hydrated).toBe(true));
+        expect(reloaded.result.current.activeSource).toEqual(source);
+        expect(reloaded.result.current.persistedState).toMatchObject({
+          tableName: 'work_after_clear',
+          tableComment: 'new work survives refresh',
+        });
+        reloaded.unmount();
+        doc.destroy();
+      },
+    );
+  });
+
   describe('remote draft removal', () => {
     beforeEach(() => useTabStore.setState({ tabs: [], activeTabId: null }));
     afterEach(() => {
@@ -1185,7 +1339,7 @@ describe('usePersistedState', () => {
     });
   });
 
-  it('主工作区 clearState 在 default draft 下应清空草稿与会话', async () => {
+  it('主工作区 clearState 应重置草稿内容并保留草稿身份与会话', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => useTestPersistedState(), { wrapper });
     const globalState = createState('global_to_clear');
@@ -1206,17 +1360,16 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
-      result.current.clearState();
+      result.current.clearState(createState(''));
     });
 
     await waitFor(async () => {
       const draft = await readDraft(DEFAULT_DRAFT_ID);
       const session = await readWorkspaceSession();
-      expect(draft).toBeNull();
-      expect(session).toBeNull();
+      expect(draft?.state.tableName).toBe('');
+      expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
       expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
-      expect(result.current.persistedState).toBeNull();
-      expect(result.current.getDraftState(DEFAULT_DRAFT_ID)).toBeNull();
+      expect(result.current.getDraftState(DEFAULT_DRAFT_ID)?.tableName).toBe('');
     });
   });
 
@@ -1249,16 +1402,19 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
-      result.current.clearState();
+      result.current.clearState(createState(''));
     });
 
     await waitFor(async () => {
       const draft = await readDraft(DEFAULT_DRAFT_ID);
       const session = await readWorkspaceSession();
       expect(draft?.state.tableName).toBe(existingGlobal.tableName);
-      expect(session).toBeNull();
-      expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
-      expect(result.current.persistedState).toBeNull();
+      expect(session?.activeSource).toMatchObject({
+        kind: 'saved_table',
+        normalizedName: 'users',
+      });
+      expect(result.current.activeSource).toEqual(savedSource);
+      expect((await readSavedDraft('users'))?.state.tableName).toBe('');
     });
   });
 
@@ -1306,7 +1462,7 @@ describe('usePersistedState', () => {
     );
 
     act(() => {
-      result.current.clearState();
+      result.current.clearState(createState(''));
     });
 
     expect(result.current.persistedState).toBeNull();

@@ -256,21 +256,6 @@ export function useDraftRecords({
     [disabled, getRecord, persistRecord],
   );
 
-  const clearDraft = useCallback(
-    (draftId: string) => {
-      const target = requireReadyWorkspaceStorage(storage);
-      if (target.kind === 'ydoc') {
-        target.transact((doc) => deleteDraftFromYDoc(doc, draftId));
-      } else {
-        updateLocalRecord(draftId, null);
-      }
-      void enqueuePersistence(`draft:${draftId}`, 'delete draft', () =>
-        deleteDraft(draftId, target.scope),
-      );
-    },
-    [enqueuePersistence, storage, updateLocalRecord],
-  );
-
   return {
     draftSummaries,
     trashedDrafts,
@@ -283,6 +268,5 @@ export function useDraftRecords({
     restoreDraftById,
     permanentlyDeleteDraftById,
     moveDraftToFolder,
-    clearDraft,
   };
 }

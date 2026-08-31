@@ -22,7 +22,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await themeOption.dispatchEvent('click');
   };
 
-  test('场景：清空所有功能应正确重置表单', async ({ page }) => {
+  test('场景：清空所有功能应重置表单并继续保存编辑', async ({ page }) => {
     // 填写一些数据
     await page.locator('#table-name').fill('to_be_cleared');
     await page.locator('#table-comment').fill('即将被清空的表');
@@ -61,6 +61,13 @@ test.describe('核心 UI 交互功能测试 @core', () => {
 
     // 验证数据已被清空
     await expect(page.locator('#table-name')).toHaveValue('');
+
+    await page.locator('#table-name').fill('work_after_clear');
+    await page.locator('#table-comment').fill('清空后继续编辑');
+    await page.reload();
+    await ensureBuilderVisible(page);
+    await expect(page.locator('#table-name')).toHaveValue('work_after_clear');
+    await expect(page.locator('#table-comment')).toHaveValue('清空后继续编辑');
   });
 
   test('场景：默认配置下不显示烟花入口和节日弹层', async ({ page }) => {

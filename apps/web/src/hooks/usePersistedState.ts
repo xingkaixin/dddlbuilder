@@ -61,7 +61,7 @@ export interface WorkspacePersistenceStatus {
 export interface ActiveWorkspaceDocument {
   persistedState: PersistedState | null;
   saveState: (payload: WorkspaceSavePayload) => void;
-  clearState: () => void;
+  clearState: (state: PersistedState) => void;
   resetWorkspaceSelection: () => void;
   activeSource: WorkspaceSelection;
   resolveWorkspaceSnapshot: (
@@ -158,7 +158,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     restoreDraftById,
     permanentlyDeleteDraftById,
     moveDraftToFolder,
-    clearDraft,
   } = draftRecords;
   const {
     replaceSavedTableDrafts,
@@ -350,19 +349,18 @@ export function usePersistedState(): UsePersistedStateReturn {
     ],
   );
 
-  const clearState = useCallback(() => {
-    if (shareStorageKey) {
-      removeStorage(shareStorageKey);
-      setPersistedState(null);
-      return;
-    }
+  const clearState = useCallback(
+    (state: PersistedState) => {
+      if (shareStorageKey) {
+        removeStorage(shareStorageKey);
+        setPersistedState(null);
+        return;
+      }
 
-    if (activeSource.kind === 'draft') {
-      clearDraft(activeSource.draftId);
-    }
-
-    resetToDefaultDraft();
-  }, [activeSource, clearDraft, resetToDefaultDraft, shareStorageKey]);
+      saveState({ source: activeSourceRef.current, state });
+    },
+    [saveState, shareStorageKey],
+  );
 
   const deleteDraftById = useCallback(
     (draftId: string) => {
