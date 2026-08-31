@@ -74,8 +74,13 @@ export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
 const AI_USAGE_RECLAIM_MIN_TTL_MS = 15 * 60 * 1000;
 const AI_USAGE_RECLAIM_SAFETY_MS = 5 * 60 * 1000;
 
-export const getAIUsageReclaimTtlMs = (config: OpenAIConfig) => {
+export const getAIExecutionTimeoutMs = (config: OpenAIConfig) => {
   const retryDelays = Math.max(0, config.retryMaxAttempts - 1) * config.retryMaxDelayMs;
-  const executionLimit = config.retryMaxAttempts * config.requestTimeoutMs + retryDelays;
-  return Math.max(AI_USAGE_RECLAIM_MIN_TTL_MS, executionLimit + AI_USAGE_RECLAIM_SAFETY_MS);
+  return config.retryMaxAttempts * config.requestTimeoutMs + retryDelays;
 };
+
+export const getAIUsageReclaimTtlMs = (config: OpenAIConfig) =>
+  Math.max(
+    AI_USAGE_RECLAIM_MIN_TTL_MS,
+    getAIExecutionTimeoutMs(config) + AI_USAGE_RECLAIM_SAFETY_MS,
+  );

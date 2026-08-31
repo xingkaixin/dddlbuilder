@@ -8,6 +8,7 @@ type RetryOptions = {
   maxAttempts?: number;
   baseDelayMs?: number;
   maxDelayMs?: number;
+  signal?: AbortSignal;
   onRetry?: (event: OpenAIRetryEvent) => void;
 };
 
@@ -195,8 +196,11 @@ export async function withOpenAIRetry<T>(
 
   return Effect.runPromise(
     operationEffect.pipe(
+      // The operation owns in-flight cancellation; finish it before interrupting retry waits.
+      Effect.uninterruptible,
       Effect.retry(schedule),
       Effect.map((data) => ({ data, attempts, retryCount: Math.max(0, attempts - 1) })),
     ),
+    { signal: options.signal },
   );
 }

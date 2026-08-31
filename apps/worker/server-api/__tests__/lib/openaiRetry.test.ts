@@ -68,6 +68,61 @@ describe('withOpenAIRetry', () => {
     expect(onRetry).not.toHaveBeenCalled();
   });
 
+  it('cancels retry backoff without starting another attempt', async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const operation = vi.fn().mockRejectedValue(createStatusError(503));
+    const onRetry = vi.fn();
+    const result = withOpenAIRetry(
+      operation,
+      { scope: 'deadline', maxAttempts: 3, onRetry, signal: controller.signal },
+      config,
+    );
+    const rejection = result.catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onRetry).toHaveBeenCalledOnce();
+
+    controller.abort();
+    expect(await rejection).toBeInstanceOf(Error);
+    await vi.runAllTimersAsync();
+    expect(operation).toHaveBeenCalledOnce();
+  });
+
+  it('waits for an active attempt to finish before reporting cancellation', async () => {
+    const controller = new AbortController();
+    let finishAttempt!: () => void;
+    const attempt = new Promise<void>((resolve) => {
+      finishAttempt = resolve;
+    });
+    let finished = false;
+    const operation = vi.fn(async () => {
+      await attempt;
+      finished = true;
+      controller.signal.throwIfAborted();
+    });
+    const result = withOpenAIRetry(
+      operation,
+      { scope: 'in-flight', signal: controller.signal },
+      config,
+    );
+    let cancellationReturned = false;
+    const rejection = result.catch((error: unknown) => {
+      cancellationReturned = true;
+      return error;
+    });
+    expect(operation).toHaveBeenCalledOnce();
+
+    controller.abort();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(cancellationReturned).toBe(false);
+    expect(finished).toBe(false);
+    finishAttempt();
+
+    expect(await rejection).toBeInstanceOf(Error);
+    expect(finished).toBe(true);
+    expect(operation).toHaveBeenCalledOnce();
+  });
+
   it('preserves the final error after exhausting the retry budget', async () => {
     vi.useFakeTimers();
     const firstError = createStatusError(503);

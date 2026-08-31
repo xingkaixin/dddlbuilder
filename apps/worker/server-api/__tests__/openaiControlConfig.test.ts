@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
-import { buildOpenAIConfig, getAIUsageReclaimTtlMs } from '../lib/openaiConfig.js';
+import {
+  buildOpenAIConfig,
+  getAIExecutionTimeoutMs,
+  getAIUsageReclaimTtlMs,
+} from '../lib/openaiConfig.js';
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] =>
   overrides as ApiEnv['Bindings'];
@@ -10,6 +14,7 @@ describe('OpenAI execution config', () => {
     const config = buildOpenAIConfig(createEnv());
 
     expect(config.requestTimeoutMs).toBe(180_000);
+    expect(getAIExecutionTimeoutMs(config)).toBe(546_000);
     expect(getAIUsageReclaimTtlMs(config)).toBe(15 * 60 * 1000);
   });
 
@@ -22,6 +27,7 @@ describe('OpenAI execution config', () => {
       }),
     );
 
+    expect(getAIExecutionTimeoutMs(config)).toBe(1_806_000);
     expect(getAIUsageReclaimTtlMs(config)).toBe(2_106_000);
   });
 

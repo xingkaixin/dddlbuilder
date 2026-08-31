@@ -34,6 +34,7 @@ import {
 } from './http.js';
 import { createOpenAIStreamDebugLogger } from './aiStreamDebug.js';
 import { settleAIDailyBudget } from './aiBudget.js';
+import { getAIExecutionTimeoutMs } from './openaiConfig.js';
 import { enforceIpRateLimit } from './requestRateLimit.js';
 import { getRequestLogger, logWorkerBackgroundError, toWorkerError } from './logging.js';
 
@@ -450,11 +451,13 @@ export const withAIGovernance = async <Request>(
     if (next) usage = next;
   };
   const runOpenAIAttempt = async <T>(operation: () => Promise<T>) => {
+    openAIAbortController.signal.throwIfAborted();
     try {
       attemptCount = await recordAIUsageAttempt(c.env, reservation);
     } catch (error) {
       throw new AIUsageAttemptPersistenceError(error);
     }
+    openAIAbortController.signal.throwIfAborted();
     retryCount = Math.max(0, attemptCount - 1);
     return operation();
   };
@@ -492,6 +495,7 @@ export const withAIGovernance = async <Request>(
   const settleSuccess = async (completedRetryCount: number, streamResponse = false) => {
     if (settled) return;
     settled = true;
+    clearTimeout(executionTimer);
     terminalAudit = { status: 200 };
     await settleUsage('succeeded', null);
     if (!streamResponse || !requestAborted) {
@@ -507,6 +511,7 @@ export const withAIGovernance = async <Request>(
   ) => {
     if (settled) return;
     settled = true;
+    clearTimeout(executionTimer);
     terminalAudit = { status, errorCode: code };
     await settleUsage('failed', code);
     if (!streamResponse || !requestAborted) {
@@ -514,6 +519,11 @@ export const withAIGovernance = async <Request>(
       if (streamResponse) streamAuditComplete = true;
     }
   };
+
+  const executionTimer = setTimeout(
+    () => openAIAbortController.abort(new DOMException('AI execution timed out', 'TimeoutError')),
+    Math.max(0, getAIExecutionTimeoutMs(config) - (Date.now() - startedAt)),
+  );
 
   const session: AISession<Request> = {
     request: parsed,
@@ -533,7 +543,7 @@ export const withAIGovernance = async <Request>(
               { signal: openAIAbortController.signal },
             ),
           ),
-        { scope, onRetry },
+        { scope, onRetry, signal: openAIAbortController.signal },
         config,
       );
       retryCount = Math.max(0, attemptCount - 1);
@@ -586,6 +596,9 @@ export const withAIGovernance = async <Request>(
       return stream(c, async (stream) => {
         streamDebug.start();
         let fullText = '';
+        const executionAborted = new Promise<void>((resolve) => {
+          openAIAbortController.signal.addEventListener('abort', () => resolve(), { once: true });
+        });
         stream.onAbort(() => {
           requestAborted = true;
           openAIAbortController.abort();
@@ -622,7 +635,7 @@ export const withAIGovernance = async <Request>(
                   { signal: openAIAbortController.signal },
                 ),
               ),
-            { scope, onRetry },
+            { scope, onRetry, signal: openAIAbortController.signal },
             config,
           );
           retryCount = Math.max(0, attemptCount - 1);
@@ -637,10 +650,15 @@ export const withAIGovernance = async <Request>(
             if (content) {
               fullText += content;
               streamDebug.chunk(content);
-              await stream.write(encodeAIStreamEvent({ type: 'delta', text: content }));
+              await Promise.race([
+                stream.write(encodeAIStreamEvent({ type: 'delta', text: content })),
+                executionAborted,
+              ]);
+              openAIAbortController.signal.throwIfAborted();
             }
           }
 
+          openAIAbortController.signal.throwIfAborted();
           readCompletedContent(fullText, finishReason, Boolean(jsonResponse));
           streamDebug.complete();
           await settleSuccess(retryCount, true);
