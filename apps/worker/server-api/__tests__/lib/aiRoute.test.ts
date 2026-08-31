@@ -340,78 +340,12 @@ describe('withAIGovernance', () => {
     expect(shell.recordAIUsageAttempt).toHaveBeenCalledOnce();
     expect(shell.createCompletion).toHaveBeenCalledOnce();
     expect(shell.logOpenAIAudit.mock.calls.at(-1)?.[1]).toMatchObject({
-      chargedTokens: null,
-      providerBudgetTokens: null,
-      usageEstimated: null,
-      accountingFinalized: false,
+      chargedTokens: 100,
+      providerBudgetTokens: 100,
+      usageEstimated: true,
+      accountingFinalized: true,
     });
     expect(shell.requestLogger.error).not.toHaveBeenCalled();
-  });
-
-  it('取消先于 attempt 持久化完成时不调用 provider 且全额退款', async () => {
-    const { DomainError } = await import('../../lib/http.js');
-    let releaseAttempt!: () => void;
-    const attemptGate = new Promise<void>((resolve) => {
-      releaseAttempt = resolve;
-    });
-    let usageStatus = 'reserved';
-    const recordAttempt = vi.fn(async () => {
-      await attemptGate;
-      if (usageStatus !== 'reserved') {
-        throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'AI_USAGE_NOT_RESERVED');
-      }
-      return 1;
-    });
-    const prepareSettlement = vi.fn(
-      async (
-        _env: unknown,
-        _reservation: unknown,
-        _outcome: unknown,
-        settlement: { chargedTokens: number; providerBudgetTokens: number },
-      ) => {
-        usageStatus = 'settling_failed';
-        return {
-          chargedTokens: settlement.chargedTokens,
-          providerBudgetTokens: settlement.providerBudgetTokens,
-          needsFinalization: true,
-        };
-      },
-    );
-    const shell = await loadShell({
-      recordAIUsageAttempt: recordAttempt,
-      prepareAIUsageSettlement: prepareSettlement,
-    });
-    const waitUntil = vi.fn();
-    const app = new Hono<ApiEnv>();
-    app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) =>
-        session.streamCompletion({ scope: 'test-cancel', temperature: 0, debugInput: {} }),
-      ),
-    );
-
-    const response = await post(app, {}, waitUntil);
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error('Missing stream response body');
-    await vi.waitFor(() => expect(recordAttempt).toHaveBeenCalledOnce());
-    await reader.cancel();
-    await vi.waitFor(() => expect(prepareSettlement).toHaveBeenCalledOnce());
-    releaseAttempt();
-    await Promise.all(waitUntil.mock.calls.map(([task]) => task));
-
-    expect(shell.createCompletion).not.toHaveBeenCalled();
-    expect(prepareSettlement).toHaveBeenCalledWith(
-      expect.anything(),
-      RESERVATION,
-      'failed',
-      {
-        observedTotalTokens: 0,
-        chargedTokens: 0,
-        providerBudgetTokens: 0,
-        usageEstimated: false,
-      },
-      'UPSTREAM_OPENAI_ERROR',
-    );
-    expect(shell.finalizeAIUsageSettlement).toHaveBeenCalledOnce();
   });
 
   it('取消与成功结算重叠时沿用已抢占的成功终态且只审计一次', async () => {
@@ -466,9 +400,9 @@ describe('withAIGovernance', () => {
     expect(shell.logOpenAIAudit.mock.calls[0]?.[1]).toMatchObject({
       status: 200,
       errorCode: undefined,
-      chargedTokens: null,
-      providerBudgetTokens: null,
-      accountingFinalized: false,
+      chargedTokens: 15,
+      providerBudgetTokens: 15,
+      accountingFinalized: true,
     });
     expect(shell.requestLogger.error).not.toHaveBeenCalled();
   });

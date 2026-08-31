@@ -8,12 +8,13 @@ import {
   type AIRouteKey,
   type AIUsageReservation,
   type AIUsageSettlement,
+  cancelUnstartedAIUsageAttempt,
   finalizeAIUsageSettlement,
   prepareAIUsageSettlement,
   recordAIUsageAttempt,
   reserveAIUsage,
 } from './aiUsage.js';
-import type { ApiEnv } from './context.js';
+import type { ApiEnv, WorkerRequestLogger } from './context.js';
 import {
   buildOpenAIConfig,
   enforceOpenAIDailyBudget,
@@ -36,7 +37,12 @@ import { createOpenAIStreamDebugLogger } from './aiStreamDebug.js';
 import { settleAIDailyBudget } from './aiBudget.js';
 import { getAIExecutionTimeoutMs } from './openaiConfig.js';
 import { enforceIpRateLimit } from './requestRateLimit.js';
-import { getRequestLogger, logWorkerBackgroundError, toWorkerError } from './logging.js';
+import {
+  createWorkerBackgroundLogger,
+  getRequestLogger,
+  logWorkerBackgroundError,
+  toWorkerError,
+} from './logging.js';
 
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const SETTLEMENT_INTENT_MAX_ATTEMPTS = 3;
@@ -157,6 +163,7 @@ export const withAIGovernance = async <Request>(
   let auditUserId: string | null = null;
   let rateLimitRemaining: number | null = governance.rateLimitLimit;
   let budgetUsedTokens: number | null = null;
+  let requestAborted = false;
 
   const audit = (
     status: number,
@@ -165,8 +172,15 @@ export const withAIGovernance = async <Request>(
     budgetHit: boolean,
     errorCode?: ApiErrorCode,
   ) => {
+    const backgroundLog = requestAborted
+      ? createWorkerBackgroundLogger(
+          { background: { job: 'ai-stream-settlement', requestId, route } },
+          waitUntil,
+          c.env.ENVIRONMENT,
+        )
+      : undefined;
     logOpenAIAudit(
-      c.env,
+      backgroundLog ? { ...c.env, EVLOG_REQUEST_LOG: backgroundLog as WorkerRequestLogger } : c.env,
       {
         requestId,
         route,
@@ -199,6 +213,7 @@ export const withAIGovernance = async <Request>(
       },
       waitUntil,
     );
+    backgroundLog?.emit();
   };
 
   let user: AuthenticatedAppUser;
@@ -283,8 +298,6 @@ export const withAIGovernance = async <Request>(
     audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
     return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
   }
-
-  let requestAborted = false;
 
   const getProviderBudgetTokens = (observedTokens: number | null) => {
     if (attemptCount === 0) return 0;
@@ -436,9 +449,7 @@ export const withAIGovernance = async <Request>(
   }
 
   let settled = false;
-  let terminalAudit: { status: number; errorCode?: ApiErrorCode } | null = null;
   let streamed = false;
-  let streamAuditComplete = false;
   let retryCount = 0;
   const openai = new OpenAI({
     baseURL: c.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
@@ -454,6 +465,9 @@ export const withAIGovernance = async <Request>(
     openAIAbortController.signal.throwIfAborted();
     try {
       attemptCount = await recordAIUsageAttempt(c.env, reservation);
+      if (openAIAbortController.signal.aborted) {
+        attemptCount = await cancelUnstartedAIUsageAttempt(c.env, reservation, attemptCount);
+      }
     } catch (error) {
       throw new AIUsageAttemptPersistenceError(error);
     }
@@ -492,32 +506,19 @@ export const withAIGovernance = async <Request>(
       },
     });
   };
-  const settleSuccess = async (completedRetryCount: number, streamResponse = false) => {
+  const settleSuccess = async (completedRetryCount: number) => {
     if (settled) return;
     settled = true;
     clearTimeout(executionTimer);
-    terminalAudit = { status: 200 };
     await settleUsage('succeeded', null);
-    if (!streamResponse || !requestAborted) {
-      audit(200, completedRetryCount, false, false);
-      if (streamResponse) streamAuditComplete = true;
-    }
+    audit(200, completedRetryCount, false, false);
   };
-  const settleFailure = async (
-    code: ApiErrorCode,
-    status: number,
-    completedRetryCount: number,
-    streamResponse = false,
-  ) => {
+  const settleFailure = async (code: ApiErrorCode, status: number, completedRetryCount: number) => {
     if (settled) return;
     settled = true;
     clearTimeout(executionTimer);
-    terminalAudit = { status, errorCode: code };
     await settleUsage('failed', code);
-    if (!streamResponse || !requestAborted) {
-      audit(status, completedRetryCount, false, false, code);
-      if (streamResponse) streamAuditComplete = true;
-    }
+    audit(status, completedRetryCount, false, false, code);
   };
 
   const executionTimer = setTimeout(
@@ -602,20 +603,6 @@ export const withAIGovernance = async <Request>(
         stream.onAbort(() => {
           requestAborted = true;
           openAIAbortController.abort();
-          const settlementTask = settled
-            ? null
-            : settleFailure('UPSTREAM_OPENAI_ERROR', 499, retryCount, true);
-          if (!streamAuditComplete) {
-            const claimedAudit = terminalAudit ?? {
-              status: 499,
-              errorCode: 'UPSTREAM_OPENAI_ERROR' as const,
-            };
-            audit(claimedAudit.status, retryCount, false, false, claimedAudit.errorCode);
-            streamAuditComplete = true;
-          }
-          if (!settlementTask) return;
-          streamDebug.error(new Error('Client aborted AI stream'));
-          waitUntil(settlementTask);
         });
         try {
           const { data: response } = await withOpenAIRetry(
@@ -661,10 +648,14 @@ export const withAIGovernance = async <Request>(
           openAIAbortController.signal.throwIfAborted();
           readCompletedContent(fullText, finishReason, Boolean(jsonResponse));
           streamDebug.complete();
-          await settleSuccess(retryCount, true);
+          await settleSuccess(retryCount);
           await stream.write(encodeAIStreamEvent({ type: 'done' }));
         } catch (error) {
-          if (requestAborted) return;
+          if (requestAborted) {
+            streamDebug.error(new Error('Client aborted AI stream'));
+            await settleFailure('UPSTREAM_OPENAI_ERROR', 499, retryCount);
+            return;
+          }
           streamDebug.error(error);
           getRequestLogger(c)?.error(
             error instanceof Error ? error : new Error('Unknown stream error'),
@@ -673,7 +664,7 @@ export const withAIGovernance = async <Request>(
             },
           );
           const failure = classifyFailure(error);
-          await settleFailure(failure.code, failure.status, retryCount, true);
+          await settleFailure(failure.code, failure.status, retryCount);
           await stream.write(
             encodeAIStreamEvent({
               type: 'error',

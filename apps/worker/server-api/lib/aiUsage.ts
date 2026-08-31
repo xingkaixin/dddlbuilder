@@ -157,6 +157,26 @@ export const recordAIUsageAttempt = async (
   return Number(row.attemptCount);
 };
 
+export const cancelUnstartedAIUsageAttempt = async (
+  env: ApiEnv['Bindings'],
+  reservation: AIUsageReservation,
+  attemptCount: number,
+) => {
+  const row = await env.USER_DB.prepare(`
+    UPDATE usage_events
+    SET attempt_count = attempt_count - 1
+    WHERE id = ? AND user_id = ? AND status = 'reserved' AND attempt_count = ?
+      AND attempt_count > 0
+    RETURNING attempt_count AS attemptCount
+  `)
+    .bind(reservation.usageEventId, reservation.userId, attemptCount)
+    .first<{ attemptCount: number }>();
+  if (!row) {
+    throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'AI_USAGE_NOT_RESERVED');
+  }
+  return Number(row.attemptCount);
+};
+
 const getSettlingStatus = (status: AIUsageTerminalStatus) =>
   status === 'succeeded' ? AI_USAGE_STATUS.settlingSucceeded : AI_USAGE_STATUS.settlingFailed;
 
