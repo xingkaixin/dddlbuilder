@@ -167,6 +167,130 @@
   /* Auto color SVG icons based on text color */
 }
 
+.app-header-atmosphere {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 28% -180%, hsl(var(--primary) / 0.2), transparent 48%),
+    linear-gradient(
+      100deg,
+      hsl(var(--primary) / 0.045),
+      transparent 38% 68%,
+      hsl(var(--primary) / 0.035)
+    );
+}
+
+.app-header-atmosphere::after {
+  position: absolute;
+  inset: -120% auto -120% 0;
+  width: 34%;
+  content: '';
+  background: linear-gradient(
+    100deg,
+    transparent,
+    hsl(var(--primary) / 0.02) 28%,
+    hsl(var(--primary-foreground) / 0.2) 48%,
+    hsl(var(--primary) / 0.06) 64%,
+    transparent
+  );
+  transform: translate3d(-160%, 0, 0) skewX(-18deg);
+  animation: app-header-glint 16s linear infinite;
+  will-change: transform;
+}
+
+.dark .app-header-atmosphere {
+  background:
+    radial-gradient(circle at 28% -180%, hsl(var(--primary) / 0.16), transparent 48%),
+    linear-gradient(
+      100deg,
+      hsl(var(--primary) / 0.035),
+      transparent 38% 68%,
+      hsl(var(--primary) / 0.025)
+    );
+}
+
+.workspace-sidebar-atmosphere {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: min(30dvh, 260px);
+  pointer-events: none;
+  background-image:
+    linear-gradient(to top, hsl(var(--card) / 0.04), transparent 72%),
+    url('/assets/empty-state/workspace-light.webp');
+  background-repeat: no-repeat;
+  background-position:
+    center,
+    right bottom;
+  background-size:
+    100% 100%,
+    auto 250px;
+  opacity: 0.28;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 38%, black);
+  mask-image: linear-gradient(to bottom, transparent, black 38%, black);
+  transform-origin: right bottom;
+  animation: workspace-sidebar-breathe 30s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  will-change: transform;
+}
+
+.dark .workspace-sidebar-atmosphere {
+  background-image:
+    linear-gradient(to top, hsl(var(--card) / 0.04), transparent 72%),
+    url('/assets/empty-state/workspace-dark.webp');
+  opacity: 0.34;
+}
+
+.workspace-empty-backdrop {
+  transform: scale(1.015);
+  transform-origin: 50% 46%;
+  animation: workspace-camera-push 26s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  will-change: transform;
+}
+
+@keyframes app-header-glint {
+  0%,
+  18% {
+    transform: translate3d(-160%, 0, 0) skewX(-18deg);
+  }
+  68%,
+  100% {
+    transform: translate3d(410%, 0, 0) skewX(-18deg);
+  }
+}
+
+@keyframes workspace-sidebar-breathe {
+  from {
+    transform: translate3d(0, 1%, 0) scale(1.02);
+  }
+  to {
+    transform: translate3d(-1.5%, 0, 0) scale(1.065);
+  }
+}
+
+@keyframes workspace-camera-push {
+  from {
+    transform: scale(1.015);
+  }
+  to {
+    transform: scale(1.085);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-header-atmosphere::after,
+  .workspace-sidebar-atmosphere,
+  .workspace-empty-backdrop {
+    animation: none;
+  }
+
+  .workspace-empty-backdrop {
+    transform: scale(1.035);
+  }
+}
+
 /* =============================================
    transitions-dev Shared Interaction Motion
    ============================================= */

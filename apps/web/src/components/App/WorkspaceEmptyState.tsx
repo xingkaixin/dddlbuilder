@@ -35,8 +35,21 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
     const hasRecentItems = recentDrafts.length > 0 || recentTables.length > 0;
 
     return (
-      <div className="flex min-h-[60vh] flex-1 flex-col items-center justify-center px-4 py-10">
-        <div className="flex w-full max-w-[520px] flex-col items-center">
+      <div className="relative flex min-h-[60vh] flex-1 flex-col items-center justify-center overflow-hidden px-4 py-10">
+        <img
+          src="/assets/empty-state/workspace-light.webp"
+          alt=""
+          aria-hidden
+          className="workspace-empty-backdrop pointer-events-none absolute inset-0 h-full w-full select-none object-cover dark:hidden"
+        />
+        <img
+          src="/assets/empty-state/workspace-dark.webp"
+          alt=""
+          aria-hidden
+          className="workspace-empty-backdrop pointer-events-none absolute inset-0 hidden h-full w-full select-none object-cover dark:block"
+        />
+
+        <div className="relative flex w-full max-w-[520px] flex-col items-center">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-xl border border-border bg-card shadow-sm">
             <Table2 className="h-8 w-8 text-primary" />
           </div>

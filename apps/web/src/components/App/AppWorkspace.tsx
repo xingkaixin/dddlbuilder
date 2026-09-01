@@ -60,10 +60,10 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
 
       <SavedTablesDrawer {...drawer} />
 
-      <div className="flex flex-col sm:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
         {!view.isShareView && view.workspaceSidebarOpen && <WorkspaceSidebar {...sidebar} />}
 
-        <div className="min-w-0 flex-1" data-testid="workspace-content">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="workspace-content">
           {!view.isShareView && (
             <TabBar
               leadingAction={
@@ -81,9 +81,11 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
               {...tabBar}
             />
           )}
-          <div className="p-3 sm:p-4">
+          <div className="flex min-h-0 flex-1 flex-col">
             {view.shouldShowWorkspaceSkeleton ? (
-              <MainWorkspaceSkeleton />
+              <div className="p-3 sm:p-4">
+                <MainWorkspaceSkeleton />
+              </div>
             ) : !view.hasTabs && !view.isShareView ? (
               <WorkspaceEmptyState
                 {...emptyState}
@@ -105,7 +107,9 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
                 }
               />
             ) : (
-              <EditorSurface model={editorSurface} />
+              <div className="p-3 sm:p-4">
+                <EditorSurface model={editorSurface} />
+              </div>
             )}
           </div>
         </div>

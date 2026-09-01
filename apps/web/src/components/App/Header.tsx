@@ -143,9 +143,8 @@ export const Header = memo<HeaderProps>(
             }
           `}</style>
         ) : null}
-        <header className="relative border-b bg-card/95 backdrop-blur-sm shadow-sm">
-          {/* Decorative gradient overlay */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
+        <header className="relative isolate overflow-hidden border-b bg-card/95 backdrop-blur-sm shadow-sm">
+          <div className="app-header-atmosphere" aria-hidden />
 
           <div className="relative px-4 py-2">
             <div className="flex items-center justify-between">

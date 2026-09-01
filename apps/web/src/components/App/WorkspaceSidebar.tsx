@@ -183,10 +183,12 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
 
     return (
       <aside
-        className="flex min-h-[calc(100vh-7.5rem)] w-full shrink-0 flex-col border-r bg-card/80 sm:w-72"
+        className="relative flex min-h-[calc(100dvh-7.5rem)] w-full shrink-0 flex-col overflow-hidden border-r bg-card/80 sm:min-h-0 sm:w-72"
         data-testid="workspace-sidebar"
       >
-        <div className="flex items-center justify-between border-b px-3 py-3">
+        <div className="workspace-sidebar-atmosphere" aria-hidden />
+
+        <div className="relative flex items-center justify-between border-b px-3 py-3">
           <button
             type="button"
             className="flex min-w-0 items-center gap-2"
@@ -208,7 +210,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
           </Button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="relative min-h-0 flex-1 overflow-y-auto p-3">
           <div className="mb-3 flex gap-2">
             <div className="relative min-w-0 flex-1">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
