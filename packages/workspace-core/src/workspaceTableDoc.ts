@@ -1,7 +1,6 @@
 import * as Y from 'yjs';
 import {
   type FieldRow,
-  type ForeignKeyDefinition,
   type SchemaDocumentState,
   ensureFieldId,
   normalizeFieldDefaultKind,
@@ -26,10 +25,22 @@ import {
 } from './yMapJson';
 import { stableStringify } from './stableStringify';
 import {
+  decodeCitusFieldReference,
+  decodeForeignKeyFieldReferences,
   decodeIndexFieldReferences,
+  decodeMysqlPartitionFieldReferences,
+  decodeTableMiscFieldReferences,
+  encodeCitusFieldReference,
+  encodeForeignKeyFieldReferences,
   encodeIndexFieldReferences,
+  encodeMysqlPartitionFieldReferences,
+  encodeTableMiscFieldReferences,
+  type StoredCitusShardingConfig,
+  type StoredForeignKeyDefinition,
   type StoredIndexDefinition,
-} from './workspaceIndexReferences';
+  type StoredMysqlPartitionConfig,
+  type StoredTableMiscConfig,
+} from './workspaceFieldReferences';
 
 const TABLE_SCALAR_KEYS = [
   'objectType',
@@ -193,7 +204,23 @@ export const applySchemaDocumentStateToTableDoc = (
   const previousIndexes = hasIndexDoc(tableDoc)
     ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')
     : (previousSnapshot?.indexes ?? []);
+  const previousForeignKeys = hasForeignKeyDoc(tableDoc)
+    ? readOrderedMap<StoredForeignKeyDefinition>(tableDoc, 'foreignKeys', 'foreignKeyOrder')
+    : (previousSnapshot?.foreignKeys ?? []);
   const encodedIndexes = encodeIndexFieldReferences(documentState.indexes ?? [], nextRows);
+  const encodedForeignKeys = encodeForeignKeyFieldReferences(
+    documentState.foreignKeys ?? [],
+    nextRows,
+  );
+  const storedDocumentState = {
+    ...documentState,
+    citusShardingConfig: encodeCitusFieldReference(documentState.citusShardingConfig, nextRows),
+    mysqlPartitionConfig: encodeMysqlPartitionFieldReferences(
+      documentState.mysqlPartitionConfig,
+      nextRows,
+    ),
+    tableMiscConfig: encodeTableMiscFieldReferences(documentState.tableMiscConfig, nextRows),
+  };
   const containsEditorSessionState = hasEditorSessionState(tableDoc);
   if (
     options.compactSnapshotBase !== true ||
@@ -208,7 +235,7 @@ export const applySchemaDocumentStateToTableDoc = (
   const scalarValues = buildPatch(
     readMap(tableDoc, 'scalar'),
     TABLE_SCALAR_KEYS,
-    documentState,
+    storedDocumentState,
     previousSnapshot,
     writeAllKeys,
   );
@@ -263,10 +290,9 @@ export const applySchemaDocumentStateToTableDoc = (
   if (
     writeAllKeys ||
     hasForeignKeyDoc(tableDoc) ||
-    stableStringify(previousSnapshot?.foreignKeys ?? []) !==
-      stableStringify(documentState.foreignKeys ?? [])
+    stableStringify(previousForeignKeys) !== stableStringify(encodedForeignKeys)
   ) {
-    writeOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder', documentState.foreignKeys ?? []);
+    writeOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder', encodedForeignKeys);
   }
 };
 
@@ -325,23 +351,74 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
       : (state.indexes ?? []),
     rows,
   );
-  const foreignKeys = hasForeignKeyDoc(tableDoc)
-    ? readOrderedMap<ForeignKeyDefinition>(tableDoc, 'foreignKeys', 'foreignKeyOrder')
-    : state.foreignKeys;
+  const foreignKeys = decodeForeignKeyFieldReferences(
+    hasForeignKeyDoc(tableDoc)
+      ? readOrderedMap<StoredForeignKeyDefinition>(tableDoc, 'foreignKeys', 'foreignKeyOrder')
+      : (state.foreignKeys ?? []),
+    rows,
+  );
+  const citusShardingConfig = decodeCitusFieldReference(
+    state.citusShardingConfig as StoredCitusShardingConfig | undefined,
+    rows,
+  );
+  const mysqlPartitionConfig = decodeMysqlPartitionFieldReferences(
+    state.mysqlPartitionConfig as StoredMysqlPartitionConfig | undefined,
+    rows,
+  );
+  const tableMiscConfig = decodeTableMiscFieldReferences(
+    state.tableMiscConfig as StoredTableMiscConfig | undefined,
+    rows,
+  );
 
-  return normalizeSchemaDocumentState({ ...state, rows, indexes, foreignKeys });
+  return normalizeSchemaDocumentState({
+    ...state,
+    rows,
+    indexes,
+    foreignKeys,
+    citusShardingConfig,
+    mysqlPartitionConfig,
+    tableMiscConfig,
+  });
 };
 
 export const materializeTableDoc = (tableDoc: Y.Map<unknown>) => {
   if (hasFineGrainedTableDoc(tableDoc)) {
     const state = tableDocToSchemaDocumentState(tableDoc);
-    const indexes = hasIndexDoc(tableDoc)
-      ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')
-      : state.indexes;
-    const encoded = encodeIndexFieldReferences(state.indexes, state.rows);
-    if (stableStringify(indexes) === stableStringify(encoded)) return false;
-    writeOrderedMap(tableDoc, 'indexes', 'indexOrder', encoded);
-    return true;
+    const indexes = readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder');
+    const foreignKeys = readOrderedMap<StoredForeignKeyDefinition>(
+      tableDoc,
+      'foreignKeys',
+      'foreignKeyOrder',
+    );
+    const scalar = readMap(tableDoc, 'scalar');
+    const encodedIndexes = encodeIndexFieldReferences(state.indexes, state.rows);
+    const encodedForeignKeys = encodeForeignKeyFieldReferences(state.foreignKeys ?? [], state.rows);
+    const encodedCitus = encodeCitusFieldReference(state.citusShardingConfig, state.rows);
+    const encodedMysql = encodeMysqlPartitionFieldReferences(
+      state.mysqlPartitionConfig,
+      state.rows,
+    );
+    const encodedMisc = encodeTableMiscFieldReferences(state.tableMiscConfig, state.rows);
+    let materialized = false;
+    if (stableStringify(indexes) !== stableStringify(encodedIndexes)) {
+      writeOrderedMap(tableDoc, 'indexes', 'indexOrder', encodedIndexes);
+      materialized = true;
+    }
+    if (stableStringify(foreignKeys) !== stableStringify(encodedForeignKeys)) {
+      writeOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder', encodedForeignKeys);
+      materialized = true;
+    }
+    const scalarReferences = {
+      citusShardingConfig: encodedCitus,
+      mysqlPartitionConfig: encodedMysql,
+      tableMiscConfig: encodedMisc,
+    };
+    for (const [key, value] of Object.entries(scalarReferences)) {
+      if (stableStringify(scalar?.get(key)) === stableStringify(value)) continue;
+      writeJsonMapPatch(ensureMap(tableDoc, 'scalar'), { [key]: value });
+      materialized = true;
+    }
+    return materialized;
   }
   const stateSnapshot = readStateSnapshot(tableDoc);
   if (!stateSnapshot) return false;
