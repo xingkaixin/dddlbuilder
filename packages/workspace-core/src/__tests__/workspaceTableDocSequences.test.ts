@@ -143,7 +143,10 @@ describe('table doc snapshot base', () => {
       createClientState(),
       createClientState({ tableName: 'accounts' }),
       createClientState({ tableName: 'accounts', rows: [createRow(0), createRow(1)] }),
-      createClientState({ tableName: 'accounts', tableMiscConfig: { engine: 'InnoDB' } }),
+      createClientState({
+        tableName: 'accounts',
+        tableMiscConfig: { enabled: true, engine: 'InnoDB' },
+      }),
       createClientState({ tableName: 'people', rows: [createRow(0), createRow(1), createRow(2)] }),
     ];
 

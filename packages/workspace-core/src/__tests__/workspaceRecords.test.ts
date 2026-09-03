@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
+import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import {
   deleteWorkspaceSavedTable,
   getWorkspaceSavedTable,
@@ -14,22 +14,19 @@ import {
   upsertWorkspaceSavedTable,
 } from '../workspaceRecords';
 
-const createState = (tableName: string) =>
-  toSchemaDocumentState({
-    schemaName: 'public',
-    objectType: 'table',
-    tableName,
-    tableComment: '',
-    dbType: 'mysql',
-    sqlFormatMode: 'compact',
-    viewDefinition: '',
-    viewCreateOrReplace: true,
-    rows: [],
-    addCount: 1,
-    indexes: [],
-    authInput: '',
-    authObjects: [],
-  } satisfies PersistedState);
+const createState = (tableName: string): SchemaDocumentState => ({
+  schemaName: 'public',
+  objectType: 'table',
+  tableName,
+  tableComment: '',
+  dbType: 'mysql',
+  viewDefinition: '',
+  viewCreateOrReplace: true,
+  rows: [],
+  indexes: [],
+  authInput: '',
+  authObjects: [],
+});
 
 describe('workspace records', () => {
   it('owns draft and saved table record operations', () => {
@@ -40,6 +37,7 @@ describe('workspace records', () => {
       updatedAt: 2,
     });
     upsertWorkspaceSavedTable(doc, {
+      tableId: 'table-users',
       normalizedName: 'users',
       name: 'Users',
       state: createState('users'),
@@ -98,6 +96,7 @@ describe('workspace records', () => {
       trashedAt: 2,
     });
     upsertWorkspaceSavedTable(doc, {
+      tableId: 'table-users',
       normalizedName: 'users',
       name: 'Users',
       state: createState('users'),

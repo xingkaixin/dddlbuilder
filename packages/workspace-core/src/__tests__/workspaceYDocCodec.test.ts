@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
+import {
+  type PersistedState,
+  type SchemaDocumentState,
+  toSchemaDocumentState,
+} from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import {
   createWorkspaceYDocUpdateFromSnapshot,
@@ -115,7 +119,7 @@ const createSnapshot = (): WorkspaceSnapshot => ({
   folders: [{ id: 'folder-1', name: 'Core', order: 1, createdAt: 5, updatedAt: 5 }],
 });
 
-const collaborativeState = (state: PersistedState) => toSchemaDocumentState(state);
+const collaborativeState = (state: SchemaDocumentState) => toSchemaDocumentState(state);
 
 describe('workspace YDoc codec', () => {
   it('round-trips every workspace collection', () => {

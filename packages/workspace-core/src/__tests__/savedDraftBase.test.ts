@@ -35,6 +35,7 @@ describe('saved draft baselines', () => {
       normalizedName: 'users',
       name: 'Users',
       state: base,
+      createdAt: 1,
       updatedAt: 1,
     };
     upsertWorkspaceSavedTable(doc, record);

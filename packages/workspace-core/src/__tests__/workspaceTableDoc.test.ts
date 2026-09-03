@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import {
+  type FieldRow,
   normalizePersistedRows,
   type PersistedState,
   type SchemaDocumentState,
@@ -100,7 +101,9 @@ describe('workspace table doc', () => {
       viewCreateOrReplace: undefined,
       foreignKeys: [],
     });
-    legacy.rows = [{ fieldName: 'id', fieldType: 'bigint', nullable: false }];
+    legacy.rows = [
+      { fieldName: 'id', fieldType: 'bigint', nullable: false },
+    ] as unknown as PersistedState['rows'];
     const normalized = normalizeSchemaDocumentState(legacy);
     expect(normalized).toMatchObject({
       objectType: 'table',
@@ -325,28 +328,31 @@ describe('workspace table doc writes', () => {
         ],
       },
     ],
-  ])('rejects duplicate %s identities before mutating the document', (subject, overrides) => {
-    const doc = new Y.Doc();
-    const tableDoc = new Y.Map<unknown>();
-    doc.getMap<Y.Map<unknown>>('drafts').set('draft-1', tableDoc);
+  ] satisfies Array<[string, Partial<PersistedState>]>)(
+    'rejects duplicate %s identities before mutating the document',
+    (subject, overrides) => {
+      const doc = new Y.Doc();
+      const tableDoc = new Y.Map<unknown>();
+      doc.getMap<Y.Map<unknown>>('drafts').set('draft-1', tableDoc);
 
-    expect(() =>
-      applySchemaDocumentStateToTableDoc(tableDoc, createClientState(overrides)),
-    ).toThrow(`${subject} must have unique non-empty ids`);
-    expect(tableDoc.size).toBe(0);
-  });
+      expect(() =>
+        applySchemaDocumentStateToTableDoc(tableDoc, createClientState(overrides)),
+      ).toThrow(`${subject} must have unique non-empty ids`);
+      expect(tableDoc.size).toBe(0);
+    },
+  );
 
   it('does not store or emit updates for editor session changes', () => {
     const clientState = createClientState();
     const tableDoc = createTableDoc(clientState);
     const updates = collectUpdates(tableDoc.doc as Y.Doc);
 
-    applySchemaDocumentStateToTableDoc(tableDoc, {
-      ...clientState,
+    const nextState = createClientState({
       sqlFormatMode: 'aligned',
       addCount: 99,
       fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
     });
+    applySchemaDocumentStateToTableDoc(tableDoc, nextState);
 
     expect(updates).toEqual([]);
     expect(tableDoc.get('stateSnapshot')).toEqual(toSchemaDocumentState(clientState));
@@ -407,11 +413,12 @@ describe('workspace table doc writes', () => {
   it('rewrites indexes and foreign keys when they change', () => {
     const clientState = createClientState();
     const tableDoc = createTableDoc(clientState);
-    const indexes = [
+    const indexes: PersistedState['indexes'] = [
       {
         id: 'idx_email',
         name: 'idx_email',
         fields: [{ name: 'email', direction: 'ASC' as const }],
+        kind: 'index',
       },
     ];
 
@@ -435,11 +442,11 @@ describe('workspace table doc key removals', () => {
 
   const enumMeta = [{ value: 'a', color: '#fff' }];
   const configuredState = createClientState({
-    citusShardingConfig: { enabled: true, distributionColumn: 'id' },
+    citusShardingConfig: { mode: 'distributed', distributionColumn: 'id' },
     mysqlPartitionConfig: { enabled: true, type: 'RANGE', columns: ['id'] },
-    tableMiscConfig: { engine: 'InnoDB' },
+    tableMiscConfig: { enabled: true, engine: 'InnoDB' },
   });
-  const rowsWithOptionalKeys = [
+  const rowsWithOptionalKeys: FieldRow[] = [
     {
       ...createClientState().rows[0],
       defaultKind: 'auto_increment',
@@ -506,7 +513,10 @@ describe('workspace table doc key removals', () => {
       createClientState({ rows: rowsWithOptionalKeys }),
       createClientState({ rows: [second, first] }),
       createClientState({ rows: [second] }),
-      createClientState({ rows: [second], tableMiscConfig: { engine: 'InnoDB' } }),
+      createClientState({
+        rows: [second],
+        tableMiscConfig: { enabled: true, engine: 'InnoDB' },
+      }),
       createClientState({ rows: rowsWithOptionalKeys, dbType: 'postgresql' }),
       createClientState(),
     ];

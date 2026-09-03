@@ -13,7 +13,17 @@ const externalState = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const completeSnapshot = () => ({
+type DecoderFixtureRecord = Record<string, unknown>;
+
+type DecoderSnapshotFixture = {
+  globalDraft: DecoderFixtureRecord | null;
+  drafts: DecoderFixtureRecord[];
+  savedTables: DecoderFixtureRecord[];
+  savedDrafts: DecoderFixtureRecord[];
+  folders: DecoderFixtureRecord[];
+};
+
+const completeSnapshot = (): DecoderSnapshotFixture => ({
   globalDraft: null,
   drafts: [
     {
@@ -770,7 +780,7 @@ describe('decodeWorkspaceSnapshot', () => {
     const snapshot = completeSnapshot();
     if (globalDraft !== undefined) snapshot.globalDraft = globalDraft;
     if (item !== undefined) {
-      snapshot[path as 'drafts'].splice(0, 1, item);
+      (snapshot[path as 'drafts'] as unknown[]).splice(0, 1, item);
     }
 
     expect(decodeWorkspaceSnapshot(snapshot)).toBeNull();

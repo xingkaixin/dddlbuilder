@@ -8,7 +8,6 @@ import {
 
 const row = (id: string, fieldName: string, overrides: Partial<FieldRow> = {}): FieldRow => ({
   id,
-  order: 0,
   fieldName,
   fieldType: 'int',
   fieldComment: '',
@@ -26,7 +25,7 @@ const state = (rows: FieldRow[]): PersistedState =>
     sqlFormatMode: 'compact',
     viewDefinition: '',
     viewCreateOrReplace: true,
-    rows: rows.map((r, index) => ({ ...r, order: index + 1 })),
+    rows,
     addCount: 10,
     indexes: [],
     authInput: '',
