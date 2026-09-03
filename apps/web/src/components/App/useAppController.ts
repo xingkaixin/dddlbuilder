@@ -1,8 +1,7 @@
 import { useWorkspaceQuerySync } from '@/hooks/workspacePersistence/useWorkspaceQuerySync';
 import { useTemplateCatalog } from './hooks/useTemplateCatalog';
 import { useCallback, useMemo } from 'react';
-import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
-import { isTabAvailable } from '@/utils/tabUtils';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useEditorDomains } from './hooks/useEditorDomains';
 import { useWorkspaceController } from './hooks/useWorkspaceController';
 import { useDialogStates } from './hooks/useDialogStates';
@@ -62,7 +61,6 @@ export function useAppController() {
     tableComment,
     setTableName,
     setDbType,
-    activeTab,
     setActiveTab,
     resetDocument,
     rows,
@@ -381,16 +379,6 @@ export function useAppController() {
     [schemaName, tableName, tableComment, rows, indexes],
   );
 
-  const handleDbTypeChange = useCallback(
-    (newDbType: DatabaseType) => {
-      setDbType(newDbType);
-      if (!isTabAvailable(activeTab, newDbType)) {
-        setActiveTab('fields');
-      }
-    },
-    [setDbType, activeTab, setActiveTab],
-  );
-
   const collapseSidebar = useCallback(
     () => setWorkspaceSidebarOpen(false),
     [setWorkspaceSidebarOpen],
@@ -432,7 +420,7 @@ export function useAppController() {
     workspaceLabel,
     dataTableToolbarLeft,
     onTableNameChange: setTableName,
-    onDbTypeChange: handleDbTypeChange,
+    onDbTypeChange: setDbType,
     onSaveCurrent: handleSaveCurrent,
     onViewCurrentVersionHistory: handleViewCurrentVersionHistory,
     onOpenErDiagram: openErDiagram,

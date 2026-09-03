@@ -73,4 +73,44 @@ describe('appStore', () => {
       fieldTableFreezeColumns: 0,
     });
   });
+
+  it('切换文档上下文时原子校正当前标签', () => {
+    const state = useEditorStore.getState();
+
+    state.setDbType('postgresql-citus');
+    state.setActiveTab('sharding');
+    expect(useEditorStore.getState().activeTab).toBe('sharding');
+
+    const transitions: Array<{ dbType: string; activeTab: string }> = [];
+    const unsubscribe = useEditorStore.subscribe((current) =>
+      transitions.push({ dbType: current.dbType, activeTab: current.activeTab }),
+    );
+    state.setDbType('postgresql');
+    unsubscribe();
+    expect(transitions).toEqual([{ dbType: 'postgresql', activeTab: 'fields' }]);
+    expect(useEditorStore.getState()).toMatchObject({
+      dbType: 'postgresql',
+      activeTab: 'fields',
+    });
+
+    state.setActiveTab('indexes');
+    state.setObjectType('view');
+    expect(useEditorStore.getState()).toMatchObject({
+      objectType: 'view',
+      activeTab: 'fields',
+    });
+
+    state.setActiveTab('indexes');
+    expect(useEditorStore.getState().activeTab).toBe('fields');
+  });
+
+  it('切换文档上下文时保留仍然可用的会话标签', () => {
+    const state = useEditorStore.getState();
+
+    state.setActiveTab('auth');
+    state.setObjectType('view');
+    state.setDbType('hive');
+
+    expect(useEditorStore.getState().activeTab).toBe('auth');
+  });
 });

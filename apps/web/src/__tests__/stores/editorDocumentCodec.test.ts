@@ -110,4 +110,25 @@ describe('editorDocumentCodec', () => {
     expect(persistedState.citusShardingConfig).toBeUndefined();
     expect(persistedState.mysqlPartitionConfig).toEqual(state.mysqlPartitionConfig);
   });
+
+  it('替换文档时校正当前会话标签但不持久化它', () => {
+    const store = useEditorStore.getState();
+    store.setObjectType('table');
+    store.setDbType('postgresql-citus');
+    store.setActiveTab('sharding');
+
+    store.replaceDocument(createState({ dbType: 'mysql' }));
+
+    expect(useEditorStore.getState().activeTab).toBe('fields');
+    expect(toPersistedState(useEditorStore.getState())).not.toHaveProperty('activeTab');
+
+    useEditorStore.getState().setActiveTab('auth');
+    useEditorStore.getState().replaceDocument(
+      createState({
+        objectType: 'view',
+        dbType: 'hive',
+      }),
+    );
+    expect(useEditorStore.getState().activeTab).toBe('auth');
+  });
 });

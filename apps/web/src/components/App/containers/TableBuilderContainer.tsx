@@ -15,7 +15,7 @@ import {
 } from '@/components/icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEditorStore } from '@/stores';
-import { isBuilderTab, isTabAvailable, type BuilderTab } from '@/utils/tabUtils';
+import { getAvailableTabs, isBuilderTab, type BuilderTab } from '@/utils/tabUtils';
 import { useTranslation } from 'react-i18next';
 import { AuthPanel } from '../AuthPanel';
 import { DataTable } from '../DataTable';
@@ -133,10 +133,7 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
     { primary: 0, unique: 0, normal: 0 },
   );
 
-  const isTable = objectType === 'table';
-  const showTab = (tab: BuilderTab) => isTable && isTabAvailable(tab, dbType);
-
-  const tabCandidates: Array<BuilderTabDefinition | false> = [
+  const tabDefinitions: BuilderTabDefinition[] = [
     objectType === 'view'
       ? {
           value: 'fields',
@@ -151,14 +148,14 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
           badge: tabBadge(fieldCount),
           panel: <DataTable {...dataTableProps} />,
         },
-    showTab('indexes') && {
+    {
       value: 'indexes',
       icon: Network,
       label: t('builderTabs.indexes'),
       badge: indexes.length > 0 && <IndexStatsBadge stats={indexStats} />,
       panel: <IndexPanel {...indexPanelProps} />,
     },
-    showTab('foreignKeys') && {
+    {
       value: 'foreignKeys',
       icon: Link2,
       label: t('builderTabs.foreignKeys'),
@@ -172,14 +169,14 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
       badge: tabBadge(authPanelProps.authObjects.length),
       panel: <AuthPanel {...authPanelProps} />,
     },
-    showTab('misc') && {
+    {
       value: 'misc',
       icon: SlidersHorizontal,
       label: t('builderTabs.misc'),
       badge: tabBadge(tableOptionsPanelProps.config.enabled ? t('builderTabs.enabled') : null),
       panel: <TableOptionsPanel {...tableOptionsPanelProps} />,
     },
-    showTab('sharding') && {
+    {
       value: 'sharding',
       icon: Share2,
       label: t('builderTabs.sharding'),
@@ -190,14 +187,14 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
       ),
       panel: <ShardingPanel {...shardingPanelProps} />,
     },
-    showTab('partition') && {
+    {
       value: 'partition',
       icon: Layers,
       label: t('builderTabs.partition'),
       badge: tabBadge(partitionPanelProps.config.enabled ? partitionPanelProps.config.type : null),
       panel: <PartitionPanel {...partitionPanelProps} />,
     },
-    showTab('hive-partition') && {
+    {
       value: 'hive-partition',
       icon: Layers,
       label: t('builderTabs.hivePartition'),
@@ -209,7 +206,8 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
       panel: <HivePartitionPanel {...hivePartitionPanelProps} />,
     },
   ];
-  const tabs = tabCandidates.filter((tab): tab is BuilderTabDefinition => tab !== false);
+  const availableTabs = new Set(getAvailableTabs({ objectType, dbType }));
+  const tabs = tabDefinitions.filter((tab) => availableTabs.has(tab.value));
 
   const handleTabValueChange = (value: string) => {
     if (isBuilderTab(value)) onTabsValueChange(value);

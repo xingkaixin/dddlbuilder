@@ -58,7 +58,7 @@ export function useEditorSurfaceModel({
 }: UseEditorSurfaceModelInput): EditorSurfaceModel {
   const { t } = useTranslation();
   const { editor, auth, sharding, animations, partition, tableOptions } = domains;
-  const { setObjectType, setActiveTab } = editor;
+  const { setObjectType } = editor;
   const {
     derived: { availableFields, canSaveCurrent, filledRowCount, tableDiff },
     sql,
@@ -70,13 +70,6 @@ export function useEditorSurfaceModel({
     qualifiedTableName,
     schemaLintIssues,
   } = schemaController;
-  const handleObjectTypeChange = useCallback(
-    (value: typeof editor.objectType) => {
-      setObjectType(value);
-      setActiveTab('fields');
-    },
-    [setObjectType, setActiveTab],
-  );
   const expandOutput = useCallback(() => setOutputPanelOpen(true), [setOutputPanelOpen]);
   const collapseOutput = useCallback(() => setOutputPanelOpen(false), [setOutputPanelOpen]);
 
@@ -94,7 +87,7 @@ export function useEditorSurfaceModel({
         onSchemaNameChange: editor.setSchemaName,
         onTableNameChange,
         onTableCommentChange: editor.setTableComment,
-        onObjectTypeChange: handleObjectTypeChange,
+        onObjectTypeChange: setObjectType,
         onDbTypeChange,
         onClearAll: clearActions.handleClearAll,
         onSaveCurrent,

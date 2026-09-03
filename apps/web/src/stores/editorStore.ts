@@ -11,6 +11,7 @@ import { createTableOptionsSlice } from './tableOptionsStore';
 import type { EditorStoreState } from './editorStoreTypes';
 import { removeFieldsFromDocument } from './editorDocumentMutations';
 import { createEmptyRow } from '@/utils/helpers';
+import { resolveActiveTab } from '@/utils/tabUtils';
 
 export const useEditorStore = create<EditorStoreState>((set, get) => ({
   ...createAppSlice(set),
@@ -31,5 +32,15 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
         return rowIndex >= index && rowIndex < index + amount;
       }),
     ),
-  replaceDocument: (state) => set(toEditorDocumentState(state)),
+  replaceDocument: (state) =>
+    set((current) => {
+      const document = toEditorDocumentState(state);
+      return {
+        ...document,
+        activeTab: resolveActiveTab(current.activeTab, {
+          objectType: document.objectType,
+          dbType: document.dbType,
+        }),
+      };
+    }),
 }));
