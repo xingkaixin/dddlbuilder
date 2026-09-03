@@ -3,6 +3,7 @@ import type { ApiEnv } from './context.js';
 import { createBetterAuth } from './betterAuth.js';
 import { DomainError } from './http.js';
 import { getRequestLogger } from './logging.js';
+import { kickWorkspaceSockets } from './sessionRevocation.js';
 
 export type AuthenticatedAppUser = {
   userId: string;
@@ -37,7 +38,25 @@ export const readSessionAccess = async (
 
 export const revokeUserSessions = async (env: ApiEnv['Bindings'], userId: string) => {
   const context = await createBetterAuth(env).$context;
-  await context.internalAdapter.deleteUserSessions(userId);
+  let deleteError: unknown;
+  try {
+    await context.internalAdapter.deleteUserSessions(userId);
+  } catch (error) {
+    deleteError = error;
+  }
+
+  let kickError: unknown;
+  try {
+    await kickWorkspaceSockets(env, { userId });
+  } catch (error) {
+    kickError = error;
+  }
+
+  if (deleteError && kickError) {
+    throw new AggregateError([deleteError, kickError], 'Failed to revoke user sessions');
+  }
+  if (deleteError) throw deleteError;
+  if (kickError) throw kickError;
 };
 
 const throwAuthenticationUnavailable = (c: Context<ApiEnv>, error: unknown): never => {

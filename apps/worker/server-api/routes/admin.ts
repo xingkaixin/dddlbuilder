@@ -1,4 +1,4 @@
-import type { Hono, MiddlewareHandler } from 'hono';
+import type { Context, Hono, MiddlewareHandler } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { createAdminSession, resolveAdminSession, deleteAdminSession } from '../lib/adminAuth.js';
 import { errorResponse, withMeta, parseJsonBodyWithLimit } from '../lib/http.js';
@@ -36,6 +36,18 @@ const requireAdminSession: MiddlewareHandler<ApiEnv> = async (c, next) => {
     return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
   }
   await next();
+};
+
+const revokeUserSessionsOrError = async (c: Context<ApiEnv>, userId: string) => {
+  try {
+    await revokeUserSessions(c.env, userId);
+    return null;
+  } catch (error) {
+    getRequestLogger(c)?.error(toWorkerError(error, 'Admin session revocation failed'), {
+      outcome: { errorCode: 'SERVICE_UNAVAILABLE' },
+    });
+    return errorResponse(c, 503, 'Failed to revoke active sessions', 'SERVICE_UNAVAILABLE');
+  }
 };
 
 export function registerAdminRoutes(app: Hono<ApiEnv>) {
@@ -135,7 +147,8 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     }
 
     await disableAdminUser(c.env.USER_DB, userId, body.reason);
-    await revokeUserSessions(c.env, userId);
+    const revocationError = await revokeUserSessionsOrError(c, userId);
+    if (revocationError) return revocationError;
 
     return c.json(withMeta(c, { ok: true }));
   });
@@ -164,7 +177,10 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     }
 
     await setAdminUserEmailVerification(c.env.USER_DB, userId, body.verified);
-    if (!body.verified) await revokeUserSessions(c.env, userId);
+    if (!body.verified) {
+      const revocationError = await revokeUserSessionsOrError(c, userId);
+      if (revocationError) return revocationError;
+    }
 
     return c.json(withMeta(c, { ok: true, emailVerified: body.verified }));
   });

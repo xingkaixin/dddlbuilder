@@ -22,6 +22,7 @@ const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Binding
   TURNSTILE_SECRET_KEY: 'turnstile-secret',
   SIGNUP_BONUS_CREDITS: '100000',
   ADMIN_CONSOLE_PASSWORD: 'admin-secret',
+  ADMIN_SESSION_SECRET: '0123456789abcdef0123456789abcdef',
   ...overrides,
 });
 
@@ -91,6 +92,31 @@ describe('/api/admin/*', () => {
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));
     expect(requestRateLimitMocks.revokeUserSessions).toHaveBeenCalledWith(env, 'user-1');
     expect(response.status).toBe(200);
+  });
+
+  it.each([
+    ['disable', { reason: 'security' }],
+    ['email-verification', { verified: false }],
+  ])('returns 503 when session revocation fails for admin action %s', async (action, body) => {
+    vi.doMock('../lib/adminAuth.js', () => ({
+      resolveAdminSession: vi.fn().mockResolvedValue(true),
+    }));
+    requestRateLimitMocks.revokeUserSessions.mockRejectedValue(new Error('kick failed'));
+    const app = await createAdminApp();
+    const response = await app.fetch(
+      createRequest(`/api/admin/users/user-1/${action}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+      createEnv({ USER_DB: mockD1Results([{ id: 'user-1' }]) as unknown as D1Database }),
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Failed to revoke active sessions',
+      code: 'SERVICE_UNAVAILABLE',
+    });
   });
 
   // ─── Session management ──────────────────────────────────────────
