@@ -12,7 +12,8 @@ type AdminAuthEnv = Pick<
   'USER_DB' | 'ADMIN_CONSOLE_PASSWORD' | 'ADMIN_SESSION_SECRET'
 >;
 
-const encode = (value: string) => new TextEncoder().encode(value);
+const encode = (value: string): Uint8Array<ArrayBuffer> =>
+  Uint8Array.from(new TextEncoder().encode(value));
 
 const timingSafeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
   let mismatch = a.length ^ b.length;
@@ -25,7 +26,7 @@ const timingSafeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
 
 const readAdminAuthConfig = (
   env: AdminAuthEnv,
-): { password: string; sessionKey: Uint8Array } | null => {
+): { password: string; sessionKey: Uint8Array<ArrayBuffer> } | null => {
   const password = env.ADMIN_CONSOLE_PASSWORD;
   const sessionSecret = env.ADMIN_SESSION_SECRET;
   if (!password || !sessionSecret?.trim()) return null;
