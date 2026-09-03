@@ -51,6 +51,7 @@ const createField = (overrides: Partial<NormalizedField> = {}): NormalizedField 
 });
 
 const createIndex = (overrides: Partial<IndexDefinition> = {}): IndexDefinition => ({
+  id: 'index',
   name: 'idx_name',
   fields: [{ name: 'name', direction: 'ASC' }],
   kind: 'index',
@@ -59,6 +60,7 @@ const createIndex = (overrides: Partial<IndexDefinition> = {}): IndexDefinition 
 });
 
 const createFk = (overrides: Partial<ForeignKeyDefinition> = {}): ForeignKeyDefinition => ({
+  id: 'foreign-key',
   name: 'fk_user',
   fields: ['user_id'],
   refTable: 'users',
@@ -304,7 +306,15 @@ describe('generateAlterDDL', () => {
         ...before,
         schemaName: 'archive',
         tableName: 'archived_orders',
-        rows: [{ id: 'field-1', fieldName: 'id', fieldType: 'int', nullable: false }],
+        rows: [
+          {
+            id: 'field-1',
+            fieldName: 'id',
+            fieldType: 'int',
+            fieldComment: '',
+            nullable: false,
+          },
+        ],
       };
       const diff = diffPersistedState(before, after);
       const sql = generateAlterDDL(diff);
@@ -347,7 +357,15 @@ describe('generateAlterDDL', () => {
       const after = {
         ...before,
         tableName: rename ? 'archived_orders' : 'orders',
-        rows: [{ id: 'field-1', fieldName: 'id', fieldType: 'int', nullable: false }],
+        rows: [
+          {
+            id: 'field-1',
+            fieldName: 'id',
+            fieldType: 'int',
+            fieldComment: '',
+            nullable: false,
+          },
+        ],
       };
       const diff = diffPersistedState(before, after);
       const forward = generateAlterDDL(diff);
@@ -496,7 +514,7 @@ describe('generateAlterDDL', () => {
         fields: [
           {
             ...createRename('a', 'b'),
-            changes: ['nullable'],
+            changes: ['nullable'] as const,
             oldField: createField({ name: 'a', nullable: true }),
           },
           createRename('b', 'c'),

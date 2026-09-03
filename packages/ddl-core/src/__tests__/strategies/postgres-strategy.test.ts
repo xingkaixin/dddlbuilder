@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
-import type { NormalizedField } from '@ddlbuilder/shared-types';
+import type { IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('PostgresStrategy', () => {
   it('quotes table, column, index, and referenced key names consistently', () => {
@@ -10,7 +10,7 @@ describe('PostgresStrategy', () => {
       name: 'OrderKey',
       kind: 'unique_index',
       fields: [{ name: 'order', direction: 'ASC' as const }],
-    };
+    } satisfies IndexDefinition;
     expect(strategy.generateIndexDDL('Audit.Users', index)).toBe(
       'CREATE UNIQUE INDEX "OrderKey" ON "Audit"."Users" ("order" ASC);',
     );

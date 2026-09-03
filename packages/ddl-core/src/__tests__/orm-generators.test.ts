@@ -32,6 +32,7 @@ const createField = (overrides: Partial<NormalizedField> = {}): NormalizedField 
 });
 
 const createIndex = (overrides: Partial<IndexDefinition> = {}): IndexDefinition => ({
+  id: 'index',
   name: 'pk_id',
   fields: [{ name: 'id', direction: 'ASC' }],
   kind: 'primary',
@@ -223,6 +224,7 @@ describe('PrismaGenerator', () => {
     const indexes: IndexDefinition[] = [
       createIndex(),
       {
+        id: 'unique-org-name',
         name: 'uk_org_name',
         fields: [
           { name: 'org_id', direction: 'ASC' },
@@ -248,7 +250,13 @@ describe('PrismaGenerator', () => {
 
   it('generates foreign keys', () => {
     const fks: ForeignKeyDefinition[] = [
-      { name: 'fk_user', fields: ['user_id'], refTable: 'users', refFields: ['id'] },
+      {
+        id: 'foreign-key-user',
+        name: 'fk_user',
+        fields: ['user_id'],
+        refTable: 'users',
+        refFields: ['id'],
+      },
     ];
     const fields = [
       createField(),
@@ -348,6 +356,7 @@ describe('TypeORMGenerator', () => {
     const indexes: IndexDefinition[] = [
       createIndex(),
       {
+        id: 'unique-email',
         name: 'uk_email',
         fields: [{ name: 'email', direction: 'ASC' }],
         kind: 'unique_index',
@@ -435,6 +444,7 @@ describe('SQLAlchemyGenerator', () => {
   it('generates with foreign key', () => {
     const fks: ForeignKeyDefinition[] = [
       {
+        id: 'foreign-key-user',
         name: 'fk_user',
         fields: ['user_id'],
         refTable: 'users',
@@ -461,6 +471,7 @@ describe('SQLAlchemyGenerator', () => {
     const indexes: IndexDefinition[] = [
       createIndex(),
       {
+        id: 'index-name',
         name: 'idx_name',
         fields: [{ name: 'name', direction: 'ASC' }],
         kind: 'index',
@@ -558,6 +569,7 @@ describe('GORMGenerator', () => {
     const indexes: IndexDefinition[] = [
       createIndex(),
       {
+        id: 'unique-email',
         name: 'uk_email',
         fields: [{ name: 'email', direction: 'ASC' }],
         kind: 'unique_index',

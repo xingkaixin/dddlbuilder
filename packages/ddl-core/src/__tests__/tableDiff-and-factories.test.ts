@@ -21,25 +21,34 @@ import {
 } from '../utils/tableOptions';
 
 const createPersistedState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
+  dbType: 'mysql',
+  schemaName: '',
   tableName: 'users',
   tableComment: '',
   rows: [],
   indexes: [],
   foreignKeys: [],
+  authInput: '',
+  authObjects: [],
+  sqlFormatMode: 'compact',
+  addCount: 10,
   ...overrides,
 });
 
-const createRow = (overrides: Partial<FieldRow> = {}): FieldRow => ({
-  order: 1,
-  fieldName: 'id',
-  fieldType: 'int',
-  fieldComment: '',
-  nullable: false,
-  defaultKind: 'none',
-  defaultValue: '',
-  onUpdate: 'none',
-  ...overrides,
-});
+const createRow = (overrides: Partial<FieldRow> = {}): FieldRow => {
+  const fieldName = overrides.fieldName ?? 'id';
+  return {
+    id: `field-${fieldName}`,
+    fieldName,
+    fieldType: 'int',
+    fieldComment: '',
+    nullable: false,
+    defaultKind: 'none',
+    defaultValue: '',
+    onUpdate: 'none',
+    ...overrides,
+  };
+};
 
 describe('diffPersistedState', () => {
   it('detects an enum label change as a column comment change', () => {
@@ -68,20 +77,28 @@ describe('diffPersistedState', () => {
 
   it('returns no changes when only the field enum encoding differs', () => {
     const legacyRows = [
-      { fieldName: 'id', nullable: '否', defaultKind: '自增', onUpdate: '无' },
       {
-        order: 2,
+        id: 'field-id',
+        fieldName: 'id',
+        fieldType: 'int',
+        fieldComment: '',
+        nullable: '否',
+        defaultKind: '自增',
+        onUpdate: '无',
+      },
+      {
+        id: 'field-created_at',
         fieldName: 'created_at',
         fieldType: 'timestamp',
+        fieldComment: '',
         nullable: '否',
         defaultKind: '当前时间',
         onUpdate: '当前时间',
       },
-    ].map((row) => createRow(row as Partial<FieldRow>));
+    ] as unknown as FieldRow[];
     const currentRows = [
       createRow({ nullable: false, defaultKind: 'auto_increment', onUpdate: 'none' }),
       createRow({
-        order: 2,
         fieldName: 'created_at',
         fieldType: 'timestamp',
         nullable: false,
@@ -298,7 +315,8 @@ describe('diffPersistedState', () => {
   });
 
   it('detects an index name change', () => {
-    const index = {
+    const index: IndexDefinition = {
+      id: 'index-users-email',
       name: 'idx_users_email',
       fields: [{ name: 'email', direction: 'ASC' as const }],
       kind: 'index',
@@ -321,6 +339,7 @@ describe('diffPersistedState', () => {
     const newState = createPersistedState({
       indexes: [
         {
+          id: 'index-age',
           name: 'idx_age',
           fields: [{ name: 'age', direction: 'ASC' }],
           kind: 'index',
@@ -337,6 +356,7 @@ describe('diffPersistedState', () => {
     const oldState = createPersistedState({
       indexes: [
         {
+          id: 'index-age',
           name: 'idx_age',
           fields: [{ name: 'age', direction: 'ASC' }],
           kind: 'index',
@@ -351,6 +371,7 @@ describe('diffPersistedState', () => {
 
   it('ignores identical indexes', () => {
     const idx: IndexDefinition = {
+      id: 'index-age',
       name: 'idx_age',
       fields: [{ name: 'age', direction: 'ASC' }],
       kind: 'index',
@@ -364,7 +385,15 @@ describe('diffPersistedState', () => {
   it('detects added foreign key', () => {
     const oldState = createPersistedState({ foreignKeys: [] });
     const newState = createPersistedState({
-      foreignKeys: [{ name: 'fk_user', fields: ['user_id'], refTable: 'users', refFields: ['id'] }],
+      foreignKeys: [
+        {
+          id: 'foreign-key-user',
+          name: 'fk_user',
+          fields: ['user_id'],
+          refTable: 'users',
+          refFields: ['id'],
+        },
+      ],
     });
     const diff = diffPersistedState(oldState, newState);
     expect(hasTableChanges(diff)).toBe(true);
@@ -374,7 +403,15 @@ describe('diffPersistedState', () => {
 
   it('detects removed foreign key', () => {
     const oldState = createPersistedState({
-      foreignKeys: [{ name: 'fk_user', fields: ['user_id'], refTable: 'users', refFields: ['id'] }],
+      foreignKeys: [
+        {
+          id: 'foreign-key-user',
+          name: 'fk_user',
+          fields: ['user_id'],
+          refTable: 'users',
+          refFields: ['id'],
+        },
+      ],
     });
     const newState = createPersistedState({ foreignKeys: [] });
     const diff = diffPersistedState(oldState, newState);
@@ -641,6 +678,7 @@ describe('buildDDL', () => {
   it('includes index DDL', () => {
     const indexes: IndexDefinition[] = [
       {
+        id: 'index-name',
         name: 'idx_name',
         fields: [{ name: 'name', direction: 'ASC' }],
         kind: 'index',
@@ -658,7 +696,13 @@ describe('buildDDL', () => {
 
   it('includes foreign key DDL', () => {
     const fks: ForeignKeyDefinition[] = [
-      { name: 'fk_user', fields: ['user_id'], refTable: 'users', refFields: ['id'] },
+      {
+        id: 'foreign-key-user',
+        name: 'fk_user',
+        fields: ['user_id'],
+        refTable: 'users',
+        refFields: ['id'],
+      },
     ];
     const ddl = buildDDL({
       dbType: 'mysql',

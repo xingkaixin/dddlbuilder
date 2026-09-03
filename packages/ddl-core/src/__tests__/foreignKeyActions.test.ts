@@ -34,6 +34,7 @@ describe('foreign key referential actions', () => {
   it('does not drop an existing constraint when its replacement is unsupported', () => {
     const base: PersistedState = {
       dbType: 'oracle',
+      schemaName: '',
       tableName: 'orders',
       tableComment: '',
       sqlFormatMode: 'compact',

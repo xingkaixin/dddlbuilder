@@ -94,6 +94,7 @@ describe('foreign key field correspondence', () => {
   it('does not drop an existing constraint if its replacement is incomplete', () => {
     const base = withDefaultEditorSession({
       dbType: 'postgresql',
+      schemaName: '',
       tableName: 'orders',
       tableComment: '',
       rows: [],

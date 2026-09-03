@@ -12,6 +12,7 @@ function createResult(): ParsedResult {
     tableComment: '',
     fields: [],
     indexes: [],
+    foreignKeys: [],
     authObjects: [],
   };
 }
@@ -191,6 +192,7 @@ describe('astHandlers', () => {
           {
             action: 'add',
             create_definitions: {
+              resource: 'constraint',
               constraint_type: 'primary key',
               definition: [{ column: 'id' }],
             },

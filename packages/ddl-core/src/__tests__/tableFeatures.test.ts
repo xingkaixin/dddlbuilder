@@ -95,7 +95,7 @@ describe('tableFeatures', () => {
         enabled: true,
         type: 'RANGE COLUMNS',
         columns: ['created_at'],
-        partitions: [{ name: 'pmax', value: 'MAXVALUE' }],
+        partitions: [{ id: 'partition-max', name: 'pmax', value: 'MAXVALUE' }],
       }),
     ).toContain('PARTITION pmax VALUES LESS THAN (MAXVALUE)');
     expect(
@@ -103,7 +103,7 @@ describe('tableFeatures', () => {
         enabled: true,
         type: 'LIST',
         columns: ['status'],
-        partitions: [{ name: 'p_active', value: '1, 2' }],
+        partitions: [{ id: 'partition-active', name: 'p_active', value: '1, 2' }],
       }),
     ).toContain('PARTITION p_active VALUES IN (1, 2)');
   });

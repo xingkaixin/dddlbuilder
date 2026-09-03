@@ -4,8 +4,11 @@ import type { NormalizedField, IndexDefinition, DatabaseType } from '@ddlbuilder
 import { TypeMapper } from '../../utils/TypeMapper.js';
 
 class TestStrategy extends AbstractDDLStrategy {
-  constructor(private readonly db: DatabaseType = 'mysql') {
+  private readonly db: DatabaseType;
+
+  constructor(db: DatabaseType = 'mysql') {
     super();
+    this.db = db;
   }
 
   getDatabaseType(): DatabaseType {

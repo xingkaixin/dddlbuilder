@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TYPE_MAPPINGS } from '../../configs/typeMappings';
 import type { ParsedFieldType } from '@ddlbuilder/shared-types';
+import { applyTransform } from './typeMappingTestHelpers.js';
 
 const parsed: ParsedFieldType = {
   baseType: 'serial',
@@ -91,7 +92,9 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.mysql.serial).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.mysql.serial.transform?.(parsed)).toBe('BIGINT UNSIGNED AUTO_INCREMENT');
+      expect(applyTransform(TYPE_MAPPINGS.mysql.serial, parsed)).toBe(
+        'BIGINT UNSIGNED AUTO_INCREMENT',
+      );
     });
 
     it('maps timestamp with fractional precision', () => {
@@ -102,7 +105,7 @@ describe('TYPE_MAPPINGS', () => {
   describe('mariadb', () => {
     it('shares same structure as mysql', () => {
       expect(TYPE_MAPPINGS.mariadb.varchar).toEqual(TYPE_MAPPINGS.mysql.varchar);
-      expect(TYPE_MAPPINGS.mariadb.serial.transform?.(parsed)).toBe(
+      expect(applyTransform(TYPE_MAPPINGS.mariadb.serial, parsed)).toBe(
         'BIGINT UNSIGNED AUTO_INCREMENT',
       );
     });
@@ -111,7 +114,9 @@ describe('TYPE_MAPPINGS', () => {
   describe('tidb', () => {
     it('shares same structure as mysql', () => {
       expect(TYPE_MAPPINGS.tidb.varchar).toEqual(TYPE_MAPPINGS.mysql.varchar);
-      expect(TYPE_MAPPINGS.tidb.serial.transform?.(parsed)).toBe('BIGINT UNSIGNED AUTO_INCREMENT');
+      expect(applyTransform(TYPE_MAPPINGS.tidb.serial, parsed)).toBe(
+        'BIGINT UNSIGNED AUTO_INCREMENT',
+      );
     });
   });
 
@@ -241,7 +246,7 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.sqlserver.serial).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.sqlserver.serial.transform?.(parsed)).toBe('BIGINT IDENTITY(1,1)');
+      expect(applyTransform(TYPE_MAPPINGS.sqlserver.serial, parsed)).toBe('BIGINT IDENTITY(1,1)');
     });
   });
 
@@ -320,7 +325,7 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.oracle.serial).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.oracle.serial.transform?.(parsed)).toBe(
+      expect(applyTransform(TYPE_MAPPINGS.oracle.serial, parsed)).toBe(
         'NUMBER GENERATED ALWAYS AS IDENTITY',
       );
     });
@@ -375,7 +380,7 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.dm.serial).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.dm.serial.transform?.(parsed)).toBe('BIGINT IDENTITY(1,1)');
+      expect(applyTransform(TYPE_MAPPINGS.dm.serial, parsed)).toBe('BIGINT IDENTITY(1,1)');
     });
 
     it('maps json to json', () => {
@@ -386,7 +391,7 @@ describe('TYPE_MAPPINGS', () => {
   describe('oceanbase', () => {
     it('shares same structure as mysql', () => {
       expect(TYPE_MAPPINGS.oceanbase.varchar).toEqual(TYPE_MAPPINGS.mysql.varchar);
-      expect(TYPE_MAPPINGS.oceanbase.serial.transform?.(parsed)).toBe(
+      expect(applyTransform(TYPE_MAPPINGS.oceanbase.serial, parsed)).toBe(
         'BIGINT UNSIGNED AUTO_INCREMENT',
       );
     });
@@ -399,7 +404,7 @@ describe('TYPE_MAPPINGS', () => {
   describe('oceanbase-oracle', () => {
     it('shares same structure as oracle', () => {
       expect(TYPE_MAPPINGS['oceanbase-oracle'].varchar).toEqual(TYPE_MAPPINGS.oracle.varchar);
-      expect(TYPE_MAPPINGS['oceanbase-oracle'].serial.transform?.(parsed)).toBe(
+      expect(applyTransform(TYPE_MAPPINGS['oceanbase-oracle'].serial, parsed)).toBe(
         'NUMBER GENERATED ALWAYS AS IDENTITY',
       );
     });
@@ -427,14 +432,14 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.hive.varchar).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.varchar.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.varchar, parsed)).toBe('STRING');
     });
 
     it('maps text with transform to STRING', () => {
       expect(TYPE_MAPPINGS.hive.text).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.text.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.text, parsed)).toBe('STRING');
     });
 
     it('maps int to INT', () => {
@@ -456,7 +461,7 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.hive.time).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.time.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.time, parsed)).toBe('STRING');
     });
 
     it('maps boolean to BOOLEAN', () => {
@@ -467,28 +472,28 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.hive.json).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.json.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.json, parsed)).toBe('STRING');
     });
 
     it('maps jsonb with transform to STRING', () => {
       expect(TYPE_MAPPINGS.hive.jsonb).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.jsonb.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.jsonb, parsed)).toBe('STRING');
     });
 
     it('maps nvarchar with transform to STRING', () => {
       expect(TYPE_MAPPINGS.hive.nvarchar).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.nvarchar.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.nvarchar, parsed)).toBe('STRING');
     });
 
     it('maps nchar with transform to STRING', () => {
       expect(TYPE_MAPPINGS.hive.nchar).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.nchar.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.nchar, parsed)).toBe('STRING');
     });
 
     it('maps blob to BINARY', () => {
@@ -499,7 +504,7 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.hive.uuid).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.uuid.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.uuid, parsed)).toBe('STRING');
     });
 
     it('maps serial to INT', () => {
@@ -510,21 +515,21 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.hive.mediumtext).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.mediumtext.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.mediumtext, parsed)).toBe('STRING');
     });
 
     it('maps longtext with transform to STRING', () => {
       expect(TYPE_MAPPINGS.hive.longtext).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.longtext.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.longtext, parsed)).toBe('STRING');
     });
 
     it('maps uuid with transform to STRING', () => {
       expect(TYPE_MAPPINGS.hive.uuid).toEqual({
         transform: expect.any(Function),
       });
-      expect(TYPE_MAPPINGS.hive.uuid.transform?.(parsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.uuid, parsed)).toBe('STRING');
     });
   });
 
@@ -536,7 +541,7 @@ describe('TYPE_MAPPINGS', () => {
         unsigned: false,
         raw: 'varchar(100)',
       };
-      expect(TYPE_MAPPINGS.hive.varchar.transform?.(customParsed)).toBe('STRING');
+      expect(applyTransform(TYPE_MAPPINGS.hive.varchar, customParsed)).toBe('STRING');
     });
 
     it('oracle serial transform ignores input', () => {
@@ -546,7 +551,7 @@ describe('TYPE_MAPPINGS', () => {
         unsigned: false,
         raw: 'serial',
       };
-      expect(TYPE_MAPPINGS.oracle.serial.transform?.(customParsed)).toBe(
+      expect(applyTransform(TYPE_MAPPINGS.oracle.serial, customParsed)).toBe(
         'NUMBER GENERATED ALWAYS AS IDENTITY',
       );
     });

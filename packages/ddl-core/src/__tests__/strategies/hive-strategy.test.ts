@@ -419,12 +419,7 @@ describe('HiveStrategy', () => {
   });
 
   it('索引 DDL 应返回空字符串', () => {
-    const result = strategy.generateIndexDDL('test_table', {
-      id: '1',
-      name: 'idx_name',
-      fields: [{ name: 'name', direction: 'ASC' }],
-      kind: 'index',
-    });
+    const result = strategy.generateIndexDDL();
 
     expect(result).toBe('');
   });

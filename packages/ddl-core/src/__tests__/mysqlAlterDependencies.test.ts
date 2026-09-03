@@ -90,26 +90,29 @@ describe('MySQL ALTER dependencies', () => {
     { kind: 'index', clause: 'INDEX idx_id (id ASC)' },
     { kind: 'unique_index', clause: 'UNIQUE INDEX idx_id (id ASC)' },
     { kind: 'unique_constraint', clause: 'CONSTRAINT idx_id UNIQUE (id)' },
-  ])('replaces the supporting key without leaving an unindexed identity: $clause', (index) => {
-    const after = {
-      ...before,
-      indexes: [
-        {
-          ...primary,
-          name: 'idx_id',
-          kind: index.kind,
-        },
-      ],
-    };
-    const diff = diffPersistedState(before, after);
-    expect(diff.fields).toEqual([]);
-    expect(generateAlterDDL(diff)).toBe(
-      dependencyNotice + `ALTER TABLE users\n  DROP PRIMARY KEY,\n  ADD ${index.clause};`,
-    );
-    expect(generateRollbackDDL(diff)).toBe(
-      dependencyNotice + 'ALTER TABLE users\n  DROP INDEX idx_id,\n  ADD PRIMARY KEY (id);',
-    );
-  });
+  ] as const)(
+    'replaces the supporting key without leaving an unindexed identity: $clause',
+    (index) => {
+      const after = {
+        ...before,
+        indexes: [
+          {
+            ...primary,
+            name: 'idx_id',
+            kind: index.kind,
+          },
+        ],
+      };
+      const diff = diffPersistedState(before, after);
+      expect(diff.fields).toEqual([]);
+      expect(generateAlterDDL(diff)).toBe(
+        dependencyNotice + `ALTER TABLE users\n  DROP PRIMARY KEY,\n  ADD ${index.clause};`,
+      );
+      expect(generateRollbackDDL(diff)).toBe(
+        dependencyNotice + 'ALTER TABLE users\n  DROP INDEX idx_id,\n  ADD PRIMARY KEY (id);',
+      );
+    },
+  );
 
   it('renames and disables identity in the same column clause', () => {
     const after = {
