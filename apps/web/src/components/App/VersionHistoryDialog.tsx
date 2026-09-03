@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import type { TableVersion } from '@/utils/workspaceStorageTypes';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { TableDiff } from '@ddlbuilder/ddl-core';
-import { diffPersistedState } from '@ddlbuilder/ddl-core';
+import { diffPersistedState, hasTableChanges } from '@ddlbuilder/ddl-core';
 import {
   getVersion,
   deleteVersion,
@@ -74,7 +74,7 @@ function formatDate(
 }
 
 function buildDiffSummary(diff: TableDiff | null, t: TFunction): string {
-  if (!diff || !diff.hasChanges) return '';
+  if (!diff || !hasTableChanges(diff)) return '';
   const parts: string[] = [];
   const addedFields = diff.fields.filter((f) => f.type === 'add').length;
   const removedFields = diff.fields.filter((f) => f.type === 'remove').length;

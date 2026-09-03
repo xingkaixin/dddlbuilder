@@ -48,10 +48,10 @@ describe('MySQL ALTER dependencies', () => {
       indexes: [],
     };
     const diff = diffPersistedState(before, after);
-    expect(generateAlterDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateAlterDDL(diff)).toBe(
       dependencyNotice + 'ALTER TABLE users\n  DROP PRIMARY KEY,\n  MODIFY COLUMN id INT NOT NULL;',
     );
-    expect(generateRollbackDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateRollbackDDL(diff)).toBe(
       'ALTER TABLE users\n  MODIFY COLUMN id INT AUTO_INCREMENT NOT NULL,\n  ADD PRIMARY KEY (id);',
     );
   });
@@ -59,10 +59,10 @@ describe('MySQL ALTER dependencies', () => {
   it('adds and drops an identity column together with its supporting key', () => {
     const withoutIdentity = { ...before, rows: before.rows.slice(1), indexes: [] };
     const diff = diffPersistedState(withoutIdentity, before);
-    expect(generateAlterDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateAlterDDL(diff)).toBe(
       'ALTER TABLE users\n  ADD COLUMN id INT AUTO_INCREMENT NOT NULL,\n  ADD PRIMARY KEY (id);',
     );
-    expect(generateRollbackDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateRollbackDDL(diff)).toBe(
       dependencyNotice + 'ALTER TABLE users\n  DROP PRIMARY KEY,\n  DROP COLUMN id;',
     );
   });
@@ -76,11 +76,11 @@ describe('MySQL ALTER dependencies', () => {
       indexes: [{ ...primary, fields: [{ name: 'user_id', direction: 'ASC' as const }] }],
     };
     const diff = diffPersistedState(before, after);
-    expect(generateAlterDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateAlterDDL(diff)).toBe(
       dependencyNotice +
         'ALTER TABLE users\n  DROP PRIMARY KEY,\n  RENAME COLUMN id TO user_id,\n  ADD PRIMARY KEY (user_id);',
     );
-    expect(generateRollbackDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateRollbackDDL(diff)).toBe(
       dependencyNotice +
         'ALTER TABLE users\n  DROP PRIMARY KEY,\n  RENAME COLUMN user_id TO id,\n  ADD PRIMARY KEY (id);',
     );
@@ -103,10 +103,10 @@ describe('MySQL ALTER dependencies', () => {
     };
     const diff = diffPersistedState(before, after);
     expect(diff.fields).toEqual([]);
-    expect(generateAlterDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateAlterDDL(diff)).toBe(
       dependencyNotice + `ALTER TABLE users\n  DROP PRIMARY KEY,\n  ADD ${index.clause};`,
     );
-    expect(generateRollbackDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateRollbackDDL(diff)).toBe(
       dependencyNotice + 'ALTER TABLE users\n  DROP INDEX idx_id,\n  ADD PRIMARY KEY (id);',
     );
   });
@@ -120,11 +120,11 @@ describe('MySQL ALTER dependencies', () => {
       indexes: [],
     };
     const diff = diffPersistedState(before, after);
-    expect(generateAlterDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateAlterDDL(diff)).toBe(
       dependencyNotice +
         'ALTER TABLE users\n  DROP PRIMARY KEY,\n  CHANGE COLUMN id user_id INT NOT NULL;',
     );
-    expect(generateRollbackDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateRollbackDDL(diff)).toBe(
       'ALTER TABLE users\n  CHANGE COLUMN user_id id INT AUTO_INCREMENT NOT NULL,\n  ADD PRIMARY KEY (id);',
     );
   });
@@ -148,11 +148,11 @@ describe('MySQL ALTER dependencies', () => {
       ],
     };
     const diff = diffPersistedState(original, after);
-    expect(generateAlterDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateAlterDDL(diff)).toBe(
       dependencyNotice +
         'ALTER TABLE users\n  CHANGE COLUMN a b BIGINT NOT NULL,\n  RENAME COLUMN b TO c;',
     );
-    expect(generateRollbackDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateRollbackDDL(diff)).toBe(
       dependencyNotice +
         'ALTER TABLE users\n  CHANGE COLUMN b a INT NOT NULL,\n  RENAME COLUMN c TO b;',
     );
@@ -167,7 +167,7 @@ describe('MySQL ALTER dependencies', () => {
       indexes: [{ ...primary, fields: [{ name: 'select', direction: 'ASC' as const }] }],
     };
     const diff = diffPersistedState(before, after);
-    expect(generateAlterDDL('users', diff, [], 'mysql')).toBe(
+    expect(generateAlterDDL(diff)).toBe(
       dependencyNotice +
         "ALTER TABLE users\n  DROP PRIMARY KEY,\n  CHANGE COLUMN id `select` INT AUTO_INCREMENT NOT NULL COMMENT 'it''s; a,b',\n  ADD PRIMARY KEY (`select`);",
     );

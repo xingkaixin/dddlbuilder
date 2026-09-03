@@ -64,7 +64,7 @@ describe('column comment migrations', () => {
           },
         ],
       });
-      const alter = generateAlterDDL('app.users', diffPersistedState(before, after), [], dbType);
+      const alter = generateAlterDDL(diffPersistedState(before, after));
       expect(create).toContain('账户名称');
       expect(alter).toContain('账户名称');
     },
@@ -105,8 +105,8 @@ describe('column comment migrations', () => {
         rows: before.rows.map((row) => ({ ...row, fieldComment: "Owner's name; 中文" })),
       };
       const diff = diffPersistedState(before, after);
-      const forward = generateAlterDDL('app.users', diff, [], dbType);
-      const rollback = generateRollbackDDL('app.users', diff, [], dbType);
+      const forward = generateAlterDDL(diff);
+      const rollback = generateRollbackDDL(diff);
       expect(forward).toContain("Owner''s name; 中文");
       expect(rollback).toContain('原注释');
       expect(forward).not.toContain('ALTER TABLE');
@@ -143,8 +143,8 @@ describe('column comment migrations', () => {
         rows: before.rows.map((row) => ({ ...row, fieldComment: '姓名' })),
       };
       const diff = diffPersistedState(before, after);
-      const forward = generateAlterDDL('app.users', diff, [], dbType);
-      const rollback = generateRollbackDDL('app.users', diff, [], dbType);
+      const forward = generateAlterDDL(diff);
+      const rollback = generateRollbackDDL(diff);
       expect(forward).toContain('姓名');
       expect(rollback).toContain(dbType === 'sqlserver' ? 'sp_dropextendedproperty' : " IS '';");
       expect(forward).toContain(
@@ -174,7 +174,7 @@ describe('column comment migrations', () => {
       authObjects: [],
     });
     const diff = diffPersistedState(before, { ...before, rows: [] });
-    const rollback = generateRollbackDDL('audit.users', diff, [], 'postgresql');
+    const rollback = generateRollbackDDL(diff);
     expect(rollback).toContain('ADD COLUMN name');
     expect(rollback).toContain("COMMENT ON COLUMN audit.users.name IS '姓名';");
   });
@@ -202,12 +202,7 @@ describe('column comment migrations', () => {
         },
       ],
     };
-    const sql = generateAlterDDL(
-      '[app space].[user table]',
-      diffPersistedState(before, after),
-      [],
-      'sqlserver',
-    );
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toContain("@level0name = N'app space'");
     expect(sql).toContain("@level1name = N'user table'");
     expect(sql).toContain("@level2name = N'display name'");

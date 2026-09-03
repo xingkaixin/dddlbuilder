@@ -9,15 +9,13 @@ function buildColumnClause(change: FieldDiff, dbType: DatabaseType): string {
     return `DROP COLUMN ${formatSqlIdentifier(change.fieldName, dbType)}`;
   }
   if (change.type === 'rename') {
-    if (!change.oldFieldName || !change.newFieldName) return '';
     const oldName = formatSqlIdentifier(change.oldFieldName, dbType);
     const newName = formatSqlIdentifier(change.newFieldName, dbType);
-    if (change.changes?.length && change.newField) {
+    if (change.changes) {
       return `CHANGE COLUMN ${oldName} ${newName} ${buildColumnDefinition(change.newField, dbType)}`;
     }
     return `RENAME COLUMN ${oldName} TO ${newName}`;
   }
-  if (!change.newField) return '';
   const field = change.newField;
   const action = change.type === 'add' ? 'ADD' : 'MODIFY';
   return `${action} COLUMN ${formatSqlIdentifier(field.name, dbType)} ${buildColumnDefinition(field, dbType)}`;

@@ -1,15 +1,13 @@
-import type { FieldDiff } from '../tableDiff';
+import type { ModifyFieldDiff } from '../tableDiff';
 import { escapeSingleQuotes, getFieldTypeForDatabase } from '../databaseTypeMapping';
 import { formatSqlIdentifier, unquoteSqlIdentifier } from '../sqlIdentifiers';
 import { buildDialectDefaultClause } from '../../strategies/dialectColumn';
 import { buildColumnComment } from '../../strategies/dialectComments';
 
-export function getSqlServerColumnChangeNotice(diff: FieldDiff): string {
+export function getSqlServerColumnChangeNotice(diff: ModifyFieldDiff): string {
   if (
-    diff.oldField &&
-    diff.newField &&
     (diff.oldField.defaultKind === 'auto_increment') !==
-      (diff.newField.defaultKind === 'auto_increment')
+    (diff.newField.defaultKind === 'auto_increment')
   ) {
     return `-- Manual migration required: SQL Server cannot add or remove IDENTITY on column ${formatSqlIdentifier(diff.newField.name, 'sqlserver')}. This column modification was skipped.`;
   }
@@ -31,30 +29,29 @@ export function generateSqlServerDropDefault(tableName: string, fieldName: strin
   return `EXEC sys.sp_executesql N'${escapeSingleQuotes(batch)}';`;
 }
 
-export function generateSqlServerModifyColumn(tableName: string, diff: FieldDiff): string {
+export function generateSqlServerModifyColumn(tableName: string, diff: ModifyFieldDiff): string {
   const field = diff.newField;
-  if (!field) return '';
   const notice = getSqlServerColumnChangeNotice(diff);
   if (notice) return notice;
   const fieldName = formatSqlIdentifier(field.name, 'sqlserver');
   const type = getFieldTypeForDatabase('sqlserver', field.type);
-  const oldType = diff.oldField && getFieldTypeForDatabase('sqlserver', diff.oldField.type);
+  const oldType = getFieldTypeForDatabase('sqlserver', diff.oldField.type);
   const typeChanged = type !== oldType;
-  const oldDefault = diff.oldField ? buildDialectDefaultClause(diff.oldField, 'sqlserver') : '';
+  const oldDefault = buildDialectDefaultClause(diff.oldField, 'sqlserver');
   const newDefault = buildDialectDefaultClause(field, 'sqlserver');
   const replaceDefault = oldDefault !== newDefault || (typeChanged && !!(oldDefault || newDefault));
   const statements: string[] = [];
   if (replaceDefault && oldDefault)
     statements.push(generateSqlServerDropDefault(tableName, field.name));
-  if (typeChanged || field.nullable !== diff.oldField?.nullable) {
+  if (typeChanged || field.nullable !== diff.oldField.nullable) {
     statements.push(
       `ALTER TABLE ${tableName} ALTER COLUMN ${fieldName} ${type} ${field.nullable ? 'NULL' : 'NOT NULL'};`,
     );
   }
   if (replaceDefault && newDefault)
     statements.push(`ALTER TABLE ${tableName} ADD ${newDefault} FOR ${fieldName};`);
-  if (diff.changes?.includes('comment')) {
-    statements.push(buildColumnComment(tableName, field, 'sqlserver', diff.oldField?.comment));
+  if (diff.changes.includes('comment')) {
+    statements.push(buildColumnComment(tableName, field, 'sqlserver', diff.oldField.comment));
   }
   return statements.filter(Boolean).join('\n');
 }

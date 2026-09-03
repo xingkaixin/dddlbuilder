@@ -6,7 +6,7 @@ import {
   type PersistedState,
 } from '@ddlbuilder/shared-types';
 import { buildDDL } from '../utils/ddlGenerators';
-import { diffPersistedState } from '../utils/tableDiff';
+import { diffPersistedState, hasTableChanges } from '../utils/tableDiff';
 import { generateAlterDDL, generateRollbackDDL } from '../utils/alter-ddl';
 import { resolveFieldComment } from '../utils/fieldComment';
 
@@ -85,8 +85,8 @@ describe('field comment semantics', () => {
         tableComment: '',
         fields: [nextField],
       });
-      const alter = generateAlterDDL('users', diff, [], dbType);
-      const rollback = generateRollbackDDL('users', diff, [], dbType);
+      const alter = generateAlterDDL(diff);
+      const rollback = generateRollbackDDL(diff);
       const expectedComment = "Owner''s status | 枚举: active(It''s enabled)";
       expect(create).toContain(expectedComment);
       expect(alter).toContain(expectedComment);
@@ -104,6 +104,6 @@ describe('field comment semantics', () => {
       ...field,
       enumMeta: field.enumMeta?.map((meta) => ({ ...meta, color: '#ffffff' })),
     });
-    expect(diffPersistedState(before, recolored).hasChanges).toBe(false);
+    expect(hasTableChanges(diffPersistedState(before, recolored))).toBe(false);
   });
 });

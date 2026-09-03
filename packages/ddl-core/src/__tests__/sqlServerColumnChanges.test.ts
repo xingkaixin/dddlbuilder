@@ -29,8 +29,8 @@ const state = (row: FieldRow) =>
 const sqlFor = (before: FieldRow, after: FieldRow) => {
   const diff = diffPersistedState(state(before), state(after));
   return {
-    forward: generateAlterDDL('users', diff, [], 'sqlserver'),
-    rollback: generateRollbackDDL('users', diff, [], 'sqlserver'),
+    forward: generateAlterDDL(diff),
+    rollback: generateRollbackDDL(diff),
   };
 };
 
@@ -38,7 +38,7 @@ describe('SQL Server column changes', () => {
   it('still emits IDENTITY when adding a new column', () => {
     const before = { ...state(field), rows: [] };
     const after = state({ ...field, defaultKind: 'auto_increment' });
-    const sql = generateAlterDDL('users', diffPersistedState(before, after), [], 'sqlserver');
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toBe('ALTER TABLE users ADD id INT IDENTITY(1,1) NOT NULL;');
   });
 
@@ -54,7 +54,7 @@ describe('SQL Server column changes', () => {
       })),
     };
     const after = { ...before, rows: before.rows.map((row) => ({ ...row, defaultValue: '2' })) };
-    const sql = generateAlterDDL('users', diffPersistedState(before, after), [], 'sqlserver');
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql.match(/EXEC sys\.sp_executesql N'DECLARE/g)).toHaveLength(2);
     expect(sql).toContain('ADD DEFAULT 2 FOR a;');
     expect(sql).toContain('ADD DEFAULT 2 FOR b;');
@@ -115,12 +115,7 @@ describe('SQL Server column changes', () => {
       tableName: "User's]Log",
     };
     const after = { ...before, rows: before.rows.map((row) => ({ ...row, defaultValue: '2' })) };
-    const sql = generateAlterDDL(
-      before.tableName,
-      diffPersistedState(before, after),
-      [],
-      'sqlserver',
-    );
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     const batch = sql.match(/^EXEC sys\.sp_executesql N'((?:[^']|'')*)';/)?.[1].replace(/''/g, "'");
     expect(batch).toContain("OBJECT_ID(N'[Audit.Schema].[User''s]]Log]')");
     expect(batch).toContain("c.name = N'Owner''s]Id'");
@@ -135,13 +130,11 @@ describe('SQL Server column changes', () => {
     const before = state({ ...field, defaultKind: 'constant', defaultValue: '1' });
     const after = { ...before, rows: [] };
     const diff = diffPersistedState(before, after);
-    const sql = generateAlterDDL('users', diff, [], 'sqlserver');
+    const sql = generateAlterDDL(diff);
     expect(sql.indexOf('DROP CONSTRAINT')).toBeLessThan(sql.indexOf('DROP COLUMN id'));
     const reverse = diffPersistedState(after, before);
-    expect(generateRollbackDDL('users', reverse, [], 'sqlserver')).toBe(sql);
-    expect(generateAlterDDL('users', reverse, [], 'sqlserver')).toContain(
-      'ADD id INT NOT NULL DEFAULT 1;',
-    );
+    expect(generateRollbackDDL(reverse)).toBe(sql);
+    expect(generateAlterDDL(reverse)).toContain('ADD id INT NOT NULL DEFAULT 1;');
   });
 
   it.each(['none', 'constant'] as const)(
@@ -154,10 +147,7 @@ describe('SQL Server column changes', () => {
         rows: [{ ...field, defaultKind: 'auto_increment' as const }],
       };
       const diff = diffPersistedState(before, after);
-      for (const sql of [
-        generateAlterDDL('users', diff, [], 'sqlserver'),
-        generateRollbackDDL('users', diff, [], 'sqlserver'),
-      ]) {
+      for (const sql of [generateAlterDDL(diff), generateRollbackDDL(diff)]) {
         expect(sql).toContain('Manual migration required');
         expect(sql).toContain('IDENTITY');
         expect(sql).toContain('This column modification was skipped');

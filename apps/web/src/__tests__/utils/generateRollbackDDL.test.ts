@@ -18,25 +18,30 @@ function createField(overrides: Partial<NormalizedField> = {}): NormalizedField 
 
 function createEmptyDiff(): TableDiff {
   return {
-    hasChanges: false,
+    oldDbType: 'mysql',
+    newDbType: 'mysql',
     tableNameChanged: false,
+    oldTableName: 'users',
+    newTableName: 'users',
+    oldSchemaName: '',
+    newSchemaName: '',
     tableCommentChanged: false,
     miscConfigChanged: false,
     fields: [],
     indexes: [],
+    foreignKeys: [],
   };
 }
 
 describe('generateRollbackDDL', () => {
   it('无变更时返回空字符串', () => {
-    const result = generateRollbackDDL('users', createEmptyDiff(), [], 'mysql');
+    const result = generateRollbackDDL(createEmptyDiff());
     expect(result).toBe('');
   });
 
   it('应该合并反向字段和索引变更，避免无效中间状态', () => {
     const diff: TableDiff = {
       ...createEmptyDiff(),
-      hasChanges: true,
       tableCommentChanged: true,
       oldTableComment: '旧注释',
       fields: [
@@ -92,7 +97,7 @@ describe('generateRollbackDDL', () => {
       ],
     };
 
-    const sql = generateRollbackDDL('users', diff, [], 'mysql');
+    const sql = generateRollbackDDL(diff);
     expect(sql).toBe(
       '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.\n\n' +
         "ALTER TABLE users COMMENT = '旧注释';\n\n" +
@@ -104,22 +109,5 @@ describe('generateRollbackDDL', () => {
         '  ADD COLUMN removed_col VARCHAR(20) NOT NULL,\n' +
         '  ADD INDEX idx_old (old_name ASC);',
     );
-  });
-
-  it('无效重命名回滚语句应被过滤掉', () => {
-    const diff: TableDiff = {
-      ...createEmptyDiff(),
-      hasChanges: true,
-      fields: [
-        {
-          type: 'rename',
-          fieldName: 'legacy_name',
-        },
-      ],
-      indexes: [],
-    };
-
-    const result = generateRollbackDDL('users', diff, [], 'mysql');
-    expect(result).toBe('');
   });
 });

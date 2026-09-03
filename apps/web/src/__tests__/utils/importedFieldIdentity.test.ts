@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SqlParser } from '@ddlbuilder/ddl-core/parser';
-import { diffPersistedState, generateAlterDDL } from '@ddlbuilder/ddl-core';
+import { diffPersistedState, generateAlterDDL, hasTableChanges } from '@ddlbuilder/ddl-core';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
@@ -20,8 +20,8 @@ describe('preserveImportedFieldIds', () => {
     expect(result.rows.slice(0, 2).map((row) => row.id)).toEqual(
       existing.rows.slice(0, 2).map((row) => row.id),
     );
-    expect(diff.hasChanges).toBe(false);
-    expect(generateAlterDDL('users', diff, [], 'mysql')).toBe('');
+    expect(hasTableChanges(diff)).toBe(false);
+    expect(generateAlterDDL(diff)).toBe('');
   });
 
   it('字段重排或类型变更保留身份，新增字段使用新身份', async () => {

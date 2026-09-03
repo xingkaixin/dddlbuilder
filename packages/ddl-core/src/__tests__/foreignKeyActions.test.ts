@@ -45,7 +45,7 @@ describe('foreign key referential actions', () => {
       authObjects: [],
     };
     const next = { ...base, foreignKeys: [{ ...foreignKey, onUpdate: 'CASCADE' as const }] };
-    const sql = generateAlterDDL('orders', diffPersistedState(base, next), [], 'oracle');
+    const sql = generateAlterDDL(diffPersistedState(base, next));
     expect(sql).toContain('Manual migration required');
     expect(sql).not.toContain('DROP CONSTRAINT');
   });

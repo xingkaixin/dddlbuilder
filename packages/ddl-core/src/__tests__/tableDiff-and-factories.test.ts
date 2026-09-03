@@ -7,7 +7,7 @@ import type {
   TableMiscConfig,
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
-import { diffPersistedState } from '../utils/tableDiff';
+import { diffPersistedState, hasTableChanges } from '../utils/tableDiff';
 import { buildDDL, buildViewDDL, buildDCL, buildOracleSynonyms } from '../utils/ddlGenerators';
 import {
   supportsStorageOption,
@@ -53,14 +53,14 @@ describe('diffPersistedState', () => {
     });
     const diff = diffPersistedState(before, after);
     console.info('enum label diff', diff.fields);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
     expect(diff.fields[0].changes).toEqual(['comment']);
   });
 
   it('returns no changes for identical states', () => {
     const state = createPersistedState({ rows: [createRow()] });
     const diff = diffPersistedState(state, state);
-    expect(diff.hasChanges).toBe(false);
+    expect(hasTableChanges(diff)).toBe(false);
     expect(diff.fields).toHaveLength(0);
     expect(diff.indexes).toHaveLength(0);
     expect(diff.foreignKeys).toHaveLength(0);
@@ -96,14 +96,14 @@ describe('diffPersistedState', () => {
     );
 
     expect(diff.fields).toHaveLength(0);
-    expect(diff.hasChanges).toBe(false);
+    expect(hasTableChanges(diff)).toBe(false);
   });
 
   it('detects table name change', () => {
     const oldState = createPersistedState({ tableName: 'users' });
     const newState = createPersistedState({ tableName: 'accounts' });
     const diff = diffPersistedState(oldState, newState);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
     expect(diff.tableNameChanged).toBe(true);
     expect(diff.oldTableName).toBe('users');
     expect(diff.newTableName).toBe('accounts');
@@ -115,7 +115,6 @@ describe('diffPersistedState', () => {
       createPersistedState({ schemaName: 'archive' }),
     );
     expect(diff).toMatchObject({
-      hasChanges: true,
       schemaNameChanged: true,
       tableNameChanged: false,
       oldSchemaName: 'public',
@@ -127,7 +126,7 @@ describe('diffPersistedState', () => {
     const oldState = createPersistedState({ tableComment: '' });
     const newState = createPersistedState({ tableComment: '用户表' });
     const diff = diffPersistedState(oldState, newState);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
     expect(diff.tableCommentChanged).toBe(true);
     expect(diff.oldTableComment).toBe('');
     expect(diff.newTableComment).toBe('用户表');
@@ -139,7 +138,7 @@ describe('diffPersistedState', () => {
       rows: [createRow(), createRow({ fieldName: 'age', fieldType: 'int' })],
     });
     const diff = diffPersistedState(oldState, newState);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
     expect(diff.fields).toHaveLength(1);
     expect(diff.fields[0].type).toBe('add');
     expect(diff.fields[0].fieldName).toBe('age');
@@ -151,7 +150,7 @@ describe('diffPersistedState', () => {
     });
     const newState = createPersistedState({ rows: [createRow()] });
     const diff = diffPersistedState(oldState, newState);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
     expect(diff.fields).toHaveLength(1);
     expect(diff.fields[0].type).toBe('remove');
     expect(diff.fields[0].fieldName).toBe('age');
@@ -165,7 +164,7 @@ describe('diffPersistedState', () => {
       rows: [createRow({ fieldName: 'age', fieldType: 'bigint' })],
     });
     const diff = diffPersistedState(oldState, newState);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
     expect(diff.fields[0].type).toBe('modify');
     expect(diff.fields[0].changes).toContain('type');
   });
@@ -329,7 +328,7 @@ describe('diffPersistedState', () => {
       ],
     });
     const diff = diffPersistedState(oldState, newState);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
     expect(diff.indexes).toHaveLength(1);
     expect(diff.indexes[0].type).toBe('add');
   });
@@ -368,7 +367,7 @@ describe('diffPersistedState', () => {
       foreignKeys: [{ name: 'fk_user', fields: ['user_id'], refTable: 'users', refFields: ['id'] }],
     });
     const diff = diffPersistedState(oldState, newState);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
     expect(diff.foreignKeys).toHaveLength(1);
     expect(diff.foreignKeys[0].type).toBe('add');
   });
@@ -387,7 +386,7 @@ describe('diffPersistedState', () => {
     const oldState = createPersistedState({ tableMiscConfig: { enabled: false } });
     const newState = createPersistedState({ tableMiscConfig: { enabled: true, engine: 'InnoDB' } });
     const diff = diffPersistedState(oldState, newState);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
     expect(diff.miscConfigChanged).toBe(true);
   });
 
@@ -400,7 +399,7 @@ describe('diffPersistedState', () => {
     const diff = diffPersistedState(oldState, newState);
 
     expect(diff.miscConfigChanged).toBe(false);
-    expect(diff.hasChanges).toBe(false);
+    expect(hasTableChanges(diff)).toBe(false);
   });
 
   it('detects Hive storage and partition option changes', () => {
@@ -421,7 +420,7 @@ describe('diffPersistedState', () => {
     const diff = diffPersistedState(oldState, newState);
 
     expect(diff.miscConfigChanged).toBe(true);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
   });
 
   it('ignores case difference in field names', () => {
@@ -429,7 +428,7 @@ describe('diffPersistedState', () => {
     const newState = createPersistedState({ rows: [createRow({ fieldName: 'id' })] });
     const diff = diffPersistedState(oldState, newState);
     expect(diff.fields).toHaveLength(0);
-    expect(diff.hasChanges).toBe(false);
+    expect(hasTableChanges(diff)).toBe(false);
   });
 
   it.each(['oracle', 'oceanbase-oracle', 'dm'] as const)(
@@ -485,7 +484,6 @@ describe('diffPersistedState', () => {
       });
 
       expect(diffPersistedState(before, after)).toMatchObject({
-        hasChanges: false,
         schemaNameChanged: false,
         tableNameChanged: false,
         fields: [],
@@ -513,7 +511,6 @@ describe('diffPersistedState', () => {
       const diff = diffPersistedState(before, after);
 
       expect(diff).toMatchObject({
-        hasChanges: true,
         schemaNameChanged: true,
         tableNameChanged: true,
         fields: [
@@ -578,7 +575,7 @@ describe('diffPersistedState', () => {
     const oldState = createPersistedState({ rows: [] });
     const newState = createPersistedState({ rows: [] });
     const diff = diffPersistedState(oldState, newState);
-    expect(diff.hasChanges).toBe(false);
+    expect(hasTableChanges(diff)).toBe(false);
     expect(diff.fields).toHaveLength(0);
   });
 

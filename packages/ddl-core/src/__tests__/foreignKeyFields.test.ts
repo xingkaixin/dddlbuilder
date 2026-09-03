@@ -103,7 +103,7 @@ describe('foreign key field correspondence', () => {
       foreignKeys: [foreignKey],
     });
     const next = { ...base, foreignKeys: [{ ...foreignKey, refFields: ['id'] }] };
-    const sql = generateAlterDDL('orders', diffPersistedState(base, next), fields, 'postgresql');
+    const sql = generateAlterDDL(diffPersistedState(base, next));
     expect(sql).toContain('Manual migration required');
     expect(sql).not.toContain('DROP CONSTRAINT');
     expect(sql).not.toContain('ADD CONSTRAINT');

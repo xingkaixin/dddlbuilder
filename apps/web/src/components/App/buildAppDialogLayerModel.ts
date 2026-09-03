@@ -1,5 +1,4 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import type { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import type { useTableTemplates } from '@/hooks/useTableTemplates';
 import type { useWebMcpTools } from '@/webmcp/useWebMcpTools';
@@ -181,10 +180,7 @@ export function buildAppDialogLayerModel({
       diffDialogProps: {
         open: ui.isDiffDialogOpen,
         onOpenChange: ui.setIsDiffDialogOpen,
-        tableName: buildQualifiedTableName(editor.schemaName, editor.tableName),
-        dbType: editor.dbType,
         diff: derived.tableDiff,
-        fields: derived.normalizedFields,
         onCopy: handleCopyDiff,
       },
       versionHistoryDialogProps:

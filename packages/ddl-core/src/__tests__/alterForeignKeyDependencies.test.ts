@@ -54,10 +54,10 @@ describe('ALTER foreign key dependencies', () => {
       const diff = diffPersistedState(before, after);
       expect(diff.foreignKeys).toEqual([]);
       expect(diff.unchangedForeignKeys).toEqual(before.foreignKeys);
-      expect(generateAlterDDL('items', diff, [], dbType)).toBe(
+      expect(generateAlterDDL(diff)).toBe(
         'ALTER TABLE items RENAME CONSTRAINT items_pkey TO new_pkey;',
       );
-      expect(generateRollbackDDL('items', diff, [], dbType)).toBe(
+      expect(generateRollbackDDL(diff)).toBe(
         'ALTER TABLE items RENAME CONSTRAINT new_pkey TO items_pkey;',
       );
     },
@@ -78,9 +78,7 @@ describe('ALTER foreign key dependencies', () => {
         ...before,
         indexes: before.indexes.map((index) => ({ ...index, name: 'new_key' })),
       };
-      expect(generateAlterDDL('items', diffPersistedState(before, after), [], 'postgresql')).toBe(
-        expected,
-      );
+      expect(generateAlterDDL(diffPersistedState(before, after))).toBe(expected);
     },
   );
 
@@ -92,12 +90,8 @@ describe('ALTER foreign key dependencies', () => {
       indexes: [{ ...before.indexes[0], fields: [{ name: 'item_id', direction: 'ASC' as const }] }],
     };
     const diff = diffPersistedState(before, after);
-    expect(generateAlterDDL('items', diff, [], 'postgresql')).toBe(
-      'ALTER TABLE items RENAME COLUMN id TO item_id;',
-    );
-    expect(generateRollbackDDL('items', diff, [], 'postgresql')).toBe(
-      'ALTER TABLE items RENAME COLUMN item_id TO id;',
-    );
+    expect(generateAlterDDL(diff)).toBe('ALTER TABLE items RENAME COLUMN id TO item_id;');
+    expect(generateRollbackDDL(diff)).toBe('ALTER TABLE items RENAME COLUMN item_id TO id;');
   });
 
   it('rebuilds an unchanged MySQL self reference around both column type changes', () => {
@@ -109,8 +103,8 @@ describe('ALTER foreign key dependencies', () => {
     const diff = diffPersistedState(before, after);
     expect(diff.foreignKeys).toEqual([]);
     for (const [sql, type] of [
-      [generateAlterDDL('items', diff, [], 'mysql'), 'BIGINT'],
-      [generateRollbackDDL('items', diff, [], 'mysql'), 'INT'],
+      [generateAlterDDL(diff), 'BIGINT'],
+      [generateRollbackDDL(diff), 'INT'],
     ]) {
       expect(sql).toContain('foreign keys from other tables');
       expect(sql.match(/DROP FOREIGN KEY fk_parent/g)).toHaveLength(1);
@@ -128,7 +122,7 @@ describe('ALTER foreign key dependencies', () => {
         row.id === 'other_id' ? { ...row, fieldType: 'bigint' } : row,
       ),
     };
-    const sql = generateAlterDDL('items', diffPersistedState(before, after), [], 'mysql');
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toContain('MODIFY COLUMN other_id BIGINT NULL;');
     expect(sql).not.toContain('fk_parent');
   });
@@ -145,7 +139,7 @@ describe('ALTER foreign key dependencies', () => {
     };
     const diff = diffPersistedState(before, after);
     expect(diff.unchangedForeignKeys).toBeUndefined();
-    const sql = generateAlterDDL('items', diff, [], 'mysql');
+    const sql = generateAlterDDL(diff);
     expect(sql.match(/DROP FOREIGN KEY fk_parent/g)).toHaveLength(1);
     expect(sql.match(/ADD CONSTRAINT fk_parent/g)).toHaveLength(1);
     expect(sql).toContain('ON DELETE RESTRICT;');
@@ -154,7 +148,7 @@ describe('ALTER foreign key dependencies', () => {
   it('does not drop an unchanged foreign key that could not be restored after column deletion', () => {
     const before = state('mysql');
     const after = { ...before, rows: before.rows.filter((row) => row.id !== 'parent_id') };
-    const sql = generateAlterDDL('items', diffPersistedState(before, after), [], 'mysql');
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toContain('unchanged foreign key fk_parent still references a removed column');
     expect(sql).toContain('No automatic changes generated');
     expect(sql).not.toContain('ALTER TABLE');
@@ -170,7 +164,7 @@ describe('ALTER foreign key dependencies', () => {
         kind: 'unique_constraint' as const,
       })),
     };
-    const sql = generateAlterDDL('items', diffPersistedState(before, after), [], 'postgresql');
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toContain(
       'DROP CONSTRAINT fk_parent;\n\nALTER TABLE items DROP CONSTRAINT items_pkey;\n\nALTER TABLE items ADD CONSTRAINT unique_id UNIQUE (id);\n\nALTER TABLE items ADD CONSTRAINT fk_parent',
     );
@@ -182,7 +176,7 @@ describe('ALTER foreign key dependencies', () => {
       ...before,
       rows: before.rows.map((row) => ({ ...row, fieldType: 'bigint' })),
     };
-    const sql = generateAlterDDL('items', diffPersistedState(before, after), [], 'postgresql');
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toContain('Their definitions are not available in this single-table diff');
     expect(sql).not.toContain('DROP CONSTRAINT');
     expect(sql).not.toContain('CASCADE');
@@ -191,7 +185,7 @@ describe('ALTER foreign key dependencies', () => {
   it('stops before dropping a foreign key when no referenced key would remain', () => {
     const before = state('mysql');
     const after = { ...before, indexes: [] };
-    const sql = generateAlterDDL('items', diffPersistedState(before, after), [], 'mysql');
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toContain(
       'cannot verify a supported unique referenced key for unchanged foreign key fk_parent',
     );
@@ -207,7 +201,7 @@ describe('ALTER foreign key dependencies', () => {
     const after = { ...before, indexes: [alternate] };
     const diff = diffPersistedState(before, after);
     expect(diff.unchangedIndexes).toEqual([alternate]);
-    const sql = generateAlterDDL('items', diff, [], 'postgresql');
+    const sql = generateAlterDDL(diff);
     expect(sql).toContain('DROP CONSTRAINT fk_parent;');
     expect(sql).toContain('DROP CONSTRAINT items_pkey;');
     expect(sql).toContain('ADD CONSTRAINT fk_parent FOREIGN KEY (parent_id) REFERENCES items (id)');
@@ -239,7 +233,7 @@ describe('ALTER foreign key dependencies', () => {
       ...before,
       indexes: before.indexes.map((index) => ({ ...index, kind: 'unique_constraint' as const })),
     };
-    const sql = generateAlterDDL('items', diffPersistedState(before, after), [], 'postgresql');
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toContain(
       'DROP CONSTRAINT fk_parent;\n\nALTER TABLE items DROP CONSTRAINT items_pkey;',
     );
@@ -249,7 +243,7 @@ describe('ALTER foreign key dependencies', () => {
   it('does not treat an unqualified foreign table as a self reference in another schema', () => {
     const before = { ...state(), schemaName: 'audit', indexes: [] };
     const after = { ...before, rows: before.rows.filter((row) => row.id !== 'id') };
-    const sql = generateAlterDDL('items', diffPersistedState(before, after), [], 'postgresql');
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toContain('ALTER TABLE audit.items DROP COLUMN id;');
     expect(sql).not.toContain('DROP CONSTRAINT');
   });
@@ -269,7 +263,7 @@ describe('ALTER foreign key dependencies', () => {
         },
       ],
     };
-    const sql = generateAlterDDL('items', diffPersistedState(before, after), [], 'mysql');
+    const sql = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toContain('cannot verify a supported unique referenced key');
     expect(sql).not.toContain('ALTER TABLE');
   });

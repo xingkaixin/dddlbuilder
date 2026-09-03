@@ -13,6 +13,7 @@ import {
   getSchemaAndTable,
   getSqlIdentifierKey,
   type FieldDiff,
+  type FieldChanges,
 } from '@ddlbuilder/ddl-core';
 
 export type AISchemaChangeStatus = 'pending' | 'accepted' | 'rejected' | 'applied';
@@ -37,7 +38,7 @@ export type AISchemaChange =
       newRow?: FieldRow;
       oldFieldName?: string;
       newFieldName?: string;
-      changes?: FieldDiff['changes'];
+      changes?: FieldChanges;
       status?: AISchemaChangeStatus;
     }
   | {
@@ -220,12 +221,9 @@ function fieldRowByName(state: PersistedState, fieldName?: string) {
 }
 
 function buildFieldChangeId(change: FieldDiff) {
-  return [
-    'field',
-    change.type,
-    change.oldFieldName || change.oldField?.name || '',
-    change.newFieldName || change.newField?.name || change.fieldName,
-  ].join(':');
+  const oldName = change.type === 'add' ? '' : change.oldField.name;
+  const newName = change.type === 'remove' ? '' : change.newField.name;
+  return ['field', change.type, oldName, newName].join(':');
 }
 
 function buildIndexChanges(
@@ -316,20 +314,25 @@ export function buildAISchemaChanges(
   }
 
   for (const field of diff.fields) {
-    const oldName = field.oldFieldName || field.oldField?.name || field.fieldName;
-    const newName = field.newFieldName || field.newField?.name || field.fieldName;
+    const oldField = field.type === 'add' ? undefined : field.oldField;
+    const newField = field.type === 'remove' ? undefined : field.newField;
+    const oldName = oldField?.name ?? field.fieldName;
+    const newName = newField?.name ?? field.fieldName;
+    const renamed = field.type === 'rename' ? field : undefined;
+    const fieldChanges =
+      field.type === 'modify' || field.type === 'rename' ? field.changes : undefined;
     changes.push({
       id: buildFieldChangeId(field),
       kind: 'field',
       type: field.type,
       fieldName: field.fieldName,
-      oldField: field.oldField,
-      newField: field.newField,
+      oldField,
+      newField,
       oldRow: fieldRowByName(baseState, oldName),
       newRow: fieldRowByName(candidateState, newName),
-      oldFieldName: field.oldFieldName,
-      newFieldName: field.newFieldName,
-      changes: field.changes,
+      oldFieldName: renamed?.oldFieldName,
+      newFieldName: renamed?.newFieldName,
+      changes: fieldChanges,
     });
   }
 

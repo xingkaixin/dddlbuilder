@@ -1,5 +1,5 @@
 import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
-import type { FieldDiff } from '../tableDiff';
+import type { ModifyFieldDiff, AddFieldDiff, RemoveFieldDiff, RenameFieldDiff } from '../tableDiff';
 import { escapeSqlString, getDatabaseFamily } from '../databaseFamily';
 import {
   escapeSingleQuotes,
@@ -45,14 +45,14 @@ export function generateTableCommentAlter(
 
 export function generateDropColumn(
   tableName: string,
-  fieldDiff: FieldDiff,
+  fieldDiff: RemoveFieldDiff,
   dbType: DatabaseType,
 ): string {
   tableName = formatSqlTableName(tableName, dbType);
   const fieldName = formatSqlIdentifier(fieldDiff.fieldName, dbType);
 
   const defaultSql =
-    dbType === 'sqlserver' && fieldDiff.oldField && buildDefaultClause(fieldDiff.oldField, dbType)
+    dbType === 'sqlserver' && buildDefaultClause(fieldDiff.oldField, dbType)
       ? generateSqlServerDropDefault(tableName, fieldDiff.fieldName)
       : '';
   return [defaultSql, `ALTER TABLE ${tableName} DROP COLUMN ${fieldName};`]
@@ -62,16 +62,12 @@ export function generateDropColumn(
 
 export function generateRenameColumn(
   tableName: string,
-  fieldDiff: FieldDiff,
+  fieldDiff: RenameFieldDiff,
   dbType: DatabaseType,
 ): string {
   tableName = formatSqlTableName(tableName, dbType);
-  const oldName = formatSqlIdentifier(fieldDiff.oldFieldName || '', dbType);
-  const newName = formatSqlIdentifier(fieldDiff.newFieldName || '', dbType);
-
-  if (!oldName || !newName) {
-    return '';
-  }
+  const oldName = formatSqlIdentifier(fieldDiff.oldFieldName, dbType);
+  const newName = formatSqlIdentifier(fieldDiff.newFieldName, dbType);
 
   if (getDatabaseFamily(dbType) === 'sqlserver') {
     return `EXEC sp_rename '${escapeSingleQuotes(`${tableName}.${oldName}`)}', '${escapeSingleQuotes(unquoteSqlIdentifier(newName))}', 'COLUMN';`;
@@ -82,12 +78,9 @@ export function generateRenameColumn(
 
 export function generateAddColumn(
   tableName: string,
-  fieldDiff: FieldDiff,
+  fieldDiff: AddFieldDiff,
   dbType: DatabaseType,
 ): string {
-  if (!fieldDiff.newField) {
-    return '';
-  }
   const field = fieldDiff.newField;
   tableName = formatSqlTableName(tableName, dbType);
   const fieldName = formatSqlIdentifier(field.name, dbType);
@@ -110,23 +103,20 @@ export function generateAddColumn(
 
 export function generateModifyColumn(
   tableName: string,
-  fieldDiff: FieldDiff,
+  fieldDiff: ModifyFieldDiff,
   dbType: DatabaseType,
 ): string {
-  if (!fieldDiff.newField) {
-    return '';
-  }
   const field = fieldDiff.newField;
   tableName = formatSqlTableName(tableName, dbType);
   if (dbType === 'sqlserver') return generateSqlServerModifyColumn(tableName, fieldDiff);
   const fieldName = formatSqlIdentifier(field.name, dbType);
   const family = getDatabaseFamily(dbType);
   if (family === 'postgresql') return generatePostgresModifyColumn(tableName, fieldDiff);
-  const comment = fieldDiff.changes?.includes('comment')
-    ? buildColumnComment(tableName, field, dbType, fieldDiff.oldField?.comment)
+  const comment = fieldDiff.changes.includes('comment')
+    ? buildColumnComment(tableName, field, dbType, fieldDiff.oldField.comment)
     : '';
-  if (comment && fieldDiff.changes?.every((change) => change === 'comment')) return comment;
-  const changes = fieldDiff.changes ?? ['type', 'default', 'nullable'];
+  if (comment && fieldDiff.changes.every((change) => change === 'comment')) return comment;
+  const changes = fieldDiff.changes;
   const columnDef =
     family === 'oracle' || family === 'dm'
       ? [
@@ -144,14 +134,11 @@ export function generateModifyColumn(
   return [`ALTER TABLE ${tableName} ${clause};`, comment].filter(Boolean).join('\n');
 }
 
-function generatePostgresModifyColumn(tableName: string, fieldDiff: FieldDiff): string {
-  if (!fieldDiff.newField) {
-    return '';
-  }
+function generatePostgresModifyColumn(tableName: string, fieldDiff: ModifyFieldDiff): string {
   const field = fieldDiff.newField;
   const fieldName = formatSqlIdentifier(field.name, 'postgresql');
   const alterColumn = `ALTER TABLE ${tableName} ALTER COLUMN ${fieldName}`;
-  const changes = fieldDiff.changes || [];
+  const changes = fieldDiff.changes;
   const statements: string[] = [];
   const wasIdentity = fieldDiff.oldField?.defaultKind === 'auto_increment';
   const isIdentity = field.defaultKind === 'auto_increment';

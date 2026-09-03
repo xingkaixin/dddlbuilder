@@ -205,7 +205,7 @@ describe('review DDL regressions', () => {
       rows: [{ ...state('a').rows[0], fieldName: 'uid' }],
       foreignKeys: [fk],
     };
-    const alter = generateAlterDDL('orders', diffPersistedState(before, after), [field], 'oracle');
+    const alter = generateAlterDDL(diffPersistedState(before, after));
     expect(sql).toContain('CREATE TABLE');
     expect(sql).toContain('Manual migration required');
     expect(alter).toContain('ADD');

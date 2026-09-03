@@ -1,5 +1,5 @@
 import type { DatabaseType, IndexDefinition } from '@ddlbuilder/shared-types';
-import type { IndexDiff, TableDiff } from '../tableDiff';
+import type { IndexDiff, ModifyFieldDiff, RenameFieldDiff, TableDiff } from '../tableDiff';
 import { getDatabaseFamily } from '../databaseFamily';
 import { getSchemaAndTable } from '../databaseTypeMapping';
 import { getSqlIdentifierKey } from '../sqlIdentifiers';
@@ -13,9 +13,7 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
   const removedNames = new Set(removedIndexes.map((change) => key(change.index.name)));
   const fieldRenames = new Map(
     diff.fields.flatMap((field) =>
-      field.type === 'rename' && field.oldFieldName && field.newFieldName
-        ? [[key(field.oldFieldName), key(field.newFieldName)] as const]
-        : [],
+      field.type === 'rename' ? [[key(field.oldFieldName), key(field.newFieldName)] as const] : [],
     ),
   );
 
@@ -53,8 +51,12 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
   );
   const changedTypes = new Set(
     diff.fields
-      .filter((field) => field.changes?.includes('type'))
-      .map((field) => key(field.oldField?.name ?? field.oldFieldName ?? field.fieldName)),
+      .filter(
+        (field): field is ModifyFieldDiff | RenameFieldDiff =>
+          (field.type === 'modify' || field.type === 'rename') &&
+          Boolean(field.changes?.includes('type')),
+      )
+      .map((field) => key(field.oldField.name)),
   );
   const droppedKeys = indexes.filter(
     (change) => change.type === 'remove' && (family === 'mysql' || change.index.kind !== 'index'),

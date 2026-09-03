@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import { diffPersistedState } from '../utils/tableDiff';
+import { diffPersistedState, hasTableChanges } from '../utils/tableDiff';
 import { generateAlterDDL, generateRollbackDDL } from '../utils/alter-ddl';
 
 const state = (overrides: Partial<PersistedState> = {}): PersistedState => ({
@@ -77,12 +77,9 @@ describe('schema changes requiring manual migration', () => {
     },
   ])('detects $name and prevents incomplete automatic migrations', ({ before, after, reason }) => {
     const diff = diffPersistedState(before, after);
-    expect(diff.hasChanges).toBe(true);
+    expect(hasTableChanges(diff)).toBe(true);
     expect(diff.manualChanges).toContain(reason);
-    for (const sql of [
-      generateAlterDDL('app.users', diff, [], after.dbType),
-      generateRollbackDDL('app.users', diff, [], before.dbType),
-    ]) {
+    for (const sql of [generateAlterDDL(diff), generateRollbackDDL(diff)]) {
       expect(sql).toContain('Manual migration required');
       expect(sql).toContain('No automatic changes generated');
       expect(sql.split('\n').every((line) => line.startsWith('--'))).toBe(true);
@@ -90,11 +87,13 @@ describe('schema changes requiring manual migration', () => {
   });
 
   it('ignores unchanged views and unused table view settings', () => {
-    expect(diffPersistedState(view, view).hasChanges).toBe(false);
-    expect(diffPersistedState(state(), state({ viewDefinition: 'SELECT 1' })).hasChanges).toBe(
+    expect(hasTableChanges(diffPersistedState(view, view))).toBe(false);
+    expect(
+      hasTableChanges(diffPersistedState(state(), state({ viewDefinition: 'SELECT 1' }))),
+    ).toBe(false);
+    expect(hasTableChanges(diffPersistedState(state(), state({ objectType: undefined })))).toBe(
       false,
     );
-    expect(diffPersistedState(state(), state({ objectType: undefined })).hasChanges).toBe(false);
   });
 
   it('ignores disabled partition settings and unrelated dialects', () => {
@@ -102,10 +101,11 @@ describe('schema changes requiring manual migration', () => {
     const after = state({
       mysqlPartitionConfig: { ...partition, enabled: false, partitionCount: 8 },
     });
-    expect(diffPersistedState(before, after).hasChanges).toBe(false);
+    expect(hasTableChanges(diffPersistedState(before, after))).toBe(false);
     expect(
-      diffPersistedState({ ...before, dbType: 'postgresql' }, { ...after, dbType: 'postgresql' })
-        .hasChanges,
+      hasTableChanges(
+        diffPersistedState({ ...before, dbType: 'postgresql' }, { ...after, dbType: 'postgresql' }),
+      ),
     ).toBe(false);
   });
 });

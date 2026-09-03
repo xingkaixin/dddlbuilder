@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateAlterDDL } from '@ddlbuilder/ddl-core';
 import type { TableDiff } from '@ddlbuilder/ddl-core';
-import type { NormalizedField } from '@ddlbuilder/shared-types';
+import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
 
 function createField(overrides: Partial<NormalizedField> = {}): NormalizedField {
   return {
@@ -16,14 +16,20 @@ function createField(overrides: Partial<NormalizedField> = {}): NormalizedField 
   };
 }
 
-function createEmptyDiff(): TableDiff {
+function createEmptyDiff(dbType: DatabaseType = 'mysql'): TableDiff {
   return {
-    hasChanges: false,
+    oldDbType: dbType,
+    newDbType: dbType,
     tableNameChanged: false,
+    oldTableName: 'users',
+    newTableName: 'users',
+    oldSchemaName: '',
+    newSchemaName: '',
     tableCommentChanged: false,
     miscConfigChanged: false,
     fields: [],
     indexes: [],
+    foreignKeys: [],
   };
 }
 
@@ -31,7 +37,7 @@ describe('generateAlterDDL', () => {
   describe('无变更', () => {
     it('无变更时返回空字符串', () => {
       const diff = createEmptyDiff();
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toBe('');
     });
   });
@@ -40,22 +46,20 @@ describe('generateAlterDDL', () => {
     it('MySQL 生成表注释变更', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
-        hasChanges: true,
         tableCommentChanged: true,
         newTableComment: '用户表',
       };
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain("ALTER TABLE users COMMENT = '用户表'");
     });
 
     it('PostgreSQL 生成表注释变更', () => {
       const diff: TableDiff = {
-        ...createEmptyDiff(),
-        hasChanges: true,
+        ...createEmptyDiff('postgresql'),
         tableCommentChanged: true,
         newTableComment: '用户表',
       };
-      const result = generateAlterDDL('users', diff, [], 'postgresql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain("COMMENT ON TABLE users IS '用户表'");
     });
   });
@@ -64,7 +68,6 @@ describe('generateAlterDDL', () => {
     it('MySQL 生成 ADD COLUMN', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
-        hasChanges: true,
         fields: [
           {
             type: 'add',
@@ -77,15 +80,14 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users ADD COLUMN email');
       expect(result).toContain('NOT NULL');
     });
 
     it('Oracle 生成 ADD (column)', () => {
       const diff: TableDiff = {
-        ...createEmptyDiff(),
-        hasChanges: true,
+        ...createEmptyDiff('oracle'),
         fields: [
           {
             type: 'add',
@@ -94,7 +96,7 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'oracle');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users ADD (email');
     });
   });
@@ -103,7 +105,6 @@ describe('generateAlterDDL', () => {
     it('生成 DROP COLUMN', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
-        hasChanges: true,
         fields: [
           {
             type: 'remove',
@@ -112,7 +113,7 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users DROP COLUMN old_field');
     });
   });
@@ -121,7 +122,6 @@ describe('generateAlterDDL', () => {
     it('MySQL 生成 MODIFY COLUMN', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
-        hasChanges: true,
         fields: [
           {
             type: 'modify',
@@ -132,14 +132,13 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users MODIFY COLUMN name');
     });
 
     it('PostgreSQL 生成多条 ALTER 语句', () => {
       const diff: TableDiff = {
-        ...createEmptyDiff(),
-        hasChanges: true,
+        ...createEmptyDiff('postgresql'),
         fields: [
           {
             type: 'modify',
@@ -158,25 +157,25 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'postgresql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users ALTER COLUMN name TYPE');
       expect(result).toContain('ALTER TABLE users ALTER COLUMN name SET NOT NULL');
     });
 
     it('SQL Server 生成 ALTER COLUMN', () => {
       const diff: TableDiff = {
-        ...createEmptyDiff(),
-        hasChanges: true,
+        ...createEmptyDiff('sqlserver'),
         fields: [
           {
             type: 'modify',
             fieldName: 'name',
+            oldField: createField({ name: 'name', type: 'VARCHAR(50)' }),
             newField: createField({ name: 'name', type: 'VARCHAR(100)' }),
             changes: ['type'],
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'sqlserver');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users ALTER COLUMN name');
     });
   });
@@ -185,7 +184,6 @@ describe('generateAlterDDL', () => {
     it('生成新增索引', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
-        hasChanges: true,
         indexes: [
           {
             type: 'add',
@@ -198,14 +196,13 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users ADD INDEX idx_email');
     });
 
     it('生成新增唯一索引', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
-        hasChanges: true,
         indexes: [
           {
             type: 'add',
@@ -218,14 +215,13 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users ADD UNIQUE INDEX uk_email');
     });
 
     it('MySQL 生成删除索引', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
-        hasChanges: true,
         indexes: [
           {
             type: 'remove',
@@ -238,14 +234,13 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users DROP INDEX idx_old');
     });
 
     it('PostgreSQL 生成删除索引', () => {
       const diff: TableDiff = {
-        ...createEmptyDiff(),
-        hasChanges: true,
+        ...createEmptyDiff('postgresql'),
         indexes: [
           {
             type: 'remove',
@@ -258,7 +253,7 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'postgresql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('DROP INDEX idx_old');
       expect(result).not.toContain(' ON '); // PostgreSQL 不需要 ON table
     });
@@ -268,7 +263,6 @@ describe('generateAlterDDL', () => {
     it('MySQL 删除主键', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
-        hasChanges: true,
         indexes: [
           {
             type: 'remove',
@@ -281,14 +275,13 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users DROP PRIMARY KEY');
     });
 
     it('MySQL 添加主键', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
-        hasChanges: true,
         indexes: [
           {
             type: 'add',
@@ -301,7 +294,7 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toContain('ALTER TABLE users ADD PRIMARY KEY');
     });
   });
@@ -310,7 +303,6 @@ describe('generateAlterDDL', () => {
     it('在同一条 ALTER 中删除索引、修改字段和新增索引', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
-        hasChanges: true,
         fields: [
           {
             type: 'add',
@@ -339,7 +331,7 @@ describe('generateAlterDDL', () => {
           },
         ],
       };
-      const result = generateAlterDDL('users', diff, [], 'mysql');
+      const result = generateAlterDDL(diff);
       expect(result).toBe(
         '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.\n\n' +
           'ALTER TABLE users\n  DROP INDEX idx_old,\n  ADD COLUMN new_field VARCHAR(100) NULL,\n  ADD INDEX idx_new (new_field ASC);',

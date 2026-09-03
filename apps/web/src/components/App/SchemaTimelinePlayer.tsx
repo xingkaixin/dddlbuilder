@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import type { TableVersion } from '@/utils/workspaceStorageTypes';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import type { TableDiff, FieldDiff, FieldChangeType } from '@ddlbuilder/ddl-core';
+import { hasTableChanges } from '@ddlbuilder/ddl-core';
 import { diffPersistedState } from '@ddlbuilder/ddl-core';
 import { type TableVersionTarget } from '@/utils/tableVersions';
 import { useTranslation } from 'react-i18next';
@@ -80,7 +81,7 @@ function getFieldDiff(fieldName: string, diff: TableDiff | null): FieldDiff | un
 }
 
 function formatFieldChanges(
-  changes: FieldChangeType[] | undefined,
+  changes: readonly FieldChangeType[] | undefined,
   t: (key: string) => string,
 ): string {
   if (!changes || changes.length === 0) return '';
@@ -97,7 +98,7 @@ function buildChangeSummary(
   diff: TableDiff | null,
   t: (key: string, opts?: Record<string, unknown>) => string,
 ): string {
-  if (!diff || !diff.hasChanges) return t('timelinePlayer.noChange');
+  if (!diff || !hasTableChanges(diff)) return t('timelinePlayer.noChange');
   const parts: string[] = [];
   const addedFields = diff.fields.filter((f) => f.type === 'add').length;
   const removedFields = diff.fields.filter((f) => f.type === 'remove').length;
@@ -248,7 +249,7 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                 <div className="flex items-center gap-1">
                   {versions.map((v, idx) => {
                     const isActive = idx === currentFrame;
-                    const hasChanges = frameDiffs[idx]?.hasChanges ?? false;
+                    const hasChanges = frameDiffs[idx] ? hasTableChanges(frameDiffs[idx]) : false;
                     return (
                       <button
                         key={v.id}
@@ -355,9 +356,13 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                     {currentFields.map((row, idx) => {
                       const status = getRowChangeStatus(row.fieldName || '', currentDiff);
                       const fieldDiff = getFieldDiff(row.fieldName || '', currentDiff);
+                      const changedField =
+                        fieldDiff?.type === 'modify' || fieldDiff?.type === 'rename'
+                          ? fieldDiff
+                          : undefined;
                       const changeLabel =
                         status === 'modified' || status === 'renamed'
-                          ? formatFieldChanges(fieldDiff?.changes, t)
+                          ? formatFieldChanges(changedField?.changes, t)
                           : '';
 
                       return (
@@ -378,7 +383,7 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                                   {t('timelinePlayer.addedBadge')}
                                 </span>
                               )}
-                              {status === 'renamed' && fieldDiff?.oldFieldName && (
+                              {fieldDiff?.type === 'rename' && (
                                 <span className="rounded bg-amber-500/15 px-1 py-0 text-[10px] text-amber-700 dark:text-amber-400">
                                   {fieldDiff.oldFieldName} →
                                 </span>

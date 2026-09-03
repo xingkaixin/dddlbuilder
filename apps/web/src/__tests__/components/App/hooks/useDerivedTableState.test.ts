@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 import { SqlParser } from '@ddlbuilder/ddl-core/parser';
+import { hasTableChanges } from '@ddlbuilder/ddl-core';
 import { useEditorStore } from '@/stores';
 import { useDerivedTableState } from '@/components/App/hooks/useDerivedTableState';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
@@ -41,7 +42,7 @@ it('使用结构化的已保存状态计算变更，不解析内容哈希', asyn
   const { result } = await loadTable();
   act(() => useEditorStore.getState().setSchemaName('archive'));
   expect(result.current.isLoadedDirty).toBe(true);
-  expect(result.current.tableDiff?.hasChanges).toBe(true);
+  expect(result.current.tableDiff && hasTableChanges(result.current.tableDiff)).toBe(true);
 });
 
 it('增删索引、修改表名和数据库不改写已有索引名', async () => {

@@ -34,7 +34,9 @@ import { useTranslation } from 'react-i18next';
 const MAX_INPUT_LENGTH = 500;
 
 function getFieldChangeKey(diff: FieldDiff) {
-  return `${diff.type}:${diff.fieldName}:${diff.oldFieldName ?? ''}:${diff.newFieldName ?? ''}`;
+  return diff.type === 'rename'
+    ? `${diff.type}:${diff.fieldName}:${diff.oldFieldName}:${diff.newFieldName}`
+    : `${diff.type}:${diff.fieldName}`;
 }
 
 interface AIGenerateDialogProps {
@@ -178,13 +180,13 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
       (change: FieldDiff) => {
         if (change.type === 'add') {
           return t('aiGenerate.fieldChangeAdd', {
-            field: change.newField?.name ?? change.fieldName,
-            type: change.newField?.type ?? '',
+            field: change.newField.name,
+            type: change.newField.type,
           });
         }
         if (change.type === 'remove') {
           return t('aiGenerate.fieldChangeRemove', {
-            field: change.oldField?.name ?? change.fieldName,
+            field: change.oldField.name,
           });
         }
         if (change.type === 'rename') {
@@ -195,9 +197,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
         }
         return t('aiGenerate.fieldChangeModify', {
           field: change.fieldName,
-          changes: (change.changes ?? [])
-            .map((item) => t(`aiGenerate.fieldChangeType.${item}`))
-            .join('、'),
+          changes: change.changes.map((item) => t(`aiGenerate.fieldChangeType.${item}`)).join('、'),
         });
       },
       [t],

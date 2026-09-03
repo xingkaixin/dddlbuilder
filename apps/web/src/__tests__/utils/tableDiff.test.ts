@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { diffPersistedState } from '@ddlbuilder/ddl-core';
+import { diffPersistedState, hasTableChanges } from '@ddlbuilder/ddl-core';
 import type {
   FieldDefaultKind,
   FieldOnUpdate,
@@ -57,7 +57,7 @@ describe('diffPersistedState', () => {
         rows: [createRow({ name: 'id', type: 'BIGINT' })],
       });
       const result = diffPersistedState(state, state);
-      expect(result.hasChanges).toBe(false);
+      expect(hasTableChanges(result)).toBe(false);
       expect(result.fields).toHaveLength(0);
       expect(result.indexes).toHaveLength(0);
     });
@@ -65,7 +65,7 @@ describe('diffPersistedState', () => {
     it('空状态返回无变更', () => {
       const state = createState();
       const result = diffPersistedState(state, state);
-      expect(result.hasChanges).toBe(false);
+      expect(hasTableChanges(result)).toBe(false);
     });
   });
 
@@ -74,7 +74,7 @@ describe('diffPersistedState', () => {
       const old = createState({ tableName: 'user' });
       const newState = createState({ tableName: 'users' });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.tableNameChanged).toBe(true);
       expect(result.oldTableName).toBe('user');
       expect(result.newTableName).toBe('users');
@@ -86,7 +86,7 @@ describe('diffPersistedState', () => {
       const old = createState({ tableComment: '用户表' });
       const newState = createState({ tableComment: '用户信息表' });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.tableCommentChanged).toBe(true);
       expect(result.oldTableComment).toBe('用户表');
       expect(result.newTableComment).toBe('用户信息表');
@@ -102,7 +102,7 @@ describe('diffPersistedState', () => {
         tableMiscConfig: { enabled: true, engine: 'InnoDB' },
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.miscConfigChanged).toBe(true);
       expect(result.newMiscConfig?.enabled).toBe(true);
     });
@@ -120,7 +120,7 @@ describe('diffPersistedState', () => {
         ],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields).toHaveLength(1);
       expect(result.fields[0].type).toBe('add');
       expect(result.fields[0].fieldName).toBe('name');
@@ -137,7 +137,7 @@ describe('diffPersistedState', () => {
         rows: [createRow({ name: 'id', type: 'BIGINT' })],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields).toHaveLength(1);
       expect(result.fields[0].type).toBe('remove');
       expect(result.fields[0].fieldName).toBe('name');
@@ -151,7 +151,7 @@ describe('diffPersistedState', () => {
         rows: [createRow({ name: 'name', type: 'VARCHAR(100)' })],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields).toHaveLength(1);
       expect(result.fields[0].type).toBe('modify');
       expect(result.fields[0].changes).toContain('type');
@@ -165,7 +165,7 @@ describe('diffPersistedState', () => {
         rows: [createRow({ name: 'name', nullable: false })],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields[0].type).toBe('modify');
       expect(result.fields[0].changes).toContain('nullable');
     });
@@ -178,7 +178,7 @@ describe('diffPersistedState', () => {
         rows: [createRow({ name: 'name', comment: '用户姓名' })],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields[0].type).toBe('modify');
       expect(result.fields[0].changes).toContain('comment');
     });
@@ -206,7 +206,7 @@ describe('diffPersistedState', () => {
         rows: [createRow({ name: 'id', type: 'BIGINT' })],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(false);
+      expect(hasTableChanges(result)).toBe(false);
     });
 
     it('相同类型和注释不足以推断字段重命名', () => {
@@ -229,7 +229,7 @@ describe('diffPersistedState', () => {
         ],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields.map((field) => field.type)).toEqual(['remove', 'add']);
     });
 
@@ -241,7 +241,7 @@ describe('diffPersistedState', () => {
         rows: [createRow({ name: 'new_name', type: 'INT', comment: '字段' })],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields).toHaveLength(2);
       expect(result.fields.some((f) => f.type === 'remove')).toBe(true);
       expect(result.fields.some((f) => f.type === 'add')).toBe(true);
@@ -267,7 +267,7 @@ describe('diffPersistedState', () => {
         ],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields).toHaveLength(2);
       expect(result.fields.some((f) => f.type === 'remove')).toBe(true);
       expect(result.fields.some((f) => f.type === 'add')).toBe(true);
@@ -291,7 +291,7 @@ describe('diffPersistedState', () => {
         ],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields[0].changes).toContain('default');
       expect(result.fields[1].changes).toContain('default');
     });
@@ -320,7 +320,7 @@ describe('diffPersistedState', () => {
       old.rows[0].id = 'same-field';
       newState.rows[0].id = 'same-field';
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields[0].type).toBe('rename');
       expect(result.fields[0].changes).toContain('nullable');
     });
@@ -341,7 +341,7 @@ describe('diffPersistedState', () => {
         indexes: [createIndex({ name: 'idx_id' })],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.indexes).toHaveLength(1);
       expect(result.indexes[0].type).toBe('add');
     });
@@ -352,7 +352,7 @@ describe('diffPersistedState', () => {
       });
       const newState = createState({ indexes: [] });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.indexes).toHaveLength(1);
       expect(result.indexes[0].type).toBe('remove');
     });
@@ -387,7 +387,7 @@ describe('diffPersistedState', () => {
         ],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.indexes).toHaveLength(2);
     });
 
@@ -399,7 +399,7 @@ describe('diffPersistedState', () => {
         indexes: [createIndex({ fields: [{ name: 'id', direction: 'DESC' }] })],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
     });
 
     it('主键变更检测', () => {
@@ -419,7 +419,7 @@ describe('diffPersistedState', () => {
         ],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
     });
   });
 
@@ -444,7 +444,7 @@ describe('diffPersistedState', () => {
         ],
       });
       const result = diffPersistedState(old, newState);
-      expect(result.hasChanges).toBe(true);
+      expect(hasTableChanges(result)).toBe(true);
       expect(result.fields.filter((f) => f.type === 'add')).toHaveLength(1);
       expect(result.indexes.filter((i) => i.type === 'add')).toHaveLength(1);
     });

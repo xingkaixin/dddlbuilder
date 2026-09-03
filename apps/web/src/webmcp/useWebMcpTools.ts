@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { diffPersistedState, generateAlterDDL, generateRollbackDDL } from '@ddlbuilder/ddl-core';
+import {
+  diffPersistedState,
+  generateAlterDDL,
+  generateRollbackDDL,
+  hasTableChanges,
+} from '@ddlbuilder/ddl-core';
 import { isDatabaseType, type PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import { buildWorkspaceContentHash } from '@ddlbuilder/workspace-core';
-import { buildNormalizedFields } from '@/stores';
 import { requestSqlParse } from '@/services/sqlParseService';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
@@ -154,7 +158,9 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         );
       }
       const diff = diffPersistedState(snapshot.state, candidateState);
-      if (!diff.hasChanges) throw new WebMcpToolError('NO_CHANGES', 'The proposal changes nothing');
+      if (!hasTableChanges(diff)) {
+        throw new WebMcpToolError('NO_CHANGES', 'The proposal changes nothing');
+      }
       const issues = lintState(candidateState);
       const next: WebMcpChangeSet = {
         id: crypto.randomUUID(),
@@ -292,21 +298,8 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     else if (kind === 'orm') content = snapshot.generatedOrm;
     else if (kind === 'alter' || kind === 'rollback') {
       if (!pending) throw new WebMcpToolError('NOT_FOUND', 'No staged change set is available');
-      const fields = buildNormalizedFields(pending.candidateState.rows);
       content =
-        kind === 'alter'
-          ? generateAlterDDL(
-              pending.candidateState.tableName,
-              pending.diff,
-              fields,
-              pending.candidateState.dbType,
-            )
-          : generateRollbackDDL(
-              pending.candidateState.tableName,
-              pending.diff,
-              fields,
-              pending.candidateState.dbType,
-            );
+        kind === 'alter' ? generateAlterDDL(pending.diff) : generateRollbackDDL(pending.diff);
     } else {
       throw new WebMcpToolError('INVALID_INPUT', `Unsupported output kind: ${kind}`);
     }

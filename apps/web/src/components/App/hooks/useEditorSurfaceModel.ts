@@ -6,6 +6,7 @@ import type { useSchemaController } from './useSchemaController';
 import type { useClearAllActions } from './useClearAllActions';
 import type { useNavigationActions } from './useNavigationActions';
 import type { useSchemaApplyActions } from './useSchemaApplyActions';
+import { hasTableChanges } from '@ddlbuilder/ddl-core';
 
 type EditorDomains = ReturnType<typeof useEditorDomains>;
 type SchemaController = ReturnType<typeof useSchemaController>;
@@ -103,7 +104,7 @@ export function useEditorSurfaceModel({
         onExpandOutputPanel: !isShareView && !outputPanelOpen ? expandOutput : undefined,
         saveDisabled: !canSaveCurrent,
         saveDisabledHint: t('dialogs.save.disabledTip'),
-        showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
+        showDiffButton: isLoadedDirty && Boolean(tableDiff && hasTableChanges(tableDiff)),
         showHistoryButton: Boolean(loadedTableNormalizedName),
         loadedTableName,
         workspaceLabel,

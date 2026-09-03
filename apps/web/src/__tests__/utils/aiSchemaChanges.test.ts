@@ -239,7 +239,7 @@ describe('aiSchemaChanges', () => {
     expect(applied.rows[1].id).toBe('field-phone');
     expect(applied.indexes[0].fields[0].name).toBe('mobile');
     expect(applied.foreignKeys?.[0].fields).toEqual(['mobile']);
-    const ddl = generateAlterDDL('users', diffPersistedState(baseState, applied), [], 'mysql');
+    const ddl = generateAlterDDL(diffPersistedState(baseState, applied));
     expect(ddl).toContain('RENAME COLUMN phone TO mobile');
     expect(ddl).not.toContain('DROP COLUMN');
     expect(ddl).not.toContain('ADD COLUMN');
@@ -340,9 +340,7 @@ describe('aiSchemaChanges', () => {
     );
     expect(candidate.indexes).toEqual([primary]);
     expect(buildAISchemaChanges(baseState, candidate)).toEqual([]);
-    expect(
-      generateAlterDDL('users', diffPersistedState(baseState, candidate), [], 'postgresql'),
-    ).toBe('');
+    expect(generateAlterDDL(diffPersistedState(baseState, candidate))).toBe('');
   });
 
   it('updates primary-key columns without duplicating the existing identity', () => {
@@ -519,7 +517,7 @@ describe('aiSchemaChanges', () => {
     expect(applied.rows.slice(0, 2)).toEqual(baseState.rows);
     expect(applied.rows[2].id).toBeTruthy();
     expect(new Set(applied.rows.map((row) => row.id)).size).toBe(3);
-    expect(generateAlterDDL('users', diffPersistedState(baseState, applied), [], 'mysql')).toBe(
+    expect(generateAlterDDL(diffPersistedState(baseState, applied))).toBe(
       'ALTER TABLE users ADD COLUMN email VARCHAR(255) NULL;',
     );
   });

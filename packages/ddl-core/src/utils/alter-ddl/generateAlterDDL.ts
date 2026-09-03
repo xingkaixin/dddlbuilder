@@ -1,5 +1,11 @@
-import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
-import type { FieldDiff, ManualSchemaChange, TableDiff } from '../tableDiff';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
+import {
+  hasTableChanges,
+  type ManualSchemaChange,
+  type ModifyFieldDiff,
+  type RenameFieldDiff,
+  type TableDiff,
+} from '../tableDiff';
 import {
   generateTableCommentAlter,
   generateDropColumn,
@@ -29,11 +35,9 @@ const MANUAL_CHANGE_DESCRIPTIONS: Record<ManualSchemaChange, string> = {
   citusSharding: 'Citus distribution',
 };
 
-function orderFieldRenames(fields: FieldDiff[], dbType: DatabaseType): FieldDiff[] | null {
-  const renames = fields.filter(
-    (field) => field.type === 'rename' && field.oldFieldName && field.newFieldName,
-  );
-  const key = (name: string | undefined) => getSqlIdentifierKey(name ?? '', dbType);
+function orderFieldRenames(fields: TableDiff['fields'], dbType: DatabaseType) {
+  const renames = fields.filter((field): field is RenameFieldDiff => field.type === 'rename');
+  const key = (name: string) => getSqlIdentifierKey(name, dbType);
   const oldNames = new Set(renames.map((field) => key(field.oldFieldName)));
   const byTarget = new Map(renames.map((field) => [key(field.newFieldName), field]));
   const ordered = renames.filter((field) => !oldNames.has(key(field.newFieldName)));
@@ -49,28 +53,15 @@ function orderFieldRenames(fields: FieldDiff[], dbType: DatabaseType): FieldDiff
  * ALTER DDL 生成器
  * 根据 TableDiff 生成各数据库的 ALTER TABLE 语句
  */
-export function generateAlterDDL(
-  tableName: string,
-  diff: TableDiff,
-  _fields: NormalizedField[],
-  dbType: DatabaseType,
-): string {
-  if (!diff.hasChanges) {
+export function generateAlterDDL(diff: TableDiff): string {
+  if (!hasTableChanges(diff)) {
     return '';
   }
 
+  const dbType = diff.newDbType;
   const statements: string[] = [];
-  const fallback = getSchemaAndTable(tableName);
-  let oldTableName = buildQualifiedTableName(
-    diff.oldSchemaName ?? fallback.schema,
-    diff.oldTableName || fallback.table,
-    dbType,
-  );
-  const activeTableName = buildQualifiedTableName(
-    diff.newSchemaName ?? fallback.schema,
-    diff.newTableName || fallback.table,
-    dbType,
-  );
+  let oldTableName = buildQualifiedTableName(diff.oldSchemaName, diff.oldTableName, dbType);
+  const activeTableName = buildQualifiedTableName(diff.newSchemaName, diff.newTableName, dbType);
 
   if (diff.manualChanges?.length) {
     const reasons = diff.manualChanges
@@ -96,7 +87,7 @@ export function generateAlterDDL(
   }
 
   if (diff.schemaNameChanged) {
-    const newSchema = diff.newSchemaName ?? '';
+    const newSchema = diff.newSchemaName;
     const statement = generateTableSchemaChange(oldTableName, newSchema, dbType);
     if (!statement) {
       return `-- Manual migration required: schema change from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
@@ -156,18 +147,15 @@ export function generateAlterDDL(
     // 3. 处理重命名的字段（在删除之后、新增之前）
     for (const fieldDiff of renames) {
       statements.push(generateRenameColumn(activeTableName, fieldDiff, dbType));
-      if (fieldDiff.changes?.length && fieldDiff.newField) {
-        statements.push(
-          generateModifyColumn(
-            activeTableName,
-            {
-              ...fieldDiff,
-              type: 'modify',
-              fieldName: fieldDiff.newField.name,
-            },
-            dbType,
-          ),
-        );
+      if (fieldDiff.changes) {
+        const modification: ModifyFieldDiff = {
+          type: 'modify',
+          fieldName: fieldDiff.newField.name,
+          oldField: fieldDiff.oldField,
+          newField: fieldDiff.newField,
+          changes: fieldDiff.changes,
+        };
+        statements.push(generateModifyColumn(activeTableName, modification, dbType));
       }
     }
 

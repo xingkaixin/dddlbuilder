@@ -1,5 +1,6 @@
 import { parseFieldType } from './databaseTypeMapping';
 import {
+  type DatabaseType,
   type PersistedState,
   type NormalizedField,
   type IndexDefinition,
@@ -26,19 +27,52 @@ export type FieldDiffType = 'add' | 'remove' | 'modify' | 'rename';
  */
 export type FieldChangeType = 'type' | 'nullable' | 'default' | 'comment';
 
+export type FieldChanges = readonly [FieldChangeType, ...FieldChangeType[]];
+
+export type AddFieldDiff = {
+  type: 'add';
+  fieldName: string;
+  newField: NormalizedField;
+  oldField?: never;
+  changes?: never;
+  oldFieldName?: never;
+  newFieldName?: never;
+};
+
+export type RemoveFieldDiff = {
+  type: 'remove';
+  fieldName: string;
+  oldField: NormalizedField;
+  newField?: never;
+  changes?: never;
+  oldFieldName?: never;
+  newFieldName?: never;
+};
+
+export type ModifyFieldDiff = {
+  type: 'modify';
+  fieldName: string;
+  oldField: NormalizedField;
+  newField: NormalizedField;
+  changes: FieldChanges;
+  oldFieldName?: never;
+  newFieldName?: never;
+};
+
+export type RenameFieldDiff = {
+  type: 'rename';
+  fieldName: string;
+  oldField: NormalizedField;
+  newField: NormalizedField;
+  oldFieldName: string;
+  newFieldName: string;
+  changes?: FieldChanges;
+};
+
 /**
  * 字段变更详情
  */
-export type FieldDiff = {
-  type: FieldDiffType;
-  fieldName: string;
-  oldField?: NormalizedField;
-  newField?: NormalizedField;
-  changes?: FieldChangeType[];
-  // 仅用于 rename 类型
-  oldFieldName?: string;
-  newFieldName?: string;
-};
+export type FieldDiff = AddFieldDiff | RemoveFieldDiff | ModifyFieldDiff | RenameFieldDiff;
 
 /**
  * 索引变更类型
@@ -78,12 +112,13 @@ export type ManualSchemaChange =
 
 export type TableDiff = {
   manualChanges?: ManualSchemaChange[];
-  hasChanges: boolean;
+  oldDbType: DatabaseType;
+  newDbType: DatabaseType;
   tableNameChanged: boolean;
-  oldTableName?: string;
-  newTableName?: string;
-  oldSchemaName?: string;
-  newSchemaName?: string;
+  oldTableName: string;
+  newTableName: string;
+  oldSchemaName: string;
+  newSchemaName: string;
   schemaNameChanged?: boolean;
   tableCommentChanged: boolean;
   oldTableComment?: string;
@@ -97,6 +132,19 @@ export type TableDiff = {
   foreignKeys: ForeignKeyDiff[];
   unchangedForeignKeys?: ForeignKeyDefinition[];
 };
+
+export function hasTableChanges(diff: TableDiff): boolean {
+  return (
+    Boolean(diff.manualChanges?.length) ||
+    diff.tableNameChanged ||
+    Boolean(diff.schemaNameChanged) ||
+    diff.tableCommentChanged ||
+    diff.miscConfigChanged ||
+    diff.fields.length > 0 ||
+    diff.indexes.length > 0 ||
+    diff.foreignKeys.length > 0
+  );
+}
 
 /**
  * 将 FieldRow 转换为 NormalizedField
@@ -182,12 +230,18 @@ function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): 
   return changes;
 }
 
+function toFieldChanges(changes: FieldChangeType[]): FieldChanges | null {
+  const first = changes[0];
+  return first ? [first, ...changes.slice(1)] : null;
+}
+
 function createMatchedFieldDiff(
   oldField: NormalizedField,
   newField: NormalizedField,
   dbType: PersistedState['dbType'],
 ) {
   const changes = getFieldChanges(oldField, newField);
+  const fieldChanges = toFieldChanges(changes);
   if (getSqlIdentifierKey(oldField.name, dbType) !== getSqlIdentifierKey(newField.name, dbType)) {
     return {
       type: 'rename',
@@ -196,16 +250,17 @@ function createMatchedFieldDiff(
       newField,
       oldFieldName: oldField.name,
       newFieldName: newField.name,
-      ...(changes.length > 0 ? { changes } : {}),
+      ...(fieldChanges ? { changes: fieldChanges } : {}),
     } satisfies FieldDiff;
   }
   if (fieldsEqual(oldField, newField)) return null;
+  if (!fieldChanges) return null;
   return {
     type: 'modify',
     fieldName: newField.name,
     oldField,
     newField,
-    changes,
+    changes: fieldChanges,
   } satisfies FieldDiff;
 }
 
@@ -371,7 +426,8 @@ function getManualSchemaChanges(
 export function diffPersistedState(oldState: PersistedState, newState: PersistedState): TableDiff {
   const dbType = newState.dbType;
   const result: TableDiff = {
-    hasChanges: false,
+    oldDbType: oldState.dbType,
+    newDbType: newState.dbType,
     tableNameChanged: false,
     oldTableName: oldState.tableName?.trim() || '',
     newTableName: newState.tableName?.trim() || '',
@@ -391,7 +447,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     getSqlIdentifierKey(result.newSchemaName || '', dbType)
   ) {
     result.schemaNameChanged = true;
-    result.hasChanges = true;
   }
   const oldTableName = oldState.tableName?.trim() || '';
   const newTableName = newState.tableName?.trim() || '';
@@ -399,7 +454,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     result.tableNameChanged = true;
     result.oldTableName = oldTableName;
     result.newTableName = newTableName;
-    result.hasChanges = true;
   }
 
   // 2. 表注释变更
@@ -409,7 +463,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     result.tableCommentChanged = true;
     result.oldTableComment = oldTableComment;
     result.newTableComment = newTableComment;
-    result.hasChanges = true;
   }
 
   // 2.5 杂项设置变更
@@ -419,14 +472,12 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     result.miscConfigChanged = true;
     result.oldMiscConfig = oldMiscConfig;
     result.newMiscConfig = newMiscConfig;
-    result.hasChanges = true;
   }
 
   // 3. 字段变更
   const oldFields = extractFields(oldState);
   const newFields = extractFields(newState);
   result.fields = diffFields(oldFields, newFields, dbType);
-  if (result.fields.length > 0) result.hasChanges = true;
 
   // 4. 索引变更
   const oldIndexes = oldState.indexes || [];
@@ -446,7 +497,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   for (const [sig, idx] of oldIndexSigs) {
     if (!newIndexSigs.has(sig)) {
       result.indexes.push({ type: 'remove', index: idx });
-      result.hasChanges = true;
     } else {
       (result.unchangedIndexes ??= []).push(idx);
     }
@@ -456,7 +506,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   for (const [sig, idx] of newIndexSigs) {
     if (!oldIndexSigs.has(sig)) {
       result.indexes.push({ type: 'add', index: idx });
-      result.hasChanges = true;
     }
   }
 
@@ -478,7 +527,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   for (const [sig, fk] of oldFkSigs) {
     if (!newFkSigs.has(sig)) {
       result.foreignKeys.push({ type: 'remove', foreignKey: fk });
-      result.hasChanges = true;
     } else {
       (result.unchangedForeignKeys ??= []).push(fk);
     }
@@ -488,14 +536,12 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   for (const [sig, fk] of newFkSigs) {
     if (!oldFkSigs.has(sig)) {
       result.foreignKeys.push({ type: 'add', foreignKey: fk });
-      result.hasChanges = true;
     }
   }
 
-  const manualChanges = getManualSchemaChanges(oldState, newState, result.hasChanges);
+  const manualChanges = getManualSchemaChanges(oldState, newState, hasTableChanges(result));
   if (manualChanges.length > 0) {
     result.manualChanges = manualChanges;
-    result.hasChanges = true;
   }
 
   return result;
