@@ -55,7 +55,7 @@ class ResizeObserverMock {
   disconnect = vi.fn();
 }
 
-global.ResizeObserver = ResizeObserverMock;
+globalThis.ResizeObserver = ResizeObserverMock;
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {

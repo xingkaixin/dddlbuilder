@@ -85,6 +85,7 @@ describe('useAIGenerateTable behaviors', () => {
 
   it('keeps the completed patch paired with its request snapshot', async () => {
     const base: PersistedState = {
+      schemaName: '',
       tableName: 'users',
       tableComment: 'request baseline',
       dbType: 'mysql',
@@ -102,7 +103,7 @@ describe('useAIGenerateTable behaviors', () => {
       }),
     );
     const { result } = renderAIGenerateTableHook();
-    let request!: Promise<void>;
+    let request!: Promise<boolean>;
     act(() => {
       request = result.current.generateTable('change', 'mysql', {
         mode: 'patch',
@@ -133,7 +134,7 @@ describe('useAIGenerateTable behaviors', () => {
       )
       .mockResolvedValueOnce(createResult('newer'));
     const { result } = renderAIGenerateTableHook();
-    let older!: Promise<void>;
+    let older!: Promise<boolean>;
     act(() => {
       older = result.current.generateTable('older', 'mysql');
     });
@@ -247,10 +248,10 @@ describe('useAIGenerateTable behaviors', () => {
   });
 
   it('should abort previous request when new key arrives', async () => {
-    let firstSignal: AbortSignal | null = null;
+    const requestSignals: { first?: AbortSignal } = {};
     aiServiceMocks.requestGenerateTable.mockImplementation((payload, options) => {
       if (payload.description === 'first') {
-        firstSignal = options.signal;
+        requestSignals.first = options.signal;
         return new Promise<GenerateTableServiceResult>((_, reject) => {
           options.signal.addEventListener('abort', () => {
             reject(createAbortError());
@@ -271,15 +272,15 @@ describe('useAIGenerateTable behaviors', () => {
       await result.current.generateTable('second', 'mysql');
     });
 
-    expect(firstSignal?.aborted).toBe(true);
+    expect(requestSignals.first?.aborted).toBe(true);
     expect(result.current.result?.tableName).toBe('second_table');
     expect(result.current.error).toBeNull();
   });
 
   it('cancelGeneration should abort active request and reset loading', async () => {
-    let activeSignal: AbortSignal | null = null;
+    const requestSignals: { active?: AbortSignal } = {};
     aiServiceMocks.requestGenerateTable.mockImplementation((_, options) => {
-      activeSignal = options.signal;
+      requestSignals.active = options.signal;
       return new Promise<GenerateTableServiceResult>((_, reject) => {
         options.signal.addEventListener('abort', () => {
           reject(createAbortError());
@@ -298,7 +299,7 @@ describe('useAIGenerateTable behaviors', () => {
       result.current.cancelGeneration();
     });
 
-    expect(activeSignal?.aborted).toBe(true);
+    expect(requestSignals.active?.aborted).toBe(true);
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.error).toBeNull();
   });

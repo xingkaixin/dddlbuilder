@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { render } from '@/__tests__/utils/test-utils';
+import { createFieldRow } from '@/__tests__/utils/testFactories';
 import { DataTable } from '@/components/App/DataTable';
 import { useEditorStore } from '@/stores';
 
@@ -49,26 +50,17 @@ function setupStores() {
   appState.setFieldTableFreezeColumns(3);
 
   useEditorStore.getState().setRows([
-    {
-      order: 1,
+    createFieldRow('field-id', {
       fieldName: 'id',
       fieldComment: '主键',
       fieldType: 'bigint',
       nullable: false,
-      defaultKind: 'none',
-      defaultValue: '',
-      onUpdate: 'none',
-    },
-    {
-      order: 2,
+    }),
+    createFieldRow('field-name', {
       fieldName: 'name',
       fieldComment: '名称',
       fieldType: 'varchar(100)',
-      nullable: true,
-      defaultKind: 'none',
-      defaultValue: '',
-      onUpdate: 'none',
-    },
+    }),
   ]);
 
   useEditorStore.getState().resetIndexState();

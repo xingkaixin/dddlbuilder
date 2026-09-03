@@ -4,9 +4,10 @@ import {
   validateDocumentFields,
   validateUniqueFieldNames,
 } from '@/stores/editorDocumentValidation';
+import { createFieldRow } from '@/__tests__/utils/testFactories';
 
 const rows = (...names: string[]) =>
-  names.map((fieldName) => ({ fieldName, fieldType: 'int', fieldComment: '' }));
+  names.map((fieldName, index) => createFieldRow(`field-${index}`, { fieldName }));
 
 describe('editor document validation', () => {
   it('allows blank editing rows and distinct PostgreSQL names', () => {

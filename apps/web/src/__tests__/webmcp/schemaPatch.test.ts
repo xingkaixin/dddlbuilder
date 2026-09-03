@@ -401,14 +401,14 @@ describe('WebMCP schema patch', () => {
         index: {
           name: 'idx_orders_status',
           fields: [{ name: 'status', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       },
       {
         id: 'update-index',
         kind: 'index.update',
         indexId: 'index-user',
-        changes: { name: 'idx_orders_owner', unique: true },
+        changes: { name: 'idx_orders_owner', kind: 'unique_index' },
       },
       { id: 'remove-index', kind: 'index.remove', indexId: 'index-user' },
     ]);
@@ -472,7 +472,7 @@ describe('WebMCP schema patch', () => {
         index: {
           name: 'IDX_ORDERS_USER_ID',
           fields: [{ name: 'user_id', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       },
       'Duplicate index name: IDX_ORDERS_USER_ID',
@@ -489,7 +489,7 @@ describe('WebMCP schema patch', () => {
         index: {
           name: 'idx_missing',
           fields: [{ name: 'missing', direction: 'ASC' }],
-          unique: false,
+          kind: 'index',
         },
       },
       'Unknown index field: missing',

@@ -118,10 +118,7 @@ describe('Mock data field constraints', () => {
 
   it('keeps logical numeric enum values within their field type', () => {
     const column = field('gender', 'tinyint', {
-      enumMeta: [
-        { value: '0', label: 'A' },
-        { value: '1', label: 'B' },
-      ],
+      enumMeta: [{ value: '0' }, { value: '1' }],
     });
     for (const value of generate(column).values) expect([0, 1]).toContain(value);
   });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { getForeignKeyIssue } from '@ddlbuilder/ddl-core';
+import { createFieldRow, createPersistedState } from '@/__tests__/utils/testFactories';
 import {
   defaultRelationshipIntent,
   planTableRelationship,
@@ -19,22 +20,16 @@ function createTable(
   } = {},
 ): PersistedState {
   const fieldName = options.fieldName ?? 'id';
-  return {
-    schemaName: '',
+  return createPersistedState({
     tableName,
-    tableComment: '',
     dbType: 'mysql',
-    sqlFormatMode: 'compact',
     rows: [
-      {
-        order: 1,
+      createFieldRow(`${tableName}-${fieldName}`, {
         fieldName,
         fieldType: options.fieldType ?? 'BIGINT',
-        fieldComment: '',
         nullable: options.nullable ?? false,
-      },
+      }),
     ],
-    addCount: 1,
     indexes:
       options.isPrimary || options.isUnique
         ? [
@@ -42,14 +37,11 @@ function createTable(
               id: `${tableName}-key`,
               name: options.isPrimary ? `pk_${tableName}` : `uk_${tableName}_${fieldName}`,
               fields: [{ name: fieldName, direction: 'ASC' }],
-              unique: options.isPrimary || options.isUnique || false,
-              isPrimary: options.isPrimary,
+              kind: options.isPrimary ? 'primary' : 'unique_index',
             },
           ]
         : [],
-    authInput: '',
-    authObjects: [],
-  };
+  });
 }
 
 function createIntent(overrides: Partial<TableRelationshipIntent> = {}): TableRelationshipIntent {
@@ -282,13 +274,13 @@ describe('tableRelationship', () => {
 
   it('supports a self-referencing relationship when the target field is a key', () => {
     const employee = createTable('employees', { fieldName: 'id', isPrimary: true });
-    employee.rows.push({
-      order: 2,
-      fieldName: 'manager_id',
-      fieldType: 'BIGINT',
-      fieldComment: '',
-      nullable: true,
-    });
+    employee.rows.push(
+      createFieldRow('employees-manager-id', {
+        fieldName: 'manager_id',
+        fieldType: 'BIGINT',
+        nullable: true,
+      }),
+    );
 
     const result = planTableRelationship(
       { source: employee, target: employee },

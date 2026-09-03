@@ -1,28 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import { createFieldRow, createPersistedState } from '@/__tests__/utils/testFactories';
 import { render, screen, userEvent } from '@/__tests__/utils/test-utils';
 import { RelationCreationDialog } from '@/components/App/er-diagram/RelationCreationDialog';
 
-const source: PersistedState = {
+const source: PersistedState = createPersistedState({
   tableName: 'orders',
-  tableComment: '',
   dbType: 'oracle',
-  sqlFormatMode: 'compact',
-  rows: [{ order: 1, fieldName: 'user_id', fieldType: 'INT', fieldComment: '', nullable: true }],
-  indexes: [],
-  addCount: 1,
-  authInput: '',
-  authObjects: [],
-};
+  rows: [createFieldRow('source-user-id', { fieldName: 'user_id', fieldType: 'INT' })],
+});
 const target: PersistedState = {
   ...source,
   tableName: 'users',
-  rows: [{ order: 1, fieldName: 'id', fieldType: 'INT', fieldComment: '', nullable: false }],
+  rows: [createFieldRow('target-id', { fieldType: 'INT', nullable: false })],
   indexes: [
     {
       id: 'pk-users',
       name: 'pk_users',
-
       kind: 'primary',
       fields: [{ name: 'id', direction: 'ASC' }],
     },

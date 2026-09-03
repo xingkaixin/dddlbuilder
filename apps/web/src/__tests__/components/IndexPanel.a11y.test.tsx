@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { createFieldRow } from '@/__tests__/utils/testFactories';
 import { act, fireEvent, render, screen, waitFor, within } from '@/__tests__/utils/test-utils';
 import { IndexPanel } from '@/components/App/IndexPanel';
 import { useEditorStore } from '@/stores';
@@ -8,8 +9,7 @@ function setupStores() {
   useEditorStore.getState().setDbType('mysql');
 
   useEditorStore.getState().setRows([
-    {
-      order: 1,
+    createFieldRow('id-field', {
       fieldName: 'id',
       fieldComment: '主键',
       fieldType: 'bigint',
@@ -17,9 +17,8 @@ function setupStores() {
       defaultKind: 'none',
       defaultValue: '',
       onUpdate: 'none',
-    },
-    {
-      order: 2,
+    }),
+    createFieldRow('user-id-field', {
       fieldName: 'user_id',
       fieldComment: '用户ID',
       fieldType: 'bigint',
@@ -27,9 +26,8 @@ function setupStores() {
       defaultKind: 'none',
       defaultValue: '',
       onUpdate: 'none',
-    },
-    {
-      order: 3,
+    }),
+    createFieldRow('item-id-field', {
       fieldName: 'item_id',
       fieldComment: '商品ID',
       fieldType: 'bigint',
@@ -37,7 +35,7 @@ function setupStores() {
       defaultKind: 'none',
       defaultValue: '',
       onUpdate: 'none',
-    },
+    }),
   ]);
 
   useEditorStore.getState().resetIndexState();

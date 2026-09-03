@@ -3,19 +3,9 @@ import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SavedTableRecord } from '@/utils/savedTablesDb';
 import { buildSavedTableBatchImportPlan } from '@/utils/savedTableBatchImport';
+import { createFieldRow, createPersistedState } from '@/__tests__/utils/testFactories';
 
-const createState = (tableName: string): PersistedState => ({
-  schemaName: '',
-  tableName,
-  tableComment: '',
-  dbType: 'mysql',
-  sqlFormatMode: 'compact',
-  rows: [],
-  addCount: 1,
-  indexes: [],
-  authInput: '',
-  authObjects: [],
-});
+const createState = (tableName: string): PersistedState => createPersistedState({ tableName });
 
 const createRecord = (
   normalizedName: string,
@@ -35,7 +25,7 @@ describe('buildSavedTableBatchImportPlan', () => {
     const existing = createRecord('users', 'users', {
       state: {
         ...createState('users'),
-        rows: [{ id: 'original', fieldName: 'id', fieldType: 'INT' }],
+        rows: [createFieldRow('original', { fieldType: 'INT' })],
       },
     });
     const item = {

@@ -223,6 +223,7 @@ describe('ImportSqlDialog', () => {
         },
       ],
       indexes: [],
+      foreignKeys: [],
       authObjects: [],
     });
     render(
@@ -260,6 +261,7 @@ describe('ImportSqlDialog', () => {
         },
       ],
       indexes: [],
+      foreignKeys: [],
       authObjects: ['cb1', 'cb2'],
     };
     mockedRequestSqlParse.mockResolvedValue(parsedResult);
@@ -316,6 +318,7 @@ describe('ImportSqlDialog', () => {
         onOpenChange={vi.fn()}
         savedTables={[
           {
+            tableId: 'table-users',
             normalizedName: 'users',
             name: 'users',
             dbType: 'mysql',

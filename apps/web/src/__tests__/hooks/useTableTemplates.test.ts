@@ -3,35 +3,27 @@ import { renderHook as renderTestingHook, act, waitFor } from '@testing-library/
 import { useTableTemplates } from '@/hooks/useTableTemplates';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import { flushPromises } from '@/__tests__/utils/test-utils';
-import type { PersistedState } from '@ddlbuilder/shared-types';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+import { createFieldRow, createPersistedState } from '@/__tests__/utils/testFactories';
 
 function renderHook<Result>(callback: () => Result) {
   const { wrapper } = createQueryClientWrapper();
   return renderTestingHook(callback, { wrapper });
 }
 
-const createState = (name: string): PersistedState => ({
-  schemaName: '',
-  tableName: name,
-  tableComment: '测试',
-  dbType: 'mysql',
-  sqlFormatMode: 'compact',
-  rows: [
-    {
-      order: 1,
-      fieldName: 'id',
-      fieldType: 'bigint',
-      fieldComment: 'ID',
-      nullable: false,
-      defaultKind: 'auto_increment',
-      defaultValue: '',
-      onUpdate: 'none',
-    },
-  ],
-  addCount: 1,
-  indexes: [],
-});
+const createState = (name: string) =>
+  createPersistedState({
+    tableName: name,
+    tableComment: '测试',
+    rows: [
+      createFieldRow('field-1', {
+        fieldType: 'bigint',
+        fieldComment: 'ID',
+        nullable: false,
+        defaultKind: 'auto_increment',
+      }),
+    ],
+  });
 
 describe('useTableTemplates', () => {
   beforeEach(() => {
@@ -202,10 +194,7 @@ describe('useTableTemplates', () => {
       await flushPromises();
     });
 
-    let fetched: Awaited<ReturnType<typeof result.current.fetchTemplate>>;
-    await act(async () => {
-      fetched = await result.current.fetchTemplate(templateId);
-    });
+    const fetched = await act(() => result.current.fetchTemplate(templateId));
 
     expect(fetched?.name).toBe('Single');
   });
@@ -217,10 +206,7 @@ describe('useTableTemplates', () => {
       await flushPromises();
     });
 
-    let fetched: Awaited<ReturnType<typeof result.current.fetchTemplate>>;
-    await act(async () => {
-      fetched = await result.current.fetchTemplate('missing');
-    });
+    const fetched = await act(() => result.current.fetchTemplate('missing'));
 
     expect(fetched).toBeNull();
   });
@@ -234,8 +220,7 @@ describe('useTableTemplates', () => {
 
     await act(async () => {
       const res = await result.current.rename('missing', 'New Name');
-      expect(res.ok).toBe(false);
-      expect(res.reason).toBe('not_found');
+      expect(res).toMatchObject({ ok: false, reason: 'not_found' });
     });
   });
 });

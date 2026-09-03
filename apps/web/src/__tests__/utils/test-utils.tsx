@@ -1,16 +1,14 @@
 import { render, type RenderOptions } from '@testing-library/react';
-import type { ReactElement } from 'react';
-import { vi } from 'vitest';
+import type { ReactElement, ReactNode } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createTestQueryClient } from '@/__tests__/utils/queryClient';
-import type { MockEvent, MockClipboard, MockLocalStorage } from '@/__tests__/types/test-types';
 
 // Custom render function with providers if needed
 const customRender = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) => {
   const queryClient = createTestQueryClient();
   // Wrap with TooltipProvider for components using Tooltip
-  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>{children}</TooltipProvider>
     </QueryClientProvider>
@@ -27,89 +25,6 @@ export { customRender as render };
 
 // Helper functions for common test operations
 export const waitForAnimationFrame = () => new Promise((resolve) => setTimeout(resolve, 0));
-
-export const createMockEvent = (overrides = {}): MockEvent => ({
-  target: { value: '' },
-  preventDefault: vi.fn(),
-  stopPropagation: vi.fn(),
-  ...overrides,
-});
-
-export const mockLocalStorage: MockLocalStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-  length: 0,
-  key: vi.fn(),
-};
-
-// Helper to mock clipboard API
-export const mockClipboard: MockClipboard = {
-  writeText: vi.fn().mockResolvedValue(undefined),
-  readText: vi.fn().mockResolvedValue(''),
-};
-
-// Helper function to setup localStorage mock
-export const setupLocalStorageMock = () => {
-  Object.defineProperty(window, 'localStorage', {
-    value: mockLocalStorage,
-    writable: true,
-  });
-};
-
-// Helper function to setup clipboard mock
-export const setupClipboardMock = () => {
-  Object.defineProperty(navigator, 'clipboard', {
-    value: mockClipboard,
-    writable: true,
-  });
-};
-
-// Helper to create field data
-export const createTestField = (overrides = {}) => ({
-  order: 1,
-  fieldName: 'test_field',
-  fieldType: 'varchar(255)',
-  fieldComment: 'Test field',
-  nullable: true,
-  defaultKind: 'none',
-  defaultValue: '',
-  onUpdate: 'none',
-  ...overrides,
-});
-
-// Helper to create normalized field data
-export const createTestNormalizedField = (overrides = {}) => ({
-  name: 'test_field',
-  type: 'varchar(255)',
-  comment: 'Test field',
-  nullable: true,
-  defaultKind: 'none',
-  defaultValue: '',
-  onUpdate: 'none',
-  ...overrides,
-});
-
-// Helper to create index definition
-export const createTestIndex = (overrides = {}) => ({
-  id: 'test-index-1',
-  name: 'idx_test_field',
-  fields: [{ name: 'test_field', direction: 'ASC' }],
-  kind: 'index',
-  ...overrides,
-});
-
-// Helper function to simulate keyboard events
-export const createKeyboardEvent = (key: string, options = {}) => ({
-  key,
-  code: key,
-  keyCode: key.charCodeAt(0),
-  which: key.charCodeAt(0),
-  bubbles: true,
-  cancelable: true,
-  ...options,
-});
 
 // Helper to test async operations
 export const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));

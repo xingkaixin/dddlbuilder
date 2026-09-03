@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useEditorStore } from '@/stores';
-import { createEmptyRow } from '@/utils/helpers';
 import { buildDuplicateNameSet, buildNormalizedFields } from '@/stores/fieldStore';
+import { createFieldRow } from '@/__tests__/utils/testFactories';
 
 function resetFieldStore() {
   useEditorStore.getState().resetRows(12);
@@ -41,8 +41,8 @@ describe('fieldStore', () => {
   });
 
   it('删除字段时应同时清理文档内的字段引用', () => {
-    const idRow = { ...createEmptyRow(0), fieldName: 'id' };
-    const userIdRow = { ...createEmptyRow(1), fieldName: 'user_id' };
+    const idRow = createFieldRow('field-id');
+    const userIdRow = createFieldRow('field-user-id', { fieldName: 'user_id' });
     useEditorStore.setState({
       rows: [idRow, userIdRow],
       indexes: [
@@ -120,25 +120,22 @@ describe('fieldStore', () => {
 describe('fieldStore helpers', () => {
   it('应该识别重复字段名并规范化字段结构', () => {
     const rows = [
-      {
-        ...createEmptyRow(0),
+      createFieldRow('field-1', {
         fieldName: ' id ',
         fieldType: 'int',
         nullable: false,
-      },
-      {
-        ...createEmptyRow(1),
+      }),
+      createFieldRow('field-2', {
         fieldName: 'id',
         fieldType: 'varchar(20)',
         nullable: true,
         defaultKind: 'constant',
         defaultValue: 'abc',
-      },
-      {
-        ...createEmptyRow(2),
+      }),
+      createFieldRow('field-3', {
         fieldName: '',
         fieldType: '',
-      },
+      }),
     ];
 
     const duplicates = buildDuplicateNameSet(rows);

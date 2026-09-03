@@ -126,9 +126,8 @@ vi.mock('@/auth/AuthSessionProvider', () => {
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDocDocument: vi.fn(() => ({
     doc: null,
-    synced: false,
+    scope: null,
     localSynced: true,
-    connectionState: 'idle',
     retry: vi.fn(),
   })),
 }));
@@ -189,9 +188,8 @@ const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
   vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
   vi.mocked(useWorkspaceYDocDocument).mockReturnValue({
     doc,
-    synced: false,
+    scope: signedInIdentity.workspaceScope,
     localSynced,
-    connectionState: 'connecting',
     retry: vi.fn(),
   });
 };
@@ -703,11 +701,10 @@ describe('usePersistedState', () => {
     vi.mocked(useAuthIdentity).mockReturnValue(signedOutIdentity);
     vi.mocked(useWorkspaceYDocDocument).mockReturnValue({
       doc: null,
-      synced: false,
+      scope: null,
       localSynced: true,
-      connectionState: 'idle',
       retry: vi.fn(),
-    } as any);
+    });
     window.history.replaceState({}, '', '/');
   });
 
@@ -1265,10 +1262,7 @@ describe('usePersistedState', () => {
       activeSource: {
         kind: 'saved_table',
         normalizedName: 'users',
-        tableName: 'Users',
-        baseSignature: '{"table":"users"}',
       },
-      activeState: null,
       updatedAt: Date.now(),
     });
 
@@ -1625,10 +1619,7 @@ describe('usePersistedState', () => {
       activeSource: {
         kind: 'saved_table',
         normalizedName: 'missing',
-        tableName: 'Missing',
-        baseSignature: '{"table":"missing"}',
       },
-      activeState: null,
       updatedAt: Date.now(),
     });
 
@@ -1642,13 +1633,11 @@ describe('usePersistedState', () => {
     });
   });
 
-  it('会话为 default draft 且存在草稿实体时应优先恢复实体状态', async () => {
-    const sessionState = createState('session_active_state');
+  it('会话为 default draft 且存在草稿实体时应恢复实体状态', async () => {
     const globalState = createState('global_backup_state');
     await writeDraft(DEFAULT_DRAFT_ID, { state: globalState, updatedAt: Date.now() });
     await writeWorkspaceSession({
       activeSource: { kind: 'draft', draftId: 'default' },
-      activeState: sessionState,
       updatedAt: Date.now(),
     });
 
@@ -1662,12 +1651,11 @@ describe('usePersistedState', () => {
     });
   });
 
-  it('会话为 default draft 且无 activeState 时应回退到 globalDraft', async () => {
+  it('会话指向缺失草稿时应回退到 globalDraft', async () => {
     const globalState = createState('global_fallback_state');
     await writeDraft(DEFAULT_DRAFT_ID, { state: globalState, updatedAt: Date.now() });
     await writeWorkspaceSession({
-      activeSource: { kind: 'draft', draftId: 'default' },
-      activeState: null,
+      activeSource: { kind: 'draft', draftId: 'missing' },
       updatedAt: Date.now(),
     });
 

@@ -1,6 +1,7 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type * as ReactFlowModule from '@xyflow/react';
+import { createFieldRow } from '@/__tests__/utils/testFactories';
 import type { ErEdgeData } from '@/components/App/er-diagram/types';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { buildSavedTableBatchImportPlan } from '@/utils/savedTableBatchImport';
@@ -34,7 +35,7 @@ const original: SavedTableRecord = {
     tableComment: '',
     dbType: 'mysql',
     sqlFormatMode: 'compact',
-    rows: [{ id: 'id', fieldName: 'id', fieldType: 'bigint', nullable: false }],
+    rows: [createFieldRow('id', { fieldName: 'id', fieldType: 'bigint', nullable: false })],
     indexes: [],
     addCount: 1,
     authInput: '',

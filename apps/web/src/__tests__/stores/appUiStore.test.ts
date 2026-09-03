@@ -41,7 +41,7 @@ describe('appUiStore', () => {
   });
 
   it('集中管理全局工具弹窗及其目标', () => {
-    const target = { normalizedName: 'users', name: 'Users' };
+    const target = { tableId: 'table-users', normalizedName: 'users', name: 'Users' };
     const state = useAppUiStore.getState();
 
     state.setShowFireworks(true);

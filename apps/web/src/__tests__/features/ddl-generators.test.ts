@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { buildDDL, buildDCL, buildOracleSynonyms, buildViewDDL } from '@ddlbuilder/ddl-core';
-import type { NormalizedField, IndexDefinition } from '@ddlbuilder/shared-types';
+import type {
+  IndexDefinition,
+  MysqlPartitionConfig,
+  NormalizedField,
+} from '@ddlbuilder/shared-types';
 
 describe('DDL Generation Functions', () => {
   const sampleFields: NormalizedField[] = [
@@ -437,9 +441,9 @@ describe('DDL Generation Functions', () => {
         type: 'RANGE' as const,
         columns: ['created_at'],
         partitions: [
-          { name: 'p2023', value: '2024' },
-          { name: 'p2024', value: '2025' },
-          { name: 'pmax', value: 'MAXVALUE' },
+          { id: 'partition-p2023', name: 'p2023', value: '2024' },
+          { id: 'partition-p2024', name: 'p2024', value: '2025' },
+          { id: 'partition-pmax', name: 'pmax', value: 'MAXVALUE' },
         ],
       };
 
@@ -464,8 +468,8 @@ describe('DDL Generation Functions', () => {
         type: 'LIST' as const,
         columns: ['status'],
         partitions: [
-          { name: 'p_active', value: '1, 2' },
-          { name: 'p_inactive', value: '0, -1' },
+          { id: 'partition-active', name: 'p_active', value: '1, 2' },
+          { id: 'partition-inactive', name: 'p_inactive', value: '0, -1' },
         ],
       };
 
@@ -552,7 +556,7 @@ describe('DDL Generation Functions', () => {
         enabled: true,
         type: 'RANGE COLUMNS' as const,
         columns: ['created_at'],
-        partitions: [{ name: 'pmax', value: 'MAXVALUE' }],
+        partitions: [{ id: 'partition-pmax', name: 'pmax', value: 'MAXVALUE' }],
       };
 
       const result = buildDDL({
@@ -571,10 +575,10 @@ describe('DDL Generation Functions', () => {
     it('should ignore unsupported partition type', () => {
       const partitionConfig = {
         enabled: true,
-        type: 'UNKNOWN' as any,
+        type: 'UNKNOWN',
         columns: ['id'],
         partitions: [],
-      };
+      } as unknown as MysqlPartitionConfig;
 
       const result = buildDDL({
         dbType: 'mysql',

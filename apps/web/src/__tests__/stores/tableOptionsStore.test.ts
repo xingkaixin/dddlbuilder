@@ -113,26 +113,26 @@ describe('tableOptionsStore', () => {
 
     state.setHivePartitionConfig({
       enabled: true,
-      columns: [{ name: 'dt', type: 'string' }],
+      columns: [{ name: 'dt', type: 'string', comment: '' }],
     });
 
     let current = useEditorStore.getState();
     expect(current.tableMiscConfig.partitions).toEqual({
       enabled: true,
-      columns: [{ name: 'dt', type: 'string' }],
+      columns: [{ name: 'dt', type: 'string', comment: '' }],
     });
 
     state.setHivePartitionConfig((prev) => ({
       ...prev,
-      columns: [...prev.columns, { name: 'region', type: 'string' }],
+      columns: [...prev.columns, { name: 'region', type: 'string', comment: '' }],
     }));
 
     current = useEditorStore.getState();
     expect(current.tableMiscConfig.partitions).toEqual({
       enabled: true,
       columns: [
-        { name: 'dt', type: 'string' },
-        { name: 'region', type: 'string' },
+        { name: 'dt', type: 'string', comment: '' },
+        { name: 'region', type: 'string', comment: '' },
       ],
     });
   });

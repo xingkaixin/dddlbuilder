@@ -24,7 +24,7 @@ describe('Field Processing Functions', () => {
     it('should normalize valid fields', () => {
       const input: FieldRow[] = [
         {
-          order: 1,
+          id: 'field-1',
           fieldName: 'id',
           fieldType: 'int',
           fieldComment: 'Primary key',
@@ -34,7 +34,7 @@ describe('Field Processing Functions', () => {
           onUpdate: 'none',
         },
         {
-          order: 2,
+          id: 'field-2',
           fieldName: 'name',
           fieldType: 'varchar(255)',
           fieldComment: 'Name field',
@@ -71,7 +71,7 @@ describe('Field Processing Functions', () => {
     it('should filter out fields with empty name or type', () => {
       const input: FieldRow[] = [
         {
-          order: 1,
+          id: 'field-1',
           fieldName: 'id',
           fieldType: 'int',
           fieldComment: 'Valid field',
@@ -81,7 +81,7 @@ describe('Field Processing Functions', () => {
           onUpdate: 'none',
         },
         {
-          order: 2,
+          id: 'field-2',
           fieldName: '',
           fieldType: 'varchar(255)',
           fieldComment: 'Empty name',
@@ -91,7 +91,7 @@ describe('Field Processing Functions', () => {
           onUpdate: 'none',
         },
         {
-          order: 3,
+          id: 'field-3',
           fieldName: 'invalid',
           fieldType: '',
           fieldComment: 'Empty type',
@@ -101,7 +101,7 @@ describe('Field Processing Functions', () => {
           onUpdate: 'none',
         },
         {
-          order: 4,
+          id: 'field-4',
           fieldName: 'valid',
           fieldType: 'text',
           fieldComment: 'Another valid field',
@@ -121,7 +121,7 @@ describe('Field Processing Functions', () => {
     it('should handle whitespace trimming', () => {
       const input: FieldRow[] = [
         {
-          order: 1,
+          id: 'field-1',
           fieldName: '  name  ',
           fieldType: '  varchar(255)  ',
           fieldComment: '  comment  ',

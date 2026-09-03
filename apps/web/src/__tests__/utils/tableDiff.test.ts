@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { diffPersistedState, hasTableChanges } from '@ddlbuilder/ddl-core';
 import type {
   FieldDefaultKind,
+  FieldRow,
   FieldOnUpdate,
   PersistedState,
   IndexDefinition,
@@ -9,10 +10,12 @@ import type {
 
 function createState(overrides: Partial<PersistedState> = {}): PersistedState {
   return {
+    schemaName: '',
     tableName: 'users',
     tableComment: '',
     dbType: 'mysql',
     rows: [],
+    sqlFormatMode: 'compact',
     addCount: 10,
     indexes: [],
     authInput: '',
@@ -37,9 +40,9 @@ function createRow({
   defaultKind?: FieldDefaultKind;
   defaultValue?: string;
   onUpdate?: FieldOnUpdate;
-}) {
+}): FieldRow {
   return {
-    order: 1,
+    id: name.toLowerCase() || 'empty-field',
     fieldName: name,
     fieldType: type,
     fieldComment: comment,
@@ -404,12 +407,12 @@ describe('diffPersistedState', () => {
 
     it('主键变更检测', () => {
       const old = createState({
-        indexes: [createIndex({ isPrimary: true, name: 'pk_users' })],
+        indexes: [createIndex({ kind: 'primary', name: 'pk_users' })],
       });
       const newState = createState({
         indexes: [
           createIndex({
-            isPrimary: true,
+            kind: 'primary',
             name: 'pk_users',
             fields: [
               { name: 'id', direction: 'ASC' },

@@ -1,9 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
+import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shared-types';
+import type {
+  GeneratedField,
+  GeneratedIndex,
+  GeneratedTableSchema,
+} from '@ddlbuilder/shared-types/ai-generate';
 import { diffPersistedState, generateAlterDDL } from '@ddlbuilder/ddl-core';
 import { buildAISchemaChanges, buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 import { applyAISchemaChanges } from '@/components/App/aiSchemaPatchTransition';
+
+function toGeneratedField(row: FieldRow): GeneratedField {
+  return {
+    id: row.id,
+    fieldName: row.fieldName,
+    fieldType: row.fieldType,
+    fieldComment: row.fieldComment,
+    nullable: row.nullable,
+    defaultKind: row.defaultKind ?? 'none',
+    defaultValue: row.defaultValue,
+    onUpdate: row.onUpdate,
+  };
+}
+
+function toGeneratedIndex(index: IndexDefinition): GeneratedIndex {
+  return {
+    name: index.name,
+    fields: index.fields,
+    unique: index.kind !== 'index',
+  };
+}
 
 function createBaseState(): PersistedState {
   return {
@@ -16,7 +41,6 @@ function createBaseState(): PersistedState {
     rows: [
       {
         id: 'field-id',
-        order: 1,
         fieldName: 'id',
         fieldType: 'bigint',
         fieldComment: 'ID',
@@ -27,7 +51,6 @@ function createBaseState(): PersistedState {
       },
       {
         id: 'field-phone',
-        order: 2,
         fieldName: 'phone',
         fieldType: 'varchar(32)',
         fieldComment: '手机号',
@@ -75,7 +98,11 @@ describe('aiSchemaChanges', () => {
                 },
               ];
         const candidate = buildPersistedStateFromAISchema(
-          { tableName: baseState.tableName, tableComment: baseState.tableComment, fields: rows },
+          {
+            tableName: baseState.tableName,
+            tableComment: baseState.tableComment,
+            fields: rows.map(toGeneratedField),
+          },
           { baseState },
         );
         const changes = buildAISchemaChanges(baseState, candidate);
@@ -96,8 +123,8 @@ describe('aiSchemaChanges', () => {
         {
           tableName: baseState.tableName,
           tableComment: baseState.tableComment,
-          fields: baseState.rows,
-          indexes: [upper, lower],
+          fields: baseState.rows.map(toGeneratedField),
+          indexes: [upper, lower].map(toGeneratedIndex),
         },
         { baseState },
       );
@@ -130,7 +157,10 @@ describe('aiSchemaChanges', () => {
         {
           tableName: baseState.tableName,
           tableComment: baseState.tableComment,
-          fields: baseState.rows.map(({ id: _id, enumMeta: _meta, ...row }) => row),
+          fields: baseState.rows.map((row) => {
+            const { id: _id, ...field } = toGeneratedField(row);
+            return field;
+          }),
         },
         { baseState },
       );
@@ -147,10 +177,7 @@ describe('aiSchemaChanges', () => {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
       fields: [
-        ...baseState.rows.map(({ enumMeta: _enumMeta, ...row }) => ({
-          ...row,
-          defaultKind: row.defaultKind ?? 'none',
-        })),
+        ...baseState.rows.map(toGeneratedField),
         {
           fieldName: 'email',
           fieldType: 'varchar(255)',
@@ -159,7 +186,7 @@ describe('aiSchemaChanges', () => {
           defaultKind: 'none',
         },
       ],
-      indexes: baseState.indexes.map((index) => ({ ...index, unique: index.kind !== 'index' })),
+      indexes: baseState.indexes.map(toGeneratedIndex),
     };
     const candidate = buildPersistedStateFromAISchema(schema, { baseState });
     const changes = buildAISchemaChanges(baseState, candidate);
@@ -176,12 +203,11 @@ describe('aiSchemaChanges', () => {
       const schema: GeneratedTableSchema = {
         tableName: baseState.tableName,
         tableComment: baseState.tableComment,
-        fields: baseState.rows.map(({ enumMeta: _enumMeta, ...row }) => ({
-          ...row,
+        fields: baseState.rows.map((row) => ({
+          ...toGeneratedField(row),
           fieldName: row.fieldName === 'phone' && operation === 'rename' ? 'mobile' : row.fieldName,
           fieldType:
             row.fieldName === 'phone' && operation === 'modify' ? 'varchar(64)' : row.fieldType,
-          defaultKind: row.defaultKind ?? 'none',
         })),
         indexes: [],
       };
@@ -202,7 +228,7 @@ describe('aiSchemaChanges', () => {
       {
         tableName: 'users',
         tableComment: '',
-        fields: [{ ...baseState.rows[1], id, defaultKind: 'none' }],
+        fields: [{ ...toGeneratedField(baseState.rows[1]), id }],
       },
       { baseState },
     );
@@ -224,9 +250,8 @@ describe('aiSchemaChanges', () => {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
       fields: baseState.rows.map((row) => ({
-        ...row,
+        ...toGeneratedField(row),
         fieldName: row.fieldName === 'phone' ? 'mobile' : row.fieldName,
-        defaultKind: row.defaultKind ?? 'none',
       })),
       indexes: [],
     };
@@ -251,11 +276,15 @@ describe('aiSchemaChanges', () => {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
       fields: baseState.rows.map((row) => ({
-        ...row,
+        ...toGeneratedField(row),
         fieldName: row.fieldName === 'phone' ? 'mobile' : row.fieldName,
-        defaultKind: row.defaultKind ?? 'none',
       })),
-      indexes: [{ ...baseState.indexes[0], fields: [{ name: 'mobile', direction: 'ASC' }] }],
+      indexes: [
+        {
+          ...toGeneratedIndex(baseState.indexes[0]),
+          fields: [{ name: 'mobile', direction: 'ASC' }],
+        },
+      ],
     };
     const candidate = buildPersistedStateFromAISchema(schema, { baseState });
     const changes = buildAISchemaChanges(baseState, candidate);
@@ -280,9 +309,8 @@ describe('aiSchemaChanges', () => {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
       fields: baseState.rows.map((row) => ({
-        ...row,
+        ...toGeneratedField(row),
         fieldName: row.fieldName === 'phone' ? 'id' : 'phone',
-        defaultKind: row.defaultKind ?? 'none',
       })),
       indexes: [],
     };
@@ -304,12 +332,8 @@ describe('aiSchemaChanges', () => {
     const schema: GeneratedTableSchema = {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
-      fields: baseState.rows.map((row) => ({ ...row, defaultKind: row.defaultKind ?? 'none' })),
-      indexes: baseState.indexes.map(({ name, fields, kind }) => ({
-        name,
-        fields,
-        unique: kind !== 'index',
-      })),
+      fields: baseState.rows.map(toGeneratedField),
+      indexes: baseState.indexes.map(toGeneratedIndex),
     };
     const candidate = buildPersistedStateFromAISchema(schema, { baseState });
     expect(candidate.indexes).toEqual(baseState.indexes);
@@ -318,7 +342,7 @@ describe('aiSchemaChanges', () => {
   it.each([true, false])('preserves a named composite primary key (returned=%s)', (returned) => {
     const baseState = createBaseState();
     baseState.dbType = 'postgresql';
-    const primary = {
+    const primary: IndexDefinition = {
       id: 'primary',
       name: 'users_pkey',
       kind: 'primary',
@@ -333,8 +357,8 @@ describe('aiSchemaChanges', () => {
       {
         tableName: baseState.tableName,
         tableComment: baseState.tableComment,
-        fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: true })),
-        indexes: returned ? [primary] : [],
+        fields: baseState.rows.map((row) => ({ ...toGeneratedField(row), isPrimaryKey: true })),
+        indexes: returned ? [toGeneratedIndex(primary)] : [],
       },
       { baseState },
     );
@@ -358,8 +382,11 @@ describe('aiSchemaChanges', () => {
       {
         tableName: baseState.tableName,
         tableComment: baseState.tableComment,
-        fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: row.fieldName === 'phone' })),
-        indexes: baseState.indexes.map((index) => ({ ...index, unique: index.kind !== 'index' })),
+        fields: baseState.rows.map((row) => ({
+          ...toGeneratedField(row),
+          isPrimaryKey: row.fieldName === 'phone',
+        })),
+        indexes: baseState.indexes.map(toGeneratedIndex),
       },
       { baseState },
     );
@@ -379,8 +406,11 @@ describe('aiSchemaChanges', () => {
       {
         tableName: baseState.tableName,
         tableComment: baseState.tableComment,
-        fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: row.fieldName === 'phone' })),
-        indexes: baseState.indexes.map((index) => ({ ...index, unique: index.kind !== 'index' })),
+        fields: baseState.rows.map((row) => ({
+          ...toGeneratedField(row),
+          isPrimaryKey: row.fieldName === 'phone',
+        })),
+        indexes: baseState.indexes.map(toGeneratedIndex),
       },
       { baseState },
     );
@@ -396,7 +426,10 @@ describe('aiSchemaChanges', () => {
       {
         tableName: baseState.tableName,
         tableComment: baseState.tableComment,
-        fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: row.fieldName === 'id' })),
+        fields: baseState.rows.map((row) => ({
+          ...toGeneratedField(row),
+          isPrimaryKey: row.fieldName === 'id',
+        })),
         indexes: [{ name: 'users_pkey', unique: true, fields: [{ name: 'id', direction: 'ASC' }] }],
       },
       { baseState },
@@ -421,7 +454,7 @@ describe('aiSchemaChanges', () => {
       {
         tableName: baseState.tableName,
         tableComment: baseState.tableComment,
-        fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: false })),
+        fields: baseState.rows.map((row) => ({ ...toGeneratedField(row), isPrimaryKey: false })),
         indexes: [],
       },
       { baseState },
@@ -498,7 +531,7 @@ describe('aiSchemaChanges', () => {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
       fields: [
-        ...baseState.rows,
+        ...baseState.rows.map(toGeneratedField),
         {
           fieldName: 'email',
           fieldType: 'varchar(255)',
@@ -507,7 +540,7 @@ describe('aiSchemaChanges', () => {
           defaultKind: 'none',
         },
       ],
-      indexes: baseState.indexes.map((index) => ({ ...index, unique: index.kind !== 'index' })),
+      indexes: baseState.indexes.map(toGeneratedIndex),
     };
     const candidate = buildPersistedStateFromAISchema(schema, { baseState });
     const changes = buildAISchemaChanges(baseState, candidate);
@@ -539,14 +572,14 @@ describe('aiSchemaChanges', () => {
         ],
         indexes: [],
       },
-      { dbType: 'postgresql', sqlFormatMode: 'expanded' },
+      { dbType: 'postgresql', sqlFormatMode: 'aligned' },
     );
 
     expect(state).toMatchObject({
       schemaName: 'audit',
       tableName: 'events',
       dbType: 'postgresql',
-      sqlFormatMode: 'expanded',
+      sqlFormatMode: 'aligned',
       rows: [expect.objectContaining({ fieldName: 'id' })],
       indexes: [
         expect.objectContaining({

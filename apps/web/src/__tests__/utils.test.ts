@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { cn } from '@/lib/utils';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import type { IndexDefinition } from '@ddlbuilder/shared-types';
+import type { DatabaseType, FieldRow, IndexDefinition } from '@ddlbuilder/shared-types';
 import {
   createEmptyRow,
   getUiDefaultKindOptions,
@@ -16,6 +16,10 @@ import {
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
 } from '@ddlbuilder/shared-types';
+
+const sanitizeRuntimeIndexes = (value: unknown) =>
+  sanitizeIndexesForPersist(value as IndexDefinition[]);
+const unknownDatabaseType = 'unknown_db' as unknown as DatabaseType;
 
 describe('Utils', () => {
   describe('cn function', () => {
@@ -197,12 +201,12 @@ describe('Utils', () => {
         name: 'uq_email',
         fields: [{ name: 'email', direction: 'ASC' as const }],
         kind: 'unique_constraint',
-      };
+      } satisfies IndexDefinition;
       expect(sanitizeIndexesForPersist([constraint])).toEqual([constraint]);
     });
 
     it('应该正确清理有效的索引数据', () => {
-      const indexes: IndexDefinition[] = [
+      const indexes = [
         {
           id: '1',
           name: 'idx_name',
@@ -212,7 +216,7 @@ describe('Utils', () => {
           ],
           kind: 'unique_index',
         },
-      ];
+      ] satisfies IndexDefinition[];
 
       const result = sanitizeIndexesForPersist(indexes);
 
@@ -229,7 +233,7 @@ describe('Utils', () => {
     });
 
     it('应该处理索引名称中的空格和空值', () => {
-      const indexes: IndexDefinition[] = [
+      const indexes = [
         {
           id: '1',
           name: ' idx_name ',
@@ -250,14 +254,14 @@ describe('Utils', () => {
         },
       ];
 
-      const result = sanitizeIndexesForPersist(indexes);
+      const result = sanitizeRuntimeIndexes(indexes);
 
       expect(result).toHaveLength(1);
       expect(result[0].name).toBe('idx_name');
     });
 
     it('应该处理字段名称中的空格和空值', () => {
-      const indexes: IndexDefinition[] = [
+      const indexes = [
         {
           id: '1',
           name: 'idx_name',
@@ -270,7 +274,7 @@ describe('Utils', () => {
         },
       ];
 
-      const result = sanitizeIndexesForPersist(indexes);
+      const result = sanitizeRuntimeIndexes(indexes);
 
       expect(result).toHaveLength(1);
       expect(result[0].fields).toEqual([
@@ -281,22 +285,22 @@ describe('Utils', () => {
     });
 
     it('应该为无效的排序方向设置默认值 ASC', () => {
-      const indexes: IndexDefinition[] = [
+      const indexes = [
         {
           id: '1',
           name: 'idx_name',
           fields: [
             { name: 'field1', direction: 'ASC' },
             { name: 'field2', direction: 'DESC' },
-            { name: 'field3', direction: 'INVALID' as any },
-            { name: 'field4', direction: null as any },
-            { name: 'field5', direction: undefined as any },
+            { name: 'field3', direction: 'INVALID' },
+            { name: 'field4', direction: null },
+            { name: 'field5', direction: undefined },
           ],
           kind: 'index',
         },
       ];
 
-      const result = sanitizeIndexesForPersist(indexes);
+      const result = sanitizeRuntimeIndexes(indexes);
 
       expect(result).toHaveLength(1);
       expect(result[0].fields).toEqual([
@@ -319,7 +323,7 @@ describe('Utils', () => {
     );
 
     it('应该过滤掉没有字段的索引', () => {
-      const indexes: IndexDefinition[] = [
+      const indexes = [
         {
           id: '1',
           name: 'valid_index',
@@ -332,7 +336,7 @@ describe('Utils', () => {
           fields: [],
           kind: 'index',
         },
-      ];
+      ] satisfies IndexDefinition[];
 
       const result = sanitizeIndexesForPersist(indexes);
 
@@ -341,35 +345,35 @@ describe('Utils', () => {
     });
 
     it('应该在 fields 为 null 时抛出错误', () => {
-      const indexes: IndexDefinition[] = [
+      const indexes = [
         {
           id: '1',
           name: 'null_fields',
-          fields: null as any,
+          fields: null,
           kind: 'index',
         },
       ];
 
-      expect(() => sanitizeIndexesForPersist(indexes)).toThrow(
+      expect(() => sanitizeRuntimeIndexes(indexes)).toThrow(
         "Cannot read properties of null (reading 'map')",
       );
     });
 
     it('应该处理复杂的边界情况', () => {
-      const indexes: IndexDefinition[] = [
+      const indexes = [
         {
           id: '1',
           name: '  mixed_index  ',
           fields: [
             { name: '  valid_field  ', direction: 'ASC' },
             { name: '', direction: 'DESC' },
-            { name: null, direction: 'INVALID' as any },
+            { name: null, direction: 'INVALID' },
           ],
           kind: 'unique_index',
         },
       ];
 
-      const result = sanitizeIndexesForPersist(indexes);
+      const result = sanitizeRuntimeIndexes(indexes);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
@@ -619,17 +623,17 @@ describe('Utils', () => {
 
   describe('Unknown database types', () => {
     it('应该对未知数据库类型不支持自增', () => {
-      const result = getUiDefaultKindOptions('unknown_db' as any, 'int');
+      const result = getUiDefaultKindOptions(unknownDatabaseType, 'int');
       expect(result).toEqual(['none', 'constant', 'expression']); // 不包含 auto_increment
     });
 
     it('应该对未知数据库类型不支持当前时间默认值', () => {
-      const result = getUiDefaultKindOptions('unknown_db' as any, 'timestamp');
+      const result = getUiDefaultKindOptions(unknownDatabaseType, 'timestamp');
       expect(result).toEqual(['none', 'constant', 'expression']); // 不包含 current_timestamp
     });
 
     it('应该对未知数据库类型不支持当前时间更新', () => {
-      const result = getUiOnUpdateOptions('unknown_db' as any, 'timestamp');
+      const result = getUiOnUpdateOptions(unknownDatabaseType, 'timestamp');
       expect(result).toEqual(['none']); // 不包含 current_timestamp
     });
   });
@@ -673,7 +677,7 @@ describe('Utils', () => {
     });
 
     it('returns false for unknown database', () => {
-      expect(isReservedKeyword('unknown' as any, 'select')).toBe(false);
+      expect(isReservedKeyword(unknownDatabaseType, 'select')).toBe(false);
     });
 
     it('handles whitespace in keyword', () => {
@@ -775,7 +779,7 @@ describe('Utils', () => {
     it('normalizes field rows to NormalizedField', () => {
       const rows: FieldRow[] = [
         {
-          order: 1,
+          id: 'id',
           fieldName: '  id  ',
           fieldType: '  bigint  ',
           fieldComment: '  PK  ',
@@ -785,7 +789,7 @@ describe('Utils', () => {
           onUpdate: 'none',
         },
         {
-          order: 2,
+          id: 'name',
           fieldName: 'name',
           fieldType: 'varchar(255)',
           fieldComment: '',
@@ -824,7 +828,7 @@ describe('Utils', () => {
     it('filters out rows without name or type', () => {
       const rows: FieldRow[] = [
         {
-          order: 1,
+          id: 'missing-name',
           fieldName: '',
           fieldType: 'int',
           fieldComment: '',
@@ -834,7 +838,7 @@ describe('Utils', () => {
           onUpdate: 'none',
         },
         {
-          order: 2,
+          id: 'missing-type',
           fieldName: 'valid',
           fieldType: '',
           fieldComment: '',
@@ -844,7 +848,7 @@ describe('Utils', () => {
           onUpdate: 'none',
         },
         {
-          order: 3,
+          id: 'good',
           fieldName: 'good',
           fieldType: 'text',
           fieldComment: '',
@@ -863,7 +867,7 @@ describe('Utils', () => {
     it('preserves enumMeta if present', () => {
       const rows: FieldRow[] = [
         {
-          order: 1,
+          id: 'status',
           fieldName: 'status',
           fieldType: 'char(1)',
           fieldComment: '状态',

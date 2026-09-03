@@ -83,7 +83,18 @@ describe('useSchemaApplyActions', () => {
       tableComment: '',
       indexes: [],
       authObjects: [],
-      fields: [{ name: 'id', type: 'INT', comment: '', nullable: true }],
+      fields: [
+        {
+          name: 'id',
+          type: 'INT',
+          comment: '',
+          nullable: true,
+          defaultKind: 'none',
+          defaultValue: '',
+          onUpdate: 'none',
+        },
+      ],
+      foreignKeys: [],
     };
     act(() => hook.result.current.handleImport(parsed, 'mysql'));
     const imported = actions.replaceCurrentState.mock.calls[0][0] as PersistedState;
@@ -98,6 +109,7 @@ describe('useSchemaApplyActions', () => {
       tableComment: '证券公司评级1',
       fields: [],
       indexes: [],
+      foreignKeys: [],
       authObjects: [],
       tableMiscConfig: {
         enabled: true,
@@ -396,7 +408,7 @@ describe('useSchemaApplyActions', () => {
 
   it('AI 生成结果始终交给新草稿入口', () => {
     const { hook, actions } = createHook(
-      createState({ dbType: 'postgresql', sqlFormatMode: 'pretty' }),
+      createState({ dbType: 'postgresql', sqlFormatMode: 'aligned' }),
     );
 
     act(() => {
@@ -421,7 +433,7 @@ describe('useSchemaApplyActions', () => {
       expect.objectContaining({
         tableName: 'ai_table',
         dbType: 'postgresql',
-        sqlFormatMode: 'pretty',
+        sqlFormatMode: 'aligned',
         rows: [expect.objectContaining({ fieldName: 'id' })],
       }),
     );

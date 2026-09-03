@@ -212,13 +212,15 @@ describe('useFieldTemplates', () => {
       await flushPromises();
     });
 
-    let fetched: Awaited<ReturnType<typeof result.current.fetchTemplate>>;
+    const fetched: {
+      value: Awaited<ReturnType<typeof result.current.fetchTemplate>>;
+    } = { value: null };
     await act(async () => {
-      fetched = await result.current.fetchTemplate(templateId);
+      fetched.value = await result.current.fetchTemplate(templateId);
     });
 
-    expect(fetched?.name).toBe('Single');
-    expect(fetched?.fields).toHaveLength(1);
+    expect(fetched.value?.name).toBe('Single');
+    expect(fetched.value?.fields).toHaveLength(1);
   });
 
   it('returns null for non-existent template', async () => {
@@ -228,12 +230,14 @@ describe('useFieldTemplates', () => {
       await flushPromises();
     });
 
-    let fetched: Awaited<ReturnType<typeof result.current.fetchTemplate>>;
+    const fetched: {
+      value: Awaited<ReturnType<typeof result.current.fetchTemplate>>;
+    } = { value: null };
     await act(async () => {
-      fetched = await result.current.fetchTemplate('missing');
+      fetched.value = await result.current.fetchTemplate('missing');
     });
 
-    expect(fetched).toBeNull();
+    expect(fetched.value).toBeNull();
   });
 
   it('updates a template', async () => {
@@ -279,6 +283,7 @@ describe('useFieldTemplates', () => {
     await act(async () => {
       const res = await result.current.update('missing', { name: 'New' });
       expect(res.ok).toBe(false);
+      if (res.ok) throw new Error('Expected update to fail');
       expect(res.reason).toBe('not_found');
     });
   });
@@ -293,6 +298,7 @@ describe('useFieldTemplates', () => {
     await act(async () => {
       const res = await result.current.rename('missing', 'New Name');
       expect(res.ok).toBe(false);
+      if (res.ok) throw new Error('Expected rename to fail');
       expect(res.reason).toBe('not_found');
     });
   });
@@ -307,6 +313,7 @@ describe('useFieldTemplates', () => {
     await act(async () => {
       const res = await result.current.duplicate('missing');
       expect(res.ok).toBe(false);
+      if (res.ok) throw new Error('Expected duplicate to fail');
       expect(res.reason).toBe('not_found');
     });
   });

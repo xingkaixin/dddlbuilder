@@ -5,7 +5,7 @@ import { useAISchemaPatchFlow } from '@/components/App/hooks/useAISchemaPatchFlo
 import { buildAISchemaChanges } from '@/utils/aiSchemaChanges';
 
 const row = (fieldName: string, order: number): FieldRow => ({
-  order,
+  id: `field-${order}`,
   fieldName,
   fieldType: 'bigint',
   fieldComment: '',
