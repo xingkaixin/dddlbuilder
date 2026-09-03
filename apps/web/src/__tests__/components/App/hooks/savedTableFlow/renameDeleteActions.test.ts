@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createSavedTableMetadata } from '@/__tests__/utils/testFactories';
 import { useRenameDeleteActions } from '@/components/App/hooks/savedTableFlow/renameDeleteActions';
 
 describe('useRenameDeleteActions', () => {
@@ -57,23 +58,18 @@ describe('useRenameDeleteActions', () => {
     );
 
   it('handleOpenRenameDialog sets dialog data', () => {
+    const target = createSavedTableMetadata('table-old', {
+      name: 'old',
+      normalizedName: 'old_norm',
+      updatedAt: 0,
+    });
     const { result } = getHook();
     act(() => {
-      result.current.handleOpenRenameDialog({
-        name: 'old',
-        normalizedName: 'old_norm',
-        updatedAt: 0,
-        preview: '',
-      });
+      result.current.handleOpenRenameDialog(target);
     });
     expect(renameDialog.openDialog).toHaveBeenCalledWith({
       name: 'old',
-      target: {
-        name: 'old',
-        normalizedName: 'old_norm',
-        updatedAt: 0,
-        preview: '',
-      },
+      target,
     });
   });
 
@@ -192,22 +188,17 @@ describe('useRenameDeleteActions', () => {
   });
 
   it('handleOpenDeleteDialog sets delete dialog data', () => {
+    const target = createSavedTableMetadata('table-old', {
+      name: 'old',
+      normalizedName: 'old_norm',
+      updatedAt: 0,
+    });
     const { result } = getHook();
     act(() => {
-      result.current.handleOpenDeleteDialog({
-        name: 'old',
-        normalizedName: 'old_norm',
-        updatedAt: 0,
-        preview: '',
-      });
+      result.current.handleOpenDeleteDialog(target);
     });
     expect(deleteDialog.openDialog).toHaveBeenCalledWith({
-      target: {
-        name: 'old',
-        normalizedName: 'old_norm',
-        updatedAt: 0,
-        preview: '',
-      },
+      target,
     });
   });
 

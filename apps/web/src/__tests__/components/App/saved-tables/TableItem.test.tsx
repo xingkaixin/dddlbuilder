@@ -15,6 +15,7 @@ vi.mock('@dnd-kit/core', () => ({
 }));
 
 const item: SavedTableSummary = {
+  tableId: 'users',
   normalizedName: 'users',
   name: 'users',
   dbType: 'mysql',

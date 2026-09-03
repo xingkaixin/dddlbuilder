@@ -1,4 +1,5 @@
 import { act, render, screen } from '@/__tests__/utils/test-utils';
+import { createFolderTreeNode } from '@/__tests__/utils/testFactories';
 import { SavedTablesDrawer } from '@/components/App/SavedTablesDrawer';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
@@ -78,23 +79,20 @@ describe('SavedTablesDrawer', () => {
   it('非法文件夹循环拖拽应阻断移动并显示反馈', async () => {
     const onMoveFolder = vi.fn();
     const folders: FolderTreeNode[] = [
-      {
-        id: 'root-a',
+      createFolderTreeNode('root-a', {
         name: 'A',
         parentId: undefined,
         order: 1,
         createdAt: Date.now(),
         children: [
-          {
-            id: 'child-a-1',
+          createFolderTreeNode('child-a-1', {
             name: 'A-1',
             parentId: 'root-a',
             order: 1,
             createdAt: Date.now(),
-            children: [],
-          },
+          }),
         ],
-      },
+      }),
     ];
 
     const items: SavedTableSummary[] = [
@@ -138,14 +136,12 @@ describe('SavedTablesDrawer', () => {
 
   it('应将表拖拽移动交给共享树控制逻辑', async () => {
     const onMoveToFolder = vi.fn().mockResolvedValue({ ok: true });
-    const folder: FolderTreeNode = {
-      id: 'folder-a',
+    const folder: FolderTreeNode = createFolderTreeNode('folder-a', {
       name: 'A',
       parentId: undefined,
       order: 1,
       createdAt: Date.now(),
-      children: [],
-    };
+    });
     const item: SavedTableSummary = {
       tableId: 'table-users',
       normalizedName: 'users',

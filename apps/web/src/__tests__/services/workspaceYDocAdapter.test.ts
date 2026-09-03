@@ -153,6 +153,7 @@ describe('workspaceYDocAdapter', () => {
       name: 'Folder',
       order: 0,
       createdAt: 1,
+      updatedAt: 1,
     });
     doc.transact(() => {
       upsertSavedTableInYDoc(doc, {
@@ -732,8 +733,20 @@ describe('workspaceYDocAdapter', () => {
       createdAt: 1,
       updatedAt: 1,
     });
-    upsertFolderInYDoc(left, { id: 'folder-a', name: 'Core', order: 1, createdAt: 1 });
-    upsertFolderInYDoc(left, { id: 'folder-b', name: 'Archive', order: 2, createdAt: 1 });
+    upsertFolderInYDoc(left, {
+      id: 'folder-a',
+      name: 'Core',
+      order: 1,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    upsertFolderInYDoc(left, {
+      id: 'folder-b',
+      name: 'Archive',
+      order: 2,
+      createdAt: 1,
+      updatedAt: 1,
+    });
     Y.applyUpdate(right, Y.encodeStateAsUpdate(left));
 
     upsertSavedTableInYDoc(left, {
@@ -752,6 +765,7 @@ describe('workspaceYDocAdapter', () => {
       parentId: 'folder-b',
       order: 1,
       createdAt: 1,
+      updatedAt: 1,
     });
 
     mergeDocs(left, right);

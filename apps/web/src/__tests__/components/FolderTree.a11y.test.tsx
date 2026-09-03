@@ -1,30 +1,28 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/__tests__/utils/test-utils';
+import { createFolderTreeNode } from '@/__tests__/utils/testFactories';
 import { FolderTree } from '@/components/App/FolderTree';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 
 const now = Date.now();
 
 const folders: FolderTreeNode[] = [
-  {
-    id: 'folder-root',
+  createFolderTreeNode('folder-root', {
     name: '业务表',
     parentId: undefined,
     order: 0,
     createdAt: now,
     tableCount: 1,
     children: [
-      {
-        id: 'folder-child',
+      createFolderTreeNode('folder-child', {
         name: '归档表',
         parentId: 'folder-root',
         order: 0,
         createdAt: now,
         tableCount: 1,
-        children: [],
-      },
+      }),
     ],
-  },
+  }),
 ];
 
 describe('FolderTree a11y', () => {

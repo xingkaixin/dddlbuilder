@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import { createFieldRow } from '@/__tests__/utils/testFactories';
 import type { WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 import {
   collectBootstrapDrafts,
@@ -17,18 +18,7 @@ const createState = (tableName: string): PersistedState => ({
   tableComment: '',
   dbType: 'mysql',
   sqlFormatMode: 'compact',
-  rows: [
-    {
-      order: 1,
-      fieldName: 'id',
-      fieldType: 'bigint',
-      fieldComment: '',
-      nullable: false,
-      defaultKind: 'none',
-      defaultValue: '',
-      onUpdate: 'none',
-    },
-  ],
+  rows: [createFieldRow('field-id', { fieldType: 'bigint', nullable: false })],
   addCount: 10,
   indexes: [],
   authInput: '',
@@ -42,10 +32,8 @@ const createDraft = (draftId: string, tableName: string, createdAt: number): Dra
 
 const createSession = (
   activeSource: WorkspaceSessionRecord['activeSource'],
-  activeState: PersistedState | null = null,
-): WorkspaceSessionRecord & { activeState: PersistedState | null } => ({
+): WorkspaceSessionRecord => ({
   activeSource,
-  activeState,
   updatedAt: 1,
 });
 
@@ -132,10 +120,7 @@ describe('workspacePersistence/hydration', () => {
     const draftState = createState('users_dirty');
     const result = resolveWorkspaceHydration({
       drafts: [],
-      session: createSession(
-        { kind: 'saved_table', normalizedName: 'users', tableName: 'Users', baseSignature: 'x' },
-        createState('users_session'),
-      ),
+      session: createSession({ kind: 'saved_table', normalizedName: 'users' }),
       findSavedTable: () => ({ ...savedTable, draftState }),
     });
 
@@ -144,13 +129,9 @@ describe('workspacePersistence/hydration', () => {
   });
 
   it('会话指向已保存表且无未保存草稿时应用已保存内容', () => {
-    const sessionState = createState('users_session');
     const result = resolveWorkspaceHydration({
       drafts: [],
-      session: createSession(
-        { kind: 'saved_table', normalizedName: 'users', tableName: 'Users', baseSignature: 'x' },
-        sessionState,
-      ),
+      session: createSession({ kind: 'saved_table', normalizedName: 'users' }),
       findSavedTable: () => savedTable,
     });
     expect(result.state).toEqual(savedTable.state);
@@ -159,10 +140,7 @@ describe('workspacePersistence/hydration', () => {
   it('会话指向的已保存表缺失时应回退到 initial draft', () => {
     const result = resolveWorkspaceHydration({
       drafts: [createDraft('default', 'fallback', 1)],
-      session: createSession(
-        { kind: 'saved_table', normalizedName: 'gone', tableName: 'Gone', baseSignature: 'x' },
-        createState('orphan'),
-      ),
+      session: createSession({ kind: 'saved_table', normalizedName: 'gone' }),
       findSavedTable: noSavedTable,
     });
 
@@ -173,17 +151,16 @@ describe('workspacePersistence/hydration', () => {
   it('会话草稿存在时应优先草稿实体状态', () => {
     const result = resolveWorkspaceHydration({
       drafts: [createDraft('a', 'entity', 1)],
-      session: createSession({ kind: 'draft', draftId: 'a' }, createState('session')),
+      session: createSession({ kind: 'draft', draftId: 'a' }),
       findSavedTable: noSavedTable,
     });
     expect(result.state?.tableName).toBe('entity');
   });
 
-  it('会话草稿缺失时不复活旧会话的内容副本', () => {
-    const sessionState = createState('session_only');
+  it('会话草稿缺失时应返回空状态', () => {
     const result = resolveWorkspaceHydration({
       drafts: [],
-      session: createSession({ kind: 'draft', draftId: 'gone' }, sessionState),
+      session: createSession({ kind: 'draft', draftId: 'gone' }),
       findSavedTable: noSavedTable,
     });
 

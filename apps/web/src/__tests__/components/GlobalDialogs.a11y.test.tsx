@@ -54,6 +54,8 @@ vi.mock('@/components/App/MockDataDialog', () => ({
 function createProps(): Parameters<typeof GlobalDialogs>[0] {
   return {
     clearDialog: {
+      open: false,
+      onOpenChange: vi.fn(),
       onCancel: vi.fn(),
       onConfirm: vi.fn(),
     },
@@ -124,6 +126,7 @@ function createProps(): Parameters<typeof GlobalDialogs>[0] {
       onRestore: vi.fn(),
       onDelete: vi.fn(),
     } as any,
+    timelinePlayerProps: null,
     reviewHistoryDialogProps: {
       records: [],
       onDelete: vi.fn(),

@@ -34,7 +34,7 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
   viewCreateOrReplace: true,
   rows: [
     {
-      order: 1,
+      id: 'field-id',
       fieldName: 'id',
       fieldType: 'bigint',
       fieldComment: '主键',
@@ -44,7 +44,7 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
       onUpdate: 'none',
     },
     {
-      order: 2,
+      id: 'field-blank',
       fieldName: '  ',
       fieldType: 'varchar(64)',
       fieldComment: '',
@@ -175,11 +175,11 @@ describe('workspaceYDocAdapter records', () => {
       getStateForWorkspaceSource(doc, { kind: 'draft', draftId: DEFAULT_DRAFT_ID })?.tableName,
     ).toBe('users');
     expect(
-      getStateForWorkspaceSource(doc, { kind: 'saved', normalizedName: 'users' })?.tableName,
+      getStateForWorkspaceSource(doc, { kind: 'saved_table', normalizedName: 'users' })?.tableName,
     ).toBe('saved_users');
     expect(getStateForWorkspaceSource(doc, { kind: 'draft', draftId: 'missing' })).toBeNull();
     expect(
-      getStateForWorkspaceSource(doc, { kind: 'saved', normalizedName: 'missing' }),
+      getStateForWorkspaceSource(doc, { kind: 'saved_table', normalizedName: 'missing' }),
     ).toBeNull();
   });
 
@@ -227,14 +227,15 @@ describe('workspaceYDocAdapter records', () => {
     const doc = new Y.Doc();
     expect(isWorkspaceYDocEmpty(doc)).toBe(true);
 
-    upsertFolderInYDoc(doc, { id: 'root', name: 'Root', order: 2, createdAt: 1 });
-    upsertFolderInYDoc(doc, { id: 'first', name: 'First', order: 1, createdAt: 2 });
+    upsertFolderInYDoc(doc, { id: 'root', name: 'Root', order: 2, createdAt: 1, updatedAt: 1 });
+    upsertFolderInYDoc(doc, { id: 'first', name: 'First', order: 1, createdAt: 2, updatedAt: 2 });
     upsertFolderInYDoc(doc, {
       id: 'child',
       name: 'Child',
       parentId: 'root',
       order: 1,
       createdAt: 3,
+      updatedAt: 3,
     });
     upsertFolderInYDoc(doc, {
       id: 'orphan',
@@ -242,6 +243,7 @@ describe('workspaceYDocAdapter records', () => {
       parentId: 'missing',
       order: 3,
       createdAt: 4,
+      updatedAt: 4,
     });
 
     expect(isWorkspaceYDocEmpty(doc)).toBe(false);
@@ -278,7 +280,13 @@ describe('workspaceYDocAdapter records', () => {
       baseSignature: 'base',
       updatedAt: 20,
     });
-    upsertFolderInYDoc(doc, { id: 'folder-1', name: 'Core', order: 1, createdAt: 1 });
+    upsertFolderInYDoc(doc, {
+      id: 'folder-1',
+      name: 'Core',
+      order: 1,
+      createdAt: 1,
+      updatedAt: 1,
+    });
 
     mergeWorkspaceSnapshotIntoYDoc(doc, {
       globalDraft: { state: createState({ tableName: 'stale' }), updatedAt: 1 },

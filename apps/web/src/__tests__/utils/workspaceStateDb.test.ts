@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STORAGE_KEY } from '@/utils/constants';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { WorkspaceScope, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import {
   addSavedTable as addSavedTableInScope,
   type SavedTableRecord,
@@ -22,7 +23,13 @@ import {
   writeWorkspaceSession as writeWorkspaceSessionInScope,
 } from '@/utils/workspaceStateDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
-import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
+import { runIndexedDbRequest } from '@/utils/indexedDbTransaction';
+import { openDb, WORKSPACE_SESSION_STORE_NAME } from '@/utils/workspaceDb';
+import {
+  buildScopedWorkspaceKey,
+  getAnonymousWorkspaceScope,
+  getWorkspaceScopeStorageKey,
+} from '@/utils/workspaceScope';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const SAVED_TABLE_DRAFTS_STORAGE_KEY = `${STORAGE_KEY}:draft:saved:v1`;
@@ -100,6 +107,24 @@ const createState = (tableName = 'users'): PersistedState => ({
   authObjects: [],
 });
 
+const writeLegacyWorkspaceSession = async (
+  record: {
+    activeSource: WorkspaceSource;
+    activeState: unknown;
+    updatedAt: number;
+  },
+  scope: WorkspaceScope = anonymousScope,
+) => {
+  const db = await openDb();
+  await runIndexedDbRequest(db, WORKSPACE_SESSION_STORE_NAME, 'readwrite', (store) =>
+    store.put({
+      id: buildScopedWorkspaceKey(scope, 'active'),
+      scope: getWorkspaceScopeStorageKey(scope),
+      ...record,
+    }),
+  );
+};
+
 describe('workspaceStateDb', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
@@ -167,13 +192,11 @@ describe('workspaceStateDb', () => {
 
     await writeWorkspaceSession({
       activeSource: { kind: 'draft', draftId: 'default' },
-      activeState: createState('active'),
       updatedAt: 22,
     });
 
     expect(await readWorkspaceSession()).toEqual({
       activeSource: { kind: 'draft', draftId: 'default' },
-      activeState: createState('active'),
       updatedAt: 22,
     });
 
@@ -181,7 +204,7 @@ describe('workspaceStateDb', () => {
     expect(await readWorkspaceSession()).toBeNull();
   });
 
-  it('工作区会话的 activeState 在两个读取入口都应归一化历史枚举值', async () => {
+  it('旧工作区会话的 activeState 读取时应归一化历史枚举值', async () => {
     const legacyRow = {
       id: 'field-id',
       order: 1,
@@ -204,17 +227,16 @@ describe('workspaceStateDb', () => {
       onUpdate: 'current_timestamp',
     };
 
-    await writeWorkspaceSession({
+    await writeLegacyWorkspaceSession({
       activeSource: { kind: 'draft', draftId: 'default' },
       activeState: {
         ...createState('active'),
         rows: [legacyRow],
-      } as unknown as PersistedState,
+      },
       updatedAt: 44,
     });
 
     expect((await readWorkspaceSession())?.activeState?.rows).toEqual([expectedRow]);
-    expect((await readWorkspaceBootstrap()).session?.activeState?.rows).toEqual([expectedRow]);
   });
 
   it('workspace 数据应按账号 scope 隔离', async () => {
@@ -263,10 +285,7 @@ describe('workspaceStateDb', () => {
       activeSource: {
         kind: 'saved_table',
         normalizedName: 'users',
-        tableName: 'Users',
-        baseSignature: 'sig',
       },
-      activeState: null,
       updatedAt: 33,
     });
 

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { isWorkspaceTabDirty, useTabStore } from '@/stores/tabStore';
+import { createPersistedState } from '@/__tests__/utils/testFactories';
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 
@@ -10,13 +11,7 @@ function resetTabStore() {
   });
 }
 
-const createSnapshot = (name: string): PersistedState => ({
-  tableName: name,
-  tableComment: '',
-  rows: [],
-  indexes: [],
-  foreignKeys: [],
-});
+const createSnapshot = (name: string): PersistedState => createPersistedState({ tableName: name });
 
 describe('tabStore', () => {
   beforeEach(() => {
@@ -278,16 +273,12 @@ describe('tabStore', () => {
     const found = useTabStore.getState().findTabBySource({
       kind: 'saved_table',
       normalizedName: 'users',
-      tableName: 'users',
-      baseSignature: 'users-signature',
     });
     expect(found).toBeDefined();
 
     const notFound = useTabStore.getState().findTabBySource({
       kind: 'saved_table',
       normalizedName: 'orders',
-      tableName: 'orders',
-      baseSignature: 'orders-signature',
     });
     expect(notFound).toBeUndefined();
   });

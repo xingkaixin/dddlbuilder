@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
+import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import { mergeSchemaStates } from '@/services/schemaStateMerge';
 import { updateDocumentFields } from '@/stores/editorDocumentMutations';
 
 const row = (id: string, overrides: Partial<FieldRow> = {}): FieldRow => ({
   id,
-  order: 1,
   fieldName: id,
   fieldType: 'int',
   fieldComment: '',
@@ -13,23 +12,22 @@ const row = (id: string, overrides: Partial<FieldRow> = {}): FieldRow => ({
   ...overrides,
 });
 
-const state = (overrides: Partial<PersistedState> = {}): PersistedState =>
-  ({
-    objectType: 'table',
-    schemaName: '',
-    tableName: 'users',
-    tableComment: '',
-    dbType: 'mysql',
-    sqlFormatMode: 'compact',
-    viewDefinition: '',
-    viewCreateOrReplace: true,
-    rows: [row('a'), row('b')],
-    addCount: 10,
-    indexes: [],
-    authInput: '',
-    authObjects: [],
-    ...overrides,
-  }) as PersistedState;
+const state = (overrides: Partial<PersistedState> = {}): PersistedState => ({
+  objectType: 'table',
+  schemaName: '',
+  tableName: 'users',
+  tableComment: '',
+  dbType: 'mysql',
+  sqlFormatMode: 'compact',
+  viewDefinition: '',
+  viewCreateOrReplace: true,
+  rows: [row('a'), row('b')],
+  addCount: 10,
+  indexes: [],
+  authInput: '',
+  authObjects: [],
+  ...overrides,
+});
 
 describe('mergeSchemaStates', () => {
   it.each([true, false])('字段改名与独立新增索引合并后仍指向同一字段 (%s)', (preferRename) => {
@@ -39,7 +37,7 @@ describe('mergeSchemaStates', () => {
       ],
     });
     const renamed = updateDocumentFields(base, [row('a', { fieldName: 'account_id' }), row('b')]);
-    const indexed = {
+    const indexed: PersistedState = {
       ...base,
       indexes: [
         ...base.indexes,
@@ -142,7 +140,7 @@ describe('mergeSchemaStates', () => {
       { ...base.rows[0], fieldName: 'account_id' },
       base.rows[1],
     ]);
-    const indexed = {
+    const indexed: PersistedState = {
       ...base,
       indexes: [
         {
@@ -182,7 +180,9 @@ describe('mergeSchemaStates', () => {
   });
 
   it('保留本地对索引等结构化字段的修改', () => {
-    const indexes = [{ id: 'i1', name: 'idx_email', fields: [], kind: 'unique_index' }];
+    const indexes: IndexDefinition[] = [
+      { id: 'i1', name: 'idx_email', fields: [], kind: 'unique_index' },
+    ];
     const base = state();
     const local = state({ indexes });
     const remote = state({ tableName: 'accounts' });

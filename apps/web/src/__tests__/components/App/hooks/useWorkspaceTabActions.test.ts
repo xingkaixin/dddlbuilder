@@ -4,6 +4,8 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useWorkspaceTabActions } from '@/components/App/hooks/useWorkspaceTabActions';
 import { useTabStore } from '@/stores';
 
+type WorkspaceTabActionsParams = Parameters<typeof useWorkspaceTabActions>[0];
+
 const mocks = vi.hoisted(() => ({
   applySavedState: vi.fn(),
   showToast: vi.fn(),
@@ -31,41 +33,51 @@ const createState = (tableName: string): PersistedState => ({
 });
 
 const createParams = () => {
-  const existingTab = {
+  const existingTab: WorkspaceTabActionsParams['tabs']['tabs'][number] = {
     id: 'tab-existing',
     title: 'Alpha',
     source: {
       kind: 'saved_table' as const,
       normalizedName: 'alpha',
+      tableId: 'table-alpha',
       tableName: 'Alpha',
       baseSignature: 'signature',
     },
     stateSnapshot: createState('Alpha'),
   };
-  return {
+  const draftSummaries: WorkspaceTabActionsParams['draftSummaries'] = [];
+  const params = {
     tabs: {
       tabs: [existingTab],
-      addTab: vi.fn(() => 'tab-new'),
-      activateTab: vi.fn(),
-      findTabBySource: vi.fn(() => undefined),
-      getActiveTab: vi.fn(),
-      hydrateTab: vi.fn(),
-      flushActiveTab: vi.fn(),
-      showTab: vi.fn(),
-      switchToTab: vi.fn(),
-      closeTab: vi.fn(),
+      addTab: vi.fn<WorkspaceTabActionsParams['tabs']['addTab']>(() => 'tab-new'),
+      activateTab: vi.fn<WorkspaceTabActionsParams['tabs']['activateTab']>(),
+      findTabBySource: vi
+        .fn<WorkspaceTabActionsParams['tabs']['findTabBySource']>()
+        .mockReturnValue(undefined),
+      getActiveTab: vi
+        .fn<WorkspaceTabActionsParams['tabs']['getActiveTab']>()
+        .mockReturnValue(undefined),
+      hydrateTab: vi.fn<WorkspaceTabActionsParams['tabs']['hydrateTab']>(),
+      flushActiveTab: vi.fn<WorkspaceTabActionsParams['tabs']['flushActiveTab']>(),
+      showTab: vi.fn<WorkspaceTabActionsParams['tabs']['showTab']>(),
+      switchToTab: vi.fn<WorkspaceTabActionsParams['tabs']['switchToTab']>(),
+      closeTab: vi.fn<WorkspaceTabActionsParams['tabs']['closeTab']>(),
     },
-    setSavedTablesDrawerOpen: vi.fn(),
-    buildPersistedState: vi.fn(() => createState('current')),
-    loadSavedTable: vi.fn(async () => null),
-    draftSummaries: [],
-    getDraftState: vi.fn(() => null),
-    selectWorkspaceSnapshot: vi.fn(),
-    setWorkspaceSnapshot: vi.fn(),
-    createDraft: vi.fn((_draftId: string, state: PersistedState) => state.tableName || '新表'),
-    deleteDraftById: vi.fn(),
-    existingTab,
-  };
+    setSavedTablesDrawerOpen: vi.fn<WorkspaceTabActionsParams['setSavedTablesDrawerOpen']>(),
+    buildPersistedState: vi.fn<WorkspaceTabActionsParams['buildPersistedState']>(() =>
+      createState('current'),
+    ),
+    loadSavedTable: vi.fn<WorkspaceTabActionsParams['loadSavedTable']>().mockResolvedValue(null),
+    draftSummaries,
+    getDraftState: vi.fn<WorkspaceTabActionsParams['getDraftState']>().mockReturnValue(null),
+    selectWorkspaceSnapshot: vi.fn<WorkspaceTabActionsParams['selectWorkspaceSnapshot']>(),
+    setWorkspaceSnapshot: vi.fn<WorkspaceTabActionsParams['setWorkspaceSnapshot']>(),
+    createDraft: vi.fn<WorkspaceTabActionsParams['createDraft']>(
+      (_draftId, state) => state.tableName || '新表',
+    ),
+    deleteDraftById: vi.fn<WorkspaceTabActionsParams['deleteDraftById']>(),
+  } satisfies WorkspaceTabActionsParams;
+  return { ...params, existingTab };
 };
 
 describe('useWorkspaceTabActions', () => {
@@ -80,6 +92,7 @@ describe('useWorkspaceTabActions', () => {
       source: {
         kind: 'saved_table',
         normalizedName: 'loaded',
+        tableId: 'table-loaded',
         tableName: 'Loaded',
         baseSignature: 'loaded-signature',
       },
@@ -91,6 +104,7 @@ describe('useWorkspaceTabActions', () => {
 
     await act(async () => {
       await result.current.handleSelectSavedTable({
+        tableId: 'table-loaded',
         normalizedName: 'loaded',
         name: 'Loaded',
         dbType: 'mysql',
@@ -116,6 +130,7 @@ describe('useWorkspaceTabActions', () => {
 
     await act(async () => {
       await result.current.handleSelectSavedTable({
+        tableId: 'table-alpha',
         normalizedName: 'alpha',
         name: 'Alpha',
         dbType: 'mysql',

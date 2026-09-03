@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, userEvent } from '@/__tests__/utils/test-utils';
+import { createFolderTreeNode } from '@/__tests__/utils/testFactories';
 import type { MouseEvent, ReactNode } from 'react';
 import { DeleteFolderDialog, FolderDialog } from '@/components/App/FolderDialogs';
 import type { FolderTreeNode } from '@/hooks/useFolders';
@@ -47,23 +48,20 @@ vi.mock('@/components/ui/alert-dialog', () => ({
 
 const now = Date.now();
 
-const targetFolder: FolderTreeNode = {
-  id: 'folder-1',
+const targetFolder: FolderTreeNode = createFolderTreeNode('folder-1', {
   name: 'Archive',
   parentId: undefined,
   order: 1,
   createdAt: now,
   children: [
-    {
-      id: 'folder-1-1',
+    createFolderTreeNode('folder-1-1', {
       name: 'Child',
       parentId: 'folder-1',
       order: 1,
       createdAt: now,
-      children: [],
-    },
+    }),
   ],
-};
+});
 
 describe('FolderDialogs i18n', () => {
   beforeEach(async () => {

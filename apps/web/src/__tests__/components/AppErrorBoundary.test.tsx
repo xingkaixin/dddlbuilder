@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@/__tests__/utils/test-utils';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { reportError } from '@/utils/errorReporter';
+import type { ReactElement } from 'react';
 
 vi.mock('@/utils/errorReporter', () => ({
   reportError: vi.fn(),
 }));
 
-function CrashComponent() {
+function CrashComponent(): ReactElement {
   throw new Error('render-crash');
 }
 

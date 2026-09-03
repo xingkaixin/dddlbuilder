@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, renderHook, screen, waitFor } from '@testing-library/react';
 import * as Y from 'yjs';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
+import { createSchemaDocumentState } from '@/__tests__/utils/testFactories';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import {
   WorkspaceYDocProvider,
@@ -106,18 +107,7 @@ const legacySnapshotWithTable = (): WorkspaceSnapshot => ({
     {
       normalizedName: 'legacy_table',
       name: 'legacy_table',
-      state: {
-        schemaName: '',
-        tableName: 'legacy_table',
-        tableComment: '',
-        dbType: 'mysql',
-        sqlFormatMode: 'compact',
-        rows: [],
-        addCount: 10,
-        indexes: [],
-        authInput: '',
-        authObjects: [],
-      },
+      state: createSchemaDocumentState({ tableName: 'legacy_table' }),
       createdAt: 111,
       updatedAt: 222,
     },

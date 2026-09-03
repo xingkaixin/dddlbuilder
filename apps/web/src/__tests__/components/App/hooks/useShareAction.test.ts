@@ -50,11 +50,12 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
-const buildPersistedState = () => ({
+const buildPersistedState = (): PersistedState => ({
   schemaName: '',
   tableName: 'users',
   tableComment: '用户表',
   dbType: 'mysql' as const,
+  sqlFormatMode: 'compact',
   rows: [],
   addCount: 10,
   indexes: [],

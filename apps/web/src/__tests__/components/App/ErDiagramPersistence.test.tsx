@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import type * as ReactFlowModule from '@xyflow/react';
+import { createFieldRow } from '@/__tests__/utils/testFactories';
 import { render, screen } from '@/__tests__/utils/test-utils';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { useSavedTables } from '@/hooks/useSavedTables';
@@ -51,7 +52,7 @@ const source: SavedTableRecord = {
     tableComment: '',
     dbType: 'mysql',
     sqlFormatMode: 'compact',
-    rows: [{ id: 'field-id', fieldName: 'id', fieldType: 'INT', nullable: true }],
+    rows: [createFieldRow('field-id', { fieldName: 'id', fieldType: 'INT' })],
     indexes: [],
     addCount: 1,
     authInput: '',
@@ -137,7 +138,10 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
         state: {
           ...current.state,
           tableComment: 'remote comment',
-          rows: [...current.state.rows, { id: 'new', fieldName: 'remote_note', fieldType: 'TEXT' }],
+          rows: [
+            ...current.state.rows,
+            createFieldRow('new', { fieldName: 'remote_note', fieldType: 'TEXT' }),
+          ],
         },
       });
     });
@@ -164,7 +168,7 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
           targetHandle: 'id',
         }),
       );
-      await screen.findByRole('button', { name: '创建关系', exact: true });
+      await screen.findByRole('button', { name: '创建关系' });
       await act(async () => {
         const current = await read();
         await write({
@@ -178,7 +182,7 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
         });
       });
       await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: '创建关系', exact: true }));
+        fireEvent.click(screen.getByRole('button', { name: '创建关系' }));
       });
       await waitFor(async () => {
         const updated = await read();
@@ -186,9 +190,7 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
           targetDeleted ? [] : ['renamed_parent'],
         );
         expect(
-          screen
-            .queryByRole('button', { name: '创建关系', exact: true })
-            ?.hasAttribute('disabled') ?? false,
+          screen.queryByRole('button', { name: '创建关系' })?.hasAttribute('disabled') ?? false,
         ).toBe(false);
       });
       expect((await read()).state.tableComment).toBe('new source comment');

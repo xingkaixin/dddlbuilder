@@ -5,6 +5,8 @@ import {
   normalizeWorkspaceMigrationSnapshot,
 } from '@ddlbuilder/workspace-core';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { WorkspaceScope, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import { createFieldRow } from '@/__tests__/utils/testFactories';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
@@ -26,6 +28,8 @@ import {
 } from '@/services/workspaceYDocAdapter';
 import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
+import { runIndexedDbRequest } from '@/utils/indexedDbTransaction';
+import { openDb, WORKSPACE_SESSION_STORE_NAME } from '@/utils/workspaceDb';
 import {
   DEFAULT_DRAFT_ID,
   listSavedDrafts,
@@ -35,6 +39,7 @@ import {
   writeDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
+import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 
 const scope = {
   kind: 'user' as const,
@@ -50,20 +55,30 @@ const createState = (tableName: string): PersistedState => ({
   tableComment: '',
   dbType: 'mysql',
   sqlFormatMode: 'compact',
-  rows: [
-    {
-      order: 1,
-      fieldName: 'id',
-      fieldType: 'bigint',
-      fieldComment: '',
-      nullable: false,
-    },
-  ],
+  rows: [createFieldRow('field-id', { fieldType: 'bigint', nullable: false })],
   addCount: 10,
   indexes: [],
   authInput: '',
   authObjects: [],
 });
+
+const writeLegacyWorkspaceSession = async (
+  record: {
+    activeSource: WorkspaceSource;
+    activeState: PersistedState;
+    updatedAt: number;
+  },
+  targetScope: WorkspaceScope,
+) => {
+  const db = await openDb();
+  await runIndexedDbRequest(db, WORKSPACE_SESSION_STORE_NAME, 'readwrite', (store) =>
+    store.put({
+      id: buildScopedWorkspaceKey(targetScope, 'active'),
+      scope: getWorkspaceScopeStorageKey(targetScope),
+      ...record,
+    }),
+  );
+};
 
 const seedLegacyWorkspace = async () => {
   await writeDraft(
@@ -123,7 +138,7 @@ describe('workspaceMigrationService legacy promotion', () => {
       },
       legacyScope,
     );
-    await writeWorkspaceSession(
+    await writeLegacyWorkspaceSession(
       {
         activeSource: { kind: 'draft', draftId: 'named' },
         activeState: createState('older_session'),
@@ -225,7 +240,7 @@ describe('workspaceMigrationService legacy promotion', () => {
       rows: [],
       viewDefinition: 'SELECT id FROM orders',
     };
-    await writeWorkspaceSession(
+    await writeLegacyWorkspaceSession(
       {
         activeSource: { kind: 'draft', draftId: DEFAULT_DRAFT_ID },
         activeState: state,
@@ -294,7 +309,6 @@ describe('workspaceMigrationService legacy promotion', () => {
     await writeWorkspaceSession(
       {
         activeSource: { kind: 'draft', draftId: 'draft-legacy' },
-        activeState: createState('legacy_draft'),
         updatedAt: 7,
       },
       legacyScope,
@@ -352,7 +366,7 @@ describe('workspaceMigrationService legacy promotion', () => {
 
   it('legacy 数据应提升后被读到并完整合并进 Y.Doc', async () => {
     await seedLegacyWorkspace();
-    await writeWorkspaceSession(
+    await writeLegacyWorkspaceSession(
       {
         activeSource: { kind: 'draft', draftId: 'draft-legacy' },
         activeState: createState('legacy_draft_editing'),
@@ -395,7 +409,7 @@ describe('workspaceMigrationService legacy promotion', () => {
 
   it('活动 session 指向默认草稿时应作为独立 draft 折叠进 Y.Doc', async () => {
     await seedLegacyWorkspace();
-    await writeWorkspaceSession(
+    await writeLegacyWorkspaceSession(
       {
         activeSource: { kind: 'draft', draftId: DEFAULT_DRAFT_ID },
         activeState: createState('legacy_global_editing'),

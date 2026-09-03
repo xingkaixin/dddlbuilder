@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EnumValueMeta } from '@ddlbuilder/shared-types';
+import { createFieldRow } from '@/__tests__/utils/testFactories';
 import {
   buildDraftSummary,
   getDraftDisplayName,
@@ -58,7 +59,7 @@ describe('workspacePersistence/normalize', () => {
       mysqlPartitionConfig: { enabled: true },
       tableMiscConfig: { enabled: true },
       fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
-    } as any);
+    });
 
     expect(result).not.toBeNull();
     expect(result).toMatchObject({
@@ -214,29 +215,13 @@ describe('workspacePersistence/normalize', () => {
         tableName: '   ',
         tableComment: '',
         dbType: 'mysql',
+        sqlFormatMode: 'compact',
         rows: [
-          {
-            id: 'field-id',
-            order: 1,
-            fieldName: 'id',
-            fieldType: 'int',
-            fieldComment: '',
-            nullable: false,
-            defaultKind: 'none',
-            defaultValue: '',
-            onUpdate: 'none',
-          },
-          {
-            id: 'field-   ',
-            order: 2,
+          createFieldRow('field-id', { fieldType: 'int', nullable: false }),
+          createFieldRow('field-blank', {
             fieldName: '   ',
             fieldType: 'varchar(20)',
-            fieldComment: '',
-            nullable: true,
-            defaultKind: 'none',
-            defaultValue: '',
-            onUpdate: 'none',
-          },
+          }),
         ],
         addCount: 10,
         indexes: [],

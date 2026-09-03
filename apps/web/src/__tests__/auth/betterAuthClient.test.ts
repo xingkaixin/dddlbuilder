@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createAuthClientMock = vi.fn();
 
@@ -24,6 +24,10 @@ describe('betterAuthClient', () => {
     });
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   describe('isBetterAuthConfigured', () => {
     it('returns true when window is defined', async () => {
       const { isBetterAuthConfigured } = await import('@/auth/betterAuthClient');
@@ -44,8 +48,7 @@ describe('betterAuthClient', () => {
 
   describe('getBetterAuthClient', () => {
     it('creates client on first call with VITE_BETTER_AUTH_URL', async () => {
-      const originalEnv = import.meta.env.VITE_BETTER_AUTH_URL;
-      import.meta.env.VITE_BETTER_AUTH_URL = 'https://auth.example.com';
+      vi.stubEnv('VITE_BETTER_AUTH_URL', 'https://auth.example.com');
 
       const { getBetterAuthClient } = await import('@/auth/betterAuthClient');
       const client = getBetterAuthClient();
@@ -58,13 +61,10 @@ describe('betterAuthClient', () => {
         },
       });
       expect(client).not.toBeNull();
-
-      import.meta.env.VITE_BETTER_AUTH_URL = originalEnv;
     });
 
     it('falls back to window.location.origin when VITE_BETTER_AUTH_URL is not set', async () => {
-      const originalEnv = import.meta.env.VITE_BETTER_AUTH_URL;
-      import.meta.env.VITE_BETTER_AUTH_URL = '';
+      vi.stubEnv('VITE_BETTER_AUTH_URL', '');
       const originalOrigin = window.location.origin;
       Object.defineProperty(window, 'location', {
         value: { origin: 'https://app.example.com' },
@@ -83,7 +83,6 @@ describe('betterAuthClient', () => {
       });
       expect(client).not.toBeNull();
 
-      import.meta.env.VITE_BETTER_AUTH_URL = originalEnv;
       Object.defineProperty(window, 'location', {
         value: { origin: originalOrigin },
         writable: true,

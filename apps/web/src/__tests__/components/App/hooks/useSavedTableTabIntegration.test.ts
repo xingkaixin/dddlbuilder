@@ -41,6 +41,7 @@ describe('useSavedTableTabIntegration', () => {
         normalizedName: 'users',
         displayName: 'Users',
         baseSignature: signature,
+        baseState: state,
         mode: 'create',
       });
     });
@@ -145,13 +146,16 @@ describe('useSavedTableTabIntegration', () => {
       stateSnapshot: other,
     });
     store.activateTab(firstId);
-    const pending = Promise.withResolvers<void>();
+    let resolvePending!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      resolvePending = resolve;
+    });
     const saveTable = vi.fn(async () => {
-      if (pendingStage === 'table') await pending.promise;
-      return { ok: true as const, normalizedName: 'users' };
+      if (pendingStage === 'table') await pending;
+      return { ok: true as const, normalizedName: 'users', tableId: 'table-users' };
     });
     const createTableVersion = vi.fn(async () => {
-      if (pendingStage === 'version') await pending.promise;
+      if (pendingStage === 'version') await pending;
     });
     const selectWorkspaceSnapshot = vi.fn();
     const persistSavedTableDraft = vi.fn();
@@ -220,18 +224,18 @@ describe('useSavedTableTabIntegration', () => {
       }
     });
     await act(async () => {
-      pending.resolve();
+      resolvePending();
       await saving;
     });
 
     expect(createTableVersion).toHaveBeenCalledWith(
-      { normalizedName: 'users', tableId: undefined },
+      { normalizedName: 'users', tableId: 'table-users' },
       original,
       expect.any(String),
     );
     expect(setLoadedTableVersion).toHaveBeenCalledWith(1, {
       normalizedName: 'users',
-      tableId: undefined,
+      tableId: 'table-users',
     });
     expect(store.getTabById(secondId)).toMatchObject({
       title: 'orders',
@@ -241,6 +245,7 @@ describe('useSavedTableTabIntegration', () => {
     const savedSource = {
       kind: 'saved_table',
       normalizedName: 'users',
+      tableId: 'table-users',
       tableName: 'users',
       baseSignature: buildSchemaStateSignature(original),
     };

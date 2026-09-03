@@ -19,6 +19,7 @@ const folders: FolderTreeNode[] = [
     parentId: undefined,
     order: 1,
     createdAt: now,
+    updatedAt: now,
     children: [
       {
         id: 'child-a-1',
@@ -26,6 +27,7 @@ const folders: FolderTreeNode[] = [
         parentId: 'root-a',
         order: 1,
         createdAt: now,
+        updatedAt: now,
         children: [],
       },
     ],
@@ -36,6 +38,7 @@ const folders: FolderTreeNode[] = [
     parentId: undefined,
     order: 2,
     createdAt: now,
+    updatedAt: now,
     children: [],
   },
 ];

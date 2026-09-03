@@ -33,7 +33,11 @@ describe('useWorkspaceStorageTarget', () => {
   it('Y.Doc 就绪时暴露可返回结果的事务入口', () => {
     const scope = { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' } as const;
     const doc = {} as Y.Doc;
-    const runInYDoc = vi.fn((mutate: (currentDoc: Y.Doc) => unknown) => mutate(doc));
+    const transactionSpy = vi.fn();
+    const runInYDoc = <T>(mutate: (currentDoc: Y.Doc) => T): T => {
+      transactionSpy();
+      return mutate(doc);
+    };
     const { result } = renderHook(() => useWorkspaceStorageTarget({ scope, yDoc: doc, runInYDoc }));
     const target = requireReadyWorkspaceStorage(result.current);
     if (target.kind !== 'ydoc') throw new Error('Y.Doc target missing');
@@ -41,7 +45,7 @@ describe('useWorkspaceStorageTarget', () => {
     const outcome = target.transact((currentDoc) => (currentDoc === doc ? 'written' : 'invalid'));
 
     expect(outcome).toBe('written');
-    expect(runInYDoc).toHaveBeenCalledOnce();
+    expect(transactionSpy).toHaveBeenCalledOnce();
   });
 
   it('scope 缺失时保持加载态', () => {

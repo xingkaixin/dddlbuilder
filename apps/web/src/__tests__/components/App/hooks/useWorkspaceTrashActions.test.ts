@@ -1,7 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createFolderTreeNode, createSavedTableMetadata } from '@/__tests__/utils/testFactories';
 import { useWorkspaceTrashActions } from '@/components/App/hooks/useWorkspaceTrashActions';
 import type { FolderTreeNode } from '@/hooks/useFolders';
+
+type WorkspaceTrashActionsParams = Parameters<typeof useWorkspaceTrashActions>[0];
 
 const mocks = vi.hoisted(() => ({ showToast: vi.fn() }));
 
@@ -16,48 +19,62 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
-const nestedFolder: FolderTreeNode = {
-  id: 'nested',
+const nestedFolder: FolderTreeNode = createFolderTreeNode('nested', {
   name: 'Nested',
   order: 1,
-  createdAt: 1,
-  children: [],
-};
+});
 const folderTree: FolderTreeNode[] = [
-  { id: 'root', name: 'Root', order: 1, createdAt: 1, children: [nestedFolder] },
+  createFolderTreeNode('root', { name: 'Root', order: 1, children: [nestedFolder] }),
 ];
 
-const renderActions = (overrides: Record<string, unknown> = {}) => {
-  const params = {
+const renderActions = (overrides: Partial<WorkspaceTrashActionsParams> = {}) => {
+  const params: WorkspaceTrashActionsParams = {
     folderTree,
     trashedTables: [],
     trashedDrafts: [],
-    restoreTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users' }),
-    restoreDraftById: vi.fn().mockResolvedValue(undefined),
-    deleteTablePermanently: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users' }),
-    permanentlyDeleteDraftById: vi.fn().mockResolvedValue(undefined),
+    restoreTable: vi.fn<WorkspaceTrashActionsParams['restoreTable']>().mockResolvedValue({
+      ok: true,
+      normalizedName: 'users',
+      tableId: 'table-users',
+    }),
+    restoreDraftById: vi
+      .fn<WorkspaceTrashActionsParams['restoreDraftById']>()
+      .mockResolvedValue(undefined),
+    deleteTablePermanently: vi
+      .fn<WorkspaceTrashActionsParams['deleteTablePermanently']>()
+      .mockResolvedValue({
+        ok: true,
+        normalizedName: 'users',
+        tableId: 'table-users',
+      }),
+    permanentlyDeleteDraftById: vi
+      .fn<WorkspaceTrashActionsParams['permanentlyDeleteDraftById']>()
+      .mockResolvedValue(undefined),
     ...overrides,
   };
-  return { ...renderHook(() => useWorkspaceTrashActions(params as never)), params };
+  return { ...renderHook(() => useWorkspaceTrashActions(params)), params };
 };
 
 describe('useWorkspaceTrashActions', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('restores a table to an existing nested folder', async () => {
-    const restoreTable = vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users' });
+    const restoreTable = vi.fn<WorkspaceTrashActionsParams['restoreTable']>().mockResolvedValue({
+      ok: true,
+      normalizedName: 'users',
+      tableId: 'table-users',
+    });
     const { result } = renderActions({ restoreTable });
 
     act(() =>
-      result.current.handleRestoreTable({
-        normalizedName: 'users',
-        name: 'Users',
-        dbType: 'mysql',
-        fieldCount: 1,
-        folderId: 'nested',
-        createdAt: 1,
-        updatedAt: 1,
-      }),
+      result.current.handleRestoreTable(
+        createSavedTableMetadata('table-users', {
+          normalizedName: 'users',
+          name: 'Users',
+          fieldCount: 1,
+          folderId: 'nested',
+        }),
+      ),
     );
 
     await waitFor(() => expect(restoreTable).toHaveBeenCalledOnce());
@@ -65,7 +82,9 @@ describe('useWorkspaceTrashActions', () => {
   });
 
   it('reports a failed draft restore without a success toast', async () => {
-    const restoreDraftById = vi.fn().mockRejectedValue(new Error('restore failed'));
+    const restoreDraftById = vi
+      .fn<WorkspaceTrashActionsParams['restoreDraftById']>()
+      .mockRejectedValue(new Error('restore failed'));
     const { result } = renderActions({ restoreDraftById });
 
     act(() => result.current.handleRestoreDraft('draft-1'));
@@ -76,10 +95,26 @@ describe('useWorkspaceTrashActions', () => {
 
   it('reports every failed item when emptying trash', async () => {
     const { result } = renderActions({
-      trashedTables: [{ normalizedName: 'users' }],
-      trashedDrafts: [{ draftId: 'draft-1' }],
-      deleteTablePermanently: vi.fn().mockResolvedValue({ ok: false, reason: 'error' }),
-      permanentlyDeleteDraftById: vi.fn().mockRejectedValue(new Error('delete failed')),
+      trashedTables: [createSavedTableMetadata('table-users')],
+      trashedDrafts: [
+        {
+          draftId: 'draft-1',
+          name: 'Draft 1',
+          dbType: 'mysql',
+          fieldCount: 0,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      deleteTablePermanently: vi
+        .fn<WorkspaceTrashActionsParams['deleteTablePermanently']>()
+        .mockResolvedValue({
+          ok: false,
+          reason: 'error',
+        }),
+      permanentlyDeleteDraftById: vi
+        .fn<WorkspaceTrashActionsParams['permanentlyDeleteDraftById']>()
+        .mockRejectedValue(new Error('delete failed')),
     });
 
     act(() => result.current.handleConfirmEmptyTrash());

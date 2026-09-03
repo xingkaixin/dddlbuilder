@@ -5,6 +5,13 @@ import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { useSavedTableFlowActions } from '@/components/App/hooks/useSavedTableFlowActions';
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
+type SavedTableFlowParams = Parameters<typeof useSavedTableFlowActions>[0];
+type DialogData<TDialog> = TDialog extends { data: infer TData } ? TData : never;
+type SaveDialogData = DialogData<SavedTableFlowParams['saveDialog']>;
+type RenameDialogData = DialogData<SavedTableFlowParams['renameDialog']>;
+type DeleteDialogData = DialogData<SavedTableFlowParams['deleteDialog']>;
+type SavedTableSummary = NonNullable<RenameDialogData['target']>;
+
 const createState = (tableName: string): PersistedState => ({
   schemaName: '',
   tableName,
@@ -30,7 +37,17 @@ const createDialog = <TData>(data: TData): UseDialogStateReturn<TData> => ({
   resetData: vi.fn(),
 });
 
-const createSavedTableSummary = (name: string, normalizedName: string) => ({
+const createSaveDialog = (data: SaveDialogData): SavedTableFlowParams['saveDialog'] =>
+  createDialog(data);
+
+const createRenameDialog = (data: RenameDialogData): SavedTableFlowParams['renameDialog'] =>
+  createDialog(data);
+
+const createDeleteDialog = (data: DeleteDialogData): SavedTableFlowParams['deleteDialog'] =>
+  createDialog(data);
+
+const createSavedTableSummary = (name: string, normalizedName: string): SavedTableSummary => ({
+  tableId: `table-${normalizedName}`,
   name,
   normalizedName,
   dbType: 'mysql',
@@ -42,7 +59,7 @@ const createSavedTableSummary = (name: string, normalizedName: string) => ({
 describe('useSavedTableFlowActions', () => {
   it('首次保存成功后通知发起保存的调用方', async () => {
     const state = createState('Users');
-    const saveDialog = createDialog({
+    const saveDialog = createSaveDialog({
       name: 'Users',
     });
 
@@ -58,8 +75,8 @@ describe('useSavedTableFlowActions', () => {
         countTableVersions: vi.fn().mockResolvedValue(1),
         createTableVersion: vi.fn().mockResolvedValue(undefined),
         saveDialog,
-        renameDialog: createDialog({ name: '', target: null }),
-        deleteDialog: createDialog({ target: null }),
+        renameDialog: createRenameDialog({ name: '', target: null }),
+        deleteDialog: createDeleteDialog({ target: null }),
         buildPersistedState: () => state,
         loadTable: vi.fn(),
         renameTable: vi.fn(),
@@ -103,9 +120,9 @@ describe('useSavedTableFlowActions', () => {
         setLoadedTableVersion: vi.fn(),
         countTableVersions: vi.fn().mockResolvedValue(1),
         createTableVersion: vi.fn().mockResolvedValue(undefined),
-        saveDialog: createDialog({ name: 'Users' }),
-        renameDialog: createDialog({ name: 'Users New', target }),
-        deleteDialog: createDialog({ target: null }),
+        saveDialog: createSaveDialog({ name: 'Users' }),
+        renameDialog: createRenameDialog({ name: 'Users New', target }),
+        deleteDialog: createDeleteDialog({ target: null }),
         buildPersistedState: () => createState('Users'),
         loadTable: vi.fn(),
         renameTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users_new' }),
@@ -146,9 +163,9 @@ describe('useSavedTableFlowActions', () => {
         setLoadedTableVersion: vi.fn(),
         countTableVersions: vi.fn().mockResolvedValue(1),
         createTableVersion: vi.fn().mockResolvedValue(undefined),
-        saveDialog: createDialog({ name: 'Users' }),
-        renameDialog: createDialog({ name: '', target: null }),
-        deleteDialog: createDialog({ target }),
+        saveDialog: createSaveDialog({ name: 'Users' }),
+        renameDialog: createRenameDialog({ name: '', target: null }),
+        deleteDialog: createDeleteDialog({ target }),
         buildPersistedState: () => createState('Users'),
         loadTable: vi.fn(),
         renameTable: vi.fn(),
@@ -189,9 +206,9 @@ describe('useSavedTableFlowActions', () => {
         setLoadedTableVersion: vi.fn(),
         countTableVersions: vi.fn().mockResolvedValue(1),
         createTableVersion: vi.fn().mockResolvedValue(undefined),
-        saveDialog: createDialog({ name: 'Users' }),
-        renameDialog: createDialog({ name: '', target: null }),
-        deleteDialog: createDialog({ target: null }),
+        saveDialog: createSaveDialog({ name: 'Users' }),
+        renameDialog: createRenameDialog({ name: '', target: null }),
+        deleteDialog: createDeleteDialog({ target: null }),
         buildPersistedState: () => createState('Users'),
         loadTable,
         renameTable: vi.fn(),
@@ -209,10 +226,7 @@ describe('useSavedTableFlowActions', () => {
       }),
     );
 
-    let snapshot: Awaited<ReturnType<typeof result.current.resolveSavedTable>> = null;
-    await act(async () => {
-      snapshot = await result.current.resolveSavedTable(target);
-    });
+    const snapshot = await act(async () => result.current.resolveSavedTable(target));
 
     expect(loadTable).toHaveBeenCalledWith(expect.objectContaining({ normalizedName: 'users' }));
     expect(snapshot?.state).toEqual(draftState);
@@ -235,9 +249,9 @@ describe('useSavedTableFlowActions', () => {
         setLoadedTableVersion: vi.fn(),
         countTableVersions: vi.fn().mockResolvedValue(1),
         createTableVersion: vi.fn().mockResolvedValue(undefined),
-        saveDialog: createDialog({ name: 'Users' }),
-        renameDialog: createDialog({ name: '', target: null }),
-        deleteDialog: createDialog({ target: null }),
+        saveDialog: createSaveDialog({ name: 'Users' }),
+        renameDialog: createRenameDialog({ name: '', target: null }),
+        deleteDialog: createDeleteDialog({ target: null }),
         buildPersistedState: () => createState('Users'),
         loadTable,
         renameTable: vi.fn(),

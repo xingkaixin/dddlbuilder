@@ -66,7 +66,7 @@ describe('store selector subscription scope', () => {
 
     useEditorStore.getState().setRows([
       {
-        ...createEmptyRow(0),
+        ...createEmptyRow(),
         fieldName: 'id',
         fieldType: 'bigint',
       },
@@ -134,6 +134,7 @@ describe('store selector subscription scope', () => {
       state.setIsDiffDialogOpen(true);
       state.setIsStorageEstimatorOpen(true);
       state.setVersionHistoryTarget({
+        tableId: 'table-orders',
         normalizedName: 'orders',
         name: 'orders',
       });
