@@ -68,24 +68,44 @@ describe('ORM property identifiers', () => {
     expect(model).toMatch(/field_1st\s+Int\s+@map\("1st"\)/);
   });
 
-  it('shares known target names across external foreign keys', () => {
-    const model = buildORM('typeorm', {
+  it.each([
+    ['prisma', 'references: [userId_2]'],
+    ['typeorm', "referencedColumnName: 'userId_2'"],
+    ['gorm', 'references:UserId_2'],
+  ] as const)('uses complete target metadata for %s external references', (target, expected) => {
+    const model = buildORM(target, {
       ...input,
       foreignKeys: [
-        { ...input.foreignKeys[0], refTable: 'users', refFields: ['user_id'] },
         {
           ...input.foreignKeys[0],
-          id: 'other',
           name: 'other_user',
           fields: ['userId'],
           refTable: 'users',
           refFields: ['userId'],
         },
       ],
+      referencedModels: [
+        {
+          tableName: 'users',
+          fields: ['user_id', 'userId'].map(field),
+        },
+      ],
     });
-    expect(model).toContain("name: 'user_id', referencedColumnName: 'userId'");
-    expect(model).toContain("name: 'userId', referencedColumnName: 'userId_2'");
+    expect(model).toContain(expected);
   });
+
+  it.each(['prisma', 'typeorm', 'gorm'] as const)(
+    'requires complete target metadata for %s external references',
+    (target) => {
+      const model = buildORM(target, {
+        ...input,
+        foreignKeys: [{ ...input.foreignKeys[0], refTable: 'users' }],
+      });
+      expect(model).toContain('Manual mapping required');
+      expect(model).toContain('referencedModels');
+      expect(model.split('\n')).toHaveLength(1);
+    },
+  );
 
   it('uses safe Python attributes while keeping database names in constraints', () => {
     const model = buildORM('sqlalchemy', {

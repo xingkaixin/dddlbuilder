@@ -98,6 +98,6 @@ export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseTyp
   return {
     options,
     propertyType,
-    autoIncrement: field.defaultKind === 'auto_increment' || isSerial,
+    serial: isSerial,
   };
 }

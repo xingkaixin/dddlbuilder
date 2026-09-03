@@ -25,6 +25,7 @@ export function useOrmGeneration({
   fields,
   indexes,
   foreignKeys,
+  referencedModels,
 }: ORMModelInput): UseOrmGenerationReturn {
   const [ormTarget, setOrmTarget] = useState<ORMTarget>('prisma');
 
@@ -38,8 +39,19 @@ export function useOrmGeneration({
         fields,
         indexes,
         foreignKeys,
+        referencedModels,
       }),
-    [ormTarget, dbType, schemaName, tableName, tableComment, fields, indexes, foreignKeys],
+    [
+      ormTarget,
+      dbType,
+      schemaName,
+      tableName,
+      tableComment,
+      fields,
+      indexes,
+      foreignKeys,
+      referencedModels,
+    ],
   );
 
   const copyOrm = useCallback(async () => {

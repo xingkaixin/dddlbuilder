@@ -261,6 +261,7 @@ describe('PrismaGenerator', () => {
       fields,
       indexes: [createIndex()],
       foreignKeys: fks,
+      referencedModels: [{ tableName: 'users', fields: [{ name: 'id' }] }],
     });
     expect(result).toContain(
       'fkUser Users @relation(fields: [userId], references: [id], map: "fk_user")',
@@ -727,6 +728,13 @@ describe('foreign key generation contract', () => {
       onUpdate: 'CASCADE',
     },
   ];
+  const referencedModels = [
+    {
+      schemaName: 'identity',
+      tableName: 'users',
+      fields: [{ name: 'tenant_id' }, { name: 'id' }],
+    },
+  ];
 
   it('emits usable relationship metadata for every target', () => {
     const outputs = {
@@ -736,6 +744,7 @@ describe('foreign key generation contract', () => {
         tableComment: '',
         fields,
         foreignKeys,
+        referencedModels,
       }),
       typeorm: new TypeORMGenerator().generateModel({
         dbType: 'mysql',
@@ -743,6 +752,7 @@ describe('foreign key generation contract', () => {
         tableComment: '',
         fields,
         foreignKeys,
+        referencedModels,
       }),
       sqlalchemy: new SQLAlchemyGenerator().generateModel({
         dbType: 'mysql',
@@ -757,6 +767,7 @@ describe('foreign key generation contract', () => {
         tableComment: '',
         fields,
         foreignKeys,
+        referencedModels,
       }),
       jpa: new JPAGenerator().generateModel({
         dbType: 'mysql',

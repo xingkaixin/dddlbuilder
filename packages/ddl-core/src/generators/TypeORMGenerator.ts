@@ -1,7 +1,7 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { buildORMPropertyNames } from './ormNames.js';
-import { DIALECT_PROFILES } from '../strategies/dialectProfiles.js';
 import { getDatabaseFamily } from '../utils/databaseFamily.js';
+import { resolveFieldDefault } from '../utils/fieldDefault.js';
 import {
   buildIndexFieldLookup,
   toPascalCase,
@@ -11,15 +11,16 @@ import {
 import { resolveTypeORMColumn } from './typeormColumn.js';
 
 export class TypeORMGenerator implements ORMGenerator {
-  generateModel({
-    dbType,
-    schemaName = '',
-    tableName,
-    tableComment,
-    fields,
-    indexes = [],
-    foreignKeys = [],
-  }: ORMModelInput): string {
+  generateModel(input: ORMModelInput): string {
+    const {
+      dbType,
+      schemaName = '',
+      tableName,
+      tableComment,
+      fields,
+      indexes = [],
+      foreignKeys = [],
+    } = input;
     if (!tableName.trim()) {
       return '-- 请填写表名';
     }
@@ -27,12 +28,9 @@ export class TypeORMGenerator implements ORMGenerator {
       return '-- 请补充字段信息';
     }
 
-    const names = buildORMPropertyNames('typeorm', {
-      tableName,
-      schemaName,
-      fields,
-      foreignKeys,
-    });
+    const propertyNames = buildORMPropertyNames('typeorm', input);
+    if (!propertyNames.ok) return propertyNames.diagnostic;
+    const names = propertyNames.names;
     const lines: string[] = [];
     const { primaryFields, singleUniqueFields } = buildIndexFieldLookup(indexes);
 
@@ -95,7 +93,8 @@ export class TypeORMGenerator implements ORMGenerator {
       const propName = names.field(field.name);
       const tsType = column.propertyType;
       const isPk = primaryFields.has(field.name);
-      const isAutoInc = column.autoIncrement;
+      const defaultValue = resolveFieldDefault(field, dbType);
+      const isAutoInc = defaultValue.kind === 'auto_increment' || column.serial;
       const isNullable = field.nullable && !isPk;
 
       const optionsParts = Object.entries(column.options).map(
@@ -117,16 +116,14 @@ export class TypeORMGenerator implements ORMGenerator {
           optionsParts.push(`comment: ${tsStringLiteral(field.comment.trim())}`);
         }
       }
-      if (field.defaultKind === 'constant') {
-        optionsParts.push(`default: ${tsStringLiteral(field.defaultValue)}`);
-      } else if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
-        optionsParts.push(`default: () => ${JSON.stringify(field.defaultValue)}`);
-      } else if (field.defaultKind === 'current_timestamp') {
-        optionsParts.push(`default: () => 'CURRENT_TIMESTAMP'`);
-      } else if (field.defaultKind === 'uuid' && DIALECT_PROFILES[dbType].uuidFunction) {
-        optionsParts.push(
-          `default: () => ${tsStringLiteral(DIALECT_PROFILES[dbType].uuidFunction)}`,
-        );
+      if (defaultValue.kind === 'constant') {
+        optionsParts.push(`default: ${tsStringLiteral(defaultValue.value)}`);
+      } else if (defaultValue.kind === 'expression') {
+        optionsParts.push(`default: () => ${JSON.stringify(defaultValue.sqlExpression)}`);
+      } else if (defaultValue.kind === 'current_timestamp') {
+        optionsParts.push(`default: () => ${tsStringLiteral(defaultValue.sqlExpression)}`);
+      } else if (defaultValue.kind === 'uuid') {
+        optionsParts.push(`default: () => ${tsStringLiteral(defaultValue.sqlExpression)}`);
       }
       const decorator = isPk ? (isAutoInc ? 'PrimaryGeneratedColumn' : 'PrimaryColumn') : 'Column';
       const opts = optionsParts.length > 0 ? `{ ${optionsParts.join(', ')} }` : '';

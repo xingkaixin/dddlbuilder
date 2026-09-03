@@ -1,20 +1,21 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { buildORMPropertyNames } from './ormNames.js';
-import { buildDialectDefaultClause } from '../strategies/dialectColumn.js';
 import { getCanonicalBaseType } from '../utils/databaseTypeMapping.js';
+import { resolveFieldDefault } from '../utils/fieldDefault.js';
 import { getORMTypeWithArgs } from '../utils/ormTypeResolver.js';
 import { buildIndexFieldLookup, escapePythonString, formatLineComment } from './shared.js';
 
 export class SQLAlchemyGenerator implements ORMGenerator {
-  generateModel({
-    dbType,
-    schemaName = '',
-    tableName,
-    tableComment,
-    fields,
-    indexes = [],
-    foreignKeys = [],
-  }: ORMModelInput): string {
+  generateModel(input: ORMModelInput): string {
+    const {
+      dbType,
+      schemaName = '',
+      tableName,
+      tableComment,
+      fields,
+      indexes = [],
+      foreignKeys = [],
+    } = input;
     if (!tableName.trim()) {
       return '# 请填写表名';
     }
@@ -22,14 +23,12 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       return '# 请补充字段信息';
     }
 
-    const names = buildORMPropertyNames('sqlalchemy', {
-      tableName,
-      schemaName,
-      fields,
-      foreignKeys,
-    });
+    const propertyNames = buildORMPropertyNames('sqlalchemy', input);
+    if (!propertyNames.ok) return propertyNames.diagnostic;
+    const names = propertyNames.names;
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
+    const defaults = fields.map((field) => resolveFieldDefault(field, dbType));
 
     const imports = [
       'Column',
@@ -47,9 +46,9 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       'LargeBinary',
       'JSON',
       'Index',
-      ...(fields.some((field) => field.defaultKind === 'current_timestamp') ? ['func'] : []),
-      ...(fields.some((field) => field.defaultKind === 'constant') ? ['literal_column'] : []),
-      ...(fields.some((field) => field.defaultKind === 'expression') ? ['text'] : []),
+      ...(defaults.some((value) => value.kind === 'current_timestamp') ? ['func'] : []),
+      ...(defaults.some((value) => value.kind === 'constant') ? ['literal_column'] : []),
+      ...(defaults.some((value) => value.kind === 'expression') ? ['text'] : []),
       ...(foreignKeys.length > 0 ? ['ForeignKeyConstraint'] : []),
     ];
     lines.push(`from sqlalchemy import ${imports.join(', ')}`);
@@ -72,11 +71,12 @@ export class SQLAlchemyGenerator implements ORMGenerator {
 
     const tableArgs: string[] = [];
 
-    for (const field of fields) {
+    for (const [fieldIndex, field] of fields.entries()) {
+      const defaultValue = defaults[fieldIndex];
       const colType = getORMTypeWithArgs('sqlalchemy', field.type);
       const isPk = primaryFields.has(field.name);
       const isAutoInc =
-        field.defaultKind === 'auto_increment' ||
+        defaultValue.kind === 'auto_increment' ||
         ['serial', 'bigserial'].includes(getCanonicalBaseType(field.type));
       const isNullable = field.nullable && !isPk;
 
@@ -93,15 +93,13 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       } else if (!isPk) {
         args.push('nullable=False');
       }
-      if (field.defaultKind === 'constant') {
-        const defaultClause = buildDialectDefaultClause(field, dbType);
-        if (defaultClause) {
-          const literal = defaultClause.slice('DEFAULT '.length);
-          args.push(`server_default=literal_column('${escapePythonString(literal)}')`);
-        }
-      } else if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
-        args.push(`server_default=text('${escapePythonString(field.defaultValue)}')`);
-      } else if (field.defaultKind === 'current_timestamp') {
+      if (defaultValue.kind === 'constant') {
+        args.push(
+          `server_default=literal_column('${escapePythonString(defaultValue.sqlExpression)}')`,
+        );
+      } else if (defaultValue.kind === 'expression') {
+        args.push(`server_default=text('${escapePythonString(defaultValue.sqlExpression)}')`);
+      } else if (defaultValue.kind === 'current_timestamp') {
         args.push('default=func.now()');
       }
       if (field.comment.trim()) {

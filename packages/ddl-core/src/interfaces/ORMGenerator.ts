@@ -7,6 +7,12 @@ import type {
 
 export type ORMTarget = 'prisma' | 'typeorm' | 'sqlalchemy' | 'gorm' | 'jpa';
 
+export interface ORMReferencedModel {
+  schemaName?: string;
+  tableName: string;
+  fields: Array<Pick<NormalizedField, 'name'>>;
+}
+
 export interface ORMModelInput {
   dbType: DatabaseType;
   schemaName?: string;
@@ -15,6 +21,7 @@ export interface ORMModelInput {
   fields: NormalizedField[];
   indexes?: IndexDefinition[];
   foreignKeys?: ForeignKeyDefinition[];
+  referencedModels?: ORMReferencedModel[];
 }
 
 export interface ORMGenerator {

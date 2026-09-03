@@ -1,41 +1,29 @@
 import { escapeSqlString } from '../utils/databaseFamily';
 import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
 import {
-  formatConstantDefault,
   getCanonicalBaseType,
   parseFieldType,
-  supportsAutoIncrement,
-  supportsDefaultCurrentTimestamp,
   supportsOnUpdateCurrentTimestamp,
-  supportsUuidDefault,
 } from '../utils/databaseTypeMapping';
+import { resolveFieldDefault, type ResolvedFieldDefault } from '../utils/fieldDefault.js';
 import { TypeMapper } from '../utils/TypeMapper';
 import { DIALECT_PROFILES } from './dialectProfiles';
 
-export const buildDialectDefaultClause = (field: NormalizedField, dbType: DatabaseType): string => {
-  const canonicalType = getCanonicalBaseType(field.type);
-  const profile = DIALECT_PROFILES[dbType];
+const renderDialectDefaultClause = (defaultValue: ResolvedFieldDefault) => {
+  switch (defaultValue.kind) {
+    case 'constant':
+    case 'expression':
+    case 'current_timestamp':
+    case 'uuid':
+      return `DEFAULT ${defaultValue.sqlExpression}`;
+    case 'none':
+    case 'auto_increment':
+      return '';
+  }
+};
 
-  if (field.defaultKind === 'constant') {
-    const clause = formatConstantDefault(canonicalType, field.defaultValue, dbType).trimStart();
-    return clause && profile.expressionDefaultTypes?.has(canonicalType)
-      ? `DEFAULT (${clause.slice('DEFAULT '.length)})`
-      : clause;
-  }
-  if (field.defaultKind === 'expression') {
-    const expression = field.defaultValue.trim();
-    return expression ? `DEFAULT ${expression}` : '';
-  }
-  if (
-    field.defaultKind === 'current_timestamp' &&
-    supportsDefaultCurrentTimestamp(dbType, canonicalType)
-  ) {
-    return `DEFAULT ${profile.nowFunction(canonicalType)}`;
-  }
-  if (field.defaultKind === 'uuid' && profile.uuidFunction && supportsUuidDefault(canonicalType)) {
-    return `DEFAULT ${profile.uuidFunction}`;
-  }
-  return '';
+export const buildDialectDefaultClause = (field: NormalizedField, dbType: DatabaseType): string => {
+  return renderDialectDefaultClause(resolveFieldDefault(field, dbType));
 };
 
 export const buildDialectColumn = (
@@ -46,16 +34,15 @@ export const buildDialectColumn = (
   const profile = DIALECT_PROFILES[dbType];
   const canonicalType = getCanonicalBaseType(field.type);
   const type = typeMapper.mapType(parseFieldType(field.type));
+  const defaultValue = resolveFieldDefault(field, dbType);
   const segments: Record<'identity' | 'nullability' | 'default', string> = {
     identity:
-      profile.identityClause &&
-      field.defaultKind === 'auto_increment' &&
-      supportsAutoIncrement(dbType, canonicalType)
+      profile.identityClause && defaultValue.kind === 'auto_increment'
         ? ` ${profile.identityClause}`
         : '',
     nullability: field.nullable ? (profile.explicitNull ? ' NULL' : '') : ' NOT NULL',
     default: (() => {
-      const clause = buildDialectDefaultClause(field, dbType);
+      const clause = renderDialectDefaultClause(defaultValue);
       return clause ? ` ${clause}` : '';
     })(),
   };

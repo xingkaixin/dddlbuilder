@@ -2,17 +2,19 @@ import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js'
 import { buildORMPropertyNames } from './ormNames.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { buildQualifiedTableName } from '../utils/databaseTypeMapping.js';
+import { resolveFieldDefault } from '../utils/fieldDefault.js';
 import { buildIndexFieldLookup, toPascalCase, formatLineComment } from './shared.js';
 
 export class GORMGenerator implements ORMGenerator {
-  generateModel({
-    schemaName = '',
-    tableName,
-    tableComment,
-    fields,
-    indexes = [],
-    foreignKeys = [],
-  }: ORMModelInput): string {
+  generateModel(input: ORMModelInput): string {
+    const {
+      schemaName = '',
+      tableName,
+      tableComment,
+      fields,
+      indexes = [],
+      foreignKeys = [],
+    } = input;
     if (!tableName.trim()) {
       return '// 请填写表名';
     }
@@ -20,12 +22,9 @@ export class GORMGenerator implements ORMGenerator {
       return '// 请补充字段信息';
     }
 
-    const names = buildORMPropertyNames('gorm', {
-      tableName,
-      schemaName,
-      fields,
-      foreignKeys,
-    });
+    const propertyNames = buildORMPropertyNames('gorm', input);
+    if (!propertyNames.ok) return propertyNames.diagnostic;
+    const names = propertyNames.names;
     const lines: string[] = [];
     const { primaryFields, singleUniqueFields } = buildIndexFieldLookup(indexes);
     const needsTime = fields.some((f) =>
@@ -50,14 +49,14 @@ export class GORMGenerator implements ORMGenerator {
       const fieldName = names.field(field.name);
       const goType = mapCanonicalToORMType('gorm', field.type);
       const isPk = primaryFields.has(field.name);
-      const isAutoInc = field.defaultKind === 'auto_increment';
+      const defaultValue = resolveFieldDefault(field, input.dbType);
       const isNullable = field.nullable && !isPk;
 
       const tagParts: string[] = [`column:${field.name}`];
 
       if (isPk) {
         tagParts.push('primaryKey');
-        if (isAutoInc) {
+        if (defaultValue.kind === 'auto_increment') {
           tagParts.push('autoIncrement');
         }
       }

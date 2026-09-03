@@ -2,6 +2,7 @@ import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js'
 import { buildORMPropertyNames } from './ormNames.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { escapeSqlString, getDatabaseFamily } from '../utils/databaseFamily.js';
+import { resolveFieldDefault } from '../utils/fieldDefault.js';
 import {
   buildIndexFieldLookup,
   toPascalCase,
@@ -17,15 +18,16 @@ const toReferentialAction = (action: string) =>
     .join('');
 
 export class PrismaGenerator implements ORMGenerator {
-  generateModel({
-    dbType,
-    schemaName = '',
-    tableName,
-    tableComment,
-    fields,
-    indexes = [],
-    foreignKeys = [],
-  }: ORMModelInput): string {
+  generateModel(input: ORMModelInput): string {
+    const {
+      dbType,
+      schemaName = '',
+      tableName,
+      tableComment,
+      fields,
+      indexes = [],
+      foreignKeys = [],
+    } = input;
     if (!tableName.trim()) {
       return '-- 请填写表名';
     }
@@ -33,12 +35,9 @@ export class PrismaGenerator implements ORMGenerator {
       return '-- 请补充字段信息';
     }
 
-    const names = buildORMPropertyNames('prisma', {
-      tableName,
-      schemaName,
-      fields,
-      foreignKeys,
-    });
+    const propertyNames = buildORMPropertyNames('prisma', input);
+    if (!propertyNames.ok) return propertyNames.diagnostic;
+    const names = propertyNames.names;
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
     const modelName = toPascalCase(tableName.trim());
@@ -62,7 +61,7 @@ export class PrismaGenerator implements ORMGenerator {
       const fieldName = names.field(field.name);
       const prismaType = mapCanonicalToORMType('prisma', field.type);
       const isPk = primaryFields.has(field.name);
-      const isAutoInc = field.defaultKind === 'auto_increment';
+      const defaultValue = resolveFieldDefault(field, dbType);
       const isNullable = field.nullable && !isPk;
 
       const decorations: string[] = [];
@@ -70,23 +69,22 @@ export class PrismaGenerator implements ORMGenerator {
       if (isPk && primaryFields.size === 1) {
         decorations.push('@id');
       }
-      if (isAutoInc) {
+      if (defaultValue.kind === 'auto_increment') {
         decorations.push('@default(autoincrement())');
-      } else if (field.defaultKind === 'uuid') {
+      } else if (defaultValue.kind === 'uuid') {
         decorations.push('@default(uuid())');
-      } else if (field.defaultKind === 'current_timestamp') {
+      } else if (defaultValue.kind === 'current_timestamp') {
         decorations.push('@default(now())');
-      } else if (field.defaultKind === 'constant') {
+      } else if (defaultValue.kind === 'constant') {
         const value =
           prismaType === 'DateTime'
-            ? `dbgenerated(${JSON.stringify("'" + escapeSqlString(field.defaultValue, dbType) + "'")})`
+            ? `dbgenerated(${JSON.stringify("'" + escapeSqlString(defaultValue.value, dbType) + "'")})`
             : prismaType === 'String'
-              ? JSON.stringify(field.defaultValue)
-              : escapePrismaDefault(field.defaultValue);
+              ? JSON.stringify(defaultValue.value)
+              : escapePrismaDefault(defaultValue.value);
         decorations.push(`@default(${value})`);
-      }
-      if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
-        decorations.push(`@default(dbgenerated(${JSON.stringify(field.defaultValue)}))`);
+      } else if (defaultValue.kind === 'expression') {
+        decorations.push(`@default(dbgenerated(${JSON.stringify(defaultValue.sqlExpression)}))`);
       }
       if (fieldName !== field.name) {
         decorations.push(`@map(${JSON.stringify(field.name)})`);

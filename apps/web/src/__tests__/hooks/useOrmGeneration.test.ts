@@ -157,6 +157,34 @@ describe('useOrmGeneration', () => {
     expect(result.current.generatedOrm).toContain('@id');
   });
 
+  it('forwards referenced model fields used by relationship mappings', () => {
+    const { result } = renderHook(() =>
+      useOrmGeneration({
+        dbType: 'mysql',
+        tableName: 'orders',
+        tableComment: '',
+        fields: [createField({ name: 'user_id', defaultKind: 'none' })],
+        foreignKeys: [
+          {
+            id: 'fk-user',
+            name: 'fk_user',
+            fields: ['user_id'],
+            refTable: 'users',
+            refFields: ['userId'],
+          },
+        ],
+        referencedModels: [
+          {
+            tableName: 'users',
+            fields: [{ name: 'user_id' }, { name: 'userId' }],
+          },
+        ],
+      }),
+    );
+
+    expect(result.current.generatedOrm).toContain('references: [userId_2]');
+  });
+
   it('handles empty fields gracefully', () => {
     const { result } = renderHook(() =>
       useOrmGeneration({ dbType: 'mysql', tableName: 'users', tableComment: '用户表', fields: [] }),

@@ -109,6 +109,7 @@ describe('ORM database name mapping', () => {
           refFields: names,
         },
       ],
+      referencedModels: [{ tableName: 'user_profile', fields: names.map((name) => field(name)) }],
     });
 
     expect(model).toContain(expected);

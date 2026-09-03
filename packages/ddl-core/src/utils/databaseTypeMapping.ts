@@ -238,11 +238,19 @@ export const formatConstantDefault = (
   value: string,
   dbType: DatabaseType = 'postgresql',
 ) => {
+  const expression = formatConstantDefaultExpression(canonical, value, dbType);
+  return expression ? ` DEFAULT ${expression}` : '';
+};
+
+export const formatConstantDefaultExpression = (
+  canonical: string,
+  value: string,
+  dbType: DatabaseType = 'postgresql',
+) => {
   const shouldQuote = shouldQuoteDefault(canonical, value);
   if (!shouldQuote && !value.trim()) return '';
   const cleanValue = escapeSqlString(value, dbType);
-  const formattedValue = shouldQuote ? `'${cleanValue}'` : cleanValue;
-  return ` DEFAULT ${formattedValue}`;
+  return shouldQuote ? `'${cleanValue}'` : cleanValue;
 };
 
 export const shouldQuoteDefault = (canonical: string, value: string) => {

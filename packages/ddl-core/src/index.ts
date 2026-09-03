@@ -88,7 +88,12 @@ export {
   type StorageResult,
 } from './utils/storageEstimator.js';
 export { ORMGeneratorFactory } from './factories/ORMGeneratorFactory.js';
-export type { ORMGenerator, ORMModelInput, ORMTarget } from './interfaces/ORMGenerator.js';
+export type {
+  ORMGenerator,
+  ORMModelInput,
+  ORMReferencedModel,
+  ORMTarget,
+} from './interfaces/ORMGenerator.js';
 export { mapCanonicalToORMType, getORMTypeWithArgs } from './utils/ormTypeResolver.js';
 
 export { RESERVED_KEYWORDS } from './configs/reservedKeywords';

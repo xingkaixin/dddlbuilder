@@ -2,6 +2,7 @@ import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js'
 import { buildORMPropertyNames } from './ormNames.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { getDatabaseFamily } from '../utils/databaseFamily.js';
+import { resolveFieldDefault } from '../utils/fieldDefault.js';
 import {
   buildIndexFieldLookup,
   toPascalCase,
@@ -10,15 +11,16 @@ import {
 } from './shared.js';
 
 export class JPAGenerator implements ORMGenerator {
-  generateModel({
-    dbType,
-    schemaName = '',
-    tableName,
-    tableComment,
-    fields,
-    indexes = [],
-    foreignKeys = [],
-  }: ORMModelInput): string {
+  generateModel(input: ORMModelInput): string {
+    const {
+      dbType,
+      schemaName = '',
+      tableName,
+      tableComment,
+      fields,
+      indexes = [],
+      foreignKeys = [],
+    } = input;
     if (!tableName.trim()) {
       return '// 请填写表名';
     }
@@ -26,12 +28,9 @@ export class JPAGenerator implements ORMGenerator {
       return '// 请补充字段信息';
     }
 
-    const names = buildORMPropertyNames('jpa', {
-      tableName,
-      schemaName,
-      fields,
-      foreignKeys,
-    });
+    const propertyNames = buildORMPropertyNames('jpa', input);
+    if (!propertyNames.ok) return propertyNames.diagnostic;
+    const names = propertyNames.names;
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
 
@@ -73,7 +72,7 @@ export class JPAGenerator implements ORMGenerator {
       const propName = names.field(field.name);
       const javaType = mapCanonicalToORMType('jpa', field.type);
       const isPk = primaryFields.has(field.name);
-      const isAutoInc = field.defaultKind === 'auto_increment';
+      const defaultValue = resolveFieldDefault(field, dbType);
       const isNullable = field.nullable && !isPk;
 
       if (field.comment.trim()) {
@@ -82,7 +81,7 @@ export class JPAGenerator implements ORMGenerator {
 
       if (isPk) {
         lines.push(`    @Id`);
-        if (isAutoInc) {
+        if (defaultValue.kind === 'auto_increment') {
           lines.push(`    @GeneratedValue(strategy = GenerationType.IDENTITY)`);
         }
       }

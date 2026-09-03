@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildORM } from '../utils/ormGenerators';
+import { buildDDL } from '../utils/ddlGenerators';
 import { ORMGeneratorFactory } from '../factories/ORMGeneratorFactory';
 import type {
   NormalizedField,
@@ -221,6 +222,21 @@ describe('primary key defaults', () => {
   });
 });
 
+describe('database default compatibility', () => {
+  it('omits unsupported UUID defaults from MySQL integer columns in every output', () => {
+    const input = {
+      dbType: 'mysql' as const,
+      tableName: 'defaults',
+      tableComment: '',
+      fields: [{ ...sampleFields[0], type: 'int', defaultKind: 'uuid' as const }],
+    };
+
+    expect(buildDDL(input)).not.toContain('UUID()');
+    expect(buildORM('prisma', input)).not.toContain('@default(uuid())');
+    expect(buildORM('typeorm', input)).not.toContain('default:');
+  });
+});
+
 describe('PrismaGenerator', () => {
   it('generates Prisma model', () => {
     const result = buildORM('prisma', {
@@ -230,6 +246,7 @@ describe('PrismaGenerator', () => {
       fields: sampleFields,
       indexes: sampleIndexes,
       foreignKeys: sampleForeignKeys,
+      referencedModels: [{ tableName: 'roles', fields: [{ name: 'id' }] }],
     });
     expect(result).toContain('model UserInfo {');
     expect(result).toContain('/// 用户信息表');
