@@ -445,7 +445,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   it('reuses the cached authorization for repeated messages within the TTL window', async () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
-    const prepare = vi.fn(() => ({
+    const prepare = vi.fn((_sql: string) => ({
       bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
     }));
     const durableObject = new WorkspaceYDocDurableObject(state, {
@@ -849,8 +849,8 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         );
       const payloads = [snapshot('version A', 100), snapshot('version B', 200)];
       const responses = await Promise.all(payloads.map(migrate));
-      const results: WorkspaceMigrationResult[] = await Promise.all(
-        responses.map((response) => response.json()),
+      const results = await Promise.all(
+        responses.map((response) => response.json<WorkspaceMigrationResult>()),
       );
       expect(responses.map((response) => response.status)).toEqual([200, 200]);
       expect(results.map((result) => result.createdCount).sort((a, b) => a - b)).toEqual([0, 2]);

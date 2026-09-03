@@ -9,6 +9,7 @@ import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 import {
   toSchemaDocumentState,
   withDefaultEditorSession,
+  type IndexDefinition,
   type SchemaDocumentState,
 } from '@ddlbuilder/shared-types';
 import type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
@@ -409,7 +410,7 @@ describe('workspaceMigration', () => {
       name: 'idx_id',
       kind: 'index',
       fields: [{ name: 'id', direction: 'ASC' as const }],
-    };
+    } satisfies IndexDefinition;
     payload.snapshot.savedTables[0].state.indexes = [index];
     const existing = structuredClone(payload.snapshot);
     existing.savedTables[0].state.indexes = [

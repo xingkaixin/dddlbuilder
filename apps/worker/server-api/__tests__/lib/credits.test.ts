@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
 
+const START_DATE = Date.UTC(2026, 3, 1);
+const END_DATE = Date.UTC(2026, 3, 30);
+
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
@@ -159,19 +162,13 @@ describe('credits', () => {
       await listCreditLedger(createEnv({ USER_DB: db as unknown as D1Database }), 'user-1', {
         limit: 5,
         offset: 10,
-        startDate: '2026-04-01 00:00:00',
-        endDate: '2026-04-30 00:00:00',
+        startDate: START_DATE,
+        endDate: END_DATE,
       });
 
       expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('created_at >= ?'));
       expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('created_at < ?'));
-      expect(db.bind).toHaveBeenCalledWith(
-        'user-1',
-        '2026-04-01 00:00:00',
-        '2026-04-30 00:00:00',
-        5,
-        10,
-      );
+      expect(db.bind).toHaveBeenCalledWith('user-1', START_DATE, END_DATE, 5, 10);
     });
 
     it('counts ledger rows with matching filters', async () => {
@@ -183,13 +180,13 @@ describe('credits', () => {
         createEnv({ USER_DB: db as unknown as D1Database }),
         'user-1',
         {
-          startDate: '2026-04-01 00:00:00',
-          endDate: '2026-04-30 00:00:00',
+          startDate: START_DATE,
+          endDate: END_DATE,
         },
       );
 
       expect(result).toBe(12);
-      expect(db.bind).toHaveBeenCalledWith('user-1', '2026-04-01 00:00:00', '2026-04-30 00:00:00');
+      expect(db.bind).toHaveBeenCalledWith('user-1', START_DATE, END_DATE);
     });
   });
 

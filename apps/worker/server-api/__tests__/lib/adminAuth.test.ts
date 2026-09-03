@@ -85,7 +85,7 @@ const readToken = (setCookie: string): [payload: string, mac: string] => {
 };
 
 const hmacHex = async (key: BufferSource, data: string): Promise<string> => {
-  const { subtle } = globalThis.crypto;
+  const { subtle } = crypto;
   const cryptoKey = await subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, [
     'sign',
   ]);
@@ -103,7 +103,7 @@ describe('adminAuth', () => {
     vi.clearAllMocks();
 
     // Save original crypto
-    originalCrypto = globalThis.crypto;
+    originalCrypto = crypto;
 
     // Keep real signing behavior while making the generated session ID deterministic.
     Object.defineProperty(globalThis, 'crypto', {

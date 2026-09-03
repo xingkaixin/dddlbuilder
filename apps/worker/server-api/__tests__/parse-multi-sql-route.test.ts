@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SqlParser } from '@ddlbuilder/ddl-core/parser';
+import { SqlParser, type MultiParsedResult } from '@ddlbuilder/ddl-core/parser';
 import app from '../../api/index';
 import type { ApiEnv } from '../lib/context.js';
 
@@ -80,7 +80,7 @@ describe('parse-multi-sql route', () => {
     );
 
     expect(response.status).toBe(200);
-    const payload = await response.json();
+    const payload = await response.json<MultiParsedResult>();
     expect(payload.results).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ tableName: 'users' }),
@@ -105,7 +105,7 @@ describe('parse-multi-sql route', () => {
     );
 
     expect(response.status).toBe(200);
-    const payload = await response.json();
+    const payload = await response.json<MultiParsedResult>();
     expect(payload.results).toEqual([expect.objectContaining({ tableName: 'users' })]);
     expect(payload.failed).toEqual([
       expect.objectContaining({

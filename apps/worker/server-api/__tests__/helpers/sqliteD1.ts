@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { DatabaseSync, type StatementSync } from 'node:sqlite';
+import { DatabaseSync, type SQLInputValue, type StatementSync } from 'node:sqlite';
+import { fileURLToPath, URL } from 'node:url';
 
 interface SqliteD1Options {
   includeMeta?: boolean;
@@ -19,31 +19,51 @@ const applyMigrations = (sqlite: DatabaseSync) => {
   }
 };
 
-const normalizeBindings = (bindings: unknown[]) =>
-  bindings.map((value) => (value instanceof ArrayBuffer ? new Uint8Array(value) : value));
+const normalizeD1Binding = (value: unknown): SQLInputValue => {
+  if (value === null || typeof value === 'number' || typeof value === 'string') return value;
+  if (typeof value === 'boolean') return Number(value);
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  throw new TypeError(`Unsupported D1 binding type: ${typeof value}`);
+};
 
 class SqliteD1Statement {
+  private readonly statement: StatementSync;
+  private readonly sql: string;
+  private readonly includeMeta: boolean;
+  private readonly bindings: SQLInputValue[];
+
   constructor(
-    private readonly statement: StatementSync,
-    private readonly sql: string,
-    private readonly includeMeta: boolean,
-    private readonly bindings: unknown[] = [],
-  ) {}
+    statement: StatementSync,
+    sql: string,
+    includeMeta: boolean,
+    bindings: SQLInputValue[] = [],
+  ) {
+    this.statement = statement;
+    this.sql = sql;
+    this.includeMeta = includeMeta;
+    this.bindings = bindings;
+  }
 
   bind(...bindings: unknown[]) {
-    return new SqliteD1Statement(this.statement, this.sql, this.includeMeta, bindings);
+    return new SqliteD1Statement(
+      this.statement,
+      this.sql,
+      this.includeMeta,
+      bindings.map(normalizeD1Binding),
+    );
   }
 
   async first<T>(column?: string): Promise<T | null> {
-    const row = this.statement.get(...normalizeBindings(this.bindings)) as
-      | Record<string, unknown>
-      | undefined;
+    const row = this.statement.get(...this.bindings) as Record<string, unknown> | undefined;
     if (!row) return null;
     return (column ? row[column] : row) as T;
   }
 
   async all<T>() {
-    const results = this.statement.all(...normalizeBindings(this.bindings)) as T[];
+    const results = this.statement.all(...this.bindings) as T[];
     return this.withMeta({ success: true, results }, this.isReadQuery() ? results.length : 0, 0);
   }
 
@@ -56,11 +76,11 @@ class SqliteD1Statement {
 
   async run<T>() {
     if (this.statement.columns().length > 0) {
-      const results = this.statement.all(...normalizeBindings(this.bindings)) as T[];
+      const results = this.statement.all(...this.bindings) as T[];
       return this.withMeta({ success: true, results }, 0, results.length);
     }
 
-    const result = this.statement.run(...normalizeBindings(this.bindings));
+    const result = this.statement.run(...this.bindings);
     return this.withMeta({ success: true, results: [] as T[] }, 0, Number(result.changes));
   }
 

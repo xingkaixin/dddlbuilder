@@ -10,7 +10,7 @@ describe('buildGenerateTableSystemPrompt', () => {
         locale,
         existingConfig: { tableName: 'current_editor_table' },
         previousSchema: { tableName: 'unapplied_proposal' },
-      };
+      } satisfies Omit<Parameters<typeof buildGenerateTableSystemPrompt>[0], 'mode'>;
       const patch = buildGenerateTableSystemPrompt({ ...contexts, mode: 'patch' });
       expect(patch).toContain('current_editor_table');
       expect(patch).not.toContain('unapplied_proposal');

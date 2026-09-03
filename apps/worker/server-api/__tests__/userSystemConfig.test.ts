@@ -25,7 +25,7 @@ describe('getUserSystemConfig', () => {
   });
 
   it('fails when USER_DB binding is missing', () => {
-    const env = buildEnv();
+    const env: Partial<ReturnType<typeof buildEnv>> = buildEnv();
     delete env.USER_DB;
     expect(() => getUserSystemConfig(env as never)).toThrow('USER_DB binding is required');
   });

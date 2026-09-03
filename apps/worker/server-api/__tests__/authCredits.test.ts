@@ -69,8 +69,7 @@ describe('authentication credit initialization', () => {
     const app = new Hono<ApiEnv>();
     registerCreditRoutes(app);
     const response = await app.request('/credits/balance', {}, env);
-    const body = await response.json();
-    expect(body.balance).toBe(100000);
+    expect(await response.json()).toMatchObject({ balance: 100000 });
   });
 
   it.each(['200000', '50000'])(

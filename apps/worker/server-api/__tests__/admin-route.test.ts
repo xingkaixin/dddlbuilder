@@ -87,7 +87,7 @@ describe('/api/admin/*', () => {
         body: JSON.stringify(body),
       }),
       env,
-      { waitUntil, passThroughOnException() {} } as ExecutionContext,
+      { waitUntil, passThroughOnException() {} } as unknown as ExecutionContext,
     );
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));
     expect(requestRateLimitMocks.revokeUserSessions).toHaveBeenCalledWith(env, 'user-1');
@@ -369,23 +369,25 @@ describe('/api/admin/*', () => {
       );
 
       expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.users).toHaveLength(2);
-      expect(body.users[0]).toMatchObject({
-        id: 'user-1',
-        name: 'User One',
-        email: 'user1@example.com',
-        emailVerified: true,
-        balance: 5000,
-        disabled: false,
-      });
-      expect(body.users[1]).toMatchObject({
-        id: 'user-2',
-        name: 'User Two',
-        email: 'user2@example.com',
-        emailVerified: false,
-        balance: 10000,
-        disabled: true,
+      expect(await response.json()).toMatchObject({
+        users: [
+          {
+            id: 'user-1',
+            name: 'User One',
+            email: 'user1@example.com',
+            emailVerified: true,
+            balance: 5000,
+            disabled: false,
+          },
+          {
+            id: 'user-2',
+            name: 'User Two',
+            email: 'user2@example.com',
+            emailVerified: false,
+            balance: 10000,
+            disabled: true,
+          },
+        ],
       });
     });
 
@@ -460,15 +462,16 @@ describe('/api/admin/*', () => {
       );
 
       expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.user).toMatchObject({
-        id: 'user-1',
-        name: 'User One',
-        email: 'user1@example.com',
-        emailVerified: true,
-        balance: 5000,
-        disabled: false,
-        lastActiveAt: '2026-04-15T10:00:00.000Z',
+      expect(await response.json()).toMatchObject({
+        user: {
+          id: 'user-1',
+          name: 'User One',
+          email: 'user1@example.com',
+          emailVerified: true,
+          balance: 5000,
+          disabled: false,
+          lastActiveAt: '2026-04-15T10:00:00.000Z',
+        },
       });
     });
 
@@ -1204,12 +1207,14 @@ describe('/api/admin/*', () => {
       );
 
       expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.items).toHaveLength(1);
-      expect(body.items[0]).toMatchObject({
-        id: 'ledger-1',
-        kind: 'grant',
-        amount: 5000,
+      expect(await response.json()).toMatchObject({
+        items: [
+          {
+            id: 'ledger-1',
+            kind: 'grant',
+            amount: 5000,
+          },
+        ],
       });
     });
   });
@@ -1281,14 +1286,16 @@ describe('/api/admin/*', () => {
       );
 
       expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.items).toHaveLength(1);
-      expect(body.items[0]).toMatchObject({
-        id: 'event-1',
-        routeKey: 'POST /api/generate',
-        status: 'success',
+      expect(await response.json()).toMatchObject({
+        items: [
+          {
+            id: 'event-1',
+            routeKey: 'POST /api/generate',
+            status: 'success',
+          },
+        ],
+        total: 42,
       });
-      expect(body.total).toBe(42);
     });
 
     it('handles events with error codes', async () => {
@@ -1335,12 +1342,15 @@ describe('/api/admin/*', () => {
       );
 
       expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.items[0]).toMatchObject({
-        id: 'event-2',
-        status: 'error',
-        errorCode: 'GENERATION_FAILED',
-        actualTotalTokens: null,
+      expect(await response.json()).toMatchObject({
+        items: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'event-2',
+            status: 'error',
+            errorCode: 'GENERATION_FAILED',
+            actualTotalTokens: null,
+          }),
+        ]),
       });
     });
   });
