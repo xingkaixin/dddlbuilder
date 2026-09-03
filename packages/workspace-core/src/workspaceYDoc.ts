@@ -10,6 +10,7 @@ import {
 } from './workspaceTableDoc';
 import { ensureMap, type JsonRecord, readJsonMap, writeJsonMap } from './yMapJson';
 import { readWorkspaceTimestamp } from './workspaceMetadata';
+import { assertTableDocDecodable } from './workspaceYDocValidation';
 
 export const WORKSPACE_YDOC_SCHEMA_VERSION = 1;
 export const WORKSPACE_YDOC_COLLECTIONS = [
@@ -92,11 +93,15 @@ const assertTableDocStructure = (tableDoc: Y.Map<unknown>, collection: string) =
 const assertWorkspaceYDocCollections = (doc: Y.Doc) => {
   const root = getWorkspaceRoot(doc);
   for (const collection of WORKSPACE_YDOC_COLLECTIONS) {
-    for (const value of root[collection].values()) {
+    for (const [key, value] of root[collection].entries()) {
       if (!(value instanceof Y.Map)) {
         throw new Error(`${collection} entries must be Y.Maps`);
       }
-      if (collection !== 'folders') assertTableDocStructure(value, collection);
+      if (collection !== 'folders') {
+        const path = `${collection}.${key}`;
+        assertTableDocStructure(value, path);
+        assertTableDocDecodable(value, path);
+      }
     }
   }
 };

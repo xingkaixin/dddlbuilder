@@ -396,6 +396,83 @@ describe('workspace YDoc roots', () => {
     expect(getWorkspaceRoot(doc).meta.has('schemaVersion')).toBe(false);
   });
 
+  it('rejects records that cannot be decoded into a complete workspace snapshot', () => {
+    const missingIndexFields = new Y.Doc();
+    ensureWorkspaceYDocMeta(missingIndexFields);
+    upsertTableRecord(
+      getWorkspaceRoot(missingIndexFields).drafts,
+      'draft',
+      toSchemaDocumentState({
+        ...createState('users'),
+        indexes: [
+          {
+            id: 'index-id',
+            name: 'idx_id',
+            kind: 'index',
+            fields: [{ name: 'id', direction: 'ASC' }],
+          },
+        ],
+      }),
+      { updatedAt: 1 },
+    );
+    const indexTable = getWorkspaceRoot(missingIndexFields).drafts.get('draft');
+    if (!indexTable) throw new Error('Missing test table');
+    const index = (indexTable.get('indexes') as Y.Map<Y.Map<unknown>>).get('index-id');
+    index?.delete('fields');
+
+    expect(() => assertWorkspaceYDocStructure(missingIndexFields)).toThrow(
+      'drafts.draft.indexes.index-id.fields must be an array',
+    );
+
+    const invalidFieldType = new Y.Doc();
+    ensureWorkspaceYDocMeta(invalidFieldType);
+    upsertTableRecord(
+      getWorkspaceRoot(invalidFieldType).drafts,
+      'draft',
+      toSchemaDocumentState(createState('users')),
+      { updatedAt: 1 },
+    );
+    const fieldTable = getWorkspaceRoot(invalidFieldType).drafts.get('draft');
+    if (!fieldTable) throw new Error('Missing test table');
+    const field = (fieldTable.get('fields') as Y.Map<Y.Map<unknown>>).get('field-id');
+    field?.set('fieldName', 42);
+
+    expect(() => assertWorkspaceYDocStructure(invalidFieldType)).toThrow(
+      'drafts.draft.fields.field-id.fieldName must be a string or null',
+    );
+  });
+
+  it('accepts duplicate order entries produced by concurrent Yjs reordering', () => {
+    const doc = new Y.Doc();
+    ensureWorkspaceYDocMeta(doc);
+    upsertTableRecord(
+      getWorkspaceRoot(doc).drafts,
+      'draft',
+      toSchemaDocumentState({
+        ...createState('users'),
+        rows: ['a', 'b', 'c', 'd'].map((fieldName) => ({
+          ...createState('users').rows[0],
+          id: `field-${fieldName}`,
+          fieldName,
+        })),
+      }),
+      { updatedAt: 1 },
+    );
+    const tableDoc = getWorkspaceRoot(doc).drafts.get('draft');
+    if (!tableDoc) throw new Error('Missing test table');
+    const order = tableDoc.get('fieldOrder') as Y.Array<string>;
+    order.delete(0, order.length);
+    order.push(['field-a', 'field-d', 'field-c', 'field-c', 'field-b']);
+
+    expect(() => assertWorkspaceYDocStructure(doc)).not.toThrow();
+    expect(exportWorkspaceYDocToSnapshot(doc).drafts[0].state.rows.map((row) => row.id)).toEqual([
+      'field-a',
+      'field-d',
+      'field-c',
+      'field-b',
+    ]);
+  });
+
   it('migrates only structurally valid versionless documents', () => {
     const legacy = new Y.Doc();
     setLegacyTableDoc(getWorkspaceRoot(legacy).drafts, 'legacy', 'users');
