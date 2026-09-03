@@ -20,20 +20,20 @@
 | `@ddlbuilder/shared-types` | `packages/shared-types/` | 跨 monorepo 共享的 TypeScript 类型定义 |
 | `@ddlbuilder/tsconfig` | `packages/tsconfig/` | 共享的 TypeScript 配置预设 |
 
-**依赖流向：**
+**主要依赖流向（以各 workspace 的 `package.json` 为准）：**
 - `apps/web` → `@ddlbuilder/ddl-core`、`@ddlbuilder/workspace-core`、`@ddlbuilder/shared-types`
-- `apps/worker` → `@ddlbuilder/user-db`、`@ddlbuilder/workspace-core`、`@ddlbuilder/shared-types`
+- `apps/worker` → `@ddlbuilder/ddl-core`、`@ddlbuilder/user-db`、`@ddlbuilder/workspace-core`、`@ddlbuilder/shared-types`
 - `packages/ddl-core`、`packages/workspace-core` → `@ddlbuilder/shared-types`
 - 多数 package dev 依赖 `@ddlbuilder/tsconfig`
 
 ## 开发
-- 使用`pnpm add`,添加依赖，不要直接修改`packages.json`
+- 添加依赖时，在目标 workspace 中运行 `pnpm add <package>`，或从仓库根目录运行 `pnpm --filter <workspace> add <package>`。添加到根 workspace 时使用 `pnpm add -w <package>`。不要手动编辑 `package.json`。
 - Cloudflare Worker 中的异步副作用（如 Telegram 通知、审计上报、异步写入）如果需要在请求返回后继续执行，必须挂到 `waitUntil`；不要只写 `void someAsyncTask()`，否则本地正常、线上可能因 Worker 提前结束而丢失。
+- 格式化代码使用 `pnpm format`。
 
-## 测试
-- lint 使用`pnpm lint`
-- format 使用 `pnpm format`
-- test 使用`pnpm test`
-
-## E2E测试
-- 如果设计到影响界面UI交互逻辑调整等，需要执行`pnpm run test:e2e`验证
+## 验证
+- 按改动范围选择验证命令：
+  - lint：`pnpm lint`
+  - 类型检查：`pnpm typecheck`
+  - 单元测试：`pnpm test`
+- 涉及用户界面或交互逻辑变更时，运行 `pnpm run test:e2e`。
