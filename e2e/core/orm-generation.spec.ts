@@ -10,7 +10,7 @@ test('ORM output keeps schemas separate from type names @core', async ({ page })
   await page.locator('#table-name').fill('user_profile');
   await page.getByRole('tab', { name: 'ORM 模型', exact: true }).click();
 
-  const output = page.locator('[role="tabpanel"]:visible pre');
+  const output = page.getByRole('tabpanel', { name: 'ORM 模型' }).locator('pre');
   await expect(output).toContainText('model UserProfile {');
   await expect(output).toContainText('@@map("user_profile")');
   await expect(output).toContainText('@@schema("public")');

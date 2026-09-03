@@ -765,6 +765,8 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
     await pageB.goto('/');
     await openDraftByName(pageA, 'ai_conflict');
     await openDraftByName(pageB, 'ai_conflict');
+    await expect(pageA.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
     await pageA.getByRole('button', { name: 'AI 修改', exact: true }).click();
     const dialog = pageA.getByRole('dialog', { name: 'AI 修改当前表' });
     await dialog.locator('#ai-patch-input').fill('将字段类型改成 INT');
@@ -788,6 +790,9 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
       .getByRole('checkbox')
       .click();
     await expect(pageA.getByTestId('data-table')).toContainText('另一端的注释');
+    await expect
+      .poll(() => readDefaultDraftState(server.doc)?.rows[0])
+      .toMatchObject({ fieldComment: '另一端的注释', nullable: true });
     await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
     await expect(pageA.getByText(/表结构已发生变化，请基于当前内容重新生成建议/)).toBeVisible();
     await expect(dialog.getByText('类型', { exact: true })).toBeVisible();
@@ -833,6 +838,8 @@ test('workspace yjs sync converges realtime edits and IndexedDB restore', async 
   await pageB.goto('/');
   await openDraftByName(pageA, 'cloud_seed');
   await openDraftByName(pageB, 'cloud_seed');
+  await expect(pageA.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+  await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
   await tableNameInput(pageA).fill('sync_realtime');
   await editFirstFieldName(pageA, 'local_id');
 
@@ -905,6 +912,8 @@ test('remote draft removal cancels index advice when switching to a same-name dr
     await pageB.goto('/');
     await openDraftByName(pageA, 'shared_draft');
     await openDraftByName(pageB, 'shared_draft');
+    await expect(pageA.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
     await pageB.getByRole('button', { name: /新建草稿/i }).click();
     await tableNameInput(pageB).fill('shared_draft');
     await editFirstFieldName(pageB, 'id');
@@ -990,6 +999,8 @@ test('workspace yjs sync converges saved table lifecycle and folder moves across
   await pageB.goto('/');
   await openDraftByName(pageA, 'cloud_seed');
   await openDraftByName(pageB, 'cloud_seed');
+  await expect(pageA.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+  await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
   await saveCurrentTable(pageA, tableName);
   await expect
     .poll(() => readSavedTableState(server.doc, tableName)?.rows[0]?.fieldName)
@@ -1058,6 +1069,7 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
     const tableName = `saved_draft_${Date.now()}`;
     await pageA.goto('/');
     await openDraftByName(pageA, 'cloud_seed');
+    await expect(pageA.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
     await saveCurrentTable(pageA, tableName);
     await expect
       .poll(() => readSavedTableState(server.doc, tableName)?.rows[0]?.fieldName)
@@ -1069,6 +1081,7 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
     await expect(tableNameInput(pageB)).toHaveValue(tableName);
     await expect(pageB.getByTestId('data-table')).toBeVisible();
     await expect(pageB.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
+    await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
     server.setClientPaused('offline-client', true);
     await contextB.setOffline(true);
     await pageB.evaluate(() => window.dispatchEvent(new Event('offline')));
@@ -1148,6 +1161,7 @@ test('workspace yjs rename preserves an offline save and retargets open tabs', a
 
   await pageA.goto('/');
   await openDraftByName(pageA, 'cloud_seed');
+  await expect(pageA.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
   await saveCurrentTable(pageA, originalName);
   await expect
     .poll(() => readSavedTableState(server.doc, originalName)?.rows[0]?.fieldName)
@@ -1159,6 +1173,7 @@ test('workspace yjs rename preserves an offline save and retargets open tabs', a
   await expect(tableNameInput(pageB)).toHaveValue(originalName);
   await expect(pageB.getByTestId('data-table')).toBeVisible();
   await expect(pageB.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
+  await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
 
   server.setClientPaused('offline-client', true);
   await contextB.setOffline(true);
