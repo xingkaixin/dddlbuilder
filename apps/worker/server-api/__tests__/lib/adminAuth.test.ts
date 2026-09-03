@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
 
+const TEST_ADMIN_SESSION_SECRET = '0123456789abcdef0123456789abcdef';
+
 const createAdminSessionDb = () => {
   const sessions = new Map<
     string,
@@ -64,6 +66,7 @@ const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Binding
   RESEND_FROM_NAME: 'DDLBuilder',
   TURNSTILE_SECRET_KEY: 'turnstile-secret',
   SIGNUP_BONUS_CREDITS: '100000',
+  ADMIN_SESSION_SECRET: TEST_ADMIN_SESSION_SECRET,
   ...overrides,
 });
 
@@ -102,7 +105,7 @@ describe('adminAuth', () => {
     // Save original crypto
     originalCrypto = globalThis.crypto;
 
-    // Real subtle crypto so key-derivation behaviour is exercised, only randomUUID is pinned.
+    // Keep real signing behavior while making the generated session ID deterministic.
     Object.defineProperty(globalThis, 'crypto', {
       value: {
         subtle: originalCrypto.subtle,
@@ -172,6 +175,46 @@ describe('adminAuth', () => {
     it('returns failure when ADMIN_CONSOLE_PASSWORD is empty string', async () => {
       const { createAdminSession } = await import('../../lib/adminAuth.js');
       const result = await createAdminSession(createEnv({ ADMIN_CONSOLE_PASSWORD: '' }), '');
+
+      expect(result.success).toBe(false);
+    });
+
+    it('returns failure when ADMIN_SESSION_SECRET is not set', async () => {
+      const { createAdminSession } = await import('../../lib/adminAuth.js');
+      const result = await createAdminSession(
+        createEnv({
+          ADMIN_CONSOLE_PASSWORD: 'secret',
+          ADMIN_SESSION_SECRET: undefined,
+        }),
+        'secret',
+      );
+
+      expect(result.success).toBe(false);
+    });
+
+    it('returns failure when ADMIN_SESSION_SECRET is shorter than 32 bytes', async () => {
+      const { createAdminSession } = await import('../../lib/adminAuth.js');
+      const result = await createAdminSession(
+        createEnv({
+          ADMIN_CONSOLE_PASSWORD: 'secret',
+          ADMIN_SESSION_SECRET: 'short-session-secret',
+        }),
+        'secret',
+      );
+
+      expect(result.success).toBe(false);
+    });
+
+    it('returns failure when ADMIN_SESSION_SECRET equals the admin password', async () => {
+      const { createAdminSession } = await import('../../lib/adminAuth.js');
+      const sharedSecret = '0123456789abcdef0123456789abcdef';
+      const result = await createAdminSession(
+        createEnv({
+          ADMIN_CONSOLE_PASSWORD: sharedSecret,
+          ADMIN_SESSION_SECRET: sharedSecret,
+        }),
+        sharedSecret,
+      );
 
       expect(result.success).toBe(false);
     });
@@ -264,31 +307,29 @@ describe('adminAuth', () => {
       const { createAdminSession, resolveAdminSession } = await import('../../lib/adminAuth.js');
       const env = createEnv({
         ADMIN_CONSOLE_PASSWORD: 'secret',
-        ADMIN_SESSION_SECRET: 'session-signing-key',
+        ADMIN_SESSION_SECRET: TEST_ADMIN_SESSION_SECRET,
       });
       const setCookie = requireSetCookie(await createAdminSession(env, 'secret'));
       const [payload, mac] = readToken(setCookie);
 
-      expect(mac).toBe(await hmacHex(new TextEncoder().encode('session-signing-key'), payload));
+      expect(mac).toBe(await hmacHex(new TextEncoder().encode(TEST_ADMIN_SESSION_SECRET), payload));
       await expect(resolveAdminSession(env, setCookie)).resolves.toBe(true);
       await expect(
-        resolveAdminSession({ ...env, ADMIN_SESSION_SECRET: 'rotated-key' }, setCookie),
+        resolveAdminSession(
+          { ...env, ADMIN_SESSION_SECRET: 'fedcba9876543210fedcba9876543210' },
+          setCookie,
+        ),
       ).resolves.toBe(false);
     });
 
-    it('derives the signing key from the password when ADMIN_SESSION_SECRET is absent', async () => {
+    it('returns false when ADMIN_SESSION_SECRET is absent', async () => {
       const { createAdminSession, resolveAdminSession } = await import('../../lib/adminAuth.js');
       const env = createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' });
       const setCookie = requireSetCookie(await createAdminSession(env, 'secret'));
-      const [payload, mac] = readToken(setCookie);
-      const derivedKey = await globalThis.crypto.subtle.digest(
-        'SHA-256',
-        new TextEncoder().encode('secretddlbuilder:admin-session:v1'),
-      );
 
-      expect(mac).toBe(await hmacHex(derivedKey, payload));
-      expect(mac).not.toBe(await hmacHex(new TextEncoder().encode('secret'), payload));
-      await expect(resolveAdminSession(env, setCookie)).resolves.toBe(true);
+      await expect(
+        resolveAdminSession({ ...env, ADMIN_SESSION_SECRET: undefined }, setCookie),
+      ).resolves.toBe(false);
     });
 
     it('returns false when ADMIN_CONSOLE_PASSWORD is not set', async () => {

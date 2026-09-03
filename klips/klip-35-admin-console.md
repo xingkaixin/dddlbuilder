@@ -43,7 +43,8 @@ Origin: "XING-104 后续拆分"
 
 `/admin` 使用独立管理密码，不复用普通用户 session。
 
-- 新增环境变量：`ADMIN_CONSOLE_PASSWORD`
+- `ADMIN_CONSOLE_PASSWORD` 保存管理员登录密码
+- `ADMIN_SESSION_SECRET` 保存独立生成的高熵 session 签名密钥；缺失、少于 32 UTF-8 bytes 或与管理员密码相同时，管理员会话不可用
 - 管理员登录成功后，服务端签发短期 HttpOnly cookie
 - cookie 单独用于 `/api/admin/*`，与 Better Auth session 完全隔离
 - 前端访问 `/admin` 时，未通过后台鉴权则显示密码输入页；通过后进入后台主界面

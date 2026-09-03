@@ -92,9 +92,13 @@ pnpm deploy:cf
 OPENAI_API_KEY=xxx
 BETTER_AUTH_SECRET=xxx
 TURNSTILE_SECRET_KEY=xxx
+ADMIN_CONSOLE_PASSWORD=xxx
+ADMIN_SESSION_SECRET=xxx
 ```
 
 这个文件已加入 `.gitignore`，不会被提交。
+
+启用管理员控制台时，`ADMIN_CONSOLE_PASSWORD` 和 `ADMIN_SESSION_SECRET` 必须同时配置。`ADMIN_SESSION_SECRET` 至少为 32 UTF-8 bytes，必须独立于管理员密码生成，例如运行 `openssl rand -hex 32`。修改该密钥会立即使现有管理员 cookie 失效。
 
 如果你想把 secrets 文件放在别处，部署时可通过环境变量覆盖：
 
@@ -118,6 +122,8 @@ WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 - `RESEND_FROM_NAME`：认证邮件发件名
 - `TURNSTILE_SECRET_KEY`：Turnstile 服务端校验密钥
 - `SIGNUP_BONUS_CREDITS`：注册赠送额度
+- `ADMIN_CONSOLE_PASSWORD`：管理员控制台登录密码；配置后还必须配置独立的 `ADMIN_SESSION_SECRET`
+- `ADMIN_SESSION_SECRET`：管理员 session cookie 签名密钥，至少为 32 UTF-8 bytes，不能与管理员密码相同
 - `VITE_BETTER_AUTH_URL`：前端 Better Auth 基址，默认可与站点同源
 - `OPENAI_RATELIMIT_ENABLED`：是否启用 AI 接口限流
 - `OPENAI_RATELIMIT_WINDOW_MS`：限流窗口时长（毫秒）

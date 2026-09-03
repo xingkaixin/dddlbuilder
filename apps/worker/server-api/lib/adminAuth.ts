@@ -4,9 +4,13 @@ const ADMIN_COOKIE_NAME = 'ddlbuilder_admin_session';
 const ADMIN_COOKIE_PATH = '/api/admin';
 const ADMIN_SESSION_MAX_AGE = 14400; // 4 hours
 const ADMIN_SESSION_MAX_AGE_MS = ADMIN_SESSION_MAX_AGE * 1000;
+const ADMIN_SESSION_SECRET_MIN_BYTES = 32;
 const SEPARATOR = '.';
-// Domain separation so a password-derived key can never collide with the password itself.
-const SESSION_KEY_DOMAIN = 'ddlbuilder:admin-session:v1';
+
+type AdminAuthEnv = Pick<
+  ApiEnv['Bindings'],
+  'USER_DB' | 'ADMIN_CONSOLE_PASSWORD' | 'ADMIN_SESSION_SECRET'
+>;
 
 const encode = (value: string) => new TextEncoder().encode(value);
 
@@ -19,13 +23,23 @@ const timingSafeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
   return mismatch === 0;
 };
 
-const sessionKeyMaterial = async (
-  sessionSecret: string | undefined,
-  password: string,
-): Promise<BufferSource> =>
-  sessionSecret
-    ? encode(sessionSecret)
-    : crypto.subtle.digest('SHA-256', encode(`${password}${SESSION_KEY_DOMAIN}`));
+const readAdminAuthConfig = (
+  env: AdminAuthEnv,
+): { password: string; sessionKey: Uint8Array } | null => {
+  const password = env.ADMIN_CONSOLE_PASSWORD;
+  const sessionSecret = env.ADMIN_SESSION_SECRET;
+  if (!password || !sessionSecret?.trim()) return null;
+
+  const sessionKey = encode(sessionSecret);
+  if (
+    sessionKey.byteLength < ADMIN_SESSION_SECRET_MIN_BYTES ||
+    timingSafeEqual(sessionKey, encode(password))
+  ) {
+    return null;
+  }
+
+  return { password, sessionKey };
+};
 
 const hmacSign = async (key: BufferSource, data: string): Promise<string> => {
   const cryptoKey = await crypto.subtle.importKey(
@@ -42,16 +56,14 @@ const hmacSign = async (key: BufferSource, data: string): Promise<string> => {
 };
 
 export const createAdminSession = async (
-  env: ApiEnv['Bindings'],
+  env: AdminAuthEnv,
   password: string,
 ): Promise<{ success: true; setCookie: string } | { success: false }> => {
-  const configured = env.ADMIN_CONSOLE_PASSWORD;
-  if (!configured) {
-    return { success: false };
-  }
+  const config = readAdminAuthConfig(env);
+  if (!config) return { success: false };
 
   const a = encode(password);
-  const b = encode(configured);
+  const b = encode(config.password);
   if (!timingSafeEqual(a, b)) {
     return { success: false };
   }
@@ -60,10 +72,7 @@ export const createAdminSession = async (
   const createdAt = Date.now();
   const expiresAt = createdAt + ADMIN_SESSION_MAX_AGE_MS;
   const payload = `${uuid}${SEPARATOR}${expiresAt}`;
-  const mac = await hmacSign(
-    await sessionKeyMaterial(env.ADMIN_SESSION_SECRET, configured),
-    payload,
-  );
+  const mac = await hmacSign(config.sessionKey, payload);
   const token = `${payload}${SEPARATOR}${mac}`;
   await env.USER_DB.batch([
     env.USER_DB.prepare('DELETE FROM admin_sessions WHERE expires_at <= ?').bind(createdAt),
@@ -85,11 +94,11 @@ export const createAdminSession = async (
 };
 
 export const resolveAdminSession = async (
-  env: ApiEnv['Bindings'],
+  env: AdminAuthEnv,
   cookieHeader: string | null | undefined,
 ): Promise<boolean> => {
-  const configured = env.ADMIN_CONSOLE_PASSWORD;
-  if (!configured) return false;
+  const config = readAdminAuthConfig(env);
+  if (!config) return false;
 
   if (!cookieHeader) return false;
 
@@ -108,10 +117,7 @@ export const resolveAdminSession = async (
   if (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now()) return false;
 
   const payload = `${uuid}${SEPARATOR}${expiresAtRaw}`;
-  const expected = await hmacSign(
-    await sessionKeyMaterial(env.ADMIN_SESSION_SECRET, configured),
-    payload,
-  );
+  const expected = await hmacSign(config.sessionKey, payload);
   const actualBytes = encode(mac);
   const expectedBytes = encode(expected);
   if (!timingSafeEqual(actualBytes, expectedBytes)) {
@@ -142,7 +148,7 @@ const expiredAdminCookie = () =>
   ].join('; ');
 
 export const deleteAdminSession = async (
-  env: ApiEnv['Bindings'],
+  env: AdminAuthEnv,
   cookieHeader: string | null | undefined,
 ): Promise<string> => {
   const match = cookieHeader
