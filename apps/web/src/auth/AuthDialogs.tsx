@@ -13,24 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthActions, useAuthDialog } from '@/auth/AuthSessionProvider';
 import { TurnstileWidget } from '@/auth/TurnstileWidget';
+import { useAuthCallbackCommand } from '@/auth/useAuthCallbackCommand';
 import { useToast } from '@/hooks/useToast';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() ?? '';
 
 type AuthMode = 'sign_in' | 'sign_up' | 'forgot_password' | 'reset_password';
-
-const clearAuthQuery = () => {
-  const nextUrl = `${window.location.pathname}${window.location.hash}`;
-  window.history.replaceState({}, document.title, nextUrl);
-};
-
-const readAuthQuery = () => {
-  const query = new URLSearchParams(window.location.search);
-  return {
-    action: query.get('auth_action'),
-    token: query.get('token'),
-  };
-};
 
 export function AuthDialogs() {
   const { t } = useTranslation();
@@ -38,43 +26,38 @@ export function AuthDialogs() {
   const authActions = useAuthActions();
   const authDialog = useAuthDialog();
   const authSession = useMemo(() => ({ ...authActions, ...authDialog }), [authActions, authDialog]);
-  const [authQuery] = useState(readAuthQuery);
+  const { initialResetToken, consume: consumeAuthCallbackCommand } = useAuthCallbackCommand();
   const [authMode, setAuthMode] = useState<AuthMode>(() =>
-    authQuery.action === 'reset-password' && authQuery.token ? 'reset_password' : 'sign_in',
+    initialResetToken ? 'reset_password' : 'sign_in',
   );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [resetPassword, setResetPassword] = useState('');
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
-  const [resetToken, setResetToken] = useState<string | null>(() => authQuery.token);
+  const [resetToken, setResetToken] = useState<string | null>(initialResetToken);
   const [verifyEmailDialogOpen, setVerifyEmailDialogOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const authAction = authQuery.action;
-    if (authAction === 'verify-email') {
+    const command = consumeAuthCallbackCommand();
+    if (!command) return;
+
+    if (command.type === 'verify-email') {
       void authSession.refreshSession().finally(() => {
         success(t('header.auth.verifyEmailSucceeded'));
         setVerifyEmailDialogOpen(true);
-        clearAuthQuery();
       });
       return;
     }
 
-    if (authAction !== 'reset-password') {
-      return;
-    }
-
-    const token = authQuery.token;
-    if (!token) {
+    if (!command.token) {
       error(t('header.auth.resetTokenInvalid'));
-      clearAuthQuery();
       return;
     }
 
     authSession.openAuthDialog();
-  }, [authQuery, authSession, error, success, t]);
+  }, [authSession, consumeAuthCallbackCommand, error, success, t]);
 
   const authDialogDescription = useMemo(() => {
     if (authMode === 'sign_up') return t('header.auth.dialogDescriptionSignUp');
@@ -150,7 +133,6 @@ export function AuthDialogs() {
       success(t('header.auth.passwordResetSucceeded'));
       setResetPassword('');
       setResetToken(null);
-      clearAuthQuery();
       setAuthMode('sign_in');
       authSession.closeAuthDialog();
     } catch (err) {
@@ -178,13 +160,20 @@ export function AuthDialogs() {
     }
   };
 
+  const closeAuthDialog = () => {
+    if (authMode === 'reset_password') {
+      setResetPassword('');
+      setResetToken(null);
+      setAuthMode('sign_in');
+    }
+    authSession.closeAuthDialog();
+  };
+
   return (
     <>
       <Dialog
         open={authSession.authDialogOpen}
-        onOpenChange={(open) =>
-          open ? authSession.openAuthDialog() : authSession.closeAuthDialog()
-        }
+        onOpenChange={(open) => (open ? authSession.openAuthDialog() : closeAuthDialog())}
       >
         <DialogContent>
           <DialogHeader>
@@ -301,7 +290,7 @@ export function AuthDialogs() {
                 {t('header.auth.resendVerification')}
               </Button>
             ) : null}
-            <Button type="button" variant="outline" onClick={authSession.closeAuthDialog}>
+            <Button type="button" variant="outline" onClick={closeAuthDialog}>
               {t('header.auth.cancel')}
             </Button>
             <Button type="button" onClick={handleSubmitAuth} disabled={isSubmittingAuth}>

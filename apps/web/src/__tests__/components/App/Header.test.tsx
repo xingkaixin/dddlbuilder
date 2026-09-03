@@ -379,7 +379,7 @@ describe('Header', () => {
   it('邮箱验证成功回跳后应刷新会话并提示成功', async () => {
     window.history.replaceState({}, '', '/?auth_action=verify-email');
 
-    render(<AuthDialogs />);
+    const { rerender } = render(<AuthDialogs />);
 
     await waitFor(() => {
       expect(refreshSessionMock).toHaveBeenCalledTimes(1);
@@ -389,5 +389,46 @@ describe('Header', () => {
     expect(screen.getByText('邮箱验证完成')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '我知道了' })).toBeInTheDocument();
     expect(window.location.search).toBe('');
+
+    const { useAuthDialog } = await import('@/auth/AuthSessionProvider');
+    vi.mocked(useAuthDialog).mockReturnValue({
+      authDialogOpen: true,
+      openAuthDialog: openAuthDialogMock,
+      closeAuthDialog: closeAuthDialogMock,
+    });
+    rerender(<AuthDialogs />);
+
+    expect(refreshSessionMock).toHaveBeenCalledTimes(1);
+    expect(successMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('重置密码回跳应只打开一次且取消后不再恢复命令', async () => {
+    const { useAuthDialog } = await import('@/auth/AuthSessionProvider');
+    vi.mocked(useAuthDialog).mockReturnValue({
+      authDialogOpen: true,
+      openAuthDialog: openAuthDialogMock,
+      closeAuthDialog: closeAuthDialogMock,
+    });
+    window.history.replaceState({}, '', '/?auth_action=reset-password&token=reset-token');
+
+    const { rerender } = render(<AuthDialogs />);
+
+    await waitFor(() => {
+      expect(openAuthDialogMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByLabelText('新密码')).toBeInTheDocument();
+    });
+    expect(window.location.search).toBe('');
+
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+    expect(closeAuthDialogMock).toHaveBeenCalledTimes(1);
+
+    vi.mocked(useAuthDialog).mockReturnValue({
+      authDialogOpen: false,
+      openAuthDialog: openAuthDialogMock,
+      closeAuthDialog: closeAuthDialogMock,
+    });
+    rerender(<AuthDialogs />);
+
+    expect(openAuthDialogMock).toHaveBeenCalledTimes(1);
   });
 });
