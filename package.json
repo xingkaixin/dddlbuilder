@@ -38,9 +38,7 @@
     "test:e2e": "playwright test && playwright test --config playwright.runtime.config.ts",
     "deploy:cf": "pnpm run build && pnpm exec tsx scripts/deploy.ts",
     "typecheck": "turbo run typecheck && tsc --noEmit -p tsconfig.node.json && pnpm run typecheck:tests",
-    "typecheck:tests": "tsx scripts/typecheck-tests.ts",
-    "typecheck:tests:baseline": "tsx scripts/typecheck-tests.ts --write-baseline",
-    "typecheck:tests:baseline:init": "tsx scripts/typecheck-tests.ts --initialize-baseline",
+    "typecheck:tests": "tsc --noEmit -p apps/web/tsconfig.test.json && tsc --noEmit -p apps/worker/tsconfig.test.json && tsc --noEmit -p packages/ddl-core/tsconfig.test.json && tsc --noEmit -p packages/workspace-core/tsconfig.test.json",
     "test:runtime": "pnpm exec tsx scripts/verify-d1-runtime.ts",
     "test:e2e:runtime": "playwright test --config playwright.runtime.config.ts"
   },
