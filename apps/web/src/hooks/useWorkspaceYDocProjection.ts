@@ -31,6 +31,8 @@ export function useWorkspaceYDocProjection<T>(
           },
           collections,
         );
+        // Capture changes made between render and subscription setup.
+        snapshot = read(doc);
         return unsubscribe;
       },
     };

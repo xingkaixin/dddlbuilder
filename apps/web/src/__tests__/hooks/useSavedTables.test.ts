@@ -537,27 +537,16 @@ describe('useSavedTables', () => {
       notifyYDocChanged = notify;
       return vi.fn();
     });
-    mockYDocAdapter.listSavedTableMetadataFromYDoc
-      .mockReturnValueOnce([
-        {
-          normalizedName: 'alpha',
-          name: 'Alpha',
-          dbType: 'mysql',
-          fieldCount: 1,
-          createdAt: 100,
-          updatedAt: 100,
-        },
-      ])
-      .mockReturnValueOnce([
-        {
-          normalizedName: 'beta',
-          name: 'Beta',
-          dbType: 'mysql',
-          fieldCount: 2,
-          createdAt: 200,
-          updatedAt: 200,
-        },
-      ]);
+    mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReturnValue([
+      {
+        normalizedName: 'alpha',
+        name: 'Alpha',
+        dbType: 'mysql',
+        fieldCount: 1,
+        createdAt: 100,
+        updatedAt: 100,
+      },
+    ]);
 
     const { result } = renderHook(() => useSavedTables());
 
@@ -566,6 +555,16 @@ describe('useSavedTables', () => {
       expect(result.current.savedTables.map((table) => table.name)).toEqual(['Alpha']);
     });
 
+    mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReturnValue([
+      {
+        normalizedName: 'beta',
+        name: 'Beta',
+        dbType: 'mysql',
+        fieldCount: 2,
+        createdAt: 200,
+        updatedAt: 200,
+      },
+    ]);
     act(() => {
       notifyYDocChanged?.();
     });
