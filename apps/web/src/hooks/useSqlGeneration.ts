@@ -1,3 +1,4 @@
+import { copyText } from '@/utils/clipboard';
 import { useMemo, useCallback } from 'react';
 import type {
   DatabaseType,
@@ -80,49 +81,15 @@ export function useSqlGeneration(
     [qualifiedTableName, authObjects, dbType],
   );
 
-  const copySql = useCallback(async () => {
-    const text = generatedSql || '-- 请在左侧填写表信息';
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        return true;
-      } catch {
-        return false;
-      }
-    }
-  }, [generatedSql]);
+  const copySql = useCallback(
+    () => copyText(generatedSql || '-- 请在左侧填写表信息'),
+    [generatedSql],
+  );
 
-  const copyDcl = useCallback(async () => {
-    const text = generatedDcl || '-- 请在下方配置授权对象';
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        return true;
-      } catch {
-        return false;
-      }
-    }
-  }, [generatedDcl]);
+  const copyDcl = useCallback(
+    () => copyText(generatedDcl || '-- 请在下方配置授权对象'),
+    [generatedDcl],
+  );
 
   return {
     generatedSql,

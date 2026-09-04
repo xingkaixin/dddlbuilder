@@ -1,3 +1,4 @@
+import { copyText } from '@/utils/clipboard';
 import { useMemo, useCallback, useState } from 'react';
 import { buildORM } from '@ddlbuilder/ddl-core';
 import type { ORMModelInput, ORMTarget } from '@ddlbuilder/ddl-core';
@@ -54,27 +55,7 @@ export function useOrmGeneration({
     ],
   );
 
-  const copyOrm = useCallback(async () => {
-    const text = generatedOrm || '-- 请选择 ORM 框架';
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        return true;
-      } catch {
-        return false;
-      }
-    }
-  }, [generatedOrm]);
+  const copyOrm = useCallback(() => copyText(generatedOrm || '-- 请选择 ORM 框架'), [generatedOrm]);
 
   return {
     generatedOrm,

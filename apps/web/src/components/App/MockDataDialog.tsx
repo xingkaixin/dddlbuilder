@@ -1,3 +1,4 @@
+import { copyText } from '@/utils/clipboard';
 import { memo, useState, useMemo, useCallback } from 'react';
 import {
   Dialog,
@@ -59,19 +60,9 @@ export const MockDataDialog = memo<MockDataDialogProps>(
     }, []);
 
     const handleCopy = useCallback(async () => {
-      try {
-        await navigator.clipboard.writeText(currentContent);
-      } catch {
-        const ta = document.createElement('textarea');
-        ta.value = currentContent;
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-      }
-      setCopied(true);
+      const copied = await copyText(currentContent);
+      setCopied(copied);
+      if (!copied) return;
       window.setTimeout(() => setCopied(false), 2000);
     }, [currentContent]);
 

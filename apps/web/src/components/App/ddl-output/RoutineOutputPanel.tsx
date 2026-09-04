@@ -1,3 +1,4 @@
+import { copyText } from '@/utils/clipboard';
 import { useCallback, useMemo, useState } from 'react';
 import type { DatabaseType, RoutineTemplateKind } from '@ddlbuilder/shared-types';
 import { buildRoutineTemplateDDL } from '@ddlbuilder/ddl-core';
@@ -7,27 +8,6 @@ import { SearchableSelect } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTranslation } from 'react-i18next';
 import { CopyOutputButton, OutputCode, OutputHeading } from './OutputPrimitives';
-
-const copyText = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    try {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.left = '-9999px';
-      document.body.appendChild(textarea);
-      textarea.select();
-      const copied = document.execCommand('copy');
-      textarea.remove();
-      return copied;
-    } catch {
-      return false;
-    }
-  }
-};
 
 export function RoutineOutputPanel({
   dbType,
