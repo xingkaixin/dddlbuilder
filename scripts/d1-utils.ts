@@ -202,13 +202,6 @@ export const resetDatabase = (mode: D1Mode): void => {
   }
 };
 
-export const runAllMigrations = (mode: D1Mode): void => {
-  for (const file of listMigrationFiles()) {
-    console.log(`[d1] applying ${path.relative(repoRoot, file)} (${mode})`);
-    runD1Execute(mode, { file });
-  }
-};
-
 export const runPendingMigrations = (mode: D1Mode): void => {
   ensureMigrationLedger(mode);
 

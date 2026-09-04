@@ -10,7 +10,6 @@ import {
   migrationDir,
   resetDatabase,
   resolveD1Mode,
-  runAllMigrations,
   runD1Execute,
   runPendingMigrations,
   verifyRequiredD1Tables,
@@ -303,19 +302,6 @@ describe('d1-utils', () => {
       .filter((args) => Array.isArray(args) && args.includes('--file'));
     expect(fileCalls).toHaveLength(listMigrationFiles().length - 1);
     expect(fileCalls.some((args) => args?.includes(listMigrationFiles()[0]) === true)).toBe(false);
-  });
-
-  it('runs all migrations without consulting the ledger', () => {
-    vi.mocked(spawnSync).mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>);
-
-    runAllMigrations('remote');
-
-    expect(spawnSync).toHaveBeenCalledTimes(listMigrationFiles().length);
-    expect(spawnSync).toHaveBeenCalledWith(
-      'pnpm',
-      expect.arrayContaining(['--remote', '--file']),
-      expect.objectContaining({ stdio: 'inherit' }),
-    );
   });
 
   it('drops triggers before tables and preserves reverse creation order', () => {

@@ -41,7 +41,6 @@ import {
   listWorkspaceFolders,
   listWorkspaceSavedDrafts,
   listWorkspaceSavedTables,
-  listWorkspaceTrashedDrafts,
   listWorkspaceTrashedSavedTables,
   materializeWorkspaceYDoc,
   mergeWorkspaceSnapshotIntoYDoc,
@@ -117,12 +116,6 @@ export const listAllDraftRecordsFromYDoc = (doc: Y.Doc) =>
 
 export const listDraftRecordsFromYDoc = (doc: Y.Doc) =>
   listWorkspaceDrafts(doc).map(({ draftId, record }) => ({
-    draftId,
-    record: { ...record, state: withDefaultEditorSession(record.state) },
-  }));
-
-export const listTrashedDraftRecordsFromYDoc = (doc: Y.Doc) =>
-  listWorkspaceTrashedDrafts(doc).map(({ draftId, record }) => ({
     draftId,
     record: { ...record, state: withDefaultEditorSession(record.state) },
   }));

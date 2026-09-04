@@ -33,11 +33,6 @@ export const loadParserConstructor = (): Promise<ParserConstructor> => {
   return parserConstructorPromise;
 };
 
-// Test-only reset hook for environments where module cache survives vi.resetModules().
-export const __resetParserConstructorPromiseForTests = () => {
-  parserConstructorPromise = null;
-};
-
 // Test-only loader override to avoid brittle mocking around dynamic imports.
 export const __setParserModuleLoaderForTests = (loader: (() => Promise<ParserModule>) | null) => {
   parserModuleLoader = loader ?? defaultParserModuleLoader;

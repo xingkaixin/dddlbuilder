@@ -34,7 +34,6 @@ export default defineConfig({
         'src/i18n/locales/zh-CN/common.ts',
         'src/components/App/er-diagram/types.ts',
         'src/components/ImportSqlDialog/types.ts',
-        'src/components/App/table/index.ts',
         'src/hooks/index.ts',
         'src/stores/index.ts',
         'src/utils/constants/index.ts',
