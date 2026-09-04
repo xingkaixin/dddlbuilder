@@ -6,7 +6,7 @@ import {
   deleteDraftFromYDoc,
   getDraftRecordFromYDoc,
   listDraftRecordsFromYDoc,
-  listTrashedDraftRecordsFromYDoc,
+  listAllDraftRecordsFromYDoc,
   upsertDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
@@ -31,10 +31,6 @@ import {
 
 const DRAFT_COLLECTIONS = ['drafts'] as const;
 const EMPTY_DRAFTS: DraftEntry[] = [];
-const readDrafts = (doc: Y.Doc) => [
-  ...listDraftRecordsFromYDoc(doc),
-  ...listTrashedDraftRecordsFromYDoc(doc),
-];
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   drafts.sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
 type UseDraftRecordsParams = {
@@ -52,21 +48,26 @@ export function useDraftRecords({
 }: UseDraftRecordsParams) {
   const [localRecords, setLocalRecords] = useState<Map<string, GlobalDraftRecord>>(() => new Map());
   const localRecordsRef = useRef(localRecords);
-  const yDocDrafts = useWorkspaceYDocProjection(yDoc, DRAFT_COLLECTIONS, readDrafts, EMPTY_DRAFTS);
+  const yDocDrafts = useWorkspaceYDocProjection(
+    yDoc,
+    DRAFT_COLLECTIONS,
+    listAllDraftRecordsFromYDoc,
+    EMPTY_DRAFTS,
+  );
   const { draftSummaries, trashedDrafts } = useMemo(() => {
     const records = yDoc
       ? yDocDrafts
       : Array.from(localRecords, ([draftId, record]) => ({ draftId, record }));
+    const draftSummaries: DraftSummary[] = [];
+    const trashedDrafts: DraftSummary[] = [];
+    for (const { draftId, record } of records) {
+      const summary = toDraftSummary(draftId, record);
+      if (record.trashedAt == null) draftSummaries.push(summary);
+      else trashedDrafts.push(summary);
+    }
     return {
-      draftSummaries: sortDraftSummaries(
-        records
-          .filter(({ record }) => record.trashedAt == null)
-          .map(({ draftId, record }) => toDraftSummary(draftId, record)),
-      ),
-      trashedDrafts: records
-        .filter(({ record }) => record.trashedAt != null)
-        .map(({ draftId, record }) => toDraftSummary(draftId, record))
-        .sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0)),
+      draftSummaries: sortDraftSummaries(draftSummaries),
+      trashedDrafts: trashedDrafts.sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0)),
     };
   }, [localRecords, yDoc, yDocDrafts]);
 

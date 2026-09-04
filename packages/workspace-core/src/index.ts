@@ -71,6 +71,7 @@ export {
   renameWorkspaceSavedDraft,
   getWorkspaceSourceState,
   listWorkspaceDrafts,
+  listWorkspaceDraftRecords,
   listWorkspaceFolders,
   listWorkspaceSavedDrafts,
   listWorkspaceSavedTables,

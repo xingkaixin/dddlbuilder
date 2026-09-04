@@ -37,6 +37,7 @@ import {
   initializeOrMigrateWorkspaceYDoc,
   isWorkspaceYDocEmpty,
   listWorkspaceDrafts,
+  listWorkspaceDraftRecords,
   listWorkspaceFolders,
   listWorkspaceSavedDrafts,
   listWorkspaceSavedTables,
@@ -107,6 +108,12 @@ export const upsertDraftInYDoc = (
 ) => upsertWorkspaceDraft(doc, draftId, record, options);
 
 export const deleteDraftFromYDoc = deleteWorkspaceDraft;
+
+export const listAllDraftRecordsFromYDoc = (doc: Y.Doc) =>
+  listWorkspaceDraftRecords(doc).map(({ draftId, record }) => ({
+    draftId,
+    record: { ...record, state: withDefaultEditorSession(record.state) },
+  }));
 
 export const listDraftRecordsFromYDoc = (doc: Y.Doc) =>
   listWorkspaceDrafts(doc).map(({ draftId, record }) => ({

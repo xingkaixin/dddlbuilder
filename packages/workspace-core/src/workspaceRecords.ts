@@ -73,7 +73,7 @@ export const deleteWorkspaceDraft = (doc: Y.Doc, draftId: string) => {
   getWorkspaceRoot(doc).drafts.delete(draftId);
 };
 
-const listWorkspaceDraftRecords = (doc: Y.Doc) =>
+export const listWorkspaceDraftRecords = (doc: Y.Doc) =>
   Array.from(getWorkspaceRoot(doc).drafts.keys()).flatMap((draftId) => {
     const record = getDraftRecordFromYDoc(doc, draftId);
     return record ? [{ draftId, record }] : [];
