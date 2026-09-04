@@ -34,7 +34,7 @@
     "@ddlbuilder/tsconfig": "workspace:*",
     "typescript": "~7.0.2",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.0",
     "wrangler": "^4.124.0"
   }
 }
