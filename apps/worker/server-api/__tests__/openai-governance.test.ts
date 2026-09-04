@@ -343,7 +343,7 @@ afterEach(() => {
 const FIXED_NOW = new Date('2026-01-01T00:00:00.000Z');
 const SHORT_WINDOW_MS = 200;
 
-describe.sequential('openai governance', () => {
+describe('openai governance', { concurrent: false }, () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(FIXED_NOW);
