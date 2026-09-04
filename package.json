@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",
-    "hono": "^4.13.3"
+    "hono": "^4.13.5"
   },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*",
@@ -62,7 +62,7 @@
     "turbo": "^2.10.11",
     "typescript": "~7.0.2",
     "vitest": "^5.0.0",
-    "wrangler": "^4.124.0",
+    "wrangler": "^4.129.0",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.32"
   },

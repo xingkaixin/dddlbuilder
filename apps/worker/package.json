@@ -18,23 +18,23 @@
     "@ddlbuilder/shared-types": "workspace:*",
     "@ddlbuilder/user-db": "workspace:*",
     "@ddlbuilder/workspace-core": "workspace:*",
-    "better-auth": "^1.7.1",
+    "better-auth": "^1.7.2",
     "drizzle-orm": "^0.45.2",
     "effect": "4.0.0-rc.112",
-    "evlog": "2.27.1",
-    "hono": "^4.13.3",
+    "evlog": "2.28.1",
+    "hono": "^4.13.5",
     "lib0": "^0.2.117",
-    "openai": "^7.5.0",
-    "resend": "^6.21.0",
+    "openai": "^7.10.0",
+    "resend": "^6.26.0",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.32"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260820.1",
+    "@cloudflare/workers-types": "^5.20260904.1",
     "@ddlbuilder/tsconfig": "workspace:*",
     "typescript": "~7.0.2",
     "vite": "^8.2.2",
     "vitest": "^5.0.0",
-    "wrangler": "^4.124.0"
+    "wrangler": "^4.129.0"
   }
 }
