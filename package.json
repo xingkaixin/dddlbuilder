@@ -49,22 +49,22 @@
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*",
     "@playwright/test": "^1.62.1",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.1",
     "@vitest/coverage-v8": "^5.0.0",
     "@vitest/ui": "^5.0.0",
     "lib0": "^0.2.117",
-    "oxfmt": "^0.64.0",
-    "oxlint": "^1.79.0",
+    "oxfmt": "^0.66.0",
+    "oxlint": "^1.81.0",
     "oxlint-tsgolint": "^7.0.2001",
     "png-to-ico": "^3.0.2",
-    "sharp": "^0.35.3",
-    "tsx": "^4.23.12",
-    "turbo": "^2.10.11",
+    "sharp": "^0.35.4",
+    "tsx": "^4.23.13",
+    "turbo": "^2.10.12",
     "typescript": "~7.0.2",
     "vitest": "^5.0.0",
     "wrangler": "^4.129.0",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.32"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@11.25.0"
 }

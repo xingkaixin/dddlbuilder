@@ -1,6 +1,11 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+minimumReleaseAge: 0
+allowBuilds:
+  esbuild: false
+  msgpackr-extract: false
+  workerd: false
 overrides:
   mdast-util-to-hast: ^13.2.1
-  '@esbuild-kit/core-utils>esbuild': ^0.25.12
+  '@esbuild-kit/core-utils>esbuild': ^0.28.2
