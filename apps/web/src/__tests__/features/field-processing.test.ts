@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { FieldRow } from '@ddlbuilder/shared-types';
-import { normalizeFields, isReservedKeyword, toStringSafe } from '@/utils/helpers';
+import { isReservedKeyword } from '@/utils/helpers';
 import {
   supportsAutoIncrement,
   supportsDefaultCurrentTimestamp,
@@ -13,185 +12,8 @@ import {
   getSchemaAndTable,
 } from '@ddlbuilder/ddl-core';
 import { RESERVED_KEYWORDS } from '@/utils/constants';
-import {
-  normalizeFieldDefaultKind,
-  normalizeFieldNullable,
-  normalizeFieldOnUpdate,
-} from '@ddlbuilder/shared-types';
 
 describe('Field Processing Functions', () => {
-  describe('normalizeFields', () => {
-    it('should normalize valid fields', () => {
-      const input: FieldRow[] = [
-        {
-          id: 'field-1',
-          fieldName: 'id',
-          fieldType: 'int',
-          fieldComment: 'Primary key',
-          nullable: false,
-          defaultKind: 'auto_increment',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-        {
-          id: 'field-2',
-          fieldName: 'name',
-          fieldType: 'varchar(255)',
-          fieldComment: 'Name field',
-          nullable: true,
-          defaultKind: 'none',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-      ];
-
-      const result = normalizeFields(input);
-
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        name: 'id',
-        type: 'int',
-        comment: 'Primary key',
-        nullable: false,
-        defaultKind: 'auto_increment',
-        defaultValue: '',
-        onUpdate: 'none',
-      });
-      expect(result[1]).toEqual({
-        name: 'name',
-        type: 'varchar(255)',
-        comment: 'Name field',
-        nullable: true,
-        defaultKind: 'none',
-        defaultValue: '',
-        onUpdate: 'none',
-      });
-    });
-
-    it('should filter out fields with empty name or type', () => {
-      const input: FieldRow[] = [
-        {
-          id: 'field-1',
-          fieldName: 'id',
-          fieldType: 'int',
-          fieldComment: 'Valid field',
-          nullable: false,
-          defaultKind: 'none',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-        {
-          id: 'field-2',
-          fieldName: '',
-          fieldType: 'varchar(255)',
-          fieldComment: 'Empty name',
-          nullable: true,
-          defaultKind: 'none',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-        {
-          id: 'field-3',
-          fieldName: 'invalid',
-          fieldType: '',
-          fieldComment: 'Empty type',
-          nullable: true,
-          defaultKind: 'none',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-        {
-          id: 'field-4',
-          fieldName: 'valid',
-          fieldType: 'text',
-          fieldComment: 'Another valid field',
-          nullable: true,
-          defaultKind: 'none',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-      ];
-
-      const result = normalizeFields(input);
-
-      expect(result).toHaveLength(2);
-      expect(result.map((f) => f.name)).toEqual(['id', 'valid']);
-    });
-
-    it('should handle whitespace trimming', () => {
-      const input: FieldRow[] = [
-        {
-          id: 'field-1',
-          fieldName: '  name  ',
-          fieldType: '  varchar(255)  ',
-          fieldComment: '  comment  ',
-          nullable: true,
-          defaultKind: 'none',
-          defaultValue: '  default  ',
-          onUpdate: 'none',
-        },
-      ];
-
-      const result = normalizeFields(input);
-
-      expect(result[0]).toEqual({
-        name: 'name',
-        type: 'varchar(255)',
-        comment: 'comment',
-        nullable: true,
-        defaultKind: 'none',
-        defaultValue: '  default  ',
-        onUpdate: 'none',
-      });
-    });
-  });
-
-  describe('normalizeFieldNullable', () => {
-    it('should treat yes-like values as nullable', () => {
-      expect(normalizeFieldNullable(true)).toBe(true);
-      expect(normalizeFieldNullable('yes')).toBe(true);
-      expect(normalizeFieldNullable('true')).toBe(true);
-      expect(normalizeFieldNullable('1')).toBe(true);
-      expect(normalizeFieldNullable('是')).toBe(true);
-      expect(normalizeFieldNullable('√')).toBe(true);
-      expect(normalizeFieldNullable('YES')).toBe(true);
-    });
-
-    it('should treat no-like values as not nullable', () => {
-      expect(normalizeFieldNullable(false)).toBe(false);
-      expect(normalizeFieldNullable('n')).toBe(false);
-      expect(normalizeFieldNullable('no')).toBe(false);
-      expect(normalizeFieldNullable('false')).toBe(false);
-      expect(normalizeFieldNullable('0')).toBe(false);
-      expect(normalizeFieldNullable('否')).toBe(false);
-      expect(normalizeFieldNullable('NOT NULL')).toBe(false);
-    });
-  });
-
-  describe('normalizeFieldDefaultKind', () => {
-    it('should normalize legacy and current default kinds to canonical tokens', () => {
-      expect(normalizeFieldDefaultKind('自增')).toBe('auto_increment');
-      expect(normalizeFieldDefaultKind('常量')).toBe('constant');
-      expect(normalizeFieldDefaultKind('当前时间')).toBe('current_timestamp');
-      expect(normalizeFieldDefaultKind('无')).toBe('none');
-      expect(normalizeFieldDefaultKind('auto_increment')).toBe('auto_increment');
-      expect(normalizeFieldDefaultKind('')).toBe('none');
-      expect(normalizeFieldDefaultKind(undefined)).toBe('none');
-      expect(normalizeFieldDefaultKind('invalid')).toBe('none');
-    });
-  });
-
-  describe('normalizeFieldOnUpdate', () => {
-    it('should normalize legacy and current update kinds to canonical tokens', () => {
-      expect(normalizeFieldOnUpdate('当前时间')).toBe('current_timestamp');
-      expect(normalizeFieldOnUpdate('无')).toBe('none');
-      expect(normalizeFieldOnUpdate('current_timestamp')).toBe('current_timestamp');
-      expect(normalizeFieldOnUpdate('')).toBe('none');
-      expect(normalizeFieldOnUpdate(undefined)).toBe('none');
-      expect(normalizeFieldOnUpdate('invalid')).toBe('none');
-    });
-  });
-
   describe('supportsAutoIncrement', () => {
     it('should correctly identify auto increment support', () => {
       // MySQL
@@ -307,17 +129,6 @@ describe('Field Processing Functions', () => {
       expect(isReservedKeyword('mysql', '')).toBe(false);
       expect(isReservedKeyword('mysql', '   ')).toBe(false);
       expect(isReservedKeyword('mysql', ' table ')).toBe(true); // table is a keyword regardless of whitespace
-    });
-  });
-
-  describe('toStringSafe', () => {
-    it('should safely convert values to strings', () => {
-      expect(toStringSafe('hello')).toBe('hello');
-      expect(toStringSafe(123)).toBe('123');
-      expect(toStringSafe(true)).toBe('true');
-      expect(toStringSafe(null)).toBe('');
-      expect(toStringSafe(undefined)).toBe('');
-      expect(toStringSafe({})).toBe('[object Object]');
     });
   });
 

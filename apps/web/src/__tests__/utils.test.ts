@@ -654,6 +654,10 @@ describe('Utils', () => {
       expect(toStringSafe(0)).toBe('0');
     });
 
+    it('converts objects to string', () => {
+      expect(toStringSafe({})).toBe('[object Object]');
+    });
+
     it('converts booleans to string', () => {
       expect(toStringSafe(true)).toBe('true');
       expect(toStringSafe(false)).toBe('false');
@@ -691,12 +695,18 @@ describe('Utils', () => {
       expect(normalizeFieldNullable(false)).toBe(false);
     });
 
+    it.each(['yes', 'true', '1', '√', 'YES'])('reads nullable value %s', (value) => {
+      expect(normalizeFieldNullable(value)).toBe(true);
+    });
+
     it('reads legacy Chinese values', () => {
       expect(normalizeFieldNullable('是')).toBe(true);
       expect(normalizeFieldNullable('否')).toBe(false);
     });
 
     it('returns false for no-like values', () => {
+      expect(normalizeFieldNullable('n')).toBe(false);
+      expect(normalizeFieldNullable('NOT NULL')).toBe(false);
       expect(normalizeFieldNullable('no')).toBe(false);
       expect(normalizeFieldNullable('NO')).toBe(false);
       expect(normalizeFieldNullable('false')).toBe(false);

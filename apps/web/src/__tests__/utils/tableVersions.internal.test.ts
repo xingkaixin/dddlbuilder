@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-type Behavior = 'get_request_error_null' | 'get_tx_error_null' | 'list_rows_missing' | 'idle';
+type Behavior = 'get_request_error_null' | 'get_tx_error_null' | 'idle';
 
 const mocks = vi.hoisted(() => ({
   behavior: 'idle' as Behavior,
@@ -37,24 +37,10 @@ const mocks = vi.hoisted(() => ({
           }
           return req as any;
         },
-        index: (indexName: string) => ({
+        index: () => ({
           getAll: () => {
             const req = createRequest();
-            if (mocks.behavior === 'list_rows_missing' && indexName === 'tableKey') {
-              req.result = [
-                {
-                  id: 'v1',
-                  tableKey: 'anonymous::t',
-                  tableId: 't',
-                  tableNormalizedName: 't',
-                  message: 'm',
-                  createdAt: 1,
-                  state: { dbType: 'mysql' },
-                },
-              ];
-            } else {
-              req.result = [];
-            }
+            req.result = [];
             completeRequest(req);
             return req as any;
           },
