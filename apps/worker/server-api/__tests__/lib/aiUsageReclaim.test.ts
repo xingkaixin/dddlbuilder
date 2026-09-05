@@ -1,3 +1,4 @@
+import { completeAIUsage } from '../helpers/aiUsageSettlement.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
@@ -14,7 +15,7 @@ describe('reclaimStaleAIUsage with SQLite timestamps', () => {
   it.each(['2026-08-27T12:15:00.000Z', '2026-08-28T00:01:00.000Z'])(
     'only refunds expired reservations and preserves normal settlement at %s',
     async (timestamp) => {
-      const { reserveAIUsage, reclaimStaleAIUsage, completeAIUsage, recordAIUsageAttempt } =
+      const { reserveAIUsage, reclaimStaleAIUsage, recordAIUsageAttempt } =
         await import('../../lib/aiUsage.js');
       const { applyCreditMutation, getCreditAccount } = await import('../../lib/credits.js');
       const { database, sqlite } = createSqliteD1Database({ includeMeta: true });

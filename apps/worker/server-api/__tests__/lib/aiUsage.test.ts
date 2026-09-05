@@ -1,11 +1,6 @@
+import { completeAIUsage, failAIUsage } from '../helpers/aiUsageSettlement.js';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  completeAIUsage,
-  failAIUsage,
-  reclaimStaleAIUsage,
-  recordAIUsageAttempt,
-  reserveAIUsage,
-} from '../../lib/aiUsage.js';
+import { reclaimStaleAIUsage, recordAIUsageAttempt, reserveAIUsage } from '../../lib/aiUsage.js';
 import { applyCreditMutation } from '../../lib/credits.js';
 import { createCreditFixture } from '../helpers/creditFixture.js';
 

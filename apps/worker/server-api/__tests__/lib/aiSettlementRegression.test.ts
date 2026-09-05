@@ -1,11 +1,7 @@
+import { failAIUsage } from '../helpers/aiUsageSettlement.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
-import {
-  failAIUsage,
-  reclaimStaleAIUsage,
-  recordAIUsageAttempt,
-  reserveAIUsage,
-} from '../../lib/aiUsage.js';
+import { reclaimStaleAIUsage, recordAIUsageAttempt, reserveAIUsage } from '../../lib/aiUsage.js';
 import { applyCreditMutation, getCreditAccount } from '../../lib/credits.js';
 import { reconcileTerminalAIBudgets, reserveAIDailyBudget } from '../../lib/aiBudget.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';

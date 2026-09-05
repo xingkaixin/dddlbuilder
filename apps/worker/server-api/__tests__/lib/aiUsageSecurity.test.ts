@@ -1,5 +1,6 @@
+import { completeAIUsage, failAIUsage } from '../helpers/aiUsageSettlement.js';
 import { describe, expect, it } from 'vitest';
-import { completeAIUsage, failAIUsage, recordAIUsageAttempt } from '../../lib/aiUsage.js';
+import { recordAIUsageAttempt } from '../../lib/aiUsage.js';
 import { createCreditFixture } from '../helpers/creditFixture.js';
 
 describe('usage identity and terminal state', () => {

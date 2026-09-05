@@ -422,23 +422,6 @@ const settleUsage = async (
   return finalizeAIUsageSettlement(env, reservation, status, errorCode);
 };
 
-export const completeAIUsage = async (
-  env: ApiEnv['Bindings'],
-  reservation: AIUsageReservation,
-  settlement: AIUsageSettlement,
-) => {
-  await settleUsage(env, reservation, 'succeeded', settlement, null);
-};
-
-export const failAIUsage = async (
-  env: ApiEnv['Bindings'],
-  reservation: AIUsageReservation,
-  errorCode: string,
-  settlement: AIUsageSettlement,
-) => {
-  await settleUsage(env, reservation, 'failed', settlement, errorCode);
-};
-
 const RECLAIMABLE_STATUSES: readonly AIUsageStatus[] = [
   AI_USAGE_STATUS.reserved,
   AI_USAGE_STATUS.pending,
