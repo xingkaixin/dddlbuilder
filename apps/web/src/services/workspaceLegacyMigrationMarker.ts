@@ -43,20 +43,8 @@ export const beginLegacyWorkspaceMigration = (scope: UserWorkspaceScope) => {
   return token;
 };
 
-/**
- * 只有当标记仍是本次运行写下的那个令牌时才算完成。令牌必须逐次唯一：
- * 期间若有人写了 legacy 分区（invalidate 抹掉标记）或另一个标签页重新开跑，
- * 本次结果都已经不完整，标记成 done 会让那批数据永远不再迁移。
- */
+// 旧标签页不能认领另一轮迁移的完成标记。
 export const completeLegacyWorkspaceMigration = (scope: UserWorkspaceScope, token: string) => {
   if (readMarker(scope) !== token) return;
   writeMarker(scope, DONE);
-};
-
-export const invalidateLegacyWorkspaceMigration = (scope: UserWorkspaceScope) => {
-  try {
-    localStorage.removeItem(buildKey(scope));
-  } catch (error) {
-    console.error('[workspace-yjs] failed to clear legacy migration marker', error);
-  }
 };

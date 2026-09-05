@@ -30,9 +30,6 @@ const mockUseAuthIdentity = vi.hoisted(() =>
 const mockWorkspaceYDoc = vi.hoisted(() => ({
   value: {} as any,
 }));
-const mockMigrationMarker = vi.hoisted(() => ({
-  invalidateLegacyWorkspaceMigration: vi.fn(),
-}));
 const mockYDocAdapter = vi.hoisted(() => ({
   deleteSavedTableFromYDoc: vi.fn(),
   getSavedTableFromYDoc: vi.fn(),
@@ -53,10 +50,6 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
 
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDocDocument: () => mockWorkspaceYDoc.value,
-}));
-
-vi.mock('@/services/workspaceLegacyMigrationMarker', () => ({
-  invalidateLegacyWorkspaceMigration: mockMigrationMarker.invalidateLegacyWorkspaceMigration,
 }));
 
 vi.mock('@/services/workspaceYDocAdapter', async (importOriginal) => ({
@@ -103,7 +96,6 @@ describe('useSavedTables', () => {
       connectionState: 'idle',
       retry: vi.fn(),
     };
-    mockMigrationMarker.invalidateLegacyWorkspaceMigration.mockReset();
     mockYDocAdapter.deleteSavedTableFromYDoc.mockReset();
     mockYDocAdapter.getSavedTableFromYDoc.mockReset();
     mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReset();
@@ -417,7 +409,7 @@ describe('useSavedTables', () => {
     ).resolves.toBeNull();
   });
 
-  it('本地 Y.Doc 就绪时保存，不应重开 legacy 迁移', async () => {
+  it('本地 Y.Doc 就绪而云端仍在连接时应允许保存', async () => {
     mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -446,7 +438,6 @@ describe('useSavedTables', () => {
     });
 
     expect(mockYDocAdapter.recreateSavedTableInYDoc).toHaveBeenCalled();
-    expect(mockMigrationMarker.invalidateLegacyWorkspaceMigration).not.toHaveBeenCalled();
   });
 
   it('records the current trash write target when Y.Doc is ready', async () => {

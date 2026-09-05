@@ -4,7 +4,6 @@ import {
   listVersions,
   getVersion,
   deleteVersion,
-  deleteAllVersions,
   pruneOldVersions,
   countVersions,
 } from '@/utils/tableVersions';
@@ -264,22 +263,6 @@ describe('tableVersions', () => {
       await deleteVersion(version.id, testTableName);
       const result = await getVersion(version.id, testTableName);
       expect(result).toBeNull();
-    });
-  });
-
-  describe('deleteAllVersions', () => {
-    it('删除指定表的全部版本', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState();
-
-      await createVersion(testTableName, state, 'v1');
-      await createVersion(testTableName, state, 'v2');
-
-      await deleteAllVersions(testTableName);
-
-      const versions = await listVersions(testTableName);
-      expect(versions).toEqual([]);
-      expect(await countVersions(testTableName)).toBe(0);
     });
   });
 

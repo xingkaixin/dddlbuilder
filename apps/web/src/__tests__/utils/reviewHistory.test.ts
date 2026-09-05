@@ -5,7 +5,6 @@ import {
   listReviewMetadata,
   getReview,
   deleteReview,
-  deleteAllReviews,
   migrateReviewsToTable,
   pruneOldReviews,
 } from '@/utils/reviewHistory';
@@ -202,31 +201,13 @@ describe('reviewHistory', () => {
     expect(await listReviews(reviewTarget)).toEqual([]);
   });
 
-  it('deletes all table reviews without deleting other tables or workspaces', async () => {
-    const owner = target('delete_all', 'owner');
-    const anotherTable = target('delete_all', 'another');
-    const anotherWorkspace = {
-      ...owner,
-      scope: { kind: 'user' as const, userId: 'user', workspaceId: 'workspace' },
-    };
-    await saveReview(owner, 'owner', 'ddl', 'mysql', mockReview);
-    await saveReview(owner, 'owner', 'ddl-2', 'mysql', mockReview);
-    await saveReview(anotherTable, 'another', 'ddl', 'mysql', mockReview);
-    await saveReview(anotherWorkspace, 'other', 'ddl', 'mysql', mockReview);
-    await deleteAllReviews(owner);
-    await deleteAllReviews(owner);
-    expect(await listReviews(owner)).toEqual([]);
-    expect(await listReviews(anotherTable)).toHaveLength(1);
-    expect(await listReviews(anotherWorkspace)).toHaveLength(1);
-  });
-
   it('拦截删除标记后的写入，并清理标记前启动的写入', async () => {
     const deleted = target('deleted_review', 'deleted-id');
     const pendingSave = saveReview(deleted, 'deleted', 'pending-ddl', 'mysql', mockReview);
 
     const operationId = await beginWorkspaceEntityDeletion(deleted);
     await pendingSave;
-    await deleteAllReviews(deleted);
+    await pruneOldReviews(deleted, 0);
 
     expect(await listReviews(deleted)).toEqual([]);
     expect(await saveReview(deleted, 'deleted', 'late-ddl', 'mysql', mockReview)).toBeNull();

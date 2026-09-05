@@ -97,10 +97,6 @@ const deleteVersions = async (versions: TableVersion[]): Promise<void> => {
   });
 };
 
-export async function deleteAllVersions(target: TableVersionTarget): Promise<void> {
-  await deleteVersions(await listVersions(target));
-}
-
 export async function pruneOldVersions(
   target: TableVersionTarget,
   maxCount: number,

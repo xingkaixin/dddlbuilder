@@ -17,7 +17,6 @@ import {
 } from '@/services/workspaceLegacyMigrationMarker';
 import {
   collectWorkspaceMigrationPayload,
-  hasMeaningfulWorkspaceData,
   prepareLegacyWorkspaceSnapshot,
   promoteLegacyUserWorkspaceData,
 } from '@/services/workspaceMigrationService';
@@ -175,7 +174,6 @@ describe('workspaceMigrationService legacy promotion', () => {
     const payload = await collectWorkspaceMigrationPayload(anonymous);
     expect(payload?.snapshot.globalDraft).toBeNull();
     expect(payload?.snapshot.drafts[0]).toMatchObject({ draftId: DEFAULT_DRAFT_ID, state });
-    expect(await hasMeaningfulWorkspaceData(anonymous)).toBe(true);
   });
 
   it.each([undefined, 20])('默认草稿迁移保留完整元数据 (%s)', async (trashedAt) => {

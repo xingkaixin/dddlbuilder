@@ -271,13 +271,6 @@ export const analyzeWorkspaceMigration = async () => {
   };
 };
 
-export const hasMeaningfulWorkspaceData = async (
-  scope: WorkspaceScope = getAnonymousWorkspaceScope(),
-) => {
-  const payload = await collectWorkspaceMigrationPayload(scope);
-  return payload != null;
-};
-
 export const commitWorkspaceMigration = async (payload: WorkspaceMigrationPayload) =>
   requestWorkspaceMigration('commit', payload);
 

@@ -3,7 +3,6 @@ import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import {
   beginLegacyWorkspaceMigration,
   completeLegacyWorkspaceMigration,
-  invalidateLegacyWorkspaceMigration,
   isLegacyWorkspaceMigrationCompleted,
 } from '@/services/workspaceLegacyMigrationMarker';
 
@@ -47,22 +46,6 @@ describe('workspaceLegacyMigrationMarker', () => {
     expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(false);
   });
 
-  it('迁移期间 legacy 分区被写入时不应标记完成，下次启动重跑', () => {
-    const token = beginLegacyWorkspaceMigration(scope);
-    invalidateLegacyWorkspaceMigration(scope);
-    completeLegacyWorkspaceMigration(scope, token);
-
-    expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(false);
-  });
-
-  it('已完成后再写 legacy 分区应重新打开迁移', () => {
-    const token = beginLegacyWorkspaceMigration(scope);
-    completeLegacyWorkspaceMigration(scope, token);
-    invalidateLegacyWorkspaceMigration(scope);
-
-    expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(false);
-  });
-
   it('localStorage 写入失败时应降级为未完成而不是抛出', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(localStorage.setItem).mockImplementation(() => {
@@ -85,12 +68,10 @@ describe('workspaceLegacyMigrationMarker', () => {
 
     expect(() => isLegacyWorkspaceMigrationCompleted(scope)).not.toThrow();
     expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(false);
-    expect(() => invalidateLegacyWorkspaceMigration(scope)).not.toThrow();
   });
 
   it('另一次运行抢先开跑后，上一次运行不应认领完成标记', () => {
     const first = beginLegacyWorkspaceMigration(scope);
-    invalidateLegacyWorkspaceMigration(scope);
     const second = beginLegacyWorkspaceMigration(scope);
     expect(second).not.toBe(first);
 

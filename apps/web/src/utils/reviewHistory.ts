@@ -358,10 +358,6 @@ async function deleteReviews(records: ReviewRecord[]): Promise<void> {
   });
 }
 
-export async function deleteAllReviews(target: ReviewTarget): Promise<void> {
-  await deleteReviews(await listReviews(target));
-}
-
 export async function pruneOldReviews(target: ReviewTarget, maxCount: number): Promise<number> {
   const records = await listReviews(target);
   const toDelete = records.slice(Math.max(0, maxCount));
