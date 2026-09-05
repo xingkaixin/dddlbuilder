@@ -6,17 +6,12 @@ interface UseDialogStateOptions<TData> {
   initialData: TData;
 }
 
-interface CloseDialogOptions {
-  resetData?: boolean;
-  clearError?: boolean;
-}
-
 export interface UseDialogStateReturn<TData> {
   open: boolean;
   data: TData;
   error: string;
   openDialog: (nextData?: TData) => void;
-  closeDialog: (options?: CloseDialogOptions) => void;
+  closeDialog: () => void;
   updateData: (next: TData | ((prev: TData) => TData)) => void;
   setError: (message: string) => void;
   clearError: () => void;
@@ -39,14 +34,6 @@ export function useDialogState<TData>(
     setError('');
   }, []);
 
-  const updateData = useCallback((next: TData | ((prev: TData) => TData)) => {
-    if (typeof next === 'function') {
-      setData((prev) => (next as (prev: TData) => TData)(prev));
-      return;
-    }
-    setData(next);
-  }, []);
-
   const openDialog = useCallback(
     (nextData?: TData) => {
       if (nextData !== undefined) {
@@ -58,21 +45,11 @@ export function useDialogState<TData>(
     [setOpen],
   );
 
-  const closeDialog = useCallback(
-    (closeOptions?: CloseDialogOptions) => {
-      const shouldResetData = closeOptions?.resetData ?? true;
-      const shouldClearError = closeOptions?.clearError ?? true;
-
-      setOpen(false);
-      if (shouldResetData) {
-        setData(initialDataRef.current);
-      }
-      if (shouldClearError) {
-        setError('');
-      }
-    },
-    [setOpen],
-  );
+  const closeDialog = useCallback(() => {
+    setOpen(false);
+    setData(initialDataRef.current);
+    setError('');
+  }, [setOpen]);
 
   return {
     open,
@@ -80,7 +57,7 @@ export function useDialogState<TData>(
     error,
     openDialog,
     closeDialog,
-    updateData,
+    updateData: setData,
     setError,
     clearError,
     resetData,
