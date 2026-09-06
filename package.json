@@ -66,5 +66,5 @@
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.32"
   },
-  "packageManager": "pnpm@11.25.0"
+  "packageManager": "pnpm@12.3.4"
 }
