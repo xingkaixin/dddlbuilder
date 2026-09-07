@@ -192,6 +192,19 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       clientRef.current = null;
       persistenceRef.current = null;
       doc.destroy();
+      setValue((previous) =>
+        previous.doc === doc
+          ? {
+              doc: null,
+              scope,
+              synced: false,
+              localSynced: false,
+              remoteLoaded: false,
+              connectionState: 'error',
+              failureReason: 'unknown',
+            }
+          : previous,
+      );
       disposal = persistence.destroy().finally(unregister);
       return disposal;
     };

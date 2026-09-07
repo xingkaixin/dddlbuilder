@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import * as Y from 'yjs';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { createSchemaDocumentState } from '@/__tests__/utils/testFactories';
@@ -38,7 +38,11 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
 }));
 
 // 模拟 y-indexeddb 的持久化：同一 workspace 的 Y.Doc 状态（含删除墓碑）跨启动保留。
-const persistence = vi.hoisted(() => ({ update: null as Uint8Array | null, committed: false }));
+const persistence = vi.hoisted(() => ({
+  update: null as Uint8Array | null,
+  committed: false,
+  databases: [] as Array<{ onversionchange: (() => void) | null }>,
+}));
 
 vi.mock('@/services/workspaceYDocStorage', async (importOriginal) => ({
   ...(await importOriginal<typeof WorkspaceYDocStorage>()),
@@ -55,10 +59,12 @@ vi.mock('y-indexeddb', async () => {
   const Yjs = await import('yjs');
   return {
     IndexeddbPersistence: class {
+      db = { onversionchange: null as (() => void) | null };
       whenSynced = Promise.resolve(this);
       get = async () => persistence.committed;
       set = async () => {};
       constructor(_name: string, doc: Y.Doc) {
+        persistence.databases.push(this.db);
         if (persistence.update) {
           Yjs.applyUpdate(doc, persistence.update);
         }
@@ -134,6 +140,33 @@ const readPersistedSnapshot = () => {
 };
 
 describe('WorkspaceYDocProvider', () => {
+  it('blocks editing after the database closes and reopens a document on retry', async () => {
+    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(null);
+    const documents: Y.Doc[] = [];
+    function Editor() {
+      const { doc } = useWorkspaceYDocDocument();
+      if (doc && documents.at(-1) !== doc) documents.push(doc);
+      return <div data-testid="workspace-editor" />;
+    }
+    render(
+      <WorkspaceYDocProvider>
+        <Editor />
+      </WorkspaceYDocProvider>,
+    );
+    await screen.findByTestId('workspace-editor');
+    const firstDoc = documents[0];
+
+    act(() => persistence.databases.at(-1)?.onversionchange?.());
+
+    await screen.findByTestId('workspace-bootstrap-error');
+    expect(screen.queryByTestId('workspace-editor')).toBeNull();
+    expect(firstDoc.isDestroyed).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: '重试加载' }));
+    await screen.findByTestId('workspace-editor');
+    expect(documents.at(-1)).not.toBe(firstDoc);
+    expect(documents.at(-1)?.isDestroyed).toBe(false);
+  });
+
   it('blocks startup until pending account cleanup succeeds', async () => {
     vi.mocked(retryPendingWorkspaceCleanup).mockRejectedValueOnce(new Error('blocked deletion'));
     prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(null);
@@ -202,6 +235,7 @@ describe('WorkspaceYDocProvider', () => {
     auth.userId = 'user-1';
     persistence.update = null;
     persistence.committed = false;
+    persistence.databases = [];
     setupMemoryLocalStorage();
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
