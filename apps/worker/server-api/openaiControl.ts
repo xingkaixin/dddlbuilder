@@ -8,8 +8,6 @@ import type { OpenAIConfig } from './lib/openaiConfig.js';
 import { logWorkerBackgroundError } from './lib/logging.js';
 
 export { buildOpenAIConfig } from './lib/openaiConfig.js';
-export { withOpenAIRetry } from './lib/openaiRetry.js';
-export type { OpenAIRetryResult } from './lib/openaiRetry.js';
 
 export type AuditLogPayload = {
   requestId: string;

@@ -1,3 +1,4 @@
+import * as Effect from 'effect/Effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import type { ApiEnv } from '../../lib/context.js';
@@ -157,7 +158,11 @@ describe('withAIGovernance', () => {
     const parseRequest = vi.fn((body) => body);
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest }, async () => c.json({ ok: true })),
+      shell.withAIGovernance(c, { ...spec, parseRequest }, () =>
+        Effect.sync(() => {
+          return c.json({ ok: true });
+        }),
+      ),
     );
     const response = await post(app, {});
     expect(response.status).toBe(401);
@@ -181,12 +186,14 @@ describe('withAIGovernance', () => {
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) =>
-        session.streamCompletion({
-          scope: 'test-json-stream',
-          temperature: 0,
-          jsonResponse: true,
-          debugInput: {},
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          return yield* session.streamCompletion({
+            scope: 'test-json-stream',
+            temperature: 0,
+            jsonResponse: true,
+            debugInput: {},
+          });
         }),
       ),
     );
@@ -223,12 +230,14 @@ describe('withAIGovernance', () => {
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) =>
-        session.streamCompletion({
-          scope: 'test-stream',
-          temperature: 0,
-          jsonResponse,
-          debugInput: {},
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          return yield* session.streamCompletion({
+            scope: 'test-stream',
+            temperature: 0,
+            jsonResponse,
+            debugInput: {},
+          });
         }),
       ),
     );
@@ -274,10 +283,12 @@ describe('withAIGovernance', () => {
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
-        await session.completeJson({ scope: 'test-json', temperature: 0 });
-        return c.json({ ok: true });
-      }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          yield* session.completeJson({ scope: 'test-json', temperature: 0 });
+          return c.json({ ok: true });
+        }),
+      ),
     );
     const response = await post(app, { sql: 'select 1' }, waitUntil);
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));
@@ -311,8 +322,14 @@ describe('withAIGovernance', () => {
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) =>
-        session.streamCompletion({ scope: 'test-cancel', temperature: 0, debugInput: {} }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          return yield* session.streamCompletion({
+            scope: 'test-cancel',
+            temperature: 0,
+            debugInput: {},
+          });
+        }),
       ),
     );
     const response = await post(app, {}, waitUntil);
@@ -380,8 +397,14 @@ describe('withAIGovernance', () => {
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) =>
-        session.streamCompletion({ scope: 'test-cancel', temperature: 0, debugInput: {} }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          return yield* session.streamCompletion({
+            scope: 'test-cancel',
+            temperature: 0,
+            debugInput: {},
+          });
+        }),
       ),
     );
 
@@ -416,8 +439,14 @@ describe('withAIGovernance', () => {
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) =>
-        session.streamCompletion({ scope: 'test-stream', temperature: 0, debugInput: {} }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          return yield* session.streamCompletion({
+            scope: 'test-stream',
+            temperature: 0,
+            debugInput: {},
+          });
+        }),
       ),
     );
 
@@ -452,8 +481,10 @@ describe('withAIGovernance', () => {
     const shell = await loadShell();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async () =>
-        c.json({ ok: true }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, () =>
+        Effect.sync(() => {
+          return c.json({ ok: true });
+        }),
       ),
     );
 
@@ -471,8 +502,11 @@ describe('withAIGovernance', () => {
     const shell = await loadShell();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async () =>
-        c.json({ ok: true }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          yield* session.completeJson({ scope: 'sdk-options', temperature: 0 });
+          return c.json({ ok: true });
+        }),
       ),
     );
 
@@ -487,10 +521,12 @@ describe('withAIGovernance', () => {
     const shell = await loadShell({ recordAIUsageAttempt: recordAttempt });
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
-        await session.completeJson({ scope: 'test-json', temperature: 0 });
-        return c.json({ ok: true });
-      }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          yield* session.completeJson({ scope: 'test-json', temperature: 0 });
+          return c.json({ ok: true });
+        }),
+      ),
     );
 
     const response = await post(app, { sql: 'select 1' });
@@ -507,10 +543,12 @@ describe('withAIGovernance', () => {
     );
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
-        await session.completeJson({ scope: 'test-retry', temperature: 0 });
-        return c.json({ ok: true });
-      }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          yield* session.completeJson({ scope: 'test-retry', temperature: 0 });
+          return c.json({ ok: true });
+        }),
+      ),
     );
 
     expect((await post(app, { sql: 'select 1' })).status).toBe(200);
@@ -541,10 +579,12 @@ describe('withAIGovernance', () => {
     const shell = await loadShell({ prepareAIUsageSettlement: prepareSettlement });
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
-        await session.completeJson({ scope: 'test-settlement', temperature: 0 });
-        return c.json({ ok: true });
-      }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          yield* session.completeJson({ scope: 'test-settlement', temperature: 0 });
+          return c.json({ ok: true });
+        }),
+      ),
     );
 
     expect((await post(app, { sql: 'select 1' })).status).toBe(200);
@@ -557,8 +597,10 @@ describe('withAIGovernance', () => {
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async () =>
-        c.json({ ok: true }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, () =>
+        Effect.sync(() => {
+          return c.json({ ok: true });
+        }),
       ),
     );
 
@@ -574,14 +616,16 @@ describe('withAIGovernance', () => {
     const shell = await loadShell();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
-        expect(Object.keys(session).sort()).toEqual([
-          'completeJson',
-          'request',
-          'streamCompletion',
-        ]);
-        return c.json({ ok: true });
-      }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.sync(() => {
+          expect(Object.keys(session).sort()).toEqual([
+            'completeJson',
+            'request',
+            'streamCompletion',
+          ]);
+          return c.json({ ok: true });
+        }),
+      ),
     );
 
     const response = await post(app, { sql: 'select 1' });
@@ -594,9 +638,11 @@ describe('withAIGovernance', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async () => {
-        throw new Error('upstream exploded');
-      }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, () =>
+        Effect.sync(() => {
+          throw new Error('upstream exploded');
+        }),
+      ),
     );
 
     const response = await post(app, { sql: 'select 1' });
@@ -620,13 +666,15 @@ describe('withAIGovernance', () => {
     const shell = await loadShell({}, '{invalid');
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
-        await session.completeJson({
-          scope: 'test-json',
-          temperature: 0,
-        });
-        return c.json({ ok: true });
-      }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          yield* session.completeJson({
+            scope: 'test-json',
+            temperature: 0,
+          });
+          return c.json({ ok: true });
+        }),
+      ),
     );
 
     const response = await post(app, { sql: 'select 1' });
@@ -653,7 +701,10 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(
         c,
         { ...spec, parseRequest: () => shell.rejectAIRequest('SQL_REQUIRED', 'SQL is required') },
-        async () => c.json({ ok: true }),
+        () =>
+          Effect.sync(() => {
+            return c.json({ ok: true });
+          }),
       ),
     );
 

@@ -1,3 +1,4 @@
+import * as Effect from 'effect/Effect';
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { rejectAIRequest, withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
@@ -198,16 +199,17 @@ export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
           };
         },
       },
-      async (session) => {
-        const data = await session.completeJson({
-          scope: 'IndexAdvisor',
-          temperature: 0.2,
-        });
-        const result = normalizeResult(data, session.request.fields);
-        return c.json(
-          withMeta(c, { summary: result.summary, recommendations: result.recommendations }),
-        );
-      },
+      (session) =>
+        Effect.gen(function* () {
+          const data = yield* session.completeJson({
+            scope: 'IndexAdvisor',
+            temperature: 0.2,
+          });
+          const result = normalizeResult(data, session.request.fields);
+          return c.json(
+            withMeta(c, { summary: result.summary, recommendations: result.recommendations }),
+          );
+        }),
     ),
   );
 }

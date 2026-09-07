@@ -1,3 +1,4 @@
+import * as Effect from 'effect/Effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import type { ApiEnv } from '../../lib/context.js';
@@ -101,8 +102,14 @@ describe('AI client cancellation accounting', () => {
             parseRequest: (body) => body,
             buildMessages: () => [{ role: 'user', content: 'Explain table' }],
           },
-          async (session) =>
-            session.streamCompletion({ scope: 'cancel-test', temperature: 0, debugInput: {} }),
+          (session) =>
+            Effect.gen(function* () {
+              return yield* session.streamCompletion({
+                scope: 'cancel-test',
+                temperature: 0,
+                debugInput: {},
+              });
+            }),
         ),
       );
       const fetch = withWorkerRequestLogging(app.fetch);

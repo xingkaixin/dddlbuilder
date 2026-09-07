@@ -1,3 +1,4 @@
+import * as Effect from 'effect/Effect';
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { rejectAIRequest, withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
@@ -39,14 +40,15 @@ export function registerExplainRoute(app: Hono<ApiEnv>) {
           };
         },
       },
-      async (session) => {
-        const { sql, context, locale } = session.request;
-        return session.streamCompletion({
-          scope: 'Explain',
-          temperature: 0.3,
-          debugInput: { sqlLength: sql.length, contextLength: context.length, locale },
-        });
-      },
+      (session) =>
+        Effect.gen(function* () {
+          const { sql, context, locale } = session.request;
+          return yield* session.streamCompletion({
+            scope: 'Explain',
+            temperature: 0.3,
+            debugInput: { sqlLength: sql.length, contextLength: context.length, locale },
+          });
+        }),
     ),
   );
 }

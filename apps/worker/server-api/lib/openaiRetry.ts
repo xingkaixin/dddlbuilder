@@ -9,7 +9,6 @@ type RetryOptions = {
   maxAttempts?: number;
   baseDelayMs?: number;
   maxDelayMs?: number;
-  signal?: AbortSignal;
   onRetry?: (event: OpenAIRetryEvent) => void;
 };
 
@@ -170,7 +169,7 @@ const createRetrySchedule = (options: {
 
 export const retryOpenAI = <A, E, R>(
   operation: Effect.Effect<A, E, R>,
-  options: Omit<RetryOptions, 'signal'>,
+  options: RetryOptions,
   config: OpenAIConfig,
 ): Effect.Effect<OpenAIRetryResult<A>, E, R> =>
   Effect.suspend(() => {
@@ -193,15 +192,3 @@ export const retryOpenAI = <A, E, R>(
       Effect.map((data) => ({ data, attempts, retryCount: Math.max(0, attempts - 1) })),
     );
   });
-
-export function withOpenAIRetry<T>(
-  operation: () => Promise<T>,
-  options: RetryOptions,
-  config: OpenAIConfig,
-): Promise<OpenAIRetryResult<T>> {
-  const attempt = Effect.tryPromise({ try: operation, catch: (error) => error }).pipe(
-    // The caller finishes in-flight work before cancellation can settle its usage.
-    Effect.uninterruptible,
-  );
-  return Effect.runPromise(retryOpenAI(attempt, options, config), { signal: options.signal });
-}

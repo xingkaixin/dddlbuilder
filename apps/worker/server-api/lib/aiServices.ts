@@ -38,21 +38,23 @@ export class AIConfiguration extends Context.Service<
   }
 }
 
-const makeProvider = (client: OpenAI) => ({
+const makeProvider = (client: () => OpenAI) => ({
   complete: (
     body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
     signal: AbortSignal,
   ) =>
     Effect.tryPromise({
-      try: () => client.chat.completions.create(body, { signal }),
+      try: (interruption) =>
+        client().chat.completions.create(body, { signal: AbortSignal.any([signal, interruption]) }),
       catch: (cause) => new AIProviderError({ cause }),
     }),
   stream: (
     body: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
     signal: AbortSignal,
-  ) =>
+  ): Effect.Effect<AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>, AIProviderError> =>
     Effect.tryPromise({
-      try: () => client.chat.completions.create(body, { signal }),
+      try: (interruption) =>
+        client().chat.completions.create(body, { signal: AbortSignal.any([signal, interruption]) }),
       catch: (cause) => new AIProviderError({ cause }),
     }),
 });
@@ -64,8 +66,15 @@ export class AIProvider extends Context.Service<AIProvider, ReturnType<typeof ma
     AIProvider,
     Effect.gen(function* () {
       const { apiKey, baseURL, config } = yield* AIConfiguration;
+      let client: OpenAI | undefined;
       return makeProvider(
-        new OpenAI({ apiKey, baseURL, maxRetries: 0, timeout: config.requestTimeoutMs }),
+        () =>
+          (client ??= new OpenAI({
+            apiKey,
+            baseURL,
+            maxRetries: 0,
+            timeout: config.requestTimeoutMs,
+          })),
       );
     }),
   );

@@ -1,3 +1,4 @@
+import * as Effect from 'effect/Effect';
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { rejectAIRequest, withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
@@ -101,26 +102,27 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
           };
         },
       },
-      async (session) => {
-        const { description, dbType, locale, mode, templates, existingConfig, previousSchema } =
-          session.request;
+      (session) =>
+        Effect.gen(function* () {
+          const { description, dbType, locale, mode, templates, existingConfig, previousSchema } =
+            session.request;
 
-        return session.streamCompletion({
-          scope: 'GenerateTable',
-          temperature: 0.3,
-          jsonResponse: true,
-          debugInput: {
-            descriptionLength: description.length,
-            dbType,
-            locale,
-            mode,
-            templateCount: templates.length,
-            hasExistingConfig: existingConfig != null,
-            hasPreviousSchema: previousSchema != null,
-            conversationTurnCount: session.request.conversationHistory.length,
-          },
-        });
-      },
+          return yield* session.streamCompletion({
+            scope: 'GenerateTable',
+            temperature: 0.3,
+            jsonResponse: true,
+            debugInput: {
+              descriptionLength: description.length,
+              dbType,
+              locale,
+              mode,
+              templateCount: templates.length,
+              hasExistingConfig: existingConfig != null,
+              hasPreviousSchema: previousSchema != null,
+              conversationTurnCount: session.request.conversationHistory.length,
+            },
+          });
+        }),
     ),
   );
 }

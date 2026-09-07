@@ -1,3 +1,4 @@
+import * as Effect from 'effect/Effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import type { ApiEnv } from '../../lib/context.js';
@@ -45,10 +46,16 @@ const startRequest = async (streaming = true) => {
         parseRequest: (body) => body,
         buildMessages: () => [{ role: 'user', content: 'Explain this table' }],
       },
-      async (session) =>
-        streaming
-          ? session.streamCompletion({ scope: 'deadline-test', temperature: 0, debugInput: {} })
-          : c.json(await session.completeJson({ scope: 'deadline-test', temperature: 0 })),
+      (session) =>
+        Effect.gen(function* () {
+          return streaming
+            ? yield* session.streamCompletion({
+                scope: 'deadline-test',
+                temperature: 0,
+                debugInput: {},
+              })
+            : c.json(yield* session.completeJson({ scope: 'deadline-test', temperature: 0 }));
+        }),
     ),
   );
   const response = await app.fetch(
