@@ -104,20 +104,18 @@ export function OutputHeading({
   actions: React.ReactNode;
 }) {
   return (
-    <div className="border-b border-primary/10 px-4 py-3.5">
+    <div className="border-b px-4 py-2">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <h2 className="bg-linear-to-r from-foreground to-primary bg-clip-text text-xl font-bold text-transparent">
-              {title}
-            </h2>
+            <h2 className="text-sm font-semibold text-foreground">{title}</h2>
             {dbType && (
               <span className="transition-transform duration-200 hover:scale-105">
                 <DatabaseBadge dbType={dbType} />
               </span>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="sr-only">{description}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>
       </div>

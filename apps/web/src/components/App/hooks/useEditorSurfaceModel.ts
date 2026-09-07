@@ -1,4 +1,5 @@
-import { useCallback, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import type { EditorView } from '@/stores/appUiStore';
 import { useTranslation } from 'react-i18next';
 import type { EditorSurfaceModel } from '../EditorSurface';
 import type { useEditorDomains } from './useEditorDomains';
@@ -19,8 +20,8 @@ interface UseEditorSurfaceModelInput {
   navigationActions: ReturnType<typeof useNavigationActions>;
   schemaActions: ReturnType<typeof useSchemaApplyActions>;
   isShareView: boolean;
-  outputPanelOpen: boolean;
-  setOutputPanelOpen: (open: boolean) => void;
+  editorView: EditorView;
+  setEditorView: (view: EditorView) => void;
   isLoadedDirty: boolean;
   loadedTableName: string | null;
   loadedTableNormalizedName: string | null;
@@ -42,8 +43,8 @@ export function useEditorSurfaceModel({
   navigationActions,
   schemaActions,
   isShareView,
-  outputPanelOpen,
-  setOutputPanelOpen,
+  editorView,
+  setEditorView,
   isLoadedDirty,
   loadedTableName,
   loadedTableNormalizedName,
@@ -70,13 +71,12 @@ export function useEditorSurfaceModel({
     qualifiedTableName,
     schemaLintIssues,
   } = schemaController;
-  const expandOutput = useCallback(() => setOutputPanelOpen(true), [setOutputPanelOpen]);
-  const collapseOutput = useCallback(() => setOutputPanelOpen(false), [setOutputPanelOpen]);
 
   return {
     documentId,
     isShareView,
-    outputPanelOpen,
+    editorView,
+    setEditorView,
     tableBuilderProps: {
       tableConfigProps: {
         schemaName: editor.schemaName,
@@ -94,7 +94,6 @@ export function useEditorSurfaceModel({
         onViewDiff: navigationActions.handleOpenDiffDialog,
         onViewHistory: onViewCurrentVersionHistory,
         onOpenErDiagram,
-        onExpandOutputPanel: !isShareView && !outputPanelOpen ? expandOutput : undefined,
         saveDisabled: !canSaveCurrent,
         saveDisabledHint: t('dialogs.save.disabledTip'),
         showDiffButton: isLoadedDirty && Boolean(tableDiff && hasTableChanges(tableDiff)),
@@ -179,7 +178,6 @@ export function useEditorSurfaceModel({
       },
     },
     outputProps: {
-      onCollapse: isShareView ? undefined : collapseOutput,
       ddlOutputProps: {
         generatedSql: sql.generatedSql,
         generatedDcl: sql.generatedDcl,

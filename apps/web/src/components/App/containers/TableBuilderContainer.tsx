@@ -24,7 +24,7 @@ import { HivePartitionPanel } from '../HivePartitionPanel';
 import { IndexPanel } from '../IndexPanel';
 import { PartitionPanel } from '../PartitionPanel';
 import { ShardingPanel } from '../ShardingPanel';
-import { TableConfig } from '../TableConfig';
+import type { TableConfig } from '../TableConfig';
 import { TableOptionsPanel } from '../TableOptionsPanel';
 import { ViewDefinitionPanel } from '../ViewDefinitionPanel';
 
@@ -215,8 +215,6 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
-      <TableConfig {...tableConfigProps} />
-
       <Tabs value={tabsValue} onValueChange={handleTabValueChange} className="w-full">
         <TabsList className="inline-flex h-auto max-w-full flex-wrap justify-start gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0">
           {tabs.map(({ value, icon: Icon, label, badge }) => (

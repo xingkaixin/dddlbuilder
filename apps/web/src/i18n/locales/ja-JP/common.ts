@@ -264,7 +264,17 @@ export const jaJPCommon = {
     persistenceFailed: 'ワークスペースの変更を保存できませんでした。再試行してください。',
     retryPersistence: '保存を再試行してください',
   },
+  editorLayout: {
+    label: '作業ビュー',
+    design: '設計',
+    output: '生成結果',
+    split: '比較',
+    resize: '設計と結果の高さを調整',
+    maximize: '生成結果を最大化',
+  },
   tableConfig: {
+    properties: 'プロパティ',
+    more: 'その他',
     title: 'テーブル構成',
     viewTitle: '構成の表示',
     objectType: 'オブジェクトの種類',
@@ -299,6 +309,7 @@ export const jaJPCommon = {
     indexStat: '{{count}} インデックス',
   },
   builderTabs: {
+    advanced: '詳細設定',
     fields: 'フィールド',
     viewSql: 'SQL を表示する',
     indexes: 'インデックス',
@@ -532,6 +543,8 @@ export const jaJPCommon = {
     listHint: 'LIST パーティション化の場合、パーティション間の値リストが重複してはなりません',
   },
   dataTable: {
+    aiTools: 'AI ツール',
+    dataTools: 'データツール',
     ariaLabel: 'フィールド構成表',
     ariaDescription:
       'フィールド名、タイプ、コメント、NULL 値許容値、デフォルト値を含む編集可能なフィールド テーブル。',

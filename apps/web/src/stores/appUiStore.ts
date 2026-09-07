@@ -1,5 +1,19 @@
 import { create } from 'zustand';
 
+export type EditorView = 'design' | 'output' | 'split';
+
+const editorViewKey = 'ddlbuilder:editor-view';
+
+function readEditorView(): EditorView {
+  try {
+    const value = localStorage.getItem(editorViewKey);
+    if (value === 'output' || value === 'split') return value;
+  } catch {
+    // Layout preferences are optional when browser storage is unavailable.
+  }
+  return 'design';
+}
+
 export interface VersionHistoryTarget {
   tableId: string;
   normalizedName: string;
@@ -29,12 +43,12 @@ export type ActiveAppDialog =
 
 interface AppUiState {
   workspaceSidebarOpen: boolean;
-  outputPanelOpen: boolean;
+  editorView: EditorView;
   savedTablesDrawerOpen: boolean;
   activeDialog: ActiveAppDialog;
   showFireworks: boolean;
   setWorkspaceSidebarOpen: (open: boolean) => void;
-  setOutputPanelOpen: (open: boolean) => void;
+  setEditorView: (view: EditorView) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   setIsImportDialogOpen: (open: boolean) => void;
   setIsUserSettingsOpen: (open: boolean) => void;
@@ -67,12 +81,19 @@ export const useAppUiStore = create<AppUiState>((set) => {
 
   return {
     workspaceSidebarOpen: true,
-    outputPanelOpen: true,
+    editorView: readEditorView(),
     savedTablesDrawerOpen: false,
     activeDialog: noDialog,
     showFireworks: false,
     setWorkspaceSidebarOpen: (workspaceSidebarOpen) => set({ workspaceSidebarOpen }),
-    setOutputPanelOpen: (outputPanelOpen) => set({ outputPanelOpen }),
+    setEditorView: (editorView) => {
+      set({ editorView });
+      try {
+        localStorage.setItem(editorViewKey, editorView);
+      } catch {
+        // Keep the selected layout usable without persistence.
+      }
+    },
     setSavedTablesDrawerOpen: (savedTablesDrawerOpen) => set({ savedTablesDrawerOpen }),
     setIsImportDialogOpen: setDialogOpen('import'),
     setIsUserSettingsOpen: setDialogOpen('user-settings'),

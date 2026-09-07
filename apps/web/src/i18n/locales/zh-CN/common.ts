@@ -249,7 +249,17 @@ export const zhCNCommon = {
     persistenceFailed: '工作区内容未能保存，请重试',
     retryPersistence: '重试保存',
   },
+  editorLayout: {
+    label: '工作视图',
+    design: '设计',
+    output: '生成结果',
+    split: '对照',
+    resize: '调整设计与结果的高度',
+    maximize: '最大化生成结果',
+  },
   tableConfig: {
+    properties: '表属性',
+    more: '更多',
     title: '表配置',
     viewTitle: '视图配置',
     objectType: '对象类型',
@@ -284,6 +294,7 @@ export const zhCNCommon = {
     indexStat: '索引 {{count}}',
   },
   builderTabs: {
+    advanced: '高级设置',
     fields: '字段配置',
     viewSql: '视图 SQL',
     indexes: '索引配置',
@@ -506,6 +517,8 @@ export const zhCNCommon = {
     listHint: '对于 LIST 分区，每个分区的值列表不能重叠',
   },
   dataTable: {
+    aiTools: 'AI 工具',
+    dataTools: '数据工具',
     ariaLabel: '字段配置表格',
     ariaDescription: '可编辑字段配置表格，包含字段名、字段类型、注释、可空与默认值等列。',
     duplicateName: '字段名重复',

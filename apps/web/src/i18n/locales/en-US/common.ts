@@ -260,7 +260,17 @@ export const enUSCommon = {
     persistenceFailed: 'Workspace changes could not be saved. Please retry.',
     retryPersistence: 'Retry saving',
   },
+  editorLayout: {
+    label: 'Workspace view',
+    design: 'Design',
+    output: 'Generated output',
+    split: 'Compare',
+    resize: 'Resize design and output',
+    maximize: 'Maximize output',
+  },
   tableConfig: {
+    properties: 'Properties',
+    more: 'More',
     title: 'Table Config',
     viewTitle: 'View Config',
     objectType: 'Object Type',
@@ -295,6 +305,7 @@ export const enUSCommon = {
     indexStat: '{{count}} indexes',
   },
   builderTabs: {
+    advanced: 'Advanced',
     fields: 'Fields',
     viewSql: 'View SQL',
     indexes: 'Indexes',
@@ -527,6 +538,8 @@ export const enUSCommon = {
     listHint: 'For LIST partitioning, value lists across partitions must not overlap',
   },
   dataTable: {
+    aiTools: 'AI tools',
+    dataTools: 'Data tools',
     ariaLabel: 'Field configuration table',
     ariaDescription:
       'Editable field table including field name, type, comment, nullable, and default value.',

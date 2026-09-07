@@ -7,7 +7,7 @@ import type {
 import type { ORMTarget } from '@ddlbuilder/ddl-core';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import type { SchemaLintIssue } from '@/utils/schemaLint';
-import { Code, PanelRightClose, ScrollText, ShieldCheck, Workflow } from '@/components/icons';
+import { Code, Maximize, X, ScrollText, ShieldCheck, Workflow } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -39,6 +39,7 @@ interface DDLOutputProps {
   onViewReviewHistory?: () => void;
   onApplySuggestion?: (suggestion: DDLReviewStructuredSuggestion) => void;
   onCollapsePanel?: () => void;
+  onMaximizePanel?: () => void;
 }
 
 export const DDLOutput = memo<DDLOutputProps>((props) => {
@@ -51,12 +52,21 @@ export const DDLOutput = memo<DDLOutputProps>((props) => {
   ] as const;
 
   return (
-    <div className="relative flex w-full flex-col rounded-lg border bg-card/95 shadow-lg shadow-primary/5 backdrop-blur-sm">
-      <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
-      <div className="absolute top-0 right-0 left-0 h-1 rounded-t-lg bg-linear-to-r from-primary/30 to-transparent" />
+    <div className="relative flex w-full min-w-0 flex-col bg-background">
       <Tabs defaultValue="ddl" className="relative flex flex-col">
-        <div className="border-b border-primary/10 px-4 pt-4">
-          <div className="flex items-center gap-2 rounded-md bg-muted p-1 text-muted-foreground">
+        <div className="sticky top-0 z-10 border-b bg-background px-4 py-1">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            {props.onMaximizePanel && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={props.onMaximizePanel}
+                aria-label={t('editorLayout.maximize')}
+              >
+                <Maximize className="h-4 w-4" />
+              </Button>
+            )}
             {props.onCollapsePanel && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -68,7 +78,7 @@ export const DDLOutput = memo<DDLOutputProps>((props) => {
                     onClick={props.onCollapsePanel}
                     aria-label={t('ddlOutput.collapsePanel')}
                   >
-                    <PanelRightClose className="h-4 w-4" />
+                    <X className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>

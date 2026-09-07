@@ -143,9 +143,7 @@ export const Header = memo<HeaderProps>(
             }
           `}</style>
         ) : null}
-        <header className="relative isolate overflow-hidden border-b bg-card/95 backdrop-blur-sm shadow-sm">
-          <div className="app-header-atmosphere" aria-hidden />
-
+        <header className="relative isolate shrink-0 border-b bg-background">
           <div className="relative px-4 py-2">
             <div className="flex items-center justify-between">
               <div className="flex min-w-0 items-center gap-4">
@@ -159,7 +157,7 @@ export const Header = memo<HeaderProps>(
                   />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h1 className="bg-gradient-to-r from-foreground to-primary bg-clip-text text-lg font-bold tracking-tight text-transparent">
+                      <h1 className="text-lg font-bold tracking-tight text-foreground">
                         {t('header.appName')}
                       </h1>
                       {onPlayFireworks ? (

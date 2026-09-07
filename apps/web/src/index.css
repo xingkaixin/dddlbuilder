@@ -71,34 +71,33 @@
 
 @layer base {
   :root {
-    --font-sans:
-      'Roboto Mono', 'MiSans VF', 'PingFang SC', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --font-sans: 'MiSans VF', 'PingFang SC', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 
-    --background: 48 33.3333% 97.0588%;
-    --foreground: 48 19.6078% 20%;
+    --background: 0 0% 100%;
+    --foreground: 220 14% 16%;
 
-    --muted: 44 29.4118% 90%;
-    --muted-foreground: 50 2.3622% 50.1961%;
+    --muted: 220 12% 96%;
+    --muted-foreground: 220 8% 44%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 50.7692 19.403% 13.1373%;
 
-    --card: 48 33.3333% 97.0588%;
+    --card: 0 0% 100%;
     --card-foreground: 60 2.5641% 7.6471%;
 
-    --border: 50 7.5% 84.3137%;
-    --input: 50.7692 7.9755% 68.0392%;
+    --border: 220 10% 89%;
+    --input: 220 10% 80%;
 
     --primary: 15.1111 55.5556% 52.3529%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 46.1538 22.807% 88.8235%;
+    --secondary: 220 12% 95%;
     --secondary-foreground: 50.7692 8.4967% 30%;
 
-    --accent: 46.1538 22.807% 88.8235%;
+    --accent: 220 12% 94%;
     --accent-foreground: 50.7692 19.403% 13.1373%;
 
-    --destructive: 60 2.5641% 7.6471%;
+    --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 100%;
 
     --ring: 15.1111 55.5556% 52.3529%;

@@ -10,7 +10,7 @@ export function AppView() {
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-dvh flex-col bg-background text-foreground">
+      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
         <AppWorkspace model={workspaceView} />
         <AppDialogLayer model={dialogLayer} />
       </div>

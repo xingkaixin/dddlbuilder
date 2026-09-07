@@ -60,7 +60,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
 
       <SavedTablesDrawer {...drawer} />
 
-      <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+      <div className="relative flex min-h-0 flex-1 flex-row">
         {!view.isShareView && view.workspaceSidebarOpen && <WorkspaceSidebar {...sidebar} />}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="workspace-content">
@@ -81,7 +81,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
               {...tabBar}
             />
           )}
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col overflow-auto">
             {view.shouldShowWorkspaceSkeleton ? (
               <div className="p-3 sm:p-4">
                 <MainWorkspaceSkeleton />
@@ -107,7 +107,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
                 }
               />
             ) : (
-              <div className="p-3 sm:p-4">
+              <div className="flex min-h-0 flex-1 flex-col">
                 <EditorSurface model={editorSurface} />
               </div>
             )}

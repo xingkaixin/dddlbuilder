@@ -183,11 +183,9 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
 
     return (
       <aside
-        className="relative flex min-h-[calc(100dvh-7.5rem)] w-full shrink-0 flex-col overflow-hidden border-r bg-card/80 sm:min-h-0 sm:w-72"
+        className="absolute inset-y-0 left-0 z-30 flex w-60 shrink-0 flex-col overflow-hidden border-r bg-muted sm:static sm:z-auto sm:w-[220px]"
         data-testid="workspace-sidebar"
       >
-        <div className="workspace-sidebar-atmosphere" aria-hidden />
-
         <div className="relative flex items-center justify-between border-b px-3 py-3">
           <button
             type="button"

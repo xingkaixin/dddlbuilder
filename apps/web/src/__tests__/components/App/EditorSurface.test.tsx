@@ -17,18 +17,40 @@ vi.mock('@/components/App/containers/TableBuilderContainer', () => ({
 }));
 
 vi.mock('@/components/App/containers/OutputContainer', () => ({
-  OutputContainer: () => null,
+  OutputContainer: () => <div>Generated SQL</div>,
 }));
+vi.mock('@/components/App/TableConfig', () => ({ TableConfig: () => null }));
 
 const buildModel = (documentId: string): EditorSurfaceModel => ({
   documentId,
   isShareView: false,
-  outputPanelOpen: false,
+  editorView: 'design',
+  setEditorView: vi.fn(),
   tableBuilderProps: {} as EditorSurfaceModel['tableBuilderProps'],
-  outputProps: {} as EditorSurfaceModel['outputProps'],
+  outputProps: {
+    ddlOutputProps: { schemaLintIssues: [] },
+  } as unknown as EditorSurfaceModel['outputProps'],
 });
 
 describe('EditorSurface', () => {
+  it('preserves unfinished editor drafts across views', () => {
+    const model = buildModel('orders-tab');
+    const { rerender } = render(<EditorSurface model={model} />);
+    fireEvent.change(screen.getByRole('textbox', { name: 'index draft' }), {
+      target: { value: 'orders_user_id' },
+    });
+    rerender(<EditorSurface model={{ ...model, editorView: 'output' }} />);
+    expect(screen.getByText('Generated SQL')).toBeVisible();
+    expect(screen.queryByRole('textbox', { name: 'index draft' })).not.toBeInTheDocument();
+    rerender(<EditorSurface model={{ ...model, editorView: 'split' }} />);
+    expect(screen.getByRole('textbox', { name: 'index draft' })).toHaveValue('orders_user_id');
+    const separator = screen.getByRole('separator');
+    fireEvent.keyDown(separator, { key: 'End' });
+    expect(separator).toHaveAttribute('aria-valuenow', '75');
+    fireEvent.keyDown(separator, { key: 'ArrowDown' });
+    expect(separator).toHaveAttribute('aria-valuenow', '75');
+  });
+
   it('clears local editor drafts when the active document changes', () => {
     const { rerender } = render(<EditorSurface model={buildModel('orders-tab')} />);
     fireEvent.change(screen.getByRole('textbox', { name: 'index draft' }), {

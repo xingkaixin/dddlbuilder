@@ -68,7 +68,7 @@ export function useAppController() {
     indexes,
   } = editor;
   const {
-    outputPanelOpen,
+    editorView,
     setIsClearDialogOpen,
     setShowFireworks,
     setSavedTablesDrawerOpen,
@@ -76,7 +76,7 @@ export function useAppController() {
     setIsErDialogOpen,
     setIsAISchemaPatchOpen,
     setWorkspaceSidebarOpen,
-    setOutputPanelOpen,
+    setEditorView,
     isSaveDialogOpen,
     setIsSaveDialogOpen,
     isRenameDialogOpen,
@@ -412,8 +412,8 @@ export function useAppController() {
     navigationActions,
     schemaActions,
     isShareView,
-    outputPanelOpen,
-    setOutputPanelOpen,
+    editorView,
+    setEditorView,
     isLoadedDirty,
     loadedTableName,
     loadedTableNormalizedName,
