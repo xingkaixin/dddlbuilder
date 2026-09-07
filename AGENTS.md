@@ -31,6 +31,16 @@
 - Cloudflare Worker 中的异步副作用（如 Telegram 通知、审计上报、异步写入）如果需要在请求返回后继续执行，必须挂到 `waitUntil`；不要只写 `void someAsyncTask()`，否则本地正常、线上可能因 Worker 提前结束而丢失。
 - 格式化代码使用 `pnpm format`。
 
+### Effect
+
+- AI 请求链路使用 Effect v4。`apps/worker/server-api/lib/aiRoute.ts` 中的 `aiGovernance` 负责业务编排，`withAIGovernance` 负责 Hono 入口适配。路由回调与 `AISession` 命令返回 Effect，业务模块内不要调用 `runPromise`。
+- `aiServices.ts` 中的 `AIConfiguration`、`AIProvider`、`AIUsage` 通过 Layer 按请求提供。不要将请求身份、绑定或可变计费状态放进全局 Runtime。数据库和 SDK 的 Promise 在适配层转换为 Effect。
+- 可恢复失败使用类型化错误，现有 `DomainError` 保留其业务语义。数据库失败不能进入上游请求重试；程序缺陷保留为 defect，HTTP／流输出适配处再处理完整 Cause。
+- `aiExecution.ts` 用 Scope 管理执行期限与取消。SDK 必须同时响应业务 AbortSignal 和 Effect 中断。D1 记账写入使用最小的不可中断区间，未启动的上游尝试需要撤销计数。
+- 流响应有独立执行入口，承接请求 Effect 上下文，并将包含最终结算的完整 Promise 交给 `waitUntil`。不能因返回 Response 就关闭流的生命周期。新增有资源释放需求的 Layer 时，必须确保它覆盖整个流消费过程。
+- 结算通过 `onExit` 执行，保留数据库中的幂等、结算意图和回收机制；Effect finalizer 不能替代持久化恢复。AI JSON 输出使用 `aiCompletion.ts` 的 Schema 解码。
+- 时间相关的 Effect 测试使用 `effect/testing/TestClock`；服务替换使用 Layer。保留真实 D1、SDK 流和取消计费集成测试来验证适配层行为。
+
 ## 验证
 - 按改动范围选择验证命令：
   - lint：`pnpm lint`
