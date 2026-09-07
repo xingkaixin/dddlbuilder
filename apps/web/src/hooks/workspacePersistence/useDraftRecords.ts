@@ -221,10 +221,10 @@ export function useDraftRecords({
       };
       if (target.kind === 'ydoc') persistRecord(draftId, restored, 'restore draft');
       else {
-        await enqueuePersistence(`draft:${draftId}`, 'restore draft', () =>
-          writeDraft(draftId, restored, target.scope),
-        );
-        updateLocalRecord(draftId, restored);
+        await enqueuePersistence(`draft:${draftId}`, 'restore draft', async () => {
+          await writeDraft(draftId, restored, target.scope);
+          updateLocalRecord(draftId, restored);
+        });
       }
       if (target.kind === 'ydoc') {
         void enqueuePersistence(`draft-cleanup:${draftId}`, 'clean up restored draft', () =>
@@ -250,10 +250,10 @@ export function useDraftRecords({
       if (target.kind === 'ydoc') {
         target.transact((doc) => deleteDraftFromYDoc(doc, draftId));
       }
-      await enqueuePersistence(`draft:${draftId}`, 'permanently delete draft', () =>
-        deleteDraft(draftId, target.scope),
-      );
-      if (target.kind === 'indexeddb') updateLocalRecord(draftId, null);
+      await enqueuePersistence(`draft:${draftId}`, 'permanently delete draft', async () => {
+        await deleteDraft(draftId, target.scope);
+        if (target.kind === 'indexeddb') updateLocalRecord(draftId, null);
+      });
     },
     [disabled, enqueuePersistence, storage, updateLocalRecord],
   );

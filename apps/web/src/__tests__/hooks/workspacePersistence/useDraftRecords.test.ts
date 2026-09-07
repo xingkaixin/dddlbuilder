@@ -1,9 +1,17 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useDraftRecords } from '@/hooks/workspacePersistence/useDraftRecords';
-import type { usePersistenceQueue } from '@/hooks/workspacePersistence/usePersistenceQueue';
+import { usePersistenceQueue } from '@/hooks/workspacePersistence/usePersistenceQueue';
 import type { WorkspaceStorageTarget } from '@/hooks/workspacePersistence/useWorkspaceStorageTarget';
+
+vi.mock(import('@/utils/workspaceStateDb'), async (importOriginal) => ({
+  ...(await importOriginal()),
+  writeDraft: vi.fn().mockResolvedValue(undefined),
+  deleteDraft: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { writeDraft, deleteDraft } from '@/utils/workspaceStateDb';
 
 const createState = (tableName: string): PersistedState => ({
   schemaName: '',
@@ -80,9 +88,11 @@ describe('useDraftRecords', () => {
   it('keeps a trashed draft visible until permanent deletion succeeds', async () => {
     let finishDeletion!: () => void;
     const enqueuePersistence = vi.fn(
-      (_key, _operation, _run) =>
+      (_key: string, _operation: string, run: () => Promise<unknown>) =>
         new Promise<void>((resolve) => {
-          finishDeletion = resolve;
+          finishDeletion = () => {
+            void run().then(() => resolve());
+          };
         }),
     );
     const { result } = renderDraftRecords({ enqueuePersistence });
@@ -125,4 +135,49 @@ describe('useDraftRecords', () => {
 
     expect(result.current.trashedDrafts).toHaveLength(1);
   });
+});
+
+describe('draft persistence retry', () => {
+  it.each(['restore', 'delete'] as const)(
+    'updates the catalog after retrying %s',
+    async (operation) => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const write = operation === 'restore' ? vi.mocked(writeDraft) : vi.mocked(deleteDraft);
+      write
+        .mockRejectedValueOnce(new Error('storage unavailable'))
+        .mockResolvedValueOnce(undefined);
+      const { result } = renderHook(() => {
+        const queue = usePersistenceQueue();
+        const drafts = useDraftRecords({
+          disabled: false,
+          yDoc: null,
+          enqueuePersistence: queue.enqueue,
+          storage: { kind: 'indexeddb', scope: { kind: 'anonymous' } },
+        });
+        return { queue, drafts };
+      });
+      act(() =>
+        result.current.drafts.replaceTrashedDrafts([
+          {
+            draftId: 'draft-1',
+            record: { state: createState('users'), createdAt: 1, updatedAt: 2, trashedAt: 2 },
+          },
+        ]),
+      );
+      await act(async () => {
+        const task =
+          operation === 'restore'
+            ? result.current.drafts.restoreDraftById('draft-1')
+            : result.current.drafts.permanentlyDeleteDraftById('draft-1');
+        await expect(task).rejects.toThrow('storage unavailable');
+      });
+      expect(result.current.drafts.trashedDrafts).toHaveLength(1);
+      act(() => result.current.queue.retryFailed());
+      await waitFor(() => {
+        expect(result.current.queue.failure).toBeNull();
+        expect(result.current.drafts.trashedDrafts).toHaveLength(0);
+        expect(result.current.drafts.draftSummaries).toHaveLength(operation === 'restore' ? 1 : 0);
+      });
+    },
+  );
 });
