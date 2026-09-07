@@ -1708,6 +1708,13 @@ export const enUSCommon = {
       success: 'Foreign key created successfully',
     },
     relationship: {
+      kind: 'Relationship type',
+      physical: 'Physical foreign key',
+      logical: 'Logical relationship',
+      logicalHint:
+        'Documents a business relationship without generating constraints, indexes, or changing nullability.',
+      logicalOneToOneHint: 'At most one related record in the business model',
+      businessDescription: 'Business description',
       title: 'Create Table Relationship',
       description:
         'Confirm the relationship semantics before generating the foreign key, nullability, and required index.',

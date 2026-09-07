@@ -344,7 +344,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
               </div>
               <div className="grid gap-3 sm:grid-cols-1 xl:grid-cols-2">
                 {foreignKeys.map((fk) => {
-                  const issue = getForeignKeyIssue(fk, dbType);
+                  const issue = fk.logical ? null : getForeignKeyIssue(fk, dbType);
                   return (
                     <div
                       key={fk.id}
@@ -361,7 +361,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="inline-flex items-center gap-1.5 rounded-md bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
                             <Link2 className="h-3.5 w-3.5" />
-                            FK
+                            {fk.logical ? t('erDiagram.relationship.logical') : 'FK'}
                           </span>
                           {editingId === fk.id ? (
                             <Input
@@ -405,7 +405,15 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                             {fk.refSchema ? `${fk.refSchema}.` : ''}
                             {fk.refTable}({fk.refFields.join(', ')})
                           </div>
-                          {(fk.onDelete || fk.onUpdate) && (
+                          {fk.logical && (
+                            <div className="text-xs">
+                              {fk.logical.cardinality === 'one-to-one' ? '1:1' : 'N:1'} ·{' '}
+                              {t(`erDiagram.relationship.${fk.logical.optionality}`)}
+                              <p>{fk.logical.description}</p>
+                              <p>{t('erDiagram.relationship.logicalHint')}</p>
+                            </div>
+                          )}
+                          {!fk.logical && (fk.onDelete || fk.onUpdate) && (
                             <div className="flex gap-3 text-xs">
                               {fk.onDelete && (
                                 <span>

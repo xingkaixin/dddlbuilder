@@ -388,3 +388,33 @@ describe('workspace YDoc codec', () => {
     expect(Y.encodeStateAsUpdate(doc)).toEqual(before);
   });
 });
+
+it('retains logical relationship metadata across workspace transport', () => {
+  const snapshot = createSnapshot();
+  const state = snapshot.drafts[0].state;
+  state.foreignKeys = [
+    {
+      id: 'logical',
+      name: 'owner',
+      fields: ['id'],
+      refTable: 'users',
+      refFields: ['id'],
+      logical: {
+        cardinality: 'one-to-one',
+        optionality: 'optional',
+        description: 'Business owner',
+      },
+    },
+  ];
+  const doc = new Y.Doc();
+  importWorkspaceSnapshotToYDoc(doc, snapshot);
+  const replica = new Y.Doc();
+  Y.applyUpdate(replica, Y.encodeStateAsUpdate(doc));
+  expect(
+    exportWorkspaceYDocToSnapshot(replica).drafts.find(
+      (draft) => draft.draftId === snapshot.drafts[0].draftId,
+    )?.state.foreignKeys,
+  ).toEqual(state.foreignKeys);
+  doc.destroy();
+  replica.destroy();
+});

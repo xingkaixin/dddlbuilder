@@ -23,6 +23,11 @@ export type ForeignKeyDefinition = {
   refSchema?: string;
   refTable: string;
   refFields: string[];
+  logical?: {
+    cardinality: 'many-to-one' | 'one-to-one';
+    optionality: 'required' | 'optional';
+    description?: string;
+  };
   onDelete?: ForeignKeyAction;
   onUpdate?: ForeignKeyAction;
 };

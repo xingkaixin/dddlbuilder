@@ -62,7 +62,7 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
     (change) => change.type === 'remove' && (family === 'mysql' || change.index.kind !== 'index'),
   );
   const oldTable = getSchemaAndTable(tableName);
-  const foreignKeys = [...(diff.foreignKeys ?? [])];
+  const foreignKeys = (diff.foreignKeys ?? []).filter((change) => !change.foreignKey.logical);
   const targetIndexes = [
     ...(diff.unchangedIndexes ?? []),
     ...diff.indexes.filter((change) => change.type === 'add').map((change) => change.index),
@@ -76,6 +76,7 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
       : matchesPrefix(index, names);
 
   for (const foreignKey of diff.unchangedForeignKeys ?? []) {
+    if (foreignKey.logical) continue;
     const selfReference =
       key(foreignKey.refTable) === key(oldTable.table) &&
       key(foreignKey.refSchema ?? '') === key(oldTable.schema);

@@ -4,6 +4,7 @@ import { mapCanonicalToORMType } from './ormTypeResolver.js';
 import { getForeignKeyIssue } from './foreignKeys.js';
 
 export const buildORM = (target: ORMTarget, input: ORMModelInput): string => {
+  input = { ...input, foreignKeys: input.foreignKeys?.filter((fk) => !fk.logical) };
   const { tableName, fields } = input;
   if (!tableName.trim()) {
     return '-- 请填写表名';

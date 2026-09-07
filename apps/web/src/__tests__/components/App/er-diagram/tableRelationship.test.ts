@@ -295,3 +295,30 @@ describe('tableRelationship', () => {
     expect(result.plan.foreignKey.refTable).toBe('employees');
   });
 });
+
+it('preserves physical columns and indexes when documenting a logical relationship', () => {
+  const source = createTable('orders', { fieldName: 'user_id', nullable: true });
+  const target = createTable('users');
+  const intent = defaultRelationshipIntent({ source, target }, 'user_id', 'id');
+  const result = planTableRelationship(
+    { source, target },
+    {
+      ...intent,
+      logical: true,
+      cardinality: 'one-to-one',
+      optionality: 'required',
+      description: 'Order owner',
+      onDelete: 'CASCADE',
+    },
+  );
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.plan.sourceState.rows).toEqual(source.rows);
+  expect(result.plan.sourceState.indexes).toEqual(source.indexes);
+  expect(result.plan.foreignKey.logical).toEqual({
+    cardinality: 'one-to-one',
+    optionality: 'required',
+    description: 'Order owner',
+  });
+  expect(result.plan.foreignKey.onDelete).toBeUndefined();
+});

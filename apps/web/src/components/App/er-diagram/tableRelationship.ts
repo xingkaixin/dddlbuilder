@@ -16,6 +16,8 @@ export type TableRelationshipDraft = {
 };
 
 export type TableRelationshipIntent = {
+  logical?: boolean;
+  description?: string;
   name: string;
   sourceField: string;
   targetField: string;
@@ -148,7 +150,7 @@ export function planTableRelationship(
   const targetField = draft.target.rows.find((row) => row.fieldName === intent.targetField);
   if (!targetField) return { ok: false, error: 'missing-target-field' };
 
-  if (!referencedKeyFields(draft.target).has(intent.targetField)) {
+  if (!intent.logical && !referencedKeyFields(draft.target).has(intent.targetField)) {
     return { ok: false, error: 'target-field-not-key' };
   }
 
@@ -169,6 +171,31 @@ export function planTableRelationship(
 
   if (foreignKeys.some((foreignKey) => foreignKey.name === relationshipName)) {
     return { ok: false, error: 'duplicate-name' };
+  }
+
+  if (intent.logical) {
+    const foreignKey: ForeignKeyDefinition = {
+      id: createEntityId(),
+      name: relationshipName,
+      fields: [intent.sourceField],
+      refSchema: draft.target.schemaName || undefined,
+      refTable: draft.target.tableName,
+      refFields: [intent.targetField],
+      logical: {
+        cardinality: intent.cardinality,
+        optionality: intent.optionality,
+        description: intent.description?.trim() || undefined,
+      },
+    };
+    return {
+      ok: true,
+      plan: {
+        sourceState: { ...draft.source, foreignKeys: [...foreignKeys, foreignKey] },
+        foreignKey,
+        changedNullability: false,
+        warnings: [],
+      },
+    };
   }
 
   if (intent.optionality === 'optional' && isPrimaryKeyField(draft.source, intent.sourceField)) {

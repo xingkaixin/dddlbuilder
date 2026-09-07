@@ -79,6 +79,7 @@ export const buildForeignKeyDDL = (
 ): string => {
   const table = formatSqlTableName(tableName, dbType);
   const constraint = formatSqlIdentifier(fk.name, dbType);
+  if (fk.logical) return '';
   const issue = getForeignKeyIssue(fk, dbType);
   if (issue)
     return `-- Manual migration required: foreign key ${constraint} on ${table}. ${issue.message}.`;

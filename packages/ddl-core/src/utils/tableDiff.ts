@@ -510,8 +510,8 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   }
 
   // 5. 外键变更
-  const oldForeignKeys = oldState.foreignKeys || [];
-  const newForeignKeys = newState.foreignKeys || [];
+  const oldForeignKeys = (oldState.foreignKeys || []).filter((fk) => !fk.logical);
+  const newForeignKeys = (newState.foreignKeys || []).filter((fk) => !fk.logical);
 
   const oldFkSigs = new Map<string, ForeignKeyDefinition>();
   for (const fk of oldForeignKeys) {

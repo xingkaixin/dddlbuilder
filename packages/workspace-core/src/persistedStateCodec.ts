@@ -171,6 +171,21 @@ const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined =
     const name = toText(item.name);
     const refTable = toText(item.refTable);
     if (!name || !refTable) return [];
+    let logical: ForeignKeyDefinition['logical'];
+    if (item.logical !== undefined) {
+      if (
+        !isRecord(item.logical) ||
+        !['many-to-one', 'one-to-one'].includes(String(item.logical.cardinality)) ||
+        !['required', 'optional'].includes(String(item.logical.optionality))
+      ) {
+        throw new Error('Invalid logical relationship');
+      }
+      logical = {
+        cardinality: item.logical.cardinality as 'many-to-one' | 'one-to-one',
+        optionality: item.logical.optionality as 'required' | 'optional',
+        description: toOptionalText(item.logical.description),
+      };
+    }
     const onDelete = FOREIGN_KEY_ACTIONS.has(item.onDelete as ForeignKeyAction)
       ? (item.onDelete as ForeignKeyAction)
       : undefined;
@@ -185,8 +200,9 @@ const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined =
         refSchema: toOptionalText(item.refSchema),
         refTable,
         refFields: decodeForeignKeyFields(item.refFields),
-        ...(onDelete ? { onDelete } : {}),
-        ...(onUpdate ? { onUpdate } : {}),
+        ...(logical ? { logical } : {}),
+        ...(onDelete && !logical ? { onDelete } : {}),
+        ...(onUpdate && !logical ? { onUpdate } : {}),
       },
     ];
   });

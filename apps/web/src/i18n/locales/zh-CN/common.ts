@@ -1652,6 +1652,12 @@ export const zhCNCommon = {
       success: '外键创建成功',
     },
     relationship: {
+      kind: '关系类型',
+      physical: '物理外键',
+      logical: '逻辑关系',
+      logicalHint: '仅记录业务关系，不生成外键、索引或修改字段可空性。',
+      logicalOneToOneHint: '业务上最多关联一条记录',
+      businessDescription: '业务说明',
       title: '创建表关系',
       description: '确认关系语义后，再生成外键、字段可空性和必要索引。',
       source: '外键所在表',

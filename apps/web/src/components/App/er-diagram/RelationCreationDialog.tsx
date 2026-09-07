@@ -139,6 +139,30 @@ export function RelationCreationDialog({
         </DialogHeader>
 
         <div className="space-y-5 px-6">
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">{t('erDiagram.relationship.kind')}</legend>
+            <div className="flex gap-2">
+              <SelectionButton
+                active={!intent.logical}
+                onClick={() => updateIntent('logical', false)}
+              >
+                {t('erDiagram.relationship.physical')}
+              </SelectionButton>
+              <SelectionButton
+                active={!!intent.logical}
+                onClick={() => updateIntent('logical', true)}
+              >
+                {t('erDiagram.relationship.logical')}
+              </SelectionButton>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t(
+                intent.logical
+                  ? 'erDiagram.relationship.logicalHint'
+                  : 'erDiagram.relationship.description',
+              )}
+            </p>
+          </fieldset>
           <section className="rounded-lg border bg-muted/30 p-4">
             <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
               <div className="space-y-1.5">
@@ -178,7 +202,11 @@ export function RelationCreationDialog({
                   </SelectTrigger>
                   <SelectContent>
                     {targetFields.map((field) => (
-                      <SelectItem key={field.name} value={field.name} disabled={!field.isKey}>
+                      <SelectItem
+                        key={field.name}
+                        value={field.name}
+                        disabled={!intent.logical && !field.isKey}
+                      >
                         <KeyRound
                           className={cn(
                             'mr-2 h-3.5 w-3.5',
@@ -193,7 +221,7 @@ export function RelationCreationDialog({
                 </Select>
               </div>
             </div>
-            {!targetHasKeys && (
+            {!intent.logical && !targetHasKeys && (
               <p className="mt-3 flex items-start gap-2 text-xs text-destructive">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {t('erDiagram.relationship.noTargetKey')}
@@ -226,7 +254,11 @@ export function RelationCreationDialog({
                     {t('erDiagram.relationship.oneToOne')}
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {t('erDiagram.relationship.oneToOneHint')}
+                    {t(
+                      intent.logical
+                        ? 'erDiagram.relationship.logicalOneToOneHint'
+                        : 'erDiagram.relationship.oneToOneHint',
+                    )}
                   </span>
                 </SelectionButton>
               </div>
@@ -244,7 +276,9 @@ export function RelationCreationDialog({
                   <span className="block text-sm font-medium">
                     {t('erDiagram.relationship.required')}
                   </span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">NOT NULL</span>
+                  {!intent.logical && (
+                    <span className="mt-0.5 block text-xs text-muted-foreground">NOT NULL</span>
+                  )}
                 </SelectionButton>
                 <SelectionButton
                   active={intent.optionality === 'optional'}
@@ -253,7 +287,9 @@ export function RelationCreationDialog({
                   <span className="block text-sm font-medium">
                     {t('erDiagram.relationship.optional')}
                   </span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">NULL</span>
+                  {!intent.logical && (
+                    <span className="mt-0.5 block text-xs text-muted-foreground">NULL</span>
+                  )}
                 </SelectionButton>
               </div>
             </fieldset>
@@ -271,72 +307,88 @@ export function RelationCreationDialog({
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(['onDelete', 'onUpdate'] as const).map((actionType) => {
-              const actions = getForeignKeyActions(draft.source.dbType, actionType);
-              const selectedAction = intent[actionType];
-              return (
-                <div key={actionType} className="space-y-1.5">
-                  <div className="text-sm font-medium">
-                    {t(`erDiagram.relationship.${actionType}`)}
-                  </div>
-                  <Select
-                    value={selectedAction ?? ''}
-                    onValueChange={(value) =>
-                      updateIntent(actionType, (value as ForeignKeyAction) || undefined)
-                    }
-                  >
-                    <SelectTrigger aria-label={t(`erDiagram.relationship.${actionType}`)}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">{t('foreignKeyPanel.noAction')}</SelectItem>
-                      {selectedAction && !actions.includes(selectedAction) && (
-                        <SelectItem value={selectedAction} disabled>
-                          {t('foreignKeyPanel.unsupportedAction', { action: selectedAction })}
-                        </SelectItem>
-                      )}
-                      {actions.map((action) => (
-                        <SelectItem
-                          key={action}
-                          value={action}
-                          disabled={action === 'SET NULL' && intent.optionality === 'required'}
-                        >
-                          {action}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
-          </div>
+          {intent.logical && (
+            <div className="space-y-1.5">
+              <label htmlFor="relationship-description" className="text-sm font-medium">
+                {t('erDiagram.relationship.businessDescription')}
+              </label>
+              <Input
+                id="relationship-description"
+                value={intent.description ?? ''}
+                onChange={(event) => updateIntent('description', event.target.value)}
+              />
+            </div>
+          )}
+          {!intent.logical && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {(['onDelete', 'onUpdate'] as const).map((actionType) => {
+                  const actions = getForeignKeyActions(draft.source.dbType, actionType);
+                  const selectedAction = intent[actionType];
+                  return (
+                    <div key={actionType} className="space-y-1.5">
+                      <div className="text-sm font-medium">
+                        {t(`erDiagram.relationship.${actionType}`)}
+                      </div>
+                      <Select
+                        value={selectedAction ?? ''}
+                        onValueChange={(value) =>
+                          updateIntent(actionType, (value as ForeignKeyAction) || undefined)
+                        }
+                      >
+                        <SelectTrigger aria-label={t(`erDiagram.relationship.${actionType}`)}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">{t('foreignKeyPanel.noAction')}</SelectItem>
+                          {selectedAction && !actions.includes(selectedAction) && (
+                            <SelectItem value={selectedAction} disabled>
+                              {t('foreignKeyPanel.unsupportedAction', { action: selectedAction })}
+                            </SelectItem>
+                          )}
+                          {actions.map((action) => (
+                            <SelectItem
+                              key={action}
+                              value={action}
+                              disabled={action === 'SET NULL' && intent.optionality === 'required'}
+                            >
+                              {action}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })}
+              </div>
 
-          <div className="flex items-start gap-3 rounded-lg border px-4 py-3">
-            <Checkbox
-              aria-label={
-                intent.cardinality === 'one-to-one'
-                  ? t('erDiagram.relationship.uniqueIndex')
-                  : t('erDiagram.relationship.createIndex')
-              }
-              checked={intent.createIndex}
-              disabled={intent.cardinality === 'one-to-one'}
-              onCheckedChange={(checked) => updateIntent('createIndex', checked === true)}
-              className="mt-0.5"
-            />
-            <span>
-              <span className="block text-sm font-medium">
-                {intent.cardinality === 'one-to-one'
-                  ? t('erDiagram.relationship.uniqueIndex')
-                  : t('erDiagram.relationship.createIndex')}
-              </span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">
-                {intent.cardinality === 'one-to-one'
-                  ? t('erDiagram.relationship.uniqueIndexHint')
-                  : t('erDiagram.relationship.createIndexHint')}
-              </span>
-            </span>
-          </div>
+              <div className="flex items-start gap-3 rounded-lg border px-4 py-3">
+                <Checkbox
+                  aria-label={
+                    intent.cardinality === 'one-to-one'
+                      ? t('erDiagram.relationship.uniqueIndex')
+                      : t('erDiagram.relationship.createIndex')
+                  }
+                  checked={intent.createIndex}
+                  disabled={intent.cardinality === 'one-to-one'}
+                  onCheckedChange={(checked) => updateIntent('createIndex', checked === true)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-medium">
+                    {intent.cardinality === 'one-to-one'
+                      ? t('erDiagram.relationship.uniqueIndex')
+                      : t('erDiagram.relationship.createIndex')}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {intent.cardinality === 'one-to-one'
+                      ? t('erDiagram.relationship.uniqueIndexHint')
+                      : t('erDiagram.relationship.createIndexHint')}
+                  </span>
+                </span>
+              </div>
+            </>
+          )}
 
           {result?.ok && (
             <section className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">

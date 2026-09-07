@@ -63,7 +63,9 @@ export const buildDDL = ({
     citusShardingConfig,
   });
 
-  const fkDDLs = foreignKeys.map((fk) => strategy.generateForeignKeyDDL(tableName.trim(), fk));
+  const fkDDLs = foreignKeys
+    .filter((fk) => !fk.logical)
+    .map((fk) => strategy.generateForeignKeyDDL(tableName.trim(), fk));
 
   const extraBlocks: string[] = [];
   if (fkDDLs.length > 0) {

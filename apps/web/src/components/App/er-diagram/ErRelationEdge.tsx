@@ -1,9 +1,11 @@
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from '@xyflow/react';
 import { X } from '@/components/icons';
 import type { ErEdgeData } from './types';
 
 function ErRelationEdge(props: EdgeProps) {
+  const { t } = useTranslation();
   const {
     sourceX,
     sourceY,
@@ -25,8 +27,10 @@ function ErRelationEdge(props: EdgeProps) {
     targetPosition,
   });
 
-  const label =
-    data?.fk?.onDelete || data?.fk?.onUpdate
+  const logical = data?.fk?.logical;
+  const label = logical
+    ? `${t('erDiagram.relationship.logical')} · ${logical.cardinality === 'one-to-one' ? '1:1' : 'N:1'} · ${t(`erDiagram.relationship.${logical.optionality}`)}`
+    : data?.fk?.onDelete || data?.fk?.onUpdate
       ? `${data.fk.onDelete || '-'} / ${data.fk.onUpdate || '-'}`
       : '';
 
@@ -37,6 +41,7 @@ function ErRelationEdge(props: EdgeProps) {
         markerEnd={markerEnd}
         style={{
           strokeWidth: 2,
+          strokeDasharray: logical ? '6 4' : undefined,
           stroke: selected ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
           opacity: selected ? 1 : 0.7,
         }}
@@ -52,7 +57,10 @@ function ErRelationEdge(props: EdgeProps) {
           }}
         >
           {label && (
-            <span className="bg-background/90 px-1 py-0.5 rounded border border-border whitespace-nowrap">
+            <span
+              title={logical?.description || data?.fk?.name}
+              className="bg-background/90 px-1 py-0.5 rounded border border-border whitespace-nowrap"
+            >
               {label}
             </span>
           )}
@@ -62,7 +70,7 @@ function ErRelationEdge(props: EdgeProps) {
               onClick={() => void data.onDelete()}
               data-edge-id={props.id}
               className="ml-1 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground w-4 h-4 hover:bg-destructive/80 transition-colors"
-              title="删除关系"
+              title={t('foreignKeyPanel.deleteTip')}
             >
               <X className="w-2.5 h-2.5" />
             </button>

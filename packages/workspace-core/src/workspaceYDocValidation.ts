@@ -62,6 +62,16 @@ const assertForeignKey = (value: unknown, path: string) => {
   assertString(value.refTable, `${path}.refTable`);
   assertStringArray(value.refFields, `${path}.refFields`);
   assertOptionalFieldIds(value.localFieldIds, `${path}.localFieldIds`);
+  if (value.logical !== undefined) {
+    const logical = value.logical;
+    if (!isRecord(logical)) invalid(`${path}.logical`, 'an object');
+    if (logical.cardinality !== 'many-to-one' && logical.cardinality !== 'one-to-one')
+      invalid(`${path}.logical.cardinality`, 'many-to-one or one-to-one');
+    if (logical.optionality !== 'required' && logical.optionality !== 'optional')
+      invalid(`${path}.logical.optionality`, 'required or optional');
+    if (logical.description !== undefined)
+      assertString(logical.description, `${path}.logical.description`);
+  }
 };
 
 const assertOrderedMap = (

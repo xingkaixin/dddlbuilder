@@ -1719,6 +1719,13 @@ export const jaJPCommon = {
       success: '外部キーが正常に作成されました',
     },
     relationship: {
+      kind: '関連の種類',
+      physical: '物理外部キー',
+      logical: '論理リレーション',
+      logicalHint:
+        '業務上の関連のみを記録します。外部キーやインデックスの作成、NULL 許可の変更は行いません。',
+      logicalOneToOneHint: '業務上、最大1件のレコードに関連',
+      businessDescription: '業務上の説明',
       title: 'テーブル関係の作成',
       description:
         '外部キー、Null 可能性、および必要なインデックスを生成する前に、リレーションシップのセマンティクスを確認してください。',

@@ -10,6 +10,7 @@ export function generateDropForeignKey(
   fkDiff: ForeignKeyDiff,
   dbType: DatabaseType,
 ): string {
+  if (fkDiff.foreignKey.logical) return '';
   tableName = formatSqlTableName(tableName, dbType);
   const fk = fkDiff.foreignKey;
   const constraintName = formatSqlIdentifier(fk.name, dbType);
