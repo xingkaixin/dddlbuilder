@@ -146,7 +146,7 @@ describe('useSavedTables failure states', () => {
     });
   });
 
-  it('评审身份绑定失败时不报告保存成功', async () => {
+  it('评审迁移失败不改变已经完成的表保存结果', async () => {
     reviewHistoryMocks.migrateReviewsToTable.mockRejectedValueOnce(new Error('绑定失败'));
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -157,7 +157,7 @@ describe('useSavedTables failure states', () => {
     });
 
     expect(savedTableMocks.addSavedTable).toHaveBeenCalledOnce();
-    expect(response).toEqual({ ok: false, reason: 'error', message: '绑定失败' });
+    expect(response).toEqual({ ok: true, normalizedName: 'demo', tableId: expect.any(String) });
   });
 
   it('should return null when loadTable cannot find record', async () => {
