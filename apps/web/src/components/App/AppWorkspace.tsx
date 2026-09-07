@@ -2,8 +2,8 @@ import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Upload } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
-import type { EditorView } from '@/stores/appUiStore';
-import { WorkspaceViewMenu } from './WorkspaceViewMenu';
+import type { EditorContentView, EditorView } from '@/stores/appUiStore';
+import { WorkspaceSplitToggle } from './WorkspaceSplitToggle';
 import { EditorSurface } from './EditorSurface';
 import { Header } from './Header';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
@@ -33,13 +33,21 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
     celebration,
   } = model;
   const { t } = useTranslation();
-  const [shareView, setShareView] = useState<EditorView>('output');
-  const surfaceModel = view.isShareView
-    ? { ...editorSurface, editorView: shareView, setEditorView: setShareView }
-    : editorSurface;
-  const viewMenu =
+  const [shareView, setShareView] = useState<EditorContentView>('output');
+  const [splitPreview, setSplitPreview] = useState(false);
+  const contentView = view.isShareView ? shareView : editorSurface.editorView;
+  const selectContentView = view.isShareView ? setShareView : editorSurface.setEditorView;
+  const surfaceModel = {
+    ...editorSurface,
+    editorView: splitPreview ? ('split' as const) : contentView,
+    setEditorView: (nextView: EditorView) => {
+      setSplitPreview(nextView === 'split');
+      if (nextView !== 'split') selectContentView(nextView);
+    },
+  };
+  const splitToggle =
     !view.shouldShowWorkspaceSkeleton && (view.hasTabs || view.isShareView) ? (
-      <WorkspaceViewMenu view={surfaceModel.editorView} onViewChange={surfaceModel.setEditorView} />
+      <WorkspaceSplitToggle checked={splitPreview} onCheckedChange={setSplitPreview} />
     ) : null;
 
   return (
@@ -88,13 +96,13 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
                   </button>
                 ) : undefined
               }
-              trailingAction={viewMenu}
+              trailingAction={splitToggle}
               {...tabBar}
             />
           )}
-          {view.isShareView && viewMenu && (
+          {view.isShareView && splitToggle && (
             <div className="flex shrink-0 justify-end border-b bg-muted/20 px-2 py-1">
-              {viewMenu}
+              {splitToggle}
             </div>
           )}
           <div className="flex min-h-0 flex-1 flex-col overflow-auto">

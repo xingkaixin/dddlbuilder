@@ -47,6 +47,31 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
           <TableConfig key={documentId} {...tableBuilderProps.tableConfigProps} />
         </div>
       </div>
+      {view !== 'split' && (
+        <div className="flex shrink-0 justify-end border-b px-4 py-2">
+          <div
+            className="inline-flex rounded-md border p-0.5"
+            role="group"
+            aria-label={t('editorLayout.label')}
+          >
+            {(['design', 'output'] as const).map((mode) => (
+              <Button
+                key={mode}
+                variant="ghost"
+                size="sm"
+                aria-pressed={view === mode}
+                onClick={() => selectView(mode)}
+                className={cn(
+                  'h-7 rounded-sm px-3 text-xs',
+                  view === mode && 'bg-primary/10 text-primary',
+                )}
+              >
+                {t(`editorLayout.${mode}`)}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
       <div ref={panesRef} className="flex min-h-0 flex-1 flex-col overflow-auto sm:overflow-hidden">
         <div
           id={builderId}

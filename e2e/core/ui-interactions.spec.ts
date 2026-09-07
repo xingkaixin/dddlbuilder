@@ -171,8 +171,9 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     const outputPanel = page.getByTestId('output-panel');
     const viewButton = page
       .getByTestId('workspace-tab-bar')
-      .getByRole('button', { name: '工作视图' });
-    await expect(viewButton).toHaveText('分屏预览');
+      .getByRole('switch', { name: '分屏预览' });
+    await expect(viewButton).toBeChecked();
+    await expect(page.getByRole('group', { name: '工作视图' })).toBeHidden();
     const status = page.getByTestId('editor-surface').locator('footer');
     await expect(status).toBeInViewport();
     await status.getByRole('button').click();
@@ -188,6 +189,13 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await selectWorkspaceView(page, 'split');
     await expect(page.getByTestId('data-table')).toBeVisible();
     await expect(outputPanel).toBeVisible();
+    await viewButton.click();
+    await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'output');
+    await expect(page.getByRole('button', { name: '生成结果', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await viewButton.click();
     const separator = page.getByRole('separator', { name: '调整设计与结果的高度' });
     await separator.focus();
     await page.keyboard.press('ArrowUp');
@@ -212,7 +220,7 @@ test('编辑器测试页面不依赖外部字体和统计服务完成加载', as
   }
 });
 
-test('小窗口默认展示字段，切换视图后记住布局', async ({ page }) => {
+test('小窗口默认展示字段，刷新后分屏默认关闭', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/');
   await page.getByRole('button', { name: '创建新表', exact: true }).click();
@@ -234,5 +242,6 @@ test('小窗口默认展示字段，切换视图后记住布局', async ({ page 
     .getByTestId('workspace-sidebar')
     .getByRole('button', { name: 'layout_preference', exact: true })
     .click();
-  await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'split');
+  await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'design');
+  await expect(page.getByRole('switch', { name: '分屏预览' })).not.toBeChecked();
 });

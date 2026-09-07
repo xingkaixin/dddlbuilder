@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 
-export type EditorView = 'design' | 'output' | 'split';
+export type EditorContentView = 'design' | 'output';
+export type EditorView = EditorContentView | 'split';
 
 const editorViewKey = 'ddlbuilder:editor-view';
 
-function readEditorView(): EditorView {
+function readEditorView(): EditorContentView {
   try {
     const value = localStorage.getItem(editorViewKey);
-    if (value === 'output' || value === 'split') return value;
+    if (value === 'output') return value;
   } catch {
     // Layout preferences are optional when browser storage is unavailable.
   }
@@ -43,12 +44,12 @@ export type ActiveAppDialog =
 
 interface AppUiState {
   workspaceSidebarOpen: boolean;
-  editorView: EditorView;
+  editorView: EditorContentView;
   savedTablesDrawerOpen: boolean;
   activeDialog: ActiveAppDialog;
   showFireworks: boolean;
   setWorkspaceSidebarOpen: (open: boolean) => void;
-  setEditorView: (view: EditorView) => void;
+  setEditorView: (view: EditorContentView) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   setIsImportDialogOpen: (open: boolean) => void;
   setIsUserSettingsOpen: (open: boolean) => void;

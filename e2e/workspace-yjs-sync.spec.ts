@@ -1138,6 +1138,7 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
     await pageB.reload();
     await openSavedTables(pageB);
     await getSavedTableRow(pageB, tableName).click();
+    await selectWorkspaceView(pageB, 'split');
     await assertDraft();
     expect(readSavedTableState(server.doc, tableName)?.tableComment).toBe('remote saved comment');
   } finally {

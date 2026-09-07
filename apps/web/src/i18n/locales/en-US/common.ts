@@ -262,8 +262,8 @@ export const enUSCommon = {
   },
   editorLayout: {
     label: 'Workspace view',
-    design: 'Design view',
-    output: 'Result view',
+    design: 'Design',
+    output: 'Generated output',
     split: 'Split preview',
     resize: 'Resize design and output',
     maximize: 'Maximize output',

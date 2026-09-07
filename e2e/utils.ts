@@ -1,9 +1,14 @@
 import { expect, type Page } from '@playwright/test';
 
 export async function selectWorkspaceView(page: Page, view: 'design' | 'output' | 'split') {
-  const labels = { design: '设计视图', output: '结果视图', split: '分屏预览' };
-  await page.getByRole('button', { name: '工作视图', exact: true }).click();
-  await page.getByRole('menuitemradio', { name: labels[view], exact: true }).click();
+  const toggle = page.getByRole('switch', { name: '分屏预览', exact: true });
+  const isSplit = (await toggle.getAttribute('aria-checked')) === 'true';
+  if (isSplit !== (view === 'split')) await toggle.click();
+  if (view !== 'split') {
+    await page
+      .getByRole('button', { name: view === 'design' ? '设计' : '生成结果', exact: true })
+      .click();
+  }
 }
 
 /**

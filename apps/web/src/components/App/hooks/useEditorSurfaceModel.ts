@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { EditorView } from '@/stores/appUiStore';
+import type { EditorContentView } from '@/stores/appUiStore';
 import { useTranslation } from 'react-i18next';
 import type { EditorSurfaceModel } from '../EditorSurface';
 import type { useEditorDomains } from './useEditorDomains';
@@ -20,8 +20,8 @@ interface UseEditorSurfaceModelInput {
   navigationActions: ReturnType<typeof useNavigationActions>;
   schemaActions: ReturnType<typeof useSchemaApplyActions>;
   isShareView: boolean;
-  editorView: EditorView;
-  setEditorView: (view: EditorView) => void;
+  editorView: EditorContentView;
+  setEditorView: (view: EditorContentView) => void;
   isLoadedDirty: boolean;
   loadedTableName: string | null;
   loadedTableNormalizedName: string | null;
@@ -56,7 +56,8 @@ export function useEditorSurfaceModel({
   onViewCurrentVersionHistory,
   onOpenErDiagram,
   onOpenAISchemaPatch,
-}: UseEditorSurfaceModelInput): EditorSurfaceModel {
+}: UseEditorSurfaceModelInput): Omit<EditorSurfaceModel, 'editorView' | 'setEditorView'> &
+  Pick<UseEditorSurfaceModelInput, 'editorView' | 'setEditorView'> {
   const { t } = useTranslation();
   const { editor, auth, sharding, animations, partition, tableOptions } = domains;
   const { setObjectType } = editor;

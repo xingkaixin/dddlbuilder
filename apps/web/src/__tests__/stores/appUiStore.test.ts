@@ -4,7 +4,7 @@ import { useAppUiStore } from '@/stores';
 function resetUiStore() {
   const state = useAppUiStore.getState();
   state.setWorkspaceSidebarOpen(true);
-  state.setEditorView('split');
+  state.setEditorView('output');
   state.setSavedTablesDrawerOpen(false);
   useAppUiStore.setState({ activeDialog: { kind: 'none' } });
   state.setShowFireworks(false);
