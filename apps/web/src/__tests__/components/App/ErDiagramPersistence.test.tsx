@@ -127,6 +127,31 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
     teardownFakeIndexedDB();
   });
 
+  it('creates a logical relationship without changing columns or indexes', async () => {
+    render(<App />);
+    await waitFor(() => expect(capture.connect).toBeTypeOf('function'));
+    act(() =>
+      capture.connect?.({
+        source: 'source',
+        target: 'parent',
+        sourceHandle: 'id',
+        targetHandle: 'id',
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '逻辑关系' }));
+    fireEvent.change(screen.getByLabelText('业务说明'), { target: { value: 'Business owner' } });
+    fireEvent.click(screen.getByRole('button', { name: '创建关系' }));
+    await waitFor(async () =>
+      expect((await read()).state.foreignKeys?.[0].logical?.description).toBe('Business owner'),
+    );
+    const updated = await read();
+    expect(updated.state.rows).toEqual(source.state.rows);
+    expect(updated.state.indexes).toEqual(source.state.indexes);
+    await waitFor(() =>
+      expect(capture.edges[0]?.data?.fk).toMatchObject({ logical: { cardinality: 'many-to-one' } }),
+    );
+  });
+
   it('删除关系保留打开图之后收到的字段和注释', async () => {
     await write({ ...source, state: { ...source.state, foreignKeys: [foreignKey] } });
     render(<App />);
