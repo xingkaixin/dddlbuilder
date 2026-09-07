@@ -1,5 +1,6 @@
 import {
   ensureFieldId,
+  indexKindOf,
   type CitusShardingConfig,
   type FieldRow,
   type ForeignKeyDefinition,
@@ -94,6 +95,7 @@ export const decodeIndexFieldReferences = (
   const { namesById } = buildFieldReferences(rows);
   return indexes.map((index) => ({
     ...index,
+    kind: indexKindOf(index),
     fields: index.fields.map((field) => ({
       name: field.fieldId ? (namesById.get(field.fieldId) ?? field.name) : field.name,
       direction: field.direction,

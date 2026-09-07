@@ -442,6 +442,73 @@ describe('workspace YDoc roots', () => {
     );
   });
 
+  it.each(['drafts', 'savedTables', 'savedDrafts'] as const)(
+    'loads legacy index kinds in %s without losing index fields',
+    (collection) => {
+      const cases = [
+        { flags: {}, kind: 'index' },
+        { flags: { unique: false }, kind: 'index' },
+        { flags: { unique: true }, kind: 'unique_index' },
+        { flags: { unique: true, isUniqueConstraint: true }, kind: 'unique_constraint' },
+        { flags: { unique: true, isPrimary: true }, kind: 'primary' },
+      ];
+      for (const storage of ['snapshot', 'map']) {
+        for (const { flags, kind } of cases) {
+          const doc = new Y.Doc();
+          ensureWorkspaceYDocMeta(doc);
+          const table = setLegacyTableDoc(getWorkspaceRoot(doc)[collection], 'users', 'users');
+          const legacyIndex = {
+            id: 'index-id',
+            name: 'idx_id',
+            fields: [{ name: 'id', direction: 'DESC' }],
+            ...flags,
+          };
+          table.set('stateSnapshot', { ...createState('users'), indexes: [legacyIndex] });
+          if (storage === 'map') {
+            const indexes = new Y.Map<Y.Map<unknown>>();
+            table.set('indexes', indexes);
+            indexes.set('index-id', new Y.Map(Object.entries(legacyIndex)));
+            const order = new Y.Array<string>();
+            table.set('indexOrder', order);
+            order.push(['index-id']);
+          }
+
+          expect(() => initializeOrMigrateWorkspaceYDoc(doc)).not.toThrow();
+          expect(tableDocToSchemaDocumentState(table).indexes).toMatchObject([
+            { id: 'index-id', name: 'idx_id', fields: legacyIndex.fields, kind },
+          ]);
+          materializeWorkspaceYDoc(doc);
+          expect(() => assertWorkspaceYDocStructure(doc)).not.toThrow();
+          const reloaded = new Y.Doc();
+          Y.applyUpdate(reloaded, Y.encodeStateAsUpdate(doc));
+          expect(() => initializeOrMigrateWorkspaceYDoc(reloaded)).not.toThrow();
+          const reloadedTable = getWorkspaceRoot(reloaded)[collection].get('users');
+          if (!reloadedTable) throw new Error('Missing reloaded table');
+          expect(tableDocToSchemaDocumentState(reloadedTable).indexes[0].kind).toBe(kind);
+        }
+      }
+    },
+  );
+
+  it.each([
+    { kind: 'unsupported' },
+    { kind: null },
+    { unique: 'true' },
+    { isPrimary: 1 },
+    { isUniqueConstraint: 'true' },
+  ])('rejects malformed index kinds: %j', (flags) => {
+    const doc = new Y.Doc();
+    ensureWorkspaceYDocMeta(doc);
+    const table = setLegacyTableDoc(getWorkspaceRoot(doc).savedTables, 'users', 'users');
+    table.set('stateSnapshot', {
+      ...createState('users'),
+      indexes: [{ id: 'index-id', name: 'idx_id', fields: [], ...flags }],
+    });
+    expect(() => initializeOrMigrateWorkspaceYDoc(doc)).toThrow(
+      /savedTables.users.stateSnapshot.indexes\[0\].\w+ must be/,
+    );
+  });
+
   it('accepts duplicate order entries produced by concurrent Yjs reordering', () => {
     const doc = new Y.Doc();
     ensureWorkspaceYDocMeta(doc);

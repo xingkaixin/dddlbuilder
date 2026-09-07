@@ -33,7 +33,15 @@ const assertIndex = (value: unknown, path: string) => {
   if (!isRecord(value)) invalid(path, 'an object');
   assertString(value.id, `${path}.id`);
   assertString(value.name, `${path}.name`);
-  if (!isIndexKind(value.kind)) invalid(`${path}.kind`, 'a supported index kind');
+  if (value.kind === undefined) {
+    for (const key of ['unique', 'isPrimary', 'isUniqueConstraint']) {
+      if (value[key] !== undefined && typeof value[key] !== 'boolean') {
+        invalid(`${path}.${key}`, 'a boolean');
+      }
+    }
+  } else if (!isIndexKind(value.kind)) {
+    invalid(`${path}.kind`, 'a supported index kind');
+  }
   if (!Array.isArray(value.fields)) invalid(`${path}.fields`, 'an array');
   value.fields.forEach((field, index) => {
     const fieldPath = `${path}.fields[${index}]`;
