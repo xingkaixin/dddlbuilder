@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.23.0] - 2026-09-07
+### Added
+- **Workspace multi-view and split preview**: Introduces dedicated "Design" and "Output" workspace views for focused schema modeling or code inspection. A "Split" preview toggle in the workspace bar allows side-by-side comparison with resizable pane heights and preserved controls on compact screens.
+- **Grouped schema settings and editor tools**: Refactors table options by moving engine, charset, partition, and sharding settings into an "Advanced / More" menu to spotlight primary table properties. Consolidates toolbar actions into "AI Tools" (completion, index suggestions, change reviews) and "Data Tools" (SQL import, mock data, capacity estimation) dropdowns.
+- **Animated workspace backgrounds**: Adds subtle motion animations to workspace backgrounds and empty-state artwork, enhancing depth and polish across the editor surface.
+
+### Improved
+- **Collaborative document validation and stable field references**: Adds structural validation when loading and synchronizing Y.Doc CRDT documents to isolate invalid payloads. Strengthens field reference tracking during concurrent edits, column renames, and index adjustments to prevent broken foreign keys or dangling references.
+- **Single-pass draft reads and responsive sync**: Reads workspace drafts in a single pass to reduce deserialization overhead in multi-table workspaces. Refreshes YDoc snapshot projections immediately after subscribing to ensure instant cross-tab and multi-device updates.
+- **ORM generation and dialect default value precision**: Accurately distinguishes literal defaults from SQL expression and function defaults across Prisma, TypeORM, SQLAlchemy, GORM, and JPA models. Refines relation property names and reverse references to avoid naming collisions.
+- **Schema diff classification and ALTER dependency ordering**: Refines diff categorization for column renames and property updates, and improves topological dependency sorting for foreign keys and indexes when generating ALTER statements and rollback DDL in MySQL and SQL Server.
+
+### Fixed
+- **Workspace persistence and draft retry completeness**: Commits workspace entity markers before writing to Y.Doc to ensure save state indicators match persisted data. Ensures retry attempts apply complete pending draft states and keeps active tab transitions valid when closing or switching tables.
+- **Admin authentication secrets and session revocation safety**: Enforces an independent `ADMIN_API_SECRET` for administrative endpoints with timing-safe comparison to prevent side-channel leaks. Explicitly propagates session revocation failures to prevent invalid sessions from remaining active.
+- **Single-use authentication callback commands**: Consumes authentication callback commands strictly once, preventing automated modal triggers or password-reset flows from re-executing on page reload.
+- **Universal clipboard fallback handling**: Unifies clipboard fallback behavior across all export panels, ensuring reliable copying of DDL, DCL, and ORM code in environments without native Clipboard API permissions or non-HTTPS deployments.
+
 ## [0.22.0] - 2026-08-27
 ### Added
 - **WebMCP browser-side agent tools**: Exposes Model Context Protocol (MCP) tools in the browser so external AI agents can read the active workspace and propose structured schema, field, index, and relationship changes. All proposed updates require manual confirmation through a change review dialog before being applied.
