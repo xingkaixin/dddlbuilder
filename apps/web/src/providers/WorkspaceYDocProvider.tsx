@@ -185,7 +185,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     const persistence = new IndexeddbPersistence(buildWorkspaceYDocName(workspaceId), doc);
     persistenceRef.current = persistence;
     let disposal: Promise<void> | null = null;
-    const dispose = () => {
+    const dispose = (connectionState: 'idle' | 'error' = 'error') => {
       if (disposal) return disposal;
       cancelled = true;
       clientRef.current?.destroy();
@@ -200,8 +200,8 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
               synced: false,
               localSynced: false,
               remoteLoaded: false,
-              connectionState: 'error',
-              failureReason: 'unknown',
+              connectionState,
+              failureReason: connectionState === 'error' ? 'unknown' : undefined,
             }
           : previous,
       );
@@ -269,7 +269,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     });
 
     return () => {
-      void dispose().catch(() => {});
+      void dispose('idle').catch(() => {});
     };
   }, [workspaceUserId, workspaceId, bootstrapAttempt, cleanupReady]);
 
