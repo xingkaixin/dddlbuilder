@@ -108,7 +108,7 @@ const FolderNode = memo<FolderNodeProps>(
         <div
           ref={setNodeRef}
           className={cn(
-            'group flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent focus-within:bg-accent',
+            'group flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-[13px] leading-5 transition-colors hover:bg-accent focus-within:bg-accent',
             isSelected && 'bg-accent',
             isOver && !dragDisabled && 'ring-1 ring-primary bg-primary/10',
           )}
@@ -163,7 +163,7 @@ const FolderNode = memo<FolderNodeProps>(
             {/* 文件夹图标 */}
             <FolderIcon className="h-4 w-4 text-amber-500" />
             {/* 文件夹名称 */}
-            <span className="flex-1 truncate font-medium">{folder.name}</span>
+            <span className="flex-1 truncate font-normal">{folder.name}</span>
             {/* 表数量 */}
             {folder.tableCount !== undefined && folder.tableCount > 0 && (
               <span className="text-xs text-muted-foreground">{folder.tableCount}</span>

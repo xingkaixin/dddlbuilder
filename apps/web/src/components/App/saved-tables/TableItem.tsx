@@ -115,7 +115,12 @@ export const TableItem = memo<TableItemProps>(
                 data-testid={`table-icon:${item.normalizedName}`}
               />
             )}
-            <span className={cn('truncate text-sm', isActive ? 'font-semibold' : 'font-medium')}>
+            <span
+              className={cn(
+                'truncate text-[13px] leading-5',
+                isActive ? 'font-medium' : 'font-normal',
+              )}
+            >
               {displayName ?? item.name}
             </span>
             {showDirty && <span className="text-xs text-amber-600">*</span>}

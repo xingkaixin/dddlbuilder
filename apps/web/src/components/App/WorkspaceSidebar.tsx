@@ -193,7 +193,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
             onClick={onOpenWorkspace}
           >
             <FolderOpen className="h-4 w-4 text-primary" />
-            <span className="truncate text-sm font-semibold">
+            <span className="truncate text-[13px] font-medium">
               {t('savedTables.workspaceTitle')}
             </span>
           </button>
@@ -250,14 +250,14 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                     <div
                       key={draft.draftId}
                       className={cn(
-                        'group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent',
+                        'group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] leading-5 hover:bg-accent',
                         isActive && 'bg-primary/10 text-primary',
                       )}
                     >
                       <FileEdit className="h-4 w-4 text-amber-600" />
                       <button
                         type="button"
-                        className="min-w-0 flex-1 truncate text-left font-medium"
+                        className="min-w-0 flex-1 truncate text-left font-normal"
                         onClick={() => onSelectDraft?.(draft.draftId)}
                       >
                         {draft.name}
@@ -393,7 +393,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
 
               <button
                 type="button"
-                className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent"
+                className="flex w-full items-center justify-between rounded-md px-2 py-2 text-[13px] leading-5 text-muted-foreground hover:bg-accent"
                 onClick={() => setShowTrash((value) => !value)}
               >
                 <span className="inline-flex items-center gap-2">
@@ -425,9 +425,9 @@ function TrashRow({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-accent">
+    <div className="group flex items-center gap-1 rounded-md px-2 py-1.5 text-[13px] leading-5 hover:bg-accent">
       <Trash2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+      <span className="min-w-0 flex-1 truncate font-normal">{name}</span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
