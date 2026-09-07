@@ -80,7 +80,10 @@ export const useAppUiStore = create<AppUiState>((set) => {
     }));
 
   return {
-    workspaceSidebarOpen: true,
+    workspaceSidebarOpen:
+      typeof window === 'undefined' ||
+      !window.matchMedia ||
+      window.matchMedia('(min-width: 640px)').matches,
     editorView: readEditorView(),
     savedTablesDrawerOpen: false,
     activeDialog: noDialog,

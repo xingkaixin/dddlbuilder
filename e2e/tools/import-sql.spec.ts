@@ -1,3 +1,4 @@
+import { openTableAction } from '../utils';
 import { test, expect } from '@playwright/test';
 import { setupHydratedState } from '../utils';
 
@@ -207,7 +208,7 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(page.getByLabel('保存名称')).toBeHidden();
     await importSql();
     await page.locator('#table-comment').fill('Only the comment changed');
-    await page.getByRole('button', { name: /查看表结构变更/i }).click();
+    await openTableAction(page, /查看表结构变更/i);
     const output = page.getByRole('dialog', { name: '表结构变更对比' }).locator('pre').first();
     await expect(output).toContainText('Only the comment changed');
     await expect(output).not.toContainText('DROP COLUMN');

@@ -1,3 +1,4 @@
+import { openTableAction } from '../utils';
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { setupHydratedState, ensureBuilderVisible } from '../utils';
 
@@ -42,7 +43,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await expect(firstFieldNameCell).toHaveText('field_to_clear');
 
     // 点击清空按钮
-    await page.getByRole('button', { name: /清空/i }).click();
+    await openTableAction(page, /清空/i);
 
     // 确认对话框应该出现
     const confirmDialog = page.getByText(/确认清空所有配置？/i);
@@ -56,7 +57,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await expect(page.locator('#table-name')).toHaveValue('to_be_cleared');
 
     // 再次点击清空并确认
-    await page.getByRole('button', { name: /清空/i }).click();
+    await openTableAction(page, /清空/i);
     await page.getByRole('button', { name: /确认清空/i }).click();
 
     // 验证数据已被清空
@@ -165,21 +166,26 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await expect(sidebar).toBeVisible();
   });
 
-  test('场景：收起输出面板后应释放全部横向空间', async ({ page }) => {
+  test('场景：设计、结果和对照视图共享同一份编辑内容', async ({ page }) => {
     const outputPanel = page.getByTestId('output-panel');
-
     await expect(outputPanel).toBeVisible();
-    await page.getByRole('button', { name: /收起输出面板|Collapse output panel/i }).click();
-
-    await expect(outputPanel).toHaveCount(0);
-    const tableActions = page.getByTestId('table-config-actions');
-    const expandButton = tableActions.getByRole('button', {
-      name: /展开输出面板|Expand output panel/i,
-    });
-    await expect(expandButton).toBeVisible();
-
-    await expandButton.click();
+    await page.getByRole('button', { name: '设计', exact: true }).click();
+    await expect(outputPanel).not.toBeVisible();
+    await page.locator('#table-name').fill('layout_test');
+    await page.getByRole('button', { name: '生成结果', exact: true }).click();
+    await expect(page.getByTestId('data-table')).not.toBeVisible();
+    await expect(outputPanel.locator('pre')).toContainText('layout_test');
+    await page.getByRole('button', { name: '对照', exact: true }).click();
+    await expect(page.getByTestId('data-table')).toBeVisible();
     await expect(outputPanel).toBeVisible();
+    const separator = page.getByRole('separator', { name: '调整设计与结果的高度' });
+    await separator.focus();
+    await page.keyboard.press('ArrowUp');
+    await expect(separator).toHaveAttribute('aria-valuenow', '50');
+    await page.getByRole('button', { name: '最大化生成结果', exact: true }).click();
+    await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'output');
+    await page.getByRole('button', { name: '收起输出面板', exact: true }).click();
+    await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'design');
   });
 });
 
@@ -194,4 +200,29 @@ test('编辑器测试页面不依赖外部字体和统计服务完成加载', as
   } finally {
     await Promise.all(pending.map((route) => route.abort()));
   }
+});
+
+test('小窗口默认展示字段，切换视图后记住布局', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/');
+  await page.getByRole('button', { name: '创建新表', exact: true }).click();
+  await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'design');
+  await expect(page.getByTestId('workspace-sidebar')).toBeVisible();
+  const firstRow = page.getByTestId('data-table').locator('tbody tr').first();
+  await expect(firstRow).toBeInViewport();
+  const lastColumn = firstRow.locator('td').last();
+  await expect(lastColumn).toBeInViewport();
+  await page.locator('#table-name').fill('layout_preference');
+  await page.getByRole('button', { name: '对照', exact: true }).click();
+  const editor = await page.getByTestId('design-panel').boundingBox();
+  const output = await page.getByTestId('generated-results').boundingBox();
+  if (!editor || !output) throw new Error('Both comparison panels must be visible');
+  expect(output.y).toBeGreaterThanOrEqual(editor.y + editor.height);
+  expect(output.width).toBe(editor.width);
+  await page.reload();
+  await page
+    .getByTestId('workspace-sidebar')
+    .getByRole('button', { name: 'layout_preference', exact: true })
+    .click();
+  await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'split');
 });

@@ -1,3 +1,4 @@
+import { openAdvancedSettings } from '../utils';
 import { test, expect } from '@playwright/test';
 import { ensureBuilderVisible } from '../utils';
 
@@ -33,7 +34,7 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     // 切换到“PostgreSQL Citus”面板 (如果已显示)
     // 检查 UI 是否有专门的 Citus 面板
     // 切换到“分片配置”面板
-    await page.getByText('分片配置').click();
+    await openAdvancedSettings(page, '分片配置');
 
     // 选择分片模式为“分片表” (Button)
     await page.getByRole('button', { name: /分片表/i }).click();
@@ -67,7 +68,7 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
     await page.keyboard.press('Enter');
 
-    await page.getByText('分片配置').click();
+    await openAdvancedSettings(page, '分片配置');
     await page.getByRole('button', { name: /副本表/i }).click();
 
     const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
@@ -80,7 +81,7 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
 
     await page.locator('#table-name').fill('empty_table');
 
-    await page.getByText('分片配置').click();
+    await openAdvancedSettings(page, '分片配置');
     await page.getByRole('button', { name: /分片表/i }).click();
     await expect(page.getByText(/请先在字段配置中添加字段/)).toBeVisible();
   });

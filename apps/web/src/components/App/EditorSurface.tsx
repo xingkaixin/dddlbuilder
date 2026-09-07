@@ -94,13 +94,13 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
           </div>
         </div>
       </div>
-      <div ref={panesRef} className="flex min-h-0 flex-1 flex-col">
+      <div ref={panesRef} className="flex min-h-0 flex-1 flex-col overflow-auto sm:overflow-hidden">
         <div
           id={builderId}
           hidden={view === 'output'}
           className={cn(
             'min-h-0 overflow-auto px-4 py-3',
-            view === 'design' ? 'flex-1' : 'shrink-0',
+            view === 'design' ? 'flex-1' : 'min-h-[26rem] shrink-0 sm:min-h-0',
           )}
           style={view === 'split' ? { height: `${splitPercent}%` } : undefined}
           data-testid="design-panel"
@@ -122,7 +122,7 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
             aria-valuemin={30}
             aria-valuemax={75}
             aria-valuenow={Math.round(splitPercent)}
-            className="flex h-3 shrink-0 touch-none cursor-row-resize items-center justify-center border-y bg-muted/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className="hidden h-3 shrink-0 touch-none cursor-row-resize items-center justify-center border-y sm:flex bg-muted/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             onPointerDown={(event) => {
               event.preventDefault();
               event.currentTarget.focus();
@@ -151,7 +151,10 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
         )}
         <div
           hidden={view === 'design'}
-          className="min-h-0 flex-1 overflow-auto"
+          className={cn(
+            'min-h-0 flex-1 overflow-auto',
+            view === 'split' && 'min-h-[20rem] shrink-0 sm:min-h-0 sm:shrink',
+          )}
           data-testid="generated-results"
         >
           <OutputContainer

@@ -1,3 +1,4 @@
+import { openFieldTool, openTableAction } from './utils';
 import {
   expect,
   test,
@@ -767,7 +768,7 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
     await openDraftByName(pageB, 'ai_conflict');
     await expect(pageA.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
     await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
-    await pageA.getByRole('button', { name: 'AI 修改', exact: true }).click();
+    await openFieldTool(pageA, 'AI 工具', 'AI 修改');
     const dialog = pageA.getByRole('dialog', { name: 'AI 修改当前表' });
     await dialog.locator('#ai-patch-input').fill('将字段类型改成 INT');
     await dialog.getByRole('button', { name: '发送', exact: true }).click();
@@ -925,7 +926,7 @@ test('remote draft removal cancels index advice when switching to a same-name dr
     await getSavedTableRow(pageB, DEFAULT_DRAFT_ID).getByTestId('table-select:default').click();
     await expect(pageB.locator('#table-comment')).toHaveValue('');
 
-    await pageB.getByRole('button', { name: 'AI 索引顾问', exact: true }).click();
+    await openFieldTool(pageB, 'AI 工具', 'AI 索引顾问');
     await advisor
       .locator('#ai-index-query-patterns')
       .fill('SELECT * FROM shared_draft WHERE id = ?');
@@ -947,7 +948,7 @@ test('remote draft removal cancels index advice when switching to a same-name dr
     await expect(tableNameInput(pageB)).toHaveValue('shared_draft');
     await expect(pageB.locator('#table-comment')).toHaveValue('keep this draft');
     await expect(sharedDraftTabs).toHaveCount(1);
-    await pageB.getByRole('button', { name: 'AI 索引顾问', exact: true }).click();
+    await openFieldTool(pageB, 'AI 工具', 'AI 索引顾问');
     await expect(advisor).toBeVisible();
     await expect(advisor.getByText('Advice for the deleted draft')).toHaveCount(0);
     await expect(advisor.getByRole('button', { name: '添加索引', exact: true })).toHaveCount(0);
@@ -1080,6 +1081,7 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
     await getSavedTableRow(pageB, tableName).click();
     await expect(tableNameInput(pageB)).toHaveValue(tableName);
     await expect(pageB.getByTestId('data-table')).toBeVisible();
+    await pageB.getByRole('button', { name: '对照', exact: true }).click();
     await expect(pageB.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
     await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
     server.setClientPaused('offline-client', true);
@@ -1172,6 +1174,7 @@ test('workspace yjs rename preserves an offline save and retargets open tabs', a
   await getSavedTableRow(pageB, originalName).click();
   await expect(tableNameInput(pageB)).toHaveValue(originalName);
   await expect(pageB.getByTestId('data-table')).toBeVisible();
+  await pageB.getByRole('button', { name: '对照', exact: true }).click();
   await expect(pageB.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
   await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
 
@@ -1223,6 +1226,7 @@ test('workspace yjs sync preserves offline edits locally and converges after rec
   await page.goto('/');
   await openDraftByName(page, 'cloud_seed');
   await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+  await page.getByRole('button', { name: '对照', exact: true }).click();
   await expect(page.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
 
   await context.setOffline(true);
@@ -1339,7 +1343,7 @@ test('ER relationship deletion preserves synced edits on the selected copy', asy
     await openSavedTables(page);
     await getSavedTableRow(page, 'copy').getByTestId('table-select:copy').click();
     await expect(tableNameInput(page)).toHaveValue('orders');
-    await page.getByRole('button', { name: 'ER 关系图', exact: true }).click();
+    await openTableAction(page, 'ER 关系图');
     const dialog = page.getByRole('dialog', { name: 'ER 关系图' });
     await expect(dialog.locator('.react-flow__edge')).toHaveCount(2);
     const currentCopy = getWorkspaceSavedTable(server.doc, {

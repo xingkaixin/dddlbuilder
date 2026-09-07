@@ -146,8 +146,8 @@ export const Header = memo<HeaderProps>(
         <header className="relative isolate shrink-0 border-b bg-background">
           <div className="relative px-4 py-2">
             <div className="flex items-center justify-between">
-              <div className="flex min-w-0 items-center gap-4">
-                <div className="group flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+                <div className="group flex shrink-0 items-center gap-2 sm:gap-3">
                   <img
                     src="/logo.svg"
                     alt={`${t('header.appName')} Logo`}
@@ -245,12 +245,12 @@ export const Header = memo<HeaderProps>(
                         </Tooltip>
                       ) : null}
                     </div>
-                    <p className="text-xs leading-none text-muted-foreground transition-colors duration-300 group-hover:text-foreground/80">
+                    <p className="sr-only text-xs leading-none text-muted-foreground sm:not-sr-only">
                       {t('header.appDescription')}
                     </p>
                   </div>
                 </div>
-                <div className="h-5 w-px shrink-0 bg-border" />
+                <div className="hidden h-5 w-px shrink-0 bg-border sm:block" />
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -260,7 +260,7 @@ export const Header = memo<HeaderProps>(
                         onClick={onOpenImport}
                       >
                         <FileInput className="h-4 w-4" aria-hidden />
-                        {t('header.importSql')}
+                        <span className="sr-only sm:not-sr-only">{t('header.importSql')}</span>
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -271,7 +271,9 @@ export const Header = memo<HeaderProps>(
                     <TooltipTrigger asChild>
                       <button type="button" onClick={onOpenAIGenerate} className={actionBtnClass}>
                         <Sparkles className="h-4 w-4" aria-hidden />
-                        {t('tableConfig.aiGenerate')}
+                        <span className="sr-only sm:not-sr-only">
+                          {t('tableConfig.aiGenerate')}
+                        </span>
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -292,7 +294,9 @@ export const Header = memo<HeaderProps>(
                         ) : (
                           <Share2 className="h-4 w-4" aria-hidden />
                         )}
-                        {isSharing ? t('header.generatingShareLink') : t('header.shareLink')}
+                        <span className="sr-only sm:not-sr-only">
+                          {isSharing ? t('header.generatingShareLink') : t('header.shareLink')}
+                        </span>
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -438,7 +442,7 @@ export const Header = memo<HeaderProps>(
                     ) : (
                       <LogIn className="h-4 w-4" aria-hidden />
                     )}
-                    {t('header.auth.signIn')}
+                    <span className="sr-only sm:not-sr-only">{t('header.auth.signIn')}</span>
                   </button>
                 )}
               </div>

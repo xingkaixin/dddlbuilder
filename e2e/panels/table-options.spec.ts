@@ -1,8 +1,9 @@
+import { openAdvancedSettings } from '../utils';
 import { test, expect, type Page } from '@playwright/test';
 import { setupHydratedState } from '../utils';
 
 const configureMySQLTableOptions = async (page: Page) => {
-  await page.getByRole('tab', { name: '杂项设置', exact: true }).click();
+  await openAdvancedSettings(page, '杂项设置');
   const panel = page.getByRole('tabpanel', { name: /杂项设置/ });
   await expect(panel.getByText('启用杂项设置', { exact: true })).toBeVisible();
   const enableSwitch = panel.getByRole('switch');

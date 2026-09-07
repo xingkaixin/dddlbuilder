@@ -1,3 +1,4 @@
+import { openAdvancedSettings, openTableAction, setSchemaName } from '../utils';
 import { test, expect } from '@playwright/test';
 import { confirmFieldTypeChangeIfNeeded, ensureBuilderVisible } from '../utils';
 
@@ -39,7 +40,7 @@ test.describe('变更对比验证 @storage', () => {
     test(`场景：带 Schema 的变更对比 (schemaOnly=${schemaOnly})`, async ({ page }) => {
       const tableName = `diff_test_${Date.now()}`;
       await page.locator('#table-name').fill(tableName);
-      await page.locator('#schema-name').fill('audit');
+      await setSchemaName(page, 'audit');
       await fillBasicField(page, 'f1');
 
       await page.getByRole('button', { name: /保存当前表/i }).click();
@@ -54,7 +55,7 @@ test.describe('变更对比验证 @storage', () => {
       await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
 
       if (schemaOnly) {
-        await page.locator('#schema-name').fill('archive');
+        await setSchemaName(page, 'archive');
       } else {
         const typeCell = page.locator(
           '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
@@ -67,7 +68,7 @@ test.describe('变更对比验证 @storage', () => {
         await confirmFieldTypeChangeIfNeeded(page);
       }
 
-      await page.getByRole('button', { name: /查看表结构变更/i }).click();
+      await openTableAction(page, /查看表结构变更/i);
       await expect(page.getByRole('heading', { name: /表结构变更对比/i })).toBeVisible();
       const dialog = page.getByRole('dialog', { name: /表结构变更对比/i });
       if (schemaOnly) {
@@ -88,12 +89,14 @@ test.describe('变更对比验证 @storage', () => {
       const tableName = `manual_diff_${kind}`;
       await page.locator('#table-name').fill(tableName);
       if (kind === 'view') {
+        await page.getByRole('button', { name: '表属性', exact: true }).click();
         await page.locator('#object-type-select').click();
         await page.getByRole('option', { name: '视图', exact: true }).click();
+        await page.keyboard.press('Escape');
         await page.locator('#view-definition').fill('SELECT id FROM users WHERE active = true');
       } else {
         await fillBasicField(page, 'id');
-        await page.getByRole('tab', { name: /分区配置/ }).click();
+        await openAdvancedSettings(page, /分区配置/);
         const panel = page.getByRole('tabpanel', { name: /分区配置/ });
         await panel.getByRole('switch').click();
         await panel.getByRole('combobox').first().click();
@@ -113,7 +116,7 @@ test.describe('变更对比验证 @storage', () => {
           .getByRole('spinbutton')
           .fill('8');
       }
-      await page.getByRole('button', { name: /查看表结构变更/ }).click();
+      await openTableAction(page, /查看表结构变更/);
       const dialog = page.getByRole('dialog', { name: '表结构变更对比' });
       await expect(
         dialog.getByText(

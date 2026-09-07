@@ -1,8 +1,9 @@
+import { openAdvancedSettings } from '../utils';
 import { test, expect } from '@playwright/test';
 import { ensureBuilderVisible } from '../utils';
 
 const openPartitionPanel = async (page: any) => {
-  await page.getByRole('tab', { name: /分区配置/i }).click();
+  await openAdvancedSettings(page, /分区配置/i);
   const panel = page.getByRole('tabpanel', { name: /分区配置/i });
   await expect(panel).toBeVisible();
   const toggle = panel.getByRole('switch');

@@ -235,6 +235,7 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
               <TabsTrigger
                 key={value}
                 value={value}
+                aria-label={label}
                 className="h-9 gap-1.5 rounded-none border-b-2 border-transparent px-3 text-xs after:hidden data-active:border-primary data-active:bg-transparent data-active:text-primary data-active:shadow-none"
               >
                 <Icon className="h-3.5 w-3.5" />

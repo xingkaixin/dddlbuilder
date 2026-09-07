@@ -1,3 +1,4 @@
+import { openFieldTool } from '../utils';
 import { test, expect } from '@playwright/test';
 import { ensureBuilderVisible } from '../utils';
 
@@ -26,7 +27,7 @@ test('Mock 数据遵守字段类型、长度和精度 @tools', async ({ page }) 
     await expect(typeCell).toHaveText(type);
   }
 
-  await page.getByRole('button', { name: 'Mock 数据', exact: true }).click();
+  await openFieldTool(page, '数据工具', 'Mock 数据');
   const dialog = page.getByRole('dialog', { name: 'Mock 数据生成器' });
   await dialog.getByRole('tab', { name: 'JSON', exact: true }).click();
   const output = dialog.getByRole('tabpanel', { name: 'JSON', exact: true }).locator('pre');

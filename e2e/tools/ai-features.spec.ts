@@ -1,3 +1,4 @@
+import { openFieldTool } from '../utils';
 import { test, expect, type Locator } from '@playwright/test';
 import { setupHydratedState } from '../utils';
 import { encodeAIStreamEvent } from '../../packages/shared-types/src/aiStream';
@@ -60,7 +61,7 @@ test('AI 修改保留字段身份，将改名应用为单个变更', async ({ pa
   });
   await page.goto('/');
   await setupHydratedState(page);
-  await page.getByRole('button', { name: 'AI 修改', exact: true }).click();
+  await openFieldTool(page, 'AI 工具', 'AI 修改');
   const dialog = page.getByRole('dialog', { name: 'AI 修改当前表' });
   await dialog.locator('#ai-patch-input').fill('将 HYDRATED_FIELD 改名为 renamed_field');
   await dialog.getByRole('button', { name: '发送', exact: true }).click();
@@ -121,7 +122,7 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
   await page.locator('[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(4)').dblclick();
   await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
   await page.keyboard.press('Enter');
-  await page.getByRole('button', { name: 'AI 修改', exact: true }).click();
+  await openFieldTool(page, 'AI 工具', 'AI 修改');
   const dialog = page.getByRole('dialog', { name: 'AI 修改当前表' });
   await dialog.locator('#ai-patch-input').fill('删除 occupied，将 HYDRATED_FIELD 改名为 occupied');
   await dialog.getByRole('button', { name: '发送', exact: true }).click();
@@ -198,7 +199,7 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
   });
   await page.goto('/');
   await setupHydratedState(page);
-  await page.getByRole('button', { name: 'AI 修改', exact: true }).click();
+  await openFieldTool(page, 'AI 工具', 'AI 修改');
   const dialog = page.getByRole('dialog', { name: 'AI 修改当前表' });
   await dialog.locator('#ai-patch-input').fill('修改表注释并删除 HYDRATED_FIELD');
   await dialog.getByRole('button', { name: '发送', exact: true }).click();
@@ -345,7 +346,7 @@ test('AI 注释请求在切换文档后取消，不覆盖另一张表', async ({
     await expect(page.locator('#table-name')).toHaveValue('users');
 
     const requestStarted = page.waitForRequest('**/api/generate-comments');
-    await page.getByRole('button', { name: 'AI 注释', exact: true }).click();
+    await openFieldTool(page, 'AI 工具', 'AI 注释');
     await page.getByRole('menuitem', { name: '补全缺失注释' }).click();
     const request = await requestStarted;
     expect(request.postDataJSON().tableName).toBe('users');
@@ -357,7 +358,9 @@ test('AI 注释请求在切换文档后取消，不覆盖另一张表', async ({
     finishResponse();
     await cancelled;
 
-    await expect(page.getByRole('button', { name: 'AI 注释', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: 'AI 工具', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: 'AI 注释', exact: true })).toBeEnabled();
+    await page.keyboard.press('Escape');
     await expect(page.locator('#table-name')).toHaveValue('orders');
     await expect(page.locator('#table-comment')).toHaveValue('订单表，请保留');
     await expect(page.getByTestId('data-table')).not.toContainText('用户字段');
@@ -510,7 +513,7 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
   });
   await page.goto('/');
   await setupHydratedState(page);
-  await page.getByRole('button', { name: 'AI 修改', exact: true }).click();
+  await openFieldTool(page, 'AI 工具', 'AI 修改');
   const dialog = page.getByRole('dialog', { name: 'AI 修改当前表' });
   await dialog.locator('#ai-patch-input').fill('新增 email 和对应索引');
   await dialog.getByRole('button', { name: '发送', exact: true }).click();
@@ -519,7 +522,7 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
   await changes.nth(1).click();
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
-  await page.getByRole('button', { name: 'AI 修改', exact: true }).click();
+  await openFieldTool(page, 'AI 工具', 'AI 修改');
   await expect(dialog.locator('#ai-patch-input')).toHaveValue('新增 email 和对应索引');
   await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
   await expect(dialog.getByRole('alert')).toContainText('Unknown index field: email');

@@ -1,3 +1,4 @@
+import { setSchemaName } from '../utils';
 import { test, expect } from '@playwright/test';
 import { setupHydratedState } from '../utils';
 
@@ -6,7 +7,7 @@ test('ORM output keeps schemas separate from type names @core', async ({ page })
   await setupHydratedState(page);
   await page.getByTestId('db-type-selector').click();
   await page.getByRole('option', { name: 'PostgreSQL', exact: true }).click();
-  await page.locator('#schema-name').fill('public');
+  await setSchemaName(page, 'public');
   await page.locator('#table-name').fill('user_profile');
   await page.getByRole('tab', { name: 'ORM 模型', exact: true }).click();
 
@@ -20,7 +21,7 @@ test('ORM output keeps schemas separate from type names @core', async ({ page })
   await expect(output).toContainText('export class UserProfile {');
   await expect(output).toContainText('@Entity({ name: "user_profile", schema: "public" })');
 
-  await page.locator('#schema-name').fill('audit');
+  await setSchemaName(page, 'audit');
   await expect(output).toContainText('schema: "audit"');
   await expect(output).not.toContainText('schema: "public"');
 });

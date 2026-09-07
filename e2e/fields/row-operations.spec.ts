@@ -1,3 +1,4 @@
+import { openTableAction } from '../utils';
 import { test, expect } from '@playwright/test';
 import { ensureBuilderVisible } from '../utils';
 
@@ -40,6 +41,7 @@ test.describe('字段行操作验证 @fields', () => {
     await page.goto('/');
     await ensureBuilderVisible(page);
     await page.locator('#table-name').fill('drag_sort_test');
+    await page.getByRole('button', { name: '设计', exact: true }).click();
 
     // 填入 3 个初始字段（名称 + 类型）
     for (let i = 1; i <= 3; i += 1) {
@@ -105,6 +107,7 @@ test.describe('字段行操作验证 @fields', () => {
     await expect(firstFieldName).toHaveText('field_2', { timeout: 10000 });
     await expect(thirdFieldName).toHaveText('field_1', { timeout: 10000 });
 
+    await page.getByRole('button', { name: '对照', exact: true }).click();
     const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     const sqlText = await sqlOutput.innerText();
 
@@ -140,7 +143,7 @@ test.describe('字段行操作验证 @fields', () => {
     await expect(sqlOutput).toContainText(/to_be_cleared/i, { timeout: 10000 });
 
     // 点击“清空所有”
-    await page.getByRole('button', { name: /清空所有/i }).click();
+    await openTableAction(page, /清空所有/i);
     // 确认对话框
     await page.getByRole('button', { name: /确认清空/i }).click();
 

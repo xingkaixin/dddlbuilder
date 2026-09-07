@@ -1,3 +1,4 @@
+import { openFieldTool } from '../utils';
 import { test, expect } from '@playwright/test';
 import { setupHydratedState } from '../utils';
 
@@ -18,7 +19,7 @@ test.describe('容量估算工具验证 @tools', () => {
   });
 
   test('场景：打开容量估算器并查看结果', async ({ page }) => {
-    await page.getByRole('button', { name: /估算容量/i }).click();
+    await openFieldTool(page, '数据工具', /估算容量/i);
 
     const dialog = page.getByRole('dialog', { name: /存储容量估算器/i });
     await expect(dialog).toBeVisible();

@@ -26,6 +26,7 @@ export async function ensureBuilderVisible(page: Page): Promise<void> {
     await page.getByRole('button', { name: '创建新表' }).click();
     await tableNameInput.waitFor({ state: 'visible', timeout: 10000 });
   }
+  await page.getByRole('button', { name: '对照', exact: true }).click();
 }
 
 /**
@@ -52,4 +53,32 @@ export async function setupHydratedState(page: Page): Promise<void> {
 
   await expect(tableNameInput).toHaveValue('HYDRATION_CHECK');
   await expect(cell).toHaveText('HYDRATED_FIELD');
+}
+
+export async function openTableAction(page: Page, name: string | RegExp): Promise<void> {
+  await page
+    .getByTestId('table-config-actions')
+    .getByRole('button', { name: '更多', exact: true })
+    .click();
+  await page.getByRole('menuitem', { name, exact: typeof name === 'string' }).click();
+}
+
+export async function openFieldTool(
+  page: Page,
+  group: 'AI 工具' | '数据工具',
+  name: string | RegExp,
+): Promise<void> {
+  await page.getByRole('button', { name: group, exact: true }).click();
+  await page.getByRole('menuitem', { name, exact: typeof name === 'string' }).click();
+}
+
+export async function openAdvancedSettings(page: Page, name: string | RegExp): Promise<void> {
+  await page.getByRole('button', { name: '高级设置', exact: true }).click();
+  await page.getByRole('menuitem', { name }).click();
+}
+
+export async function setSchemaName(page: Page, value: string): Promise<void> {
+  await page.getByRole('button', { name: '表属性', exact: true }).click();
+  await page.locator('#schema-name').fill(value);
+  await page.keyboard.press('Escape');
 }
