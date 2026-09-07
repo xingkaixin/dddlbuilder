@@ -23,6 +23,7 @@ import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 import { migrateReviewsToTable } from '@/utils/reviewHistory';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import type { SavedTableStateUpdate } from '@/utils/savedTableStateUpdate';
+import { useToast } from '@/hooks/useToast';
 
 export type SavedTableSummary = SavedTableMetadata;
 
@@ -52,6 +53,7 @@ const readSavedTablesProjection = (doc: Y.Doc) => ({
 
 export function useSavedTables() {
   const { t } = useTranslation();
+  const { warning, dismiss } = useToast();
   const {
     scope: currentScope,
     yDoc,
@@ -135,15 +137,32 @@ export function useSavedTables() {
           existing?.trashedAt ? 'update' : 'add',
           'activate',
         );
-        await migrateReviewsToTable(
-          { scope: currentScope, tableId, normalizedName },
-          {
-            draftId,
-            normalizedName: normalizeSavedTableName(
-              buildQualifiedTableName(state.schemaName ?? '', state.tableName),
-            ),
-          },
-        );
+        const migrateReviews = async () => {
+          const toastId = `review-migration:${tableId}`;
+          try {
+            await migrateReviewsToTable(
+              { scope: currentScope, tableId, normalizedName },
+              {
+                draftId,
+                normalizedName: normalizeSavedTableName(
+                  buildQualifiedTableName(state.schemaName ?? '', state.tableName),
+                ),
+              },
+            );
+            dismiss(toastId);
+          } catch (error) {
+            console.error('[saved-tables] review migration failed', error);
+            warning(t('savedTables.toast.reviewMigrationFailed'), {
+              id: toastId,
+              duration: Infinity,
+              action: {
+                label: t('app.retryPersistence'),
+                onClick: () => void migrateReviews(),
+              },
+            });
+          }
+        };
+        await migrateReviews();
         await refresh();
         return { ok: true, normalizedName, tableId };
       } catch (err) {
@@ -154,7 +173,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, persistActiveTable, readAllTables, refresh, t],
+    [currentScope, dismiss, persistActiveTable, readAllTables, refresh, t, warning],
   );
 
   const overwriteTable = useCallback(

@@ -7,6 +7,8 @@ import { flushPromises } from '@/__tests__/utils/test-utils';
 import { getSavedTable } from '@/utils/savedTablesDb';
 import { listVersions } from '@/utils/tableVersions';
 import { listReviews, saveReview } from '@/utils/reviewHistory';
+import * as reviewHistory from '@/utils/reviewHistory';
+import { toast } from 'sonner';
 import {
   beginWorkspaceEntityDeletion,
   cancelWorkspaceEntityDeletion,
@@ -110,7 +112,50 @@ describe('useSavedTables', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     teardownFakeIndexedDB();
+  });
+
+  it('keeps the saved table successful and retries only failed review migration', async () => {
+    const scope = { kind: 'anonymous' } as const;
+    const draftId = 'review-draft';
+    const review = await saveReview(
+      { scope, draftId, normalizedName: 'users' },
+      'users',
+      'ddl',
+      'mysql',
+      { score: 8, summary: 'ok', suggestions: [] },
+    );
+    const migrate = vi
+      .spyOn(reviewHistory, 'migrateReviewsToTable')
+      .mockRejectedValueOnce(new Error('Review storage unavailable'));
+    const warning = vi.spyOn(toast, 'warning').mockReturnValue('migration-warning');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      expect(await result.current.saveTable('users', createState('users'), draftId)).toEqual({
+        ok: true,
+        normalizedName: 'users',
+        tableId: expect.any(String),
+      });
+    });
+    await waitFor(() => expect(result.current.savedTables).toHaveLength(1));
+    const record = await result.current.loadTable('users');
+    const target = { scope, tableId: record?.tableId, normalizedName: 'users' };
+    expect(await listReviews(target)).toEqual([]);
+    const action = warning.mock.calls[0]?.[1]?.action;
+    if (!action || typeof action !== 'object' || !('onClick' in action)) {
+      throw new Error('Expected a migration retry action');
+    }
+    act(() => action.onClick({} as React.MouseEvent<HTMLButtonElement>));
+    await waitFor(async () => {
+      expect((await listReviews(target)).map((entry) => entry.id)).toEqual([review?.id]);
+    });
+    expect(migrate).toHaveBeenCalledTimes(2);
+    expect(result.current.savedTables).toHaveLength(1);
+    expect((await result.current.loadTable('users'))?.tableId).toBe(record?.tableId);
   });
 
   it('should save and prevent duplicate by normalized name', async () => {

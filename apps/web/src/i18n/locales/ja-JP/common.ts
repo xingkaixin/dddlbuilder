@@ -1368,6 +1368,8 @@ export const jaJPCommon = {
       loadFailed: '読み込みに失敗しました',
       folderLoadFailed: 'フォルダの読み込みに失敗しました',
       saveFailed: '保存に失敗しました',
+      reviewMigrationFailed:
+        'テーブルは保存されましたが、レビュー履歴の移行に失敗しました。移行を再試行してください。',
       updateFailed: '更新に失敗しました',
       deleteFailed: '削除に失敗しました',
       restoreFailed: '復元に失敗しました',

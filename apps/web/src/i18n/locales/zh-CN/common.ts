@@ -1310,6 +1310,7 @@ export const zhCNCommon = {
       loadFailed: '加载失败',
       folderLoadFailed: '加载文件夹失败',
       saveFailed: '保存失败',
+      reviewMigrationFailed: '表已保存，但评审历史迁移失败，请重试迁移',
       updateFailed: '更新失败',
       deleteFailed: '删除失败',
       restoreFailed: '恢复失败',

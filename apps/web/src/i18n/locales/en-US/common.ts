@@ -1360,6 +1360,8 @@ export const enUSCommon = {
       loadFailed: 'Failed to load',
       folderLoadFailed: 'Failed to load folders',
       saveFailed: 'Failed to save',
+      reviewMigrationFailed:
+        'Table saved, but review history could not be moved. Retry the migration.',
       updateFailed: 'Failed to update',
       deleteFailed: 'Failed to delete',
       restoreFailed: 'Failed to restore',
