@@ -25,6 +25,13 @@ import { IndexPanel } from '../IndexPanel';
 import { PartitionPanel } from '../PartitionPanel';
 import { ShardingPanel } from '../ShardingPanel';
 import type { TableConfig } from '../TableConfig';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { TableOptionsPanel } from '../TableOptionsPanel';
 import { ViewDefinitionPanel } from '../ViewDefinitionPanel';
 
@@ -73,7 +80,7 @@ type IndexStats = Record<(typeof INDEX_STAT_BADGES)[number]['key'], number>;
 
 function TabBadge({ children }: { children: ReactNode }) {
   return (
-    <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
+    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
       {children}
     </span>
   );
@@ -85,7 +92,7 @@ function tabBadge(value: number | string | null | undefined) {
 
 function IndexStatsBadge({ stats }: { stats: IndexStats }) {
   return (
-    <div className="ml-2 hidden items-center gap-2 2xl:flex">
+    <div className="ml-2 flex items-center gap-2">
       {INDEX_STAT_BADGES.map(({ key, icon: Icon, className }) =>
         stats[key] > 0 ? (
           <span
@@ -209,6 +216,12 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
   const availableTabs = new Set(getAvailableTabs({ objectType, dbType }));
   const tabs = tabDefinitions.filter((tab) => availableTabs.has(tab.value));
 
+  const advancedTabs = tabs.filter((tab) =>
+    ['misc', 'sharding', 'partition', 'hive-partition'].includes(tab.value),
+  );
+  const primaryTabs = tabs.filter((tab) => !advancedTabs.includes(tab));
+  const activeAdvancedTab = advancedTabs.find((tab) => tab.value === tabsValue);
+
   const handleTabValueChange = (value: string) => {
     if (isBuilderTab(value)) onTabsValueChange(value);
   };
@@ -216,17 +229,57 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
       <Tabs value={tabsValue} onValueChange={handleTabValueChange} className="w-full">
-        <TabsList className="inline-flex h-auto max-w-full flex-wrap justify-start gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0">
-          {tabs.map(({ value, icon: Icon, label, badge }) => (
-            <TabsTrigger key={value} value={value} className="gap-1.5 px-2.5 text-xs">
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-              {badge}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="flex flex-wrap items-center gap-2 border-b">
+          <TabsList className="h-9 max-w-full justify-start overflow-x-auto rounded-none bg-transparent p-0">
+            {primaryTabs.map(({ value, icon: Icon, label, badge }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="h-9 gap-1.5 rounded-none border-b-2 border-transparent px-3 text-xs after:hidden data-active:border-primary data-active:bg-transparent data-active:text-primary data-active:shadow-none"
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+                {badge}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {advancedTabs.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  aria-label={t('builderTabs.advanced')}
+                  variant="ghost"
+                  size="sm"
+                  className={`h-9 gap-1.5 rounded-none border-b-2 text-xs ${activeAdvancedTab ? 'border-primary text-primary' : 'border-transparent'}`}
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  {activeAdvancedTab ? activeAdvancedTab.label : t('builderTabs.advanced')}
+                  {advancedTabs.some((tab) => tab.badge) && (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-primary"
+                      aria-label={t('builderTabs.enabled')}
+                    />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {advancedTabs.map(({ value, label, badge }) => (
+                  <DropdownMenuItem key={value} onClick={() => onTabsValueChange(value)}>
+                    {label}
+                    {badge}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
         {tabs.map(({ value, panel }) => (
-          <TabsContent key={value} value={value} className="mt-4">
+          <TabsContent
+            key={value}
+            value={value}
+            aria-label={tabs.find((tab) => tab.value === value)?.label}
+            className="mt-2"
+          >
             {panel}
           </TabsContent>
         ))}

@@ -132,6 +132,7 @@ describe('TableBuilderContainer', () => {
     render(<TableBuilderContainer {...buildProps()} />);
 
     expect(screen.getByTestId('fields-panel')).toBeVisible();
-    expect(screen.getAllByRole('tab')).toHaveLength(4);
+    expect(screen.getAllByRole('tab')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /高级设置/ })).toBeVisible();
   });
 });

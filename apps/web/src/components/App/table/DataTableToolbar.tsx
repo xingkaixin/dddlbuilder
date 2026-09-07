@@ -9,17 +9,18 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import {
   ChevronDown,
   HardDrive,
-  Languages,
   WandSparkles,
   Minus,
   Plus,
   Pin,
   ListPlus,
-  SearchCheck,
   TableProperties,
 } from '@/components/icons';
 import { COLUMN_HEADERS } from '@/utils/constants';
@@ -63,125 +64,87 @@ export function DataTableToolbar({
 }: DataTableToolbarProps) {
   const { t } = useTranslation();
   return (
-    <div className="relative border-b border-primary/10 px-4 py-3.5">
+    <div className="relative border-b px-0 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {toolbarLeft}
-          {onOpenStorageEstimator && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenStorageEstimator}
-                  className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
-                >
-                  <HardDrive className="h-3.5 w-3.5" />
-                  {t('dataTable.toolbar.storageEstimator')}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{t('dataTable.toolbar.storageEstimatorTip')}</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-          {onOpenMockDataGenerator && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenMockDataGenerator}
-                  className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
-                >
-                  <TableProperties className="h-3.5 w-3.5" />
-                  {t('dataTable.toolbar.mockData')}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{t('dataTable.toolbar.mockDataTip')}</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-          {onOpenAISchemaPatch && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenAISchemaPatch}
-                  className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
-                >
-                  <WandSparkles className="h-3.5 w-3.5" />
-                  {t('dataTable.toolbar.aiPatch')}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{t('dataTable.toolbar.aiPatchTip')}</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-          {onGenerateComments && (
+          {(onOpenAISchemaPatch || onGenerateComments || onOpenAIIndexAdvisor) && (
             <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isGeneratingComments}
-                      className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
-                    >
-                      <Languages className="h-3.5 w-3.5" />
-                      {isGeneratingComments
-                        ? t('dataTable.toolbar.aiCommentsRunning')
-                        : t('dataTable.toolbar.aiComments')}
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{t('dataTable.toolbar.aiCommentsTip')}</p>
-                </TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent align="start" className="w-44">
-                <DropdownMenuItem onClick={() => onGenerateComments('fill_missing')}>
-                  {t('dataTable.toolbar.aiCommentsFillMissing')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onGenerateComments('translate', 'zh-CN')}>
-                  {t('dataTable.toolbar.aiCommentsTranslateZh')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onGenerateComments('translate', 'en-US')}>
-                  {t('dataTable.toolbar.aiCommentsTranslateEn')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onGenerateComments('translate', 'ja-JP')}>
-                  {t('dataTable.toolbar.aiCommentsTranslateJa')}
-                </DropdownMenuItem>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs">
+                  <WandSparkles className="h-3.5 w-3.5" />
+                  {t('dataTable.aiTools')}
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {onOpenAISchemaPatch && (
+                  <DropdownMenuItem onClick={onOpenAISchemaPatch}>
+                    {t('dataTable.toolbar.aiPatch')}
+                  </DropdownMenuItem>
+                )}
+                {onGenerateComments && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger disabled={isGeneratingComments}>
+                      {t(
+                        isGeneratingComments
+                          ? 'dataTable.toolbar.aiCommentsRunning'
+                          : 'dataTable.toolbar.aiComments',
+                      )}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => onGenerateComments('fill_missing')}>
+                        {t('dataTable.toolbar.aiCommentsFillMissing')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onGenerateComments('translate', 'zh-CN')}>
+                        {t('dataTable.toolbar.aiCommentsTranslateZh')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onGenerateComments('translate', 'en-US')}>
+                        {t('dataTable.toolbar.aiCommentsTranslateEn')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onGenerateComments('translate', 'ja-JP')}>
+                        {t('dataTable.toolbar.aiCommentsTranslateJa')}
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+                {onOpenAIIndexAdvisor && (
+                  <DropdownMenuItem onClick={onOpenAIIndexAdvisor}>
+                    {t('dataTable.toolbar.aiIndexAdvisor')}
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {onOpenAIIndexAdvisor && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenAIIndexAdvisor}
-                  className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
-                >
-                  <SearchCheck className="h-3.5 w-3.5" />
-                  {t('dataTable.toolbar.aiIndexAdvisor')}
+          {(onOpenStorageEstimator || onOpenMockDataGenerator) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs">
+                  <TableProperties className="h-3.5 w-3.5" />
+                  {t('dataTable.dataTools')}
+                  <ChevronDown className="h-3 w-3" />
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{t('dataTable.toolbar.aiIndexAdvisorTip')}</p>
-              </TooltipContent>
-            </Tooltip>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {onOpenStorageEstimator && (
+                  <DropdownMenuItem onClick={onOpenStorageEstimator}>
+                    <HardDrive className="h-4 w-4" />
+                    {t('dataTable.toolbar.storageEstimator')}
+                  </DropdownMenuItem>
+                )}
+                {onOpenMockDataGenerator && (
+                  <DropdownMenuItem onClick={onOpenMockDataGenerator}>
+                    <TableProperties className="h-4 w-4" />
+                    {t('dataTable.toolbar.mockData')}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-7 items-center rounded-md border shadow-sm transition-all hover:shadow-md bg-background">
+          <div className="flex h-7 items-center rounded-md border  bg-background">
             <div className="flex h-full items-center gap-2 border-r bg-muted/30 px-2 pl-2.5">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -264,7 +227,7 @@ export function DataTableToolbar({
             </div>
           </div>
 
-          <div className="flex h-7 items-center rounded-md border shadow-sm transition-all hover:shadow-md bg-background">
+          <div className="flex h-7 items-center rounded-md border  bg-background">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

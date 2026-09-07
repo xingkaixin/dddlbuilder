@@ -112,7 +112,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
             data-editing={editingColumn === cell.column.id || undefined}
             data-editable-column={cell.column.columnDef.meta?.editable || undefined}
             className={cn(
-              'h-9 px-1 bg-background text-xs transition-colors group-hover/row:bg-muted/30',
+              'h-10 px-1 bg-background text-xs transition-colors group-hover/row:bg-muted/30',
               isFrozen && 'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
               isLastFrozen &&
                 'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
@@ -336,7 +336,7 @@ export const DataTable = memo<DataTableProps>(
     return (
       <div
         className={cn(
-          'relative min-h-[420px] flex-1 rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5',
+          'relative min-w-0 flex-1 bg-background',
           isHighlighted && 'animate-field-highlight',
         )}
         onPaste={handlePaste}
@@ -344,10 +344,6 @@ export const DataTable = memo<DataTableProps>(
         {isHighlighted && (
           <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-500 animate-pulse z-10" />
         )}
-
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
-
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-primary/30 to-transparent" />
 
         <DataTableToolbar
           toolbarLeft={toolbarLeft}
@@ -378,7 +374,7 @@ export const DataTable = memo<DataTableProps>(
         <section
           ref={tableRef}
           aria-label={t('dataTable.ariaLabel')}
-          className="relative overflow-x-auto p-4"
+          className="relative overflow-auto py-2"
         >
           <p id="field-config-table-description" className="sr-only">
             {t('dataTable.ariaDescription')}
