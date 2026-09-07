@@ -39,8 +39,7 @@ import {
 import {
   beginWorkspaceEntityDeletion,
   ensureWorkspaceEntityDeletion,
-  runWorkspaceEntityUpdate,
-  runWorkspaceEntityWrites,
+  commitWorkspaceEntityWrites,
   type WorkspaceEntityWrite,
 } from '@/utils/workspaceEntityDeletion';
 import { resolveSavedTableId } from '@/utils/savedTableIdentity';
@@ -98,7 +97,7 @@ export function useSavedTablePersistence() {
       const target = requireReadyWorkspaceStorage(storage);
       if (target.kind === 'ydoc') {
         const entityTarget = entityTargetForRecord(record, target.scope);
-        await runWorkspaceEntityWrites([{ target: entityTarget, mode: entityMode }], [], () =>
+        await commitWorkspaceEntityWrites([{ target: entityTarget, mode: entityMode }], () =>
           target.transact((doc) =>
             entityMode === 'activate'
               ? recreateSavedTableInYDoc(doc, record)
@@ -118,7 +117,7 @@ export function useSavedTablePersistence() {
     async (records: SavedTableRecord[], activatedTableIds: ReadonlySet<string> = new Set()) => {
       const target = requireReadyWorkspaceStorage(storage);
       if (target.kind === 'ydoc') {
-        await runWorkspaceEntityWrites(
+        await commitWorkspaceEntityWrites(
           records.map((record) =>
             entityWriteForRecord(
               record,
@@ -126,7 +125,6 @@ export function useSavedTablePersistence() {
               activatedTableIds.has(resolveSavedTableId(record)) ? 'activate' : 'update',
             ),
           ),
-          [],
           () =>
             target.transact((doc) => {
               for (const record of records) {
@@ -151,21 +149,17 @@ export function useSavedTablePersistence() {
       if (destination.kind === 'ydoc') {
         const current = getSavedTableFromYDoc(destination.yDoc, target);
         if (!current) return null;
-        let updated: SavedTableRecord | null = null;
-        await runWorkspaceEntityUpdate(
-          [entityTargetForRecord(current, destination.scope)],
-          [],
-          () => {
-            updated = destination.transact((doc) => {
+        return commitWorkspaceEntityWrites(
+          [{ target: entityTargetForRecord(current, destination.scope), mode: 'update' }],
+          () =>
+            destination.transact((doc) => {
               const record = applySavedTableStateUpdate(target, update, (reference) =>
                 getSavedTableFromYDoc(doc, reference),
               );
               if (record) upsertSavedTableInYDoc(doc, record);
               return record;
-            });
-          },
+            }),
         );
-        return updated;
       }
       return updateSavedTableState(target, update, destination.scope);
     },
@@ -181,13 +175,9 @@ export function useSavedTablePersistence() {
       const current = getSavedTableFromYDoc(destination.yDoc, target);
       if (!current) return null;
       const entityTarget = entityTargetForRecord(current, destination.scope);
-      let updated: SavedTableRecord | null = null;
-      await runWorkspaceEntityUpdate([entityTarget], [], () => {
-        updated = destination.transact((doc) =>
-          updateSavedTableMetadataInYDoc(doc, entityTarget, update),
-        );
-      });
-      return updated;
+      return commitWorkspaceEntityWrites([{ target: entityTarget, mode: 'update' }], () =>
+        destination.transact((doc) => updateSavedTableMetadataInYDoc(doc, entityTarget, update)),
+      );
     },
     [storage],
   );
@@ -201,7 +191,7 @@ export function useSavedTablePersistence() {
       const target = requireReadyWorkspaceStorage(storage);
       if (target.kind === 'ydoc') {
         const entityTarget = entityTargetForRecord(record, target.scope);
-        await runWorkspaceEntityWrites([{ target: entityTarget, mode: entityMode }], [], () =>
+        await commitWorkspaceEntityWrites([{ target: entityTarget, mode: entityMode }], () =>
           target.transact((doc) =>
             entityMode === 'activate'
               ? recreateSavedTableInYDoc(doc, record)

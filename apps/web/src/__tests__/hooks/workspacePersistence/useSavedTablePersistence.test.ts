@@ -18,7 +18,6 @@ const mocks = vi.hoisted(() => ({
   finalizeDeletion: vi.fn(),
   getFromYDoc: vi.fn(),
   recreateToYDoc: vi.fn(),
-  runEntityUpdate: vi.fn(),
   runEntityWrites: vi.fn(),
   transact: vi.fn(),
   upsertToYDoc: vi.fn(),
@@ -86,8 +85,7 @@ vi.mock('@/utils/workspaceEntityDeletion', () => ({
   beginWorkspaceEntityDeletion: mocks.beginDeletion,
   cancelWorkspaceEntityDeletion: mocks.cancelDeletion,
   ensureWorkspaceEntityDeletion: mocks.ensureDeletion,
-  runWorkspaceEntityUpdate: mocks.runEntityUpdate,
-  runWorkspaceEntityWrites: mocks.runEntityWrites,
+  commitWorkspaceEntityWrites: mocks.runEntityWrites,
 }));
 
 vi.mock('@/services/workspaceYDocAdapter', () => ({
@@ -113,13 +111,8 @@ describe('useSavedTablePersistence permanent deletion', () => {
     mocks.finalizeDeletion.mockResolvedValue(undefined);
     mocks.getFromYDoc.mockReturnValue(record);
     mocks.ensureDeletion.mockResolvedValue({ operationId: 'recovered-operation', created: true });
-    mocks.runEntityWrites.mockImplementation(
-      async (_writes: unknown, _stores: unknown, write: (tx: IDBTransaction) => void) =>
-        write({} as IDBTransaction),
-    );
-    mocks.runEntityUpdate.mockImplementation(
-      async (_targets: unknown, _stores: unknown, write: (tx: IDBTransaction) => void) =>
-        write({} as IDBTransaction),
+    mocks.runEntityWrites.mockImplementation(async (_writes: unknown, commit: () => unknown) =>
+      commit(),
     );
     mocks.transact.mockImplementation((operation: (doc: object) => void) =>
       operation(workspace.yDoc),
@@ -155,7 +148,7 @@ describe('useSavedTablePersistence permanent deletion', () => {
     );
   });
 
-  it('主记录删除失败时 marker 事务一并失败', async () => {
+  it('主记录删除失败时不执行历史收尾', async () => {
     mocks.transact.mockImplementationOnce(() => {
       throw new Error('Y.Doc delete failed');
     });
@@ -218,12 +211,11 @@ describe('useSavedTablePersistence permanent deletion', () => {
           mode: 'update',
         },
       ],
-      [],
       expect.any(Function),
     );
   });
 
-  it('Y.Doc state update 也在实体 marker 事务内执行', async () => {
+  it('Y.Doc state update 先提交实体 marker 事务', async () => {
     const { result } = renderHook(() => useSavedTablePersistence());
 
     await act(async () => {
@@ -233,9 +225,8 @@ describe('useSavedTablePersistence permanent deletion', () => {
       });
     });
 
-    expect(mocks.runEntityUpdate).toHaveBeenCalledWith(
-      [{ scope, tableId: 'table-1', normalizedName: 'users' }],
-      [],
+    expect(mocks.runEntityWrites).toHaveBeenCalledWith(
+      [{ target: { scope, tableId: 'table-1', normalizedName: 'users' }, mode: 'update' }],
       expect.any(Function),
     );
     expect(mocks.upsertToYDoc).toHaveBeenCalledWith(
@@ -256,7 +247,6 @@ describe('useSavedTablePersistence permanent deletion', () => {
           mode: 'activate',
         },
       ],
-      [],
       expect.any(Function),
     );
   });

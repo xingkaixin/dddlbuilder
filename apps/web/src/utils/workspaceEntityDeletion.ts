@@ -137,14 +137,15 @@ export async function beginWorkspaceEntityDeletion(
         return;
       }
       store.put(createWorkspaceEntityDeletionMarker(target, 'deleting', operationId));
-      try {
-        commit?.();
-      } catch (error) {
-        fail(error);
-      }
     });
     return () => operationId;
   });
+  try {
+    commit?.();
+  } catch (error) {
+    await cancelWorkspaceEntityDeletion(target, operationId);
+    throw error;
+  }
   return operationId;
 }
 
@@ -248,13 +249,11 @@ export const runWorkspaceEntityWrites = async (
   });
 };
 
-export const runWorkspaceEntityUpdate = (
-  targets: WorkspaceEntityTarget[],
-  storeNames: string | string[],
-  update: (transaction: IDBTransaction) => void,
-) =>
-  runWorkspaceEntityWrites(
-    targets.map((target) => ({ target, mode: 'update' })),
-    storeNames,
-    update,
-  );
+export const commitWorkspaceEntityWrites = async <T>(
+  writes: WorkspaceEntityWrite[],
+  commit: () => T,
+): Promise<T> => {
+  // Y.Doc mutations cannot roll back with IndexedDB; finish the marker transaction first.
+  await runWorkspaceEntityWrites(writes, [], () => {});
+  return commit();
+};
