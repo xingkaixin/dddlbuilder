@@ -1,6 +1,7 @@
 import * as Duration from 'effect/Duration';
 import * as Effect from 'effect/Effect';
 import * as Schedule from 'effect/Schedule';
+import { AIProviderError, AIUsageError } from './aiErrors.js';
 import type { OpenAIConfig } from './openaiConfig.js';
 
 type RetryOptions = {
@@ -77,12 +78,14 @@ const readHeaderFromUnknown = (headers: unknown, key: string): string | undefine
 };
 
 const getErrorStatus = (error: unknown): number | null => {
+  if (error instanceof AIProviderError) return getErrorStatus(error.cause);
   if (!error || typeof error !== 'object') return null;
   const status = (error as { status?: unknown }).status;
   return typeof status === 'number' ? status : null;
 };
 
 const getRetryAfterFromError = (error: unknown, now: number): number | null => {
+  if (error instanceof AIProviderError) return getRetryAfterFromError(error.cause, now);
   if (!error || typeof error !== 'object') return null;
   const headers = (error as { headers?: unknown }).headers;
   return parseRetryAfterMs(readHeaderFromUnknown(headers, 'retry-after'), now);
@@ -114,6 +117,7 @@ const getErrorChain = (error: unknown) => {
 };
 
 const isRetryableError = (error: unknown): boolean => {
+  if (error instanceof AIUsageError) return false;
   const status = getErrorStatus(error);
   if (status !== null) {
     return RETRYABLE_STATUS_CODES.has(status);
@@ -129,7 +133,6 @@ const isRetryableError = (error: unknown): boolean => {
 };
 
 const createRetrySchedule = (options: {
-  scope: string;
   maxAttempts: number;
   baseDelayMs: number;
   maxDelayMs: number;
@@ -165,42 +168,40 @@ const createRetrySchedule = (options: {
     ),
   );
 
-export async function withOpenAIRetry<T>(
+export const retryOpenAI = <A, E, R>(
+  operation: Effect.Effect<A, E, R>,
+  options: Omit<RetryOptions, 'signal'>,
+  config: OpenAIConfig,
+): Effect.Effect<OpenAIRetryResult<A>, E, R> =>
+  Effect.suspend(() => {
+    const maxAttempts = options.maxAttempts ?? config.retryMaxAttempts;
+    const baseDelayMs = options.baseDelayMs ?? config.retryBaseDelayMs;
+    const maxDelayMs = options.maxDelayMs ?? config.retryMaxDelayMs;
+    if (maxAttempts < 1) {
+      return Effect.die(new Error(`[${options.scope}] OpenAI retry failed unexpectedly`));
+    }
+
+    let attempts = 0;
+    const attempt = Effect.suspend(() => {
+      attempts += 1;
+      return operation;
+    });
+    return attempt.pipe(
+      Effect.retry(
+        createRetrySchedule({ maxAttempts, baseDelayMs, maxDelayMs, onRetry: options.onRetry }),
+      ),
+      Effect.map((data) => ({ data, attempts, retryCount: Math.max(0, attempts - 1) })),
+    );
+  });
+
+export function withOpenAIRetry<T>(
   operation: () => Promise<T>,
   options: RetryOptions,
   config: OpenAIConfig,
 ): Promise<OpenAIRetryResult<T>> {
-  const maxAttempts = options.maxAttempts ?? config.retryMaxAttempts;
-  const baseDelayMs = options.baseDelayMs ?? config.retryBaseDelayMs;
-  const maxDelayMs = options.maxDelayMs ?? config.retryMaxDelayMs;
-
-  if (maxAttempts < 1) {
-    throw new Error(`[${options.scope}] OpenAI retry failed unexpectedly`);
-  }
-
-  let attempts = 0;
-  const operationEffect = Effect.tryPromise({
-    try: () => {
-      attempts += 1;
-      return operation();
-    },
-    catch: (error) => error,
-  });
-  const schedule = createRetrySchedule({
-    scope: options.scope,
-    maxAttempts,
-    baseDelayMs,
-    maxDelayMs,
-    onRetry: options.onRetry,
-  });
-
-  return Effect.runPromise(
-    operationEffect.pipe(
-      // The operation owns in-flight cancellation; finish it before interrupting retry waits.
-      Effect.uninterruptible,
-      Effect.retry(schedule),
-      Effect.map((data) => ({ data, attempts, retryCount: Math.max(0, attempts - 1) })),
-    ),
-    { signal: options.signal },
+  const attempt = Effect.tryPromise({ try: operation, catch: (error) => error }).pipe(
+    // The caller finishes in-flight work before cancellation can settle its usage.
+    Effect.uninterruptible,
   );
+  return Effect.runPromise(retryOpenAI(attempt, options, config), { signal: options.signal });
 }

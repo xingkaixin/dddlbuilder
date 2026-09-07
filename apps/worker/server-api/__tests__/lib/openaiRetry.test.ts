@@ -1,3 +1,6 @@
+import * as Effect from 'effect/Effect';
+import { retryOpenAI } from '../../lib/openaiRetry.js';
+import { AIUsageError } from '../../lib/aiErrors.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { APIConnectionError, APIConnectionTimeoutError, APIUserAbortError } from 'openai';
 import type { ApiEnv } from '../../lib/context.js';
@@ -337,4 +340,15 @@ describe('withOpenAIRetry', () => {
     expect(operation).toHaveBeenCalledOnce();
     expect(onRetry).not.toHaveBeenCalled();
   });
+});
+
+it('does not retry a usage failure even when its cause looks transient', async () => {
+  const failure = new AIUsageError({
+    cause: Object.assign(new Error('D1 unavailable'), { code: 'ECONNRESET' }),
+  });
+  const attempt = vi.fn(() => Effect.fail(failure));
+  const program = retryOpenAI(Effect.suspend(attempt), { scope: 'usage', maxAttempts: 3 }, config);
+  expect(attempt).not.toHaveBeenCalled();
+  await expect(Effect.runPromise(program)).rejects.toBe(failure);
+  expect(attempt).toHaveBeenCalledOnce();
 });
