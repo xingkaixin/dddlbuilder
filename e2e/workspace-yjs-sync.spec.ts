@@ -1,3 +1,4 @@
+import { selectWorkspaceView } from './utils';
 import { openFieldTool, openTableAction } from './utils';
 import {
   expect,
@@ -1081,7 +1082,7 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
     await getSavedTableRow(pageB, tableName).click();
     await expect(tableNameInput(pageB)).toHaveValue(tableName);
     await expect(pageB.getByTestId('data-table')).toBeVisible();
-    await pageB.getByRole('button', { name: '对照', exact: true }).click();
+    await selectWorkspaceView(pageB, 'split');
     await expect(pageB.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
     await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
     server.setClientPaused('offline-client', true);
@@ -1174,7 +1175,7 @@ test('workspace yjs rename preserves an offline save and retargets open tabs', a
   await getSavedTableRow(pageB, originalName).click();
   await expect(tableNameInput(pageB)).toHaveValue(originalName);
   await expect(pageB.getByTestId('data-table')).toBeVisible();
-  await pageB.getByRole('button', { name: '对照', exact: true }).click();
+  await selectWorkspaceView(pageB, 'split');
   await expect(pageB.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
   await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
 
@@ -1226,7 +1227,7 @@ test('workspace yjs sync preserves offline edits locally and converges after rec
   await page.goto('/');
   await openDraftByName(page, 'cloud_seed');
   await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
-  await page.getByRole('button', { name: '对照', exact: true }).click();
+  await selectWorkspaceView(page, 'split');
   await expect(page.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
 
   await context.setOffline(true);

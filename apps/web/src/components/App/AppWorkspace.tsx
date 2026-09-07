@@ -1,7 +1,9 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Upload } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
+import type { EditorView } from '@/stores/appUiStore';
+import { WorkspaceViewMenu } from './WorkspaceViewMenu';
 import { EditorSurface } from './EditorSurface';
 import { Header } from './Header';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
@@ -31,6 +33,14 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
     celebration,
   } = model;
   const { t } = useTranslation();
+  const [shareView, setShareView] = useState<EditorView>('output');
+  const surfaceModel = view.isShareView
+    ? { ...editorSurface, editorView: shareView, setEditorView: setShareView }
+    : editorSurface;
+  const viewMenu =
+    !view.shouldShowWorkspaceSkeleton && (view.hasTabs || view.isShareView) ? (
+      <WorkspaceViewMenu view={surfaceModel.editorView} onViewChange={surfaceModel.setEditorView} />
+    ) : null;
 
   return (
     <>
@@ -78,8 +88,14 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
                   </button>
                 ) : undefined
               }
+              trailingAction={viewMenu}
               {...tabBar}
             />
+          )}
+          {view.isShareView && viewMenu && (
+            <div className="flex shrink-0 justify-end border-b bg-muted/20 px-2 py-1">
+              {viewMenu}
+            </div>
           )}
           <div className="flex min-h-0 flex-1 flex-col overflow-auto">
             {view.shouldShowWorkspaceSkeleton ? (
@@ -108,7 +124,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
               />
             ) : (
               <div className="flex min-h-0 flex-1 flex-col">
-                <EditorSurface model={editorSurface} />
+                <EditorSurface model={surfaceModel} />
               </div>
             )}
           </div>

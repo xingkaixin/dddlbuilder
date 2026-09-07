@@ -262,9 +262,9 @@ export const enUSCommon = {
   },
   editorLayout: {
     label: 'Workspace view',
-    design: 'Design',
-    output: 'Generated output',
-    split: 'Compare',
+    design: 'Design view',
+    output: 'Result view',
+    split: 'Split preview',
     resize: 'Resize design and output',
     maximize: 'Maximize output',
   },

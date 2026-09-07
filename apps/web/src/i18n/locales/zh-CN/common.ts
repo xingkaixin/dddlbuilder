@@ -251,9 +251,9 @@ export const zhCNCommon = {
   },
   editorLayout: {
     label: '工作视图',
-    design: '设计',
-    output: '生成结果',
-    split: '对照',
+    design: '设计视图',
+    output: '结果视图',
+    split: '分屏预览',
     resize: '调整设计与结果的高度',
     maximize: '最大化生成结果',
   },

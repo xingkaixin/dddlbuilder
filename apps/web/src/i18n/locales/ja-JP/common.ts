@@ -266,9 +266,9 @@ export const jaJPCommon = {
   },
   editorLayout: {
     label: '作業ビュー',
-    design: '設計',
-    output: '生成結果',
-    split: '比較',
+    design: '設計ビュー',
+    output: '結果ビュー',
+    split: '分割プレビュー',
     resize: '設計と結果の高さを調整',
     maximize: '生成結果を最大化',
   },

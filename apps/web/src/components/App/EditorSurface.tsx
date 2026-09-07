@@ -25,9 +25,8 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
   const { documentId, isShareView, editorView, setEditorView, tableBuilderProps, outputProps } =
     model;
   const { t } = useTranslation();
-  const [shareView, setShareView] = useState<EditorView>('output');
-  const view = isShareView ? shareView : editorView;
-  const selectView = isShareView ? setShareView : setEditorView;
+  const view = editorView;
+  const selectView = setEditorView;
   const [splitPercent, setSplitPercent] = useState(55);
   const panesRef = useRef<HTMLDivElement>(null);
   const builderId = useId();
@@ -40,58 +39,12 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
       data-testid="editor-surface"
       data-view={view}
     >
-      <div className="shrink-0 border-b px-4 pt-3">
+      <div className="shrink-0 border-b px-4 py-3">
         <div
           className={isShareView ? 'pointer-events-none select-none opacity-80' : undefined}
           inert={isShareView}
         >
           <TableConfig key={documentId} {...tableBuilderProps.tableConfigProps} />
-        </div>
-        <div className="flex items-center justify-between gap-2 py-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  'h-7 px-2 text-xs',
-                  issues.length > 0 && 'text-amber-700 dark:text-amber-400',
-                )}
-              >
-                {t('schemaLint.title')} ·{' '}
-                {issues.length
-                  ? t('schemaLint.issueCount', { count: issues.length })
-                  : t('schemaLint.pass')}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              className="max-h-[60dvh] w-[min(32rem,calc(100vw-2rem))] overflow-auto p-0"
-            >
-              <SchemaLintPanel issues={issues} />
-            </PopoverContent>
-          </Popover>
-          <div
-            className="flex shrink-0 rounded-md border p-0.5"
-            role="group"
-            aria-label={t('editorLayout.label')}
-          >
-            {(['design', 'output', 'split'] as const).map((mode) => (
-              <Button
-                key={mode}
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  'h-7 rounded-sm px-3 text-xs',
-                  view === mode && 'bg-primary/10 text-primary',
-                )}
-                aria-pressed={view === mode}
-                onClick={() => selectView(mode)}
-              >
-                {t(`editorLayout.${mode}`)}
-              </Button>
-            ))}
-          </div>
         </div>
       </div>
       <div ref={panesRef} className="flex min-h-0 flex-1 flex-col overflow-auto sm:overflow-hidden">
@@ -164,6 +117,32 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
           />
         </div>
       </div>
+      <footer className="shrink-0 border-t bg-muted/20 px-3 py-1">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'h-7 px-2 text-xs',
+                issues.length > 0 && 'text-amber-700 dark:text-amber-400',
+              )}
+            >
+              {t('schemaLint.title')} ·{' '}
+              {issues.length
+                ? t('schemaLint.issueCount', { count: issues.length })
+                : t('schemaLint.pass')}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            side="top"
+            className="max-h-[60dvh] w-[min(32rem,calc(100vw-2rem))] overflow-auto p-0"
+          >
+            <SchemaLintPanel issues={issues} />
+          </PopoverContent>
+        </Popover>
+      </footer>
     </section>
   );
 }

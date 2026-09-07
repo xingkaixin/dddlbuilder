@@ -1,5 +1,11 @@
 import { expect, type Page } from '@playwright/test';
 
+export async function selectWorkspaceView(page: Page, view: 'design' | 'output' | 'split') {
+  const labels = { design: '设计视图', output: '结果视图', split: '分屏预览' };
+  await page.getByRole('button', { name: '工作视图', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: labels[view], exact: true }).click();
+}
+
 /**
  * 如果触发了字段类型变更风险确认对话框，点击"仍然修改"确认。
  * 用于 E2E 测试中跨类型修改 fieldType 的场景。
@@ -26,7 +32,7 @@ export async function ensureBuilderVisible(page: Page): Promise<void> {
     await page.getByRole('button', { name: '创建新表' }).click();
     await tableNameInput.waitFor({ state: 'visible', timeout: 10000 });
   }
-  await page.getByRole('button', { name: '对照', exact: true }).click();
+  await selectWorkspaceView(page, 'split');
 }
 
 /**

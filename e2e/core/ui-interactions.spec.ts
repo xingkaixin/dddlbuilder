@@ -1,3 +1,4 @@
+import { selectWorkspaceView } from '../utils';
 import { openTableAction } from '../utils';
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { setupHydratedState, ensureBuilderVisible } from '../utils';
@@ -166,16 +167,25 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await expect(sidebar).toBeVisible();
   });
 
-  test('场景：设计、结果和对照视图共享同一份编辑内容', async ({ page }) => {
+  test('场景：设计、结果和分屏视图共享同一份编辑内容', async ({ page }) => {
     const outputPanel = page.getByTestId('output-panel');
+    const viewButton = page
+      .getByTestId('workspace-tab-bar')
+      .getByRole('button', { name: '工作视图' });
+    await expect(viewButton).toHaveText('分屏预览');
+    const status = page.getByTestId('editor-surface').locator('footer');
+    await expect(status).toBeInViewport();
+    await status.getByRole('button').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
     await expect(outputPanel).toBeVisible();
-    await page.getByRole('button', { name: '设计', exact: true }).click();
+    await selectWorkspaceView(page, 'design');
     await expect(outputPanel).not.toBeVisible();
     await page.locator('#table-name').fill('layout_test');
-    await page.getByRole('button', { name: '生成结果', exact: true }).click();
+    await selectWorkspaceView(page, 'output');
     await expect(page.getByTestId('data-table')).not.toBeVisible();
     await expect(outputPanel.locator('pre')).toContainText('layout_test');
-    await page.getByRole('button', { name: '对照', exact: true }).click();
+    await selectWorkspaceView(page, 'split');
     await expect(page.getByTestId('data-table')).toBeVisible();
     await expect(outputPanel).toBeVisible();
     const separator = page.getByRole('separator', { name: '调整设计与结果的高度' });
@@ -213,7 +223,7 @@ test('小窗口默认展示字段，切换视图后记住布局', async ({ page 
   const lastColumn = firstRow.locator('td').last();
   await expect(lastColumn).toBeInViewport();
   await page.locator('#table-name').fill('layout_preference');
-  await page.getByRole('button', { name: '对照', exact: true }).click();
+  await selectWorkspaceView(page, 'split');
   const editor = await page.getByTestId('design-panel').boundingBox();
   const output = await page.getByTestId('generated-results').boundingBox();
   if (!editor || !output) throw new Error('Both comparison panels must be visible');

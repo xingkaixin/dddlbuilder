@@ -13,6 +13,7 @@ import {
 
 interface TabBarProps {
   leadingAction?: ReactNode;
+  trailingAction?: ReactNode;
   tabs: WorkspaceTab[];
   activeTabId: string | null;
   onActivateTab: (id: string) => void;
@@ -92,7 +93,15 @@ const TabItem = memo(
 TabItem.displayName = 'TabItem';
 
 export const TabBar = memo(
-  ({ leadingAction, tabs, activeTabId, onActivateTab, onCloseTab, onCreateTab }: TabBarProps) => {
+  ({
+    leadingAction,
+    trailingAction,
+    tabs,
+    activeTabId,
+    onActivateTab,
+    onCloseTab,
+    onCreateTab,
+  }: TabBarProps) => {
     const { t } = useTranslation();
     const { visibleTabs, hiddenTabs } = useMemo(() => {
       if (tabs.length <= MAX_VISIBLE_TABS) {
@@ -105,9 +114,12 @@ export const TabBar = memo(
     }, [tabs]);
 
     return (
-      <div className="flex items-end gap-1 border-b bg-muted/20 px-2 pt-1">
+      <div
+        className="flex shrink-0 items-end gap-1 border-b bg-muted/20 px-2 pt-1"
+        data-testid="workspace-tab-bar"
+      >
         {leadingAction}
-        <div className="flex min-w-0 flex-1 items-end gap-1">
+        <div className="flex min-w-0 flex-1 items-end gap-1 overflow-x-auto">
           {visibleTabs.map((tab) => (
             <TabItem
               key={tab.id}
@@ -189,6 +201,7 @@ export const TabBar = memo(
             <Plus className="h-4 w-4" />
           </button>
         </div>
+        {trailingAction && <div className="mb-1 shrink-0 pl-2">{trailingAction}</div>}
       </div>
     );
   },

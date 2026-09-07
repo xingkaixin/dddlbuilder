@@ -1,3 +1,4 @@
+import { selectWorkspaceView } from '../utils';
 import { test, expect } from '@playwright/test';
 
 const SHARE_ID = '8c6afce1-2a39-47aa-a14f-f3450c3ad7dd';
@@ -35,7 +36,7 @@ test('含非法枚举元数据的旧分享仍能显示字段和 DDL @tools', asy
   await page.goto(`/share/${SHARE_ID}`);
   await expect(page.getByLabel('表名', { exact: true })).toHaveValue('shared_status');
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('枚举: 1(启用)');
-  await page.getByRole('button', { name: '对照', exact: true }).click();
+  await selectWorkspaceView(page, 'split');
   await expect(page.getByTestId('data-table').getByText('status', { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
