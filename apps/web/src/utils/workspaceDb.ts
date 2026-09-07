@@ -6,11 +6,12 @@ import {
 } from './workspaceScope';
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 16;
+export const DB_VERSION = 17;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
 export const FOLDER_STORE_NAME = 'table_folders';
+export const FIELD_STANDARD_STORE_NAME = 'field_standards';
 export const TEMPLATE_STORE_NAME = 'field_templates';
 export const TABLE_TEMPLATE_STORE_NAME = 'table_templates';
 export const WORKSPACE_GLOBAL_DRAFT_STORE_NAME = 'workspace_global_draft';
@@ -142,6 +143,9 @@ export const openDb = (): Promise<IDBDatabase> =>
           }
         }
 
+        if (!db.objectStoreNames.contains(FIELD_STANDARD_STORE_NAME)) {
+          db.createObjectStore(FIELD_STANDARD_STORE_NAME, { keyPath: 'id' });
+        }
         if (!db.objectStoreNames.contains(TEMPLATE_STORE_NAME)) {
           const store = db.createObjectStore(TEMPLATE_STORE_NAME, { keyPath: 'id' });
           store.createIndex('name', 'name', { unique: false });

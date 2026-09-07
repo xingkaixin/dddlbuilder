@@ -67,6 +67,7 @@ const EDITOR_SESSION_KEYS = [
 
 // order 不入库：顺序由 fieldOrder 数组表达，再存一份必然与之分叉。
 const FIELD_KEYS = [
+  'standardId',
   'fieldName',
   'fieldType',
   'fieldComment',
@@ -154,6 +155,7 @@ const readFieldRow = (
 
   return {
     id: fieldId,
+    ...(text('standardId') ? { standardId: text('standardId') } : {}),
     fieldName: text('fieldName') ?? '',
     fieldType: text('fieldType') ?? '',
     fieldComment: text('fieldComment') ?? '',

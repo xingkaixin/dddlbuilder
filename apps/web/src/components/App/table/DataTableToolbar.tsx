@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { FieldStandardsButton } from '../field-standards/FieldStandardsButton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -68,6 +69,7 @@ export function DataTableToolbar({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {toolbarLeft}
+          <FieldStandardsButton />
           {(onOpenAISchemaPatch || onGenerateComments || onOpenAIIndexAdvisor) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

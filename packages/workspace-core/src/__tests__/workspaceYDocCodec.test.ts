@@ -389,9 +389,10 @@ describe('workspace YDoc codec', () => {
   });
 });
 
-it('retains logical relationship metadata across workspace transport', () => {
+it('retains logical relationships and standard references across workspace transport', () => {
   const snapshot = createSnapshot();
   const state = snapshot.drafts[0].state;
+  state.rows[0].standardId = 'business-id';
   state.foreignKeys = [
     {
       id: 'logical',
@@ -415,6 +416,11 @@ it('retains logical relationship metadata across workspace transport', () => {
       (draft) => draft.draftId === snapshot.drafts[0].draftId,
     )?.state.foreignKeys,
   ).toEqual(state.foreignKeys);
+  expect(
+    exportWorkspaceYDocToSnapshot(replica).drafts.find(
+      (draft) => draft.draftId === snapshot.drafts[0].draftId,
+    )?.state.rows[0].standardId,
+  ).toBe('business-id');
   doc.destroy();
   replica.destroy();
 });

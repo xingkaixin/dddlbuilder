@@ -147,6 +147,7 @@ const decodeRows = (value: unknown): FieldRow[] => {
         `legacy-field-${index}`,
         usedIds,
       ),
+      ...(toOptionalText(row.standardId) ? { standardId: toOptionalText(row.standardId) } : {}),
       fieldName: toText(row.fieldName),
       fieldType: toText(row.fieldType),
       fieldComment: toText(row.fieldComment),

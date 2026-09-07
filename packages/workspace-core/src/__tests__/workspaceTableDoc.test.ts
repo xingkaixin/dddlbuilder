@@ -558,3 +558,18 @@ describe('workspace table doc key removals', () => {
     }
   });
 });
+
+it('removes standard references without reviving snapshot values during later edits', () => {
+  const doc = new Y.Doc();
+  const table = doc.getMap('table');
+  const state = createClientState();
+  state.rows[0].standardId = 'user-id';
+  applySchemaDocumentStateToTableDoc(table, state, { forceFineGrained: true });
+  expect(tableDocToSchemaDocumentState(table).rows[0].standardId).toBe('user-id');
+  const { standardId: _standardId, ...unlinked } = state.rows[0];
+  const next = { ...state, rows: [unlinked, ...state.rows.slice(1)] };
+  applySchemaDocumentStateToTableDoc(table, next);
+  applySchemaDocumentStateToTableDoc(table, { ...next, tableComment: 'Another edit' });
+  expect(tableDocToSchemaDocumentState(table).rows[0].standardId).toBeUndefined();
+  doc.destroy();
+});

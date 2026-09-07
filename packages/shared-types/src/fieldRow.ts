@@ -22,6 +22,7 @@ export type FieldOnUpdate = (typeof FIELD_ON_UPDATES)[number];
 export type FieldRow = {
   /** 创建时一次性分配、之后永不改变。CRDT 合并靠它对齐行，不能由内容或位置推导。 */
   id: string;
+  standardId?: string;
   fieldName: string;
   fieldType: string;
   fieldComment: string;

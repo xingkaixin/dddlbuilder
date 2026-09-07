@@ -106,6 +106,7 @@ const assertFieldMap = (tableDoc: Y.Map<unknown>, path: string) => {
     const field = readJsonMap(value);
     const fieldPath = `${path}.fields.${id}`;
     for (const key of [
+      'standardId',
       'fieldName',
       'fieldType',
       'fieldComment',
