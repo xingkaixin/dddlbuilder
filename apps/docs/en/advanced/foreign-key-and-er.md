@@ -2,6 +2,18 @@
 
 This guide explains how to design relational constraints and visualize schema architecture using DDLBuilder's **Foreign Key Configuration Panel** and **Interactive ER Diagram Canvas**.
 
+## Logical relationships without physical foreign keys
+
+Systems without physical foreign keys can document business associations. Save both tables to the workspace first.
+
+1. Drag from a source field handle to a target field handle in the ER diagram.
+2. Select **Logical relationship** in the wizard, confirm the fields, cardinality and optionality, and enter a business description.
+3. Select **Create relationship**. The target field does not need a primary or unique key.
+
+Logical relationships use dashed lines with cardinality and optionality labels. Hover over the label for the business description. The foreign key panel also identifies logical relationships. Delete a relationship from the diagram or panel; rename it in the panel.
+
+These relationships document intent without creating constraints or indexes or changing nullability. DDL, ORM, ALTER and rollback output exclude them. They persist with tables, version history, shares and workspace sync. Physical foreign key uniqueness and cascade restrictions below do not apply to logical relationships.
+
 ## Overview
 
 Establish referential integrity across domain entities (e.g., users, orders, departments, products), define cascading rules, and inspect the overall relational topology in an interactive canvas.

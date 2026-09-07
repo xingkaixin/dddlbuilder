@@ -37,9 +37,24 @@ Uncommitted edits derived from a Saved Table while preserving the Saved Table as
 _Avoid_: Saved draft
 
 **Table Relationship**:
-A dependency from one table's local fields to a referenced key. Its cardinality and optionality are
-derived from uniqueness and field nullability rather than stored independently.
+An association between local and referenced fields, represented as a Physical Foreign Key or a Logical Relationship.
 _Avoid_: ER edge, connector
+
+**Physical Foreign Key**:
+A Table Relationship enforced by the database. Its cardinality and optionality follow uniqueness and field nullability.
+_Avoid_: Logical constraint
+
+**Logical Relationship**:
+A documented business association with explicit cardinality, optionality, and an optional business description, independent of database constraints.
+_Avoid_: Virtual foreign key
+
+**Field Standard**:
+A named business definition with a unit and a prescribed field name, type, nullability, default, update strategy, and enumeration.
+_Avoid_: Field template
+
+**Standard Reference**:
+An explicit association between a table field and a Field Standard. Changes to the standard expose differences without automatically changing the field.
+_Avoid_: Synchronized copy
 
 **Trash Entry**:
 A soft-deleted Draft or Saved Table retained in the workspace document until it is restored or permanently deleted. The deletion timestamp is synchronized across devices.

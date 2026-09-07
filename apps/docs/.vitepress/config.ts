@@ -137,6 +137,7 @@ const zhSidebar = [
       { text: '外键配置与 ER 图', link: '/zh/advanced/foreign-key-and-er' },
       { text: 'ORM 模型生成', link: '/zh/advanced/orm-generation' },
       { text: '视图与 Routine 配置', link: '/zh/advanced/view-and-routine' },
+      { text: '字段标准库与业务词典', link: '/zh/advanced/field-standards' },
       { text: 'Schema 规范检查', link: '/zh/advanced/schema-lint' },
       { text: 'Mock 数据与逻辑枚举', link: '/zh/advanced/mock-data-and-enum' },
       { text: '表蓝图模板', link: '/zh/advanced/blueprint-templates' },
@@ -211,6 +212,7 @@ const enSidebar = [
         text: 'Schema Lint',
         link: '/en/advanced/schema-lint',
       },
+      { text: 'Field Standards', link: '/en/advanced/field-standards' },
       {
         text: 'Mock Data and Logical Enums',
         link: '/en/advanced/mock-data-and-enum',
@@ -268,6 +270,7 @@ const jaSidebar = [
       { text: '外部キーと ER 図', link: '/ja/advanced/foreign-key-and-er' },
       { text: 'ORM モデル生成', link: '/ja/advanced/orm-generation' },
       { text: 'ビューと Routine の設定', link: '/ja/advanced/view-and-routine' },
+      { text: 'フィールド標準ライブラリ', link: '/ja/advanced/field-standards' },
       { text: 'Schema Lint', link: '/ja/advanced/schema-lint' },
       { text: 'Mock データと論理列挙', link: '/ja/advanced/mock-data-and-enum' },
       { text: 'テーブル設計テンプレート', link: '/ja/advanced/blueprint-templates' },
