@@ -7,6 +7,7 @@ import { createEntityId, type PersistedState } from '@ddlbuilder/shared-types';
 import {
   listSavedTableMetadataFromYDoc,
   listTrashedSavedTableMetadataFromYDoc,
+  type WorkspaceYDocChange,
 } from '@/services/workspaceYDocAdapter';
 import { ensureSavedTableName, normalizeSavedTableName } from '@/utils/savedTablesDb';
 import type { SavedTableMetadata, SavedTableRecord } from '@/utils/workspaceStorageTypes';
@@ -46,10 +47,25 @@ const EMPTY_SAVED_TABLE_PROJECTION = {
   savedTables: EMPTY_SAVED_TABLES,
   trashedTables: EMPTY_SAVED_TABLES,
 };
-const readSavedTablesProjection = (doc: Y.Doc) => ({
-  savedTables: listSavedTableMetadataFromYDoc(doc),
-  trashedTables: listTrashedSavedTableMetadataFromYDoc(doc),
-});
+const readSavedTablesProjection = (
+  doc: Y.Doc,
+  previous?: typeof EMPTY_SAVED_TABLE_PROJECTION,
+  change?: WorkspaceYDocChange,
+) => {
+  const ids = change?.entityIds;
+  const unchanged = (tables: SavedTableSummary[]) =>
+    ids ? tables.filter((table) => !ids.has(table.tableId) && !ids.has(table.normalizedName)) : [];
+  return {
+    savedTables: [
+      ...unchanged(previous?.savedTables ?? []),
+      ...listSavedTableMetadataFromYDoc(doc, ids),
+    ],
+    trashedTables: [
+      ...unchanged(previous?.trashedTables ?? []),
+      ...listTrashedSavedTableMetadataFromYDoc(doc, ids),
+    ],
+  };
+};
 
 export function useSavedTables() {
   const { t } = useTranslation();

@@ -41,6 +41,7 @@ import {
   listWorkspaceFolders,
   listWorkspaceSavedDrafts,
   listWorkspaceSavedTables,
+  listWorkspaceSavedTableMetadata,
   listWorkspaceTrashedSavedTables,
   materializeWorkspaceYDoc,
   mergeWorkspaceSnapshotIntoYDoc,
@@ -173,23 +174,15 @@ export const listSavedTableRecordsFromYDoc = (doc: Y.Doc): SavedTableRecord[] =>
 export const listTrashedSavedTableRecordsFromYDoc = (doc: Y.Doc): SavedTableRecord[] =>
   listWorkspaceTrashedSavedTables(doc).map(toSavedTableRecord);
 
-const toSavedTableMetadata = (record: SavedTableRecord): SavedTableMetadata => ({
-  tableId: resolveSavedTableId(record),
-  normalizedName: record.normalizedName,
-  name: record.name,
-  dbType: record.state.dbType,
-  fieldCount: record.state.rows.filter((row) => row.fieldName.trim()).length,
-  folderId: record.folderId,
-  trashedAt: record.trashedAt,
-  createdAt: record.createdAt,
-  updatedAt: record.updatedAt,
-});
+export const listSavedTableMetadataFromYDoc = (
+  doc: Y.Doc,
+  entityIds?: ReadonlySet<string>,
+): SavedTableMetadata[] => listWorkspaceSavedTableMetadata(doc, false, entityIds);
 
-export const listSavedTableMetadataFromYDoc = (doc: Y.Doc): SavedTableMetadata[] =>
-  listSavedTableRecordsFromYDoc(doc).map(toSavedTableMetadata);
-
-export const listTrashedSavedTableMetadataFromYDoc = (doc: Y.Doc): SavedTableMetadata[] =>
-  listTrashedSavedTableRecordsFromYDoc(doc).map(toSavedTableMetadata);
+export const listTrashedSavedTableMetadataFromYDoc = (
+  doc: Y.Doc,
+  entityIds?: ReadonlySet<string>,
+): SavedTableMetadata[] => listWorkspaceSavedTableMetadata(doc, true, entityIds);
 
 export const upsertSavedDraftInYDoc = (
   doc: Y.Doc,

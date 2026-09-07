@@ -8,6 +8,7 @@ import {
   listDraftRecordsFromYDoc,
   listAllDraftRecordsFromYDoc,
   upsertDraftInYDoc,
+  type WorkspaceYDocChange,
 } from '@/services/workspaceYDocAdapter';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import {
@@ -31,6 +32,16 @@ import {
 
 const DRAFT_COLLECTIONS = ['drafts'] as const;
 const EMPTY_DRAFTS: DraftEntry[] = [];
+const readDraftProjection = (doc: Y.Doc, previous?: DraftEntry[], change?: WorkspaceYDocChange) => {
+  if (!previous || !change) return listAllDraftRecordsFromYDoc(doc);
+  const records = new Map(previous.map((entry) => [entry.draftId, entry]));
+  for (const draftId of change.entityIds) {
+    const record = getDraftRecordFromYDoc(doc, draftId);
+    if (record) records.set(draftId, { draftId, record });
+    else records.delete(draftId);
+  }
+  return [...records.values()];
+};
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   drafts.sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
 type UseDraftRecordsParams = {
@@ -51,7 +62,7 @@ export function useDraftRecords({
   const yDocDrafts = useWorkspaceYDocProjection(
     yDoc,
     DRAFT_COLLECTIONS,
-    listAllDraftRecordsFromYDoc,
+    readDraftProjection,
     EMPTY_DRAFTS,
   );
   const { draftSummaries, trashedDrafts } = useMemo(() => {

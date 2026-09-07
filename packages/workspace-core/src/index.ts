@@ -29,6 +29,7 @@ export {
   type WorkspaceYDocMessageHeader,
 } from './workspaceSyncProtocol';
 export { stableStringify } from './stableStringify';
+export { listWorkspaceSavedTableMetadata } from './workspaceSavedRecords';
 export {
   type ApplySchemaDocumentStateOptions,
   applySchemaDocumentStateToTableDoc,

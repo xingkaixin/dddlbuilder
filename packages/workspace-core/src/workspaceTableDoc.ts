@@ -323,19 +323,10 @@ export const normalizeSchemaDocumentState = (
   };
 };
 
-export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaDocumentState => {
-  const stateSnapshot = readStateSnapshot(tableDoc);
+const readTableRows = (tableDoc: Y.Map<unknown>, stateSnapshot: SchemaDocumentState | null) => {
   const snapshotRowsById = new Map((stateSnapshot?.rows ?? []).map((row) => [row.id, row]));
-  const state = {
-    ...stateSnapshot,
-    ...Object.fromEntries(
-      TABLE_SCALAR_KEYS.map((key) => [key, readMap(tableDoc, 'scalar')?.get(key)]).filter(
-        ([, value]) => value !== undefined,
-      ),
-    ),
-  } as Partial<SchemaDocumentState>;
   const fields = getFields(tableDoc);
-  const rows = !hasFieldDoc(tableDoc)
+  return !hasFieldDoc(tableDoc)
     ? (stateSnapshot?.rows ?? [])
     : fields
       ? getFieldOrder(tableDoc)
@@ -345,6 +336,31 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
           })
           .filter((row): row is FieldRow => row != null)
       : [];
+};
+
+export const tableDocToSchemaSummary = (tableDoc: Y.Map<unknown>) => {
+  const snapshot = readStateSnapshot(tableDoc);
+  const scalarDbType = readMap(tableDoc, 'scalar')?.get('dbType');
+  const dbType = scalarDbType === undefined ? snapshot?.dbType : scalarDbType;
+  return {
+    dbType: typeof dbType === 'string' ? dbType : 'mysql',
+    fieldCount: readTableRows(tableDoc, snapshot).filter(
+      (row) => typeof row.fieldName === 'string' && row.fieldName.trim(),
+    ).length,
+  };
+};
+
+export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaDocumentState => {
+  const stateSnapshot = readStateSnapshot(tableDoc);
+  const state = {
+    ...stateSnapshot,
+    ...Object.fromEntries(
+      TABLE_SCALAR_KEYS.map((key) => [key, readMap(tableDoc, 'scalar')?.get(key)]).filter(
+        ([, value]) => value !== undefined,
+      ),
+    ),
+  } as Partial<SchemaDocumentState>;
+  const rows = readTableRows(tableDoc, stateSnapshot);
   const indexes = decodeIndexFieldReferences(
     hasIndexDoc(tableDoc)
       ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')

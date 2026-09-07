@@ -12,12 +12,40 @@ import {
   applySchemaDocumentStateToTableDoc,
   normalizeSchemaDocumentState,
   tableDocToSchemaDocumentState,
+  tableDocToSchemaSummary,
 } from '../workspaceTableDoc';
 import { getWorkspaceRoot } from '../workspaceYDoc';
 import {
   exportWorkspaceYDocToSnapshot,
   importWorkspaceSnapshotToYDoc,
 } from '../workspaceYDocCodec';
+
+it.each([false, true])(
+  'reads summaries consistently with snapshot and field overlays (fine-grained: %s)',
+  (forceFineGrained) => {
+    const doc = new Y.Doc();
+    const table = doc.getMap('table');
+    const state = createClientState();
+    const check = () => {
+      const full = tableDocToSchemaDocumentState(table);
+      expect(tableDocToSchemaSummary(table)).toEqual({
+        dbType: full.dbType,
+        fieldCount: full.rows.filter((row) => row.fieldName.trim()).length,
+      });
+    };
+    applySchemaDocumentStateToTableDoc(table, state, { forceFineGrained });
+    check();
+    applySchemaDocumentStateToTableDoc(table, {
+      ...state,
+      dbType: 'postgresql',
+      rows: state.rows.map((row, index) => ({ ...row, fieldName: index ? ' ' : row.fieldName })),
+    });
+    check();
+    applySchemaDocumentStateToTableDoc(table, { ...state, rows: [] });
+    check();
+    doc.destroy();
+  },
+);
 
 // 复刻客户端 buildPersistedState 的形状：空集合以 undefined 表示，而不是省略键
 const createClientState = (overrides: Partial<PersistedState> = {}): PersistedState =>

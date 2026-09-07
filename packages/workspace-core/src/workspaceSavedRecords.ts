@@ -8,6 +8,7 @@ import {
 import {
   type ApplySchemaDocumentStateOptions,
   tableDocToSchemaDocumentState,
+  tableDocToSchemaSummary,
   tableMetadata,
 } from './workspaceTableDoc';
 import { getWorkspaceRoot, upsertTableRecord } from './workspaceYDoc';
@@ -55,7 +56,7 @@ const findSavedTableEntry = (doc: Y.Doc, target: SavedTableTarget) => {
   return entries[0];
 };
 
-const readSavedTableRecord = (key: string, tableDoc: Y.Map<unknown>): WorkspaceSavedTableRecord => {
+const readSavedTableMetadata = (key: string, tableDoc: Y.Map<unknown>) => {
   const metadata = tableMetadata(tableDoc);
   const normalizedName = savedTableName(key, tableDoc);
   const updatedAt = readWorkspaceTimestamp(metadata.updatedAt);
@@ -63,13 +64,40 @@ const readSavedTableRecord = (key: string, tableDoc: Y.Map<unknown>): WorkspaceS
     tableId: savedTableId(key, tableDoc),
     normalizedName,
     name: typeof metadata.name === 'string' ? metadata.name : normalizedName,
-    state: tableDocToSchemaDocumentState(tableDoc),
     createdAt: readWorkspaceCreatedAt(metadata.createdAt, updatedAt),
     updatedAt,
     ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),
     ...(typeof metadata.trashedAt === 'number' ? { trashedAt: metadata.trashedAt } : {}),
   };
 };
+
+const readSavedTableRecord = (
+  key: string,
+  tableDoc: Y.Map<unknown>,
+): WorkspaceSavedTableRecord => ({
+  ...readSavedTableMetadata(key, tableDoc),
+  state: tableDocToSchemaDocumentState(tableDoc),
+});
+
+export const listWorkspaceSavedTableMetadata = (
+  doc: Y.Doc,
+  trashed: boolean,
+  entityIds?: ReadonlySet<string>,
+) =>
+  Array.from(getWorkspaceRoot(doc).savedTables.entries()).flatMap(([key, tableDoc]) => {
+    const metadata = readSavedTableMetadata(key, tableDoc);
+    if ((metadata.trashedAt != null) !== trashed) return [];
+    if (entityIds && !entityIds.has(metadata.tableId) && !entityIds.has(metadata.normalizedName))
+      return [];
+    return [
+      {
+        ...metadata,
+        folderId: metadata.folderId,
+        trashedAt: metadata.trashedAt,
+        ...tableDocToSchemaSummary(tableDoc),
+      },
+    ];
+  });
 
 const savedTableMetadata = (record: WorkspaceSavedTableRecord) => ({
   tableId: record.tableId,
