@@ -68,7 +68,7 @@ const providerField = Schema.Struct({
   }),
 );
 
-const providerTable = Schema.Struct({
+export const GeneratedTableProviderSchema = Schema.Struct({
   ...GeneratedTableSchema.fields,
   fields: Schema.Array(providerField).pipe(Schema.mutable),
   designDecisions: Schema.optional(Schema.Unknown),
@@ -87,6 +87,8 @@ const providerTable = Schema.Struct({
 export const isGeneratedField = Schema.is(GeneratedFieldSchema);
 export const isGeneratedIndex = Schema.is(GeneratedIndexSchema);
 export const isGeneratedDesignDecision = Schema.is(GeneratedDesignDecisionSchema);
-export const decodeGeneratedTable = Schema.decodeUnknownSync(Schema.fromJsonString(providerTable));
+export const decodeGeneratedTable = Schema.decodeUnknownSync(
+  Schema.fromJsonString(GeneratedTableProviderSchema),
+);
 
 export * from './aiContracts.js';

@@ -1,3 +1,4 @@
+import { AIIndexAdvisorProviderResultSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { decodeAIRequest } from '../lib/aiRequest.js';
 import {
   AIIndexAdvisorRequestSchema,
@@ -52,6 +53,7 @@ export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
       c,
       {
         route: 'index-advisor',
+        outputSchema: AIIndexAdvisorProviderResultSchema,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         bodyMaxBytes: MAX_REQUEST_BYTES,
         buildMessages,

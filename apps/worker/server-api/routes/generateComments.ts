@@ -1,3 +1,4 @@
+import { AICommentResultSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { decodeAIRequest } from '../lib/aiRequest.js';
 import {
   AICommentRequestSchema,
@@ -43,6 +44,7 @@ export function registerGenerateCommentsRoute(app: Hono<ApiEnv>) {
       c,
       {
         route: 'generate-comments',
+        outputSchema: AICommentResultSchema,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         bodyMaxBytes: REQUEST_BODY_MAX_BYTES,
         buildMessages,

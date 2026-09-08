@@ -7,6 +7,7 @@ import * as Layer from 'effect/Layer';
 import * as Result from 'effect/Result';
 import * as Cause from 'effect/Cause';
 import * as Stream from 'effect/Stream';
+import * as Schema from 'effect/Schema';
 import { AIConfiguration, AIProvider, AIUsage } from './aiServices.js';
 import {
   AIProviderError,
@@ -98,6 +99,7 @@ export type AICompletionInput = {
 export type AIRouteSpec<Request> = {
   route: AIRouteKey;
   maxOutputTokens: number;
+  outputSchema?: Schema.ConstraintDecoder<unknown>;
   bodyMaxBytes: number;
   /** 返回 rejection 表示请求体不合法。 */
   parseRequest: (body: Record<string, unknown>) => Request | AIRequestRejection;
@@ -125,6 +127,13 @@ export const aiGovernance = <Request, E>(
       const clock = yield* Clock.Clock;
       const startedAt = clock.currentTimeMillisUnsafe();
       const executionContext = yield* Effect.context();
+      const validateOutput = (value: unknown) =>
+        spec.outputSchema
+          ? Schema.decodeUnknownEffect(spec.outputSchema)(value).pipe(
+              Effect.mapError((cause) => new AIOutputError({ reason: 'invalid-schema', cause })),
+              Effect.as(value),
+            )
+          : Effect.succeed(value);
       const governance = getOpenAIGovernanceSnapshot(route, config);
       const waitUntil = c.executionCtx.waitUntil.bind(c.executionCtx);
 
@@ -585,6 +594,7 @@ export const aiGovernance = <Request, E>(
             const choice = response.choices[0];
             const content = choice?.message?.content ?? '';
             return yield* readCompletedContent(content, choice?.finish_reason, true).pipe(
+              Effect.flatMap(validateOutput),
               Effect.tapError((error) =>
                 Effect.sync(() => {
                   getRequestLogger(c)?.error(toWorkerError(error, 'Completion validation failed'), {
@@ -668,7 +678,12 @@ export const aiGovernance = <Request, E>(
                   ),
                 );
                 yield* checkAborted;
-                yield* readCompletedContent(fullText, finishReason, Boolean(jsonResponse));
+                const completed = yield* readCompletedContent(
+                  fullText,
+                  finishReason,
+                  Boolean(jsonResponse),
+                );
+                yield* validateOutput(completed);
                 streamDebug.complete();
               });
               const task = Effect.runPromise(

@@ -1,3 +1,4 @@
+import { ddlReviewProviderSchema } from '@ddlbuilder/shared-types/ddl-review';
 import { decodeAIRequest } from '../lib/aiRequest.js';
 import { AIReviewRequestSchema, type AIReviewRequest } from '@ddlbuilder/shared-types/ai-generate';
 import * as Effect from 'effect/Effect';
@@ -20,6 +21,7 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
       c,
       {
         route: 'review',
+        outputSchema: ddlReviewProviderSchema(''),
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         bodyMaxBytes: REQUEST_BODY_MAX_BYTES,
         buildMessages,

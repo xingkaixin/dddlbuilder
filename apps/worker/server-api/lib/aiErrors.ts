@@ -13,7 +13,7 @@ export class AIUsageError extends Data.TaggedError('AIUsageError')<{
 }
 
 export class AIOutputError extends Data.TaggedError('AIOutputError')<{
-  readonly reason: 'truncated' | 'incomplete' | 'empty' | 'invalid-json';
+  readonly reason: 'truncated' | 'incomplete' | 'empty' | 'invalid-json' | 'invalid-schema';
   readonly cause?: unknown;
 }> {
   get message() {

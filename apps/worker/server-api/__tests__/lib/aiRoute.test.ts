@@ -1,4 +1,5 @@
 import * as Effect from 'effect/Effect';
+import { GeneratedTableProviderSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import type { ApiEnv } from '../../lib/context.js';
@@ -306,6 +307,65 @@ describe('withAIGovernance', () => {
       expect.any(String),
     );
   });
+
+  it.each([false, true])(
+    'rejects a structurally invalid completion before success, stream=%s',
+    async (streamed) => {
+      async function* upstream() {
+        yield { choices: [{ delta: { content: '{}' }, finish_reason: 'stop' }] };
+        yield { choices: [], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
+      }
+      const shell = await loadShell({}, '{}', streamed ? upstream() : undefined);
+      const waitUntil = vi.fn();
+      const app = new Hono<ApiEnv>();
+      app.post('/t', (c) =>
+        shell.withAIGovernance(
+          c,
+          {
+            ...spec,
+            outputSchema: GeneratedTableProviderSchema,
+            parseRequest: (body) => body,
+          },
+          (session) =>
+            streamed
+              ? session.streamCompletion({
+                  scope: 'test',
+                  temperature: 0,
+                  jsonResponse: true,
+                  debugInput: {},
+                })
+              : session
+                  .completeJson({ scope: 'test', temperature: 0 })
+                  .pipe(Effect.map((value) => c.json(value))),
+        ),
+      );
+      const response = await post(app, {}, waitUntil);
+      if (streamed) {
+        const events = (await response.text())
+          .trim()
+          .split('\n')
+          .map((line) => JSON.parse(line));
+        expect(events.map((event) => event.type)).toEqual(['delta', 'error']);
+      } else {
+        expect(response.status).toBe(502);
+      }
+      await Promise.all(waitUntil.mock.calls.map(([task]) => task));
+      expect(shell.prepareAIUsageSettlement).toHaveBeenCalledTimes(1);
+      expect(shell.prepareAIUsageSettlement).toHaveBeenCalledWith(
+        expect.anything(),
+        RESERVATION,
+        'failed',
+        {
+          observedTotalTokens: 15,
+          chargedTokens: 15,
+          providerBudgetTokens: 15,
+          usageEstimated: false,
+        },
+        expect.any(String),
+      );
+      expect(shell.createCompletion).toHaveBeenCalledOnce();
+    },
+  );
 
   it('protects the stream lifetime before upstream usage arrives and after cancellation', async () => {
     let resume!: () => void;

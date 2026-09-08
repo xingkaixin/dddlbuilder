@@ -1,3 +1,4 @@
+import { GeneratedTableProviderSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { decodeAIRequest } from '../lib/aiRequest.js';
 import {
   AIGenerateTableRequestSchema,
@@ -44,6 +45,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       c,
       {
         route: 'generate-table',
+        outputSchema: GeneratedTableProviderSchema,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         bodyMaxBytes: REQUEST_BODY_MAX_BYTES,
         buildMessages,
