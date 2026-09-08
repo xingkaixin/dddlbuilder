@@ -1,3 +1,4 @@
+import * as D1Client from '@effect/sql-d1/D1Client';
 import * as Effect from 'effect/Effect';
 import { completeAIUsage } from '../helpers/aiUsageSettlement.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -53,7 +54,13 @@ describe('reclaimStaleAIUsage with SQLite timestamps', () => {
         const boundary = await reserve('boundary', ttlMs);
         await reserve('stale', ttlMs + 1000);
 
-        expect(await Effect.runPromise(reclaimStaleAIUsage(env, { now, ttlMs }))).toEqual({
+        expect(
+          await Effect.runPromise(
+            reclaimStaleAIUsage(env, { now, ttlMs }).pipe(
+              Effect.provide(D1Client.layer({ db: env.USER_DB })),
+            ),
+          ),
+        ).toEqual({
           scanned: 1,
           reclaimed: 1,
           failures: [],
@@ -108,12 +115,20 @@ describe('legacy usage recovery', () => {
           status = ?, actual_total_tokens = ?, charged_tokens = NULL,
           attempt_count = NULL, usage_is_estimated = NULL, created_at = 1`)
         .run(status, actual);
-      expect(await Effect.runPromise(reclaimStaleAIUsage(f.env))).toEqual({
+      expect(
+        await Effect.runPromise(
+          reclaimStaleAIUsage(f.env).pipe(Effect.provide(D1Client.layer({ db: f.env.USER_DB }))),
+        ),
+      ).toEqual({
         scanned: 1,
         reclaimed: 1,
         failures: [],
       });
-      expect(await Effect.runPromise(reclaimStaleAIUsage(f.env))).toEqual({
+      expect(
+        await Effect.runPromise(
+          reclaimStaleAIUsage(f.env).pipe(Effect.provide(D1Client.layer({ db: f.env.USER_DB }))),
+        ),
+      ).toEqual({
         scanned: 0,
         reclaimed: 0,
         failures: [],
@@ -130,7 +145,9 @@ describe('legacy usage recovery', () => {
       f.sqlite.exec(
         "INSERT INTO usage_events (id,user_id,route_key,request_id,estimated_tokens,status,created_at) VALUES ('legacy','user-1','explain','r',100,'pending',1)",
       );
-      await Effect.runPromise(reclaimStaleAIUsage(f.env));
+      await Effect.runPromise(
+        reclaimStaleAIUsage(f.env).pipe(Effect.provide(D1Client.layer({ db: f.env.USER_DB }))),
+      );
       expect(await f.balance()).toBe(1000);
     } finally {
       f.sqlite.close();
@@ -172,17 +189,25 @@ describe('legacy usage recovery', () => {
       ) VALUES ('recoverable', 'user-1', 'explain', 'recoverable-request', 1, 0, 0, 0, 'pending', 1)`);
       f.sqlite.exec('COMMIT');
 
-      const first = await Effect.runPromise(reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0 }));
+      const first = await Effect.runPromise(
+        reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0 }).pipe(
+          Effect.provide(D1Client.layer({ db: f.env.USER_DB })),
+        ),
+      );
       expect(first).toMatchObject({ scanned: 200, reclaimed: 0 });
       expect(first.failures).toHaveLength(200);
 
-      expect(await Effect.runPromise(reclaimStaleAIUsage(f.env, { now: 1_001, ttlMs: 0 }))).toEqual(
-        {
-          scanned: 1,
-          reclaimed: 1,
-          failures: [],
-        },
-      );
+      expect(
+        await Effect.runPromise(
+          reclaimStaleAIUsage(f.env, { now: 1_001, ttlMs: 0 }).pipe(
+            Effect.provide(D1Client.layer({ db: f.env.USER_DB })),
+          ),
+        ),
+      ).toEqual({
+        scanned: 1,
+        reclaimed: 1,
+        failures: [],
+      });
       expect(
         f.sqlite.prepare("SELECT status FROM usage_events WHERE id = 'recoverable'").get(),
       ).toEqual({ status: 'failed' });
@@ -210,7 +235,11 @@ describe('legacy usage recovery', () => {
         .run(fresh.usageEventId);
 
       expect(
-        await Effect.runPromise(reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0, limit: 1 })),
+        await Effect.runPromise(
+          reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0, limit: 1 }).pipe(
+            Effect.provide(D1Client.layer({ db: f.env.USER_DB })),
+          ),
+        ),
       ).toEqual({
         scanned: 1,
         reclaimed: 1,
@@ -247,7 +276,9 @@ describe('recovery failure isolation', () => {
         BEGIN SELECT RAISE(ABORT, 'RECOVERY_WRITE_FAILED'); END`);
 
         const result = await Effect.runPromise(
-          reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0 }),
+          reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0 }).pipe(
+            Effect.provide(D1Client.layer({ db: f.env.USER_DB })),
+          ),
         );
         expect(result).toMatchObject({ scanned: 2, reclaimed: 1 });
         expect(result.failures).toHaveLength(1);

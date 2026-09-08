@@ -1,3 +1,4 @@
+import * as D1Client from '@effect/sql-d1/D1Client';
 import * as Effect from 'effect/Effect';
 import { failAIUsage } from '../helpers/aiUsageSettlement.js';
 import { describe, expect, it, vi } from 'vitest';
@@ -84,7 +85,9 @@ describe('AI settlement regressions', () => {
         .prepare('UPDATE usage_events SET status = ?, created_at = 1 WHERE id = ?')
         .run(status, reservation.usageEventId);
       if (status === 'reserved') await recordAIUsageAttempt(env, reservation);
-      await Effect.runPromise(reclaimStaleAIUsage(env));
+      await Effect.runPromise(
+        reclaimStaleAIUsage(env).pipe(Effect.provide(D1Client.layer({ db: env.USER_DB }))),
+      );
       const balance = (await getCreditAccount(env, 'user-1'))?.balance;
       expect(balance).toBe(status === 'reserved' ? 900 : 1000);
     } finally {

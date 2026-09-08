@@ -1,3 +1,4 @@
+import * as D1Client from '@effect/sql-d1/D1Client';
 import * as Effect from 'effect/Effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
@@ -149,7 +150,11 @@ describe('AI client cancellation accounting', () => {
         provider_budget_tokens: expectedCharge,
       });
       expect(
-        await Effect.runPromise(reclaimStaleAIUsage(env, { now: Date.now() + 16 * 60_000 })),
+        await Effect.runPromise(
+          reclaimStaleAIUsage(env, { now: Date.now() + 16 * 60_000 }).pipe(
+            Effect.provide(D1Client.layer({ db: env.USER_DB })),
+          ),
+        ),
       ).toEqual({
         scanned: 0,
         reclaimed: 0,

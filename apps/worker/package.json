@@ -18,6 +18,7 @@
     "@ddlbuilder/shared-types": "workspace:*",
     "@ddlbuilder/user-db": "workspace:*",
     "@ddlbuilder/workspace-core": "workspace:*",
+    "@effect/sql-d1": "4.0.0-rc.112",
     "better-auth": "^1.7.2",
     "drizzle-orm": "^0.45.2",
     "effect": "4.0.0-rc.112",

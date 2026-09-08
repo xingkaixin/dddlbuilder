@@ -46,6 +46,7 @@
 - DDL 审查的类型由 `ddlReview.ts` 的 Schema 推导，兼容归一化通过 Schema 转换进入输出契约。`AIRouteSpec.outputSchema` 在完成状态检查后、成功结算及发送 `done` 前校验输出；校验失败保留真实上游消耗。
 - `AIRequestAccess` 按请求提供鉴权、限流和预算预留适配，基础设施失败使用 `AIGovernanceError`；`OpenAISettings` 通过 ConfigProvider 从当前 Worker bindings 加载，保留原配置容错规则。
 - `aiTracing.ts` 将 Effect span 桥接到 Worker 原生 tracing，并按 fiber 恢复异步上下文。AI 根 span 必须覆盖流消费和结算，不能随 Response 返回而结束。属性只能通过白名单输出；生产采样沿用 Wrangler 配置。查询方式见 `apps/worker/OBSERVABILITY.md`。
+- 定时用量回收返回 Effect，Worker Cron 入口提供按任务创建的 `@effect/sql-d1` Layer，并将完整执行交给 `waitUntil`。回收扫描、状态查询和延期写入使用 SQL client；余额结算继续使用原生 D1 batch、触发器和持久化幂等机制。单条失败不能中断后续回收，延期失败保留原始结算错误。
 - 时间相关的 Effect 测试使用 `effect/testing/TestClock`；服务替换使用 Layer。保留真实 D1、SDK 流和取消计费集成测试来验证适配层行为。
 
 ## 验证

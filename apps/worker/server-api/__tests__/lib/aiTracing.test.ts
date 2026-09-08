@@ -1,3 +1,7 @@
+import * as D1Client from '@effect/sql-d1/D1Client';
+import { createSqliteD1Database } from '../helpers/sqliteD1.js';
+import { reclaimStaleAIUsage } from '../../lib/aiUsage.js';
+import type { ApiEnv } from '../../lib/context.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import * as Effect from 'effect/Effect';
 import * as Tracer from 'effect/Tracer';
@@ -107,4 +111,32 @@ describe('Effect to Worker tracing', () => {
       ),
     ).toBe(42);
   });
+});
+
+it('keeps D1 failure causes while excluding SQL from native recovery spans', async () => {
+  const { database, sqlite } = createSqliteD1Database();
+  const { platform, spans } = recordingPlatform();
+  try {
+    sqlite.exec('DROP TABLE usage_events');
+    const result = await Effect.runPromise(
+      reclaimStaleAIUsage({ USER_DB: database } as ApiEnv['Bindings']).pipe(
+        Effect.provide(D1Client.layer({ db: database })),
+        Effect.provideService(Tracer.Tracer, makeAITracer(platform)),
+        Effect.result,
+      ),
+    );
+    expect(result).toMatchObject({
+      _tag: 'Failure',
+      failure: { _tag: 'SqlError', reason: { cause: expect.any(Error) } },
+    });
+    const query = spans.find((span) => span.name === 'sql.execute');
+    expect(query?.parent).toBe('ai.usage.reclaim.scan');
+    expect(Object.fromEntries(query?.attributes ?? [])).toEqual({
+      'ai.outcome': 'failed',
+      'ai.failure_kind': 'accounting',
+    });
+    for (const span of spans) expect(span.end).toHaveBeenCalledOnce();
+  } finally {
+    sqlite.close();
+  }
 });

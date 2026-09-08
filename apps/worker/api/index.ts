@@ -1,3 +1,4 @@
+import * as D1Client from '@effect/sql-d1/D1Client';
 import * as Effect from 'effect/Effect';
 import * as Tracer from 'effect/Tracer';
 import { makeAITracer } from '../server-api/lib/aiTracing.js';
@@ -166,7 +167,10 @@ export const runAIUsageRecovery = async (
       }).pipe(Effect.uninterruptible, Effect.withSpan('ai.governance.cleanup'));
       if (recovery.failures.length > 0) yield* Effect.annotateCurrentSpan('ai.outcome', 'failed');
       return { ...recovery, reconciledBudgets };
-    }).pipe(Effect.withSpan('ai.usage.recovery'));
+    }).pipe(
+      Effect.withSpan('ai.usage.recovery'),
+      Effect.provide(D1Client.layer({ db: env.USER_DB })),
+    );
     const { scanned, reclaimed, failures, reconciledBudgets } = await Effect.runPromise(
       tracing ? program.pipe(Effect.provideService(Tracer.Tracer, makeAITracer(tracing))) : program,
     );

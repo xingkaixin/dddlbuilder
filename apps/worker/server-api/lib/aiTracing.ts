@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import { isSqlError } from 'effect/unstable/sql/SqlError';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import * as Cause from 'effect/Cause';
 import * as Clock from 'effect/Clock';
@@ -119,7 +120,7 @@ export const endAIRequestSpan = (span: Tracer.Span, exit: Exit.Exit<unknown, unk
 export const aiFailureKind = (error: unknown): string => {
   if (error instanceof DomainError) return error.status < 500 ? 'rejected' : 'governance';
   if (error instanceof AIOutputError) return `output_${error.reason}`;
-  if (error instanceof AIUsageError) return 'accounting';
+  if (error instanceof AIUsageError || isSqlError(error)) return 'accounting';
   if (error instanceof AIGovernanceError) return error.phase;
   if (error instanceof AIProviderError) {
     if (error.cause instanceof Error && error.cause.name === 'TimeoutError') return 'timeout';

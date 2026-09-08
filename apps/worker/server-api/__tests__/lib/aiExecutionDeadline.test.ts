@@ -1,3 +1,4 @@
+import * as D1Client from '@effect/sql-d1/D1Client';
 import * as Effect from 'effect/Effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
@@ -133,7 +134,11 @@ describe('AI execution deadline with the real OpenAI stream reader', () => {
     expect(usage).toMatchObject({ status: 'failed', attempt_count: 1 });
     expect(usage?.charged_tokens).toBe(usage?.estimated_tokens);
     expect(
-      await Effect.runPromise(reclaimStaleAIUsage(env, { now: Date.now() + 16 * 60_000 })),
+      await Effect.runPromise(
+        reclaimStaleAIUsage(env, { now: Date.now() + 16 * 60_000 }).pipe(
+          Effect.provide(D1Client.layer({ db: env.USER_DB })),
+        ),
+      ),
     ).toEqual({
       scanned: 0,
       reclaimed: 0,

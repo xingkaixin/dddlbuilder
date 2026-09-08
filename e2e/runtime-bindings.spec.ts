@@ -60,6 +60,44 @@ test.describe('Cloudflare runtime bindings', () => {
     });
   });
 
+  test('runs Effect D1 recovery in a scheduled Worker', async ({ request }) => {
+    const response = await request.get('/cdn-cgi/local/scheduled?format=json');
+    expect(response.ok(), await response.text()).toBe(true);
+    expect(await response.json()).toMatchObject({ outcome: 'ok' });
+    const sql = `WITH RECURSIVE recovery AS (
+      SELECT name, span_id, parent_id, attributes FROM spans WHERE name = 'ai.usage.recovery'
+      UNION ALL
+      SELECT s.name, s.span_id, s.parent_id, s.attributes FROM spans s
+      JOIN recovery r ON s.parent_id = r.span_id
+    ) SELECT name, span_id, parent_id, json(attributes) FROM recovery`;
+    let rows: string[][] = [];
+    await expect
+      .poll(async () => {
+        const query = await request.post('/cdn-cgi/local/explorer/api/local/observability/query', {
+          data: { sql },
+        });
+        expect(query.ok()).toBe(true);
+        const payload = await query.json();
+        expect(payload.success).toBe(true);
+        rows = payload.result.rows;
+        return rows.map((row) => row[0]);
+      })
+      .toEqual(
+        expect.arrayContaining([
+          'ai.usage.recovery',
+          'ai.usage.reclaim.scan',
+          'sql.execute',
+          'ai.budget.reconcile',
+          'ai.governance.cleanup',
+        ]),
+      );
+    const scan = rows.find((row) => row[0] === 'ai.usage.reclaim.scan');
+    const query = rows.find((row) => row[0] === 'sql.execute' && row[2] === scan?.[1]);
+    if (!query) throw new Error('Missing recovery SQL span');
+    expect(JSON.parse(query[3])).toMatchObject({ 'ai.outcome': 'succeeded' });
+    expect(JSON.parse(query[3])).not.toHaveProperty('db.query.text');
+  });
+
   test('revokes an established workspace socket after sign-out', async ({ context, page }) => {
     const email = `socket-${crypto.randomUUID()}@ddlbuilder.test`;
     const password = 'Runtime-integration-123!';

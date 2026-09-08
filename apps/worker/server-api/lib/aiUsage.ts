@@ -1,3 +1,4 @@
+import * as D1Client from '@effect/sql-d1/D1Client';
 import * as Effect from 'effect/Effect';
 import * as Clock from 'effect/Clock';
 import { AIUsageError } from './aiErrors.js';
@@ -487,9 +488,6 @@ const getRecoveredProviderBudget = (
   );
 };
 
-const recoveryOperation = <A>(operation: () => Promise<A>) =>
-  Effect.tryPromise({ try: operation, catch: (cause) => new AIUsageError({ cause }) });
-
 export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
   env: ApiEnv['Bindings'],
   options: { now?: number; ttlMs?: number; limit?: number } = {},
@@ -497,8 +495,8 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
   const ttlMs = options.ttlMs ?? getAIUsageReclaimTtlMs(buildOpenAIConfig(env));
   const now = options.now ?? (yield* Clock.currentTimeMillis);
   const cutoff = now - ttlMs;
-  const stale = yield* recoveryOperation(() =>
-    env.USER_DB.prepare(`
+  const sql = yield* D1Client.D1Client;
+  const stale = yield* sql<StaleUsageRow>`
     SELECT id, user_id AS userId, route_key AS routeKey, request_id AS requestId,
       estimated_tokens AS estimatedTokens, actual_total_tokens AS actualTotalTokens,
       charged_tokens AS chargedTokens, attempt_count AS attemptCount,
@@ -511,37 +509,30 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
           AND idempotency_key = usage_events.id || ':reserve'
       ) AS hasReservationLedger
     FROM usage_events
-    WHERE status IN (${RECLAIMABLE_STATUSES.map(() => '?').join(', ')})
-      AND (recovery_after IS NULL OR recovery_after <= ?)
+    WHERE ${sql.in('status', RECLAIMABLE_STATUSES)}
+      AND (recovery_after IS NULL OR recovery_after <= ${now})
       AND (
         status IN ('settling_succeeded', 'settling_failed')
-        OR created_at < ?
+        OR created_at < ${cutoff}
       )
     ORDER BY
       CASE
         WHEN recovery_after IS NOT NULL THEN recovery_after
         WHEN status IN ('settling_succeeded', 'settling_failed') THEN created_at
-        ELSE created_at + ?
+        ELSE created_at + ${ttlMs}
       END,
       created_at,
       id
-    LIMIT ?
-  `)
-      .bind(...RECLAIMABLE_STATUSES, now, cutoff, ttlMs, options.limit ?? 200)
-      .all<StaleUsageRow>(),
-  ).pipe(Effect.withSpan('ai.usage.reclaim.scan'));
+    LIMIT ${options.limit ?? 200}
+  `.pipe(Effect.withSpan('ai.usage.reclaim.scan'));
   let reclaimed = 0;
   const failures: Array<{ usageEventId: string; error: unknown }> = [];
   const deferRecovery = (usageEventId: string) =>
-    recoveryOperation(() =>
-      env.USER_DB.prepare(`
-      UPDATE usage_events SET recovery_after = ?
-      WHERE id = ? AND status IN (${RECLAIMABLE_STATUSES.map(() => '?').join(', ')})
-    `)
-        .bind(now + AI_USAGE_RECOVERY_RETRY_DELAY_MS, usageEventId, ...RECLAIMABLE_STATUSES)
-        .run(),
-    ).pipe(Effect.uninterruptible, Effect.withSpan('ai.usage.reclaim.defer'));
-  for (const row of stale.results) {
+    sql`
+      UPDATE usage_events SET recovery_after = ${now + AI_USAGE_RECOVERY_RETRY_DELAY_MS}
+      WHERE id = ${usageEventId} AND ${sql.in('status', RECLAIMABLE_STATUSES)}
+    `.pipe(Effect.uninterruptible, Effect.withSpan('ai.usage.reclaim.defer'));
+  for (const row of stale) {
     const result = yield* Effect.gen(function* () {
       if (!Object.hasOwn(ROUTE_SOURCES, row.routeKey)) {
         return yield* new AIUsageError({ cause: new Error('UNKNOWN_AI_ROUTE') });
@@ -560,34 +551,34 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
               row.actualTotalTokens === null ||
               row.actualTotalTokens !== chargedTokens
           : row.usageEstimated === 1;
-      const changed = yield* recoveryOperation(() =>
-        settleUsage(
-          env,
-          {
-            usageEventId: row.id,
-            userId: row.userId,
-            routeKey: row.routeKey,
-            requestId: row.requestId,
-            reservedTokens: row.estimatedTokens,
-          },
-          succeeded ? 'succeeded' : 'failed',
-          {
-            observedTotalTokens:
-              row.actualTotalTokens ?? (attemptCount === 0 && chargedTokens === 0 ? 0 : null),
-            chargedTokens,
-            providerBudgetTokens,
-            usageEstimated,
-          },
-          succeeded ? null : (row.errorCode ?? 'RESERVATION_ABANDONED'),
-          row.status,
-        ),
-      ).pipe(Effect.uninterruptible, Effect.withSpan('ai.usage.reclaim.settle'));
+      const changed = yield* Effect.tryPromise({
+        try: () =>
+          settleUsage(
+            env,
+            {
+              usageEventId: row.id,
+              userId: row.userId,
+              routeKey: row.routeKey,
+              requestId: row.requestId,
+              reservedTokens: row.estimatedTokens,
+            },
+            succeeded ? 'succeeded' : 'failed',
+            {
+              observedTotalTokens:
+                row.actualTotalTokens ?? (attemptCount === 0 && chargedTokens === 0 ? 0 : null),
+              chargedTokens,
+              providerBudgetTokens,
+              usageEstimated,
+            },
+            succeeded ? null : (row.errorCode ?? 'RESERVATION_ABANDONED'),
+            row.status,
+          ),
+        catch: (cause) => new AIUsageError({ cause }),
+      }).pipe(Effect.uninterruptible, Effect.withSpan('ai.usage.reclaim.settle'));
       if (!changed) {
-        const current = yield* recoveryOperation(() =>
-          env.USER_DB.prepare('SELECT status FROM usage_events WHERE id = ? AND user_id = ?')
-            .bind(row.id, row.userId)
-            .first<{ status: string }>(),
-        );
+        const [current] = yield* sql<{ status: string }>`
+          SELECT status FROM usage_events WHERE id = ${row.id} AND user_id = ${row.userId}
+        `;
         if (current && isTerminalAIUsageStatus(current.status)) return false;
         return yield* new AIUsageError({ cause: new Error('AI_USAGE_SETTLEMENT_INCOMPLETE') });
       }
@@ -609,5 +600,5 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
           : result.failure,
     });
   }
-  return { scanned: stale.results.length, reclaimed, failures };
+  return { scanned: stale.length, reclaimed, failures };
 });
