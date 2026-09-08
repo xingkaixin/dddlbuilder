@@ -41,6 +41,9 @@
 - 结算通过 `onExit` 执行，保留数据库中的幂等、结算意图和回收机制；Effect finalizer 不能替代持久化恢复。AI JSON 输出使用 `aiCompletion.ts` 的 Schema 解码。
 - AI 请求及注释、索引建议的输出契约定义在 `packages/shared-types/src/aiContracts.ts`，类型从 Schema 推导。Worker 使用 `aiRequest.ts` 将请求解码错误映射为现有 API 错误码；前端复用共享输出解码器。字段引用、建议编号和按请求补齐注释等业务规则保留在 Worker。
 - NDJSON 事件使用 `aiStream.ts` 的共享编解码器；事件 Schema 只校验单帧，终止顺序、字节分片和取消由流读取器负责。生成表结构使用 `aiGenerate.ts` 的 Schema 校验完整结果，预览复用条目守卫；字段身份和方言规则留在业务层。
+- DDL 审查的类型由 `ddlReview.ts` 的 Schema 推导，兼容归一化通过 Schema 转换进入输出契约。`AIRouteSpec.outputSchema` 在完成状态检查后、成功结算及发送 `done` 前校验输出；校验失败保留真实上游消耗。
+- `AIRequestAccess` 按请求提供鉴权、限流和预算预留适配，基础设施失败使用 `AIGovernanceError`；`OpenAISettings` 通过 ConfigProvider 从当前 Worker bindings 加载，保留原配置容错规则。
+- `aiTracing.ts` 将 Effect span 桥接到 Worker 原生 tracing，并按 fiber 恢复异步上下文。AI 根 span 必须覆盖流消费和结算，不能随 Response 返回而结束。属性只能通过白名单输出；生产采样沿用 Wrangler 配置。查询方式见 `apps/worker/OBSERVABILITY.md`。
 - 时间相关的 Effect 测试使用 `effect/testing/TestClock`；服务替换使用 Layer。保留真实 D1、SDK 流和取消计费集成测试来验证适配层行为。
 
 ## 验证
