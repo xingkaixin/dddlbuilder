@@ -1,3 +1,7 @@
+import * as Effect from 'effect/Effect';
+import * as Tracer from 'effect/Tracer';
+import { makeAITracer } from '../server-api/lib/aiTracing.js';
+import { AIUsageError } from '../server-api/lib/aiErrors.js';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { applyCspHeaders } from '../server-api/lib/csp.js';
@@ -142,6 +146,7 @@ const workerFetch = withWorkerRequestLogging((request, env, ctx) => app.fetch(re
 export const runAIUsageRecovery = async (
   env: ApiEnv['Bindings'],
   waitUntil: (promise: Promise<unknown>) => void,
+  tracing?: Tracing,
 ) => {
   const log = createWorkerBackgroundLogger(
     { job: { name: 'ai-usage-recovery' } },
@@ -149,9 +154,22 @@ export const runAIUsageRecovery = async (
     env.ENVIRONMENT,
   );
   try {
-    const { scanned, reclaimed, failures } = await reclaimStaleAIUsage(env);
-    const reconciledBudgets = await reconcileTerminalAIBudgets(env);
-    await cleanupAIGovernance(env);
+    const program = Effect.gen(function* () {
+      const recovery = yield* reclaimStaleAIUsage(env);
+      const reconciledBudgets = yield* Effect.tryPromise({
+        try: () => reconcileTerminalAIBudgets(env),
+        catch: (cause) => new AIUsageError({ cause }),
+      }).pipe(Effect.uninterruptible, Effect.withSpan('ai.budget.reconcile'));
+      yield* Effect.tryPromise({
+        try: () => cleanupAIGovernance(env),
+        catch: (cause) => new AIUsageError({ cause }),
+      }).pipe(Effect.uninterruptible, Effect.withSpan('ai.governance.cleanup'));
+      if (recovery.failures.length > 0) yield* Effect.annotateCurrentSpan('ai.outcome', 'failed');
+      return { ...recovery, reconciledBudgets };
+    }).pipe(Effect.withSpan('ai.usage.recovery'));
+    const { scanned, reclaimed, failures, reconciledBudgets } = await Effect.runPromise(
+      tracing ? program.pipe(Effect.provideService(Tracer.Tracer, makeAITracer(tracing))) : program,
+    );
     log.set({
       job: {
         name: 'ai-usage-recovery',
@@ -181,6 +199,6 @@ export const runAIUsageRecovery = async (
 export default {
   fetch: workerFetch,
   async scheduled(_event: ScheduledEvent, env: ApiEnv['Bindings'], ctx: ExecutionContext) {
-    ctx.waitUntil(runAIUsageRecovery(env, ctx.waitUntil.bind(ctx)));
+    ctx.waitUntil(runAIUsageRecovery(env, ctx.waitUntil.bind(ctx), ctx.tracing));
   },
 };

@@ -1,3 +1,6 @@
+import * as Effect from 'effect/Effect';
+import * as Clock from 'effect/Clock';
+import { AIUsageError } from './aiErrors.js';
 import { mapLedgerAbort, prepareCreditMutation, type CreditLedgerSource } from './credits.js';
 import type { ApiEnv } from './context.js';
 import type { AIRouteKey } from './aiRouteKey.js';
@@ -484,14 +487,18 @@ const getRecoveredProviderBudget = (
   );
 };
 
-export const reclaimStaleAIUsage = async (
+const recoveryOperation = <A>(operation: () => Promise<A>) =>
+  Effect.tryPromise({ try: operation, catch: (cause) => new AIUsageError({ cause }) });
+
+export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
   env: ApiEnv['Bindings'],
   options: { now?: number; ttlMs?: number; limit?: number } = {},
-) => {
+) {
   const ttlMs = options.ttlMs ?? getAIUsageReclaimTtlMs(buildOpenAIConfig(env));
-  const now = options.now ?? Date.now();
+  const now = options.now ?? (yield* Clock.currentTimeMillis);
   const cutoff = now - ttlMs;
-  const stale = await env.USER_DB.prepare(`
+  const stale = yield* recoveryOperation(() =>
+    env.USER_DB.prepare(`
     SELECT id, user_id AS userId, route_key AS routeKey, request_id AS requestId,
       estimated_tokens AS estimatedTokens, actual_total_tokens AS actualTotalTokens,
       charged_tokens AS chargedTokens, attempt_count AS attemptCount,
@@ -520,25 +527,25 @@ export const reclaimStaleAIUsage = async (
       id
     LIMIT ?
   `)
-    .bind(...RECLAIMABLE_STATUSES, now, cutoff, ttlMs, options.limit ?? 200)
-    .all<StaleUsageRow>();
+      .bind(...RECLAIMABLE_STATUSES, now, cutoff, ttlMs, options.limit ?? 200)
+      .all<StaleUsageRow>(),
+  ).pipe(Effect.withSpan('ai.usage.reclaim.scan'));
   let reclaimed = 0;
   const failures: Array<{ usageEventId: string; error: unknown }> = [];
   const deferRecovery = (usageEventId: string) =>
-    env.USER_DB.prepare(`
+    recoveryOperation(() =>
+      env.USER_DB.prepare(`
       UPDATE usage_events SET recovery_after = ?
       WHERE id = ? AND status IN (${RECLAIMABLE_STATUSES.map(() => '?').join(', ')})
     `)
-      .bind(now + AI_USAGE_RECOVERY_RETRY_DELAY_MS, usageEventId, ...RECLAIMABLE_STATUSES)
-      .run();
+        .bind(now + AI_USAGE_RECOVERY_RETRY_DELAY_MS, usageEventId, ...RECLAIMABLE_STATUSES)
+        .run(),
+    ).pipe(Effect.uninterruptible, Effect.withSpan('ai.usage.reclaim.defer'));
   for (const row of stale.results) {
-    if (!(row.routeKey in ROUTE_SOURCES)) {
-      const error = new Error('UNKNOWN_AI_ROUTE');
-      failures.push({ usageEventId: row.id, error });
-      await deferRecovery(row.id);
-      continue;
-    }
-    try {
+    const result = yield* Effect.gen(function* () {
+      if (!Object.hasOwn(ROUTE_SOURCES, row.routeKey)) {
+        return yield* new AIUsageError({ cause: new Error('UNKNOWN_AI_ROUTE') });
+      }
       const succeeded = row.status === AI_USAGE_STATUS.settlingSucceeded;
       const attemptCount =
         row.attemptCount ??
@@ -553,40 +560,54 @@ export const reclaimStaleAIUsage = async (
               row.actualTotalTokens === null ||
               row.actualTotalTokens !== chargedTokens
           : row.usageEstimated === 1;
-      const changed = await settleUsage(
-        env,
-        {
-          usageEventId: row.id,
-          userId: row.userId,
-          routeKey: row.routeKey,
-          requestId: row.requestId,
-          reservedTokens: row.estimatedTokens,
-        },
-        succeeded ? 'succeeded' : 'failed',
-        {
-          observedTotalTokens:
-            row.actualTotalTokens ?? (attemptCount === 0 && chargedTokens === 0 ? 0 : null),
-          chargedTokens,
-          providerBudgetTokens,
-          usageEstimated,
-        },
-        succeeded ? null : (row.errorCode ?? 'RESERVATION_ABANDONED'),
-        row.status,
-      );
+      const changed = yield* recoveryOperation(() =>
+        settleUsage(
+          env,
+          {
+            usageEventId: row.id,
+            userId: row.userId,
+            routeKey: row.routeKey,
+            requestId: row.requestId,
+            reservedTokens: row.estimatedTokens,
+          },
+          succeeded ? 'succeeded' : 'failed',
+          {
+            observedTotalTokens:
+              row.actualTotalTokens ?? (attemptCount === 0 && chargedTokens === 0 ? 0 : null),
+            chargedTokens,
+            providerBudgetTokens,
+            usageEstimated,
+          },
+          succeeded ? null : (row.errorCode ?? 'RESERVATION_ABANDONED'),
+          row.status,
+        ),
+      ).pipe(Effect.uninterruptible, Effect.withSpan('ai.usage.reclaim.settle'));
       if (!changed) {
-        const current = await env.USER_DB.prepare(
-          'SELECT status FROM usage_events WHERE id = ? AND user_id = ?',
-        )
-          .bind(row.id, row.userId)
-          .first<{ status: string }>();
-        if (current && isTerminalAIUsageStatus(current.status)) continue;
-        throw new Error('AI_USAGE_SETTLEMENT_INCOMPLETE');
+        const current = yield* recoveryOperation(() =>
+          env.USER_DB.prepare('SELECT status FROM usage_events WHERE id = ? AND user_id = ?')
+            .bind(row.id, row.userId)
+            .first<{ status: string }>(),
+        );
+        if (current && isTerminalAIUsageStatus(current.status)) return false;
+        return yield* new AIUsageError({ cause: new Error('AI_USAGE_SETTLEMENT_INCOMPLETE') });
       }
-      reclaimed += 1;
-    } catch (error) {
-      failures.push({ usageEventId: row.id, error });
-      await deferRecovery(row.id);
+      return true;
+    }).pipe(Effect.withSpan('ai.usage.reclaim.entry'), Effect.result);
+    if (result._tag === 'Success') {
+      if (result.success) reclaimed += 1;
+      continue;
     }
+    const deferred = yield* Effect.result(deferRecovery(row.id));
+    failures.push({
+      usageEventId: row.id,
+      error:
+        deferred._tag === 'Failure'
+          ? new AggregateError(
+              [result.failure, deferred.failure],
+              'AI usage recovery and deferral failed',
+            )
+          : result.failure,
+    });
   }
   return { scanned: stale.results.length, reclaimed, failures };
-};
+});

@@ -1,3 +1,4 @@
+import * as Effect from 'effect/Effect';
 import { failAIUsage } from '../helpers/aiUsageSettlement.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
@@ -83,7 +84,7 @@ describe('AI settlement regressions', () => {
         .prepare('UPDATE usage_events SET status = ?, created_at = 1 WHERE id = ?')
         .run(status, reservation.usageEventId);
       if (status === 'reserved') await recordAIUsageAttempt(env, reservation);
-      await reclaimStaleAIUsage(env);
+      await Effect.runPromise(reclaimStaleAIUsage(env));
       const balance = (await getCreditAccount(env, 'user-1'))?.balance;
       expect(balance).toBe(status === 'reserved' ? 900 : 1000);
     } finally {

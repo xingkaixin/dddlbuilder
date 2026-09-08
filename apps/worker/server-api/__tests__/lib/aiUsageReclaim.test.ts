@@ -1,3 +1,4 @@
+import * as Effect from 'effect/Effect';
 import { completeAIUsage } from '../helpers/aiUsageSettlement.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
@@ -52,7 +53,7 @@ describe('reclaimStaleAIUsage with SQLite timestamps', () => {
         const boundary = await reserve('boundary', ttlMs);
         await reserve('stale', ttlMs + 1000);
 
-        expect(await reclaimStaleAIUsage(env, { now, ttlMs })).toEqual({
+        expect(await Effect.runPromise(reclaimStaleAIUsage(env, { now, ttlMs }))).toEqual({
           scanned: 1,
           reclaimed: 1,
           failures: [],
@@ -107,12 +108,12 @@ describe('legacy usage recovery', () => {
           status = ?, actual_total_tokens = ?, charged_tokens = NULL,
           attempt_count = NULL, usage_is_estimated = NULL, created_at = 1`)
         .run(status, actual);
-      expect(await reclaimStaleAIUsage(f.env)).toEqual({
+      expect(await Effect.runPromise(reclaimStaleAIUsage(f.env))).toEqual({
         scanned: 1,
         reclaimed: 1,
         failures: [],
       });
-      expect(await reclaimStaleAIUsage(f.env)).toEqual({
+      expect(await Effect.runPromise(reclaimStaleAIUsage(f.env))).toEqual({
         scanned: 0,
         reclaimed: 0,
         failures: [],
@@ -129,7 +130,7 @@ describe('legacy usage recovery', () => {
       f.sqlite.exec(
         "INSERT INTO usage_events (id,user_id,route_key,request_id,estimated_tokens,status,created_at) VALUES ('legacy','user-1','explain','r',100,'pending',1)",
       );
-      await reclaimStaleAIUsage(f.env);
+      await Effect.runPromise(reclaimStaleAIUsage(f.env));
       expect(await f.balance()).toBe(1000);
     } finally {
       f.sqlite.close();
@@ -171,15 +172,17 @@ describe('legacy usage recovery', () => {
       ) VALUES ('recoverable', 'user-1', 'explain', 'recoverable-request', 1, 0, 0, 0, 'pending', 1)`);
       f.sqlite.exec('COMMIT');
 
-      const first = await reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0 });
+      const first = await Effect.runPromise(reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0 }));
       expect(first).toMatchObject({ scanned: 200, reclaimed: 0 });
       expect(first.failures).toHaveLength(200);
 
-      expect(await reclaimStaleAIUsage(f.env, { now: 1_001, ttlMs: 0 })).toEqual({
-        scanned: 1,
-        reclaimed: 1,
-        failures: [],
-      });
+      expect(await Effect.runPromise(reclaimStaleAIUsage(f.env, { now: 1_001, ttlMs: 0 }))).toEqual(
+        {
+          scanned: 1,
+          reclaimed: 1,
+          failures: [],
+        },
+      );
       expect(
         f.sqlite.prepare("SELECT status FROM usage_events WHERE id = 'recoverable'").get(),
       ).toEqual({ status: 'failed' });
@@ -206,7 +209,9 @@ describe('legacy usage recovery', () => {
           WHERE id = ?`)
         .run(fresh.usageEventId);
 
-      expect(await reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0, limit: 1 })).toEqual({
+      expect(
+        await Effect.runPromise(reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0, limit: 1 })),
+      ).toEqual({
         scanned: 1,
         reclaimed: 1,
         failures: [],
@@ -221,4 +226,47 @@ describe('legacy usage recovery', () => {
       f.sqlite.close();
     }
   });
+});
+
+describe('recovery failure isolation', () => {
+  it.each(['explain', '__proto__'])(
+    'continues after settlement and deferral fail for %s',
+    async (routeKey) => {
+      const f = await createCreditFixture();
+      try {
+        const broken = await f.reserve(100, 'broken');
+        const recoverable = await f.reserve(100, 'recoverable');
+        f.sqlite
+          .prepare('UPDATE usage_events SET created_at = 1, route_key = ? WHERE id = ?')
+          .run(routeKey, broken.usageEventId);
+        f.sqlite
+          .prepare('UPDATE usage_events SET created_at = 2 WHERE id = ?')
+          .run(recoverable.usageEventId);
+        f.sqlite.exec(`CREATE TRIGGER reject_broken_recovery BEFORE UPDATE ON usage_events
+        WHEN OLD.request_id = 'broken'
+        BEGIN SELECT RAISE(ABORT, 'RECOVERY_WRITE_FAILED'); END`);
+
+        const result = await Effect.runPromise(
+          reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0 }),
+        );
+        expect(result).toMatchObject({ scanned: 2, reclaimed: 1 });
+        expect(result.failures).toHaveLength(1);
+        expect(result.failures[0]?.usageEventId).toBe(broken.usageEventId);
+        const error = result.failures[0]?.error;
+        expect(error).toBeInstanceOf(AggregateError);
+        expect((error as AggregateError).errors).toHaveLength(2);
+        expect(await f.balance()).toBe(900);
+        expect(
+          f.sqlite
+            .prepare('SELECT status FROM usage_events WHERE id = ?')
+            .get(recoverable.usageEventId),
+        ).toEqual({ status: 'failed' });
+        expect(
+          f.sqlite.prepare('SELECT status FROM usage_events WHERE id = ?').get(broken.usageEventId),
+        ).toEqual({ status: 'reserved' });
+      } finally {
+        f.sqlite.close();
+      }
+    },
+  );
 });

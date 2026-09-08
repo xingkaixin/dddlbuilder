@@ -14,6 +14,12 @@ AI 业务阶段使用 Effect span，由 `server-api/lib/aiTracing.ts` 接到 Clo
 
 `ai.outcome` 区分 `succeeded`、`rejected`、`failed`、`cancelled`。`ai.failure_kind` 标识上游、输出、记账、治理、超时或内部错误。HTTP 200 不代表流成功，应查看操作结果及终止事件。
 
+## 定时用量恢复
+
+Cron 的 `ai.usage.recovery` 覆盖用量回收、预算补结算和过期治理记录清理，完整 Promise 交给 `waitUntil`。子阶段包括 `ai.usage.reclaim.scan`、`ai.usage.reclaim.entry`、`ai.usage.reclaim.settle`、`ai.usage.reclaim.defer`、`ai.budget.reconcile` 和 `ai.governance.cleanup`。
+
+回收按条执行。单条结算失败后写入下次重试时间；延期写入也失败时保留两份错误，继续处理后续条目。存在单条失败时，根 span 标记 `ai.outcome=failed`，后台日志记录失败条目。扫描或后续整批阶段失败则让后台任务失败，留待下次 Cron 恢复。数据库中的结算意图、触发器和幂等约束仍负责持久化一致性。
+
 ## 日志关联
 
 通过日志的 `requestId` 和 span 的 `request.id` 关联。Effect 内部生成的 trace ID 不作为 Cloudflare trace ID 输出。Cloudflare 的实际 trace ID 由平台提供。

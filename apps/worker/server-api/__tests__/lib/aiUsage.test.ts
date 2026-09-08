@@ -1,3 +1,4 @@
+import * as Effect from 'effect/Effect';
 import { completeAIUsage, failAIUsage } from '../helpers/aiUsageSettlement.js';
 import { describe, expect, it, vi } from 'vitest';
 import { reclaimStaleAIUsage, recordAIUsageAttempt, reserveAIUsage } from '../../lib/aiUsage.js';
@@ -204,7 +205,7 @@ describe('atomic AI usage', () => {
 
       expect(f.sqlite.prepare('SELECT status FROM usage_events').get()?.status).toBe('reserved');
       f.sqlite.prepare('UPDATE usage_events SET created_at = 1').run();
-      expect(await reclaimStaleAIUsage(f.env)).toEqual({
+      expect(await Effect.runPromise(reclaimStaleAIUsage(f.env))).toEqual({
         scanned: 1,
         reclaimed: 1,
         failures: [],

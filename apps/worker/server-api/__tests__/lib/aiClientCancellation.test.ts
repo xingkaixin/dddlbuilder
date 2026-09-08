@@ -148,7 +148,9 @@ describe('AI client cancellation accounting', () => {
         charged_tokens: expectedCharge,
         provider_budget_tokens: expectedCharge,
       });
-      expect(await reclaimStaleAIUsage(env, { now: Date.now() + 16 * 60_000 })).toEqual({
+      expect(
+        await Effect.runPromise(reclaimStaleAIUsage(env, { now: Date.now() + 16 * 60_000 })),
+      ).toEqual({
         scanned: 0,
         reclaimed: 0,
         failures: [],
