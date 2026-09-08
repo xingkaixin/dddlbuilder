@@ -24,3 +24,10 @@ export class AIOutputError extends Data.TaggedError('AIOutputError')<{
 }
 
 export type AICompletionError = AIProviderError | AIUsageError | AIOutputError;
+
+export class AIGovernanceError extends Data.TaggedError('AIGovernanceError')<{
+  readonly phase: 'authentication' | 'rate_limit' | 'budget_reservation';
+  readonly cause: unknown;
+}> {
+  readonly message = 'AI governance unavailable';
+}

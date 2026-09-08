@@ -89,7 +89,9 @@ const loadShell = async (
     const actual = await vi.importActual<Record<string, unknown>>('../../openaiControl.js');
     return {
       ...actual,
-      enforceOpenAIRateLimit: vi.fn().mockResolvedValue({ remaining: 9, response: null }),
+      enforceOpenAIRateLimit:
+        overrides.enforceOpenAIRateLimit ??
+        vi.fn().mockResolvedValue({ remaining: 9, response: null }),
       enforceOpenAIDailyBudget: vi.fn().mockResolvedValue({ usedTokens: 0, response: null }),
       logOpenAIAudit,
     };
@@ -148,6 +150,23 @@ describe('withAIGovernance', () => {
     bodyMaxBytes: 4096,
     buildMessages: () => PROMPT_MESSAGES,
   };
+
+  it('returns service unavailable without reserving credit when the limiter fails', async () => {
+    const shell = await loadShell({
+      enforceOpenAIRateLimit: vi.fn().mockRejectedValue(new Error('D1 unavailable')),
+    });
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, () =>
+        Effect.succeed(c.json({ ok: true })),
+      ),
+    );
+    const response = await post(app, {});
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
+    expect(shell.reserveAIUsage).not.toHaveBeenCalled();
+    expect(shell.createCompletion).not.toHaveBeenCalled();
+  });
 
   it('rejects anonymous requests before parsing or consuming AI quota', async () => {
     const { DomainError } = await import('../../lib/http.js');

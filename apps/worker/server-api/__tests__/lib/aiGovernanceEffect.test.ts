@@ -2,6 +2,7 @@ import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
+import { AIRequestAccess } from '../../lib/aiAccess.js';
 import { aiGovernance } from '../../lib/aiRoute.js';
 import { AIConfiguration, AIProvider, AIUsage } from '../../lib/aiServices.js';
 import { applyCreditMutation } from '../../lib/credits.js';
@@ -73,7 +74,7 @@ it('runs an injected provider through real credit reservation and settlement', a
           session
             .completeJson({ scope: 'test', temperature: 0 })
             .pipe(Effect.map((data) => c.json(data))),
-      ).pipe(Effect.provide(services)),
+      ).pipe(Effect.provide(services), Effect.provide(AIRequestAccess.layer(c))),
     ),
   );
 

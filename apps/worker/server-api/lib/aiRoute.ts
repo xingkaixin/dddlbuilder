@@ -16,15 +16,13 @@ import {
   type AICompletionError,
 } from './aiErrors.js';
 import { retryOpenAI } from './openaiRetry.js';
-import { authenticateRequest } from './auth.js';
+import { AIRequestAccess } from './aiAccess.js';
 import type { Context } from 'hono';
 import { stream } from 'hono/streaming';
 import { encodeAIStreamEvent } from '@ddlbuilder/shared-types';
 import type { AIRouteKey, AIUsageSettlement } from './aiUsage.js';
 import type { ApiEnv, WorkerRequestLogger } from './context.js';
 import {
-  enforceOpenAIDailyBudget,
-  enforceOpenAIRateLimit,
   estimateRequestTokens,
   getOpenAIGovernanceSnapshot,
   logOpenAIAudit,
@@ -40,7 +38,6 @@ import {
 } from './http.js';
 import { createOpenAIStreamDebugLogger } from './aiStreamDebug.js';
 import { getAIExecutionTimeoutMs } from './openaiConfig.js';
-import { enforceIpRateLimit } from './requestRateLimit.js';
 import {
   createWorkerBackgroundLogger,
   getRequestLogger,
@@ -123,6 +120,7 @@ export const aiGovernance = <Request, E>(
       const { config, model, apiKey } = yield* AIConfiguration;
       const ledger = yield* AIUsage;
       const provider = yield* AIProvider;
+      const access = yield* AIRequestAccess;
       const requestId = getRequestId(c) ?? 'unknown';
       const clock = yield* Clock.Clock;
       const startedAt = clock.currentTimeMillisUnsafe();
@@ -203,20 +201,21 @@ export const aiGovernance = <Request, E>(
         backgroundLog?.emit();
       };
 
-      const authentication = yield* Effect.result(
-        Effect.tryPromise({ try: () => authenticateRequest(c), catch: (error) => error }),
-      );
+      const governanceFailure = (error: unknown): Response => {
+        getRequestLogger(c)?.error(toWorkerError(error, 'AI governance unavailable'), {
+          ai: { failurePhase: 'governance' },
+        });
+        audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+        return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
+      };
+      const authentication = yield* Effect.result(access.authenticate);
       if (Result.isFailure(authentication)) {
         const error = authentication.failure;
         if (error instanceof DomainError) {
           if (error.status === 401 && config.rateLimitEnabled) {
-            const limited = yield* Effect.promise(() =>
-              enforceIpRateLimit(
-                c,
-                { scope: 'ai:anonymous', limit: 60, windowMs: 60_000 },
-                'Too many unauthenticated AI requests',
-              ),
-            );
+            const limitResult = yield* Effect.result(access.limitAnonymous);
+            if (Result.isFailure(limitResult)) return governanceFailure(limitResult.failure);
+            const limited = limitResult.success;
             if (limited) {
               audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
               return limited;
@@ -255,9 +254,9 @@ export const aiGovernance = <Request, E>(
         return errorResponse(c, parsed.status, parsed.message, parsed.code);
       }
 
-      const rateLimit = yield* Effect.promise(() =>
-        enforceOpenAIRateLimit(c, route, config, user.userId),
-      );
+      const limitResult = yield* Effect.result(access.limitUser(route, config, user.userId));
+      if (Result.isFailure(limitResult)) return governanceFailure(limitResult.failure);
+      const rateLimit = limitResult.success;
       rateLimitRemaining = rateLimit.remaining;
       if (rateLimit.response) {
         audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
@@ -427,10 +426,7 @@ export const aiGovernance = <Request, E>(
         }).pipe(Effect.uninterruptible);
 
       const budgetResult = yield* Effect.result(
-        Effect.tryPromise({
-          try: () => enforceOpenAIDailyBudget(c, reservation.usageEventId, estimatedTokens, config),
-          catch: (error) => error,
-        }),
+        access.reserveBudget(reservation.usageEventId, estimatedTokens, config),
       );
       if (Result.isFailure(budgetResult)) {
         yield* settleUsage('failed', 'SERVICE_UNAVAILABLE');
@@ -740,8 +736,10 @@ export const withAIGovernance = <Request, E = AICompletionError>(
   spec: AIRouteSpec<Request>,
   run: (session: AISession<Request>) => Effect.Effect<Response, E>,
 ): Promise<Response> => {
-  const services = Layer.merge(AIProvider.layer, AIUsage.layer(c.env)).pipe(
-    Layer.provideMerge(AIConfiguration.layer(c.env)),
-  );
+  const services = Layer.mergeAll(
+    AIProvider.layer,
+    AIUsage.layer(c.env),
+    AIRequestAccess.layer(c),
+  ).pipe(Layer.provideMerge(AIConfiguration.layer(c.env)));
   return Effect.runPromise(aiGovernance(c, spec, run).pipe(Effect.provide(services)));
 };
