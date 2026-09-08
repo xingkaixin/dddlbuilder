@@ -1,5 +1,11 @@
+import * as Schema from 'effect/Schema';
+import {
+  MAX_SQL_LENGTH,
+  SqlParseRequestSchema,
+  SqlParseResponseSchema,
+  MultiSqlParseResponseSchema,
+} from '@ddlbuilder/shared-types/api-contracts';
 import type { Hono } from 'hono';
-import { DATABASE_TYPES, type DatabaseType } from '@ddlbuilder/shared-types';
 import { SqlParseError, SqlParser } from '@ddlbuilder/ddl-core/parser';
 import type { ApiEnv } from '../lib/context.js';
 import {
@@ -11,21 +17,12 @@ import {
 } from '../lib/http.js';
 import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
 
-const MAX_SQL_LENGTH = 50_000;
 const MAX_PARSE_SQL_BODY_BYTES = 131_072;
 const PARSE_SQL_RATE_LIMIT = {
   scope: 'parse:sql',
   limit: 10,
   windowMs: 60 * 1000,
 } as const;
-
-const SUPPORTED_DATABASE_TYPES = new Set<DatabaseType>(
-  DATABASE_TYPES.filter((databaseType) => databaseType !== 'hive'),
-);
-
-function isValidDatabaseType(value: unknown): value is DatabaseType {
-  return typeof value === 'string' && SUPPORTED_DATABASE_TYPES.has(value as DatabaseType);
-}
 
 function validateSqlPayload(
   parsed: JsonBodyResult<{ sql: unknown; dbType: unknown }>,
@@ -34,7 +31,6 @@ function validateSqlPayload(
   if (!parsed.ok) return { errorResponse: parsed.response };
 
   const sql = parsed.data?.sql;
-  const dbType = parsed.data?.dbType;
 
   if (typeof sql !== 'string' || sql.trim().length === 0) {
     return { errorResponse: errorResponse(c, 400, 'SQL is required', 'SQL_REQUIRED') };
@@ -51,13 +47,14 @@ function validateSqlPayload(
     };
   }
 
-  if (!isValidDatabaseType(dbType)) {
+  const decoded = Schema.decodeUnknownOption(SqlParseRequestSchema)(parsed.data);
+  if (decoded._tag === 'None') {
     return {
       errorResponse: errorResponse(c, 400, 'Invalid database type', 'INVALID_DATABASE_TYPE'),
     };
   }
 
-  return { sql, dbType };
+  return decoded.value;
 }
 
 export function registerParseSqlRoute(app: Hono<ApiEnv>) {
@@ -78,7 +75,7 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
       const parser = new SqlParser();
       const result = await parser.parseAsync(sql, dbType);
 
-      return c.json(withMeta(c, { result }));
+      return c.json(Schema.decodeUnknownSync(SqlParseResponseSchema)(withMeta(c, { result })));
     } catch (error) {
       if (error instanceof SqlParseError) {
         return errorResponse(c, 400, error.message, 'SQL_PARSE_FAILED');
@@ -101,7 +98,10 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     const { sql, dbType } = validation;
 
     const parser = new SqlParser();
-    const { results, failed } = await parser.parseMultiAsync(sql, dbType);
+    const response = Schema.decodeUnknownSync(MultiSqlParseResponseSchema)(
+      withMeta(c, await parser.parseMultiAsync(sql, dbType)),
+    );
+    const { results, failed } = response;
     if (results.length === 0 && failed.length > 0) {
       return c.json(
         {
@@ -115,6 +115,6 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
       );
     }
 
-    return c.json(withMeta(c, { results, failed }));
+    return c.json(response);
   });
 }

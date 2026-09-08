@@ -1,3 +1,8 @@
+import {
+  decodeApiError,
+  decodeSqlParseResponse,
+  decodeMultiSqlParseResponse,
+} from '@ddlbuilder/shared-types/api-contracts';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { MultiParsedResult, ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import i18n from '@/i18n';
@@ -11,23 +16,11 @@ interface SqlParseRequestPayload {
   dbType: DatabaseType;
 }
 
-interface SqlParseResponsePayload {
-  result: ParsedResult;
-}
-
-interface SqlParseMultiResponsePayload {
-  results: ParsedResult[];
-  failed: Array<{ statement: string; error: string }>;
-}
-
 async function readApiError(response: Response): Promise<ApiError> {
   const data: unknown = await response.json().catch(() => null);
-  const payload = data && typeof data === 'object' ? data : {};
-  const message =
-    'error' in payload && typeof payload.error === 'string'
-      ? payload.error
-      : i18n.t('services.requestFailed', { status: response.status });
-  const code = 'code' in payload && typeof payload.code === 'string' ? payload.code : undefined;
+  const payload = decodeApiError(data);
+  const message = payload.error ?? i18n.t('services.requestFailed', { status: response.status });
+  const code = payload.code;
   return new ApiError(message, response.status, code);
 }
 
@@ -44,12 +37,12 @@ export async function requestSqlParse(payload: SqlParseRequestPayload): Promise<
     throw await readApiError(response);
   }
 
-  const data: unknown = await response.json();
-  if (!data || typeof data !== 'object' || !('result' in data)) {
+  const data = decodeSqlParseResponse(await response.json());
+  if (data._tag === 'None') {
     throw new Error(i18n.t('services.parseResultInvalid'));
   }
 
-  return (data as SqlParseResponsePayload).result;
+  return data.value.result;
 }
 
 export async function requestMultiSqlParse(
@@ -67,17 +60,10 @@ export async function requestMultiSqlParse(
     throw await readApiError(response);
   }
 
-  const data: unknown = await response.json();
-  if (
-    !data ||
-    typeof data !== 'object' ||
-    !('results' in data) ||
-    !('failed' in data) ||
-    !Array.isArray((data as SqlParseMultiResponsePayload).results) ||
-    !Array.isArray((data as SqlParseMultiResponsePayload).failed)
-  ) {
+  const data = decodeMultiSqlParseResponse(await response.json());
+  if (data._tag === 'None') {
     throw new Error(i18n.t('services.parseResultInvalid'));
   }
 
-  return data as SqlParseMultiResponsePayload;
+  return data.value;
 }

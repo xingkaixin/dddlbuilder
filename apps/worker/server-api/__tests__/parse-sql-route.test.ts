@@ -24,6 +24,24 @@ describe('parse-sql route', () => {
     vi.restoreAllMocks();
   });
 
+  it('解析器输出损坏时返回内部错误而非成功响应', async () => {
+    const result = await new SqlParser().parseAsync('CREATE TABLE users(id INT)', 'mysql');
+    vi.spyOn(SqlParser.prototype, 'parseAsync').mockResolvedValueOnce({
+      ...result,
+      fields: [null as never],
+    });
+    const response = await app.fetch(
+      createRequest('/api/parse-sql', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sql: 'CREATE TABLE users(id INT)', dbType: 'mysql' }),
+      }),
+      createEnv(),
+    );
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ code: 'INTERNAL_ERROR' });
+  });
+
   it('sql 为空时应返回 SQL_REQUIRED', async () => {
     const env = createEnv();
     const response = await app.fetch(

@@ -83,6 +83,9 @@ test.describe('SQL 导入功能验证 @tools', () => {
               type: 'INT',
               comment: '',
               nullable: false,
+              defaultKind: 'none',
+              defaultValue: '',
+              onUpdate: 'none',
             })),
             indexes: ['UserID', 'userid'].map((name) => ({
               id: name,
@@ -125,8 +128,24 @@ test.describe('SQL 导入功能验证 @tools', () => {
             tableComment: '',
             authObjects: [],
             fields: [
-              { name: 'id', type: 'INT', comment: '', nullable: false },
-              { name: 'manager_id', type: 'INT', comment: '', nullable: true },
+              {
+                name: 'id',
+                type: 'INT',
+                comment: '',
+                nullable: false,
+                defaultKind: 'none',
+                defaultValue: '',
+                onUpdate: 'none',
+              },
+              {
+                name: 'manager_id',
+                type: 'INT',
+                comment: '',
+                nullable: true,
+                defaultKind: 'none',
+                defaultValue: '',
+                onUpdate: 'none',
+              },
             ],
             indexes: [
               {
@@ -225,8 +244,24 @@ test.describe('SQL 导入功能验证 @tools', () => {
             authObjects: [],
             foreignKeys: [],
             fields: [
-              { name: 'id', type: 'INT', comment: '', nullable: true },
-              { name: 'name', type: 'VARCHAR(50)', comment: '', nullable: true },
+              {
+                name: 'id',
+                type: 'INT',
+                comment: '',
+                nullable: true,
+                defaultKind: 'none',
+                defaultValue: '',
+                onUpdate: 'none',
+              },
+              {
+                name: 'name',
+                type: 'VARCHAR(50)',
+                comment: '',
+                nullable: true,
+                defaultKind: 'none',
+                defaultValue: '',
+                onUpdate: 'none',
+              },
             ],
             indexes: [
               {

@@ -13,6 +13,7 @@ describe('requestSqlParse', () => {
       tableComment: '',
       fields: [],
       indexes: [],
+      foreignKeys: [],
       authObjects: [],
     };
 
@@ -83,5 +84,41 @@ describe('requestSqlParse', () => {
     await expect(
       requestSqlParse({ sql: 'CREATE TABLE t(id INT);', dbType: 'mysql' }),
     ).rejects.toThrow('解析结果格式无效');
+  });
+});
+
+describe('SQL 响应契约', () => {
+  afterEach(() => vi.restoreAllMocks());
+  const result = {
+    tableName: 'users',
+    tableComment: '',
+    fields: [],
+    indexes: [],
+    foreignKeys: [],
+    authObjects: [],
+  };
+  it.each([
+    { ...result, fields: [{ name: 'id', type: 'INT' }] },
+    {
+      ...result,
+      indexes: [
+        { id: 'i', name: 'idx', kind: 'index', fields: [{ name: 'id', direction: 'sideways' }] },
+      ],
+    },
+    { ...result, foreignKeys: [null] },
+    { ...result, mysqlPartitionConfig: { enabled: true, type: 'HASH', columns: [42] } },
+  ])('拒绝嵌套解析数据损坏：%j', async (result) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ result }));
+    await expect(
+      requestSqlParse({ sql: 'CREATE TABLE users(id INT)', dbType: 'mysql' }),
+    ).rejects.toThrow('解析结果格式无效');
+  });
+  it('批量响应拒绝损坏的失败条目', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ results: [result], failed: [{ statement: 'bad', error: 123 }] }),
+    );
+    await expect(requestMultiSqlParse({ sql: 'bad', dbType: 'mysql' })).rejects.toThrow(
+      '解析结果格式无效',
+    );
   });
 });
