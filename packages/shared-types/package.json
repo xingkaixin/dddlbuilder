@@ -18,5 +18,8 @@
   },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*"
+  },
+  "dependencies": {
+    "effect": "4.0.0-rc.112"
   }
 }

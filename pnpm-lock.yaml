@@ -429,6 +429,10 @@ importers:
         version: link:../tsconfig
 
   packages/shared-types:
+    dependencies:
+      effect:
+        specifier: 4.0.0-rc.112
+        version: 4.0.0-rc.112
     devDependencies:
       '@ddlbuilder/tsconfig':
         specifier: workspace:*
