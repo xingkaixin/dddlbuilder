@@ -3,6 +3,68 @@ import { requestGenerateTable } from '@/services/aiGenerateTableService';
 import { createAITextStream as createTextStream } from '@/__tests__/utils/aiStream';
 
 describe('requestGenerateTable', () => {
+  it.each([
+    {},
+    { tableName: 'users', tableComment: '', fields: 'invalid' },
+    { tableName: 'users', tableComment: '', fields: [{ fieldName: 'id' }] },
+    {
+      tableName: 'users',
+      tableComment: '',
+      fields: [],
+      indexes: [{ name: 'idx', fields: [null], unique: true }],
+    },
+  ])(
+    'rejects malformed completed schemas instead of accepting a partial result: %j',
+    async (schema) => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(createTextStream([JSON.stringify(schema)])),
+      );
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      await expect(
+        requestGenerateTable(
+          { description: '生成用户表', dbType: 'mysql' },
+          { signal: new AbortController().signal },
+        ),
+      ).rejects.toThrow('解析响应失败');
+    },
+  );
+
+  it('normalizes provider enum aliases before checking the completed contract', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        createTextStream([
+          JSON.stringify({
+            tableName: 'users',
+            tableComment: '',
+            fields: [
+              {
+                id: null,
+                fieldName: 'id',
+                fieldType: 'bigint',
+                fieldComment: '',
+                nullable: '否',
+                defaultKind: '自增',
+                onUpdate: '当前时间',
+              },
+            ],
+            designDecisions: [{ title: 'invalid' }, { title: 'key', rationale: 'stable' }],
+          }),
+        ]),
+      ),
+    );
+    const { result } = await requestGenerateTable(
+      { description: '生成用户表', dbType: 'mysql' },
+      { signal: new AbortController().signal },
+    );
+    expect(result.fields[0]).toMatchObject({
+      nullable: false,
+      defaultKind: 'auto_increment',
+      onUpdate: 'current_timestamp',
+    });
+    expect(result.fields[0].id).toBeTruthy();
+    expect(result.designDecisions).toEqual([{ title: 'key', rationale: 'stable' }]);
+  });
+
   it('resolves legacy field identities using the requested dialect', async () => {
     const rows = ['UserID', 'userid'].map((fieldName) => ({
       id: fieldName,

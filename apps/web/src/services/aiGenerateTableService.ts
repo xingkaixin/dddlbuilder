@@ -1,8 +1,9 @@
 import { readTextStream } from '@/services/streamingText';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
-import type {
-  ConversationMessage,
-  GeneratedTableSchema,
+import {
+  decodeGeneratedTable,
+  type ConversationMessage,
+  type GeneratedTableSchema,
 } from '@ddlbuilder/shared-types/ai-generate';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
@@ -76,7 +77,7 @@ export async function requestGenerateTable(
     return {
       fullText,
       result: normalizeGeneratedTableSchema(
-        JSON.parse(fullText) as GeneratedTableSchema,
+        decodeGeneratedTable(fullText),
         payload.dbType,
         previousSchema?.fields ?? existingConfig?.rows ?? [],
       ),

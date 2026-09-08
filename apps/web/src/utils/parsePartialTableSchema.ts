@@ -1,13 +1,9 @@
-import type {
-  GeneratedDesignDecision,
-  GeneratedField,
-  GeneratedIndex,
-  PartialTableSchema,
+import {
+  isGeneratedField,
+  isGeneratedIndex,
+  isGeneratedDesignDecision,
+  type PartialTableSchema,
 } from '@ddlbuilder/shared-types/ai-generate';
-import { FIELD_DEFAULT_KINDS, FIELD_ON_UPDATES } from '@ddlbuilder/shared-types';
-
-const DEFAULT_KINDS = new Set<string>(FIELD_DEFAULT_KINDS);
-const ON_UPDATE_VALUES = new Set<string>(FIELD_ON_UPDATES);
 
 /**
  * Parse partial JSON for GeneratedTableSchema structure.
@@ -181,46 +177,6 @@ function extractValidatedArray<T>(
   if (arrayStart === -1) return undefined;
 
   return extractArrayObjects(afterKey.slice(arrayStart + 1)).filter(isValid);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isGeneratedField(value: unknown): value is GeneratedField {
-  if (!isRecord(value)) return false;
-
-  return (
-    typeof value.fieldName === 'string' &&
-    typeof value.fieldType === 'string' &&
-    typeof value.fieldComment === 'string' &&
-    typeof value.nullable === 'boolean' &&
-    typeof value.defaultKind === 'string' &&
-    DEFAULT_KINDS.has(value.defaultKind) &&
-    (value.defaultValue === undefined || typeof value.defaultValue === 'string') &&
-    (value.onUpdate === undefined ||
-      (typeof value.onUpdate === 'string' && ON_UPDATE_VALUES.has(value.onUpdate))) &&
-    (value.isPrimaryKey === undefined || typeof value.isPrimaryKey === 'boolean')
-  );
-}
-
-function isGeneratedIndex(value: unknown): value is GeneratedIndex {
-  if (!isRecord(value) || !Array.isArray(value.fields)) return false;
-
-  return (
-    typeof value.name === 'string' &&
-    typeof value.unique === 'boolean' &&
-    value.fields.every(
-      (field) =>
-        isRecord(field) &&
-        typeof field.name === 'string' &&
-        (field.direction === 'ASC' || field.direction === 'DESC'),
-    )
-  );
-}
-
-function isGeneratedDesignDecision(value: unknown): value is GeneratedDesignDecision {
-  return isRecord(value) && typeof value.title === 'string' && typeof value.rationale === 'string';
 }
 
 /**
