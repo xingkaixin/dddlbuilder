@@ -1,4 +1,6 @@
-import type { FieldDefaultKind, FieldOnUpdate } from './fieldRow.js';
+import * as Schema from 'effect/Schema';
+import * as SchemaGetter from 'effect/SchemaGetter';
+import { FIELD_DEFAULT_KINDS, FIELD_ON_UPDATES } from './fieldRow.js';
 import {
   normalizeFieldDefaultKind,
   normalizeFieldNullable,
@@ -17,53 +19,74 @@ export const DDL_REVIEW_SUGGESTION_TYPES = [
 
 export type DDLReviewSuggestionType = (typeof DDL_REVIEW_SUGGESTION_TYPES)[number];
 
-export type DDLReviewField = {
-  fieldName: string;
-  fieldType: string;
-  fieldComment?: string;
-  nullable?: boolean;
-  defaultKind?: FieldDefaultKind;
-  defaultValue?: string;
-  onUpdate?: FieldOnUpdate;
+const fieldChanges = {
+  fieldType: Schema.optional(Schema.String),
+  fieldComment: Schema.optional(Schema.String),
+  nullable: Schema.optional(Schema.Boolean),
+  defaultKind: Schema.optional(Schema.Literals(FIELD_DEFAULT_KINDS)),
+  defaultValue: Schema.optional(Schema.String),
+  onUpdate: Schema.optional(Schema.Literals(FIELD_ON_UPDATES)),
 };
-
-export type DDLReviewFieldChanges = Partial<Omit<DDLReviewField, 'fieldName'>>;
-
-type DDLReviewSuggestionBase<TType extends DDLReviewSuggestionType> = {
-  id: string;
-  description: string;
-  type: TType;
-  actionable: boolean;
-  applied?: boolean;
+export const DDLReviewFieldSchema = Schema.Struct({
+  ...fieldChanges,
+  fieldName: Schema.String,
+  fieldType: Schema.String,
+});
+export const DDLReviewFieldChangesSchema = Schema.Struct(fieldChanges);
+const common = {
+  id: Schema.String,
+  description: Schema.String,
+  actionable: Schema.Boolean,
+  applied: Schema.optional(Schema.Boolean),
 };
-
-export type DDLReviewStructuredSuggestion =
-  | (DDLReviewSuggestionBase<'add_field'> & { field: DDLReviewField })
-  | (DDLReviewSuggestionBase<'modify_field'> & {
-      fieldModification: { fieldName: string; changes: DDLReviewFieldChanges };
-    })
-  | (DDLReviewSuggestionBase<'remove_field'> & { fieldName: string })
-  | (DDLReviewSuggestionBase<'add_index'> & {
-      index: {
-        name: string;
-        fields: { name: string; direction: 'ASC' | 'DESC' }[];
-        unique?: boolean;
-      };
-    })
-  | (DDLReviewSuggestionBase<'remove_index'> & { indexName: string })
-  | (DDLReviewSuggestionBase<'performance_warning'> & {
-      actionable: false;
-      severity?: 'warning' | 'error';
-    })
-  | (DDLReviewSuggestionBase<'general'> & { actionable: false });
-
-export type DDLReviewSuggestion = string | DDLReviewStructuredSuggestion;
-
-export type DDLReviewResult = {
-  score: number;
-  summary: string;
-  suggestions: DDLReviewSuggestion[];
-};
+export const DDLReviewStructuredSuggestionSchema = Schema.Union([
+  Schema.Struct({ ...common, type: Schema.Literal('add_field'), field: DDLReviewFieldSchema }),
+  Schema.Struct({
+    ...common,
+    type: Schema.Literal('modify_field'),
+    fieldModification: Schema.Struct({
+      fieldName: Schema.String,
+      changes: DDLReviewFieldChangesSchema,
+    }),
+  }),
+  Schema.Struct({ ...common, type: Schema.Literal('remove_field'), fieldName: Schema.String }),
+  Schema.Struct({
+    ...common,
+    type: Schema.Literal('add_index'),
+    index: Schema.Struct({
+      name: Schema.String,
+      fields: Schema.Array(
+        Schema.Struct({ name: Schema.String, direction: Schema.Literals(['ASC', 'DESC']) }),
+      ).pipe(Schema.mutable),
+      unique: Schema.optional(Schema.Boolean),
+    }),
+  }),
+  Schema.Struct({ ...common, type: Schema.Literal('remove_index'), indexName: Schema.String }),
+  Schema.Struct({
+    ...common,
+    type: Schema.Literal('performance_warning'),
+    actionable: Schema.Literal(false),
+    severity: Schema.optional(Schema.Literals(['warning', 'error'])),
+  }),
+  Schema.Struct({ ...common, type: Schema.Literal('general'), actionable: Schema.Literal(false) }),
+]);
+export const DDLReviewSuggestionSchema = Schema.Union([
+  Schema.String,
+  DDLReviewStructuredSuggestionSchema,
+]);
+export const DDLReviewResultSchema = Schema.Struct({
+  score: Schema.Number.check(Schema.isBetween({ minimum: 1, maximum: 10 })),
+  summary: Schema.String,
+  suggestions: Schema.Array(DDLReviewSuggestionSchema).pipe(Schema.mutable),
+});
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+export type DDLReviewField = Mutable<typeof DDLReviewFieldSchema.Type>;
+export type DDLReviewFieldChanges = Mutable<typeof DDLReviewFieldChangesSchema.Type>;
+export type DDLReviewStructuredSuggestion = Mutable<
+  typeof DDLReviewStructuredSuggestionSchema.Type
+>;
+export type DDLReviewSuggestion = typeof DDLReviewSuggestionSchema.Type;
+export type DDLReviewResult = Mutable<typeof DDLReviewResultSchema.Type>;
 
 type SuggestionCommon = Pick<
   DDLReviewStructuredSuggestion,
@@ -218,10 +241,7 @@ export const normalizeDDLReviewSuggestions = (value: unknown): DDLReviewSuggesti
   return suggestions;
 };
 
-export const normalizeDDLReviewResult = (
-  payload: unknown,
-  fallbackSummary: string,
-): DDLReviewResult => {
+const normalizeResult = (payload: unknown, fallbackSummary: string): DDLReviewResult => {
   if (!isRecord(payload)) {
     return { score: 5, summary: fallbackSummary, suggestions: [] };
   }
@@ -231,3 +251,16 @@ export const normalizeDDLReviewResult = (
     suggestions: normalizeDDLReviewSuggestions(payload.suggestions),
   };
 };
+
+export const ddlReviewProviderSchema = (fallbackSummary: string) =>
+  Schema.Unknown.pipe(
+    Schema.decodeTo(DDLReviewResultSchema, {
+      decode: SchemaGetter.transform((payload) => normalizeResult(payload, fallbackSummary)),
+      encode: SchemaGetter.transform((result) => result),
+    }),
+  );
+
+export const normalizeDDLReviewResult = (
+  payload: unknown,
+  fallbackSummary: string,
+): DDLReviewResult => Schema.decodeUnknownSync(ddlReviewProviderSchema(fallbackSummary))(payload);
