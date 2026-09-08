@@ -1,23 +1,9 @@
-import type {
-  IndexDefinition,
-  MysqlPartitionConfig,
-  NormalizedField,
-  TableMiscConfig,
-  ForeignKeyDefinition,
-} from '@ddlbuilder/shared-types';
+import type { ParsedResultSchema } from '@ddlbuilder/shared-types/api-contracts';
 import type { AstStatement } from './astTypes.js';
 
 /** Identifier fields retain their SQL delimiter spelling when identity depends on it. */
 export type ParsedResult = {
-  schemaName?: string;
-  tableName: string;
-  tableComment: string;
-  fields: NormalizedField[];
-  indexes: IndexDefinition[];
-  foreignKeys: ForeignKeyDefinition[];
-  authObjects: string[];
-  tableMiscConfig?: TableMiscConfig;
-  mysqlPartitionConfig?: MysqlPartitionConfig;
+  -readonly [K in keyof typeof ParsedResultSchema.Type]: (typeof ParsedResultSchema.Type)[K];
 };
 
 export type ParserInstance = {

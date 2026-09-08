@@ -1,4 +1,8 @@
-import type { CurrentWorkspaceResponse } from './workspace.js';
+import type {
+  ApiMetaSchema,
+  CurrentWorkspaceResponseSchema,
+  WorkspaceMigrationResponseSchema,
+} from './apiContracts.js';
 
 export const API_ERROR_CODES = [
   'AUTH_REQUIRED',
@@ -41,9 +45,7 @@ export const API_ERROR_CODES = [
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
 
-export type ApiMeta = {
-  requestId?: string;
-};
+export type ApiMeta = typeof ApiMetaSchema.Type;
 
 export type ApiErrorPayload = {
   error: string;
@@ -51,24 +53,10 @@ export type ApiErrorPayload = {
   requestId?: string;
 };
 
-export type WorkspaceMigrationConflict = {
-  kind: 'draft' | 'saved_table' | 'saved_draft' | 'folder';
-  normalizedName: string | null;
-  displayName: string;
-};
-
-export type WorkspaceMigrationResult = {
-  status: 'no_data' | 'ready' | 'completed';
-  createdCount: number;
-  copiedCount: number;
-  skippedCount: number;
-  conflictCount: number;
-  conflicts: WorkspaceMigrationConflict[];
-};
-
-export type WorkspaceMigrationResponse = WorkspaceMigrationResult & { meta?: ApiMeta };
-
-export type CurrentWorkspaceResponseWithMeta = CurrentWorkspaceResponse & { meta?: ApiMeta };
+export type WorkspaceMigrationResponse = typeof WorkspaceMigrationResponseSchema.Type;
+export type WorkspaceMigrationResult = Omit<WorkspaceMigrationResponse, 'meta'>;
+export type WorkspaceMigrationConflict = WorkspaceMigrationResult['conflicts'][number];
+export type CurrentWorkspaceResponseWithMeta = typeof CurrentWorkspaceResponseSchema.Type;
 
 export type MeApiResponse =
   | {
