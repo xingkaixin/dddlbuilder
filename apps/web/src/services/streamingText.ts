@@ -1,7 +1,7 @@
 import { logAiStreamDebug } from '@/services/aiStreamDebug';
 import { getAIErrorMessage } from '@/services/aiApi';
 import i18n from '@/i18n';
-import type { AIStreamEvent } from '@ddlbuilder/shared-types';
+import { decodeAIStreamEvent } from '@ddlbuilder/shared-types';
 
 const DEFAULT_STREAM_UPDATE_INTERVAL_MS = 33;
 
@@ -79,16 +79,16 @@ export async function readTextStream(
       while ((newline = buffered.indexOf('\n')) !== -1) {
         const line = buffered.slice(0, newline);
         buffered = buffered.slice(newline + 1);
-        const event = JSON.parse(line) as AIStreamEvent | null;
+        const event = decodeAIStreamEvent(line);
         if (completed || !event) {
           throw new Error(i18n.t('services.aiServiceUnavailable'));
         }
-        if (event.type === 'error' && typeof event.error === 'string') {
+        if (event.type === 'error') {
           throw new Error(getAIErrorMessage(event) ?? i18n.t('services.aiServiceUnavailable'));
         }
         if (event.type === 'done') {
           completed = true;
-        } else if (event.type === 'delta' && typeof event.text === 'string') {
+        } else if (event.type === 'delta') {
           fullText += event.text;
         } else {
           throw new Error(i18n.t('services.aiServiceUnavailable'));

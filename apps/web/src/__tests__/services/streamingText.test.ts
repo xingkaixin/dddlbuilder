@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readTextStream } from '@/services/streamingText';
 import { createAITextStream } from '@/__tests__/utils/aiStream';
 
@@ -28,6 +28,27 @@ describe('readTextStream', () => {
       expect(stream.locked).toBe(false);
     },
   );
+
+  it('cancels the reader and releases its lock when a frame cannot be decoded', async () => {
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"type":"delta","text":42}\n'));
+      },
+      cancel,
+    });
+    await expect(readTextStream(stream)).rejects.toThrow('AI');
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(stream.locked).toBe(false);
+  });
+
+  it('uses the server message for an error code introduced by a newer server', async () => {
+    await expect(
+      readTextStream(
+        createTextStream(['{"type":"error","error":"New server error","code":"FUTURE_CODE"}\n']),
+      ),
+    ).rejects.toThrow('New server error');
+  });
 
   it('rejects a truncated stream without a completion event', async () => {
     await expect(
@@ -82,6 +103,11 @@ describe('readTextStream', () => {
   it.each([
     '',
     '{"type":"unknown"}\n',
+    'not json\n',
+    'null\n',
+    '{"type":"error","error":42}\n',
+    '{"type":"done"}\n{"type":"delta","text":"late"}\n',
+    '{"type":"done"}\n{"type":"done"}\n',
     '{"type":"delta","text":1}\n',
     '{"type":"done"}\ntruncated',
   ])('rejects invalid or incomplete framing: %j', async (wire) => {
