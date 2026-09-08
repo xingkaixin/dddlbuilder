@@ -1,5 +1,9 @@
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
-import type { AICommentRequest, AICommentResult } from '@ddlbuilder/shared-types/ai-generate';
+import {
+  decodeAICommentResult,
+  type AICommentRequest,
+  type AICommentResult,
+} from '@ddlbuilder/shared-types/ai-generate';
 import i18n from '@/i18n';
 
 const AI_COMMENT_API_ENDPOINT = '/api/generate-comments';
@@ -20,11 +24,7 @@ export async function requestAIComments(
     throw new Error(await readAIErrorMessage(response, 'generationFailed'));
   }
 
-  const data = (await response.json()) as Partial<AICommentResult>;
-  return {
-    tableComment: typeof data.tableComment === 'string' ? data.tableComment : '',
-    fields: Array.isArray(data.fields) ? data.fields : [],
-  };
+  return decodeAICommentResult(await response.json());
 }
 
 export function assertAICommentTarget(payload: AICommentRequest) {

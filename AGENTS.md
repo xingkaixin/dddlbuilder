@@ -39,6 +39,7 @@
 - `aiExecution.ts` 用 Scope 管理执行期限与取消。SDK 必须同时响应业务 AbortSignal 和 Effect 中断。D1 记账写入使用最小的不可中断区间，未启动的上游尝试需要撤销计数。
 - 流响应有独立执行入口，承接请求 Effect 上下文，并将包含最终结算的完整 Promise 交给 `waitUntil`。不能因返回 Response 就关闭流的生命周期。新增有资源释放需求的 Layer 时，必须确保它覆盖整个流消费过程。
 - 结算通过 `onExit` 执行，保留数据库中的幂等、结算意图和回收机制；Effect finalizer 不能替代持久化恢复。AI JSON 输出使用 `aiCompletion.ts` 的 Schema 解码。
+- AI 请求及注释、索引建议的输出契约定义在 `packages/shared-types/src/aiContracts.ts`，类型从 Schema 推导。Worker 使用 `aiRequest.ts` 将请求解码错误映射为现有 API 错误码；前端复用共享输出解码器。字段引用、建议编号和按请求补齐注释等业务规则保留在 Worker。
 - 时间相关的 Effect 测试使用 `effect/testing/TestClock`；服务替换使用 Layer。保留真实 D1、SDK 流和取消计费集成测试来验证适配层行为。
 
 ## 验证
