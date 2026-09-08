@@ -1,3 +1,5 @@
+import { makeAITracer, endAIRequestSpan, aiFailureKind } from './aiTracing.js';
+import * as Tracer from 'effect/Tracer';
 import * as Clock from 'effect/Clock';
 import * as Exit from 'effect/Exit';
 import { withAIExecution } from './aiExecution.js';
@@ -114,622 +116,697 @@ export const aiGovernance = <Request, E>(
   spec: AIRouteSpec<Request>,
   run: (session: AISession<Request>) => Effect.Effect<Response, E>,
 ) =>
-  Effect.uninterruptibleMask((restore) =>
-    Effect.gen(function* () {
-      const { route, maxOutputTokens } = spec;
-      const { config, model, apiKey } = yield* AIConfiguration;
-      const ledger = yield* AIUsage;
-      const provider = yield* AIProvider;
-      const access = yield* AIRequestAccess;
-      const requestId = getRequestId(c) ?? 'unknown';
-      const clock = yield* Clock.Clock;
-      const startedAt = clock.currentTimeMillisUnsafe();
-      const executionContext = yield* Effect.context();
-      const validateOutput = (value: unknown) =>
-        spec.outputSchema
-          ? Schema.decodeUnknownEffect(spec.outputSchema)(value).pipe(
-              Effect.mapError((cause) => new AIOutputError({ reason: 'invalid-schema', cause })),
-              Effect.as(value),
-            )
-          : Effect.succeed(value);
-      const governance = getOpenAIGovernanceSnapshot(route, config);
-      const waitUntil = c.executionCtx.waitUntil.bind(c.executionCtx);
+  Effect.gen(function* () {
+    const requestSpan = yield* Effect.makeSpan('ai.request', {
+      attributes: {
+        'request.id': getRequestId(c) ?? 'unknown',
+        'ai.route': spec.route,
+      },
+    });
+    let streamed = false;
+    return yield* Effect.uninterruptibleMask((restore) =>
+      Effect.gen(function* () {
+        const { route, maxOutputTokens } = spec;
+        const { config, model, apiKey } = yield* AIConfiguration;
+        const ledger = yield* AIUsage;
+        const provider = yield* AIProvider;
+        const access = yield* AIRequestAccess;
+        const requestId = getRequestId(c) ?? 'unknown';
+        const clock = yield* Clock.Clock;
+        const startedAt = clock.currentTimeMillisUnsafe();
+        const executionContext = yield* Effect.context();
+        const validateOutput = (value: unknown) =>
+          spec.outputSchema
+            ? Schema.decodeUnknownEffect(spec.outputSchema)(value).pipe(
+                Effect.mapError((cause) => new AIOutputError({ reason: 'invalid-schema', cause })),
+                Effect.as(value),
+                Effect.withSpan('ai.output.validate'),
+              )
+            : Effect.succeed(value);
+        const governance = getOpenAIGovernanceSnapshot(route, config);
+        const waitUntil = c.executionCtx.waitUntil.bind(c.executionCtx);
 
-      let estimatedTokens = 0;
-      let usage: OpenAIUsageSnapshot | null = null;
-      let chargedTokens: number | null = null;
-      let providerBudgetTokens: number | null = null;
-      let usageEstimated: boolean | null = null;
-      let accountingSnapshotReliable = false;
-      let accountingFinalized = false;
-      let attemptCount = 0;
-      let auditUserId: string | null = null;
-      let rateLimitRemaining: number | null = governance.rateLimitLimit;
-      let budgetUsedTokens: number | null = null;
-      let requestAborted = false;
+        let estimatedTokens = 0;
+        let usage: OpenAIUsageSnapshot | null = null;
+        let chargedTokens: number | null = null;
+        let providerBudgetTokens: number | null = null;
+        let usageEstimated: boolean | null = null;
+        let accountingSnapshotReliable = false;
+        let accountingFinalized = false;
+        let attemptCount = 0;
+        let auditUserId: string | null = null;
+        let rateLimitRemaining: number | null = governance.rateLimitLimit;
+        let budgetUsedTokens: number | null = null;
+        let requestAborted = false;
 
-      const audit = (
-        status: number,
-        retryCount: number,
-        rateLimitHit: boolean,
-        budgetHit: boolean,
-        errorCode?: ApiErrorCode,
-      ) => {
-        const backgroundLog = requestAborted
-          ? createWorkerBackgroundLogger(
-              { background: { job: 'ai-stream-settlement', requestId, route } },
-              waitUntil,
-              c.env.ENVIRONMENT,
-            )
-          : undefined;
-        logOpenAIAudit(
-          backgroundLog
-            ? { ...c.env, EVLOG_REQUEST_LOG: backgroundLog as WorkerRequestLogger }
-            : c.env,
-          {
-            requestId,
-            route,
-            status,
-            latencyMs: clock.currentTimeMillisUnsafe() - startedAt,
-            retryCount,
-            attemptCount,
-            rateLimitHit,
-            estimatedTokens,
-            actualPromptTokens: usage?.promptTokens ?? null,
-            actualCompletionTokens: usage?.completionTokens ?? null,
-            actualTotalTokens: usage?.totalTokens ?? null,
-            chargedTokens: accountingSnapshotReliable ? chargedTokens : null,
-            providerBudgetTokens: accountingSnapshotReliable ? providerBudgetTokens : null,
-            usageEstimated: accountingSnapshotReliable ? usageEstimated : null,
-            accountingFinalized,
-            userId: auditUserId,
-            model,
-            maxOutputTokens,
-            rateLimitEnabled: governance.rateLimitEnabled,
-            rateLimitStore: governance.rateLimitStore,
-            rateLimitLimit: governance.rateLimitLimit,
-            rateLimitRemaining,
-            rateLimitWindowMs: governance.rateLimitWindowMs,
-            budgetHit,
-            budgetEnabled: governance.budgetEnabled,
-            budgetLimitTokens: governance.budgetLimitTokens,
-            budgetUsedTokens,
-            errorCode,
-          },
-          waitUntil,
-        );
-        backgroundLog?.emit();
-      };
-
-      const governanceFailure = (error: unknown): Response => {
-        getRequestLogger(c)?.error(toWorkerError(error, 'AI governance unavailable'), {
-          ai: { failurePhase: 'governance' },
-        });
-        audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-        return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
-      };
-      const authentication = yield* Effect.result(access.authenticate);
-      if (Result.isFailure(authentication)) {
-        const error = authentication.failure;
-        if (error instanceof DomainError) {
-          if (error.status === 401 && config.rateLimitEnabled) {
-            const limitResult = yield* Effect.result(access.limitAnonymous);
-            if (Result.isFailure(limitResult)) return governanceFailure(limitResult.failure);
-            const limited = limitResult.success;
-            if (limited) {
-              audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
-              return limited;
-            }
-          }
-          audit(error.status, 0, false, false, error.code);
-          return errorResponse(c, error.status, error.message, error.code);
-        }
-        getRequestLogger(c)?.error(toWorkerError(error, 'Authentication failed'), {
-          ai: { failurePhase: 'authentication' },
-        });
-        audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-        return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-      }
-      const user = authentication.success;
-      auditUserId = user.userId;
-
-      const parsedBody = yield* Effect.promise(() =>
-        parseJsonBodyWithLimit<Record<string, unknown>>(c, spec.bodyMaxBytes),
-      );
-      if (!parsedBody.ok) {
-        const tooLarge = parsedBody.response.status === 413;
-        audit(
-          parsedBody.response.status,
-          0,
-          false,
-          false,
-          tooLarge ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON',
-        );
-        return parsedBody.response;
-      }
-
-      const parsed = spec.parseRequest(parsedBody.data ?? {});
-      if (isRejection(parsed)) {
-        audit(parsed.status, 0, false, false, parsed.code);
-        return errorResponse(c, parsed.status, parsed.message, parsed.code);
-      }
-
-      const limitResult = yield* Effect.result(access.limitUser(route, config, user.userId));
-      if (Result.isFailure(limitResult)) return governanceFailure(limitResult.failure);
-      const rateLimit = limitResult.success;
-      rateLimitRemaining = rateLimit.remaining;
-      if (rateLimit.response) {
-        audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
-        return rateLimit.response;
-      }
-
-      const messages = spec.buildMessages(parsed);
-      estimatedTokens = estimateRequestTokens(messages, maxOutputTokens);
-
-      if (!apiKey) {
-        audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-        return errorResponse(c, 503, 'OpenAI service unavailable', 'SERVICE_UNAVAILABLE');
-      }
-
-      const credit = yield* Effect.result(
-        Effect.gen(function* () {
-          yield* ledger.grantSignup(user);
-          return yield* ledger.reserve({
-            userId: user.userId,
-            routeKey: route,
-            requestId,
-            estimatedTokens,
+        const audit = (
+          status: number,
+          retryCount: number,
+          rateLimitHit: boolean,
+          budgetHit: boolean,
+          errorCode?: ApiErrorCode,
+        ) => {
+          requestSpan.attribute('ai.model', model);
+          requestSpan.attribute(
+            'ai.outcome',
+            requestAborted
+              ? 'cancelled'
+              : status >= 500
+                ? 'failed'
+                : status >= 400
+                  ? 'rejected'
+                  : 'succeeded',
+          );
+          if (errorCode) requestSpan.attribute('ai.error_code', errorCode);
+          requestSpan.attribute('ai.retry_count', retryCount);
+          requestSpan.attribute('ai.attempt_count', attemptCount);
+          requestSpan.attribute('ai.accounting_finalized', accountingFinalized);
+          if (chargedTokens !== null) requestSpan.attribute('ai.charged_tokens', chargedTokens);
+          const backgroundLog =
+            requestAborted || streamed
+              ? createWorkerBackgroundLogger(
+                  { background: { job: 'ai-operation', requestId, route } },
+                  waitUntil,
+                  c.env.ENVIRONMENT,
+                )
+              : undefined;
+          const operationLog = backgroundLog ?? getRequestLogger(c);
+          operationLog?.set({
+            ai: {
+              observability: {
+                firstChunkMs: requestSpan.attributes.get('ai.first_chunk_ms') ?? null,
+                outcome: requestSpan.attributes.get('ai.outcome'),
+              },
+            },
           });
-        }),
-      );
-      if (Result.isFailure(credit)) {
-        const error = credit.failure;
-        if (error instanceof DomainError) {
-          audit(error.status, 0, false, false, error.code);
-          return errorResponse(c, error.status, error.message, error.code);
-        }
-        getRequestLogger(c)?.error(toWorkerError(error, 'Credit reservation failed'), {
-          ai: { failurePhase: 'credit_reservation' },
-        });
-        audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-        return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
-      }
-
-      const reservation = credit.success;
-
-      const getProviderBudgetTokens = (observedTokens: number | null) => {
-        if (attemptCount === 0) return 0;
-        const baseTokens = observedTokens ?? 0;
-        const unknownAttempts = observedTokens === null ? attemptCount : attemptCount - 1;
-        const remaining = Number.MAX_SAFE_INTEGER - baseTokens;
-        if (unknownAttempts > Math.floor(remaining / reservation.reservedTokens)) {
-          return Number.MAX_SAFE_INTEGER;
-        }
-        return baseTokens + unknownAttempts * reservation.reservedTokens;
-      };
-
-      const createSettlement = (): AIUsageSettlement => {
-        if (usage) {
-          chargedTokens =
-            attemptCount > 1
-              ? Math.max(usage.totalTokens, reservation.reservedTokens)
-              : usage.totalTokens;
-          providerBudgetTokens = getProviderBudgetTokens(usage.totalTokens);
-          usageEstimated = attemptCount > 1;
-          return {
-            observedTotalTokens: usage.totalTokens,
-            chargedTokens,
-            providerBudgetTokens,
-            usageEstimated,
-          };
-        }
-        if (attemptCount === 0) {
-          chargedTokens = 0;
-          providerBudgetTokens = 0;
-          usageEstimated = false;
-          return {
-            observedTotalTokens: 0,
-            chargedTokens,
-            providerBudgetTokens,
-            usageEstimated,
-          };
-        }
-        chargedTokens = reservation.reservedTokens;
-        providerBudgetTokens = getProviderBudgetTokens(null);
-        usageEstimated = true;
-        return {
-          observedTotalTokens: null,
-          chargedTokens,
-          providerBudgetTokens,
-          usageEstimated,
-        };
-      };
-
-      const settleBudget = (tokens: number) =>
-        governance.budgetLimitTokens !== null
-          ? ledger.settleBudget(reservation.usageEventId, tokens)
-          : Effect.succeed(null);
-
-      const reportSettlementError = (
-        error: unknown,
-        failurePhase: string,
-        outcome: 'succeeded' | 'failed',
-      ) => {
-        const context = { ai: { failurePhase, settlementOutcome: outcome } };
-        if (requestAborted) {
-          logWorkerBackgroundError(
-            error,
+          logOpenAIAudit(
+            backgroundLog
+              ? { ...c.env, EVLOG_REQUEST_LOG: backgroundLog as WorkerRequestLogger }
+              : c.env,
             {
-              job: 'ai-stream-settlement',
               requestId,
               route,
-              failurePhase,
-              settlementOutcome: outcome,
+              status,
+              latencyMs: clock.currentTimeMillisUnsafe() - startedAt,
+              retryCount,
+              attemptCount,
+              rateLimitHit,
+              estimatedTokens,
+              actualPromptTokens: usage?.promptTokens ?? null,
+              actualCompletionTokens: usage?.completionTokens ?? null,
+              actualTotalTokens: usage?.totalTokens ?? null,
+              chargedTokens: accountingSnapshotReliable ? chargedTokens : null,
+              providerBudgetTokens: accountingSnapshotReliable ? providerBudgetTokens : null,
+              usageEstimated: accountingSnapshotReliable ? usageEstimated : null,
+              accountingFinalized,
+              userId: auditUserId,
+              model,
+              maxOutputTokens,
+              rateLimitEnabled: governance.rateLimitEnabled,
+              rateLimitStore: governance.rateLimitStore,
+              rateLimitLimit: governance.rateLimitLimit,
+              rateLimitRemaining,
+              rateLimitWindowMs: governance.rateLimitWindowMs,
+              budgetHit,
+              budgetEnabled: governance.budgetEnabled,
+              budgetLimitTokens: governance.budgetLimitTokens,
+              budgetUsedTokens,
+              errorCode,
             },
             waitUntil,
-            c.env.ENVIRONMENT,
           );
-          return;
+          backgroundLog?.emit();
+        };
+
+        const governanceFailure = (error: unknown): Response => {
+          getRequestLogger(c)?.error(toWorkerError(error, 'AI governance unavailable'), {
+            ai: { failurePhase: 'governance' },
+          });
+          audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+          return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
+        };
+        const authentication = yield* Effect.result(
+          access.authenticate.pipe(Effect.withSpan('ai.authenticate')),
+        );
+        if (Result.isFailure(authentication)) {
+          const error = authentication.failure;
+          if (error instanceof DomainError) {
+            if (error.status === 401 && config.rateLimitEnabled) {
+              const limitResult = yield* Effect.result(
+                access.limitAnonymous.pipe(Effect.withSpan('ai.rate_limit')),
+              );
+              if (Result.isFailure(limitResult)) return governanceFailure(limitResult.failure);
+              const limited = limitResult.success;
+              if (limited) {
+                audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
+                return limited;
+              }
+            }
+            audit(error.status, 0, false, false, error.code);
+            return errorResponse(c, error.status, error.message, error.code);
+          }
+          getRequestLogger(c)?.error(toWorkerError(error, 'Authentication failed'), {
+            ai: { failurePhase: 'authentication' },
+          });
+          audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+          return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
         }
-        getRequestLogger(c)?.error(
-          error instanceof Error ? error : new Error('Unknown error'),
-          context,
-        );
-      };
+        const user = authentication.success;
+        auditUserId = user.userId;
 
-      const persistSettlementIntent = (
-        outcome: 'succeeded' | 'failed',
-        settlement: AIUsageSettlement,
-        code: ApiErrorCode | null,
-      ) =>
-        ledger.prepare(reservation, outcome, settlement, code).pipe(
-          Effect.retry({
-            times: SETTLEMENT_INTENT_MAX_ATTEMPTS - 1,
-            while: (error) => !(error instanceof DomainError),
-          }),
+        const parsedBody = yield* Effect.promise(() =>
+          parseJsonBodyWithLimit<Record<string, unknown>>(c, spec.bodyMaxBytes),
         );
-
-      const settleUsage = (outcome: 'succeeded' | 'failed', code: ApiErrorCode | null) =>
-        Effect.gen(function* () {
-          const preparation = yield* Effect.result(
-            persistSettlementIntent(outcome, createSettlement(), code),
+        if (!parsedBody.ok) {
+          const tooLarge = parsedBody.response.status === 413;
+          audit(
+            parsedBody.response.status,
+            0,
+            false,
+            false,
+            tooLarge ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON',
           );
-          if (Result.isFailure(preparation)) {
-            reportSettlementError(preparation.failure, 'credit_settlement_intent', outcome);
+          return parsedBody.response;
+        }
+
+        const parsed = spec.parseRequest(parsedBody.data ?? {});
+        if (isRejection(parsed)) {
+          audit(parsed.status, 0, false, false, parsed.code);
+          return errorResponse(c, parsed.status, parsed.message, parsed.code);
+        }
+
+        const limitResult = yield* Effect.result(
+          access.limitUser(route, config, user.userId).pipe(Effect.withSpan('ai.rate_limit')),
+        );
+        if (Result.isFailure(limitResult)) return governanceFailure(limitResult.failure);
+        const rateLimit = limitResult.success;
+        rateLimitRemaining = rateLimit.remaining;
+        if (rateLimit.response) {
+          audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
+          return rateLimit.response;
+        }
+
+        const messages = spec.buildMessages(parsed);
+        estimatedTokens = estimateRequestTokens(messages, maxOutputTokens);
+
+        if (!apiKey) {
+          audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+          return errorResponse(c, 503, 'OpenAI service unavailable', 'SERVICE_UNAVAILABLE');
+        }
+
+        const credit = yield* Effect.result(
+          Effect.gen(function* () {
+            yield* ledger.grantSignup(user);
+            return yield* ledger.reserve({
+              userId: user.userId,
+              routeKey: route,
+              requestId,
+              estimatedTokens,
+            });
+          }).pipe(Effect.withSpan('ai.reserve')),
+        );
+        if (Result.isFailure(credit)) {
+          const error = credit.failure;
+          if (error instanceof DomainError) {
+            audit(error.status, 0, false, false, error.code);
+            return errorResponse(c, error.status, error.message, error.code);
+          }
+          getRequestLogger(c)?.error(toWorkerError(error, 'Credit reservation failed'), {
+            ai: { failurePhase: 'credit_reservation' },
+          });
+          audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+          return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
+        }
+
+        const reservation = credit.success;
+
+        const getProviderBudgetTokens = (observedTokens: number | null) => {
+          if (attemptCount === 0) return 0;
+          const baseTokens = observedTokens ?? 0;
+          const unknownAttempts = observedTokens === null ? attemptCount : attemptCount - 1;
+          const remaining = Number.MAX_SAFE_INTEGER - baseTokens;
+          if (unknownAttempts > Math.floor(remaining / reservation.reservedTokens)) {
+            return Number.MAX_SAFE_INTEGER;
+          }
+          return baseTokens + unknownAttempts * reservation.reservedTokens;
+        };
+
+        const createSettlement = (): AIUsageSettlement => {
+          if (usage) {
+            chargedTokens =
+              attemptCount > 1
+                ? Math.max(usage.totalTokens, reservation.reservedTokens)
+                : usage.totalTokens;
+            providerBudgetTokens = getProviderBudgetTokens(usage.totalTokens);
+            usageEstimated = attemptCount > 1;
+            return {
+              observedTotalTokens: usage.totalTokens,
+              chargedTokens,
+              providerBudgetTokens,
+              usageEstimated,
+            };
+          }
+          if (attemptCount === 0) {
+            chargedTokens = 0;
+            providerBudgetTokens = 0;
+            usageEstimated = false;
+            return {
+              observedTotalTokens: 0,
+              chargedTokens,
+              providerBudgetTokens,
+              usageEstimated,
+            };
+          }
+          chargedTokens = reservation.reservedTokens;
+          providerBudgetTokens = getProviderBudgetTokens(null);
+          usageEstimated = true;
+          return {
+            observedTotalTokens: null,
+            chargedTokens,
+            providerBudgetTokens,
+            usageEstimated,
+          };
+        };
+
+        const settleBudget = (tokens: number) =>
+          governance.budgetLimitTokens !== null
+            ? ledger.settleBudget(reservation.usageEventId, tokens)
+            : Effect.succeed(null);
+
+        const reportSettlementError = (
+          error: unknown,
+          failurePhase: string,
+          outcome: 'succeeded' | 'failed',
+        ) => {
+          const context = { ai: { failurePhase, settlementOutcome: outcome } };
+          if (requestAborted) {
+            logWorkerBackgroundError(
+              error,
+              {
+                job: 'ai-operation',
+                requestId,
+                route,
+                failurePhase,
+                settlementOutcome: outcome,
+              },
+              waitUntil,
+              c.env.ENVIRONMENT,
+            );
             return;
           }
-          const prepared = preparation.success;
-          chargedTokens = prepared.chargedTokens;
-          providerBudgetTokens = prepared.providerBudgetTokens;
-          accountingSnapshotReliable = true;
-          const [creditResult, budgetResult] = yield* Effect.all(
-            [
-              Effect.result(
-                prepared.needsFinalization
-                  ? ledger.finalize(reservation, outcome, code)
-                  : Effect.succeed(false),
-              ),
-              Effect.result(settleBudget(prepared.providerBudgetTokens)),
-            ],
-            { concurrency: 2 },
+          getRequestLogger(c)?.error(
+            error instanceof Error ? error : new Error('Unknown error'),
+            context,
           );
-          if (Result.isFailure(creditResult)) {
-            reportSettlementError(creditResult.failure, 'credit_settlement', outcome);
-          } else {
-            accountingFinalized = !prepared.needsFinalization || creditResult.success;
-          }
-          if (Result.isFailure(budgetResult)) {
-            reportSettlementError(budgetResult.failure, 'budget_settlement', outcome);
-          } else if (budgetResult.success !== null) {
-            budgetUsedTokens = budgetResult.success;
-          }
-        }).pipe(Effect.uninterruptible);
-
-      const budgetResult = yield* Effect.result(
-        access.reserveBudget(reservation.usageEventId, estimatedTokens, config),
-      );
-      if (Result.isFailure(budgetResult)) {
-        yield* settleUsage('failed', 'SERVICE_UNAVAILABLE');
-        getRequestLogger(c)?.error(
-          toWorkerError(budgetResult.failure, 'Budget reservation failed'),
-          {
-            ai: { failurePhase: 'budget_reservation' },
-          },
-        );
-        audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-        return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
-      }
-      const budget = budgetResult.success;
-      budgetUsedTokens = budget.usedTokens;
-      if (budget.response) {
-        yield* settleUsage('failed', 'BUDGET_EXCEEDED');
-        audit(429, 0, false, true, 'BUDGET_EXCEEDED');
-        return budget.response;
-      }
-
-      let settled = false;
-      let streamed = false;
-      let retryCount = 0;
-      const openAIAbortController = new AbortController();
-      const reportUsage = (next: OpenAIUsageSnapshot | null | undefined) => {
-        if (next) usage = next;
-      };
-      const checkAborted = Effect.suspend(() =>
-        openAIAbortController.signal.aborted
-          ? Effect.fail(new AIProviderError({ cause: openAIAbortController.signal.reason }))
-          : Effect.void,
-      );
-      const runOpenAIAttempt = <T>(operation: Effect.Effect<T, AIProviderError>) =>
-        Effect.uninterruptibleMask((restore) =>
-          Effect.gen(function* () {
-            yield* checkAborted;
-            // D1 may commit before its response arrives; finish the write before deciding whether to refund.
-            attemptCount = yield* ledger.recordAttempt(reservation);
-            if (openAIAbortController.signal.aborted) {
-              attemptCount = yield* ledger.cancelAttempt(reservation, attemptCount);
-            }
-            yield* checkAborted;
-            let started = false;
-            return yield* restore(
-              Effect.suspend(() => {
-                started = true;
-                retryCount = Math.max(0, attemptCount - 1);
-                return operation;
-              }),
-            ).pipe(
-              Effect.onExit(() =>
-                started
-                  ? Effect.void
-                  : ledger.cancelAttempt(reservation, attemptCount).pipe(
-                      Effect.tap((count) =>
-                        Effect.sync(() => {
-                          attemptCount = count;
-                        }),
-                      ),
-                    ),
-              ),
-            );
-          }),
-        );
-      const classifyFailure = (error: unknown) => {
-        if (error instanceof AIUsageError) {
-          return {
-            code: 'SERVICE_UNAVAILABLE' as const,
-            status: 503 as const,
-            message: 'AI usage service unavailable',
-          };
-        }
-        if (error instanceof AIOutputError && error.reason === 'truncated') {
-          return {
-            code: 'AI_OUTPUT_TRUNCATED' as const,
-            status: 502 as const,
-            message: error.message,
-          };
-        }
-        if (error instanceof DomainError) {
-          return { code: error.code, status: 502 as const, message: error.message };
-        }
-        return {
-          code: 'UPSTREAM_OPENAI_ERROR' as const,
-          status: 502 as const,
-          message: 'Upstream OpenAI error',
         };
-      };
-      const onRetry = (event: { attempt: number; status: number | null; waitMs: number }) => {
-        if (requestAborted) return;
-        getRequestLogger(c)?.warn('OpenAI request retrying', {
-          ai: {
-            retries: [
-              {
-                attempt: event.attempt,
-                status: event.status,
-                waitMs: event.waitMs,
-              },
-            ],
-          },
-        });
-      };
-      const settleSuccess = (completedRetryCount: number) =>
-        Effect.gen(function* () {
-          if (settled) return;
-          settled = true;
-          yield* settleUsage('succeeded', null);
-          audit(200, completedRetryCount, false, false);
-        });
-      const settleFailure = (code: ApiErrorCode, status: number, completedRetryCount: number) =>
-        Effect.gen(function* () {
-          if (settled) return;
-          settled = true;
-          yield* settleUsage('failed', code);
-          audit(status, completedRetryCount, false, false, code);
-        });
 
-      const execute = <A, E>(operation: Effect.Effect<A, E>) =>
-        withAIExecution(
-          operation,
-          openAIAbortController,
-          getAIExecutionTimeoutMs(config) - (clock.currentTimeMillisUnsafe() - startedAt),
-        );
-      const settleExit = (exit: Exit.Exit<unknown, unknown>) => {
-        if (Exit.isSuccess(exit)) return settleSuccess(retryCount);
-        const failure = classifyFailure(Cause.squash(exit.cause));
-        return settleFailure(failure.code, requestAborted ? 499 : failure.status, retryCount);
-      };
+        const persistSettlementIntent = (
+          outcome: 'succeeded' | 'failed',
+          settlement: AIUsageSettlement,
+          code: ApiErrorCode | null,
+        ) =>
+          ledger.prepare(reservation, outcome, settlement, code).pipe(
+            Effect.retry({
+              times: SETTLEMENT_INTENT_MAX_ATTEMPTS - 1,
+              while: (error) => !(error instanceof DomainError),
+            }),
+          );
 
-      const session: AISession<Request> = {
-        request: parsed,
-        completeJson: ({ scope, temperature }) =>
+        const settleUsage = (outcome: 'succeeded' | 'failed', code: ApiErrorCode | null) =>
           Effect.gen(function* () {
-            const { data: response } = yield* retryOpenAI(
-              runOpenAIAttempt(
-                provider.complete(
-                  {
-                    model,
-                    messages,
-                    response_format: { type: 'json_object' },
-                    temperature,
-                    max_tokens: maxOutputTokens,
-                    ...(THINKING_DISABLED as Record<string, unknown>),
-                  },
-                  openAIAbortController.signal,
+            const preparation = yield* Effect.result(
+              persistSettlementIntent(outcome, createSettlement(), code),
+            );
+            if (Result.isFailure(preparation)) {
+              yield* Effect.annotateCurrentSpan('ai.outcome', 'failed');
+              reportSettlementError(preparation.failure, 'credit_settlement_intent', outcome);
+              return;
+            }
+            const prepared = preparation.success;
+            chargedTokens = prepared.chargedTokens;
+            providerBudgetTokens = prepared.providerBudgetTokens;
+            accountingSnapshotReliable = true;
+            const [creditResult, budgetResult] = yield* Effect.all(
+              [
+                Effect.result(
+                  prepared.needsFinalization
+                    ? ledger.finalize(reservation, outcome, code)
+                    : Effect.succeed(false),
                 ),
-              ),
-              { scope, onRetry },
-              config,
+                Effect.result(settleBudget(prepared.providerBudgetTokens)),
+              ],
+              { concurrency: 2 },
             );
-            const usageSnapshot = response.usage;
-            reportUsage(
-              usageSnapshot
-                ? {
-                    promptTokens: usageSnapshot.prompt_tokens,
-                    completionTokens: usageSnapshot.completion_tokens,
-                    totalTokens: usageSnapshot.total_tokens,
-                  }
-                : null,
-            );
-            const choice = response.choices[0];
-            const content = choice?.message?.content ?? '';
-            return yield* readCompletedContent(content, choice?.finish_reason, true).pipe(
-              Effect.flatMap(validateOutput),
-              Effect.tapError((error) =>
-                Effect.sync(() => {
-                  getRequestLogger(c)?.error(toWorkerError(error, 'Completion validation failed'), {
-                    ai: {
-                      failurePhase: 'completion_validation',
-                      finishReason: choice?.finish_reason ?? null,
-                      contentLength: content.length,
-                    },
-                  });
+            if (Result.isFailure(creditResult)) {
+              yield* Effect.annotateCurrentSpan('ai.outcome', 'failed');
+              reportSettlementError(creditResult.failure, 'credit_settlement', outcome);
+            } else {
+              accountingFinalized = !prepared.needsFinalization || creditResult.success;
+            }
+            if (Result.isFailure(budgetResult)) {
+              yield* Effect.annotateCurrentSpan('ai.outcome', 'failed');
+              reportSettlementError(budgetResult.failure, 'budget_settlement', outcome);
+            } else if (budgetResult.success !== null) {
+              budgetUsedTokens = budgetResult.success;
+            }
+          }).pipe(Effect.uninterruptible, Effect.withSpan('ai.settle'));
+
+        const budgetResult = yield* Effect.result(
+          access
+            .reserveBudget(reservation.usageEventId, estimatedTokens, config)
+            .pipe(Effect.withSpan('ai.budget.reserve')),
+        );
+        if (Result.isFailure(budgetResult)) {
+          yield* settleUsage('failed', 'SERVICE_UNAVAILABLE');
+          getRequestLogger(c)?.error(
+            toWorkerError(budgetResult.failure, 'Budget reservation failed'),
+            {
+              ai: { failurePhase: 'budget_reservation' },
+            },
+          );
+          audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+          return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
+        }
+        const budget = budgetResult.success;
+        budgetUsedTokens = budget.usedTokens;
+        if (budget.response) {
+          yield* settleUsage('failed', 'BUDGET_EXCEEDED');
+          audit(429, 0, false, true, 'BUDGET_EXCEEDED');
+          return budget.response;
+        }
+
+        let settled = false;
+        let retryCount = 0;
+        const openAIAbortController = new AbortController();
+        const reportUsage = (next: OpenAIUsageSnapshot | null | undefined) => {
+          if (next) usage = next;
+        };
+        const checkAborted = Effect.suspend(() =>
+          openAIAbortController.signal.aborted
+            ? Effect.fail(new AIProviderError({ cause: openAIAbortController.signal.reason }))
+            : Effect.void,
+        );
+        const runOpenAIAttempt = <T>(operation: Effect.Effect<T, AIProviderError>) =>
+          Effect.uninterruptibleMask((restore) =>
+            Effect.gen(function* () {
+              yield* checkAborted;
+              // D1 may commit before its response arrives; finish the write before deciding whether to refund.
+              attemptCount = yield* ledger.recordAttempt(reservation);
+              if (openAIAbortController.signal.aborted) {
+                attemptCount = yield* ledger.cancelAttempt(reservation, attemptCount);
+              }
+              yield* checkAborted;
+              let started = false;
+              return yield* restore(
+                Effect.suspend(() => {
+                  started = true;
+                  retryCount = Math.max(0, attemptCount - 1);
+                  return operation.pipe(
+                    Effect.withSpan('ai.provider.attempt', {
+                      attributes: { 'ai.attempt': attemptCount },
+                    }),
+                  );
                 }),
-              ),
-            );
-          }),
-        streamCompletion: ({ scope, temperature, jsonResponse, debugInput }) =>
-          Effect.sync(() => {
-            c.header('X-AI-Stream-Debug', config.streamDebugEnabled ? '1' : '0');
-            streamed = true;
-            const streamDebug = createOpenAIStreamDebugLogger({
-              enabled: config.streamDebugEnabled,
-              requestId,
-              route,
-              model,
-              startedAt,
-              input: debugInput,
-              log: getRequestLogger(c),
-            });
-            c.header('Content-Type', 'application/x-ndjson; charset=utf-8');
-            c.header('Cache-Control', 'no-cache');
-            return stream(c, async (output) => {
-              output.onAbort(() => {
-                requestAborted = true;
-                openAIAbortController.abort();
-              });
-              const write = (event: Parameters<typeof encodeAIStreamEvent>[0]) =>
-                Effect.tryPromise({
-                  try: () => output.write(encodeAIStreamEvent(event)),
-                  catch: (cause) => new AIProviderError({ cause }),
-                });
-              const completion = Effect.gen(function* () {
-                streamDebug.start();
-                const { data: response } = yield* retryOpenAI(
-                  runOpenAIAttempt(
-                    provider.stream(
-                      {
-                        model,
-                        messages,
-                        ...(jsonResponse
-                          ? { response_format: { type: 'json_object' as const } }
-                          : {}),
-                        temperature,
-                        max_tokens: maxOutputTokens,
-                        stream: true,
-                        stream_options: { include_usage: true },
-                        ...(THINKING_DISABLED as Record<string, unknown>),
-                      },
-                      openAIAbortController.signal,
-                    ),
-                  ),
-                  { scope, onRetry },
-                  config,
-                );
-                streamDebug.connected();
-                let fullText = '';
-                let finishReason: string | null = null;
-                yield* Stream.fromAsyncIterable(
-                  response,
-                  (cause) => new AIProviderError({ cause }),
-                ).pipe(
-                  Stream.runForEach((chunk) =>
-                    Effect.gen(function* () {
-                      reportUsage(readUsageFromStreamChunk(chunk));
-                      const choice = chunk.choices[0];
-                      if (choice?.finish_reason) finishReason = choice.finish_reason;
-                      const content = choice?.delta?.content ?? '';
-                      if (content) {
-                        fullText += content;
-                        streamDebug.chunk(content);
-                        yield* write({ type: 'delta', text: content });
-                      }
-                    }),
-                  ),
-                );
-                yield* checkAborted;
-                const completed = yield* readCompletedContent(
-                  fullText,
-                  finishReason,
-                  Boolean(jsonResponse),
-                );
-                yield* validateOutput(completed);
-                streamDebug.complete();
-              });
-              const task = Effect.runPromise(
-                execute(completion).pipe(
-                  Effect.onExit(settleExit),
-                  Effect.flatMap(() => write({ type: 'done' })),
-                  Effect.catchCause((cause) =>
-                    Effect.gen(function* () {
-                      const error = Cause.squash(cause);
-                      if (requestAborted) {
-                        streamDebug.error(new Error('Client aborted AI stream'));
-                        return;
-                      }
-                      streamDebug.error(error);
-                      getRequestLogger(c)?.error(toWorkerError(error, 'Unknown stream error'), {
-                        ai: { failurePhase: 'stream' },
-                      });
-                      const failure = classifyFailure(error);
-                      yield* write({
-                        type: 'error',
-                        error: failure.message,
-                        code: failure.code,
-                        requestId,
-                      });
-                    }),
-                  ),
-                  Effect.provideContext(executionContext),
+              ).pipe(
+                Effect.onExit(() =>
+                  started
+                    ? Effect.void
+                    : ledger.cancelAttempt(reservation, attemptCount).pipe(
+                        Effect.tap((count) =>
+                          Effect.sync(() => {
+                            attemptCount = count;
+                          }),
+                        ),
+                      ),
                 ),
               );
-              waitUntil(task);
-              await task;
-            });
-          }),
-      };
+            }),
+          );
+        const classifyFailure = (error: unknown) => {
+          if (error instanceof AIUsageError) {
+            return {
+              code: 'SERVICE_UNAVAILABLE' as const,
+              status: 503 as const,
+              message: 'AI usage service unavailable',
+            };
+          }
+          if (error instanceof AIOutputError && error.reason === 'truncated') {
+            return {
+              code: 'AI_OUTPUT_TRUNCATED' as const,
+              status: 502 as const,
+              message: error.message,
+            };
+          }
+          if (error instanceof DomainError) {
+            return { code: error.code, status: 502 as const, message: error.message };
+          }
+          if (error instanceof AIProviderError || error instanceof AIOutputError) {
+            return {
+              code: 'UPSTREAM_OPENAI_ERROR' as const,
+              status: 502 as const,
+              message: 'Upstream OpenAI error',
+            };
+          }
+          return {
+            code: 'INTERNAL_ERROR' as const,
+            status: 500 as const,
+            message: 'Internal server error',
+          };
+        };
+        const onRetry = (event: { attempt: number; status: number | null; waitMs: number }) => {
+          if (requestAborted) return;
+          getRequestLogger(c)?.warn('OpenAI request retrying', {
+            ai: {
+              retries: [
+                {
+                  attempt: event.attempt,
+                  status: event.status,
+                  waitMs: event.waitMs,
+                },
+              ],
+            },
+          });
+        };
+        const settleSuccess = (completedRetryCount: number) =>
+          Effect.gen(function* () {
+            if (settled) return;
+            settled = true;
+            yield* settleUsage('succeeded', null);
+            audit(200, completedRetryCount, false, false);
+          });
+        const settleFailure = (code: ApiErrorCode, status: number, completedRetryCount: number) =>
+          Effect.gen(function* () {
+            if (settled) return;
+            settled = true;
+            yield* settleUsage('failed', code);
+            audit(status, completedRetryCount, false, false, code);
+          });
 
-      return yield* restore(execute(Effect.suspend(() => run(session)))).pipe(
-        Effect.onExit((exit) => (streamed ? Effect.void : settleExit(exit))),
-        Effect.catchCause((cause) =>
-          Effect.sync(() => {
-            const error = Cause.squash(cause);
-            getRequestLogger(c)?.error(toWorkerError(error, 'AI request failed'), {
-              ai: { failurePhase: 'request' },
-            });
-            const failure = classifyFailure(error);
-            return errorResponse(c, failure.status, failure.message, failure.code);
-          }),
-        ),
-      );
-    }),
-  );
+        const execute = <A, E>(operation: Effect.Effect<A, E>) =>
+          withAIExecution(
+            operation,
+            openAIAbortController,
+            getAIExecutionTimeoutMs(config) - (clock.currentTimeMillisUnsafe() - startedAt),
+          );
+        const settleExit = (exit: Exit.Exit<unknown, unknown>) => {
+          if (Exit.isSuccess(exit)) return settleSuccess(retryCount);
+          requestSpan.attribute('ai.failure_kind', aiFailureKind(Cause.squash(exit.cause)));
+          const failure = classifyFailure(Cause.squash(exit.cause));
+          return settleFailure(failure.code, requestAborted ? 499 : failure.status, retryCount);
+        };
+
+        const session: AISession<Request> = {
+          request: parsed,
+          completeJson: ({ scope, temperature }) =>
+            Effect.gen(function* () {
+              const { data: response } = yield* retryOpenAI(
+                runOpenAIAttempt(
+                  provider.complete(
+                    {
+                      model,
+                      messages,
+                      response_format: { type: 'json_object' },
+                      temperature,
+                      max_tokens: maxOutputTokens,
+                      ...(THINKING_DISABLED as Record<string, unknown>),
+                    },
+                    openAIAbortController.signal,
+                  ),
+                ),
+                { scope, onRetry },
+                config,
+              );
+              const usageSnapshot = response.usage;
+              reportUsage(
+                usageSnapshot
+                  ? {
+                      promptTokens: usageSnapshot.prompt_tokens,
+                      completionTokens: usageSnapshot.completion_tokens,
+                      totalTokens: usageSnapshot.total_tokens,
+                    }
+                  : null,
+              );
+              const choice = response.choices[0];
+              const content = choice?.message?.content ?? '';
+              return yield* readCompletedContent(content, choice?.finish_reason, true).pipe(
+                Effect.flatMap(validateOutput),
+                Effect.tapError((error) =>
+                  Effect.sync(() => {
+                    getRequestLogger(c)?.error(
+                      toWorkerError(error, 'Completion validation failed'),
+                      {
+                        ai: {
+                          failurePhase: 'completion_validation',
+                          finishReason: choice?.finish_reason ?? null,
+                          contentLength: content.length,
+                        },
+                      },
+                    );
+                  }),
+                ),
+              );
+            }),
+          streamCompletion: ({ scope, temperature, jsonResponse, debugInput }) =>
+            Effect.sync(() => {
+              c.header('X-AI-Stream-Debug', config.streamDebugEnabled ? '1' : '0');
+              streamed = true;
+              const streamDebug = createOpenAIStreamDebugLogger({
+                enabled: config.streamDebugEnabled,
+                requestId,
+                route,
+                model,
+                startedAt,
+                input: debugInput,
+                log: getRequestLogger(c),
+              });
+              c.header('Content-Type', 'application/x-ndjson; charset=utf-8');
+              c.header('Cache-Control', 'no-cache');
+              return stream(c, async (output) => {
+                output.onAbort(() => {
+                  requestAborted = true;
+                  openAIAbortController.abort();
+                });
+                const write = (event: Parameters<typeof encodeAIStreamEvent>[0]) =>
+                  Effect.tryPromise({
+                    try: () => output.write(encodeAIStreamEvent(event)),
+                    catch: (cause) => new AIProviderError({ cause }),
+                  });
+                const completion = Effect.gen(function* () {
+                  streamDebug.start();
+                  const { data: response } = yield* retryOpenAI(
+                    runOpenAIAttempt(
+                      provider.stream(
+                        {
+                          model,
+                          messages,
+                          ...(jsonResponse
+                            ? { response_format: { type: 'json_object' as const } }
+                            : {}),
+                          temperature,
+                          max_tokens: maxOutputTokens,
+                          stream: true,
+                          stream_options: { include_usage: true },
+                          ...(THINKING_DISABLED as Record<string, unknown>),
+                        },
+                        openAIAbortController.signal,
+                      ),
+                    ),
+                    { scope, onRetry },
+                    config,
+                  );
+                  streamDebug.connected();
+                  let fullText = '';
+                  let finishReason: string | null = null;
+                  yield* Stream.fromAsyncIterable(
+                    response,
+                    (cause) => new AIProviderError({ cause }),
+                  ).pipe(
+                    Stream.runForEach((chunk) =>
+                      Effect.gen(function* () {
+                        reportUsage(readUsageFromStreamChunk(chunk));
+                        const choice = chunk.choices[0];
+                        if (choice?.finish_reason) finishReason = choice.finish_reason;
+                        const content = choice?.delta?.content ?? '';
+                        if (content) {
+                          if (!fullText)
+                            requestSpan.attribute(
+                              'ai.first_chunk_ms',
+                              clock.currentTimeMillisUnsafe() - startedAt,
+                            );
+                          fullText += content;
+                          streamDebug.chunk(content);
+                          yield* write({ type: 'delta', text: content });
+                        }
+                      }),
+                    ),
+                    Effect.withSpan('ai.stream.consume'),
+                  );
+                  yield* checkAborted;
+                  const completed = yield* readCompletedContent(
+                    fullText,
+                    finishReason,
+                    Boolean(jsonResponse),
+                  );
+                  yield* validateOutput(completed);
+                  requestSpan.attribute('ai.finish_reason', finishReason ?? 'unknown');
+                  requestSpan.attribute('ai.output_chars', fullText.length);
+                  streamDebug.complete();
+                });
+                const task = Effect.runPromise(
+                  execute(completion).pipe(
+                    Effect.onExit(settleExit),
+                    Effect.flatMap(() => write({ type: 'done' })),
+                    Effect.catchCause((cause) =>
+                      Effect.gen(function* () {
+                        const error = Cause.squash(cause);
+                        if (requestAborted) {
+                          streamDebug.error(new Error('Client aborted AI stream'));
+                          return;
+                        }
+                        streamDebug.error(error);
+                        getRequestLogger(c)?.error(toWorkerError(error, 'Unknown stream error'), {
+                          ai: { failurePhase: 'stream' },
+                        });
+                        const failure = classifyFailure(error);
+                        yield* write({
+                          type: 'error',
+                          error: failure.message,
+                          code: failure.code,
+                          requestId,
+                        });
+                      }),
+                    ),
+                    Effect.onExit((exit) => endAIRequestSpan(requestSpan, exit)),
+                    Effect.provideContext(executionContext),
+                  ),
+                );
+                waitUntil(task);
+                await task;
+              });
+            }),
+        };
+
+        return yield* restore(execute(Effect.suspend(() => run(session)))).pipe(
+          Effect.onExit((exit) => (streamed ? Effect.void : settleExit(exit))),
+          Effect.catchCause((cause) =>
+            Effect.sync(() => {
+              const error = Cause.squash(cause);
+              getRequestLogger(c)?.error(toWorkerError(error, 'AI request failed'), {
+                ai: { failurePhase: 'request' },
+              });
+              const failure = classifyFailure(error);
+              return errorResponse(c, failure.status, failure.message, failure.code);
+            }),
+          ),
+        );
+      }),
+    ).pipe(
+      Effect.withParentSpan(requestSpan),
+      Effect.onExit((exit) =>
+        !streamed || Exit.isFailure(exit) ? endAIRequestSpan(requestSpan, exit) : Effect.void,
+      ),
+    );
+  });
 
 export const withAIGovernance = <Request, E = AICompletionError>(
   c: Context<ApiEnv>,
@@ -741,5 +818,9 @@ export const withAIGovernance = <Request, E = AICompletionError>(
     AIUsage.layer(c.env),
     AIRequestAccess.layer(c),
   ).pipe(Layer.provideMerge(AIConfiguration.layer(c.env)));
-  return Effect.runPromise(aiGovernance(c, spec, run).pipe(Effect.provide(services)));
+  const program = aiGovernance(c, spec, run).pipe(Effect.provide(services));
+  const tracing = (c.executionCtx as { tracing?: Tracing }).tracing;
+  return Effect.runPromise(
+    tracing ? program.pipe(Effect.provideService(Tracer.Tracer, makeAITracer(tracing))) : program,
+  );
 };

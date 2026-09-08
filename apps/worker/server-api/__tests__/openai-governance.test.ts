@@ -148,11 +148,7 @@ const mockLoggingModule = () => {
     getRequestLogger: (c: Context<ApiEnv>) => c.get('log'),
     completeRequestLogContext: (c: Context<ApiEnv>, requestId: string) =>
       c.get('log')?.set({ requestId }),
-    createWorkerBackgroundLogger: () => ({
-      set: vi.fn(),
-      error: vi.fn(),
-      emit: vi.fn(),
-    }),
+    createWorkerBackgroundLogger: () => ({ ...requestLogger, emit: vi.fn() }),
     toWorkerError: (error: unknown, fallback: string) =>
       error instanceof Error ? error : new Error(typeof error === 'string' ? error : fallback),
     logWorkerBackgroundError: logWorkerBackgroundErrorMock,
@@ -162,7 +158,10 @@ const mockLoggingModule = () => {
 const getAIAuditPayload = () =>
   requestLogSetMock.mock.calls
     .map(([fields]) => (fields as { ai?: Record<string, unknown> }).ai)
-    .find((payload): payload is Record<string, unknown> => payload !== undefined);
+    .find(
+      (payload): payload is Record<string, unknown> =>
+        payload !== undefined && typeof payload.route === 'string',
+    );
 
 const mockAIBudgetModule = () => {
   const reservations = new Map<string, number>();

@@ -12,7 +12,7 @@ export default defineConfig({
     emptyOutDir: false,
     copyPublicDir: false,
     rollupOptions: {
-      external: [],
+      external: ['node:async_hooks'],
       output: {
         codeSplitting: false,
       },

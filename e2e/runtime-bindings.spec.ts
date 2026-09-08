@@ -24,6 +24,42 @@ const createState = (tableName: string) => ({
 });
 
 test.describe('Cloudflare runtime bindings', () => {
+  test('connects Effect spans to the native Worker trace', async ({ request }) => {
+    const requestId = `trace-${crypto.randomUUID()}`;
+    const response = await request.post('/api/explain', {
+      headers: { 'X-Request-Id': requestId },
+      data: {},
+    });
+    expect(response.status()).toBe(401);
+    const sql = `WITH root AS (
+      SELECT span_id FROM spans WHERE name = 'ai.request'
+      AND json_extract(attributes, '$."request.id"') = '${requestId}'
+    ) SELECT name, span_id, parent_id, json(attributes) FROM spans
+      WHERE span_id IN (SELECT span_id FROM root) OR parent_id IN (SELECT span_id FROM root)`;
+    let rows: string[][] = [];
+    await expect
+      .poll(async () => {
+        const query = await request.post('/cdn-cgi/local/explorer/api/local/observability/query', {
+          data: { sql },
+        });
+        expect(query.ok()).toBe(true);
+        const payload = await query.json();
+        expect(payload.success).toBe(true);
+        rows = payload.result.rows;
+        return rows.map((row) => row[0]);
+      })
+      .toEqual(expect.arrayContaining(['ai.request', 'ai.authenticate']));
+    const root = rows.find((row) => row[0] === 'ai.request');
+    const auth = rows.find((row) => row[0] === 'ai.authenticate');
+    if (!root || !auth) throw new Error('Missing AI runtime spans');
+    expect(auth[2]).toBe(root[1]);
+    expect(JSON.parse(root[3])).toMatchObject({
+      'request.id': requestId,
+      'ai.outcome': 'rejected',
+      'ai.error_code': 'AUTH_REQUIRED',
+    });
+  });
+
   test('revokes an established workspace socket after sign-out', async ({ context, page }) => {
     const email = `socket-${crypto.randomUUID()}@ddlbuilder.test`;
     const password = 'Runtime-integration-123!';

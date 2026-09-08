@@ -127,7 +127,7 @@ const loadShell = async (
   };
 };
 
-const post = (app: Hono<ApiEnv>, body: unknown, waitUntil = vi.fn()) =>
+const post = (app: Hono<ApiEnv>, body: unknown, waitUntil = vi.fn(), tracing?: Tracing) =>
   app.fetch(
     new Request('http://localhost/t', {
       method: 'POST',
@@ -135,7 +135,7 @@ const post = (app: Hono<ApiEnv>, body: unknown, waitUntil = vi.fn()) =>
       body: JSON.stringify(body),
     }),
     createEnv(),
-    { waitUntil, passThroughOnException: () => {} } as unknown as ExecutionContext,
+    { waitUntil, tracing, passThroughOnException: () => {} } as unknown as ExecutionContext,
   );
 
 describe('withAIGovernance', () => {
@@ -385,6 +385,47 @@ describe('withAIGovernance', () => {
       expect(shell.createCompletion).toHaveBeenCalledOnce();
     },
   );
+
+  it('keeps the request span open through stream consumption and settlement', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const spans: Array<{ name: string; end: ReturnType<typeof vi.fn> }> = [];
+    const tracing = {
+      startActiveSpan<T>(name: string, callback: (span: Span) => T): T {
+        const span = { name, end: vi.fn(), setAttribute: vi.fn(), recordException: vi.fn() };
+        spans.push(span);
+        return callback(span as unknown as Span);
+      },
+    } as Tracing;
+    async function* upstream() {
+      yield { choices: [{ delta: { content: 'hello' } }] };
+      await gate;
+      yield { choices: [{ delta: {}, finish_reason: 'stop' }] };
+    }
+    const shell = await loadShell({}, '{}', upstream());
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        session.streamCompletion({ scope: 'test', temperature: 0, debugInput: {} }),
+      ),
+    );
+    const waitUntil = vi.fn();
+    const response = await post(app, {}, waitUntil, tracing);
+    const root = spans.find((span) => span.name === 'ai.request');
+    expect(root).toBeDefined();
+    expect(root?.end).not.toHaveBeenCalled();
+    const text = response.text();
+    release();
+    expect(await text).toContain('"type":"done"');
+    await Promise.all(waitUntil.mock.calls.map(([task]) => task));
+    expect(shell.finalizeAIUsageSettlement).toHaveBeenCalledOnce();
+    expect(root?.end).toHaveBeenCalledOnce();
+    expect(spans.map((span) => span.name)).toEqual(
+      expect.arrayContaining(['ai.provider.attempt', 'ai.stream.consume', 'ai.settle']),
+    );
+  });
 
   it('protects the stream lifetime before upstream usage arrives and after cancellation', async () => {
     let resume!: () => void;
@@ -726,7 +767,7 @@ describe('withAIGovernance', () => {
 
     const response = await post(app, { sql: 'select 1' });
 
-    expect(response.status).toBe(502);
+    expect(response.status).toBe(500);
     expect(shell.prepareAIUsageSettlement).toHaveBeenCalledWith(
       expect.anything(),
       RESERVATION,
@@ -737,7 +778,7 @@ describe('withAIGovernance', () => {
         providerBudgetTokens: 0,
         usageEstimated: false,
       },
-      'UPSTREAM_OPENAI_ERROR',
+      'INTERNAL_ERROR',
     );
   });
 
