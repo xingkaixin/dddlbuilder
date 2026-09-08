@@ -1,3 +1,5 @@
+import type { MeResponseSchema } from './accountContracts.js';
+export * from './accountContracts.js';
 import type {
   ApiMetaSchema,
   CurrentWorkspaceResponseSchema,
@@ -58,19 +60,4 @@ export type WorkspaceMigrationResult = Omit<WorkspaceMigrationResponse, 'meta'>;
 export type WorkspaceMigrationConflict = WorkspaceMigrationResult['conflicts'][number];
 export type CurrentWorkspaceResponseWithMeta = typeof CurrentWorkspaceResponseSchema.Type;
 
-export type MeApiResponse =
-  | {
-      signedIn: false;
-      user: null;
-      meta?: ApiMeta;
-    }
-  | {
-      signedIn: true;
-      user: {
-        userId: string;
-        email: string;
-        emailVerified: boolean;
-        name: string;
-      };
-      meta?: ApiMeta;
-    };
+export type MeApiResponse = typeof MeResponseSchema.Type;

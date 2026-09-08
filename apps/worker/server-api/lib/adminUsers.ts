@@ -1,33 +1,14 @@
 import { toIsoTimestamp } from './timestamps.js';
-export type AdminUserSummary = {
-  id: string;
-  name: string;
-  email: string;
-  emailVerified: boolean;
-  balance: number;
-  createdAt: string;
-  disabled: boolean;
-};
-
-export type AdminUserDetail = AdminUserSummary & {
-  updatedAt: string;
-  lastActiveAt: string | null;
-};
-
-export type AdminUsageEvent = {
-  id: string;
-  routeKey: string;
-  requestId: string;
-  estimatedTokens: number;
-  actualTotalTokens: number | null;
-  chargedTokens: number | null;
-  providerBudgetTokens: number | null;
-  attemptCount: number | null;
-  usageEstimated: boolean | null;
-  status: string;
-  errorCode: string | null;
-  createdAt: string;
-};
+import type {
+  AdminUserSummary,
+  AdminUserDetail,
+  AdminUsageEvent,
+} from '@ddlbuilder/shared-types/api';
+export type {
+  AdminUserSummary,
+  AdminUserDetail,
+  AdminUsageEvent,
+} from '@ddlbuilder/shared-types/api';
 
 type Pagination = {
   limit: number;

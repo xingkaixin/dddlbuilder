@@ -3,14 +3,9 @@ import { toIsoTimestamp } from './timestamps.js';
 import { DomainError } from './http.js';
 import { getUserSystemConfig } from './userSystemConfig.js';
 
-export type CreditLedgerKind = 'grant' | 'consume' | 'refund';
-
-export type CreditLedgerSource =
-  | 'signup_bonus'
-  | 'ai_generate'
-  | 'ai_review'
-  | 'ai_explain'
-  | 'manual_adjustment';
+import type { CreditLedgerItem } from '@ddlbuilder/shared-types/api';
+export type CreditLedgerKind = CreditLedgerItem['kind'];
+export type CreditLedgerSource = CreditLedgerItem['source'];
 
 export type CreditAccountRow = {
   userId: string;
@@ -19,18 +14,7 @@ export type CreditAccountRow = {
   updatedAt: string;
 };
 
-export type CreditLedgerRow = {
-  id: string;
-  userId: string;
-  kind: CreditLedgerKind;
-  source: CreditLedgerSource;
-  amount: number;
-  balanceAfter: number;
-  idempotencyKey: string;
-  relatedUsageId: string | null;
-  metadataJson: string | null;
-  createdAt: string;
-};
+export type CreditLedgerRow = CreditLedgerItem;
 
 export type CreditLedgerListOptions = {
   limit: number;
