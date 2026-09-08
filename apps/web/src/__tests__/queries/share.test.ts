@@ -30,7 +30,7 @@ describe('share queries', () => {
           status: 502,
         }),
       )
-      .mockResolvedValueOnce(new Response(JSON.stringify({ state })));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'share-id', state })));
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(

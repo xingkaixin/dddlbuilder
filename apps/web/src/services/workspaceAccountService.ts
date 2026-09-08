@@ -1,4 +1,8 @@
 import {
+  decodeApiError,
+  decodeCurrentWorkspaceResponse,
+} from '@ddlbuilder/shared-types/api-contracts';
+import {
   forgetWorkspaceCache,
   markWorkspaceCleanupPending,
   readWorkspaceCaches,
@@ -10,10 +14,7 @@ import {
 } from './workspaceIdentity';
 import { clearWorkspaceHistory } from './workspaceHistoryCleanup';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types';
-import type {
-  ApiErrorPayload,
-  CurrentWorkspaceResponseWithMeta,
-} from '@ddlbuilder/shared-types/api';
+import type { CurrentWorkspaceResponseWithMeta } from '@ddlbuilder/shared-types/api';
 import { deleteSavedTable, listSavedTables, listTrashedSavedTables } from '@/utils/savedTablesDb';
 import { clearFolders } from '@/utils/tableFolders';
 import {
@@ -30,29 +31,18 @@ import { dispatchWorkspaceSnapshotApplied } from './workspaceSyncService';
 import { ApiError } from '@/services/apiError';
 import { clearWorkspaceYDocData } from './workspaceYDocStorage';
 
-const readJsonSafely = async <T>(response: Response): Promise<T | null> =>
-  (await response.json().catch(() => null)) as T | null;
-
 export const fetchCurrentWorkspace = async (
   signal?: AbortSignal,
 ): Promise<CurrentWorkspaceResponseWithMeta> => {
   const response = await fetch('/api/workspaces', { credentials: 'include', signal });
-  const payload = await readJsonSafely<CurrentWorkspaceResponseWithMeta | ApiErrorPayload>(
-    response,
-  );
+  const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    const message = payload && 'error' in payload ? payload.error : '工作区获取失败';
-    throw new ApiError(message, response.status);
+    const error = decodeApiError(payload);
+    throw new ApiError(error.error ?? '工作区获取失败', response.status, error.code);
   }
-  if (
-    !payload ||
-    !('workspaceId' in payload) ||
-    typeof payload.workspaceId !== 'string' ||
-    !payload.workspaceId.trim()
-  ) {
-    throw new Error('工作区响应为空');
-  }
-  return payload;
+  const decoded = decodeCurrentWorkspaceResponse(payload);
+  if (decoded._tag === 'None') throw new Error('工作区响应为空');
+  return decoded.value;
 };
 
 const clearWorkspacePartition = async (scope: WorkspaceScope): Promise<void> => {

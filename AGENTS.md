@@ -40,6 +40,7 @@
 - 流响应有独立执行入口，承接请求 Effect 上下文，并将包含最终结算的完整 Promise 交给 `waitUntil`。不能因返回 Response 就关闭流的生命周期。新增有资源释放需求的 Layer 时，必须确保它覆盖整个流消费过程。
 - 结算通过 `onExit` 执行，保留数据库中的幂等、结算意图和回收机制；Effect finalizer 不能替代持久化恢复。AI JSON 输出使用 `aiCompletion.ts` 的 Schema 解码。
 - AI 请求及注释、索引建议的输出契约定义在 `packages/shared-types/src/aiContracts.ts`，类型从 Schema 推导。Worker 使用 `aiRequest.ts` 将请求解码错误映射为现有 API 错误码；前端复用共享输出解码器。字段引用、建议编号和按请求补齐注释等业务规则保留在 Worker。
+- SQL 解析、分享和 workspace 响应契约定义在 `packages/shared-types/src/apiContracts.ts`，Worker 返回前校验，前端使用同一份解码器。SQL 解析结果和迁移响应类型从 Schema 推导。分享 state 和迁移快照仍交给 `workspace-core` 的领域解码器处理历史兼容，不在接口 Schema 中重复归一化。
 - NDJSON 事件使用 `aiStream.ts` 的共享编解码器；事件 Schema 只校验单帧，终止顺序、字节分片和取消由流读取器负责。生成表结构使用 `aiGenerate.ts` 的 Schema 校验完整结果，预览复用条目守卫；字段身份和方言规则留在业务层。
 - DDL 审查的类型由 `ddlReview.ts` 的 Schema 推导，兼容归一化通过 Schema 转换进入输出契约。`AIRouteSpec.outputSchema` 在完成状态检查后、成功结算及发送 `done` 前校验输出；校验失败保留真实上游消耗。
 - `AIRequestAccess` 按请求提供鉴权、限流和预算预留适配，基础设施失败使用 `AIGovernanceError`；`OpenAISettings` 通过 ConfigProvider 从当前 Worker bindings 加载，保留原配置容错规则。

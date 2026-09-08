@@ -1,3 +1,8 @@
+import * as Schema from 'effect/Schema';
+import {
+  CreateShareResponseSchema,
+  GetShareResponseSchema,
+} from '@ddlbuilder/shared-types/api-contracts';
 import type { Hono } from 'hono';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { decodePersistedState } from '@ddlbuilder/workspace-core';
@@ -83,11 +88,13 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
 
     const origin = new URL(c.req.url).origin;
     return c.json(
-      withMeta(c, {
-        id: shareId,
-        url: `${origin}/share/${shareId}`,
-        expiresInSeconds: SHARE_TTL_SECONDS,
-      }),
+      Schema.decodeUnknownSync(CreateShareResponseSchema)(
+        withMeta(c, {
+          id: shareId,
+          url: `${origin}/share/${shareId}`,
+          expiresInSeconds: SHARE_TTL_SECONDS,
+        }),
+      ),
     );
   });
 
@@ -118,6 +125,8 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 404, 'Share not found', 'SHARE_NOT_FOUND');
     }
 
-    return c.json(withMeta(c, { state, id: shareId }));
+    return c.json(
+      Schema.decodeUnknownSync(GetShareResponseSchema)(withMeta(c, { state, id: shareId })),
+    );
   });
 }

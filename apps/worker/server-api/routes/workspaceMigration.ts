@@ -1,3 +1,8 @@
+import * as Schema from 'effect/Schema';
+import {
+  WorkspaceMigrationResponseSchema,
+  WorkspaceMigrationRequestSchema,
+} from '@ddlbuilder/shared-types/api-contracts';
 import type { Hono } from 'hono';
 import { decodeWorkspaceMigrationPayload } from '@ddlbuilder/workspace-core';
 import type { ApiEnv } from '../lib/context.js';
@@ -18,12 +23,13 @@ export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
     if (!parsedBody.ok) return parsedBody.response;
     const body = parsedBody.data ?? {};
 
-    const mode = body.mode === 'commit' ? 'commit' : body.mode === 'analyze' ? 'analyze' : null;
-    if (!mode) {
+    const request = Schema.decodeUnknownOption(WorkspaceMigrationRequestSchema)(body);
+    if (request._tag === 'None') {
       return errorResponse(c, 400, 'Invalid migration mode', 'INVALID_JSON');
     }
 
-    const payload = decodeWorkspaceMigrationPayload(body.payload);
+    const { mode } = request.value;
+    const payload = decodeWorkspaceMigrationPayload(request.value.payload);
     if (!payload) {
       return errorResponse(c, 400, 'Invalid migration payload', 'INVALID_JSON');
     }
@@ -32,6 +38,6 @@ export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
       mode === 'analyze'
         ? await analyzeWorkspaceMigration(c.env, user.userId, payload)
         : await commitWorkspaceMigration(c.env, user.userId, payload);
-    return c.json(withMeta(c, result));
+    return c.json(Schema.decodeUnknownSync(WorkspaceMigrationResponseSchema)(withMeta(c, result)));
   });
 }

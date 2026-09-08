@@ -16,6 +16,7 @@ import {
   isLegacyWorkspaceMigrationCompleted,
 } from '@/services/workspaceLegacyMigrationMarker';
 import {
+  commitWorkspaceMigration,
   collectWorkspaceMigrationPayload,
   prepareLegacyWorkspaceSnapshot,
   promoteLegacyUserWorkspaceData,
@@ -482,5 +483,44 @@ describe('workspaceMigrationService legacy promotion', () => {
     expect(await listSavedTables(scope)).toEqual([]);
     // 完成标记不在被清空的分区里，下次启动仍然跳过整段 legacy 步骤。
     expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(true);
+  });
+});
+
+describe('迁移响应契约', () => {
+  afterEach(() => vi.restoreAllMocks());
+  it.each([
+    { status: 'completed' },
+    {
+      status: 'completed',
+      createdCount: 0,
+      copiedCount: 0,
+      skippedCount: 0,
+      conflictCount: 1,
+      conflicts: [{ kind: 'folder', normalizedName: null }],
+    },
+    {
+      status: 'completed',
+      createdCount: -1,
+      copiedCount: 0,
+      skippedCount: 0,
+      conflictCount: 0,
+      conflicts: [],
+    },
+  ])('拒绝不完整或无效的迁移结果：%j', async (data) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json(data));
+    await expect(
+      commitWorkspaceMigration({
+        localFingerprint: 'fingerprint',
+        idempotencyKey: 'key',
+        snapshot: {
+          globalDraft: null,
+          activeSession: null,
+          drafts: [],
+          savedTables: [],
+          savedDrafts: [],
+          folders: [],
+        },
+      }),
+    ).rejects.toThrow('迁移响应无效');
   });
 });

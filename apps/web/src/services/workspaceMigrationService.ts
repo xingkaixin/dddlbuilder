@@ -1,5 +1,9 @@
+import {
+  decodeApiError,
+  decodeWorkspaceMigrationResponse,
+} from '@ddlbuilder/shared-types/api-contracts';
 import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
-import type { ApiErrorPayload, WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
+import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import type {
   WorkspaceMigrationPayload,
   WorkspaceMigrationSnapshot,
@@ -81,22 +85,11 @@ const requestWorkspaceMigration = async (
     }),
   });
 
-  const data = (await response.json().catch(() => null)) as
-    | WorkspaceMigrationResponse
-    | ApiErrorPayload
-    | null;
-
-  if (!response.ok) {
-    throw new Error(
-      data && 'error' in data && typeof data.error === 'string' ? data.error : '迁移失败',
-    );
-  }
-
-  if (!data || !('status' in data)) {
-    throw new Error('迁移响应无效');
-  }
-
-  return data;
+  const data: unknown = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(decodeApiError(data).error ?? '迁移失败');
+  const decoded = decodeWorkspaceMigrationResponse(data);
+  if (decoded._tag === 'None') throw new Error('迁移响应无效');
+  return decoded.value;
 };
 
 export const collectWorkspaceMigrationPayload = async (

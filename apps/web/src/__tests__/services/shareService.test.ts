@@ -112,7 +112,7 @@ describe('shareService', () => {
       mockResponse({
         ok: false,
         status: 500,
-        json: async () => ({}),
+        json: async () => null,
       }),
     );
 
