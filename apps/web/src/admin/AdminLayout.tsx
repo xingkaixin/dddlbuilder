@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { LogOut } from '@/components/icons';
@@ -10,6 +11,14 @@ type AdminLayoutProps = {
 export function AdminLayout({ onLogout, children }: AdminLayoutProps) {
   const { t } = useTranslation();
 
+  const handleLogout = async () => {
+    try {
+      await onLogout();
+    } catch {
+      toast.error(t('header.auth.signOutFailed'));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -17,7 +26,7 @@ export function AdminLayout({ onLogout, children }: AdminLayoutProps) {
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold">{t('admin.header.title')}</h1>
           </div>
-          <Button variant="ghost" size="sm" onClick={onLogout}>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="mr-1.5 h-4 w-4" />
             {t('admin.header.logout')}
           </Button>

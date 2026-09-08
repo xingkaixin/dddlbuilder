@@ -64,6 +64,32 @@ describe('/api/admin/*', () => {
   });
 
   it.each([
+    ['disable', { reason: 42 }],
+    ['email-verification', { verified: 'true' }],
+    ['credits', { amount: 100, note: {} }],
+    ['session', null],
+  ])('rejects malformed %s input before mutations', async (action, body) => {
+    vi.doMock('../lib/adminAuth.js', () => ({
+      createAdminSession: vi.fn(),
+      resolveAdminSession: vi.fn().mockResolvedValue(true),
+      deleteAdminSession: vi.fn(),
+    }));
+    const prepare = vi.fn();
+    const app = await createAdminApp();
+    const path = action === 'session' ? '/api/admin/session' : `/api/admin/users/user-1/${action}`;
+    const response = await app.fetch(
+      createRequest(path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+      createEnv({ USER_DB: { prepare } as unknown as D1Database }),
+    );
+    expect(response.status).toBe(400);
+    expect(prepare).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ['disable', { reason: 'security' }],
     ['email-verification', { verified: false }],
   ])('revokes sessions through better-auth for admin action %s', async (action, body) => {
@@ -1192,7 +1218,7 @@ describe('/api/admin/*', () => {
             idempotencyKey: 'admin_grant:user-1:uuid',
             relatedUsageId: null,
             metadataJson: '{"adminAction":"manual_credit_grant"}',
-            createdAt: 1776247200000,
+            createdAt: '2026-04-15T10:00:00.000Z',
           },
         ]),
         applyCreditMutation: vi.fn(),
