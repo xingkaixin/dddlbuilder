@@ -1,3 +1,5 @@
+import * as Schema from 'effect/Schema';
+import { MeResponseSchema } from '@ddlbuilder/shared-types/api';
 import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser } from '../lib/auth.js';
@@ -124,20 +126,26 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
   app.get('/me', async (c) => {
     const user = await resolveAuthenticatedUser(c);
     if (!user) {
-      return c.json(withMeta(c, { signedIn: false as const, user: null }));
+      return c.json(
+        Schema.decodeUnknownSync(MeResponseSchema)(
+          withMeta(c, { signedIn: false as const, user: null }),
+        ),
+      );
     }
 
     c.set('currentUserId', user.userId);
     return c.json(
-      withMeta(c, {
-        signedIn: true as const,
-        user: {
-          userId: user.userId,
-          email: user.email,
-          emailVerified: user.emailVerified,
-          name: user.name,
-        },
-      }),
+      Schema.decodeUnknownSync(MeResponseSchema)(
+        withMeta(c, {
+          signedIn: true as const,
+          user: {
+            userId: user.userId,
+            email: user.email,
+            emailVerified: user.emailVerified,
+            name: user.name,
+          },
+        }),
+      ),
     );
   });
 }

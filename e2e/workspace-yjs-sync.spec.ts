@@ -297,7 +297,7 @@ const mockSignedInWorkspace = async (
       return;
     }
     if (url.pathname === '/api/credits/balance') {
-      await route.fulfill({ json: { balance: 10000 } });
+      await route.fulfill({ json: { balance: 10000, version: 1, userId: 'user-1' } });
       return;
     }
     if (url.pathname === '/api/workspaces') {

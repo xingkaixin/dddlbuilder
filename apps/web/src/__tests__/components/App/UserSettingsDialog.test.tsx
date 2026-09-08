@@ -29,6 +29,10 @@ vi.mock('@/providers/WorkspaceYDocProvider', () => ({
 
 const item = {
   id: 'first',
+  userId: 'ledger-user',
+  idempotencyKey: 'signup:ledger-user',
+  relatedUsageId: null,
+  metadataJson: null,
   kind: 'grant',
   source: 'signup_bonus',
   amount: 12345,
@@ -43,7 +47,10 @@ describe('credit ledger rendering', () => {
   });
   afterEach(() => vi.unstubAllGlobals());
   it('shows the latest account name and resets unsaved edits on reopening', () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ items: [], total: 0 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ limit: 20, offset: 0, items: [], total: 0 })),
+    );
     const onOpenChange = vi.fn();
     const { rerender } = render(<UserSettingsDialog open onOpenChange={onOpenChange} />);
     auth.name = 'Updated';
@@ -64,7 +71,7 @@ describe('credit ledger rendering', () => {
     });
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(Response.json({ items: [item], total: 21 }))
+      .mockResolvedValueOnce(Response.json({ limit: 20, offset: 0, items: [item], total: 21 }))
       .mockReturnValueOnce(pendingPage);
     vi.stubGlobal('fetch', fetchMock);
     render(<UserSettingsDialog open onOpenChange={vi.fn()} />);
@@ -75,13 +82,23 @@ describe('credit ledger rendering', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '下一页' })).toBeDisabled();
     await act(async () =>
-      resolvePage(Response.json({ items: [{ ...item, id: 'second', amount: 9876 }], total: 21 })),
+      resolvePage(
+        Response.json({
+          limit: 20,
+          offset: 0,
+          items: [{ ...item, id: 'second', amount: 9876 }],
+          total: 21,
+        }),
+      ),
     );
     await screen.findByText('+9876');
   });
 
   it('normalizes wire timestamps to epoch milliseconds at the service boundary', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ items: [item], total: 1 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ limit: 20, offset: 0, items: [item], total: 1 })),
+    );
     const result = await fetchCreditLedger({ limit: 20, offset: 0 });
     expect(result.items[0].createdAt).toBe(Date.parse(item.createdAt));
   });
@@ -92,7 +109,7 @@ describe('credit ledger rendering', () => {
       'fetch',
       vi
         .fn()
-        .mockResolvedValueOnce(Response.json({ items: [item], total: 1 }))
+        .mockResolvedValueOnce(Response.json({ limit: 20, offset: 0, items: [item], total: 1 }))
         .mockReturnValueOnce(
           new Promise<Response>((resolve) => {
             resolvePage = resolve;
@@ -106,6 +123,8 @@ describe('credit ledger rendering', () => {
     auth.userId = 'another-user';
     rerender(<UserSettingsDialog open onOpenChange={onOpenChange} />);
     expect(screen.queryByRole('table')).toBeNull();
-    await act(async () => resolvePage(Response.json({ items: [], total: 0 })));
+    await act(async () =>
+      resolvePage(Response.json({ limit: 20, offset: 0, items: [], total: 0 })),
+    );
   });
 });

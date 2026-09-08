@@ -40,7 +40,7 @@ test('AI 修改保留字段身份，将改名应用为单个变更', async ({ pa
     } else if (path === '/api/workspaces') {
       await route.fulfill({ json: { workspaceId: 'rename-workspace' } });
     } else if (path === '/api/credits/balance') {
-      await route.fulfill({ json: { balance: 1000 } });
+      await route.fulfill({ json: { balance: 1000, version: 1, userId: 'rename-user' } });
     } else if (path === '/api/generate-table') {
       const { existingConfig } = route.request().postDataJSON() as {
         existingConfig: PersistedState;
@@ -88,7 +88,7 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
       },
     },
     '/api/workspaces': { workspaceId: 'partial-workspace' },
-    '/api/credits/balance': { balance: 1000 },
+    '/api/credits/balance': { balance: 1000, version: 1, userId: 'partial-user' },
   };
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -160,7 +160,7 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
       },
     },
     '/api/workspaces': { workspaceId: 'baseline-workspace' },
-    '/api/credits/balance': { balance: 1000 },
+    '/api/credits/balance': { balance: 1000, version: 1, userId: 'baseline-user' },
   };
   let requests = 0;
   await page.route('**/api/**', async (route) => {
@@ -241,7 +241,7 @@ test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', a
       },
     },
     '/api/workspaces': { workspaceId: 'review-workspace' },
-    '/api/credits/balance': { balance: 1000 },
+    '/api/credits/balance': { balance: 1000, version: 1, userId: 'review-user' },
     '/api/review': {
       score: 8,
       summary: '补充审计字段和索引',
@@ -317,7 +317,7 @@ test('AI 注释请求在切换文档后取消，不覆盖另一张表', async ({
     } else if (path === '/api/workspaces') {
       await route.fulfill({ json: { workspaceId: 'ai-comments-workspace' } });
     } else if (path === '/api/credits/balance') {
-      await route.fulfill({ json: { balance: 1000 } });
+      await route.fulfill({ json: { balance: 1000, version: 1, userId: 'ai-comments-user' } });
     } else if (path === '/api/generate-comments') {
       await responseReady;
       await route.fulfill({
@@ -479,7 +479,7 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
     } else if (path === '/api/workspaces') {
       await route.fulfill({ json: { workspaceId: 'patch-workspace' } });
     } else if (path === '/api/credits/balance') {
-      await route.fulfill({ json: { balance: 1000 } });
+      await route.fulfill({ json: { balance: 1000, version: 1, userId: 'patch-user' } });
     } else if (path === '/api/generate-table') {
       const { existingConfig } = route.request().postDataJSON();
       await route.fulfill(

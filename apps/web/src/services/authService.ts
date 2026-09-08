@@ -1,4 +1,5 @@
-import type { MeApiResponse } from '@ddlbuilder/shared-types/api';
+import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
+import { decodeMeResponse, type MeApiResponse } from '@ddlbuilder/shared-types/api';
 import { ApiError } from '@/services/apiError';
 
 export async function fetchCurrentUser(signal?: AbortSignal): Promise<MeApiResponse> {
@@ -6,14 +7,12 @@ export async function fetchCurrentUser(signal?: AbortSignal): Promise<MeApiRespo
     credentials: 'include',
     signal,
   });
-  const payload = (await response.json().catch(() => null)) as MeApiResponse | null;
+  const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const message =
-      payload && 'error' in payload && typeof payload.error === 'string'
-        ? payload.error
-        : 'Failed to load current user';
-    throw new ApiError(message, response.status);
+    const error = decodeApiError(payload);
+    throw new ApiError(error.error ?? 'Failed to load current user', response.status, error.code);
   }
-  if (!payload) throw new Error('Empty user response');
-  return payload;
+  const decoded = decodeMeResponse(payload);
+  if (decoded._tag === 'None') throw new Error('Invalid user response');
+  return decoded.value;
 }

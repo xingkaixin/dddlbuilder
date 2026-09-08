@@ -1,15 +1,12 @@
-import type { ApiErrorPayload } from '@ddlbuilder/shared-types/api';
+import {
+  decodeCreditBalanceResponse,
+  decodeCreditLedgerResponse,
+  type CreditLedgerItem as WireCreditLedgerItem,
+} from '@ddlbuilder/shared-types/api';
+import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
 import { ApiError } from '@/services/apiError';
 
-export type CreditLedgerItem = {
-  id: string;
-  kind: 'grant' | 'consume' | 'refund';
-  source: 'signup_bonus' | 'ai_generate' | 'ai_review' | 'ai_explain' | 'manual_adjustment';
-  amount: number;
-  balanceAfter: number;
-  createdAt: number;
-  metadataJson?: string | null;
-};
+export type CreditLedgerItem = Omit<WireCreditLedgerItem, 'createdAt'> & { createdAt: number };
 
 export type CreditLedgerPage = {
   items: CreditLedgerItem[];
@@ -31,18 +28,14 @@ export async function fetchCreditBalance(signal?: AbortSignal): Promise<number> 
     credentials: 'include',
     signal,
   });
-  const payload = (await response.json().catch(() => null)) as {
-    balance?: unknown;
-    error?: unknown;
-  } | null;
+  const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    const message =
-      payload && typeof payload.error === 'string'
-        ? payload.error
-        : 'Failed to load credit balance';
-    throw new ApiError(message, response.status);
+    const error = decodeApiError(payload);
+    throw new ApiError(error.error ?? 'Failed to load credit balance', response.status, error.code);
   }
-  return typeof payload?.balance === 'number' ? payload.balance : 0;
+  const decoded = decodeCreditBalanceResponse(payload);
+  if (decoded._tag === 'None') throw new Error('Invalid credit balance response');
+  return decoded.value.balance;
 }
 
 export async function fetchCreditLedger(
@@ -60,24 +53,15 @@ export async function fetchCreditLedger(
     credentials: 'include',
     signal,
   });
-  const payload = (await response.json().catch(() => null)) as
-    | (ApiErrorPayload & {
-        items?: Array<Omit<CreditLedgerItem, 'createdAt'> & { createdAt: string }>;
-        total?: number;
-      })
-    | null;
+  const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new ApiError(payload?.error ?? 'Failed to load credit ledger', response.status);
+    const error = decodeApiError(payload);
+    throw new ApiError(error.error ?? 'Failed to load credit ledger', response.status, error.code);
   }
-
+  const decoded = decodeCreditLedgerResponse(payload);
+  if (decoded._tag === 'None') throw new Error('Invalid credit ledger response');
   return {
-    items: Array.isArray(payload?.items)
-      ? payload.items.map((item) => {
-          const createdAt = Date.parse(item.createdAt);
-          if (!Number.isFinite(createdAt)) throw new Error('Invalid credit ledger timestamp');
-          return { ...item, createdAt };
-        })
-      : [],
-    total: Number.isFinite(payload?.total) ? Number(payload?.total) : 0,
+    items: decoded.value.items.map((item) => ({ ...item, createdAt: Date.parse(item.createdAt) })),
+    total: decoded.value.total,
   };
 }

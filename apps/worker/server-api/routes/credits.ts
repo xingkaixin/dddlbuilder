@@ -1,3 +1,9 @@
+import * as Schema from 'effect/Schema';
+import {
+  CreditLedgerQuerySchema,
+  CreditBalanceResponseSchema,
+  CreditLedgerResponseSchema,
+} from '@ddlbuilder/shared-types/api';
 import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser as resolveSessionUser } from '../lib/auth.js';
@@ -9,35 +15,6 @@ import {
 } from '../lib/credits.js';
 import { DomainError, withMeta } from '../lib/http.js';
 import { getRequestLogger, toWorkerError } from '../lib/logging.js';
-
-const parseLedgerLimit = (value: string | undefined) => {
-  const parsed = Number.parseInt(value ?? '20', 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return 20;
-  }
-  return Math.min(parsed, 50);
-};
-
-const parseLedgerOffset = (value: string | undefined) => {
-  const parsed = Number.parseInt(value ?? '0', 10);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return 0;
-  }
-  return parsed;
-};
-
-const parseLedgerDateTime = (value: string | undefined) => {
-  if (!value) {
-    return undefined;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-
-  return date.getTime();
-};
 
 const resolveAuthenticatedUser = async (c: Context<ApiEnv>) => {
   const user = await resolveSessionUser(c);
@@ -67,11 +44,13 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
       await grantSignupCredits(c.env, user);
       const account = await getCreditAccount(c.env, user.userId);
       return c.json(
-        withMeta(c, {
-          balance: account?.balance ?? 0,
-          version: account?.version ?? 0,
-          userId: user.userId,
-        }),
+        Schema.decodeUnknownSync(CreditBalanceResponseSchema)(
+          withMeta(c, {
+            balance: account?.balance ?? 0,
+            version: account?.version ?? 0,
+            userId: user.userId,
+          }),
+        ),
       );
     });
   });
@@ -79,12 +58,9 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
   app.get('/credits/ledger', async (c) => {
     const user = await resolveAuthenticatedUser(c);
     return wrapCreditService(c, async () => {
-      const limit = parseLedgerLimit(c.req.query('limit'));
-      const offset = parseLedgerOffset(c.req.query('offset'));
-      const filters = {
-        startDate: parseLedgerDateTime(c.req.query('startAt')),
-        endDate: parseLedgerDateTime(c.req.query('endAt')),
-      };
+      const { limit, offset, ...filters } = Schema.decodeUnknownSync(CreditLedgerQuerySchema)(
+        c.req.query(),
+      );
       const [items, total] = await Promise.all([
         listCreditLedger(c.env, user.userId, {
           ...filters,
@@ -94,12 +70,14 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
         countCreditLedger(c.env, user.userId, filters),
       ]);
       return c.json(
-        withMeta(c, {
-          items,
-          total,
-          limit,
-          offset,
-        }),
+        Schema.decodeUnknownSync(CreditLedgerResponseSchema)(
+          withMeta(c, {
+            items,
+            total,
+            limit,
+            offset,
+          }),
+        ),
       );
     });
   });

@@ -66,6 +66,22 @@ describe('/api/credits/*', () => {
     });
   });
 
+  it('rejects invalid account output instead of returning a successful balance', async () => {
+    vi.doMock('../lib/auth.js', () => ({
+      resolveAuthenticatedUser: vi.fn().mockResolvedValue({ userId: 'user-1' }),
+    }));
+    vi.doMock('../lib/credits.js', () => ({
+      grantSignupCredits: vi.fn(),
+      getCreditAccount: vi.fn().mockResolvedValue({ balance: -1, version: 0 }),
+      listCreditLedger: vi.fn(),
+      countCreditLedger: vi.fn(),
+    }));
+    const { default: app } = await import('../../api/index');
+    const response = await app.fetch(createRequest('/api/credits/balance'), createEnv());
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
+  });
+
   it('returns zero balance when account does not exist', async () => {
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({

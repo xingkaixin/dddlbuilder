@@ -212,7 +212,7 @@ describe('AuthSessionProvider', () => {
     it('throws default message on empty response body', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 200 }));
 
-      await expect(fetchCurrentUser()).rejects.toThrow('Empty user response');
+      await expect(fetchCurrentUser()).rejects.toThrow('Invalid user response');
     });
 
     it('throws on network error', async () => {
@@ -225,20 +225,19 @@ describe('AuthSessionProvider', () => {
   describe('fetchCreditBalance', () => {
     it('returns balance on success', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(JSON.stringify({ balance: 100 })),
+        new Response(JSON.stringify({ balance: 100, version: 1, userId: 'user-1' })),
       );
 
       const result = await fetchCreditBalance();
       expect(result).toBe(100);
     });
 
-    it('returns 0 when balance is not a number', async () => {
+    it('rejects an invalid balance instead of treating it as zero', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(JSON.stringify({ balance: 'not-a-number' })),
       );
 
-      const result = await fetchCreditBalance();
-      expect(result).toBe(0);
+      await expect(fetchCreditBalance()).rejects.toThrow('Invalid credit balance response');
     });
 
     it('throws with server error message on non-ok response', async () => {
@@ -273,7 +272,8 @@ describe('AuthSessionProvider', () => {
       });
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
         if (input === '/api/me') return response;
-        if (input === '/api/credits/balance') return Response.json({ balance: 100 });
+        if (input === '/api/credits/balance')
+          return Response.json({ balance: 100, version: 1, userId: 'user-1' });
         return Response.json({ workspaceId: 'ws-1' });
       });
       render(
@@ -392,7 +392,9 @@ describe('AuthSessionProvider', () => {
             }),
           ),
         )
-        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })));
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ balance: 8800, version: 1, userId: 'user-1' })),
+        );
 
       render(
         <AuthSessionProvider>
@@ -426,7 +428,9 @@ describe('AuthSessionProvider', () => {
             }),
           ),
         )
-        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ balance: 8800, version: 1, userId: 'user-1' })),
+        )
         .mockResolvedValueOnce(new Response(JSON.stringify({ workspaceId: 'ws-1' })))
         .mockReturnValue(never);
 
@@ -478,7 +482,7 @@ describe('AuthSessionProvider', () => {
       });
       expect(screen.getByTestId('credits-status')).toHaveTextContent('loading');
 
-      resolveCredit(new Response(JSON.stringify({ balance: 8800 })));
+      resolveCredit(new Response(JSON.stringify({ balance: 8800, version: 1, userId: 'user-1' })));
       await waitFor(() => {
         expect(screen.getByTestId('credits')).toHaveTextContent('8800');
       });
@@ -549,7 +553,9 @@ describe('AuthSessionProvider', () => {
             }),
           ),
         )
-        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ balance: 8800, version: 1, userId: 'user-1' })),
+        )
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({
@@ -563,7 +569,9 @@ describe('AuthSessionProvider', () => {
             }),
           ),
         )
-        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })));
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ balance: 8800, version: 1, userId: 'user-1' })),
+        );
 
       const sessionApi: { current: ReturnType<typeof useSessionProbeState> | null } = {
         current: null,
@@ -614,7 +622,8 @@ describe('AuthSessionProvider', () => {
                 emailVerified: true,
               },
             });
-          if (input === '/api/credits/balance') return Response.json({ balance: 100 });
+          if (input === '/api/credits/balance')
+            return Response.json({ balance: 100, version: 1, userId: 'user-1' });
           return Response.json({ workspaceId: 'ws-1' });
         });
         let settle = () => {};
@@ -679,7 +688,9 @@ describe('AuthSessionProvider', () => {
             }),
           ),
         )
-        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ balance: 8800, version: 1, userId: 'user-1' })),
+        )
         .mockResolvedValueOnce(new Response(JSON.stringify({ workspaceId: 'ws-1' })))
         .mockResolvedValue(
           new Response(JSON.stringify({ workspaceId: 'ws-1', cursor: 0, entities: [] })),
@@ -773,9 +784,13 @@ describe('AuthSessionProvider', () => {
             }),
           ),
         )
-        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 100 })))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ balance: 100, version: 1, userId: 'user-1' })),
+        )
         .mockResolvedValueOnce(new Response(JSON.stringify({ workspaceId: 'ws-1' })))
-        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 200 })));
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ balance: 200, version: 1, userId: 'user-1' })),
+        );
 
       render(
         <AuthSessionProvider>
@@ -811,9 +826,9 @@ describe('AuthSessionProvider', () => {
             },
           }),
         )
-        .mockResolvedValueOnce(Response.json({ balance: 100 }))
+        .mockResolvedValueOnce(Response.json({ balance: 100, version: 1, userId: 'user-1' }))
         .mockResolvedValueOnce(Response.json({ workspaceId: 'ws-1' }))
-        .mockResolvedValueOnce(Response.json({ balance: 200 }));
+        .mockResolvedValueOnce(Response.json({ balance: 200, version: 1, userId: 'user-1' }));
 
       render(
         <AuthSessionProvider>
@@ -849,7 +864,9 @@ describe('AuthSessionProvider', () => {
             }),
           ),
         )
-        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 100 })))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ balance: 100, version: 1, userId: 'user-1' })),
+        )
         .mockResolvedValueOnce(
           new Response(JSON.stringify({ error: 'Credit load failed' }), { status: 500 }),
         );
@@ -918,7 +935,8 @@ describe('AuthSessionProvider', () => {
             },
           });
         }
-        if (input === '/api/credits/balance') return Response.json({ balance: 100 });
+        if (input === '/api/credits/balance')
+          return Response.json({ balance: 100, version: 1, userId: 'user-1' });
         if (input === '/api/workspaces') {
           return workspaceAvailable
             ? Response.json({ workspaceId: 'ws-1' })
