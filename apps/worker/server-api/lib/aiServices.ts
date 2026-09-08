@@ -6,7 +6,7 @@ import type { AIRouteKey } from './aiRouteKey.js';
 import type { ApiEnv } from './context.js';
 import { AIProviderError, AIUsageError } from './aiErrors.js';
 import { DomainError } from './http.js';
-import { buildOpenAIConfig, type OpenAIConfig } from './openaiConfig.js';
+import { loadOpenAIConfig, type OpenAIConfig } from './openaiConfig.js';
 import {
   type AIUsageReservation,
   type AIUsageSettlement,
@@ -29,12 +29,15 @@ export class AIConfiguration extends Context.Service<
   }
 >()('ddlbuilder/AIConfiguration') {
   static layer(env: ApiEnv['Bindings']) {
-    return Layer.succeed(AIConfiguration, {
-      config: buildOpenAIConfig(env),
-      apiKey: env.OPENAI_API_KEY,
-      baseURL: env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-      model: env.OPENAI_MODEL_NAME || 'gpt-4o-mini',
-    });
+    return Layer.effect(
+      AIConfiguration,
+      Effect.map(loadOpenAIConfig(env), (config) => ({
+        config,
+        apiKey: env.OPENAI_API_KEY,
+        baseURL: env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+        model: env.OPENAI_MODEL_NAME || 'gpt-4o-mini',
+      })),
+    );
   }
 }
 
