@@ -85,6 +85,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenuSub: ({ children }: { children: any }) => <div>{children}</div>,
   DropdownMenuSubTrigger: ({ children }: { children: any }) => <div>{children}</div>,
   DropdownMenuSubContent: ({ children }: { children: any }) => <div>{children}</div>,
+  DropdownMenuGroup: ({ children }: { children: any }) => <div>{children}</div>,
   DropdownMenuRadioGroup: ({ children }: { children: any }) => <div>{children}</div>,
   DropdownMenuRadioItem: ({ children }: { children: any }) => (
     <button type="button">{children}</button>

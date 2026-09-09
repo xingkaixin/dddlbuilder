@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/useToast';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -332,77 +333,81 @@ export const Header = memo<HeaderProps>(
                     </TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent align="end" className="w-52" finalFocus={false}>
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <Languages className="h-4 w-4" aria-hidden />
-                        <span className="min-w-0 flex-1">{t('locale.label')}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {localeLabels[locale]}
-                        </span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-36">
-                        <DropdownMenuRadioGroup
-                          value={locale}
-                          onValueChange={(value) => setLocale(value as AppLocale)}
-                        >
-                          <DropdownMenuRadioItem value="zh-CN">
-                            {t('locale.zhCN')}
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="en-US">
-                            {t('locale.enUS')}
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="ja-JP">
-                            {t('locale.jaJP')}
-                          </DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        {selectedTheme === 'dark' ? (
-                          <Moon className="h-4 w-4" aria-hidden />
-                        ) : selectedTheme === 'light' ? (
-                          <Sun className="h-4 w-4" aria-hidden />
-                        ) : (
-                          <Laptop className="h-4 w-4" aria-hidden />
-                        )}
-                        <span className="min-w-0 flex-1">{t('theme.label')}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {themeLabels[selectedTheme]}
-                        </span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-36">
-                        <DropdownMenuRadioGroup
-                          value={selectedTheme}
-                          onValueChange={(value) =>
-                            runThemeTransition(value as 'system' | 'light' | 'dark')
-                          }
-                        >
-                          <DropdownMenuRadioItem value="system" disabled={isTransitioning}>
-                            {t('theme.system')}
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="light" disabled={isTransitioning}>
-                            {t('theme.light')}
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="dark" disabled={isTransitioning}>
-                            {t('theme.dark')}
-                          </DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
+                    <DropdownMenuGroup fluidHover>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <Languages className="h-4 w-4" aria-hidden />
+                          <span className="min-w-0 flex-1">{t('locale.label')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {localeLabels[locale]}
+                          </span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-36">
+                          <DropdownMenuRadioGroup
+                            value={locale}
+                            onValueChange={(value) => setLocale(value as AppLocale)}
+                          >
+                            <DropdownMenuRadioItem value="zh-CN">
+                              {t('locale.zhCN')}
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="en-US">
+                              {t('locale.enUS')}
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="ja-JP">
+                              {t('locale.jaJP')}
+                            </DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          {selectedTheme === 'dark' ? (
+                            <Moon className="h-4 w-4" aria-hidden />
+                          ) : selectedTheme === 'light' ? (
+                            <Sun className="h-4 w-4" aria-hidden />
+                          ) : (
+                            <Laptop className="h-4 w-4" aria-hidden />
+                          )}
+                          <span className="min-w-0 flex-1">{t('theme.label')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {themeLabels[selectedTheme]}
+                          </span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-36">
+                          <DropdownMenuRadioGroup
+                            value={selectedTheme}
+                            onValueChange={(value) =>
+                              runThemeTransition(value as 'system' | 'light' | 'dark')
+                            }
+                          >
+                            <DropdownMenuRadioItem value="system" disabled={isTransitioning}>
+                              {t('theme.system')}
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="light" disabled={isTransitioning}>
+                              {t('theme.light')}
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="dark" disabled={isTransitioning}>
+                              {t('theme.dark')}
+                            </DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    </DropdownMenuGroup>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <a href={docsUrl} target="_blank" rel="noopener noreferrer">
-                        <BookOpen className="h-4 w-4" aria-hidden />
-                        {t('header.docs')}
-                      </a>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer">
-                        <MessageCircle className="h-4 w-4" aria-hidden />
-                        {t('header.feedback')}
-                      </a>
-                    </DropdownMenuItem>
+                    <DropdownMenuGroup fluidHover>
+                      <DropdownMenuItem asChild>
+                        <a href={docsUrl} target="_blank" rel="noopener noreferrer">
+                          <BookOpen className="h-4 w-4" aria-hidden />
+                          {t('header.docs')}
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer">
+                          <MessageCircle className="h-4 w-4" aria-hidden />
+                          {t('header.feedback')}
+                        </a>
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 {authSession.status === 'signed_in' ? (

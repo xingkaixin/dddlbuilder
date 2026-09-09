@@ -264,10 +264,11 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
           </DialogHeader>
           <Tabs
             value={settingsTab}
+            orientation="vertical"
             onValueChange={(value) => setSettingsTab(value as SettingsTab)}
             className="flex min-h-0 overflow-hidden"
           >
-            <TabsList className="w-56 shrink-0 self-stretch flex-col justify-start gap-1 rounded-none border-r border-border/70 bg-transparent px-3 py-5">
+            <TabsList className="h-auto w-56 shrink-0 self-stretch flex-col justify-start gap-1 rounded-none border-r border-border/70 bg-transparent px-3 py-5">
               <TabsTrigger
                 value="account"
                 className="w-full justify-start gap-2 px-2.5 py-2 text-xs transition-colors"

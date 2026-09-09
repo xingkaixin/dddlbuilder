@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -227,18 +228,20 @@ export const TableConfig = memo<TableConfigProps>(
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {onOpenErDiagram && (
-                <DropdownMenuItem onClick={onOpenErDiagram}>
-                  <Waypoints className="h-4 w-4" />
-                  {t('tableConfig.erDiagram')}
-                </DropdownMenuItem>
-              )}
-              {showDiffButton && onViewDiff && (
-                <DropdownMenuItem onClick={onViewDiff}>
-                  <GitCompare className="h-4 w-4" />
-                  {t('tableConfig.viewDiff')}
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuGroup fluidHover>
+                {onOpenErDiagram && (
+                  <DropdownMenuItem onClick={onOpenErDiagram}>
+                    <Waypoints className="h-4 w-4" />
+                    {t('tableConfig.erDiagram')}
+                  </DropdownMenuItem>
+                )}
+                {showDiffButton && onViewDiff && (
+                  <DropdownMenuItem onClick={onViewDiff}>
+                    <GitCompare className="h-4 w-4" />
+                    {t('tableConfig.viewDiff')}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuGroup>
               <DropdownMenuItem onClick={onClearAll} className="text-destructive">
                 <Trash2 className="h-4 w-4" />
                 {t('tableConfig.clearAll')}

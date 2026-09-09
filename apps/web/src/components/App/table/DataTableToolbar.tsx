@@ -8,6 +8,7 @@ import { AnimatedNumber } from '@/components/ui/animated-number';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSub,
@@ -128,18 +129,20 @@ export function DataTableToolbar({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                {onOpenStorageEstimator && (
-                  <DropdownMenuItem onClick={onOpenStorageEstimator}>
-                    <HardDrive className="h-4 w-4" />
-                    {t('dataTable.toolbar.storageEstimator')}
-                  </DropdownMenuItem>
-                )}
-                {onOpenMockDataGenerator && (
-                  <DropdownMenuItem onClick={onOpenMockDataGenerator}>
-                    <TableProperties className="h-4 w-4" />
-                    {t('dataTable.toolbar.mockData')}
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuGroup fluidHover>
+                  {onOpenStorageEstimator && (
+                    <DropdownMenuItem onClick={onOpenStorageEstimator}>
+                      <HardDrive className="h-4 w-4" />
+                      {t('dataTable.toolbar.storageEstimator')}
+                    </DropdownMenuItem>
+                  )}
+                  {onOpenMockDataGenerator && (
+                    <DropdownMenuItem onClick={onOpenMockDataGenerator}>
+                      <TableProperties className="h-4 w-4" />
+                      {t('dataTable.toolbar.mockData')}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           )}

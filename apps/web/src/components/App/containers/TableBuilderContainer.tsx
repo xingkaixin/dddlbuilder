@@ -30,6 +30,7 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import { TableOptionsPanel } from '../TableOptionsPanel';
@@ -264,12 +265,14 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                {advancedTabs.map(({ value, label, badge }) => (
-                  <DropdownMenuItem key={value} onClick={() => onTabsValueChange(value)}>
-                    {label}
-                    {badge}
-                  </DropdownMenuItem>
-                ))}
+                <DropdownMenuGroup fluidHover>
+                  {advancedTabs.map(({ value, label, badge }) => (
+                    <DropdownMenuItem key={value} onClick={() => onTabsValueChange(value)}>
+                      {label}
+                      {badge}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           )}

@@ -2,6 +2,8 @@ import * as React from 'react';
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
 import { Check, ChevronRight, Circle } from '@/components/icons';
 
+import { FluidHover } from '@/components/ui/fluid-hover';
+
 import { cn } from '@/lib/utils';
 
 function DropdownMenu(props: MenuPrimitive.Root.Props) {
@@ -59,8 +61,17 @@ function DropdownMenuContent({
   );
 }
 
-function DropdownMenuGroup(props: MenuPrimitive.Group.Props) {
-  return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />;
+function DropdownMenuGroup({
+  fluidHover = false,
+  ...props
+}: MenuPrimitive.Group.Props & { fluidHover?: boolean }) {
+  return (
+    <MenuPrimitive.Group
+      data-slot="dropdown-menu-group"
+      render={fluidHover ? <FluidHover /> : undefined}
+      {...props}
+    />
+  );
 }
 
 function DropdownMenuSub(props: MenuPrimitive.SubmenuRoot.Props) {
@@ -68,7 +79,13 @@ function DropdownMenuSub(props: MenuPrimitive.SubmenuRoot.Props) {
 }
 
 function DropdownMenuRadioGroup(props: MenuPrimitive.RadioGroup.Props) {
-  return <MenuPrimitive.RadioGroup data-slot="dropdown-menu-radio-group" {...props} />;
+  return (
+    <MenuPrimitive.RadioGroup
+      data-slot="dropdown-menu-radio-group"
+      render={<FluidHover />}
+      {...props}
+    />
+  );
 }
 
 function DropdownMenuSubTrigger({
