@@ -19,6 +19,7 @@ export type { TableBlueprint, TableTemplate };
 
 type OperationResult = { ok: true } | { ok: false; reason?: string; message?: string };
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
 const failure = (error: unknown, fallback: string): OperationResult => ({
   ok: false,
   message: error instanceof Error ? error.message : fallback,

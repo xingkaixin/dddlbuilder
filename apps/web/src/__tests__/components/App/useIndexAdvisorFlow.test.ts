@@ -13,13 +13,21 @@ import {
 import { useEditorStore } from '@/stores/editorStore';
 import { createEmptyRow } from '@/utils/helpers';
 
-const mocks = vi.hoisted(() => ({
-  advice: { summary: '', recommendations: [] } as AIIndexAdvisorResult,
+type AdvisorMocks = {
+  advice: AIIndexAdvisorResult;
+  analyzeIndexes: ReturnType<typeof vi.fn>;
+  clearAdvice: ReturnType<typeof vi.fn>;
+  showToast: ReturnType<typeof vi.fn>;
+};
+
+const mocks = vi.hoisted((): AdvisorMocks => ({
+  advice: { summary: '', recommendations: [] },
   analyzeIndexes: vi.fn(),
   clearAdvice: vi.fn(),
   showToast: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Injects deterministic advisor responses so this flow test covers validation and recommendation application.
 vi.mock('@/hooks/useAIIndexAdvisor', () => ({
   useAIIndexAdvisor: () => ({
     isLoading: false,
@@ -30,10 +38,12 @@ vi.mock('@/hooks/useAIIndexAdvisor', () => ({
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Supplies the notification context recorder used by the flow's validation branches.
 vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({ showToast: mocks.showToast }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Uses translation keys as stable output while testing flow behavior independently of i18next resources.
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));

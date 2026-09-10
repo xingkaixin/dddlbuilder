@@ -20,6 +20,7 @@ describe('useFieldRowMutations', () => {
     let rows: FieldRow[] = [createRow()];
 
     const setRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => {
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- React's setter contract is a value-or-updater union.
       rows = typeof next === 'function' ? next(rows) : next;
     };
 
@@ -57,6 +58,7 @@ describe('useFieldRowMutations', () => {
     let rows: FieldRow[] = [createRow()];
 
     const setRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => {
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- React's setter contract is a value-or-updater union.
       rows = typeof next === 'function' ? next(rows) : next;
     };
 
@@ -90,6 +92,7 @@ describe('useFieldRowMutations', () => {
     let rows: FieldRow[] = [createRow({ fieldName: 'user_id' })];
 
     const setRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => {
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- React's setter contract is a value-or-updater union.
       rows = typeof next === 'function' ? next(rows) : next;
     };
 

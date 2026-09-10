@@ -2,15 +2,18 @@ import { act, fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-
 import { ImportSqlDialog } from '@/components/ImportSqlDialog';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Isolates the parser transport so this test can focus on file and text size gates.
 vi.mock('@/services/sqlParseService', () => ({
   requestSqlParse: vi.fn(),
   requestMultiSqlParse: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Supplies the notification context without coupling input-limit assertions to the toast implementation.
 vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Provides a small interactive child so the dialog test can drive file/source inputs without rendering the full input step.
 vi.mock('@/components/ImportSqlDialog/SqlInputStep', () => ({
   SqlInputStep: ({
     onFileChange,

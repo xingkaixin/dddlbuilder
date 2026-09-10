@@ -5,6 +5,7 @@ import { ApplyTemplatePopover } from '@/components/App/ApplyTemplatePopover';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import i18n from '@/i18n';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- The i18n test replaces portal/popover positioning with local containers.
 vi.mock('@/components/ui/popover', () => ({
   Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   PopoverTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,

@@ -68,6 +68,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
   }) => {
     const { t } = useTranslation();
     const { showToast } = useToast();
+    // SAFETY: the template editor value is supplied by the typed field-row editor.
     const dbType = useEditorStore((state) => state.dbType) as DatabaseType;
     const [searchTerm, setSearchTerm] = useState('');
     const [editingTemplate, setEditingTemplate] = useState<FieldTemplate | null>(null);
@@ -328,6 +329,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                 <TemplateFieldTable
                   rows={editRows}
                   setRows={(next) => {
+                    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
                     setEditRows((prev) => (typeof next === 'function' ? next(prev) : next));
                   }}
                   dbType={dbType}

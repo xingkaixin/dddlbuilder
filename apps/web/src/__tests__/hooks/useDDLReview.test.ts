@@ -7,6 +7,7 @@ import { useLocale } from '@/i18n/LocaleContext';
 import { createAITextStream as createStream } from '@/__tests__/utils/aiStream';
 import { encodeAIStreamEvent } from '@ddlbuilder/shared-types';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Supplies stable auth and credit context while this hook exercises the real fetch stream lifecycle.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: 'signed_in',
@@ -48,6 +49,8 @@ function renderDDLReviewWithLocaleHook() {
   );
 }
 
+const createResponse = (body: BodyInit | null, status = 200) => new Response(body, { status });
+
 describe('useDDLReview', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -72,12 +75,7 @@ describe('useDDLReview', () => {
 
     const stream = createStream(['{"score": 8,', '"summary": "ok", "suggestions": ["a", "b"]}']);
 
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: stream,
-      json: vi.fn(),
-    } as unknown as Response);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(stream));
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -95,12 +93,11 @@ describe('useDDLReview', () => {
   it('should send the current locale after switching language', async () => {
     const { result } = renderDDLReviewWithLocaleHook();
 
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: createStream(['{"score": 8, "summary": "ok", "suggestions": []}']),
-      json: vi.fn(),
-    } as unknown as Response);
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        createResponse(createStream(['{"score": 8, "summary": "ok", "suggestions": []}'])),
+      );
 
     act(() => {
       result.current.locale.setLocale('en-US');
@@ -129,11 +126,9 @@ describe('useDDLReview', () => {
   });
 
   it('should handle non-ok response', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: false,
-      status: 500,
-      json: vi.fn().mockResolvedValue({ error: 'boom' }),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      createResponse(JSON.stringify({ error: 'boom' }), 500),
+    );
 
     const { result } = renderDDLReviewHook();
 
@@ -158,12 +153,7 @@ describe('useDDLReview', () => {
       },
     });
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: stream,
-      json: vi.fn(),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(stream));
 
     // Start the review
     act(() => {
@@ -221,12 +211,7 @@ describe('useDDLReview', () => {
       start() {},
     });
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: stream,
-      json: vi.fn(),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(stream));
 
     // Start a review
     act(() => {
@@ -249,12 +234,7 @@ describe('useDDLReview', () => {
 
     const stream = createStream(['invalid json response']);
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: stream,
-      json: vi.fn(),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(stream));
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -268,12 +248,7 @@ describe('useDDLReview', () => {
   it('should handle empty response body', async () => {
     const { result } = renderDDLReviewHook();
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: null,
-      json: vi.fn(),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(null));
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -322,7 +297,7 @@ describe('useDDLReview', () => {
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((_, init) => {
       requestCount += 1;
-      const signal = init?.signal as AbortSignal | undefined;
+      const signal = init?.signal ?? undefined;
 
       if (requestCount === 1) {
         firstSignal = signal;
@@ -336,12 +311,9 @@ describe('useDDLReview', () => {
         });
       }
 
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        body: createStream(['{"score": 9, "summary": "second", "suggestions": []}']),
-        json: vi.fn(),
-      } as unknown as Response);
+      return Promise.resolve(
+        createResponse(createStream(['{"score": 9, "summary": "second", "suggestions": []}'])),
+      );
     });
 
     // Start first review
@@ -387,12 +359,7 @@ describe('useDDLReview', () => {
 
     const stream = createStream([mockResponse]);
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: stream,
-      json: vi.fn(),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(stream));
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -402,28 +369,30 @@ describe('useDDLReview', () => {
     expect(result.current.result?.score).toBe(6);
     expect(result.current.result?.suggestions).toHaveLength(2);
 
-    const suggestion1 = result.current.result?.suggestions[0] as any;
-    expect(suggestion1.type).toBe('performance_warning');
-    expect(suggestion1.severity).toBe('warning');
-    expect(suggestion1.actionable).toBe(false);
-
-    const suggestion2 = result.current.result?.suggestions[1] as any;
-    expect(suggestion2.type).toBe('performance_warning');
-    expect(suggestion2.severity).toBe('error');
+    expect(result.current.result?.suggestions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'performance_warning',
+          severity: 'warning',
+          actionable: false,
+        }),
+        expect.objectContaining({
+          type: 'performance_warning',
+          severity: 'error',
+          actionable: false,
+        }),
+      ]),
+    );
   });
 
   it('should execute a completed review again for the same params', async () => {
     const { result } = renderDDLReviewHook();
 
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(
-      async () =>
-        ({
-          ok: true,
-          status: 200,
-          body: createStream(['{"score": 9, "summary": "fresh", "suggestions": []}']),
-          json: vi.fn(),
-        }) as unknown as Response,
-    );
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () =>
+        createResponse(createStream(['{"score": 9, "summary": "fresh", "suggestions": []}'])),
+      );
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -452,12 +421,7 @@ describe('useDDLReview', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
       fetchCount++;
 
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        body: stream,
-        json: vi.fn(),
-      } as unknown as Response);
+      return Promise.resolve(createResponse(stream));
     });
 
     act(() => {

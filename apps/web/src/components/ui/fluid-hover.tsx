@@ -17,6 +17,7 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
     (node: HTMLDivElement | null) => {
       containerRef.current = node;
 
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
       if (typeof ref === 'function') return ref(node);
 
       if (ref) ref.current = node;
@@ -51,11 +52,13 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
         .map((element) => {
           let left = element.offsetLeft;
           let top = element.offsetTop;
+          // SAFETY: browser offsetParent values provide the HTMLElement offset metrics used below.
           let parent = element.offsetParent as HTMLElement | null;
 
           while (parent && parent !== container && container.contains(parent)) {
             left += parent.offsetLeft + parent.clientLeft;
             top += parent.offsetTop + parent.clientTop;
+            // SAFETY: this continues the HTMLElement offsetParent chain established above.
             parent = parent.offsetParent as HTMLElement | null;
           }
 
@@ -134,7 +137,13 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
         return;
       }
 
-      const target = event.target as Element;
+      if (!(event.target instanceof Element)) {
+        clear();
+
+        return;
+      }
+
+      const target = event.target;
 
       if (target.closest('[data-fluid-hover]') !== container) {
         clear();
@@ -148,7 +157,7 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
       frame = requestAnimationFrame(draw);
     };
     const focus = (event: FocusEvent) => {
-      if ((event.target as Element).matches(':focus-visible')) clear();
+      if (event.target instanceof Element && event.target.matches(':focus-visible')) clear();
     };
     const refresh = () => {
       cancelAnimationFrame(frame);

@@ -19,6 +19,7 @@ const successMock = vi.fn();
 const errorMock = vi.fn();
 const retryWorkspaceYDocMock = vi.fn();
 const mockWorkspaceYDoc = vi.hoisted(() => ({
+  // SAFETY: The provider mock is populated with the exact fields exercised by Header before use.
   value: {} as any,
 }));
 
@@ -44,6 +45,7 @@ const signedInIdentity: AuthIdentityState = {
   emailVerified: true,
 };
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Header tests provide deterministic locale state.
 vi.mock('@/i18n/LocaleContext', () => ({
   useLocale: () => ({
     locale: 'zh-CN',
@@ -51,10 +53,12 @@ vi.mock('@/i18n/LocaleContext', () => ({
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- The header test asserts the stable documentation destination.
 vi.mock('@/utils/docsLink', () => ({
   getDocsUrl: () => '/docs/zh/',
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Theme state is controlled to exercise header theme actions.
 vi.mock('next-themes', () => ({
   useTheme: () => ({
     theme: 'system',
@@ -63,6 +67,7 @@ vi.mock('next-themes', () => ({
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Transition timing is outside the header behavior under test.
 vi.mock('@/components/App/hooks/useThemeTransition', () => ({
   useThemeTransition: () => ({
     phase: 'idle',
@@ -72,12 +77,14 @@ vi.mock('@/components/App/hooks/useThemeTransition', () => ({
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Import dialog rendering is reduced to its header trigger.
 vi.mock('@/components/ImportSqlDialog', () => ({
   ImportSqlDialog: ({ triggerLabel }: { triggerLabel: string }) => (
     <button type="button">{triggerLabel}</button>
   ),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- The test supplies synchronous menu primitives for header interactions.
 vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: any }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ children }: { children: any }) => <div>{children}</div>,
@@ -107,6 +114,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   ),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Tooltip portals are irrelevant to header assertions.
 vi.mock('@/components/ui/tooltip', () => ({
   TooltipProvider: ({ children }: { children: any }) => <>{children}</>,
   Tooltip: ({ children }: { children: any }) => <>{children}</>,
@@ -114,6 +122,7 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipContent: ({ children }: { children: any }) => <>{children}</>,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Header auth actions need deterministic signed-in and signed-out states.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = vi.fn(() => signedOutIdentity);
 
@@ -141,10 +150,12 @@ vi.mock('@/auth/AuthSessionProvider', () => {
   return { useAuthIdentity, useAuthActions, useAuthDialog };
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Workspace document state is injected to cover retry affordances.
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDoc: () => mockWorkspaceYDoc.value,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Migration state and callbacks are controlled independently from Header.
 vi.mock('@/hooks/useWorkspaceMigration', () => ({
   useWorkspaceMigration: vi.fn(() => ({
     checking: false,
@@ -158,6 +169,7 @@ vi.mock('@/hooks/useWorkspaceMigration', () => ({
   })),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Toast delivery is observed through local spies.
 vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({
     success: successMock,
@@ -349,6 +361,7 @@ describe('Header', () => {
             drafts: [],
             folders: [],
             savedTables: [
+              // SAFETY: Migration rendering only reads the saved table identity and forwards state unchanged.
               { normalizedName: 'users', name: 'users', state: {} as any, updatedAt: 1 },
             ],
             savedDrafts: [],

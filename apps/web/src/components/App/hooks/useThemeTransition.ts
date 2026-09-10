@@ -11,6 +11,7 @@ const FADE_START_AT_MS = 520;
 const TOTAL_DURATION_MS = 700;
 
 function getSystemTheme(): EffectiveTheme | null {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return null;
   }
@@ -19,6 +20,7 @@ function getSystemTheme(): EffectiveTheme | null {
 }
 
 function prefersReducedMotion(): boolean {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return true;
   }

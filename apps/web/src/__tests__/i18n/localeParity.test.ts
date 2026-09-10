@@ -3,20 +3,25 @@ import { enUSCommon } from '@/i18n/locales/en-US/common';
 import { jaJPCommon } from '@/i18n/locales/ja-JP/common';
 import { zhCNCommon } from '@/i18n/locales/zh-CN/common';
 
-const listLeafKeys = (value: unknown, prefix = ''): string[] => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return [prefix];
+type LocaleNode = string | { [key: string]: LocaleNode };
+
+type InterpolationMap = Record<string, string[]>;
+
+const isLocaleString = (value: LocaleNode): value is string => typeof value === 'string';
+
+const listLeafKeys = (value: LocaleNode, prefix = ''): string[] => {
+  if (isLocaleString(value)) return [prefix];
 
   return Object.entries(value).flatMap(([key, child]) =>
     listLeafKeys(child, prefix ? `${prefix}.${key}` : key),
   );
 };
 
-const listInterpolations = (value: unknown, prefix = ''): Record<string, string[]> => {
-  if (typeof value === 'string') {
+// oxlint-disable anti-slop/no-known-value-widening -- this recursive parity helper intentionally builds an open path-to-interpolations map.
+const listInterpolations = (value: LocaleNode, prefix = ''): InterpolationMap => {
+  if (isLocaleString(value)) {
     return { [prefix]: value.match(/\{\{[^}]+\}\}/g)?.sort() ?? [] };
   }
-
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
 
   return Object.assign(
     {},
@@ -25,6 +30,7 @@ const listInterpolations = (value: unknown, prefix = ''): Record<string, string[
     ),
   );
 };
+// oxlint-enable anti-slop/no-known-value-widening
 
 describe('locale catalog parity', () => {
   it('keeps all locale leaf keys aligned', () => {

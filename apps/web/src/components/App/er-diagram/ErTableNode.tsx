@@ -4,6 +4,7 @@ import { Key } from '@/components/icons';
 import type { ErNodeData } from './types';
 
 function ErTableNode(props: NodeProps) {
+  // SAFETY: React Flow node data is the ErNodeData supplied by buildNodesFromTables.
   const { data, selected } = props as NodeProps & { data: ErNodeData };
   const { state, onSelectTable } = data;
 

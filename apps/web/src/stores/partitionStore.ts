@@ -120,6 +120,7 @@ export const createPartitionSlice = (set: EditorSetState): PartitionSlice => ({
   },
   setMysqlPartitionConfig: (value) =>
     set((state) => ({
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Zustand's updater-or-value API requires runtime discrimination.
       mysqlPartitionConfig: typeof value === 'function' ? value(state.mysqlPartitionConfig) : value,
     })),
   resetPartition: () =>

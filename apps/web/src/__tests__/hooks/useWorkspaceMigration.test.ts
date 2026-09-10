@@ -20,8 +20,10 @@ import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const scope = { kind: 'user' as const, userId: 'user-1', workspaceId: 'ws-1' };
+// SAFETY: The mock starts empty and beforeEach installs the Y.Doc used by the hook.
 const ydoc = vi.hoisted(() => ({ doc: null as Y.Doc | null }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Migration tests inject the in-memory Y.Doc used by the hook.
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDoc: () => ({ doc: ydoc.doc, localSynced: true, synced: true }),
 }));

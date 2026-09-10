@@ -11,13 +11,18 @@ const WORKSPACE_BOOTSTRAP_TIMEOUT_MS = 10_000;
 const authSession = vi.hoisted(() => ({
   refreshSession: vi.fn(() => Promise.resolve()),
   current: {
+    // SAFETY: these values model the provider's signed-in state before each test mutates it.
     status: 'signed_in' as 'loading' | 'signed_in' | 'signed_out',
+    // SAFETY: the mocked provider uses a nullable user identity during signed-out transitions.
     userId: 'user-1' as string | null,
+    // SAFETY: the mocked provider uses a nullable workspace identity during signed-out transitions.
     workspaceId: 'ws-1' as string | null,
-    refreshSession: null as unknown as () => Promise<void>,
+    // SAFETY: the mocked action is intentionally absent until a test installs a refresh handler.
+    refreshSession: null as (() => Promise<void>) | null,
   },
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- control auth transitions while testing the Y.Doc gate lifecycle.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     ...authSession.current,
@@ -39,9 +44,11 @@ vi.mock('@/auth/AuthSessionProvider', () => {
 
 // whenSynced 的 resolve 由用例掌控，用来复现"本地 update log 还没加载完"的窗口期。
 const localLoad = vi.hoisted(() => ({
+  // SAFETY: the gate test installs this resolver only when the IndexedDB mock is constructed.
   resolve: null as (() => void) | null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- replace browser IndexedDB synchronization with a deterministic gate fixture.
 vi.mock('y-indexeddb', () => ({
   IndexeddbPersistence: class {
     get = async () => true;
@@ -54,15 +61,18 @@ vi.mock('y-indexeddb', () => ({
   },
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- suppress account cleanup side effects to isolate gate startup behavior.
 vi.mock('@/services/workspaceAccountService', () => ({
   clearLegacyWorkspaceData: vi.fn().mockResolvedValue(undefined),
   retryPendingWorkspaceCleanup: vi.fn().mockResolvedValue(undefined),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- control migration discovery while exercising the gate's legacy-data branch.
 vi.mock('@/services/workspaceMigrationService', () => ({
   prepareLegacyWorkspaceSnapshot: vi.fn(() => Promise.resolve(null)),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- provide a controllable sync client so gate readiness is tested without a network.
 vi.mock('@/services/workspaceYDocSyncClient', () => ({
   WorkspaceYDocSyncClient: class {
     connect = () => Promise.resolve();
@@ -74,6 +84,7 @@ vi.mock('@/services/workspaceYDocSyncClient', () => ({
 const gateTree = () => (
   <WorkspaceYDocProvider>
     <TabBar
+      // SAFETY: TabBar receives no tabs in this gate-only fixture; no tab value is consumed.
       tabs={[] as never[]}
       activeTabId={null}
       onActivateTab={() => {}}

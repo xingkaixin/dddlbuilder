@@ -7,7 +7,7 @@ import type { FolderTreeNode } from '@/hooks/useFolders';
 describe('workspace folder expansion', () => {
   it('expands asynchronously loaded folders and keeps explicit collapses', () => {
     const folder = (id: string): FolderTreeNode => createFolderTreeNode(id);
-    const initialProps: { folders: FolderTreeNode[] } = { folders: [] };
+    const initialProps = { folders: Array<FolderTreeNode>() };
 
     const { result, rerender } = renderHook(
       ({ folders }: { folders: FolderTreeNode[] }) =>

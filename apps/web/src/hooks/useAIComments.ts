@@ -41,7 +41,8 @@ export function useAIComments() {
       try {
         assertAICommentTarget(payload);
       } catch (error) {
-        const message = (error as Error).message;
+        const message =
+          error instanceof Error ? error.message : i18n.t('services.generationFailed');
         setState({ error: message });
         throw new Error(message);
       }
@@ -58,7 +59,7 @@ export function useAIComments() {
 
           return result;
         } catch (error) {
-          if (!isCurrent() || (error as Error).name === 'AbortError') throw error;
+          if (!isCurrent() || (error instanceof Error && error.name === 'AbortError')) throw error;
 
           const message = requestAccess.resolveRequestError(
             error,

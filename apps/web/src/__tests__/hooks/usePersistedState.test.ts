@@ -50,6 +50,7 @@ const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
 const anonymousScope = getAnonymousWorkspaceScope();
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- capture persistence error toasts without mounting the notification runtime.
 vi.mock('sonner', () => ({ toast: vi.fn() }));
 
 const addSavedTable = (
@@ -94,6 +95,7 @@ Object.defineProperty(window, 'localStorage', {
   writable: true,
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- replace remote share I/O so persistence fallback branches are deterministic.
 vi.mock('@/services/shareService', () => ({
   getShareState: vi.fn(),
   ShareApiError: class ShareApiError extends Error {
@@ -109,6 +111,7 @@ vi.mock('@/services/shareService', () => ({
   },
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- supply controlled auth state for anonymous and signed-in persistence scenarios.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = vi.fn(() => ({
     status: 'signed_out',
@@ -124,6 +127,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
   return { useAuthIdentity };
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- supply an isolated Y.Doc provider state while testing persisted-state fallback behavior.
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDocDocument: vi.fn(() => ({
     doc: null,
@@ -159,14 +163,12 @@ const signedInIdentity: AuthIdentityState = {
 
 const createDeferred = <T>() => {
   let resolve!: (value: T | PromiseLike<T>) => void;
-  let reject!: (reason?: unknown) => void;
 
-  const promise = new Promise<T>((res, rej) => {
+  const promise = new Promise<T>((res) => {
     resolve = res;
-    reject = rej;
   });
 
-  return { promise, resolve, reject };
+  return { promise, resolve };
 };
 
 const useTestPersistedState = () => {
@@ -680,12 +682,15 @@ describe('usePersistedState', () => {
     const loaded = result.current.resolveWorkspaceSnapshot(source);
 
     if (!loaded) throw new Error('Saved table snapshot missing');
-    act(() => result.current.selectWorkspaceSnapshot(loaded.source, loaded.state));
+
+    if (loaded.source.kind !== 'saved_table') throw new Error('Expected saved table snapshot');
+    const savedSource = loaded.source;
+    act(() => result.current.selectWorkspaceSnapshot(savedSource, loaded.state));
     act(() =>
       upsertSavedDraftInYDoc(doc, target, {
         state: { ...base, tableComment: 'local draft' },
         tableName: 'Users',
-        baseSignature: (loaded.source as typeof source).baseSignature,
+        baseSignature: savedSource.baseSignature,
         updatedAt: 2,
       }),
     );
@@ -1454,7 +1459,7 @@ describe('usePersistedState', () => {
 
   it('分享路径应加载远端状态', async () => {
     const sharedState = createState('shared_users');
-    mockedGetShareState.mockResolvedValue(sharedState as any);
+    mockedGetShareState.mockResolvedValue(sharedState);
     window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
     const { wrapper } = createQueryClientWrapper();
@@ -1469,7 +1474,7 @@ describe('usePersistedState', () => {
 
   it('分享路径 saveState 与 clearState 应写入并清理 share 本地快照', async () => {
     const sharedState = createState('shared_from_remote');
-    mockedGetShareState.mockResolvedValue(sharedState as any);
+    mockedGetShareState.mockResolvedValue(sharedState);
     window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
     const { wrapper } = createQueryClientWrapper();

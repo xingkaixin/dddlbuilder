@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- isolate the admin API network boundary while testing detail and ledger rendering.
 vi.mock('@/admin/lib/adminApi', () => ({
   getUserDetail: mocks.getUserDetail,
   getUserCreditLedger: mocks.getUserCreditLedger,
@@ -26,8 +27,10 @@ vi.mock('@/admin/lib/adminApi', () => ({
   grantUserCredits: mocks.grantUserCredits,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- fix the locale so this admin rendering test is deterministic.
 vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ resolvedLocale: 'zh-CN' }) }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- capture toast side effects without invoking the UI notification runtime.
 vi.mock('sonner', () => ({
   toast: {
     success: mocks.toastSuccess,

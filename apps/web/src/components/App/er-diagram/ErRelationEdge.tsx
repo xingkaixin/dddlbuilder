@@ -17,6 +17,8 @@ function ErRelationEdge(props: EdgeProps) {
     data,
     selected,
     markerEnd,
+    // SAFETY: React Flow edge data is the ErEdgeData supplied by buildEdgesFromTables.
+    // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- React Flow registers this edge with ErEdgeData in ErDiagramCanvas.
   } = props as EdgeProps & { data: ErEdgeData };
 
   const [edgePath, labelX, labelY] = getBezierPath({

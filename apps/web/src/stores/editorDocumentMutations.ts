@@ -158,9 +158,11 @@ export function removeFieldsFromDocument(
 }
 
 function removeFieldReferences(state: PersistedState, fieldNames: string[]): PersistedState {
-  const removedFieldNames = fieldNames
-    .map((name) => getSqlIdentifierKey(name, state.dbType))
-    .filter(Boolean);
+  const removedFieldNames = fieldNames.flatMap((name) => {
+    const key = getSqlIdentifierKey(name, state.dbType);
+
+    return key ? [key] : [];
+  });
   const removedNames = new Set(removedFieldNames);
 
   if (removedNames.size === 0) return state;

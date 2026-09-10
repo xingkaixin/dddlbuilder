@@ -278,9 +278,11 @@ export function useSavedTablePersistence() {
         operationId = (await ensureWorkspaceEntityDeletion(entityTarget)).operationId;
       }
 
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
       await deleteSavedTable(reference, target.scope).catch((error: unknown) =>
         console.error('[workspace] table cache cleanup failed', error),
       );
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
       await finalizeWorkspaceEntityDeletion(entityTarget, operationId).catch((error: unknown) =>
         console.error('[workspace] table history cleanup failed', error),
       );

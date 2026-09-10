@@ -10,6 +10,7 @@ import {
   decodeAdminUsageResponse,
 } from '@ddlbuilder/shared-types/api';
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
+import * as Option from 'effect/Option';
 
 export type {
   AdminUserSummary,
@@ -26,8 +27,9 @@ import type {
 } from '@ddlbuilder/shared-types/api';
 
 type Decoder<T> = (
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- decoders are the shared API boundary for untrusted JSON.
   value: unknown,
-) => { readonly _tag: 'None' } | { readonly _tag: 'Some'; readonly value: T };
+) => Option.Option<T>;
 
 const adminFetch = async <T>(
   path: string,
@@ -44,7 +46,7 @@ const adminFetch = async <T>(
 
   const decoded = decode(json);
 
-  if (decoded._tag === 'None') throw new Error('Invalid admin response');
+  if (Option.isNone(decoded)) throw new Error('Invalid admin response');
 
   return decoded.value;
 };
@@ -59,7 +61,7 @@ export const adminLogin = async (password: string): Promise<void> => {
 
   if (!res.ok) throw new Error('INVALID_PASSWORD');
 
-  if (decodeAdminActionResponse(await res.json().catch(() => null))._tag === 'None')
+  if (Option.isNone(decodeAdminActionResponse(await res.json().catch(() => null))))
     throw new Error('Invalid admin response');
 };
 

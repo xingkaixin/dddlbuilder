@@ -4,6 +4,7 @@ import { StorageEstimatorDialog } from '@/components/App/StorageEstimatorDialog'
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 import i18n from '@/i18n';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 动画数字替换用于只验证估算值传给展示组件的结果。
 vi.mock('@/components/ui/animated-number', () => ({
   AnimatedNumber: ({ value }: { value: number }) => (
     <span data-testid="animated-number">{String(value)}</span>
@@ -37,9 +38,11 @@ describe('StorageEstimatorDialog', () => {
     expect(rowHeader).toBeTruthy();
 
     const totalValueBefore = Number(
+      // SAFETY: The preceding truthiness assertions establish that the queried DOM nodes exist.
       within(totalCard as HTMLElement).getByTestId('animated-number').textContent,
     );
     const rowsValueBefore = Number(
+      // SAFETY: The preceding truthiness assertions establish that the queried DOM nodes exist.
       within(rowHeader as HTMLElement).getByTestId('animated-number').textContent,
     );
 
@@ -51,12 +54,14 @@ describe('StorageEstimatorDialog', () => {
 
     await waitFor(() => {
       expect(
+        // SAFETY: The preceding truthiness assertions establish that the queried DOM nodes exist.
         Number(within(rowHeader as HTMLElement).getByTestId('animated-number').textContent),
       ).toBe(20000);
     });
 
     await waitFor(() => {
       expect(
+        // SAFETY: The preceding truthiness assertions establish that the queried DOM nodes exist.
         Number(within(totalCard as HTMLElement).getByTestId('animated-number').textContent),
       ).toBeGreaterThan(totalValueBefore);
     });

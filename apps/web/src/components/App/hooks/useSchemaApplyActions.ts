@@ -95,6 +95,7 @@ export function useSchemaApplyActions({
       if (!review) return;
 
       const suggestions = review.suggestions.map((item) =>
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- suggestions intentionally support legacy string entries.
         typeof item !== 'string' && item.id === suggestion.id ? { ...item, applied: true } : item,
       );
       const nextReview = { ...review, suggestions };
@@ -108,9 +109,11 @@ export function useSchemaApplyActions({
   const handleApplySuggestion = useCallback(
     (suggestion: StructuredSuggestion) => {
       const currentSuggestion = reviewResultRef.current?.suggestions.find(
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- suggestions intentionally support legacy string entries.
         (item) => typeof item !== 'string' && item.id === suggestion.id,
       );
 
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- suggestions intentionally support legacy string entries.
       if (!currentSuggestion || typeof currentSuggestion === 'string' || currentSuggestion.applied)
         return;
 

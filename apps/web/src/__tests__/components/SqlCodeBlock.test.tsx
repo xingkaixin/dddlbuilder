@@ -5,8 +5,10 @@ import SqlCodeBlock from '@/components/App/SqlCodeBlock';
 
 const theme = vi.hoisted(() => ({ resolvedTheme: 'light' }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Code block snapshots use a fixed theme value.
 vi.mock('next-themes', () => ({ useTheme: () => theme }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- The test isolates code block rendering from explain-popover behavior.
 vi.mock('@/components/App/ExplainPopover', () => ({
   ExplainPopover: ({ children }: { children: ReactNode }) => children,
 }));

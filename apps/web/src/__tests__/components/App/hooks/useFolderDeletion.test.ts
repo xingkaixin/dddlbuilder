@@ -25,8 +25,10 @@ import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- control the authenticated scope used by folder deletion scenarios.
 vi.mock('@/auth/AuthSessionProvider', () => ({ useAuthIdentity: vi.fn() }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- supply the Y.Doc dependency while the test focuses on deletion coordination.
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDocDocument: vi.fn() }));
 
 const signedOutIdentity: AuthIdentityState = {

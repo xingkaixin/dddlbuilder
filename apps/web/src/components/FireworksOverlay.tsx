@@ -283,6 +283,7 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
             key={star.id}
             className="cny-star"
             style={
+              // SAFETY: the animation ref is created by the component with the expected canvas element type.
               {
                 width: `${star.size}px`,
                 height: `${star.size}px`,

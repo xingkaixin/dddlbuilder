@@ -87,7 +87,7 @@ export function useDDLExplain() {
             requestAccess.refreshCreditsAfterSuccess();
           });
         } catch (error) {
-          if (!isCurrent() || (error as Error).name === 'AbortError') throw error;
+          if (!isCurrent() || (error instanceof Error && error.name === 'AbortError')) throw error;
 
           setState({
             phase: 'error',

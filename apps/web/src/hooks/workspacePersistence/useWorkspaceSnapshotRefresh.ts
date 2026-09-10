@@ -25,6 +25,7 @@ interface UseWorkspaceSnapshotRefreshParams {
   syncActiveSource: (source: WorkspaceSelection) => void;
   setPersistedStateIfChanged: (state: PersistedState | null) => void;
   setHydrated: (hydrated: boolean) => void;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected hydration work can throw any JavaScript value and is only reported.
   failHydration: (error: unknown) => void;
 }
 
@@ -84,6 +85,7 @@ export function useWorkspaceSnapshotRefresh({
         syncActiveSource({ kind: 'draft', draftId: resolvedDraft?.draftId ?? sessionDraftId });
         setPersistedStateIfChanged(resolvedDraft?.record.state ?? null);
         setHydrated(true);
+        // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected async hydration can throw any JavaScript value.
       })().catch((error: unknown) => {
         if (!cancelled) failHydration(error);
       });

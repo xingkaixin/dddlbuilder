@@ -3,8 +3,13 @@ import { describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 
-const workspace = vi.hoisted(() => ({ doc: null as Y.Doc | null, localSynced: true }));
+const workspace = vi.hoisted(() => ({
+  // SAFETY: The provider mock is initialized with a real Y.Doc before the hook is rendered.
+  doc: null as Y.Doc | null,
+  localSynced: true,
+}));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Provide the gateway's provider state while using a real Y.Doc for transaction behavior.
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDocDocument: () => workspace }));
 
 describe('local workspace transaction ownership', () => {

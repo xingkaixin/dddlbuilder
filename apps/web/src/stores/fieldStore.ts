@@ -11,6 +11,7 @@ export const createFieldSlice = (set: EditorSetState): FieldSlice => ({
   rows: createInitialRows(12),
   setRows: (next) =>
     set((state) =>
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Zustand's updater-or-value API requires runtime discrimination.
       updateDocumentFields(state, typeof next === 'function' ? next(state.rows) : next),
     ),
   resetRows: (count = 12) => {

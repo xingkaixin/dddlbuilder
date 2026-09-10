@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook as renderTestingHook, act, waitFor } from '@testing-library/react';
-import { useFieldTemplates } from '@/hooks/useFieldTemplates';
+import { useFieldTemplates, type FieldTemplate } from '@/hooks/useFieldTemplates';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+
+type TemplateHolder = { value: FieldTemplate | null };
 
 function renderHook<Result>(callback: () => Result) {
   const { wrapper } = createQueryClientWrapper();
@@ -213,15 +215,13 @@ describe('useFieldTemplates', () => {
       await flushPromises();
     });
 
-    const fetched: {
-      value: Awaited<ReturnType<typeof result.current.fetchTemplate>>;
-    } = { value: null };
+    const holder: TemplateHolder = { value: null };
     await act(async () => {
-      fetched.value = await result.current.fetchTemplate(templateId);
+      holder.value = await result.current.fetchTemplate(templateId);
     });
 
-    expect(fetched.value?.name).toBe('Single');
-    expect(fetched.value?.fields).toHaveLength(1);
+    expect(holder.value?.name).toBe('Single');
+    expect(holder.value?.fields).toHaveLength(1);
   });
 
   it('returns null for non-existent template', async () => {
@@ -231,14 +231,12 @@ describe('useFieldTemplates', () => {
       await flushPromises();
     });
 
-    const fetched: {
-      value: Awaited<ReturnType<typeof result.current.fetchTemplate>>;
-    } = { value: null };
+    const holder: TemplateHolder = { value: null };
     await act(async () => {
-      fetched.value = await result.current.fetchTemplate('missing');
+      holder.value = await result.current.fetchTemplate('missing');
     });
 
-    expect(fetched.value).toBeNull();
+    expect(holder.value).toBeNull();
   });
 
   it('updates a template', async () => {

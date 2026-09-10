@@ -8,20 +8,27 @@ import { applyAISchemaChanges } from '@/components/App/aiSchemaPatchTransition';
 import { requestGenerateTable } from '@/services/aiGenerateTableService';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- The dialog test controls the AI stream and cancellation signal at the service boundary.
 vi.mock('@/services/aiGenerateTableService', () => ({ requestGenerateTable: vi.fn() }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- The dialog layer is tested without unrelated global dialog UI.
 vi.mock('@/components/App/containers/GlobalDialogs', () => ({ GlobalDialogs: () => null }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- The test isolates the schema patch flow from the WebMCP confirmation UI.
 vi.mock('@/webmcp/WebMcpChangeDialog', () => ({ WebMcpChangeDialog: () => null }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Authentication dialogs are outside this dialog flow.
 vi.mock('@/auth/AuthDialogs', () => ({ AuthDialogs: () => null }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Migration UI is unrelated to schema patch interaction.
 vi.mock('@/components/App/WorkspaceMigrationDialog', () => ({
   WorkspaceMigrationDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- The dialog needs a deterministic locale without mounting the provider.
 vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ resolvedLocale: 'zh-CN' }) }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Auth state is a fixed harness input for this dialog session test.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: 'signed_in',
@@ -51,6 +58,14 @@ const state = withDefaultEditorSession({
 });
 const applyChanges = vi.fn();
 
+const asDialogLayerModel = <T extends { saveObjectType: 'table' }>(
+  value: T,
+): AppDialogLayerModel => {
+  // SAFETY: The focused harness supplies every model branch read by AppDialogLayer; unrelated dialogs stay unmounted.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The focused model intentionally omits unrelated dialog branches.
+  return value as unknown as AppDialogLayerModel;
+};
+
 function Harness({
   initialState = state,
   alternateState = { ...state, tableName: 'orders' },
@@ -62,7 +77,7 @@ function Harness({
   const [currentState, setCurrentState] = useState(initialState);
   const [targetKey, setTargetKey] = useState('tab-a');
 
-  const model = {
+  const model = asDialogLayerModel({
     saveObjectType: 'table',
     globalDialogs: { saveDialog: {} },
     userSettings: { open: false },
@@ -88,7 +103,7 @@ function Harness({
       },
       onFocusChange: vi.fn(),
     },
-  } as unknown as AppDialogLayerModel;
+  });
 
   return (
     <>
@@ -250,11 +265,14 @@ describe('AI patch dialog session', () => {
     const renameTitle = await screen.findByRole('button', {
       name: '字段 old_name 改名为 new_name',
     });
-    const renameCard = renameTitle.closest('[class~="transition-colors"]');
+    // SAFETY: The selected transition card is rendered as an HTMLElement by the dialog component.
+    const renameCard = renameTitle.closest('[class~="transition-colors"]') as HTMLElement | null;
     expect(renameCard).not.toBeNull();
+
+    if (!renameCard) throw new Error('rename card was not rendered');
     expect(screen.getByText('新增索引 idx_new_name')).toBeInTheDocument();
     expect(screen.getByText('删除索引 idx_old_name')).toBeInTheDocument();
-    fireEvent.click(within(renameCard as HTMLElement).getByRole('button', { name: '确认' }));
+    fireEvent.click(within(renameCard).getByRole('button', { name: '确认' }));
     fireEvent.click(screen.getByRole('button', { name: '应用 1 项变更' }));
 
     await waitFor(() => {
@@ -287,9 +305,12 @@ describe('AI patch dialog session', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '重命名表' } });
     fireEvent.click(screen.getByRole('button', { name: '发送' }));
     const title = await screen.findByText('调整表英文名');
-    const card = title.closest('[class~="transition-colors"]');
+    // SAFETY: The selected transition card is rendered as an HTMLElement by the dialog component.
+    const card = title.closest('[class~="transition-colors"]') as HTMLElement | null;
     expect(card).not.toBeNull();
-    fireEvent.click(within(card as HTMLElement).getByRole('button', { name: '确认' }));
+
+    if (!card) throw new Error('change card was not rendered');
+    fireEvent.click(within(card).getByRole('button', { name: '确认' }));
     fireEvent.click(screen.getByRole('button', { name: '应用 1 项变更' }));
     await waitFor(() =>
       expect(screen.getByText('0 项待确认，0 项已选择，1 项已应用')).toBeInTheDocument(),

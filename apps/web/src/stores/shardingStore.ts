@@ -26,6 +26,7 @@ export const createShardingSlice = (set: EditorSetState): ShardingSlice => ({
     })),
   setCitusShardingConfig: (value) =>
     set((state) => ({
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Zustand's updater-or-value API requires runtime discrimination.
       citusShardingConfig: typeof value === 'function' ? value(state.citusShardingConfig) : value,
     })),
   resetCitusSharding: () =>

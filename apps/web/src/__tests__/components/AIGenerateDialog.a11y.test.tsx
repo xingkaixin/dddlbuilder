@@ -3,10 +3,12 @@ import { act, fireEvent, render, screen } from '@/__tests__/utils/test-utils';
 import { AIGenerateDialog } from '@/components/App/AIGenerateDialog';
 import { useAIGenerateTable } from '@/hooks/useAIGenerateTable';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- replace the async generation hook so this test exercises dialog accessibility states directly.
 vi.mock('@/hooks/useAIGenerateTable', () => ({
   useAIGenerateTable: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- provide a signed-in identity without mounting the authentication provider in this dialog test.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: 'signed_in',
@@ -33,6 +35,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
 const mockedUseAIGenerateTable = vi.mocked(useAIGenerateTable);
 
 function createHookState(overrides: Partial<ReturnType<typeof useAIGenerateTable>>) {
+  // SAFETY: the fixture supplies every hook member and overrides only compatible members per test.
   return {
     isLoading: false,
     streamingText: '',

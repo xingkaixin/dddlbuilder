@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import type { ForeignKeyAction } from '@ddlbuilder/shared-types';
 import { getForeignKeyActions } from '@ddlbuilder/ddl-core';
 import { AlertTriangle, ArrowRight, KeyRound, Link2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
@@ -339,9 +338,11 @@ export function RelationCreationDialog({
                       </div>
                       <Select
                         value={selectedAction ?? ''}
-                        onValueChange={(value) =>
-                          updateIntent(actionType, (value as ForeignKeyAction) || undefined)
-                        }
+                        onValueChange={(value) => {
+                          const action = actions.find((candidate) => candidate === value);
+
+                          updateIntent(actionType, action);
+                        }}
                       >
                         <SelectTrigger aria-label={t(`erDiagram.relationship.${actionType}`)}>
                           <SelectValue />

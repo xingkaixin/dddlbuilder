@@ -16,14 +16,21 @@ import { useDraftRecords } from '@/hooks/workspacePersistence/useDraftRecords';
 import { createSchemaDocumentState } from '@/__tests__/utils/testFactories';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
-const workspace = vi.hoisted(() => ({ doc: null as Y.Doc | null, localSynced: true }));
+const workspace = vi.hoisted(() => ({
+  // SAFETY: the projection mock starts before a Y.Doc is mounted and later supplies one per test.
+  doc: null as Y.Doc | null,
+  localSynced: true,
+}));
 const scope = vi.hoisted(() => ({
+  // SAFETY: the projection hook accepts the literal workspace scope discriminant.
   kind: 'user' as const,
   userId: 'user',
   workspaceId: 'workspace',
 }));
+// oxlint-disable-next-line anti-slop/no-module-mocking -- provide controlled Y.Doc projection state without mounting the provider.
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDocDocument: () => workspace }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- keep projection scope stable while testing local and synced branches.
 vi.mock('@/hooks/useWorkspaceScope', () => ({ useWorkspaceScope: () => scope }));
 
 afterEach(() => vi.restoreAllMocks());

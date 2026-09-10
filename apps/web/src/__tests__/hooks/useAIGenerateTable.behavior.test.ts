@@ -10,10 +10,12 @@ const aiServiceMocks = vi.hoisted(() => ({
   requestGenerateTable: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- replace the AI network request to test cancellation and request ordering.
 vi.mock('@/services/aiGenerateTableService', () => ({
   requestGenerateTable: aiServiceMocks.requestGenerateTable,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- provide a stable signed-in identity while testing hook request behavior.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: 'signed_in',
@@ -254,7 +256,9 @@ describe('useAIGenerateTable behaviors', () => {
   });
 
   it('should abort previous request when new key arrives', async () => {
-    const requestSignals: { first?: AbortSignal } = {};
+    type FirstRequestSignals = { first?: AbortSignal };
+
+    const requestSignals: FirstRequestSignals = {};
     aiServiceMocks.requestGenerateTable.mockImplementation((payload, options) => {
       if (payload.description === 'first') {
         requestSignals.first = options.signal;
@@ -286,7 +290,9 @@ describe('useAIGenerateTable behaviors', () => {
   });
 
   it('cancelGeneration should abort active request and reset loading', async () => {
-    const requestSignals: { active?: AbortSignal } = {};
+    type ActiveRequestSignals = { active?: AbortSignal };
+
+    const requestSignals: ActiveRequestSignals = {};
     aiServiceMocks.requestGenerateTable.mockImplementation((_, options) => {
       requestSignals.active = options.signal;
 

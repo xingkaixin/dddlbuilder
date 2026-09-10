@@ -1,17 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@/__tests__/utils/test-utils';
 import { AnimatedNumber } from '@/components/ui/animated-number';
+import type { NumberFlowProps } from '@number-flow/react';
 
 const mockNumberFlowRender = vi.fn();
 const mockUsePrefersReducedMotion = vi.fn();
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Adapts the animation SDK to jsdom while preserving the value and reduced-motion contract under test.
 vi.mock('@number-flow/react', () => ({
   __esModule: true,
-  default: (props: unknown) => {
+  default: (props: NumberFlowProps) => {
     mockNumberFlowRender(props);
-    const value = (props as { value: number }).value;
 
-    return <span data-testid="number-flow">{String(value)}</span>;
+    return <span data-testid="number-flow">{String(props.value)}</span>;
   },
   usePrefersReducedMotion: () => mockUsePrefersReducedMotion(),
 }));

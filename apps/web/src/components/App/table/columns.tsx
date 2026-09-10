@@ -13,10 +13,20 @@ import { toStringSafe, getUiDefaultKindOptions, getUiOnUpdateOptions } from '@/u
 import { getCanonicalBaseType } from '@ddlbuilder/ddl-core';
 import { getDefaultKindLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useTranslation } from 'react-i18next';
+import type { EditableFieldKey, UpdateEditableField } from './useFieldRowMutations';
 
 const columnHelper = createColumnHelper<FieldTableFeatures, FieldRow>();
 
 const LOGICAL_ENUM_BASES = new Set(['tinyint', 'smallint', 'int', 'bigint', 'char', 'varchar']);
+const EDITABLE_FIELD_KEYS = [
+  'fieldName',
+  'fieldComment',
+  'fieldType',
+  'nullable',
+  'defaultKind',
+  'defaultValue',
+  'onUpdate',
+] as const;
 
 type EditingCell = { row: number; col: string };
 
@@ -27,7 +37,7 @@ interface UseFieldColumnsParams {
   editingCell?: EditingCell | null;
   onEditingCellChange?: Dispatch<SetStateAction<EditingCell | null>>;
   dbType: DatabaseType;
-  updateCellValue: (rowIndex: number, columnId: string, value: string | boolean) => void;
+  updateCellValue: UpdateEditableField;
   updateEnumValues?: (rowIndex: number, fieldType: string, enumMeta: EnumValueMeta[]) => void;
   handleTabNavigation: (rowIndex: number, columnId: string, direction: 1 | -1) => void;
   onRemoveRow: (rowIndex: number, count: number) => void;
@@ -73,6 +83,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         size: columnWidths.fieldName,
         cell: ({ row, getValue }) => (
           <EditableCell
+            // SAFETY: the accessor column is declared for FieldRow and therefore yields a string here.
             value={getValue() as string}
             onChange={(v) => updateCellValue(row.index, 'fieldName', v)}
             onTabNavigate={(direction) => handleTabNavigation(row.index, 'fieldName', direction)}
@@ -101,6 +112,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         size: columnWidths.fieldComment,
         cell: ({ row, getValue }) => (
           <EditableCell
+            // SAFETY: the accessor column is declared for FieldRow and therefore yields a string here.
             value={getValue() as string}
             onChange={(v) => updateCellValue(row.index, 'fieldComment', v)}
             onTabNavigate={(direction) => handleTabNavigation(row.index, 'fieldComment', direction)}
@@ -128,6 +140,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         header: () => t('dataTable.headers.fieldType'),
         size: columnWidths.fieldType,
         cell: ({ row, getValue }) => {
+          // SAFETY: the accessor column is declared for FieldRow and therefore yields a string here.
           const fieldTypeValue = getValue() as string;
 
           const isEditingFieldType =
@@ -263,6 +276,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
 
           return (
             <EditableCell
+              // SAFETY: the accessor column is declared for FieldRow and therefore yields a string here.
               value={(getValue() as string) || ''}
               onChange={(v) => updateCellValue(row.index, 'defaultValue', v)}
               onTabNavigate={(direction) =>
@@ -361,7 +375,10 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
 }
 
 export function getEditableColumnKeys(columns: FieldTableColumnDef[]) {
-  return columns.flatMap((column) =>
-    column.meta?.editable && 'accessorKey' in column ? [String(column.accessorKey)] : [],
-  );
+  return columns.flatMap((column): EditableFieldKey[] => {
+    if (!column.meta?.editable || !('accessorKey' in column)) return [];
+    const key = EDITABLE_FIELD_KEYS.find((candidate) => candidate === column.accessorKey);
+
+    return key ? [key] : [];
+  });
 }

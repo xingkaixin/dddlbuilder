@@ -6,6 +6,7 @@ import { useTabStore } from '@/stores';
 
 const mocks = vi.hoisted(() => ({ applySavedState: vi.fn() }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Lifecycle tests control saved-state application to isolate tab transitions.
 vi.mock('@/components/App/applySavedState', () => ({
   applySavedState: mocks.applySavedState,
 }));

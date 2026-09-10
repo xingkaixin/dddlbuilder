@@ -7,6 +7,8 @@ const SHARE_PREFIX = `${STORAGE_KEY}:share:`;
 const SHARE_ORDER_KEY = `${STORAGE_KEY}:share-cache-order:v1`;
 const MAX_CACHED_SHARES = 5;
 
+type SharePathResult = { shareId: string | null; invalid: boolean };
+
 const rememberShare = (key: string) => {
   if (!key.startsWith(SHARE_PREFIX)) return;
   const stored: unknown = JSON.parse(localStorage.getItem(SHARE_ORDER_KEY) ?? '[]');
@@ -32,6 +34,7 @@ const rememberShare = (key: string) => {
   localStorage.setItem(SHARE_ORDER_KEY, JSON.stringify(order.slice(0, MAX_CACHED_SHARES)));
 };
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
 export const writeStorageJson = (key: string, value: unknown) => {
   try {
     rememberShare(key);
@@ -41,12 +44,13 @@ export const writeStorageJson = (key: string, value: unknown) => {
   }
 };
 
-export const readStorageJson = <T>(key: string): T | null => {
+// oxlint-disable anti-slop/no-unknown-returns, anti-slop/no-known-value-widening -- Cached JSON remains unknown until the caller decodes it; missing and invalid entries return null.
+export const readStorageJson = (key: string): unknown => {
   try {
     const raw = localStorage.getItem(key);
 
     if (!raw) return null;
-    const value = JSON.parse(raw) as T;
+    const value: unknown = JSON.parse(raw);
     rememberShare(key);
 
     return value;
@@ -54,6 +58,8 @@ export const readStorageJson = <T>(key: string): T | null => {
     return null;
   }
 };
+
+// oxlint-enable anti-slop/no-unknown-returns, anti-slop/no-known-value-widening
 
 export const removeStorage = (key: string) => {
   try {
@@ -65,7 +71,7 @@ export const removeStorage = (key: string) => {
 
 export const buildShareStorageKey = (shareId: string) => `${STORAGE_KEY}:share:${shareId}`;
 
-export const parseSharePath = (pathname: string): { shareId: string | null; invalid: boolean } => {
+export const parseSharePath = (pathname: string): SharePathResult => {
   if (!pathname.startsWith('/share/')) {
     return { shareId: null, invalid: false };
   }

@@ -20,6 +20,7 @@ const createBootstrapMock = async (options?: {
     options?.migrateImpl ?? (async () => undefined),
   );
 
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- replace bootstrap storage reads to control legacy migration side effects.
   vi.doMock('@/utils/workspaceStateDb', () => ({
     readWorkspaceBootstrap,
     migrateLegacyWorkspaceFromLocalStorage,

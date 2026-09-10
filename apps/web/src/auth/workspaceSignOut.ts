@@ -29,6 +29,7 @@ const retryWorkspaceCleanup = (scope: UserWorkspaceScope) => {
         writeWorkspaceIdentity(null);
       }
     })
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected promises may contain any thrown JavaScript value.
     .catch((error: unknown) => {
       console.error('[workspace] cleanup retry failed', error);
       toast.error(i18n.t('workspaceYDoc.signOut.cleanupFailed'));

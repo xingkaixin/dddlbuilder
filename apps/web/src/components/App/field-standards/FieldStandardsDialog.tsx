@@ -35,9 +35,16 @@ const queryKey = ['field-standards'] as const;
 const EMPTY_STANDARDS: FieldStandard[] = [];
 const selectClass = 'h-9 w-full rounded-md border border-input bg-background px-2 text-sm';
 
+function getStandardFieldKeys(field: StandardField): (keyof StandardField)[] {
+  // SAFETY: StandardField is the owner type of every key returned by Object.keys here.
+  return Object.keys(field) as (keyof StandardField)[];
+}
+
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- displayValue is a UI boundary for arbitrary JSON field values.
 function displayValue(value: unknown): string {
   if (value === undefined || value === '') return '—';
 
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- JSON display needs to preserve primitive strings without serialization.
   return typeof value === 'string' ? value : (JSON.stringify(value) ?? '—');
 }
 
@@ -107,9 +114,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
           differences: (keyof StandardField)[];
         }>((standard) => {
           if (!standard)
-            return row.standardId
-              ? [{ table: table.name, row, standard, differences: [] as (keyof StandardField)[] }]
-              : [];
+            return row.standardId ? [{ table: table.name, row, standard, differences: [] }] : [];
 
           return [
             {
@@ -338,7 +343,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                             </tr>
                           </thead>
                           <tbody>
-                            {(Object.keys(selected.field) as (keyof StandardField)[]).map((key) => (
+                            {getStandardFieldKeys(selected.field).map((key) => (
                               <tr
                                 key={key}
                                 className={differences.includes(key) ? 'bg-amber-500/10' : ''}

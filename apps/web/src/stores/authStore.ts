@@ -5,10 +5,12 @@ export const createAuthSlice = (set: EditorSetState, get: EditorGetState): AuthS
   authObjects: [],
   setAuthInput: (value) =>
     set((state) => ({
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Zustand's updater-or-value API requires runtime discrimination.
       authInput: typeof value === 'function' ? value(state.authInput) : value,
     })),
   setAuthObjects: (value) =>
     set((state) => ({
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Zustand's updater-or-value API requires runtime discrimination.
       authObjects: typeof value === 'function' ? value(state.authObjects) : value,
     })),
   addAuthObject: (authObj) => {

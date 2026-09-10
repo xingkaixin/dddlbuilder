@@ -48,6 +48,7 @@ interface ImportSqlDialogProps {
 }
 
 function getValidationErrorMessage(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
   error: unknown,
   sourceType: ImportSourceType,
   fallback: string,

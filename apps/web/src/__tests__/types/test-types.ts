@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type -- These declarations intentionally exercise unsafe dictionary fixtures. */
 import type { ReactElement } from 'react';
 
 // Mock event types

@@ -3,10 +3,12 @@ import { render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { ErDiagramDialog } from '@/components/App/ErDiagramDialog';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 依赖替换用于隔离对话框加载流程，只验证调用方提供的读取结果。
 vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 依赖替换用于隔离对话框加载流程，只验证调用方提供的读取结果。
 vi.mock('@/components/App/er-diagram/ErDiagramCanvas', () => ({
   default: ({ tables }: { tables: SavedTableRecord[] }) => (
     <div data-testid="er-table-count">{tables.length}</div>

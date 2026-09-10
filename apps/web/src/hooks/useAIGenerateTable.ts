@@ -160,7 +160,7 @@ export function useAIGenerateTable() {
 
           return true;
         } catch (error) {
-          if (!isCurrent() || (error as Error).name === 'AbortError') throw error;
+          if (!isCurrent() || (error instanceof Error && error.name === 'AbortError')) throw error;
 
           setState({
             streamingText: '',

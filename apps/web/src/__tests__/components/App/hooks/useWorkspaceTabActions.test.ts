@@ -11,10 +11,12 @@ const mocks = vi.hoisted(() => ({
   showToast: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Isolates the editor-store side effect so this hook test asserts tab/workspace orchestration; applySavedState has its own integration tests.
 vi.mock('@/components/App/applySavedState', () => ({
   applySavedState: mocks.applySavedState,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Supplies a call recorder for the UI notification context consumed by the tab action hook.
 vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({ showToast: mocks.showToast }),
 }));

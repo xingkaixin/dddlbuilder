@@ -8,10 +8,12 @@ type WorkspaceTrashActionsParams = Parameters<typeof useWorkspaceTrashActions>[0
 
 const mocks = vi.hoisted(() => ({ showToast: vi.fn() }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Capture user-visible failure feedback while testing the hook's action orchestration.
 vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({ showToast: mocks.showToast }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Provide deterministic translation output without loading the application i18n runtime.
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { count?: number }) =>

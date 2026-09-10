@@ -9,6 +9,7 @@ describe('useThemeTransition', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     matchMediaMock = vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
+      // SAFETY: The hook only reads matchMedia().matches; the browser methods are irrelevant to this deterministic test double.
       return {
         matches: query === '(prefers-color-scheme: dark)',
       } as any;
@@ -22,6 +23,7 @@ describe('useThemeTransition', () => {
     vi.useRealTimers();
     matchMediaMock.mockRestore();
     window.matchMedia = originalMatchMedia;
+    // SAFETY: startViewTransition is an optional browser extension absent from the test DOM.
     delete (document as any).startViewTransition;
     document.documentElement.classList.remove('theme-view-transition-active');
   });
@@ -196,6 +198,7 @@ describe('useThemeTransition', () => {
     let transitionCallback: (() => void) | undefined;
 
     const mockFinished = Promise.resolve();
+    // SAFETY: jsdom's Document type has no startViewTransition field; this test installs the browser API it exercises.
     (document as any).startViewTransition = vi.fn((cb: any) => {
       transitionCallback = cb;
 
@@ -210,6 +213,7 @@ describe('useThemeTransition', () => {
       result.current.runThemeTransition('dark');
     });
 
+    // SAFETY: The property was installed by this test immediately above.
     expect((document as any).startViewTransition).toHaveBeenCalled();
     expect(result.current.phase).toBe('view');
     expect(document.documentElement.classList.contains('theme-view-transition-active')).toBe(true);

@@ -4,6 +4,7 @@ import { useAIGenerateTable } from '@/hooks/useAIGenerateTable';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { createAITextStream } from '@/__tests__/utils/aiStream';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Isolate generation failure handling from authentication and credit provider state.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: 'signed_in',

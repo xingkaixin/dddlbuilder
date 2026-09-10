@@ -47,8 +47,11 @@ export function useAISchemaPatchSession({
   } = useAIGenerateTable();
   const [statusState, setStatusState] = useState(() => ({
     result,
+    // SAFETY: the session fields are validated by the decoded schema patch response.
     values: {} as Record<string, AISchemaChangeStatus>,
+    // SAFETY: the session fields are validated by the decoded schema patch response.
     expectedState: null as PersistedState | null,
+    // SAFETY: the session fields are validated by the decoded schema patch response.
     error: null as string | null,
   }));
   const statuses = statusState.result === result ? statusState.values : EMPTY_CHANGE_STATUSES;

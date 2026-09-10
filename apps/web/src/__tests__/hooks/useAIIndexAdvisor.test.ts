@@ -9,11 +9,13 @@ const serviceMocks = vi.hoisted(() => ({
   requestAIIndexAdvice: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Advisor requests are controlled to test cancellation and document switching.
 vi.mock('@/services/aiIndexAdvisorService', async (importOriginal) => ({
   ...(await importOriginal<typeof AIIndexAdvisorService>()),
   requestAIIndexAdvice: serviceMocks.requestAIIndexAdvice,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Advisor hooks receive a deterministic auth context.
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthIdentity: () => ({ status: 'signed_in', userId: 'user-1' }),
   useAuthCredits: () => ({
@@ -93,6 +95,7 @@ describe('useAIIndexAdvisor', () => {
       act(() => {
         pending = result.current.analyzeIndexes(request('email lookup'));
       });
+      // SAFETY: The hook always passes an AbortSignal in the second service-call argument before rerender.
       const signal = serviceMocks.requestAIIndexAdvice.mock.calls[0][1] as AbortSignal;
       expect(result.current.isLoading).toBe(true);
 

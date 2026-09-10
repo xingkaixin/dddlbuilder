@@ -12,9 +12,11 @@ import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
+// SAFETY: beforeEach assigns a real Y.Doc before the mocked authority is read.
 const workspace = vi.hoisted(() => ({ doc: null as Y.Doc | null }));
 const scope = { kind: 'user', userId: 'metadata-user', workspaceId: 'metadata-workspace' } as const;
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- authority 替换提供受控 Y.Doc，验证 metadata hook 的持久化行为。
 vi.mock('@/hooks/workspacePersistence/useWorkspaceAuthority', () => ({
   useWorkspaceAuthority: () => {
     const doc = workspace.doc;

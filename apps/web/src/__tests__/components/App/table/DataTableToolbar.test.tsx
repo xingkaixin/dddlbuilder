@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/__tests__/utils/test-utils';
 import { DataTableToolbar } from '@/components/App/table/DataTableToolbar';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子组件替换用于隔离工具栏对动画数字的数值传递行为。
 vi.mock('@/components/ui/animated-number', () => ({
   AnimatedNumber: ({ value }: { value: number }) => (
     <span data-testid="animated-number">{String(value)}</span>

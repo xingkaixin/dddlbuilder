@@ -6,6 +6,7 @@ export const createForeignKeySlice = (set: EditorSetState): ForeignKeySlice => (
 
   setForeignKeys: (foreignKeys) =>
     set((state) => ({
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Zustand's updater-or-value API requires runtime discrimination.
       foreignKeys: typeof foreignKeys === 'function' ? foreignKeys(state.foreignKeys) : foreignKeys,
     })),
 

@@ -5,6 +5,7 @@ import { DataTable } from '@/components/App/DataTable';
 import { useEditorStore } from '@/stores';
 import { createEmptyRow } from '@/utils/helpers';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Drag sensors are replaced with deterministic test primitives.
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: { children: ReactNode }) => children,
   closestCenter: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('@dnd-kit/core', () => ({
   useSensors: vi.fn((...sensors: unknown[]) => sensors),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Sortable context behavior is outside table editing assertions.
 vi.mock('@dnd-kit/sortable', () => ({
   SortableContext: ({ children }: { children: ReactNode }) => children,
   useSortable: () => ({
@@ -37,6 +39,7 @@ vi.mock('@dnd-kit/sortable', () => ({
   },
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Animated rendering is reduced to text while editing behavior is tested.
 vi.mock('@/components/ui/animated-number', () => ({
   AnimatedNumber: ({ value }: { value: number }) => (
     <span data-testid="animated-number">{String(value)}</span>

@@ -33,7 +33,8 @@ export function useAIIndexAdvisor(documentKey: string) {
       try {
         assertAIIndexAdvisorTarget(payload);
       } catch (error) {
-        const message = (error as Error).message;
+        const message =
+          error instanceof Error ? error.message : i18n.t('services.generationFailed');
         setState({ documentKey, result: null, error: message });
         throw new Error(message);
       }
@@ -50,7 +51,7 @@ export function useAIIndexAdvisor(documentKey: string) {
 
           return result;
         } catch (error) {
-          if (!isCurrent() || (error as Error).name === 'AbortError') throw error;
+          if (!isCurrent() || (error instanceof Error && error.name === 'AbortError')) throw error;
 
           const message = requestAccess.resolveRequestError(
             error,

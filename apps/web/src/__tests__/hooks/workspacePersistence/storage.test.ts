@@ -41,7 +41,7 @@ describe('workspacePersistence/storage', () => {
   it('readStorageJson 应读取并解析 JSON', () => {
     vi.spyOn(window.localStorage, 'getItem').mockReturnValue(JSON.stringify({ a: 1 }));
 
-    expect(readStorageJson<{ a: number }>('k1')).toEqual({ a: 1 });
+    expect(readStorageJson('k1')).toEqual({ a: 1 });
   });
 
   it('readStorageJson 在空值或解析失败时应返回 null', () => {

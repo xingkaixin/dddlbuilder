@@ -34,6 +34,7 @@ export function useWorkspaceTrashActions({
   const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] = useState(false);
 
   const showActionFailure = useCallback(
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
     (error: unknown, fallbackKey = 'savedTables.toast.deleteFolderFailed') => {
       showToast(error instanceof Error ? error.message : t(fallbackKey));
     },

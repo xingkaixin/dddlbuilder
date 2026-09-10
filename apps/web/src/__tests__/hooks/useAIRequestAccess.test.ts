@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   refreshCredits: vi.fn().mockResolvedValue(undefined),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Injects signed-in, signed-out, and credit states to test this consumer hook's access policy.
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthIdentity: mocks.useAuthIdentity,
   useAuthCredits: mocks.useAuthCredits,

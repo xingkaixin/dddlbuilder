@@ -12,11 +12,18 @@ import {
 } from '@/utils/savedTableStateUpdate';
 import type { SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 
-const capture = vi.hoisted(() => ({ edges: [] as ReactFlowModule.Edge[], fitView: vi.fn() }));
+// SAFETY: React Flow supplies Edge objects to the mocked renderer, so the capture uses its public edge contract.
+const capture = vi.hoisted(() => ({
+  edges: [] as ReactFlowModule.Edge<ErEdgeData>[],
+  fitView: vi.fn(),
+}));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- React Flow 替换捕获图边和命令回调，验证画布业务编排而不启动图编辑器。
 vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactFlowModule>()),
-  ReactFlow: ({ edges }: ReactFlowModule.ReactFlowProps) => {
+  ReactFlow: ({
+    edges,
+  }: ReactFlowModule.ReactFlowProps<ReactFlowModule.Node, ReactFlowModule.Edge<ErEdgeData>>) => {
     capture.edges = edges ?? [];
 
     return null;
@@ -86,9 +93,11 @@ describe('ER relationship ownership', () => {
     const target = copy ? imported : original;
     const edge = capture.edges.find((item) => item.source === target.tableId);
 
-    if (!edge?.data) throw new Error('Selected relationship was not rendered');
+    const edgeData = edge?.data;
+
+    if (!edgeData) throw new Error('Selected relationship was not rendered');
     await act(async () => {
-      await (edge.data as ErEdgeData).onDelete();
+      await edgeData.onDelete();
     });
     expect(onUpdateTable).toHaveBeenCalledExactlyOnceWith(target, expect.any(Function));
     expect(updates[0].state).toEqual({

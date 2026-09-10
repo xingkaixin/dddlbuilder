@@ -129,7 +129,11 @@ export function useIndexAdvisorFlow({
             queryPatterns,
           });
         } catch (caught) {
-          showToast((caught as Error).message || t('services.generationFailed'));
+          showToast(
+            caught instanceof Error
+              ? caught.message || t('services.generationFailed')
+              : t('services.generationFailed'),
+          );
         }
       })();
     },

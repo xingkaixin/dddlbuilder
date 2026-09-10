@@ -4,6 +4,7 @@ import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { reportError } from '@/utils/errorReporter';
 import type { ReactElement } from 'react';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- prevent an error-boundary test from sending reports to the production reporter.
 vi.mock('@/utils/errorReporter', () => ({
   reportError: vi.fn(),
 }));

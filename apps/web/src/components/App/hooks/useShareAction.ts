@@ -19,11 +19,15 @@ const readShareLinkCache = (): ShareLinkCacheRecord | null => {
     const raw = localStorage.getItem(SHARE_LINK_CACHE_KEY);
 
     if (!raw) return null;
+    // SAFETY: the following runtime checks validate every field used from the parsed cache object.
     const parsed = JSON.parse(raw) as Partial<ShareLinkCacheRecord>;
 
     if (
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- localStorage JSON is untrusted and must be checked before use.
       typeof parsed.signature !== 'string' ||
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
       typeof parsed.url !== 'string' ||
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
       typeof parsed.expiresAt !== 'number'
     ) {
       return null;

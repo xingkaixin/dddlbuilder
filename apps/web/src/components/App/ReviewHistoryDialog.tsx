@@ -25,6 +25,11 @@ import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '@/i18n/LocaleContext';
 
+function getSuggestionText(suggestion: string | { description: string }): string {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- history supports legacy string suggestions.
+  return typeof suggestion === 'string' ? suggestion : suggestion.description;
+}
+
 interface ReviewHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -220,7 +225,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                             {expandedDetail.result.suggestions.map((s, idx) => (
                               <li key={idx} className="flex items-start gap-1.5">
                                 <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
-                                <span>{typeof s === 'string' ? s : s.description}</span>
+                                <span>{getSuggestionText(s)}</span>
                               </li>
                             ))}
                           </ul>

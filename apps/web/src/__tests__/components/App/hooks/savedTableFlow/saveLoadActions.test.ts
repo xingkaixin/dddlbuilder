@@ -4,6 +4,7 @@ import { type PersistedState, normalizePersistedRows } from '@ddlbuilder/shared-
 import { useSaveLoadActions } from '@/components/App/hooks/savedTableFlow/saveLoadActions';
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- keep version-message lookup deterministic while testing saved-table actions.
 vi.mock('@/utils/tableVersions', () => ({
   INITIAL_VERSION_MESSAGE_KEY: 'init',
 }));
@@ -84,6 +85,7 @@ describe('useSaveLoadActions', () => {
     const { result } = getHook();
 
     await act(async () => {
+      // SAFETY: this fixture only supplies the normalized lookup key required by the not-found branch.
       await result.current.resolveSavedTable({
         normalizedName: 'missing',
       } as any);
@@ -97,6 +99,7 @@ describe('useSaveLoadActions', () => {
     const { result } = getHook();
 
     await act(async () => {
+      // SAFETY: this fixture only supplies the normalized lookup key required by the load-error branch.
       await result.current.resolveSavedTable({
         normalizedName: 'error_table',
       } as any);
@@ -121,6 +124,7 @@ describe('useSaveLoadActions', () => {
 
     let snapshot: Awaited<ReturnType<typeof result.current.resolveSavedTable>> = null;
     await act(async () => {
+      // SAFETY: the mock record contains the fields needed to exercise saved-table resolution.
       snapshot = await result.current.resolveSavedTable(mockRecord as any);
     });
 
@@ -145,6 +149,7 @@ describe('useSaveLoadActions', () => {
     loadTable.mockResolvedValue({
       normalizedName: 'norm_test',
       name: 'test_table',
+      // SAFETY: this fixture intentionally omits persisted fields irrelevant to draft matching.
       state: normalizePersistedRows(savedState as PersistedState),
     });
 
@@ -159,6 +164,7 @@ describe('useSaveLoadActions', () => {
 
     let snapshot: Awaited<ReturnType<typeof result.current.resolveSavedTable>> = null;
     await act(async () => {
+      // SAFETY: this fixture supplies only the saved-record identity used by draft matching.
       snapshot = await result.current.resolveSavedTable({
         normalizedName: 'norm_test',
         name: 'test_table',
@@ -171,6 +177,7 @@ describe('useSaveLoadActions', () => {
         normalizedName: 'norm_test',
         tableName: 'test_table',
         baseSignature: buildSchemaStateSignature(
+          // SAFETY: this fixture is the persisted shape used to compute the saved-table signature.
           normalizePersistedRows(savedState as PersistedState),
         ),
       },
@@ -193,6 +200,7 @@ describe('useSaveLoadActions', () => {
     const { result } = getHook();
 
     const snapshot = await act(() =>
+      // SAFETY: this fixture only supplies the normalized lookup key for a background table.
       result.current.resolveSavedTable({ normalizedName: 'background' } as any),
     );
 
@@ -204,6 +212,8 @@ describe('useSaveLoadActions', () => {
   });
 
   describe('跨版本升级后的已保存表草稿', () => {
+    // SAFETY: this fixture intentionally models the legacy persisted enum strings before normalization.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture intentionally omits current persisted fields while modeling legacy storage.
     const legacySavedState = {
       tableName: 'orders',
       dbType: 'mysql',
@@ -241,6 +251,7 @@ describe('useSaveLoadActions', () => {
     };
 
     it('保留未保存的编辑，而不是回落到已保存版本', async () => {
+      // SAFETY: normalizePersistedRows returns the current persisted shape before adding the draft-only field.
       const draftState = {
         ...normalizePersistedRows(legacySavedState),
         tableComment: '尚未保存的编辑',
@@ -248,6 +259,7 @@ describe('useSaveLoadActions', () => {
       const { result } = loadWithDraft(draftState, JSON.stringify(legacySavedState));
 
       const snapshot = await act(() =>
+        // SAFETY: this fixture only supplies the normalized lookup key for the draft test.
         result.current.resolveSavedTable({ normalizedName: 'orders' } as any),
       );
 
@@ -255,6 +267,7 @@ describe('useSaveLoadActions', () => {
     });
 
     it('基线确实变化时仍回落到已保存版本', async () => {
+      // SAFETY: normalizePersistedRows returns the current persisted shape used as the stale draft baseline.
       const draftState = { ...normalizePersistedRows(legacySavedState) } as PersistedState;
 
       const staleBase = JSON.stringify({
@@ -264,6 +277,7 @@ describe('useSaveLoadActions', () => {
       const { result } = loadWithDraft(draftState, staleBase);
 
       const snapshot = await act(() =>
+        // SAFETY: this fixture only supplies the normalized lookup key for the fallback test.
         result.current.resolveSavedTable({ normalizedName: 'orders' } as any),
       );
 

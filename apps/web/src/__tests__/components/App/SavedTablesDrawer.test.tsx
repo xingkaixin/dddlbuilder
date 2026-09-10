@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 let latestOnDragEnd: ((event: any) => void | Promise<void>) | undefined;
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- The test captures drag callbacks while replacing browser-dependent DnD sensors.
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({
     children,
@@ -37,6 +38,7 @@ vi.mock('@dnd-kit/core', () => ({
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- The drawer primitives are layout wrappers; this test targets the drawer's own behavior.
 vi.mock('@/components/ui/drawer', () => ({
   Drawer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DrawerContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -50,7 +52,9 @@ function createBaseProps() {
     open: true,
     loading: false,
     error: null,
+    // SAFETY: Empty arrays are passed to props whose element types are known only at this fixture boundary.
     items: [] as SavedTableSummary[],
+    // SAFETY: Empty arrays are passed to props whose element types are known only at this fixture boundary.
     folders: [] as FolderTreeNode[],
     onOpenChange: vi.fn(),
     onSelect: vi.fn(),

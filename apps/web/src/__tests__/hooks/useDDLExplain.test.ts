@@ -4,6 +4,7 @@ import { useDDLExplain } from '@/hooks/useDDLExplain';
 import { useLocale } from '@/i18n/LocaleContext';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Isolate stream request behavior from authentication and credit provider state.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: 'signed_in',
@@ -31,6 +32,7 @@ const streamingMocks = vi.hoisted(() => ({
   readTextStream: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Control stream chunks and failures at the hook's streaming service boundary.
 vi.mock('@/services/streamingText', () => ({
   readTextStream: streamingMocks.readTextStream,
 }));
@@ -77,12 +79,7 @@ describe('useDDLExplain', () => {
   });
 
   it('should stream explanation and complete successfully', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: new ReadableStream(),
-      json: vi.fn(),
-    } as unknown as Response);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(''));
 
     streamingMocks.readTextStream.mockImplementation(async (_, options) => {
       options?.onUpdate?.('partial explanation');
@@ -116,16 +113,14 @@ describe('useDDLExplain', () => {
   });
 
   it('should pass server stream debug context to the stream reader', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: new ReadableStream(),
-      headers: new Headers({
-        'X-AI-Stream-Debug': '1',
-        'X-Request-Id': 'request-123',
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('', {
+        headers: {
+          'X-AI-Stream-Debug': '1',
+          'X-Request-Id': 'request-123',
+        },
       }),
-      json: vi.fn(),
-    } as unknown as Response);
+    );
     streamingMocks.readTextStream.mockResolvedValue('explanation');
 
     const { result } = renderDDLExplainHook();
@@ -147,12 +142,7 @@ describe('useDDLExplain', () => {
   });
 
   it('should send the current locale after switching language', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: new ReadableStream(),
-      json: vi.fn(),
-    } as unknown as Response);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(''));
 
     streamingMocks.readTextStream.mockResolvedValue('english explanation');
 
@@ -183,11 +173,9 @@ describe('useDDLExplain', () => {
   });
 
   it('should handle non-ok response with server error', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: false,
-      status: 500,
-      json: vi.fn().mockResolvedValue({ error: '服务异常' }),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ error: '服务异常' }, { status: 500 }),
+    );
 
     const { result } = renderDDLExplainHook();
 
@@ -201,11 +189,7 @@ describe('useDDLExplain', () => {
   });
 
   it('should fallback to status error when parsing error response fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: false,
-      status: 502,
-      json: vi.fn().mockRejectedValue(new Error('invalid json')),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('invalid json', { status: 502 }));
 
     const { result } = renderDDLExplainHook();
 
@@ -218,12 +202,7 @@ describe('useDDLExplain', () => {
   });
 
   it('should handle missing response body', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: null,
-      json: vi.fn(),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null));
 
     const { result } = renderDDLExplainHook();
 
@@ -236,12 +215,12 @@ describe('useDDLExplain', () => {
   });
 
   it('should abort previous request when starting a new one', async () => {
-    let firstSignal: AbortSignal | undefined;
+    let firstSignal: AbortSignal | null | undefined;
     let requestCount = 0;
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((_, init) => {
       requestCount += 1;
-      const signal = init?.signal as AbortSignal | undefined;
+      const signal = init?.signal;
 
       if (requestCount === 1) {
         firstSignal = signal;
@@ -253,12 +232,7 @@ describe('useDDLExplain', () => {
         });
       }
 
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        body: new ReadableStream(),
-        json: vi.fn(),
-      } as unknown as Response);
+      return Promise.resolve(new Response(''));
     });
 
     streamingMocks.readTextStream.mockResolvedValue('second explanation');
@@ -293,12 +267,7 @@ describe('useDDLExplain', () => {
         });
       })
       .mockResolvedValueOnce('newer explanation');
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: new ReadableStream(),
-      json: vi.fn(),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(''));
     const { result } = renderDDLExplainHook();
 
     let older!: Promise<void>;
@@ -321,10 +290,10 @@ describe('useDDLExplain', () => {
   });
 
   it('should clear state and abort active request', async () => {
-    let currentSignal: AbortSignal | undefined;
+    let currentSignal: AbortSignal | null | undefined;
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((_, init) => {
-      currentSignal = init?.signal as AbortSignal | undefined;
+      currentSignal = init?.signal;
 
       return new Promise<Response>(() => {});
     });

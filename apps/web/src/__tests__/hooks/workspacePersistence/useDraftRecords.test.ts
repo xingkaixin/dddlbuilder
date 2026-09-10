@@ -5,6 +5,7 @@ import { useDraftRecords } from '@/hooks/workspacePersistence/useDraftRecords';
 import { usePersistenceQueue } from '@/hooks/workspacePersistence/usePersistenceQueue';
 import type { WorkspaceStorageTarget } from '@/hooks/workspacePersistence/useWorkspaceStorageTarget';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- intercept only draft writes so the hook's persistence queue can be observed.
 vi.mock(import('@/utils/workspaceStateDb'), async (importOriginal) => ({
   ...(await importOriginal()),
   writeDraft: vi.fn().mockResolvedValue(undefined),
@@ -89,14 +90,16 @@ describe('useDraftRecords', () => {
   it('keeps a trashed draft visible until permanent deletion succeeds', async () => {
     let finishDeletion!: () => void;
 
+    // oxlint-disable anti-slop/no-unknown-returns -- this test only waits for persistence completion and does not consume its result.
     const enqueuePersistence = vi.fn(
       (_key: string, _operation: string, run: () => Promise<unknown>) =>
-        new Promise<void>((resolve) => {
+        new Promise<unknown>((resolve) => {
           finishDeletion = () => {
-            void run().then(() => resolve());
+            void run().then(() => resolve(undefined));
           };
         }),
     );
+    // oxlint-enable anti-slop/no-unknown-returns
     const { result } = renderDraftRecords({ enqueuePersistence });
     act(() => {
       result.current.replaceTrashedDrafts([

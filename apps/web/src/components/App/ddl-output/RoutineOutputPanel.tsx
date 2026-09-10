@@ -73,7 +73,18 @@ export function RoutineOutputPanel({
           <SearchableSelect
             id="routine-kind"
             value={kind}
-            onValueChange={(value) => setKind(value as RoutineTemplateKind)}
+            onValueChange={(value) => {
+              const allowedKinds: RoutineTemplateKind[] = [
+                'updated_at_trigger',
+                'audit_trigger',
+                'procedure',
+                'function',
+                'custom_trigger',
+              ];
+              const selectedKind = allowedKinds.find((candidate) => candidate === value);
+
+              if (selectedKind) setKind(selectedKind);
+            }}
             options={[
               { value: 'updated_at_trigger', label: t('ddlOutput.routineKinds.updatedAt') },
               { value: 'audit_trigger', label: t('ddlOutput.routineKinds.audit') },

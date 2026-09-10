@@ -6,6 +6,7 @@ import { reportError } from '@/utils/errorReporter';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Share API responses and typed failures are controlled at the network boundary.
 vi.mock('@/services/shareService', () => ({
   createShare: vi.fn(),
   ShareApiError: class ShareApiError extends Error {
@@ -21,6 +22,7 @@ vi.mock('@/services/shareService', () => ({
   },
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Error reporting is observed without sending test failures to production telemetry.
 vi.mock('@/utils/errorReporter', () => ({
   reportError: vi.fn(),
 }));

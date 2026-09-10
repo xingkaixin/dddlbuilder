@@ -6,6 +6,17 @@ import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncServic
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import * as tableFolders from '@/utils/tableFolders';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+import type { TableFolder } from '@/utils/workspaceStorageTypes';
+
+const folder = (id: string, name: string): TableFolder => ({
+  id,
+  name,
+  order: 1,
+  createdAt: 1,
+  updatedAt: 1,
+});
+
+const folderNode = (id: string, name: string) => ({ ...folder(id, name), children: [] });
 
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
   const { wrapper } = createQueryClientWrapper();
@@ -13,6 +24,7 @@ const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
   return testingLibraryRenderHook(render, { wrapper });
 };
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Folder DB calls are controlled to exercise refresh and failure paths.
 vi.mock('@/utils/tableFolders', () => ({
   __esModule: true,
   listFolders: vi.fn(),
@@ -26,6 +38,7 @@ vi.mock('@/utils/tableFolders', () => ({
   updateFolder: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Folder hook tests use a fixed anonymous auth state.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: 'signed_out',
@@ -68,10 +81,8 @@ describe('useFolders', () => {
   });
 
   it('should load folders on mount', async () => {
-    mockListFolders.mockResolvedValue([{ id: '1', name: 'Root', order: 1 } as any]);
-    mockBuildFolderTree.mockResolvedValue([
-      { id: '1', name: 'Root', order: 1, children: [] } as any,
-    ]);
+    mockListFolders.mockResolvedValue([folder('1', 'Root')]);
+    mockBuildFolderTree.mockResolvedValue([folderNode('1', 'Root')]);
 
     const { result } = renderHook(() => useFolders());
 
@@ -81,12 +92,8 @@ describe('useFolders', () => {
   });
 
   it('should reload folders when a workspace snapshot is applied', async () => {
-    mockListFolders
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1 } as any]);
-    mockBuildFolderTree
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1, children: [] } as any]);
+    mockListFolders.mockResolvedValueOnce([]).mockResolvedValueOnce([folder('1', 'Root')]);
+    mockBuildFolderTree.mockResolvedValueOnce([]).mockResolvedValueOnce([folderNode('1', 'Root')]);
 
     const { result } = renderHook(() => {
       useWorkspaceQuerySync();
@@ -128,17 +135,9 @@ describe('useFolders', () => {
   });
 
   it('should create folder and refresh list', async () => {
-    mockListFolders
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ id: '2', name: 'New', order: 1 } as any]);
-    mockBuildFolderTree
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ id: '2', name: 'New', order: 1, children: [] } as any]);
-    mockCreateFolder.mockResolvedValue({
-      id: '2',
-      name: 'New',
-      order: 1,
-    } as any);
+    mockListFolders.mockResolvedValueOnce([]).mockResolvedValueOnce([folder('2', 'New')]);
+    mockBuildFolderTree.mockResolvedValueOnce([]).mockResolvedValueOnce([folderNode('2', 'New')]);
+    mockCreateFolder.mockResolvedValue(folder('2', 'New'));
 
     const { result } = renderHook(() => useFolders());
 
@@ -155,12 +154,8 @@ describe('useFolders', () => {
   });
 
   it('should delete folder and return affected ids', async () => {
-    mockListFolders
-      .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1 } as any])
-      .mockResolvedValueOnce([]);
-    mockBuildFolderTree
-      .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1, children: [] } as any])
-      .mockResolvedValueOnce([]);
+    mockListFolders.mockResolvedValueOnce([folder('1', 'Root')]).mockResolvedValueOnce([]);
+    mockBuildFolderTree.mockResolvedValueOnce([folderNode('1', 'Root')]).mockResolvedValueOnce([]);
     mockDeleteFolder.mockResolvedValue(['1', 'child']);
 
     const { result } = renderHook(() => useFolders());
@@ -195,16 +190,16 @@ describe('useFolders', () => {
 
   it('should rename and move folder successfully', async () => {
     mockListFolders
-      .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1 } as any])
-      .mockResolvedValueOnce([{ id: '1', name: 'Renamed', order: 1 } as any])
-      .mockResolvedValueOnce([{ id: '1', name: 'Renamed', order: 1 } as any]);
+      .mockResolvedValueOnce([folder('1', 'Root')])
+      .mockResolvedValueOnce([folder('1', 'Renamed')])
+      .mockResolvedValueOnce([folder('1', 'Renamed')]);
     mockBuildFolderTree
-      .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1, children: [] } as any])
-      .mockResolvedValueOnce([{ id: '1', name: 'Renamed', order: 1, children: [] } as any])
-      .mockResolvedValueOnce([{ id: '1', name: 'Renamed', order: 1, children: [] } as any]);
+      .mockResolvedValueOnce([folderNode('1', 'Root')])
+      .mockResolvedValueOnce([folderNode('1', 'Renamed')])
+      .mockResolvedValueOnce([folderNode('1', 'Renamed')]);
     mockRenameFolder.mockResolvedValue(undefined);
     mockMoveFolder.mockResolvedValue(undefined);
-    mockGetFolder.mockResolvedValue({ id: '1', name: 'Renamed', order: 1 } as any);
+    mockGetFolder.mockResolvedValue(folder('1', 'Renamed'));
 
     const { result } = renderHook(() => useFolders());
 

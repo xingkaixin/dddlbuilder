@@ -74,7 +74,11 @@ export function useAICommentActions({
           );
           showToast(t('aiComments.done'));
         } catch (error) {
-          showToast((error as Error).message || t('services.generationFailed'));
+          showToast(
+            error instanceof Error
+              ? error.message || t('services.generationFailed')
+              : t('services.generationFailed'),
+          );
         }
       })();
     },

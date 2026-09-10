@@ -101,11 +101,22 @@ const formatCompactCredits = (value: number | null | undefined, locale: AppLocal
 
 const settingsTabContentClass = 'mt-0 h-full overflow-y-auto pr-1';
 
+type MetadataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | MetadataValue[]
+  | { [key: string]: MetadataValue };
+
+type MetadataRecord = { [key: string]: MetadataValue };
+
 const parseMetadata = (value?: string | null) => {
   if (!value) return null;
 
   try {
-    return JSON.parse(value) as Record<string, unknown>;
+    // SAFETY: metadata is only read as a record after JSON.parse succeeds; nested values remain opaque.
+    return JSON.parse(value) as MetadataRecord;
   } catch {
     return null;
   }
@@ -287,6 +298,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
           <Tabs
             value={settingsTab}
             orientation="vertical"
+            // SAFETY: the ledger metadata is parsed as JSON and only the known reason field is read.
             onValueChange={(value) => setSettingsTab(value as SettingsTab)}
             className="flex min-h-0 overflow-hidden"
           >

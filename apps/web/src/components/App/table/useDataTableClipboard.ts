@@ -1,13 +1,19 @@
 import { useCallback } from 'react';
 import type { ClipboardEvent } from 'react';
-import type { FieldRow } from '@ddlbuilder/shared-types';
-import { createEmptyRow, normalizeFieldCellValue } from '@/utils/helpers';
+import {
+  type FieldRow,
+  normalizeFieldDefaultKind,
+  normalizeFieldNullable,
+  normalizeFieldOnUpdate,
+} from '@ddlbuilder/shared-types';
+import { createEmptyRow } from '@/utils/helpers';
+import type { EditableFieldKey } from './useFieldRowMutations';
 
 interface UseDataTableClipboardParams {
   rows: FieldRow[];
   setRows: (value: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
   selectedCell: { row: number; col: string } | null;
-  editableColumnKeys: readonly string[];
+  editableColumnKeys: readonly EditableFieldKey[];
   clearSelection: () => void;
 }
 
@@ -38,7 +44,13 @@ export function useDataTableClipboard({
       e.preventDefault();
 
       const startRow = selectedCell?.row ?? rows.length;
-      const startCol = selectedCell ? Math.max(0, editableColumnKeys.indexOf(selectedCell.col)) : 0;
+
+      const startCol = selectedCell
+        ? Math.max(
+            0,
+            editableColumnKeys.findIndex((key) => key === selectedCell.col),
+          )
+        : 0;
 
       const newRows = [...rows];
 
@@ -58,7 +70,23 @@ export function useDataTableClipboard({
           const key = editableColumnKeys[targetColIndex];
           const value = cellValue?.trim() || '';
 
-          (row as Record<string, unknown>)[key] = normalizeFieldCellValue(key, value);
+          switch (key) {
+            case 'fieldName':
+            case 'fieldComment':
+            case 'fieldType':
+            case 'defaultValue':
+              row[key] = value;
+              break;
+            case 'nullable':
+              row.nullable = normalizeFieldNullable(value);
+              break;
+            case 'defaultKind':
+              row.defaultKind = normalizeFieldDefaultKind(value);
+              break;
+            case 'onUpdate':
+              row.onUpdate = normalizeFieldOnUpdate(value);
+              break;
+          }
         });
         newRows[targetRowIndex] = row;
       });

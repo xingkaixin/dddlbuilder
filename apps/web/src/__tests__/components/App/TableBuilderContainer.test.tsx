@@ -7,42 +7,52 @@ import {
 import { toPersistedState } from '@/stores/editorDocumentCodec';
 import { useEditorStore } from '@/stores/editorStore';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子面板替换用于只验证容器的标签切换与面板路由。
 vi.mock('@/components/App/TableConfig', () => ({
   TableConfig: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子面板替换用于只验证容器的标签切换与面板路由。
 vi.mock('@/components/App/DataTable', () => ({
   DataTable: () => <div data-testid="fields-panel" />,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子面板替换用于只验证容器的标签切换与面板路由。
 vi.mock('@/components/App/ViewDefinitionPanel', () => ({
   ViewDefinitionPanel: () => <div data-testid="view-panel" />,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子面板替换用于只验证容器的标签切换与面板路由。
 vi.mock('@/components/App/IndexPanel', () => ({
   IndexPanel: () => <div data-testid="indexes-panel" />,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子面板替换用于只验证容器的标签切换与面板路由。
 vi.mock('@/components/App/ForeignKeyPanel', () => ({
   ForeignKeyPanel: () => <div data-testid="foreign-keys-panel" />,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子面板替换用于只验证容器的标签切换与面板路由。
 vi.mock('@/components/App/AuthPanel', () => ({
   AuthPanel: () => <div data-testid="auth-panel" />,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子面板替换用于只验证容器的标签切换与面板路由。
 vi.mock('@/components/App/TableOptionsPanel', () => ({
   TableOptionsPanel: () => <div data-testid="misc-panel" />,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子面板替换用于只验证容器的标签切换与面板路由。
 vi.mock('@/components/App/ShardingPanel', () => ({
   ShardingPanel: () => <div data-testid="sharding-panel" />,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子面板替换用于只验证容器的标签切换与面板路由。
 vi.mock('@/components/App/PartitionPanel', () => ({
   PartitionPanel: () => <div data-testid="partition-panel" />,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子面板替换用于只验证容器的标签切换与面板路由。
 vi.mock('@/components/App/HivePartitionPanel', () => ({
   HivePartitionPanel: () => <div data-testid="hive-partition-panel" />,
 }));

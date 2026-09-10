@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2, AlertCircle, Download } from '@/components/icons';
-import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { isDatabaseType, type DatabaseType } from '@ddlbuilder/shared-types';
 import type { ImportMode, ImportSourceType, ValidationResult } from './types';
 import { useTranslation } from 'react-i18next';
 import { useLayoutEffect, useRef } from 'react';
@@ -109,7 +109,11 @@ export function SqlInputStep({
           <Label htmlFor="import-source-type">{t('importSql.sourceType.label')}</Label>
           <Select
             value={sourceType}
-            onValueChange={(v) => onSourceTypeChange(v as ImportSourceType)}
+            onValueChange={(v) => {
+              if (v === 'sql' || v === 'csv' || v === 'excel' || v === 'json') {
+                onSourceTypeChange(v);
+              }
+            }}
           >
             <SelectTrigger id="import-source-type">
               <SelectValue placeholder={t('importSql.sourceType.label')} />
@@ -124,7 +128,12 @@ export function SqlInputStep({
         </div>
         <div className="grid gap-2">
           <Label htmlFor="db-type">{t('importSql.sourceDb')}</Label>
-          <Select value={selectedDbType} onValueChange={(v) => onDbTypeChange(v as DatabaseType)}>
+          <Select
+            value={selectedDbType}
+            onValueChange={(v) => {
+              if (isDatabaseType(v)) onDbTypeChange(v);
+            }}
+          >
             <SelectTrigger id="db-type">
               <SelectValue placeholder={t('importSql.selectDbType')} />
             </SelectTrigger>

@@ -2,51 +2,63 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { GlobalDialogs } from '@/components/App/containers/GlobalDialogs';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/AIGenerateDialog', () => ({
   AIGenerateDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/DiffDialog', () => ({
   DiffDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/FolderDialogs', () => ({
   FolderDialog: () => null,
   DeleteFolderDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/ReviewHistoryDialog', () => ({
   ReviewHistoryDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/StorageEstimatorDialog', () => ({
   StorageEstimatorDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/TemplateManagerDialog', () => ({
   TemplateManagerDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/TableTemplateManagerDialog', () => ({
   TableTemplateManagerDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/CreateTemplateDialog', () => ({
   CreateTemplateDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/CreateTableTemplateDialog', () => ({
   CreateTableTemplateDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/VersionHistoryDialog', () => ({
   VersionHistoryDialog: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/SchemaTimelinePlayer', () => ({
   SchemaTimelinePlayer: () => null,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 子对话框替换用于隔离 GlobalDialogs 的焦点和可访问性宿主行为。
 vi.mock('@/components/App/MockDataDialog', () => ({
   MockDataDialog: () => null,
 }));
@@ -85,18 +97,21 @@ function createProps(): Parameters<typeof GlobalDialogs>[0] {
       targetName: undefined,
       onConfirm: vi.fn(),
     },
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     folderDialogProps: {
       open: false,
       onOpenChange: vi.fn(),
       mode: 'create',
       onConfirm: vi.fn(),
     } as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     deleteFolderDialogProps: {
       open: false,
       onOpenChange: vi.fn(),
       tableCount: 0,
       onConfirm: vi.fn(),
     } as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     templateManagerDialogProps: {
       open: false,
       onOpenChange: vi.fn(),
@@ -105,48 +120,58 @@ function createProps(): Parameters<typeof GlobalDialogs>[0] {
       onUpdateTemplate: vi.fn(),
       onDeleteTemplate: vi.fn(),
     } as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     createTemplateDialogProps: {
       open: false,
       onOpenChange: vi.fn(),
       onCreate: vi.fn(),
     } as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     tableTemplateManagerDialogProps: {
       open: false,
       onOpenChange: vi.fn(),
       templates: [],
     } as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     createTableTemplateDialogProps: {
       open: false,
       onOpenChange: vi.fn(),
       onConfirm: vi.fn(),
     } as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     diffDialogProps: {} as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     versionHistoryDialogProps: {
       versions: [],
       onRestore: vi.fn(),
       onDelete: vi.fn(),
     } as any,
     timelinePlayerProps: null,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     reviewHistoryDialogProps: {
       records: [],
       onDelete: vi.fn(),
       onRestore: vi.fn(),
     } as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     aiGenerateDialogProps: {
       dbType: 'mysql',
       onApply: vi.fn(),
     } as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     storageEstimatorDialogProps: {
       totalBytes: 0,
       rows: [],
       dbType: 'mysql',
     } as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     mockDataDialogProps: {
       tableName: '',
       schemaName: '',
       dbType: 'mysql',
       fields: [],
     } as any,
+    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
     erDiagramDialogProps: {
       open: false,
       onOpenChange: vi.fn(),

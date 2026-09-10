@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { buildAppDialogLayerModel } from '@/components/App/buildAppDialogLayerModel';
+import type { FieldTemplate } from '@/utils/fieldTemplates';
+import type { TableTemplate } from '@/utils/tableTemplates';
 
 describe('dialog template catalog', () => {
   it('shares the same template catalog between AI generation and editing', () => {
-    const templates: never[] = [];
+    const templates: Array<FieldTemplate | TableTemplate> = [];
 
+    // SAFETY: This projection test supplies only the domains and template fields read by the model builder.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The fixture intentionally omits unrelated hook state that this projection does not read.
     const model = buildAppDialogLayerModel({
       domains: {
         editor: { schemaName: '', tableName: '' },

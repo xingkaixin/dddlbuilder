@@ -20,6 +20,7 @@ interface SelectCellProps {
 export const SelectCell = memo<SelectCellProps>(
   ({ value, options, onChange, disabled = false, className, placeholder }) => {
     const normalizedOptions = options.map((option) =>
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this UI prop intentionally accepts a string-or-option union.
       typeof option === 'string'
         ? { value: option, label: option }
         : { value: option.value, label: option.label },

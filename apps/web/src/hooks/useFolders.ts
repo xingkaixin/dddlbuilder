@@ -12,10 +12,10 @@ import { useFolderPersistence } from '@/hooks/workspacePersistence/useFolderPers
 export type { FolderTreeNode };
 
 const FOLDER_COLLECTIONS = ['folders'] as const;
-const EMPTY_FOLDER_PROJECTION: { folders: TableFolder[]; folderTree: FolderTreeNode[] } = {
+const EMPTY_FOLDER_PROJECTION = {
   folders: [],
   folderTree: [],
-};
+} satisfies { folders: TableFolder[]; folderTree: FolderTreeNode[] };
 
 const readFolderProjection = (doc: Y.Doc) => ({
   folders: listFoldersFromYDoc(doc),

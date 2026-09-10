@@ -573,6 +573,8 @@ describe('DDL Generation Functions', () => {
     });
 
     it('should ignore unsupported partition type', () => {
+      // SAFETY: This fixture intentionally uses an unsupported legacy partition type to verify the generator ignores it.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The invalid legacy fixture cannot satisfy MysqlPartitionConfig without crossing unknown.
       const partitionConfig = {
         enabled: true,
         type: 'UNKNOWN',

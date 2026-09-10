@@ -34,6 +34,7 @@ describe('useWorkspaceStorageTarget', () => {
 
   it('Y.Doc 就绪时暴露可返回结果的事务入口', () => {
     const scope = { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' } as const;
+    // SAFETY: The storage target test only compares and forwards this opaque document reference.
     const doc = {} as Y.Doc;
     const transactionSpy = vi.fn();
 

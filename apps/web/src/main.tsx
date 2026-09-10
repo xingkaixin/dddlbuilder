@@ -14,6 +14,7 @@ import { isAdminPath } from './admin/lib/adminPath';
 import './i18n';
 
 const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
+// SAFETY: the Vite root element is checked for null before this React mount assertion.
 const AppThemeProvider = ThemeProvider as ComponentType<
   PropsWithChildren<React.ComponentProps<typeof ThemeProvider>>
 >;

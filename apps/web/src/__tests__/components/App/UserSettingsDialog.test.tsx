@@ -5,8 +5,10 @@ import { fetchCreditLedger } from '@/services/creditService';
 
 const auth = vi.hoisted(() => ({ userId: 'ledger-user', name: 'Tester' }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Fix the locale so this account-focused test is independent of global i18n setup.
 vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ locale: 'zh-CN' }) }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Supply a signed-in identity and isolated action spies for the dialog boundary.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: 'signed_in',
@@ -24,6 +26,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
   };
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Keep workspace synchronization out of the credit ledger rendering test.
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDoc: () => ({
     connectionState: 'synced',

@@ -33,7 +33,7 @@ const COLLATION_OPTIONS = [
   'utf8mb4_unicode_ci',
   'utf8mb4_bin',
 ];
-const STORAGE_FORMAT_OPTIONS = ['ORC', 'TEXTFILE', 'PARQUET'];
+const STORAGE_FORMAT_OPTIONS = ['ORC', 'TEXTFILE', 'PARQUET'] as const;
 
 interface TableOptionsPanelProps {
   dbType: DatabaseType;
@@ -348,13 +348,14 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                       </Label>
                       <Select
                         value={effectiveStoredAs}
-                        onValueChange={(value) =>
-                          onStoredAsChange?.(
+                        onValueChange={(value) => {
+                          const storedAs =
                             value === DEFAULT_OPTION_VALUE
                               ? ''
-                              : (value as TableMiscConfig['storedAs']),
-                          )
-                        }
+                              : STORAGE_FORMAT_OPTIONS.find((candidate) => candidate === value);
+
+                          onStoredAsChange?.(storedAs);
+                        }}
                         disabled={disabled}
                       >
                         <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">

@@ -20,7 +20,7 @@ const noopIndexes: IndexDefinition[] = [];
 const defineClipboard = (writeText: (value: string) => Promise<void>) => {
   const existing = navigator.clipboard;
 
-  if (existing && typeof existing.writeText === 'function') {
+  if (existing && 'writeText' in existing) {
     const spy = vi.spyOn(existing, 'writeText').mockImplementation(writeText);
 
     return {

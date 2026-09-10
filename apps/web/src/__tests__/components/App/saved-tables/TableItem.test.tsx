@@ -4,6 +4,7 @@ import { TableItem } from '@/components/App/saved-tables/TableItem';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { LocaleProvider } from '@/i18n/LocaleContext';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replace browser DnD wiring with the props needed to render and click a table row.
 vi.mock('@dnd-kit/core', () => ({
   useDraggable: () => ({
     attributes: {},

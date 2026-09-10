@@ -5,17 +5,20 @@ import { ImportSqlDialog } from '@/components/ImportSqlDialog';
 import { requestMultiSqlParse, requestSqlParse } from '@/services/sqlParseService';
 import { ApiError } from '@/services/apiError';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 依赖替换用于隔离导入对话框的解析、生成和提示边界。
 vi.mock('@/services/sqlParseService', () => ({
   requestSqlParse: vi.fn(),
   requestMultiSqlParse: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 依赖替换用于隔离导入对话框的解析、生成和提示边界。
 vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({
     showToast: vi.fn(),
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 依赖替换用于隔离导入对话框的解析、生成和提示边界。
 vi.mock('@/components/ui/tooltip', () => ({
   TooltipProvider: ({ children }: { children: any }) => <>{children}</>,
   Tooltip: ({ children }: { children: any }) => <>{children}</>,

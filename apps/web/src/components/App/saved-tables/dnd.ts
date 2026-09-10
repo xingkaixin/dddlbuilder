@@ -89,7 +89,7 @@ export function parseDropTarget(id: UniqueIdentifier): DropTarget | null {
   return null;
 }
 
-export function buildFolderParentMap(folders: FolderTreeNode[]): FolderParentMap {
+export function buildFolderParentMap(folders: FolderTreeNode[]) {
   const map: FolderParentMap = {};
 
   const walk = (nodes: FolderTreeNode[]) => {

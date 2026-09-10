@@ -6,6 +6,7 @@ import { DeleteFolderDialog, FolderDialog } from '@/components/App/FolderDialogs
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import i18n from '@/i18n';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replaces the portal/dialog primitive with a DOM wrapper so this test stays focused on FolderDialogs copy and focus behavior.
 vi.mock('@/components/ui/dialog', () => ({
   Dialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
     open ? <div>{children}</div> : null,
@@ -16,6 +17,7 @@ vi.mock('@/components/ui/dialog', () => ({
   DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replaces the alert-dialog primitive with native buttons so this test stays focused on FolderDialogs copy and actions.
 vi.mock('@/components/ui/alert-dialog', () => ({
   AlertDialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
     open ? <div>{children}</div> : null,

@@ -4,7 +4,7 @@ import { useLatestRequest } from '@/hooks/useLatestRequest';
 
 describe('useLatestRequest', () => {
   it('aborts the active request on unmount and ignores its result', async () => {
-    const activeRequest: { signal?: AbortSignal } = {};
+    let activeSignal: AbortSignal | undefined;
     let completeRequest!: (value: string) => void;
 
     const task = new Promise<string>((resolve) => {
@@ -15,7 +15,7 @@ describe('useLatestRequest', () => {
     let request!: Promise<string | null>;
     act(() => {
       request = result.current.run(({ signal }) => {
-        activeRequest.signal = signal;
+        activeSignal = signal;
 
         return task;
       });
@@ -23,7 +23,7 @@ describe('useLatestRequest', () => {
     await waitFor(() => expect(result.current.isPending).toBe(true));
 
     unmount();
-    expect(activeRequest.signal?.aborted).toBe(true);
+    expect(activeSignal?.aborted).toBe(true);
 
     completeRequest('late result');
     await expect(request).resolves.toBeNull();

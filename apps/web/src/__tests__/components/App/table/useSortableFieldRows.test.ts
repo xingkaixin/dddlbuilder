@@ -5,6 +5,11 @@ import {
   reorderFieldRowsByIds,
 } from '@/components/App/table/useSortableFieldRows';
 import type { FieldRow } from '@ddlbuilder/shared-types';
+import type { DragEndEvent } from '@dnd-kit/core';
+
+const dragEndEvent = (activeId: string, overId: string | null): DragEndEvent =>
+  // SAFETY: The handler under test reads only active.id and over.id from this minimal event fixture.
+  ({ active: { id: activeId }, over: overId ? { id: overId } : null }) as DragEndEvent;
 
 function createRows(names: string[]): FieldRow[] {
   return names.map((name, index) => ({
@@ -83,10 +88,7 @@ describe('useSortableFieldRows', () => {
     const { result } = renderHook(() => useSortableFieldRows({ rows, setRows, onDragResult }));
 
     act(() => {
-      result.current.handleDragEnd({
-        active: { id: '1' },
-        over: { id: '3' },
-      } as any);
+      result.current.handleDragEnd(dragEndEvent('1', '3'));
     });
 
     expect(setRows).toHaveBeenCalled();
@@ -109,10 +111,7 @@ describe('useSortableFieldRows', () => {
     const { result } = renderHook(() => useSortableFieldRows({ rows, setRows, onDragResult }));
 
     act(() => {
-      result.current.handleDragEnd({
-        active: { id: '1' },
-        over: null,
-      } as any);
+      result.current.handleDragEnd(dragEndEvent('1', null));
     });
 
     expect(onDragResult).toHaveBeenCalledWith({
@@ -130,10 +129,7 @@ describe('useSortableFieldRows', () => {
     const { result } = renderHook(() => useSortableFieldRows({ rows, setRows, onDragResult }));
 
     act(() => {
-      result.current.handleDragEnd({
-        active: { id: '1' },
-        over: { id: '1' },
-      } as any);
+      result.current.handleDragEnd(dragEndEvent('1', '1'));
     });
 
     expect(onDragResult).toHaveBeenCalledWith({
@@ -151,10 +147,7 @@ describe('useSortableFieldRows', () => {
     const { result } = renderHook(() => useSortableFieldRows({ rows, setRows, onDragResult }));
 
     act(() => {
-      result.current.handleDragEnd({
-        active: { id: '999' },
-        over: { id: '1' },
-      } as any);
+      result.current.handleDragEnd(dragEndEvent('999', '1'));
     });
 
     expect(onDragResult).toHaveBeenCalledWith({
@@ -172,10 +165,7 @@ describe('useSortableFieldRows', () => {
     const { result } = renderHook(() => useSortableFieldRows({ rows, setRows, onDragResult }));
 
     act(() => {
-      result.current.handleDragEnd({
-        active: { id: '1' },
-        over: { id: '999' },
-      } as any);
+      result.current.handleDragEnd(dragEndEvent('1', '999'));
     });
 
     expect(onDragResult).toHaveBeenCalledWith({

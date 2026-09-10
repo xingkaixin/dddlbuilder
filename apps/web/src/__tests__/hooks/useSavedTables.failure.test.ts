@@ -10,6 +10,7 @@ const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
   return testingLibraryRenderHook(render, { wrapper });
 };
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Fix the unauthenticated provider state while testing saved-table failure handling.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = vi.fn(() => ({
     status: 'signed_out',
@@ -47,6 +48,7 @@ const reviewHistoryMocks = vi.hoisted(() => ({
   migrateReviewsToTable: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replace IndexedDB persistence with controllable failures for the hook orchestration tests.
 vi.mock('@/utils/savedTablesDb', () => ({
   addSavedTable: savedTableMocks.addSavedTable,
   deleteSavedTable: savedTableMocks.deleteSavedTable,
@@ -64,15 +66,18 @@ vi.mock('@/utils/savedTablesDb', () => ({
   updateSavedTableMetadata: savedTableMocks.updateSavedTableMetadata,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Keep version bookkeeping deterministic while exercising saved-table failure paths.
 vi.mock('@/utils/tableVersions', () => ({
   countVersions: tableVersionMocks.countVersions,
   createVersion: tableVersionMocks.createVersion,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Inject review migration failures to verify user-visible recovery behavior.
 vi.mock('@/utils/reviewHistory', () => ({
   migrateReviewsToTable: reviewHistoryMocks.migrateReviewsToTable,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Avoid IndexedDB cleanup side effects while testing the hook's failure handling.
 vi.mock('@/services/workspaceHistoryCleanup', () => ({
   deleteIndexedDbSavedTablePermanently: historyCleanupMocks.deleteIndexedDbSavedTablePermanently,
   finalizeWorkspaceEntityDeletion: vi.fn(),

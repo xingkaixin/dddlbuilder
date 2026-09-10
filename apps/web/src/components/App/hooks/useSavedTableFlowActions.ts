@@ -48,6 +48,7 @@ interface UseSavedTableFlowActionsParams {
     normalizedName: SavedTableTarget,
     state: PersistedState,
     message?: string,
+    // oxlint-disable-next-line anti-slop/no-unknown-returns -- this orchestration callback only awaits completion; its producer result is intentionally ignored.
   ) => Promise<unknown>;
   showToast: (message: string) => void;
   getSavedTableDraft?: (normalizedName: SavedTableTarget) => SavedTableDraftRecord | null;

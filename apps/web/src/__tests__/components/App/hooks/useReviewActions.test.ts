@@ -5,10 +5,13 @@ import { requestDDLReview } from '@/services/reviewService';
 import { saveReview } from '@/utils/reviewHistory';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- replace the network review request to test action state transitions deterministically.
 vi.mock('@/services/reviewService', () => ({ requestDDLReview: vi.fn() }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- isolate review-history persistence while testing the hook's orchestration.
 vi.mock('@/utils/reviewHistory', () => ({ saveReview: vi.fn().mockResolvedValue({}) }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- provide deterministic quota access responses for review action branches.
 vi.mock('@/hooks/useAIRequestAccess', () => ({
   useAIRequestAccess: () => ({
     getAccessError: () => null,

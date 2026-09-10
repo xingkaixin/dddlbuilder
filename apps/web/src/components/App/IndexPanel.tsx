@@ -74,7 +74,8 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
   const setDraft = (update: DraftIndex | ((draft: DraftIndex) => DraftIndex)) => {
     setPanel((current) =>
       current.kind === 'edit'
-        ? { kind: 'edit', draft: typeof update === 'function' ? update(current.draft) : update }
+        ? // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this updater-or-value prop requires runtime discrimination.
+          { kind: 'edit', draft: typeof update === 'function' ? update(current.draft) : update }
         : current,
     );
   };
@@ -139,6 +140,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
 
   const buildDraftName = () => {
     const trimmedName = draft.name.trim();
+    // SAFETY: the selected index field comes from the typed index editor state.
     const maxLength = getIndexNameMaxLength(dbType as DatabaseType);
 
     if (trimmedName) return truncateIndexName(trimmedName, maxLength);

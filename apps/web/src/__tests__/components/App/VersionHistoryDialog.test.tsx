@@ -5,12 +5,15 @@ import { withDefaultEditorSession } from '@ddlbuilder/shared-types';
 import { VersionHistoryDialog } from '@/components/App/VersionHistoryDialog';
 import { listVersions, getVersion } from '@/utils/tableVersions';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 依赖替换用于隔离对话框的本地化、提示和版本存储边界。
 vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ resolvedLocale: 'zh-CN' }) }));
 
 const { showToast } = vi.hoisted(() => ({ showToast: vi.fn() }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 依赖替换用于隔离对话框的本地化、提示和版本存储边界。
 vi.mock('@/hooks/useToast', () => ({ useToast: () => ({ showToast }) }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 依赖替换用于隔离对话框的本地化、提示和版本存储边界。
 vi.mock('@/utils/tableVersions', () => ({
   listVersions: vi.fn(),
   getVersion: vi.fn(),

@@ -103,7 +103,12 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node) && showResult) {
+      if (
+        popoverRef.current &&
+        e.target instanceof Node &&
+        !popoverRef.current.contains(e.target) &&
+        showResult
+      ) {
         handleClose();
       }
     };

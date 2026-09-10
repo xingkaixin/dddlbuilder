@@ -8,6 +8,7 @@ import {
 } from '@ddlbuilder/workspace-core';
 import { useSavedTablePersistence } from '@/hooks/workspacePersistence/useSavedTablePersistence';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
+import type { WorkspaceEntityTarget, WorkspaceEntityWrite } from '@/utils/workspaceEntityDeletion';
 
 const mocks = vi.hoisted(() => ({
   beginDeletion: vi.fn(),
@@ -23,7 +24,8 @@ const mocks = vi.hoisted(() => ({
   upsertToYDoc: vi.fn(),
 }));
 
-const workspace = vi.hoisted(() => ({ yDoc: {} as object }));
+// SAFETY: beforeEach replaces this temporary holder with a real Y.Doc before any hook runs.
+const workspace = vi.hoisted(() => ({ yDoc: null as Y.Doc | null }));
 
 const scope = {
   kind: 'user' as const,
@@ -51,6 +53,7 @@ const record: SavedTableRecord = {
   updatedAt: 1,
 };
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 持久化适配器替换用于隔离 hook 的删除编排与提交顺序。
 vi.mock('@/hooks/workspacePersistence/useWorkspaceAuthority', () => ({
   useWorkspaceAuthority: () => ({
     scope,
@@ -64,6 +67,7 @@ vi.mock('@/hooks/workspacePersistence/useWorkspaceAuthority', () => ({
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 持久化适配器替换用于隔离 hook 的删除编排与提交顺序。
 vi.mock('@/utils/savedTablesDb', () => ({
   addSavedTable: vi.fn(),
   deleteSavedTable: mocks.deleteLocal,
@@ -76,11 +80,13 @@ vi.mock('@/utils/savedTablesDb', () => ({
   updateSavedTableState: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 持久化适配器替换用于隔离 hook 的删除编排与提交顺序。
 vi.mock('@/services/workspaceHistoryCleanup', () => ({
   deleteIndexedDbSavedTablePermanently: vi.fn(),
   finalizeWorkspaceEntityDeletion: mocks.finalizeDeletion,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 持久化适配器替换用于隔离 hook 的删除编排与提交顺序。
 vi.mock('@/utils/workspaceEntityDeletion', () => ({
   beginWorkspaceEntityDeletion: mocks.beginDeletion,
   cancelWorkspaceEntityDeletion: mocks.cancelDeletion,
@@ -88,6 +94,7 @@ vi.mock('@/utils/workspaceEntityDeletion', () => ({
   commitWorkspaceEntityWrites: mocks.runEntityWrites,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 持久化适配器替换用于隔离 hook 的删除编排与提交顺序。
 vi.mock('@/services/workspaceYDocAdapter', () => ({
   deleteSavedTableFromYDoc: mocks.deleteFromYDoc,
   getSavedTableFromYDoc: mocks.getFromYDoc,
@@ -101,23 +108,27 @@ vi.mock('@/services/workspaceYDocAdapter', () => ({
 describe('useSavedTablePersistence permanent deletion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    workspace.yDoc = {};
-    mocks.beginDeletion.mockImplementation(async (_target: unknown, commit?: () => void) => {
-      commit?.();
+    workspace.yDoc = new Y.Doc();
+    mocks.beginDeletion.mockImplementation(
+      async (_target: WorkspaceEntityTarget, commit?: () => void) => {
+        commit?.();
 
-      return 'delete-operation-1';
-    });
+        return 'delete-operation-1';
+      },
+    );
     mocks.cancelDeletion.mockResolvedValue(undefined);
     mocks.deleteLocal.mockResolvedValue(undefined);
     mocks.finalizeDeletion.mockResolvedValue(undefined);
     mocks.getFromYDoc.mockReturnValue(record);
     mocks.ensureDeletion.mockResolvedValue({ operationId: 'recovered-operation', created: true });
-    mocks.runEntityWrites.mockImplementation(async (_writes: unknown, commit: () => unknown) =>
-      commit(),
+    mocks.runEntityWrites.mockImplementation(
+      async (_writes: WorkspaceEntityWrite[], commit: () => void) => commit(),
     );
-    mocks.transact.mockImplementation((operation: (doc: object) => void) =>
-      operation(workspace.yDoc),
-    );
+    mocks.transact.mockImplementation((operation: (doc: Y.Doc) => void) => {
+      if (!workspace.yDoc) throw new Error('Workspace Y.Doc not initialized');
+
+      operation(workspace.yDoc);
+    });
   });
 
   it('先持久化删除所有权，主记录提交后原子收尾历史', async () => {
@@ -231,7 +242,7 @@ describe('useSavedTablePersistence permanent deletion', () => {
       expect.any(Function),
     );
     expect(mocks.upsertToYDoc).toHaveBeenCalledWith(
-      {},
+      expect.any(Y.Doc),
       expect.objectContaining({ state: expect.objectContaining({ tableName: 'updated_users' }) }),
     );
   });
@@ -257,7 +268,7 @@ describe('useSavedTablePersistence permanent deletion', () => {
 
     await act(async () => result.current.putTable(record, 'update', 'activate'));
 
-    expect(mocks.recreateToYDoc).toHaveBeenCalledWith({}, record);
+    expect(mocks.recreateToYDoc).toHaveBeenCalledWith(expect.any(Y.Doc), record);
     expect(mocks.upsertToYDoc).not.toHaveBeenCalled();
   });
 
@@ -267,13 +278,10 @@ describe('useSavedTablePersistence permanent deletion', () => {
     upsertWorkspaceSavedTable(doc, { ...record, tableId: 'table-1' });
     mocks.deleteFromYDoc.mockImplementation(deleteWorkspaceSavedTable);
     mocks.getFromYDoc.mockImplementation(getWorkspaceSavedTable);
-    mocks.transact.mockImplementation((operation: (current: Y.Doc) => unknown) => {
-      let outcome: unknown;
+    mocks.transact.mockImplementation((operation: (current: Y.Doc) => void) => {
       doc.transact(() => {
-        outcome = operation(doc);
+        operation(doc);
       });
-
-      return outcome;
     });
     const tables = doc.getMap('savedTables');
 

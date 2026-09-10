@@ -10,15 +10,24 @@ import { deleteSavedTableFromYDoc, upsertSavedTableInYDoc } from '@/services/wor
 import { workspaceLocalQueryKeys } from '@/queries/workspaceLocal';
 import { createQueryClientWrapper } from '../utils/queryClient';
 
-const workspace = vi.hoisted(() => ({
-  scope: { kind: 'anonymous' } as WorkspaceScope,
-  doc: null as Y.Doc | null,
+type WorkspaceFixture = {
+  scope: WorkspaceScope;
+  doc: Y.Doc | null;
+  localSynced: boolean;
+};
+
+const workspace = vi.hoisted((): WorkspaceFixture => ({
+  scope: { kind: 'anonymous' },
+  doc: null,
   localSynced: true,
 }));
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Supplies a mutable scope fixture for the consumer hook's workspace switching paths.
 vi.mock('@/hooks/useWorkspaceScope', () => ({ useWorkspaceScope: () => workspace.scope }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Supplies controlled Y.Doc presence and sync state while the hook's projection logic remains real.
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDocDocument: () => workspace }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Partially replaces the IndexedDB read to test query caching while retaining the real storage module contract.
 vi.mock('@/utils/savedTablesDb', async (importOriginal) => ({
   ...(await importOriginal<typeof SavedTablesDb>()),
   getSavedTable: vi.fn(),

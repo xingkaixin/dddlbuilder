@@ -122,7 +122,11 @@ export const TableConfig = memo<TableConfigProps>(
           <div className="w-36">
             <SearchableSelect
               value={dbType}
-              onValueChange={(value) => onDbTypeChange(value as DatabaseType)}
+              onValueChange={(value) => {
+                const option = DATABASE_OPTIONS.find((candidate) => candidate.value === value);
+
+                if (option) onDbTypeChange(option.value);
+              }}
               options={DATABASE_OPTIONS.map((opt) => ({
                 value: opt.value,
                 label: opt.label,
@@ -170,7 +174,9 @@ export const TableConfig = memo<TableConfigProps>(
                 <Label htmlFor="object-type-select">{t('tableConfig.objectType')}</Label>
                 <SearchableSelect
                   value={objectType}
-                  onValueChange={(value) => onObjectTypeChange(value as SchemaObjectType)}
+                  onValueChange={(value) => {
+                    if (value === 'table' || value === 'view') onObjectTypeChange(value);
+                  }}
                   options={[
                     { value: 'table', label: t('tableConfig.objectTable') },
                     { value: 'view', label: t('tableConfig.objectView') },

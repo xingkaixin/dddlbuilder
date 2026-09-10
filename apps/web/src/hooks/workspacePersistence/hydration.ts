@@ -55,18 +55,17 @@ export const collectBootstrapDrafts = ({
 ];
 
 export const toHydrationSavedTable = (
-  value: unknown,
+  value: SavedTableRecord | null | undefined,
   draft?: SavedTableDraftRecord | null,
 ): HydrationSavedTable | null => {
   if (!value) return null;
-  const record = value as SavedTableRecord;
 
   return {
-    tableId: record.tableId,
-    normalizedName: record.normalizedName,
-    tableName: record.name ?? '',
-    state: record.state,
-    ...(draft ? { draftState: resolveSavedTableSnapshot(record, draft).state } : {}),
+    tableId: value.tableId,
+    normalizedName: value.normalizedName,
+    tableName: value.name ?? '',
+    state: value.state,
+    ...(draft ? { draftState: resolveSavedTableSnapshot(value, draft).state } : {}),
   };
 };
 

@@ -17,7 +17,7 @@ const baseProps = {
 describe('SqlInputStep file input', () => {
   it('clears a rejected file from the browser input', async () => {
     const { rerender } = render(<SqlInputStep {...baseProps} />);
-    const input = screen.getByLabelText('上传文件') as HTMLInputElement;
+    const input = screen.getByLabelText<HTMLInputElement>('上传文件');
 
     await userEvent.upload(input, new File(['oversized'], 'oversized.csv', { type: 'text/csv' }));
     expect(input.files).toHaveLength(1);
@@ -32,7 +32,7 @@ describe('SqlInputStep file input', () => {
 
   it('clears the browser input when the source type changes', async () => {
     const { rerender } = render(<SqlInputStep {...baseProps} />);
-    const input = screen.getByLabelText('上传文件') as HTMLInputElement;
+    const input = screen.getByLabelText<HTMLInputElement>('上传文件');
 
     await userEvent.upload(input, new File(['fields'], 'fields.csv', { type: 'text/csv' }));
     expect(input.files).toHaveLength(1);

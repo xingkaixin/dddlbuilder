@@ -15,13 +15,16 @@ const mocks = vi.hoisted(() => ({
   refreshCreditsAfterSuccess: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 请求、访问控制与 toast 替换用于隔离 hook 的取消和写回编排。
 vi.mock('@/services/aiCommentService', async (importOriginal) => ({
   ...(await importOriginal()),
   requestAIComments: mocks.requestComments,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 请求、访问控制与 toast 替换用于隔离 hook 的取消和写回编排。
 vi.mock('@/hooks/useAIRequestAccess', () => ({ useAIRequestAccess: () => mocks }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 请求、访问控制与 toast 替换用于隔离 hook 的取消和写回编排。
 vi.mock('@/hooks/useToast', () => ({ useToast: () => ({ showToast: mocks.showToast }) }));
 
 const commentResult: AICommentResult = {
@@ -71,6 +74,7 @@ const startComments = async (hook: ReturnType<typeof renderComments>) => {
   act(() => hook.result.current.handleGenerateComments('fill_missing'));
   await waitFor(() => expect(mocks.requestComments).toHaveBeenCalled());
 
+  // SAFETY: requestAIComments is called with the browser AbortSignal supplied by the hook.
   return mocks.requestComments.mock.lastCall?.[1] as AbortSignal;
 };
 

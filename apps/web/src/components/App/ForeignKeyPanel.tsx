@@ -261,9 +261,13 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   <select
                     id="foreign-key-on-delete"
                     value={draft.onDelete || ''}
-                    onChange={(e) =>
-                      updateDraft({ onDelete: (e.target.value as ForeignKeyAction) || undefined })
-                    }
+                    onChange={(e) => {
+                      const action = deleteActions.find(
+                        (candidate) => candidate === e.target.value,
+                      );
+
+                      updateDraft({ onDelete: action });
+                    }}
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
                     <option value="">{t('foreignKeyPanel.noAction')}</option>
@@ -289,9 +293,13 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   <select
                     id="foreign-key-on-update"
                     value={draft.onUpdate || ''}
-                    onChange={(e) =>
-                      updateDraft({ onUpdate: (e.target.value as ForeignKeyAction) || undefined })
-                    }
+                    onChange={(e) => {
+                      const action = updateActions.find(
+                        (candidate) => candidate === e.target.value,
+                      );
+
+                      updateDraft({ onUpdate: action });
+                    }}
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
                     <option value="">{t('foreignKeyPanel.noAction')}</option>

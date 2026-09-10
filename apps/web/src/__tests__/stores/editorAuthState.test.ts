@@ -18,9 +18,9 @@ describe('editor store auth state', () => {
 
     expect(result.current.authInput).toBe('');
     expect(result.current.authObjects).toEqual([]);
-    expect(typeof result.current.addAuthObject).toBe('function');
-    expect(typeof result.current.removeAuthObject).toBe('function');
-    expect(typeof result.current.setAuthInput).toBe('function');
+    expect(result.current.addAuthObject).toEqual(expect.any(Function));
+    expect(result.current.removeAuthObject).toEqual(expect.any(Function));
+    expect(result.current.setAuthInput).toEqual(expect.any(Function));
   });
 
   it('应该能够重置授权状态', () => {

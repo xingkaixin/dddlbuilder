@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createAuthClientMock = vi.fn();
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 浏览器认证 SDK 替换用于验证未配置环境下的客户端边界。
 vi.mock('better-auth/client', () => ({
   createAuthClient: createAuthClientMock,
 }));

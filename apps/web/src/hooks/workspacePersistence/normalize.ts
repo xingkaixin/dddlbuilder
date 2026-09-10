@@ -10,12 +10,16 @@ import type { WorkspaceDraftRecord, WorkspaceSessionRecord } from '@/utils/works
 
 export type GlobalDraftRecord = WorkspaceDraftRecord;
 
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- this is the JSON parser's temporary shape before named validation.
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- persisted JSON is normalized at this boundary.
 const toNumber = (value: unknown, fallback: number) =>
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- decodePersistedState validates untrusted local persistence data at this boundary.
 export const normalizePersistedState = (value: unknown) => decodePersistedState(value);
 
 export const isWorkspaceSource = (value: unknown): value is WorkspaceSource => {
@@ -95,6 +99,7 @@ export const buildDraftSummary = (
   trashedAt,
 });
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- persisted JSON is validated before becoming a workspace session.
 export const normalizeWorkspaceSession = (value: unknown): WorkspaceSessionRecord | null => {
   if (!isRecord(value)) return null;
   if (!isWorkspaceSource(value.activeSource)) return null;

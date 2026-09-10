@@ -37,7 +37,11 @@ export function OrmOutputPanel({
           <SearchableSelect
             id="orm-target"
             value={target}
-            onValueChange={(value) => onTargetChange(value as ORMTarget)}
+            onValueChange={(value) => {
+              const option = ORM_TARGET_OPTIONS.find((candidate) => candidate.value === value);
+
+              if (option) onTargetChange(option.value);
+            }}
             options={ORM_TARGET_OPTIONS}
             triggerClassName="h-9 rounded-md px-3 py-2 text-sm"
             emptyMessage={t('searchableSelect.empty')}

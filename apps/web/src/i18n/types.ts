@@ -13,6 +13,7 @@ function getStorageItem(key: string): string | null {
 
   const storage = window.localStorage;
 
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
   if (!storage || typeof storage.getItem !== 'function') {
     return null;
   }

@@ -114,6 +114,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       () => {
         if (!cancelled) setCleanupResult({ attempt: bootstrapAttempt, status: 'ready' });
       },
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- cleanup promises can reject with any JavaScript value.
       (error: unknown) => {
         console.error('[workspace] pending cleanup failed', error);
 
@@ -133,6 +134,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       .then(() => {
         if (clientRef.current === client) client?.retry();
       })
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- session refresh can reject with any JavaScript value.
       .catch((error: unknown) => {
         console.error('[workspace-yjs] failed to refresh session before retry', error);
       });
@@ -160,7 +162,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     if (!cleanupReady) return;
 
     if (!workspaceUserId || !workspaceId) {
-      // oxlint-disable-next-line react/set-state-in-effect
+      // oxlint-disable-next-line react/set-state-in-effect -- reset provider state when the authenticated scope changes.
       setValue({
         doc: null,
         scope: null,
@@ -234,7 +236,6 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       },
     });
 
-    // oxlint-disable-next-line react/set-state-in-effect
     setValue({
       doc,
       scope,
@@ -351,6 +352,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
 
       if (status.synced && !rememberedRemote) {
         rememberedRemote = true;
+        // oxlint-disable-next-line anti-slop/no-unknown-parameters -- persistence writes can reject with any JavaScript value.
         void persistence?.set(REMOTE_LOADED, 1).catch((error: unknown) => {
           console.error('[workspace-yjs] failed to remember initial cloud sync', error);
         });

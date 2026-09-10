@@ -5,6 +5,7 @@ import { createFieldRow } from '@/__tests__/utils/testFactories';
 import { DataTable } from '@/components/App/DataTable';
 import { useEditorStore } from '@/stores';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Provides a jsdom-safe drag context while the table's freeze styling remains real.
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: { children: ReactNode }) => children,
   closestCenter: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('@dnd-kit/core', () => ({
   useSensors: vi.fn((...sensors: unknown[]) => sensors),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Provides deterministic sortable hooks without requiring browser layout calculations.
 vi.mock('@dnd-kit/sortable', () => ({
   SortableContext: ({ children }: { children: ReactNode }) => children,
   useSortable: () => ({
@@ -37,6 +39,7 @@ vi.mock('@dnd-kit/sortable', () => ({
   },
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replaces an unrelated visual child with a value-bearing span so the style assertions stay local to DataTable.
 vi.mock('@/components/ui/animated-number', () => ({
   AnimatedNumber: ({ value }: { value: number }) => (
     <span data-testid="animated-number">{String(value)}</span>

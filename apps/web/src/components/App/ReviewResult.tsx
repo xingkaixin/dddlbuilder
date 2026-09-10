@@ -53,8 +53,10 @@ function getScoreBgColor(score: number): string {
 
 const SUGGESTION_SKELETON_COUNT = 3;
 
+type LooseSuggestion = Partial<StructuredSuggestion>;
+
 function isRenderableSuggestion(
-  suggestion: string | Record<string, unknown> | StructuredSuggestion,
+  suggestion: string | LooseSuggestion | StructuredSuggestion,
 ): suggestion is string | StructuredSuggestion {
   if (typeof suggestion === 'string') return true;
 
@@ -106,6 +108,7 @@ const SuggestionItem = memo<{
 }>(({ suggestion, onApply, isStreaming }) => {
   const { t } = useTranslation();
 
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- suggestions support a legacy string form alongside structured entries.
   if (typeof suggestion === 'string') {
     return <li className="text-sm text-foreground/70 list-disc relative pl-1">{suggestion}</li>;
   }
@@ -244,6 +247,7 @@ function SuggestionsList({
       <ul className="space-y-1">
         {suggestions.map((suggestion, index) => (
           <SuggestionItem
+            // oxlint-disable-next-line anti-slop/no-runtime-typeof -- key generation supports the legacy string suggestion form.
             key={typeof suggestion === 'string' ? index : suggestion.id || index}
             suggestion={suggestion}
             onApply={onApply}

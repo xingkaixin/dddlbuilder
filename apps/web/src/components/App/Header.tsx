@@ -347,7 +347,11 @@ export const Header = memo<HeaderProps>(
                         <DropdownMenuSubContent className="w-36">
                           <DropdownMenuRadioGroup
                             value={locale}
-                            onValueChange={(value) => setLocale(value as AppLocale)}
+                            onValueChange={(value) => {
+                              if (value === 'zh-CN' || value === 'en-US' || value === 'ja-JP') {
+                                setLocale(value);
+                              }
+                            }}
                           >
                             <DropdownMenuRadioItem value="zh-CN">
                               {t('locale.zhCN')}
@@ -378,9 +382,11 @@ export const Header = memo<HeaderProps>(
                         <DropdownMenuSubContent className="w-36">
                           <DropdownMenuRadioGroup
                             value={selectedTheme}
-                            onValueChange={(value) =>
-                              runThemeTransition(value as 'system' | 'light' | 'dark')
-                            }
+                            onValueChange={(value) => {
+                              if (value === 'system' || value === 'light' || value === 'dark') {
+                                runThemeTransition(value);
+                              }
+                            }}
                           >
                             <DropdownMenuRadioItem value="system" disabled={isTransitioning}>
                               {t('theme.system')}

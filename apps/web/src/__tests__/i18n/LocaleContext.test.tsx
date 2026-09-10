@@ -119,6 +119,7 @@ describe('i18n/LocaleContext', () => {
     normalizeSpy.mockImplementation((value) => {
       if (value === i18n.resolvedLanguage) return null;
 
+      // SAFETY: the guard above narrows the runtime value to the two supported locales.
       return value === 'en-US' || value === 'zh-CN' ? (value as 'en-US' | 'zh-CN') : null;
     });
 

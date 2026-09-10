@@ -32,10 +32,12 @@ const { clearLocalWorkspaceDataMock, prepareWorkspaceSignOutMock } = vi.hoisted(
   prepareWorkspaceSignOutMock: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 认证与工作区替换用于隔离 provider 的会话状态编排和副作用。
 vi.mock('@/services/workspaceYDocStorage', () => ({
   prepareWorkspaceSignOut: prepareWorkspaceSignOutMock,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 认证与工作区替换用于隔离 provider 的会话状态编排和副作用。
 vi.mock('@/auth/betterAuthClient', () => ({
   isBetterAuthConfigured: () => true,
   getBetterAuthClient: () => ({
@@ -54,6 +56,7 @@ vi.mock('@/auth/betterAuthClient', () => ({
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 认证与工作区替换用于隔离 provider 的会话状态编排和副作用。
 vi.mock('@/services/workspaceAccountService', async (importOriginal) => ({
   ...(await importOriginal()),
   clearLocalWorkspaceData: clearLocalWorkspaceDataMock,
@@ -517,6 +520,7 @@ describe('AuthSessionProvider', () => {
 
     it('shows signed_out when better-auth is not configured', async () => {
       await vi.importMock('@/auth/betterAuthClient');
+      // oxlint-disable-next-line anti-slop/no-module-mocking -- 重新导入 provider 以覆盖未配置认证客户端分支。
       vi.doMock('@/auth/betterAuthClient', () => ({
         isBetterAuthConfigured: () => false,
         getBetterAuthClient: () => null,
@@ -580,8 +584,9 @@ describe('AuthSessionProvider', () => {
           new Response(JSON.stringify({ balance: 8800, version: 1, userId: 'user-1' })),
         );
 
-      const sessionApi: { current: ReturnType<typeof useSessionProbeState> | null } = {
-        current: null,
+      // SAFETY: The probe assigns the provider return value before assertions read current.
+      const sessionApi = {
+        current: null as ReturnType<typeof useSessionProbeState> | null,
       };
       const Probe = () => {
         const api = useSessionProbeState();
@@ -646,8 +651,9 @@ describe('AuthSessionProvider', () => {
         signOutMock.mockResolvedValue({ error: null });
         vi.spyOn(console, 'error').mockImplementation(() => {});
 
-        const session: { current: ReturnType<typeof useSessionProbeState> | null } = {
-          current: null,
+        // SAFETY: The probe assigns the provider return value before assertions read current.
+        const session = {
+          current: null as ReturnType<typeof useSessionProbeState> | null,
         };
         const Probe = () => {
           const api = useSessionProbeState();
@@ -713,8 +719,9 @@ describe('AuthSessionProvider', () => {
       clearLocalWorkspaceDataMock.mockRejectedValue(new Error('IndexedDB unavailable'));
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-      const sessionApi: { current: ReturnType<typeof useSessionProbeState> | null } = {
-        current: null,
+      // SAFETY: The probe assigns the provider return value before assertions read current.
+      const sessionApi = {
+        current: null as ReturnType<typeof useSessionProbeState> | null,
       };
       const Probe = () => {
         const api = useSessionProbeState();

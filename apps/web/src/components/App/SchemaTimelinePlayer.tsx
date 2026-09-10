@@ -24,6 +24,7 @@ import { type TableVersionTarget } from '@/utils/tableVersions';
 import { useTranslation } from 'react-i18next';
 import { getDefaultKindLabel, getNullableLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useLocale } from '@/i18n/LocaleContext';
+import type { TFunction } from 'i18next';
 
 interface SchemaTimelinePlayerProps {
   open: boolean;
@@ -102,10 +103,7 @@ function formatFieldChanges(
   return changes.map((c) => labels[c] || c).join(', ');
 }
 
-function buildChangeSummary(
-  diff: TableDiff | null,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-): string {
+function buildChangeSummary(diff: TableDiff | null, t: TFunction): string {
   if (!diff || !hasTableChanges(diff)) return t('timelinePlayer.noChange');
   const parts: string[] = [];
   const addedFields = diff.fields.filter((f) => f.type === 'add').length;

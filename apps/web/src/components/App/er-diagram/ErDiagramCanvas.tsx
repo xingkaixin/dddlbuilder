@@ -32,8 +32,8 @@ import { planTableRelationship, type TableRelationshipIntent } from './tableRela
 const GRID_GAP_X = 300;
 const GRID_GAP_Y = 200;
 
-const nodeTypes: NodeTypes = { table: ErTableNode as unknown as NodeTypes[string] };
-const edgeTypes: EdgeTypes = { relation: ErRelationEdge as unknown as EdgeTypes[string] };
+const nodeTypes: NodeTypes = { table: ErTableNode };
+const edgeTypes: EdgeTypes = { relation: ErRelationEdge };
 
 function buildTableReferenceId(state: PersistedState): string {
   return `${state.schemaName ? `${state.schemaName}.` : ''}${state.tableName}`;
@@ -56,6 +56,7 @@ function buildNodesFromTables(
       id: buildSavedTableNodeId(record),
       type: 'table',
       position: { x: col * GRID_GAP_X + 50, y: row * GRID_GAP_Y + 50 },
+      // SAFETY: SavedTableRecord supplies PersistedState for node and edge data.
       data: {
         state: record.state,
         onSelectTable,
@@ -105,6 +106,7 @@ function buildEdgesFromTables(
         sourceHandle: fk.fields[0],
         targetHandle: fk.refFields[0],
         type: 'relation',
+        // SAFETY: SavedTableRecord supplies PersistedState for node and edge data.
         data: {
           fk,
           onDelete: () => onDelete(table, fk.id),

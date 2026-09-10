@@ -11,6 +11,7 @@ interface LatestRequestContext {
   commitIfCurrent: (commit: () => void) => void;
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }

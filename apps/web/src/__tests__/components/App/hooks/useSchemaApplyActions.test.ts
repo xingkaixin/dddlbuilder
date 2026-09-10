@@ -42,12 +42,14 @@ const createHook = (
       id,
       type: 'general',
       description: id,
+      actionable: false,
+      field: { fieldName: 'fixture', fieldType: 'INT' },
     })),
-  } as never,
+  },
 ) => {
   const actions = {
     setReviewResult: vi.fn(),
-    replaceCurrentState: vi.fn(),
+    replaceCurrentState: vi.fn<(state: PersistedState) => void>(),
     openGeneratedState: vi.fn(),
     setActiveTab: vi.fn(),
     triggerIndexAnimation: vi.fn(),
@@ -99,7 +101,7 @@ describe('useSchemaApplyActions', () => {
       foreignKeys: [],
     };
     act(() => hook.result.current.handleImport(parsed, 'mysql'));
-    const imported = actions.replaceCurrentState.mock.calls[0][0] as PersistedState;
+    const imported = actions.replaceCurrentState.mock.calls[0][0];
     expect(imported.rows[0].id).toBe(state.rows[0].id);
     expect(diffPersistedState(state, imported).fields).toEqual([]);
   });
@@ -146,16 +148,27 @@ describe('useSchemaApplyActions', () => {
     const state = createState({ tableName: 'users' });
 
     const { hook, actions } = createHook(state, {
-      suggestions: [{ id: 's1', type: 'add_field', description: 'Add field' }],
-    } as never);
+      score: 8,
+      summary: 'Add field',
+      suggestions: [
+        {
+          id: 's1',
+          type: 'add_field',
+          description: 'Add field',
+          actionable: true,
+          field: { fieldName: 'new_col', fieldType: 'INT' },
+        },
+      ],
+    });
 
     act(() => {
       hook.result.current.handleApplySuggestion({
         id: 's1',
         type: 'add_field',
         description: 'Add field',
+        actionable: true,
         field: { fieldName: 'new_col', fieldType: 'INT' },
-      } as never);
+      });
     });
 
     expect(actions.replaceCurrentState).toHaveBeenCalledWith(
@@ -174,16 +187,20 @@ describe('useSchemaApplyActions', () => {
     expect(actions.setActiveTab).toHaveBeenCalledWith('fields');
     expect(actions.triggerFieldTableHighlight).toHaveBeenCalledWith(0);
     expect(actions.setReviewResult).toHaveBeenCalledWith(
-      {
+      expect.objectContaining({
+        score: 8,
+        summary: 'Add field',
         suggestions: [
           {
             id: 's1',
             type: 'add_field',
             description: 'Add field',
+            actionable: true,
+            field: { fieldName: 'new_col', fieldType: 'INT' },
             applied: true,
           },
         ],
-      },
+      }),
       actions.replaceCurrentState.mock.calls[0][0],
     );
   });
@@ -196,11 +213,12 @@ describe('useSchemaApplyActions', () => {
         id: 's2',
         type: 'modify_field',
         description: 'Modify field',
+        actionable: true,
         fieldModification: {
           fieldName: 'missing',
           changes: { fieldType: 'INT' },
         },
-      } as never);
+      });
     });
 
     expect(actions.replaceCurrentState).not.toHaveBeenCalled();
@@ -216,8 +234,9 @@ describe('useSchemaApplyActions', () => {
         id: 's3',
         type: 'remove_field',
         description: 'Remove field',
+        actionable: true,
         fieldName: 'obsolete',
-      } as never);
+      });
     });
 
     hook.rerender({
@@ -258,8 +277,10 @@ describe('useSchemaApplyActions', () => {
       apply({
         id: 's1',
         type: 'add_field',
+        description: 'Add field',
+        actionable: true,
         field: { fieldName: 'wrong', fieldType: 'INT' },
-      } as never),
+      }),
     );
     expect(actions.replaceCurrentState).not.toHaveBeenCalled();
   });
@@ -291,8 +312,10 @@ describe('useSchemaApplyActions', () => {
       hook.result.current.handleApplySuggestion({
         id: 's3',
         type: 'remove_field',
+        description: 'Remove field',
+        actionable: true,
         fieldName: 'obsolete',
-      } as never),
+      }),
     );
     expect(actions.setReviewResult).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(500));
@@ -308,8 +331,10 @@ describe('useSchemaApplyActions', () => {
       hook.result.current.handleApplySuggestion({
         id: 's3',
         type: 'remove_field',
+        description: 'Remove field',
+        actionable: true,
         fieldName: 'obsolete',
-      } as never),
+      }),
     );
     hook.unmount();
     act(() => vi.advanceTimersByTime(500));
@@ -324,15 +349,16 @@ describe('useSchemaApplyActions', () => {
         id: 's4',
         type: 'add_index',
         description: 'Add index',
+        actionable: true,
         index: {
           name: 'idx_name',
           fields: [{ name: 'name', direction: 'ASC' }],
           unique: true,
         },
-      } as never);
+      });
     });
 
-    const nextState = actions.replaceCurrentState.mock.calls[0][0] as PersistedState;
+    const nextState = actions.replaceCurrentState.mock.calls[0][0];
     expect(nextState.indexes).toEqual([
       expect.objectContaining({ name: 'idx_name', kind: 'unique_index' }),
     ]);
@@ -373,7 +399,9 @@ describe('useSchemaApplyActions', () => {
     act(() => hook.result.current.handleApplySuggestion(indexSuggestion));
     act(() => vi.advanceTimersByTime(50));
 
-    const nextState = actions.replaceCurrentState.mock.lastCall?.[0] as PersistedState;
+    const nextState = actions.replaceCurrentState.mock.lastCall?.[0];
+
+    if (!nextState) throw new Error('Expected the applied state');
     expect(nextState.rows.map((row) => row.fieldName)).toEqual(['id', 'created_at']);
     expect(nextState.indexes).toEqual([
       expect.objectContaining({
@@ -403,7 +431,8 @@ describe('useSchemaApplyActions', () => {
         id: 's5',
         type: 'general',
         description: 'General suggestion',
-      } as never);
+        actionable: false,
+      });
     });
 
     expect(actions.replaceCurrentState).not.toHaveBeenCalled();

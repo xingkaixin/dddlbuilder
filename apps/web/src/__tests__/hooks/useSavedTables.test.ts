@@ -31,6 +31,7 @@ const mockUseAuthIdentity = vi.hoisted(() =>
   })),
 );
 const mockWorkspaceYDoc = vi.hoisted(() => ({
+  // SAFETY: The provider mock is populated with the fields consumed by useSavedTables in each test.
   value: {} as any,
 }));
 const mockYDocAdapter = vi.hoisted(() => ({
@@ -47,14 +48,17 @@ const mockYDocAdapter = vi.hoisted(() => ({
   renameSavedTableInYDoc: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Control authentication transitions while testing the saved-table hook.
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthIdentity: mockUseAuthIdentity,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Supply deterministic Y.Doc readiness states for persistence behavior tests.
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDocDocument: () => mockWorkspaceYDoc.value,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Preserve adapter logic while replacing only Y.Doc I/O seams with controllable spies.
 vi.mock('@/services/workspaceYDocAdapter', async (importOriginal) => ({
   ...(await importOriginal<typeof WorkspaceYDocAdapter>()),
   deleteSavedTableFromYDoc: mockYDocAdapter.deleteSavedTableFromYDoc,
@@ -83,9 +87,20 @@ const createState = (name: string): PersistedState => ({
   authObjects: [],
 });
 
+type MigrationAction = {
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+};
+
+const isMigrationAction = (value: unknown): value is MigrationAction =>
+  typeof value === 'object' &&
+  value !== null &&
+  'onClick' in value &&
+  typeof value.onClick === 'function';
+
 describe('useSavedTables', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
+    // SAFETY: The auth provider mock supplies only the identity fields consumed by this hook.
     mockUseAuthIdentity.mockReturnValue({
       status: 'signed_out',
       configured: true,
@@ -149,10 +164,11 @@ describe('useSavedTables', () => {
     expect(await listReviews(target)).toEqual([]);
     const action = warning.mock.calls[0]?.[1]?.action;
 
-    if (!action || typeof action !== 'object' || !('onClick' in action)) {
+    if (!isMigrationAction(action)) {
       throw new Error('Expected a migration retry action');
     }
 
+    // SAFETY: The guard above proves this callback accepts an event; the test intentionally does not inspect it.
     act(() => action.onClick({} as React.MouseEvent<HTMLButtonElement>));
     await waitFor(async () => {
       expect((await listReviews(target)).map((entry) => entry.id)).toEqual([review?.id]);
@@ -349,6 +365,7 @@ describe('useSavedTables', () => {
 
   it('should write saved table changes to local ydoc before remote connects', async () => {
     const doc = { transact: (callback: () => void) => callback() };
+    // SAFETY: The auth provider mock supplies only the identity fields consumed by this hook.
     mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -391,6 +408,7 @@ describe('useSavedTables', () => {
   });
 
   it('本地 Y.Doc 未就绪时保存，应拒绝写入旧分区', async () => {
+    // SAFETY: The auth provider mock supplies only the identity fields consumed by this hook.
     mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -428,6 +446,7 @@ describe('useSavedTables', () => {
   });
 
   it('本地 Y.Doc 未就绪时批量导入，应明确报告未写入', async () => {
+    // SAFETY: The auth provider mock supplies only the identity fields consumed by this hook.
     mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -465,6 +484,7 @@ describe('useSavedTables', () => {
   });
 
   it('本地 Y.Doc 就绪而云端仍在连接时应允许保存', async () => {
+    // SAFETY: The auth provider mock supplies only the identity fields consumed by this hook.
     mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -498,6 +518,7 @@ describe('useSavedTables', () => {
   it('records the current trash write target when Y.Doc is ready', async () => {
     const log = vi.spyOn(console, 'info').mockImplementation(() => {});
     const doc = { transact: (callback: () => void) => callback() };
+    // SAFETY: The auth provider mock supplies only the identity fields consumed by this hook.
     mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -566,6 +587,7 @@ describe('useSavedTables', () => {
   it('should refresh ydoc updates without showing loading again', async () => {
     let notifyYDocChanged: (() => void) | null = null;
     const doc = {};
+    // SAFETY: The auth provider mock supplies only the identity fields consumed by this hook.
     mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -628,6 +650,7 @@ describe('useSavedTables', () => {
 
   it('restores a trashed record from the authoritative YDoc', async () => {
     const doc = { transact: (callback: () => void) => callback() };
+    // SAFETY: The auth provider mock supplies only the identity fields consumed by this hook.
     mockUseAuthIdentity.mockReturnValue({
       status: 'signed_in',
       configured: true,

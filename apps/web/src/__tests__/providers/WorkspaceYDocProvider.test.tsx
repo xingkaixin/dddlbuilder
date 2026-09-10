@@ -24,6 +24,7 @@ import {
 } from '@/services/workspaceAccountService';
 import type * as WorkspaceYDocStorage from '@/services/workspaceYDocStorage';
 
+// SAFETY: The hoisted auth fixture is restricted to the provider states exercised by these tests.
 const auth = vi.hoisted(() => ({
   status: 'signed_in' as 'loading' | 'signed_in' | 'signed_out',
   userId: 'user-1' as string | null,
@@ -32,18 +33,21 @@ const auth = vi.hoisted(() => ({
   refreshSession: vi.fn(async () => {}),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Provider tests control auth transitions without mounting the session provider.
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthIdentity: () => auth,
   useAuthActions: () => ({ refreshSession: auth.refreshSession }),
 }));
 
 // 模拟 y-indexeddb 的持久化：同一 workspace 的 Y.Doc 状态（含删除墓碑）跨启动保留。
+// SAFETY: The in-memory persistence fixture implements only the persistence fields used by the mock.
 const persistence = vi.hoisted(() => ({
   update: null as Uint8Array | null,
   committed: false,
   databases: [] as Array<{ onversionchange: (() => void) | null }>,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Legacy commit behavior is controlled while the rest of storage remains real.
 vi.mock('@/services/workspaceYDocStorage', async (importOriginal) => ({
   ...(await importOriginal<typeof WorkspaceYDocStorage>()),
   commitLegacyWorkspaceYDoc: vi.fn(async () => {
@@ -51,16 +55,19 @@ vi.mock('@/services/workspaceYDocStorage', async (importOriginal) => ({
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Account cleanup outcomes are controlled to test provider startup gating.
 vi.mock('@/services/workspaceAccountService', () => ({
   clearLegacyWorkspaceData: vi.fn().mockResolvedValue(undefined),
   retryPendingWorkspaceCleanup: vi.fn().mockResolvedValue(undefined),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Browser IndexedDB persistence is replaced with an in-memory Y.Doc persistence model.
 vi.mock('y-indexeddb', async () => {
   const Yjs = await import('yjs');
 
   return {
     IndexeddbPersistence: class {
+      // SAFETY: The persistence mock exposes the version-change callback consumed by the provider.
       db = { onversionchange: null as (() => void) | null };
       whenSynced = Promise.resolve(this);
       get = async () => persistence.committed;
@@ -83,6 +90,7 @@ vi.mock('y-indexeddb', async () => {
   };
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Legacy migration proposals are controlled for provider bootstrap cases.
 vi.mock('@/services/workspaceMigrationService', () => ({
   prepareLegacyWorkspaceSnapshot: vi.fn(),
 }));
@@ -91,6 +99,7 @@ const connect = vi.fn(() => Promise.resolve());
 const destroy = vi.fn();
 const retryClient = vi.fn();
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Network sync lifecycle is controlled to assert connect/retry/destroy behavior.
 vi.mock('@/services/workspaceYDocSyncClient', () => ({
   WorkspaceYDocSyncClient: vi.fn(
     class {
@@ -132,6 +141,12 @@ const startProvider = async () => {
   await waitFor(() => expect(view.result.current.localSynced).toBe(true));
 
   return view;
+};
+
+const requireDoc = (doc: Y.Doc | null): Y.Doc => {
+  if (!doc) throw new Error('Expected a workspace document');
+
+  return doc;
 };
 
 /** 读取"上次启动"留在本地持久化里的 Y.Doc 状态。 */
@@ -238,8 +253,9 @@ describe('WorkspaceYDocProvider', () => {
 
     const view = await startProvider();
 
-    expect((view.result.current.doc as Y.Doc).getMap('meta').get('schemaVersion')).toBe(1);
-    expect(exportWorkspaceYDocToSnapshot(view.result.current.doc as Y.Doc).drafts).toHaveLength(1);
+    const doc = requireDoc(view.result.current.doc);
+    expect(doc.getMap('meta').get('schemaVersion')).toBe(1);
+    expect(exportWorkspaceYDocToSnapshot(doc).drafts).toHaveLength(1);
     legacy.destroy();
   });
 
@@ -297,7 +313,7 @@ describe('WorkspaceYDocProvider', () => {
       vi.mocked(clearLegacyWorkspaceData).mock.invocationCallOrder[0],
     );
 
-    const snapshot = exportWorkspaceYDocToSnapshot(result.current.doc as Y.Doc);
+    const snapshot = exportWorkspaceYDocToSnapshot(requireDoc(result.current.doc));
     expect(snapshot.savedTables[0]).toMatchObject({
       normalizedName: 'legacy_table',
       createdAt: 111,
@@ -332,7 +348,7 @@ describe('WorkspaceYDocProvider', () => {
 
     expect(prepareLegacyWorkspaceSnapshotMock).toHaveBeenCalledTimes(1);
     expect(
-      exportWorkspaceYDocToSnapshot(second.result.current.doc as Y.Doc).savedTables,
+      exportWorkspaceYDocToSnapshot(requireDoc(second.result.current.doc)).savedTables,
     ).toHaveLength(1);
   });
 
@@ -340,7 +356,7 @@ describe('WorkspaceYDocProvider', () => {
     prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(legacySnapshotWithTable());
 
     const first = await startProvider();
-    deleteSavedTableFromYDoc(first.result.current.doc as Y.Doc, 'legacy_table');
+    deleteSavedTableFromYDoc(requireDoc(first.result.current.doc), 'legacy_table');
     first.unmount();
 
     localStorage.clear();
@@ -350,9 +366,9 @@ describe('WorkspaceYDocProvider', () => {
     const second = await startProvider();
 
     expect(prepareLegacyWorkspaceSnapshotMock).toHaveBeenCalledTimes(1);
-    expect(exportWorkspaceYDocToSnapshot(second.result.current.doc as Y.Doc).savedTables).toEqual(
-      [],
-    );
+    expect(
+      exportWorkspaceYDocToSnapshot(requireDoc(second.result.current.doc)).savedTables,
+    ).toEqual([]);
   });
 
   it('迁移失败时不写完成标记，下次启动应重试并补齐数据', async () => {
@@ -368,7 +384,7 @@ describe('WorkspaceYDocProvider', () => {
 
     expect(prepareLegacyWorkspaceSnapshotMock).toHaveBeenCalledTimes(2);
     expect(
-      exportWorkspaceYDocToSnapshot(second.result.current.doc as Y.Doc).savedTables,
+      exportWorkspaceYDocToSnapshot(requireDoc(second.result.current.doc)).savedTables,
     ).toHaveLength(1);
   });
 

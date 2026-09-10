@@ -39,13 +39,15 @@ describe('useStorageEstimation hook', () => {
   });
 
   it('should update result when dbType changes', () => {
-    const { result, rerender } = renderHook(({ dbType }) => useStorageEstimation(dbType, fields), {
-      initialProps: { dbType: 'mysql' as any },
-    });
+    const { result, rerender } = renderHook(
+      ({ dbType }: { dbType: Parameters<typeof useStorageEstimation>[0] }) =>
+        useStorageEstimation(dbType, fields),
+      { initialProps: { dbType: 'mysql' } },
+    );
 
     expect(result.current.result.dbName).toBe('MySQL (InnoDB)');
 
-    rerender({ dbType: 'postgresql' as any });
+    rerender({ dbType: 'postgresql' });
     expect(result.current.result.dbName).toBe('PostgreSQL');
   });
 

@@ -97,6 +97,7 @@ export const createTableOptionsSlice = (set: EditorSetState): TableOptionsSlice 
   setHivePartitionConfig: (value) =>
     set((state) => {
       const partitions =
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Zustand's updater-or-value API requires runtime discrimination.
         typeof value === 'function'
           ? value(
               state.tableMiscConfig.partitions ?? {
@@ -116,6 +117,7 @@ export const createTableOptionsSlice = (set: EditorSetState): TableOptionsSlice 
   setTableMiscConfig: (value) =>
     set((state) => ({
       tableMiscConfig: normalizeTableMiscConfigNumbers(
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Zustand's updater-or-value API requires runtime discrimination.
         typeof value === 'function' ? value(state.tableMiscConfig) : value,
       ),
     })),

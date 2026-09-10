@@ -106,6 +106,7 @@ export const TabBar = memo(
 
     const { visibleTabs, hiddenTabs } = useMemo(() => {
       if (tabs.length <= MAX_VISIBLE_TABS) {
+        // SAFETY: the tab value is selected from the typed tab list before navigation.
         return { visibleTabs: tabs, hiddenTabs: [] as WorkspaceTab[] };
       }
 

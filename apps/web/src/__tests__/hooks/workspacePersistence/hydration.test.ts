@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { createFieldRow } from '@/__tests__/utils/testFactories';
 import type { WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 import {
@@ -96,7 +97,11 @@ describe('workspacePersistence/hydration', () => {
   it('toHydrationSavedTable 应抹平 SavedTableRecord 形状', () => {
     expect(toHydrationSavedTable(null)).toBeNull();
     expect(
-      toHydrationSavedTable({ normalizedName: 'users', state: createState('users') }),
+      // SAFETY: this legacy fixture omits name to exercise the fallback; hydration reads only its identity and state without a draft.
+      toHydrationSavedTable({
+        normalizedName: 'users',
+        state: createState('users'),
+      } as SavedTableRecord),
     ).toMatchObject({ normalizedName: 'users', tableName: '' });
   });
 

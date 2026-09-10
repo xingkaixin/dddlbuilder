@@ -10,14 +10,21 @@ import ErDiagramDialog from '@/components/App/ErDiagramDialog';
 import { getSavedTableFromYDoc, upsertSavedTableInYDoc } from '@/services/workspaceYDocAdapter';
 import { getSavedTable, updateSavedTable } from '@/utils/savedTablesDb';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
-import type { ErEdgeData } from '@/components/App/er-diagram/types';
 
-const capture = vi.hoisted(() => ({
-  doc: null as Y.Doc | null,
-  edges: [] as ReactFlowModule.Edge[],
-  connect: undefined as ReactFlowModule.ReactFlowProps['onConnect'],
+type Capture = {
+  doc: Y.Doc | null;
+  edges: ReactFlowModule.Edge[];
+  connect: ReactFlowModule.ReactFlowProps['onConnect'] | undefined;
+  fitView: ReturnType<typeof vi.fn>;
+};
+
+const capture = vi.hoisted((): Capture => ({
+  doc: null,
+  edges: [],
+  connect: undefined,
   fitView: vi.fn(),
 }));
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Injects auth state so this ER persistence test can exercise anonymous and signed-in workspace paths.
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: capture.doc ? 'signed_in' : 'signed_out',
@@ -29,10 +36,12 @@ vi.mock('@/auth/AuthSessionProvider', () => {
   return { useAuthIdentity };
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Supplies a controlled Y.Doc lifecycle while the component's persistence behavior remains real.
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDocDocument: () => ({ doc: capture.doc, localSynced: true, synced: true }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Adapts the graph renderer to jsdom while retaining the real React Flow exports used by the component.
 vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactFlowModule>()),
   ReactFlow: ({ edges, onConnect }: ReactFlowModule.ReactFlowProps) => {
@@ -179,8 +188,14 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
       });
     });
     const edge = capture.edges[0];
+    const edgeData = edge?.data;
+
+    expect(edgeData).toMatchObject({ onDelete: expect.any(Function) });
+    // SAFETY: The preceding structural assertion establishes the callback contract for this captured edge.
+    const deleteEdgeData = edgeData as { onDelete: () => void | Promise<void> };
+
     await act(async () => {
-      await (edge.data as ErEdgeData).onDelete();
+      await deleteEdgeData.onDelete();
     });
     const updated = await read();
     expect(updated.state.tableComment).toBe('remote comment');

@@ -41,6 +41,11 @@ const PARTITION_TYPE_INFO: Record<MysqlPartitionType, { label: string }> = {
   },
 };
 
+function getPartitionTypes(): MysqlPartitionType[] {
+  // SAFETY: PARTITION_TYPE_INFO is keyed by the complete MysqlPartitionType domain.
+  return Object.keys(PARTITION_TYPE_INFO) as MysqlPartitionType[];
+}
+
 interface PartitionPanelProps {
   config: MysqlPartitionConfig;
   availableFields: string[];
@@ -182,13 +187,17 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                   </Label>
                   <Select
                     value={config.type}
-                    onValueChange={(value) => onTypeChange(value as MysqlPartitionType)}
+                    onValueChange={(value) => {
+                      const selectedType = getPartitionTypes().find((type) => type === value);
+
+                      if (selectedType) onTypeChange(selectedType);
+                    }}
                   >
                     <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
                       <SelectValue placeholder={t('partitionPanel.typePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {(Object.keys(PARTITION_TYPE_INFO) as MysqlPartitionType[]).map((type) => (
+                      {getPartitionTypes().map((type) => (
                         <SelectItem
                           key={type}
                           value={type}

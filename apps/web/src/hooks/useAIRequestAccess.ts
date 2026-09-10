@@ -22,6 +22,7 @@ export function useAIRequestAccess() {
   }, [accessError, authenticated, openAuthDialog]);
 
   const resolveRequestError = useCallback(
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
     (error: unknown, fallbackMessage: string) => {
       const message = error instanceof Error ? error.message || fallbackMessage : fallbackMessage;
 

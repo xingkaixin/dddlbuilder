@@ -69,6 +69,7 @@ export function useWorkspaceInitialHydration({
   const [attempt, setAttempt] = useState(0);
   const setHydrated = useCallback((ready: boolean) => setStatus(ready ? 'ready' : 'loading'), []);
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected hydration work can throw any JavaScript value and is only reported.
   const failHydration = useCallback((error: unknown) => {
     console.error('[workspace] local hydration failed', error);
     setStatus('error');
@@ -170,6 +171,7 @@ export function useWorkspaceInitialHydration({
         };
       }
 
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected async hydration can throw any JavaScript value.
       void hydrateMainWorkspace().catch((error: unknown) => {
         if (!cancelled) failHydration(error);
       });
@@ -179,7 +181,7 @@ export function useWorkspaceInitialHydration({
       };
     }
 
-    const cachedShareState = normalizePersistedState(readStorageJson<unknown>(shareStorageKey));
+    const cachedShareState = normalizePersistedState(readStorageJson(shareStorageKey));
 
     if (cachedShareState) hydrateWithState(cachedShareState);
 

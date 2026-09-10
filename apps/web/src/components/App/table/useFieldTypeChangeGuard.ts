@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import { detectFieldTypeRisk, type FieldTypeRisk } from '@/utils/fieldTypeRisk';
+import type { UpdateEditableField } from './useFieldRowMutations';
 
-type UpdateCellValue = (rowIndex: number, columnId: string, value: string | boolean) => void;
+type UpdateCellValue = UpdateEditableField;
 
 type PendingChange = {
   rowIndex: number;
@@ -29,8 +30,10 @@ export function useFieldTypeChangeGuard(
   const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
 
   const guardedUpdateCellValue = useCallback<UpdateCellValue>(
-    (rowIndex, columnId, value) => {
-      if (columnId === 'fieldType' && typeof value === 'string') {
+    (...args) => {
+      const [rowIndex, columnId, value] = args;
+
+      if (columnId === 'fieldType') {
         const oldType = rows[rowIndex]?.fieldType ?? '';
 
         if (oldType) {
@@ -44,7 +47,7 @@ export function useFieldTypeChangeGuard(
         }
       }
 
-      updateCellValue(rowIndex, columnId, value);
+      updateCellValue(...args);
     },
     [rows, updateCellValue],
   );

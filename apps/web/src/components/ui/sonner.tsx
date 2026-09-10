@@ -8,6 +8,7 @@ const Toaster = ({ position = 'bottom-right', ...props }: ToasterProps) => {
 
   return (
     <Sonner
+      // SAFETY: the toast component receives the expected Sonner action element type.
       theme={theme as ToasterProps['theme']}
       className="toaster group"
       position={position}

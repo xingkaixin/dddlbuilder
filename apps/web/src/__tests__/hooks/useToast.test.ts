@@ -3,7 +3,7 @@ import { renderHook } from '@testing-library/react';
 import { useToast } from '@/hooks';
 import { toast } from 'sonner';
 
-// Mock sonner
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Replaces the third-party toast side effect with spies while testing this adapter's forwarding contract.
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
@@ -18,13 +18,15 @@ vi.mock('sonner', () => ({
 describe('useToast', () => {
   it('应该暴露所有 toast 方法', () => {
     const { result } = renderHook(() => useToast());
-    expect(typeof result.current.showToast).toBe('function');
-    expect(typeof result.current.success).toBe('function');
-    expect(typeof result.current.error).toBe('function');
-    expect(typeof result.current.info).toBe('function');
-    expect(typeof result.current.warning).toBe('function');
-    expect(typeof result.current.promise).toBe('function');
-    expect(typeof result.current.dismiss).toBe('function');
+    expect(result.current).toEqual({
+      showToast: expect.any(Function),
+      success: expect.any(Function),
+      error: expect.any(Function),
+      info: expect.any(Function),
+      warning: expect.any(Function),
+      promise: expect.any(Function),
+      dismiss: expect.any(Function),
+    });
   });
 
   it('调用 showToast 应该触发 sonner.toast', () => {

@@ -147,6 +147,7 @@ export const MockDataDialog = memo<MockDataDialogProps>(
             {/* 格式 Tabs + 预览 */}
             <Tabs
               value={format}
+              // SAFETY: the mock-data option is selected from the typed dialog option list.
               onValueChange={(v) => setFormat(v as MockExportFormat)}
               className="flex flex-col min-h-0 flex-1"
             >
