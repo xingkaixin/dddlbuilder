@@ -2,7 +2,9 @@ import * as Effect from 'effect/Effect';
 import { GeneratedTableProviderSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
+import type OpenAI from 'openai';
 import type { ApiEnv } from '../../lib/context.js';
+import type { AIUsageReservation, AIUsageSettlement } from '../../lib/aiUsage.js';
 
 const RESERVATION = { usageEventId: 'usage-1', userId: 'user-1', reservedTokens: 100 };
 const PROMPT_MESSAGES = [
@@ -10,6 +12,15 @@ const PROMPT_MESSAGES = [
   { role: 'user' as const, content: 'User prompt used by the model' },
 ];
 
+type ShellOverrides = {
+  authenticateRequest?: ReturnType<typeof vi.fn>;
+  enforceOpenAIRateLimit?: ReturnType<typeof vi.fn>;
+  reserveAIUsage?: ReturnType<typeof vi.fn>;
+  recordAIUsageAttempt?: ReturnType<typeof vi.fn>;
+  prepareAIUsageSettlement?: ReturnType<typeof vi.fn>;
+};
+
+// SAFETY: The test supplies the bindings read by the governance route; the empty D1 object is never reached by this shell.
 const createEnv = (): ApiEnv['Bindings'] =>
   ({
     OPENAI_API_KEY: 'sk-test',
@@ -21,7 +32,7 @@ const createEnv = (): ApiEnv['Bindings'] =>
 
 /** 只放行治理外壳，把额度与限流的副作用换成可断言的 spy。 */
 const loadShell = async (
-  overrides: Record<string, unknown> = {},
+  overrides: ShellOverrides = {},
   completionContent = '{}',
   streamResponse?: AsyncIterable<unknown>,
   finishReason = 'stop',
@@ -35,10 +46,10 @@ const loadShell = async (
     .fn()
     .mockImplementation(
       async (
-        _env: unknown,
-        _reservation: unknown,
-        _outcome: unknown,
-        settlement: { chargedTokens: number; providerBudgetTokens: number },
+        _env: ApiEnv['Bindings'],
+        _reservation: AIUsageReservation,
+        _outcome: 'succeeded' | 'failed',
+        settlement: AIUsageSettlement,
       ) => ({
         chargedTokens: settlement.chargedTokens,
         providerBudgetTokens: settlement.providerBudgetTokens,
@@ -61,26 +72,31 @@ const loadShell = async (
     warn: vi.fn(),
   };
   const logOpenAIAudit = vi.fn();
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace the rate-limit boundary so governance tests control admission.
   vi.doMock('../../lib/requestRateLimit.js', () => ({
     enforceIpRateLimit: vi.fn().mockResolvedValue(null),
   }));
 
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication to exercise governance outcomes independently.
   vi.doMock('../../lib/auth.js', () => ({
     authenticateRequest:
       overrides.authenticateRequest ??
       vi.fn().mockResolvedValue({ userId: 'user-1', email: 'user@example.com' }),
   }));
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace signup-credit side effects outside the governance assertions.
   vi.doMock('../../lib/credits.js', () => ({
     grantSignupCredits: vi.fn().mockResolvedValue(undefined),
   }));
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace only the request logger while retaining the real logging module.
   vi.doMock('../../lib/logging.js', async () => {
-    const actual = await vi.importActual<Record<string, unknown>>('../../lib/logging.js');
+    const actual = await vi.importActual('../../lib/logging.js');
 
     return {
       ...actual,
       getRequestLogger: () => requestLogger,
     };
   });
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace usage accounting with spies so settlement calls remain observable.
   vi.doMock('../../lib/aiUsage.js', () => ({
     reserveAIUsage,
     recordAIUsageAttempt,
@@ -88,8 +104,9 @@ const loadShell = async (
     finalizeAIUsageSettlement,
     ...overrides,
   }));
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace rate-limit and audit seams while retaining real OpenAI control helpers.
   vi.doMock('../../openaiControl.js', async () => {
-    const actual = await vi.importActual<Record<string, unknown>>('../../openaiControl.js');
+    const actual = await vi.importActual('../../openaiControl.js');
 
     return {
       ...actual,
@@ -100,9 +117,10 @@ const loadShell = async (
       logOpenAIAudit,
     };
   });
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace the network SDK constructor with an in-memory completion stream.
   vi.doMock('openai', () => ({
     default: class {
-      constructor(options: unknown) {
+      constructor(options: ConstructorParameters<typeof OpenAI>[0]) {
         openAIConstructor(options);
       }
 
@@ -132,7 +150,9 @@ const loadShell = async (
   };
 };
 
-const post = (app: Hono<ApiEnv>, body: unknown, waitUntil = vi.fn(), tracing?: Tracing) =>
+type TestRequestBody = { sql?: string };
+
+const post = (app: Hono<ApiEnv>, body: TestRequestBody, waitUntil = vi.fn(), tracing?: Tracing) =>
   app.fetch(
     new Request('http://localhost/t', {
       method: 'POST',
@@ -140,6 +160,8 @@ const post = (app: Hono<ApiEnv>, body: unknown, waitUntil = vi.fn(), tracing?: T
       body: JSON.stringify(body),
     }),
     createEnv(),
+    // SAFETY: Hono only consumes these three methods from this intentionally partial test context.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture intentionally implements a narrow platform context.
     { waitUntil, tracing, passThroughOnException: () => {} } as unknown as ExecutionContext,
   );
 
@@ -373,15 +395,13 @@ describe('withAIGovernance', () => {
       );
       const response = await post(app, {}, waitUntil);
 
-      if (streamed) {
-        const events = (await response.text())
-          .trim()
-          .split('\n')
-          .map((line) => JSON.parse(line));
-        expect(events.map((event) => event.type)).toEqual(['delta', 'error']);
-      } else {
-        expect(response.status).toBe(502);
-      }
+      const observed = streamed
+        ? (await response.text())
+            .trim()
+            .split('\n')
+            .map((line) => JSON.parse(line).type)
+        : response.status;
+      expect(observed).toEqual(streamed ? ['delta', 'error'] : 502);
 
       await Promise.all(waitUntil.mock.calls.map(([task]) => task));
       expect(shell.prepareAIUsageSettlement).toHaveBeenCalledTimes(1);
@@ -409,11 +429,14 @@ describe('withAIGovernance', () => {
     });
     const spans: Array<{ name: string; end: ReturnType<typeof vi.fn> }> = [];
 
+    // SAFETY: This test implements the startActiveSpan method consumed by the governance route.
     const tracing = {
       startActiveSpan<T>(name: string, callback: (span: Span) => T): T {
         const span = { name, end: vi.fn(), setAttribute: vi.fn(), recordException: vi.fn() };
         spans.push(span);
 
+        // SAFETY: the governance tracer only calls the three methods implemented by this test span.
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture intentionally implements a narrow span context.
         return callback(span as unknown as Span);
       },
     } as Tracing;
@@ -523,10 +546,10 @@ describe('withAIGovernance', () => {
 
     const prepareSettlement = vi.fn(
       async (
-        _env: unknown,
-        _reservation: unknown,
-        _outcome: unknown,
-        settlement: { chargedTokens: number; providerBudgetTokens: number },
+        _env: ApiEnv['Bindings'],
+        _reservation: AIUsageReservation,
+        _outcome: 'succeeded' | 'failed',
+        settlement: AIUsageSettlement,
       ) => {
         await settlementGate;
 

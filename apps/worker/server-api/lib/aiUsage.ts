@@ -1,6 +1,7 @@
 import * as D1Client from '@effect/sql-d1/D1Client';
 import * as Effect from 'effect/Effect';
 import * as Clock from 'effect/Clock';
+import * as Result from 'effect/Result';
 import { AIUsageError } from './aiErrors.js';
 import { mapLedgerAbort, prepareCreditMutation, type CreditLedgerSource } from './credits.js';
 import type { ApiEnv } from './context.js';
@@ -76,6 +77,7 @@ const normalizeSettlementTokenAmount = (value: number) => {
 };
 
 const normalizeSettlement = (settlement: AIUsageSettlement): AIUsageSettlement => {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- accounting data is validated at this persistence boundary despite its typed internal source.
   if (typeof settlement.usageEstimated !== 'boolean') {
     throw new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_USAGE_MEASUREMENT');
   }
@@ -627,7 +629,7 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
       return true;
     }).pipe(Effect.withSpan('ai.usage.reclaim.entry'), Effect.result);
 
-    if (result._tag === 'Success') {
+    if (Result.isSuccess(result)) {
       if (result.success) reclaimed += 1;
       continue;
     }
@@ -635,13 +637,12 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
     const deferred = yield* Effect.result(deferRecovery(row.id));
     failures.push({
       usageEventId: row.id,
-      error:
-        deferred._tag === 'Failure'
-          ? new AggregateError(
-              [result.failure, deferred.failure],
-              'AI usage recovery and deferral failed',
-            )
-          : result.failure,
+      error: Result.isFailure(deferred)
+        ? new AggregateError(
+            [result.failure, deferred.failure],
+            'AI usage recovery and deferral failed',
+          )
+        : result.failure,
     });
   }
 

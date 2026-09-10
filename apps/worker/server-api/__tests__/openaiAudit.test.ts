@@ -8,6 +8,8 @@ const createRequestLogger = () => {
 
   return {
     audit,
+    // SAFETY: the audit test double implements only the logger methods used by logOpenAIAudit.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- WorkerRequestLogger has runtime methods not needed by this focused test.
     logger: { set, audit } as unknown as WorkerRequestLogger,
     set,
   };
@@ -15,7 +17,9 @@ const createRequestLogger = () => {
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: audit tests do not call the KV binding.
   SHARE_KV: {} as KVNamespace,
+  // SAFETY: audit tests do not access the database binding.
   USER_DB: {} as D1Database,
   ...overrides,
 });
@@ -59,7 +63,7 @@ describe('openai audit', () => {
   it('应将计费事实写入请求宽事件并记录用户审计事件', () => {
     const { audit, logger, set } = createRequestLogger();
     const payload = createPayload();
-    const waitUntil = vi.fn();
+    const waitUntil = vi.fn<(task: Promise<unknown>) => void>();
 
     logOpenAIAudit(createEnv({ EVLOG_REQUEST_LOG: logger }), payload, waitUntil);
 
@@ -121,12 +125,12 @@ describe('openai audit', () => {
     });
     expect(waitUntil).toHaveBeenCalledOnce();
 
-    const [task] = waitUntil.mock.calls[0] as [Promise<unknown>];
+    const [task] = waitUntil.mock.calls[0];
     await task;
 
     expect(fetchSpy).toHaveBeenCalledOnce();
-    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    const body = JSON.parse(String(init.body)) as { text: string };
+    const [, init] = fetchSpy.mock.calls[0];
+    const body = JSON.parse(String(init?.body));
     expect(body.text).toContain('retryCount: 0');
     expect(body.text).toContain('budgetHit: yes');
   });

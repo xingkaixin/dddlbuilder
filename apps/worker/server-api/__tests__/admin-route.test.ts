@@ -1,19 +1,101 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
+import type * as BetterAuthModule from '../lib/betterAuth.js';
+import type * as CreditsModule from '../lib/credits.js';
 
 const requestRateLimitMocks = vi.hoisted(() => ({
   enforceIpRateLimit: vi.fn(),
   revokeUserSessions: vi.fn(),
 }));
 
+const adminAuthMocks = vi.hoisted(() => ({
+  createAdminSession: vi.fn(),
+  resolveAdminSession: vi.fn(),
+  deleteAdminSession: vi.fn(),
+}));
+
+type MutablePartial<T> = { -readonly [Key in keyof T]?: T[Key] };
+
+type BetterAuthExports = typeof BetterAuthModule;
+
+type CreditsExports = typeof CreditsModule;
+
+const betterAuthOverrides: MutablePartial<BetterAuthExports> = vi.hoisted(() => ({}));
+const creditOverrides: MutablePartial<CreditsExports> = vi.hoisted(() => ({}));
+const betterAuthForwarders = vi.hoisted(() => ({ createBetterAuth: vi.fn() }));
+const creditForwarders = vi.hoisted(() => ({
+  applyCreditMutation: vi.fn(),
+  listCreditLedger: vi.fn(),
+}));
+
+type CreateBetterAuth = BetterAuthExports['createBetterAuth'];
+
+type ApplyCreditMutation = CreditsExports['applyCreditMutation'];
+
+type ListCreditLedger = CreditsExports['listCreditLedger'];
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 限流和会话撤销是 admin 路由的外部副作用边界。
 vi.mock('../lib/requestRateLimit.js', () => requestRateLimitMocks);
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 只隔离会话撤销副作用，不替换 adminAuth 会话协议。
 vi.mock('../lib/auth.js', () => ({ revokeUserSessions: requestRateLimitMocks.revokeUserSessions }));
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 路由测试控制 adminAuth 的 session 分支，真实签名契约由 adminAuth.test.ts 覆盖。
+vi.mock('../lib/adminAuth.js', () => adminAuthMocks);
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 仅覆盖密码重置 SDK 调用，其他 Better Auth 行为保留真实实现。
+vi.mock('../lib/betterAuth.js', async (importOriginal) => {
+  const actual = await importOriginal<BetterAuthExports>();
+  betterAuthForwarders.createBetterAuth.mockImplementation(
+    (...args: Parameters<CreateBetterAuth>) => {
+      const override = betterAuthOverrides.createBetterAuth;
+
+      return override ? override(...args) : actual.createBetterAuth(...args);
+    },
+  );
+
+  return { ...actual, createBetterAuth: betterAuthForwarders.createBetterAuth };
+});
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- 仅覆盖手工充值/ledger 的 HTTP fixture，账本事务由 credits.test.ts 覆盖。
+vi.mock('../lib/credits.js', async (importOriginal) => {
+  const actual = await importOriginal<CreditsExports>();
+  creditForwarders.applyCreditMutation.mockImplementation(
+    (...args: Parameters<ApplyCreditMutation>) => {
+      const override = creditOverrides.applyCreditMutation;
+
+      return override ? override(...args) : actual.applyCreditMutation(...args);
+    },
+  );
+  creditForwarders.listCreditLedger.mockImplementation((...args: Parameters<ListCreditLedger>) => {
+    const override = creditOverrides.listCreditLedger;
+
+    return override ? override(...args) : actual.listCreditLedger(...args);
+  });
+
+  return {
+    ...actual,
+    applyCreditMutation: creditForwarders.applyCreditMutation,
+    listCreditLedger: creditForwarders.listCreditLedger,
+  };
+});
+
+const setAdminAuth = (overrides: Partial<typeof adminAuthMocks> = {}) => {
+  adminAuthMocks.createAdminSession.mockReset();
+  adminAuthMocks.resolveAdminSession.mockReset();
+  adminAuthMocks.deleteAdminSession.mockReset();
+  adminAuthMocks.createAdminSession.mockImplementation(async () => ({ success: false }));
+  adminAuthMocks.resolveAdminSession.mockResolvedValue(false);
+  adminAuthMocks.deleteAdminSession.mockResolvedValue('');
+  Object.assign(adminAuthMocks, overrides);
+};
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: these bindings are unused defaults; tests provide concrete fakes when exercised.
   SHARE_KV: {} as KVNamespace,
+  // SAFETY: these bindings are unused defaults; tests provide concrete fakes when exercised.
   USER_DB: {} as D1Database,
   BETTER_AUTH_SECRET: 'better-auth-secret',
   BETTER_AUTH_URL: 'http://localhost:3000',
@@ -30,7 +112,16 @@ const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Binding
 const createRequest = (path: string, init: RequestInit = {}) =>
   new Request(`http://localhost${path}`, init);
 
-const mockD1Results = (results: unknown[]) => ({
+type TestD1 = {
+  prepare: ReturnType<typeof vi.fn<(query?: string) => { bind: ReturnType<typeof vi.fn> }>>;
+  batch: ReturnType<typeof vi.fn>;
+};
+
+type TestD1Fixture = {
+  prepare: ReturnType<typeof vi.fn>;
+};
+
+const mockD1Results = (results: unknown[]): TestD1 => ({
   prepare: vi.fn().mockReturnValue({
     bind: vi.fn().mockReturnValue({
       first: vi.fn().mockResolvedValue(results[0] ?? null),
@@ -40,6 +131,34 @@ const mockD1Results = (results: unknown[]) => ({
   }),
   batch: vi.fn().mockResolvedValue([]),
 });
+
+const asD1Database = (database: TestD1Fixture): D1Database => {
+  // SAFETY: admin route tests only need the prepare/batch calls represented by this D1 fixture.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Cloudflare D1 has platform methods omitted by this focused fixture.
+  return database as unknown as D1Database;
+};
+
+type DurableObjectFixture = {
+  idFromName: ReturnType<typeof vi.fn>;
+  get: ReturnType<typeof vi.fn>;
+};
+
+const asDurableObjectNamespace = (fixture: DurableObjectFixture): DurableObjectNamespace => {
+  // SAFETY: this route only uses idFromName/get/fetch; the remaining platform methods are irrelevant here.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the focused fixture omits Cloudflare namespace internals.
+  return fixture as unknown as DurableObjectNamespace;
+};
+
+type ExecutionContextFixture = {
+  waitUntil: ReturnType<typeof vi.fn>;
+  passThroughOnException(): void;
+};
+
+const asExecutionContext = (fixture: ExecutionContextFixture): ExecutionContext => {
+  // SAFETY: Hono only calls waitUntil/passThroughOnException on this execution context fixture.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the focused fixture omits runtime-only context members.
+  return fixture as unknown as ExecutionContext;
+};
 
 const createAdminApp = async () => {
   const { registerAdminRoutes } = await import('../routes/admin.js');
@@ -63,6 +182,11 @@ describe('/api/admin/*', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    setAdminAuth();
+
+    delete betterAuthOverrides.createBetterAuth;
+    delete creditOverrides.applyCreditMutation;
+    delete creditOverrides.listCreditLedger;
     requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(null);
     requestRateLimitMocks.revokeUserSessions.mockResolvedValue(undefined);
   });
@@ -73,11 +197,9 @@ describe('/api/admin/*', () => {
     ['credits', { amount: 100, note: {} }],
     ['session', null],
   ])('rejects malformed %s input before mutations', async (action, body) => {
-    vi.doMock('../lib/adminAuth.js', () => ({
-      createAdminSession: vi.fn(),
+    setAdminAuth({
       resolveAdminSession: vi.fn().mockResolvedValue(true),
-      deleteAdminSession: vi.fn(),
-    }));
+    });
     const prepare = vi.fn();
     const app = await createAdminApp();
     const path = action === 'session' ? '/api/admin/session' : `/api/admin/users/user-1/${action}`;
@@ -88,7 +210,7 @@ describe('/api/admin/*', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
       }),
-      createEnv({ USER_DB: { prepare } as unknown as D1Database }),
+      createEnv({ USER_DB: asD1Database({ prepare }) }),
     );
     expect(response.status).toBe(400);
     expect(prepare).not.toHaveBeenCalled();
@@ -98,18 +220,18 @@ describe('/api/admin/*', () => {
     ['disable', { reason: 'security' }],
     ['email-verification', { verified: false }],
   ])('revokes sessions through better-auth for admin action %s', async (action, body) => {
-    vi.doMock('../lib/adminAuth.js', () => ({
+    setAdminAuth({
       resolveAdminSession: vi.fn().mockResolvedValue(true),
-    }));
+    });
     const fetchSocket = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const waitUntil = vi.fn();
 
     const env = createEnv({
-      USER_DB: mockD1Results([{ id: 'workspace-1' }]) as unknown as D1Database,
-      WORKSPACE_YDOC: {
+      USER_DB: asD1Database(mockD1Results([{ id: 'workspace-1' }])),
+      WORKSPACE_YDOC: asDurableObjectNamespace({
         idFromName: vi.fn((id) => id),
         get: vi.fn(() => ({ fetch: fetchSocket })),
-      } as unknown as DurableObjectNamespace,
+      }),
     });
     const app = await createAdminApp();
 
@@ -120,7 +242,7 @@ describe('/api/admin/*', () => {
         body: JSON.stringify(body),
       }),
       env,
-      { waitUntil, passThroughOnException() {} } as unknown as ExecutionContext,
+      asExecutionContext({ waitUntil, passThroughOnException() {} }),
     );
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));
     expect(requestRateLimitMocks.revokeUserSessions).toHaveBeenCalledWith(env, 'user-1');
@@ -131,9 +253,9 @@ describe('/api/admin/*', () => {
     ['disable', { reason: 'security' }],
     ['email-verification', { verified: false }],
   ])('returns 503 when session revocation fails for admin action %s', async (action, body) => {
-    vi.doMock('../lib/adminAuth.js', () => ({
+    setAdminAuth({
       resolveAdminSession: vi.fn().mockResolvedValue(true),
-    }));
+    });
     requestRateLimitMocks.revokeUserSessions.mockRejectedValue(new Error('kick failed'));
     const app = await createAdminApp();
 
@@ -143,7 +265,7 @@ describe('/api/admin/*', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
       }),
-      createEnv({ USER_DB: mockD1Results([{ id: 'user-1' }]) as unknown as D1Database }),
+      createEnv({ USER_DB: asD1Database(mockD1Results([{ id: 'user-1' }])) }),
     );
 
     expect(response.status).toBe(503);
@@ -190,15 +312,14 @@ describe('/api/admin/*', () => {
     });
 
     it('creates session with valid password', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
+      setAdminAuth({
         createAdminSession: vi.fn().mockResolvedValue({
           success: true,
           setCookie:
             'ddlbuilder_admin_session=token; Path=/api/admin; HttpOnly; SameSite=Lax; Max-Age=14400; Secure',
         }),
         resolveAdminSession: vi.fn(),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -217,11 +338,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 400 when password is empty', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn(),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -242,11 +361,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 400 when password is missing', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn(),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -267,11 +384,10 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 401 when password is invalid', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
+      setAdminAuth({
         createAdminSession: vi.fn().mockResolvedValue({ success: false }),
         resolveAdminSession: vi.fn(),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -294,15 +410,14 @@ describe('/api/admin/*', () => {
 
   describe('DELETE /api/admin/session', () => {
     it('deletes admin session and clears cookie', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn(),
         deleteAdminSession: vi
           .fn()
           .mockResolvedValue(
             'ddlbuilder_admin_session=; Path=/api/admin; HttpOnly; SameSite=Lax; Max-Age=0; Secure',
           ),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -319,11 +434,9 @@ describe('/api/admin/*', () => {
 
   describe('GET /api/admin/session', () => {
     it('returns authenticated true when session is valid', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -339,11 +452,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns authenticated false when session is invalid', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(false),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
       const response = await app.fetch(createRequest('/api/admin/session'), createEnv());
@@ -357,11 +468,9 @@ describe('/api/admin/*', () => {
 
   describe('GET /api/admin/users', () => {
     it('returns 401 without admin session', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(false),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
       const response = await app.fetch(createRequest('/api/admin/users'), createEnv());
@@ -374,11 +483,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns user list with admin session', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -387,26 +494,28 @@ describe('/api/admin/*', () => {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
         createEnv({
-          USER_DB: mockD1Results([
-            {
-              id: 'user-1',
-              name: 'User One',
-              email: 'user1@example.com',
-              emailVerified: 1,
-              createdAt: Date.now(),
-              balance: 5000,
-              disabled: 0,
-            },
-            {
-              id: 'user-2',
-              name: 'User Two',
-              email: 'user2@example.com',
-              emailVerified: 0,
-              createdAt: Date.now(),
-              balance: 10000,
-              disabled: 1,
-            },
-          ]) as unknown as D1Database,
+          USER_DB: asD1Database(
+            mockD1Results([
+              {
+                id: 'user-1',
+                name: 'User One',
+                email: 'user1@example.com',
+                emailVerified: 1,
+                createdAt: Date.now(),
+                balance: 5000,
+                disabled: 0,
+              },
+              {
+                id: 'user-2',
+                name: 'User Two',
+                email: 'user2@example.com',
+                emailVerified: 0,
+                createdAt: Date.now(),
+                balance: 10000,
+                disabled: 1,
+              },
+            ]),
+          ),
         }),
       );
 
@@ -434,11 +543,9 @@ describe('/api/admin/*', () => {
     });
 
     it('respects limit and offset parameters', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const d1Mock = mockD1Results([]);
       const app = await createAdminApp();
@@ -447,7 +554,7 @@ describe('/api/admin/*', () => {
         createRequest('/api/admin/users?limit=10&offset=20', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
-        createEnv({ USER_DB: d1Mock as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(d1Mock) }),
       );
 
       expect(response.status).toBe(200);
@@ -459,11 +566,9 @@ describe('/api/admin/*', () => {
 
   describe('GET /api/admin/users/:userId', () => {
     it('returns 401 without admin session', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(false),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
       const response = await app.fetch(createRequest('/api/admin/users/user-1'), createEnv());
@@ -476,11 +581,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns user details when found', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -489,19 +592,21 @@ describe('/api/admin/*', () => {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
         createEnv({
-          USER_DB: mockD1Results([
-            {
-              id: 'user-1',
-              name: 'User One',
-              email: 'user1@example.com',
-              emailVerified: 1,
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              balance: 5000,
-              disabled: 0,
-              lastActiveAt: 1776247200000,
-            },
-          ]) as unknown as D1Database,
+          USER_DB: asD1Database(
+            mockD1Results([
+              {
+                id: 'user-1',
+                name: 'User One',
+                email: 'user1@example.com',
+                emailVerified: 1,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                balance: 5000,
+                disabled: 0,
+                lastActiveAt: 1776247200000,
+              },
+            ]),
+          ),
         }),
       );
 
@@ -520,11 +625,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 404 when user not found', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -532,7 +635,7 @@ describe('/api/admin/*', () => {
         createRequest('/api/admin/users/nonexistent', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
-        createEnv({ USER_DB: mockD1Results([]) as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(mockD1Results([])) }),
       );
 
       expect(response.status).toBe(404);
@@ -546,11 +649,9 @@ describe('/api/admin/*', () => {
 
   describe('POST /api/admin/users/:userId/reset-password', () => {
     it('returns 401 without admin session', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(false),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -567,11 +668,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 404 when user not found', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -580,7 +679,7 @@ describe('/api/admin/*', () => {
           method: 'POST',
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
-        createEnv({ USER_DB: mockD1Results([]) as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(mockD1Results([])) }),
       );
 
       expect(response.status).toBe(404);
@@ -591,14 +690,12 @@ describe('/api/admin/*', () => {
 
     it('sends reset password email for existing user', async () => {
       const requestPasswordReset = vi.fn().mockResolvedValue({ status: true });
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
-      vi.doMock('../lib/betterAuth.js', () => ({
+      });
+      Object.assign(betterAuthOverrides, {
         createBetterAuth: vi.fn().mockReturnValue({ api: { requestPasswordReset } }),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -608,9 +705,7 @@ describe('/api/admin/*', () => {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
         createEnv({
-          USER_DB: mockD1Results([
-            { email: 'user1@example.com', name: 'User One' },
-          ]) as unknown as D1Database,
+          USER_DB: asD1Database(mockD1Results([{ email: 'user1@example.com', name: 'User One' }])),
         }),
       );
 
@@ -626,16 +721,14 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 502 when better-auth throws', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
-      vi.doMock('../lib/betterAuth.js', () => ({
+      });
+      Object.assign(betterAuthOverrides, {
         createBetterAuth: vi.fn().mockReturnValue({
           api: { requestPasswordReset: vi.fn().mockRejectedValue(new Error('Network error')) },
         }),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -645,9 +738,7 @@ describe('/api/admin/*', () => {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
         createEnv({
-          USER_DB: mockD1Results([
-            { email: 'user1@example.com', name: 'User One' },
-          ]) as unknown as D1Database,
+          USER_DB: asD1Database(mockD1Results([{ email: 'user1@example.com', name: 'User One' }])),
         }),
       );
 
@@ -660,16 +751,14 @@ describe('/api/admin/*', () => {
 
     it('returns 502 when better-auth rejects the reset request', async () => {
       vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
-      vi.doMock('../lib/betterAuth.js', () => ({
+      });
+      Object.assign(betterAuthOverrides, {
         createBetterAuth: vi.fn().mockReturnValue({
           api: { requestPasswordReset: vi.fn().mockRejectedValue(new Error('rejected')) },
         }),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -679,9 +768,7 @@ describe('/api/admin/*', () => {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
         createEnv({
-          USER_DB: mockD1Results([
-            { email: 'user1@example.com', name: 'User One' },
-          ]) as unknown as D1Database,
+          USER_DB: asD1Database(mockD1Results([{ email: 'user1@example.com', name: 'User One' }])),
         }),
       );
 
@@ -695,11 +782,9 @@ describe('/api/admin/*', () => {
 
   describe('POST /api/admin/users/:userId/disable', () => {
     it('returns 401 without admin session', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(false),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -716,11 +801,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 404 when user not found', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -733,7 +816,7 @@ describe('/api/admin/*', () => {
           },
           body: JSON.stringify({ reason: 'test' }),
         }),
-        createEnv({ USER_DB: mockD1Results([]) as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(mockD1Results([])) }),
       );
 
       expect(response.status).toBe(404);
@@ -744,11 +827,9 @@ describe('/api/admin/*', () => {
 
     it('disables user with reason', async () => {
       const d1Mock = mockD1Results([{ id: 'user-1' }]);
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -761,7 +842,7 @@ describe('/api/admin/*', () => {
           },
           body: JSON.stringify({ reason: 'Spam activity' }),
         }),
-        createEnv({ USER_DB: d1Mock as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(d1Mock) }),
       );
 
       expect(response.status).toBe(200);
@@ -771,11 +852,9 @@ describe('/api/admin/*', () => {
 
     it('disables user without reason', async () => {
       const d1Mock = mockD1Results([{ id: 'user-1' }]);
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -788,7 +867,7 @@ describe('/api/admin/*', () => {
           },
           body: JSON.stringify({}),
         }),
-        createEnv({ USER_DB: d1Mock as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(d1Mock) }),
       );
 
       expect(response.status).toBe(200);
@@ -799,11 +878,9 @@ describe('/api/admin/*', () => {
 
   describe('POST /api/admin/users/:userId/enable', () => {
     it('returns 401 without admin session', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(false),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -821,11 +898,9 @@ describe('/api/admin/*', () => {
 
     it('enables user by removing flags', async () => {
       const d1Mock = mockD1Results([]);
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -834,7 +909,7 @@ describe('/api/admin/*', () => {
           method: 'POST',
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
-        createEnv({ USER_DB: d1Mock as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(d1Mock) }),
       );
 
       expect(response.status).toBe(200);
@@ -845,11 +920,9 @@ describe('/api/admin/*', () => {
 
   describe('POST /api/admin/users/:userId/email-verification', () => {
     it('returns 401 without admin session', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(false),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -866,11 +939,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 400 when verified is not a boolean', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -893,11 +964,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 404 when user not found', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -910,7 +979,7 @@ describe('/api/admin/*', () => {
           },
           body: JSON.stringify({ verified: true }),
         }),
-        createEnv({ USER_DB: mockD1Results([]) as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(mockD1Results([])) }),
       );
 
       expect(response.status).toBe(404);
@@ -921,11 +990,9 @@ describe('/api/admin/*', () => {
 
     it('marks user as verified', async () => {
       const d1Mock = mockD1Results([{ id: 'user-1' }]);
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -938,7 +1005,7 @@ describe('/api/admin/*', () => {
           },
           body: JSON.stringify({ verified: true }),
         }),
-        createEnv({ USER_DB: d1Mock as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(d1Mock) }),
       );
 
       expect(response.status).toBe(200);
@@ -950,11 +1017,9 @@ describe('/api/admin/*', () => {
 
     it('marks user as unverified and clears sessions', async () => {
       const d1Mock = mockD1Results([{ id: 'user-1' }]);
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -967,7 +1032,7 @@ describe('/api/admin/*', () => {
           },
           body: JSON.stringify({ verified: false }),
         }),
-        createEnv({ USER_DB: d1Mock as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(d1Mock) }),
       );
 
       expect(response.status).toBe(200);
@@ -980,11 +1045,9 @@ describe('/api/admin/*', () => {
 
   describe('POST /api/admin/users/:userId/credits', () => {
     it('returns 401 without admin session', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(false),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1001,11 +1064,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 400 when amount is not positive', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1028,11 +1089,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 400 when amount is zero', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1055,11 +1114,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 400 when amount is not a safe integer', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1084,11 +1141,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 404 when user not found', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1101,7 +1156,7 @@ describe('/api/admin/*', () => {
           },
           body: JSON.stringify({ amount: 1000 }),
         }),
-        createEnv({ USER_DB: mockD1Results([]) as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(mockD1Results([])) }),
       );
 
       expect(response.status).toBe(404);
@@ -1111,18 +1166,16 @@ describe('/api/admin/*', () => {
     });
 
     it('grants credits successfully', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
-      vi.doMock('../lib/credits.js', () => ({
+      });
+      Object.assign(creditOverrides, {
         applyCreditMutation: vi.fn().mockResolvedValue({
           id: 'ledger-1',
           balanceAfter: 15000,
         }),
         listCreditLedger: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1136,7 +1189,7 @@ describe('/api/admin/*', () => {
           body: JSON.stringify({ amount: 5000, note: 'Bonus credits' }),
         }),
         createEnv({
-          USER_DB: mockD1Results([{ id: 'user-1' }]) as unknown as D1Database,
+          USER_DB: asD1Database(mockD1Results([{ id: 'user-1' }])),
         }),
       );
 
@@ -1152,15 +1205,13 @@ describe('/api/admin/*', () => {
         id: 'ledger-1',
         balanceAfter: 15000,
       });
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
-      vi.doMock('../lib/credits.js', () => ({
+      });
+      Object.assign(creditOverrides, {
         applyCreditMutation,
         listCreditLedger: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1175,7 +1226,7 @@ describe('/api/admin/*', () => {
           body: JSON.stringify({ amount: 5000 }),
         }),
         createEnv({
-          USER_DB: mockD1Results([{ id: 'user-1' }]) as unknown as D1Database,
+          USER_DB: asD1Database(mockD1Results([{ id: 'user-1' }])),
         }),
       );
 
@@ -1189,15 +1240,13 @@ describe('/api/admin/*', () => {
     });
 
     it('returns 503 without leaking internal error when credit operation fails', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
-      vi.doMock('../lib/credits.js', () => ({
+      });
+      Object.assign(creditOverrides, {
         applyCreditMutation: vi.fn().mockRejectedValue(new Error('Insufficient balance')),
         listCreditLedger: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1211,7 +1260,7 @@ describe('/api/admin/*', () => {
           body: JSON.stringify({ amount: 5000 }),
         }),
         createEnv({
-          USER_DB: mockD1Results([{ id: 'user-1' }]) as unknown as D1Database,
+          USER_DB: asD1Database(mockD1Results([{ id: 'user-1' }])),
         }),
       );
 
@@ -1224,11 +1273,9 @@ describe('/api/admin/*', () => {
 
   describe('GET /api/admin/users/:userId/credits/ledger', () => {
     it('returns 401 without admin session', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(false),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1245,12 +1292,10 @@ describe('/api/admin/*', () => {
     });
 
     it('returns credit ledger for user', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
-      vi.doMock('../lib/credits.js', () => ({
+      });
+      Object.assign(creditOverrides, {
         listCreditLedger: vi.fn().mockResolvedValue([
           {
             id: 'ledger-1',
@@ -1266,7 +1311,7 @@ describe('/api/admin/*', () => {
           },
         ]),
         applyCreditMutation: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1294,11 +1339,9 @@ describe('/api/admin/*', () => {
 
   describe('GET /api/admin/users/:userId/usage-events', () => {
     it('returns 401 without admin session', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(false),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const app = await createAdminApp();
 
@@ -1315,11 +1358,9 @@ describe('/api/admin/*', () => {
     });
 
     it('returns usage events with pagination', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const d1Mock = {
         prepare: vi.fn().mockImplementation((sql: string) => {
@@ -1336,6 +1377,10 @@ describe('/api/admin/*', () => {
                     requestId: 'req-1',
                     estimatedTokens: 100,
                     actualTotalTokens: 150,
+                    chargedTokens: 150,
+                    providerBudgetTokens: null,
+                    attemptCount: 1,
+                    usageEstimated: 0,
                     status: 'success',
                     errorCode: null,
                     createdAt: 1776247200000,
@@ -1356,7 +1401,7 @@ describe('/api/admin/*', () => {
         createRequest('/api/admin/users/user-1/usage-events?limit=10&offset=5', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
-        createEnv({ USER_DB: d1Mock as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(d1Mock) }),
       );
 
       expect(response.status).toBe(200);
@@ -1373,11 +1418,9 @@ describe('/api/admin/*', () => {
     });
 
     it('handles events with error codes', async () => {
-      vi.doMock('../lib/adminAuth.js', () => ({
-        createAdminSession: vi.fn(),
+      setAdminAuth({
         resolveAdminSession: vi.fn().mockResolvedValue(true),
-        deleteAdminSession: vi.fn(),
-      }));
+      });
 
       const d1Mock = {
         prepare: vi.fn().mockImplementation((sql: string) => {
@@ -1394,6 +1437,10 @@ describe('/api/admin/*', () => {
                     requestId: 'req-2',
                     estimatedTokens: 200,
                     actualTotalTokens: null,
+                    chargedTokens: null,
+                    providerBudgetTokens: null,
+                    attemptCount: 1,
+                    usageEstimated: 1,
                     status: 'error',
                     errorCode: 'GENERATION_FAILED',
                     createdAt: 1776250800000,
@@ -1414,7 +1461,7 @@ describe('/api/admin/*', () => {
         createRequest('/api/admin/users/user-1/usage-events', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
         }),
-        createEnv({ USER_DB: d1Mock as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(d1Mock) }),
       );
 
       expect(response.status).toBe(200);

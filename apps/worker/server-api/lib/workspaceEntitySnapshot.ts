@@ -106,11 +106,13 @@ export const workspaceSnapshotToEntities = (
   return entities;
 };
 
+// oxlint-disable anti-slop/no-runtime-typeof -- this helper decodes historical JSON payloads into the typed workspace snapshot.
 const applyPayloadToSnapshot = (
   snapshot: WorkspaceSnapshot,
   input: {
     entityType: WorkspaceEntityType;
     entityId: string;
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- JSON payloads are narrowed to an open record before field-level decoding.
     payload: Record<string, unknown>;
     updatedAt: number;
   },
@@ -201,7 +203,9 @@ const applyPayloadToSnapshot = (
 
   return false;
 };
+// oxlint-enable anti-slop/no-runtime-typeof
 
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- this is the raw JSON object guard at the storage boundary.
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 

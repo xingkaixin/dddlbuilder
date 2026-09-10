@@ -45,13 +45,21 @@ class WorkerSpan extends Tracer.NativeSpan {
     this.platform = platform;
   }
 
-  override attribute(key: string, value: unknown): void {
-    if (!ATTRIBUTES.has(key) || !['string', 'number', 'boolean'].includes(typeof value)) return;
+  override attribute(
+    key: string,
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Tracer.NativeSpan requires an unknown attribute value at this boundary.
+    value: unknown,
+  ): void {
+    const isAttributeValue = (input: unknown): input is string | number | boolean =>
+      ['string', 'number', 'boolean'].includes(typeof input);
+
+    if (!ATTRIBUTES.has(key) || !isAttributeValue(value)) return;
     super.attribute(key, value);
-    safely(() => this.platform.setAttribute(key, value as string | number | boolean));
+    safely(() => this.platform.setAttribute(key, value));
   }
 
   override end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void {
+    // oxlint-disable-next-line anti-slop-effect/no-manual-tag-comparison -- NativeSpan status is an Effect tracer protocol state used for idempotent platform span closing.
     if (this.status._tag === 'Ended') return;
     super.end(endTime, exit);
     const failure = Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
@@ -124,10 +132,14 @@ export const makeAITracer = (platform: {
 
 export const endAIRequestSpan = (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) =>
   Effect.map(Clock.currentTimeNanos, (now) => {
+    // oxlint-disable-next-line anti-slop-effect/no-manual-tag-comparison -- NativeSpan status is an Effect tracer protocol state used for idempotent platform span closing.
     if (span.status._tag !== 'Ended') span.end(now, exit);
   });
 
-export const aiFailureKind = (error: unknown): string => {
+export const aiFailureKind = (
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- failure classification receives arbitrary Effect causes.
+  error: unknown,
+): string => {
   if (error instanceof DomainError) return error.status < 500 ? 'rejected' : 'governance';
   if (error instanceof AIOutputError) return `output_${error.reason}`;
   if (error instanceof AIUsageError || isSqlError(error)) return 'accounting';

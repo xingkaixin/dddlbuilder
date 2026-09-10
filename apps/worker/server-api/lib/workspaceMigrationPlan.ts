@@ -21,17 +21,23 @@ const LOCAL_COPY_SUFFIX = ' (Imported)';
 const buildMigrationEntityId = (userId: string, kind: WorkspaceEntityType, entityId: string) =>
   `${kind}:${userId}:${entityId}`;
 
+// oxlint-disable anti-slop/no-runtime-typeof -- migration normalizes persisted historical payloads at this codec boundary.
 const toMigrationEntityRecord = (
   userId: string,
   entity: WorkspaceEntityInput,
 ): MigrationEntityRecord => {
   const kind = entity.entityType;
+  // SAFETY: workspaceSnapshotToEntities creates object payloads for every supported entity kind.
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- persisted entity payloads are decoded as open JSON objects here.
   const sourcePayload = entity.payload as Record<string, unknown>;
 
-  const payload: Record<string, unknown> = {
+  const payload: typeof sourcePayload = {
     ...sourcePayload,
     ...(kind !== 'folder'
-      ? { state: normalizeSchemaDocumentState(sourcePayload.state as SchemaDocumentState) }
+      ? {
+          // SAFETY: workspaceSnapshotToEntities supplies a SchemaDocumentState for non-folder entities.
+          state: normalizeSchemaDocumentState(sourcePayload.state as Partial<SchemaDocumentState>),
+        }
       : {}),
     ...(kind !== 'saved_draft'
       ? { createdAt: sourcePayload.createdAt ?? entity.sourceUpdatedAt }
@@ -69,6 +75,8 @@ const buildCopyEntity = (
   displayName: string,
   normalizedName: string,
 ): WorkspaceEntityInput => {
+  // SAFETY: source records originate from workspaceSnapshotToEntities and carry object payloads.
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- migration payloads retain arbitrary JSON fields.
   const sourcePayload = source.entity.payload as Record<string, unknown>;
 
   switch (source.kind) {
@@ -153,6 +161,8 @@ const replaceFolderReference = (
   record: MigrationEntityRecord,
   folderIds: ReadonlyMap<string, string>,
 ) => {
+  // SAFETY: migration records are created by toMigrationEntityRecord with object payloads.
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- migration payloads retain arbitrary JSON fields.
   const payload = record.entity.payload as Record<string, unknown>;
   const referenceName = record.kind === 'folder' ? 'parentId' : 'folderId';
   const sourceFolderId = payload[referenceName];
@@ -215,6 +225,8 @@ const orderFoldersByParent = (records: MigrationEntityRecord[]) => {
 
   for (const folder of folders) {
     const folderId = folder.entity.entityId;
+    // SAFETY: migration records are created by toMigrationEntityRecord with object payloads.
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- parentId is read from an open migration payload.
     const parentId = (folder.entity.payload as Record<string, unknown>).parentId;
 
     if (typeof parentId !== 'string' || !foldersById.has(parentId)) continue;
@@ -222,9 +234,9 @@ const orderFoldersByParent = (records: MigrationEntityRecord[]) => {
     childIdsByParent.set(parentId, [...(childIdsByParent.get(parentId) ?? []), folderId]);
   }
 
-  const ready = folders
-    .map((folder) => folder.entity.entityId)
-    .filter((folderId) => pendingParentCount.get(folderId) === 0);
+  const ready = folders.flatMap((folder) =>
+    pendingParentCount.get(folder.entity.entityId) === 0 ? [folder.entity.entityId] : [],
+  );
   const ordered: MigrationEntityRecord[] = [];
 
   for (let index = 0; index < ready.length; index += 1) {
@@ -321,6 +333,8 @@ export const analyzeMigrationRecords = (
       continue;
     }
 
+    // SAFETY: migration records are created by toMigrationEntityRecord with object payloads.
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- normalizedName is read from an open migration payload.
     const normalizedName = (record.entity.payload as Record<string, unknown>).normalizedName;
     conflicts.push({
       kind: record.kind,
@@ -331,6 +345,7 @@ export const analyzeMigrationRecords = (
 
   return { createdCount, skippedCount, conflicts };
 };
+// oxlint-enable anti-slop/no-runtime-typeof
 
 export const buildMigrationWritePlan = (
   userId: string,

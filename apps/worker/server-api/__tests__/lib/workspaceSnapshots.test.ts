@@ -30,9 +30,9 @@ type WorkspaceD1Log = {
     rowsWritten: number;
     durationMs: number;
   };
-  [key: string]: unknown;
 };
 
+// SAFETY: The snapshot test fixture reads only the required bindings from this environment.
 const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
@@ -142,6 +142,7 @@ const createLegacySavedTableRow = (
   sourceUpdatedAt,
 });
 
+// SAFETY: The logger spy stores JSON emitted by the worker's typed D1 audit event.
 const readWorkspaceD1Log = (calls: unknown[][]) =>
   JSON.parse(String(calls[0]?.[0])) as WorkspaceD1Log;
 

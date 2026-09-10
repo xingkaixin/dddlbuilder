@@ -70,7 +70,20 @@ const verifyTurnstile = async (c: Context<ApiEnv>, token: string) => {
     return errorResponse(c, 503, 'Turnstile service unavailable', 'SERVICE_UNAVAILABLE');
   }
 
-  const result = (await response.json()) as TurnstileVerifyResponse;
+  const rawResult = await response.json();
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the Turnstile response is untrusted external JSON.
+  if (!rawResult || typeof rawResult !== 'object' || Array.isArray(rawResult)) {
+    return errorResponse(c, 403, 'Turnstile verification failed', 'TURNSTILE_FAILED');
+  }
+
+  // SAFETY: the object guard establishes the JSON record boundary; the field checks below establish this response contract.
+  const result = rawResult as Partial<TurnstileVerifyResponse>;
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- success/action must be validated before using the external response.
+  if (typeof result.success !== 'boolean' || typeof result.action !== 'string') {
+    return errorResponse(c, 403, 'Turnstile verification failed', 'TURNSTILE_FAILED');
+  }
 
   if (!result.success || result.action !== 'signup') {
     return errorResponse(c, 403, 'Turnstile verification failed', 'TURNSTILE_FAILED');
@@ -85,14 +98,23 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
 
     if (limited) return limited;
 
-    const parsedBody = await parseJsonBodyWithLimit<Record<string, unknown>>(
-      c,
-      getAuthBodyMaxBytes(c.env),
-    );
+    const parsedBody = await parseJsonBodyWithLimit(c, getAuthBodyMaxBytes(c.env));
 
     if (!parsedBody.ok) return parsedBody.response;
-    const body = parsedBody.data ?? {};
-    const bodyToken = typeof body.turnstileToken === 'string' ? body.turnstileToken.trim() : '';
+    // oxlint-disable anti-slop/no-runtime-typeof -- raw signup JSON must be narrowed before reading its token field.
+
+    const body =
+      parsedBody.data && typeof parsedBody.data === 'object' && !Array.isArray(parsedBody.data)
+        ? parsedBody.data
+        : null;
+    // oxlint-enable anti-slop/no-runtime-typeof
+    // oxlint-disable anti-slop/no-runtime-typeof -- the token comes from an untyped JSON body.
+
+    const bodyToken =
+      body && 'turnstileToken' in body && typeof body.turnstileToken === 'string'
+        ? body.turnstileToken.trim()
+        : '';
+    // oxlint-enable anti-slop/no-runtime-typeof
     const token = c.req.header('x-turnstile-token')?.trim() || bodyToken;
 
     if (!token) {
@@ -103,7 +125,9 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
 
     if (verificationError) return verificationError;
 
-    delete body.turnstileToken;
+    const bodyWithoutToken = Object.fromEntries(
+      body ? Object.entries(body).filter(([key]) => key !== 'turnstileToken') : [],
+    );
     const headers = new Headers(c.req.raw.headers);
     headers.set('content-type', 'application/json');
     headers.delete('content-length');
@@ -112,7 +136,7 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
       new Request(c.req.raw.url, {
         method: 'POST',
         headers,
-        body: JSON.stringify(body),
+        body: JSON.stringify(bodyWithoutToken),
       }),
     );
   });
@@ -121,7 +145,7 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
     if (!SAFE_AUTH_METHODS.has(c.req.method)) {
       const path = c.req.path.replace(/^\/api/, '').replace(/\/$/, '');
 
-      const policy = AUTH_RATE_LIMITS[path as keyof typeof AUTH_RATE_LIMITS] ?? {
+      const policy = Object.entries(AUTH_RATE_LIMITS).find(([route]) => route === path)?.[1] ?? {
         scope: 'auth:mutation',
         limit: 60,
         windowMs: 60_000,

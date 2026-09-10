@@ -64,6 +64,7 @@ export const revokeUserSessions = async (env: ApiEnv['Bindings'], userId: string
   if (kickError) throw kickError;
 };
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- authentication SDK failures cross the adapter as unknown.
 const throwAuthenticationUnavailable = (c: Context<ApiEnv>, error: unknown): never => {
   getRequestLogger(c)?.error(error instanceof Error ? error : String(error));
   throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'Authentication service unavailable');
@@ -82,14 +83,16 @@ export const resolveAuthenticatedUser = async (
 
   const session = await auth.api
     .getSession({ headers: requestHeaders, query: { disableRefresh: true } })
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- authentication SDK failures cross the adapter as unknown.
     .catch((error: unknown) => throwAuthenticationUnavailable(c, error));
 
   if (!session?.user || !session.session?.id) {
     return null;
   }
 
-  const access = await readSessionAccess(c.env, session.user.id).catch((error: unknown) =>
-    throwAuthenticationUnavailable(c, error),
+  const access = await readSessionAccess(c.env, session.user.id).catch(
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- database adapter failures cross the async boundary as unknown.
+    (error: unknown) => throwAuthenticationUnavailable(c, error),
   );
 
   if (access.disabled) throw new DomainError(403, 'USER_DISABLED', 'USER_DISABLED');

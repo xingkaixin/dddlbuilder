@@ -29,6 +29,7 @@ const updateKey = (seq: number) => {
 const chunkPrefix = (key: string) => `chunk:${key}:`;
 const chunkKey = (key: string, index: number) => `${chunkPrefix(key)}${index}`;
 
+// oxlint-disable anti-slop/no-unknown-parameters -- Durable Object storage returns untyped binary or manifest values.
 const toBytes = (value: unknown): Uint8Array | null => {
   if (value instanceof Uint8Array) return value;
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
@@ -36,21 +37,30 @@ const toBytes = (value: unknown): Uint8Array | null => {
   return null;
 };
 
+const isChunkedBinary = (value: unknown): value is ChunkedBinary => {
+  if (!value || typeof value !== 'object') return false;
+
+  // SAFETY: the object guard above establishes the record boundary; each manifest field is checked below.
+  const manifest = value as Partial<ChunkedBinary>;
+
+  return (
+    manifest.version === 1 &&
+    manifest.chunks !== undefined &&
+    Number.isSafeInteger(manifest.chunks) &&
+    manifest.chunks > 0 &&
+    manifest.byteLength !== undefined &&
+    Number.isSafeInteger(manifest.byteLength) &&
+    manifest.byteLength > 0
+  );
+};
+
 const readBinary = async (storage: BinaryStorage, key: string, value: unknown) => {
   const bytes = toBytes(value);
 
   if (bytes) return bytes;
-  const manifest = value as Partial<ChunkedBinary> | null;
 
-  if (
-    !manifest ||
-    manifest.version !== 1 ||
-    !Number.isSafeInteger(manifest.chunks) ||
-    Number(manifest.chunks) <= 0 ||
-    !Number.isSafeInteger(manifest.byteLength) ||
-    Number(manifest.byteLength) <= 0
-  )
-    throw new Error(`Invalid workspace binary manifest: ${key}`);
+  if (!isChunkedBinary(value)) throw new Error(`Invalid workspace binary manifest: ${key}`);
+  const manifest = value;
 
   const storedChunks = await storage.list<unknown>({ prefix: chunkPrefix(key) });
 
@@ -112,6 +122,7 @@ const deleteBinary = async (storage: BinaryStorage, key: string, value: unknown)
 
   await storage.delete(key);
 };
+// oxlint-enable anti-slop/no-unknown-parameters
 
 export const readWorkspaceYDocStorage = async (storage: DurableObjectStorage) => {
   const [meta, snapshot, entries] = await Promise.all([

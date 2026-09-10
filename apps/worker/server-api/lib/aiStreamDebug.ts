@@ -7,6 +7,7 @@ type StreamDebugLoggerOptions = {
   route: AIRouteKey;
   model: string;
   startedAt: number;
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- stream diagnostics accept route-specific debug fields.
   input: Record<string, unknown>;
   log?: WorkerRequestLogger;
 };
@@ -44,7 +45,10 @@ export const createOpenAIStreamDebugLogger = ({
 
   const getElapsedMs = () => Date.now() - startedAt;
 
-  const setDebug = (payload: Record<string, unknown>) => {
+  const setDebug = (
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- each stream phase contributes different structured fields.
+    payload: Record<string, unknown>,
+  ) => {
     if (!enabled || terminal) return;
     log?.set({ ai: { streamDebug: { ...basePayload, ...payload } } });
   };
@@ -107,7 +111,10 @@ export const createOpenAIStreamDebugLogger = ({
       });
       terminal = true;
     },
-    error(error: unknown) {
+    error(
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- provider stream errors are arbitrary SDK failures.
+      error: unknown,
+    ) {
       if (terminal) return;
       const message = error instanceof Error ? error.message : 'Unknown stream error';
       const stage = connectedAt !== null || chunkCount > 0 ? 'during_stream' : 'before_stream';

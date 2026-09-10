@@ -14,13 +14,16 @@ export const decodeAIRequest = <S extends Schema.ConstraintDecoder<unknown>>(
   fallback: RequestError,
 ) => {
   const decode = Schema.decodeUnknownResult(schema);
+  const isString = (value: unknown): value is string => typeof value === 'string';
 
-  return (body: Record<string, unknown>): S['Type'] | AIRequestRejection => {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this adapter accepts raw JSON and immediately decodes it with the supplied schema.
+  return (body: unknown): S['Type'] | AIRequestRejection => {
     const result = decode(body);
 
     if (Result.isSuccess(result)) return result.success;
     const field = formatIssue(result.failure.issue).issues[0]?.path?.[0];
-    const error = typeof field === 'string' ? errors[field as keyof S['Type']] : undefined;
+    // SAFETY: Schema issue paths identify fields by string, and errors is keyed by the schema type.
+    const error = isString(field) ? errors[field as keyof S['Type']] : undefined;
 
     return { status: 400, ...(error ?? fallback) };
   };

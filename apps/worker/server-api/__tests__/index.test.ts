@@ -4,6 +4,18 @@ import app from '../../api/index';
 import type { ApiEnv } from '../lib/context.js';
 import { configureWorkerLogging } from '../lib/logging.js';
 
+type CapturedLogEvent = {
+  service?: string;
+  method?: string;
+  path?: string;
+  requestId?: string | null;
+  status?: number;
+  level?: string;
+  outcome?: { errorCode?: string };
+  error?: { message?: string };
+};
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- API security tests isolate rate-limit policy from route behavior.
 vi.mock('../lib/requestRateLimit', () => ({
   enforceIpRateLimit: vi.fn().mockResolvedValue(null),
 }));
@@ -11,8 +23,10 @@ vi.mock('../lib/requestRateLimit', () => ({
 // Helper to create env object for tests
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
-  SHARE_KV: {} as KVNamespace,
-  USER_DB: {} as D1Database,
+  // SAFETY: these security tests do not access KV.
+  SHARE_KV: /* SAFETY: these security tests do not access KV. */ {} as KVNamespace,
+  // SAFETY: these security tests do not access D1.
+  USER_DB: /* SAFETY: these security tests do not access D1. */ {} as D1Database,
   ...overrides,
 });
 
@@ -53,6 +67,7 @@ describe('api security guards', () => {
     const response = await app.fetch(createRequest('/docs/zh/?from=test'), env);
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+    // SAFETY: the spy is called by the docs proxy with a Request as its first argument.
     const [request] = fetchSpy.mock.calls[0] as [Request];
     expect(request.url).toBe('http://127.0.0.1:5174/docs/zh/?from=test');
     expect(response.status).toBe(200);
@@ -65,7 +80,10 @@ describe('api security guards', () => {
     const assetsFetch = vi.fn().mockResolvedValue(new Response('prod docs', { status: 200 }));
 
     const env = createEnv({
-      ASSETS: { fetch: assetsFetch as typeof fetch },
+      ASSETS: {
+        fetch:
+          /* SAFETY: assetsFetch implements the Worker fetch contract. */ assetsFetch as typeof fetch,
+      },
     });
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
@@ -91,7 +109,10 @@ describe('api security guards', () => {
       }),
     );
     const env = createEnv({
-      ASSETS: { fetch: assetsFetch as typeof fetch },
+      ASSETS: {
+        fetch:
+          /* SAFETY: assetsFetch implements the Worker fetch contract. */ assetsFetch as typeof fetch,
+      },
     });
 
     const response = await app.fetch(createRequest('/api/not-found'), env);
@@ -224,15 +245,11 @@ describe('api security guards', () => {
 
   describe('structured request logging', () => {
     it('emits one canonical event with the response request id', async () => {
-      const events: Array<Record<string, unknown>> = [];
+      const events: CapturedLogEvent[] = [];
 
       const spies = (['log', 'info', 'warn', 'error'] as const).map((method) =>
-        vi.spyOn(console, method).mockImplementation((value: unknown) => {
-          if (value && typeof value === 'object') {
-            const event = value as Record<string, unknown>;
-
-            if (event.service === 'ddlbuilder-worker') events.push(event);
-          }
+        vi.spyOn(console, method).mockImplementation((value: CapturedLogEvent) => {
+          if (value.service === 'ddlbuilder-worker') events.push(value);
         }),
       );
       configureWorkerLogging(true);
@@ -263,14 +280,10 @@ describe('api security guards', () => {
     });
 
     it('does not emit request events for health checks', async () => {
-      const events: Array<Record<string, unknown>> = [];
+      const events: CapturedLogEvent[] = [];
 
-      const infoSpy = vi.spyOn(console, 'info').mockImplementation((value: unknown) => {
-        if (value && typeof value === 'object') {
-          const event = value as Record<string, unknown>;
-
-          if (event.service === 'ddlbuilder-worker') events.push(event);
-        }
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation((value: CapturedLogEvent) => {
+        if (value.service === 'ddlbuilder-worker') events.push(value);
       });
       configureWorkerLogging(true);
 
@@ -286,20 +299,17 @@ describe('api security guards', () => {
     });
 
     it('records unexpected failures without exposing their details', async () => {
-      const events: Array<Record<string, unknown>> = [];
+      const events: CapturedLogEvent[] = [];
 
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation((value: unknown) => {
-        if (value && typeof value === 'object') {
-          const event = value as Record<string, unknown>;
-
-          if (event.service === 'ddlbuilder-worker') events.push(event);
-        }
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation((value: CapturedLogEvent) => {
+        if (value.service === 'ddlbuilder-worker') events.push(value);
       });
       configureWorkerLogging(true);
 
       try {
         const response = await app.fetch(createRequest('/api/workspaces'), createEnv());
-        const payload = (await response.json()) as Record<string, unknown>;
+        // SAFETY: the API error response is a JSON object with the asserted error/code fields.
+        const payload = (await response.json()) as { error?: string; code?: string };
 
         expect(response.status).toBe(500);
         expect(payload).toMatchObject({

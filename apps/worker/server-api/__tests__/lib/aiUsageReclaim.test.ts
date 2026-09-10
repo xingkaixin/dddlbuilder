@@ -7,8 +7,10 @@ import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 import { createCreditFixture } from '../helpers/creditFixture.js';
 import { reclaimStaleAIUsage } from '../../lib/aiUsage.js';
 
-const createEnv = (db: unknown): ApiEnv['Bindings'] =>
-  ({ USER_DB: db as D1Database }) as ApiEnv['Bindings'];
+const createEnv = (db: D1Database): ApiEnv['Bindings'] => {
+  // SAFETY: the SQLite D1 fixture is cast to the Worker binding type at its construction boundary.
+  return { USER_DB: db } as ApiEnv['Bindings'];
+};
 describe('reclaimStaleAIUsage with SQLite timestamps', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -295,6 +297,7 @@ describe('recovery failure isolation', () => {
         expect(result.failures[0]?.usageEventId).toBe(broken.usageEventId);
         const error = result.failures[0]?.error;
         expect(error).toBeInstanceOf(AggregateError);
+        // SAFETY: the preceding instanceof check proves this failure exposes AggregateError.errors.
         expect((error as AggregateError).errors).toHaveLength(2);
         expect(await f.balance()).toBe(900);
         expect(

@@ -9,15 +9,19 @@ const requestRateLimitMocks = vi.hoisted(() => ({
   enforceIpRateLimit: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- route behavior is tested independently of Better Auth.
 vi.mock('../lib/betterAuth.js', () => ({
   createBetterAuth: betterAuthMocks.createBetterAuth,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- route validation is tested independently of rate-limit policy.
 vi.mock('../lib/requestRateLimit.js', () => requestRateLimitMocks);
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: route tests do not access KV.
   SHARE_KV: {} as KVNamespace,
+  // SAFETY: route tests replace database-dependent operations at their module seams.
   USER_DB: {} as D1Database,
   BETTER_AUTH_SECRET: 'better-auth-secret',
   BETTER_AUTH_URL: 'http://localhost:3000',
@@ -501,6 +505,7 @@ describe('/api/me', () => {
   });
 
   it('returns current user when authentication succeeds', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this scenario isolates the authentication boundary.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -532,6 +537,7 @@ describe('/api/me', () => {
   });
 
   it('returns signed out when session lookup returns null', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this scenario isolates the authentication boundary.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue(null),
     }));
@@ -547,6 +553,7 @@ describe('/api/me', () => {
   });
 
   it('returns 500 when authentication throws an unknown error', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this scenario isolates the authentication boundary.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockRejectedValue(new Error('DB down')),
     }));
@@ -569,6 +576,7 @@ describe('/api/me', () => {
 
   it('returns 503 when session lookup is unavailable', async () => {
     const { DomainError } = await import('../lib/http.js');
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this scenario isolates the authentication boundary.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi
         .fn()

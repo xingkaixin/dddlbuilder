@@ -1,4 +1,5 @@
 import * as Schema from 'effect/Schema';
+import * as Option from 'effect/Option';
 import {
   MAX_SQL_LENGTH,
   SqlParseRequestSchema,
@@ -25,13 +26,21 @@ const PARSE_SQL_RATE_LIMIT = {
 } as const;
 
 function validateSqlPayload(
-  parsed: JsonBodyResult<{ sql: unknown; dbType: unknown }>,
+  parsed: JsonBodyResult<unknown>,
   c: Parameters<typeof errorResponse>[0],
 ) {
   if (!parsed.ok) return { errorResponse: parsed.response };
 
-  const sql = parsed.data?.sql;
+  const body = parsed.data;
+  // oxlint-disable anti-slop/no-runtime-typeof -- raw JSON must be narrowed before reading the SQL field.
 
+  const sql =
+    body && typeof body === 'object' && !Array.isArray(body) && 'sql' in body
+      ? body.sql
+      : undefined;
+  // oxlint-enable anti-slop/no-runtime-typeof
+
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the JSON body remains unknown until the request schema decoder below.
   if (typeof sql !== 'string' || sql.trim().length === 0) {
     return { errorResponse: errorResponse(c, 400, 'SQL is required', 'SQL_REQUIRED') };
   }
@@ -49,7 +58,7 @@ function validateSqlPayload(
 
   const decoded = Schema.decodeUnknownOption(SqlParseRequestSchema)(parsed.data);
 
-  if (decoded._tag === 'None') {
+  if (Option.isNone(decoded)) {
     return {
       errorResponse: errorResponse(c, 400, 'Invalid database type', 'INVALID_DATABASE_TYPE'),
     };
@@ -64,10 +73,7 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
 
     if (limited) return limited;
 
-    const parsed = await parseJsonBodyWithLimit<{
-      sql: unknown;
-      dbType: unknown;
-    }>(c, MAX_PARSE_SQL_BODY_BYTES);
+    const parsed = await parseJsonBodyWithLimit(c, MAX_PARSE_SQL_BODY_BYTES);
 
     const validation = validateSqlPayload(parsed, c);
 
@@ -93,10 +99,7 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
 
     if (limited) return limited;
 
-    const parsed = await parseJsonBodyWithLimit<{
-      sql: unknown;
-      dbType: unknown;
-    }>(c, MAX_PARSE_SQL_BODY_BYTES);
+    const parsed = await parseJsonBodyWithLimit(c, MAX_PARSE_SQL_BODY_BYTES);
 
     const validation = validateSqlPayload(parsed, c);
 

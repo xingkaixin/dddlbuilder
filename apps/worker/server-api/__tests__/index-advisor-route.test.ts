@@ -6,18 +6,22 @@ import { registerIndexAdvisorRoute } from '../routes/indexAdvisor.js';
 
 const { createCompletion } = vi.hoisted(() => ({ createCompletion: vi.fn() }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- replace the external OpenAI client to control provider JSON and usage in this route test
 vi.mock('openai', () => ({
   default: class {
     chat = { completions: { create: createCompletion } };
   },
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- isolate authentication so this test covers index-advisor route behavior
 vi.mock('../lib/auth.js', () => ({
   authenticateRequest: vi.fn().mockResolvedValue({ userId: 'user-1', email: 'user@example.com' }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- keep credit side effects outside this route adapter test
 vi.mock('../lib/credits.js', () => ({ grantSignupCredits: vi.fn().mockResolvedValue(undefined) }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- control usage reservation and settlement outcomes while testing route orchestration
 vi.mock('../lib/aiUsage.js', () => ({
   reserveAIUsage: vi.fn().mockImplementation(async (_env, input) => ({
     usageEventId: 'usage-1',
@@ -35,10 +39,12 @@ vi.mock('../lib/aiUsage.js', () => ({
   finalizeAIUsageSettlement: vi.fn().mockResolvedValue(true),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- isolate daily budget accounting from this focused route test
 vi.mock('../lib/aiBudget.js', () => ({
   settleAIDailyBudget: vi.fn().mockResolvedValue(null),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- preserve real config helpers while injecting deterministic governance decisions
 vi.mock('../openaiControl.js', async (importOriginal) => ({
   ...(await importOriginal<typeof OpenAIControl>()),
   enforceOpenAIRateLimit: vi.fn().mockResolvedValue({ remaining: 9, response: null }),
@@ -46,6 +52,7 @@ vi.mock('../openaiControl.js', async (importOriginal) => ({
   logOpenAIAudit: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- this helper deliberately injects malformed provider index payloads for decoder tests
 const requestAdvice = async (index?: unknown) => {
   createCompletion.mockResolvedValue({
     choices: [
@@ -75,7 +82,9 @@ const requestAdvice = async (index?: unknown) => {
 
   const env: ApiEnv['Bindings'] = {
     ASSETS: { fetch: globalThis.fetch },
+    // SAFETY: the route only reads these bindings through the mocked governance/auth seams; empty objects are sufficient test doubles.
     SHARE_KV: {} as KVNamespace,
+    // SAFETY: the route's database calls are isolated by the real route boundary and do not execute against this fixture.
     USER_DB: {} as D1Database,
     OPENAI_API_KEY: 'test-api-key',
   };
@@ -94,6 +103,7 @@ const requestAdvice = async (index?: unknown) => {
       }),
     }),
     env,
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: waitUntil and passThroughOnException are the complete context surface used by this request.
     {
       waitUntil: (task: Promise<unknown>) => tasks.push(task),
       passThroughOnException: () => {},

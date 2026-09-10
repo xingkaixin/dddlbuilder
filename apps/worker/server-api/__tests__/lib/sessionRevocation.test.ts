@@ -6,6 +6,8 @@ const createEnv = (
   workspaceIds: string[],
   fetch: (workspaceId: string, input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) =>
+  // SAFETY: The revocation tests implement exactly the USER_DB and Durable Object methods called by kickWorkspaceSockets.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- this fixture intentionally omits unrelated Worker bindings.
   ({
     USER_DB: {
       prepare: () => ({
@@ -70,7 +72,7 @@ describe('kickWorkspaceSockets', () => {
       userId: 'user-1',
     }).then(
       () => null,
-      (error: unknown) => error,
+      (error: Error) => error,
     );
 
     await vi.runAllTimersAsync();

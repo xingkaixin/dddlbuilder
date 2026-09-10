@@ -22,8 +22,6 @@ const SHARE_CREATE_RATE_LIMIT = {
   windowMs: 60 * 60 * 1000,
 } as const;
 
-type ShareCreateBody = { state?: unknown };
-
 const isValidShareUuid = (value: string) => SHARE_UUID_REGEX.test(value);
 
 async function setShareState(
@@ -66,12 +64,17 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 500, 'KV binding missing', 'KV_CONFIG_MISSING');
     }
 
-    const parsed = await parseJsonBodyWithLimit<ShareCreateBody>(c, SHARE_BODY_MAX_BYTES);
+    const parsed = await parseJsonBodyWithLimit(c, SHARE_BODY_MAX_BYTES);
 
     if (!parsed.ok) return parsed.response;
 
-    const body = parsed.data || {};
-    const state = body.state;
+    // oxlint-disable anti-slop/no-runtime-typeof -- raw share JSON must be narrowed before reading its state field.
+    const body =
+      parsed.data && typeof parsed.data === 'object' && !Array.isArray(parsed.data)
+        ? parsed.data
+        : null;
+    // oxlint-enable anti-slop/no-runtime-typeof
+    const state = body && 'state' in body ? body.state : undefined;
 
     if (state == null) {
       return errorResponse(c, 400, 'State is required', 'SHARE_STATE_REQUIRED');

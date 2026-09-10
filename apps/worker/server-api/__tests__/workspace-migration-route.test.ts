@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 
+// SAFETY: Migration route tests provide the bindings read before the mocked migration service is called.
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
@@ -59,6 +60,7 @@ describe('/api/workspace/migrations', () => {
   });
 
   it('returns analyze result for authenticated users', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication to exercise the migration route contract.
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -67,6 +69,7 @@ describe('/api/workspace/migrations', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace migration dispatch to control the analyze result at the route boundary.
     vi.doMock('../lib/workspaceMigration.js', () => ({
       analyzeWorkspaceMigration: vi.fn().mockResolvedValue({
         status: 'ready',
@@ -103,6 +106,7 @@ describe('/api/workspace/migrations', () => {
   });
 
   it('returns commit result for authenticated users', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication to exercise the migration route contract.
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -111,6 +115,7 @@ describe('/api/workspace/migrations', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace migration dispatch to control the commit result at the route boundary.
     vi.doMock('../lib/workspaceMigration.js', () => ({
       analyzeWorkspaceMigration: vi.fn(),
       commitWorkspaceMigration: vi.fn().mockResolvedValue({
@@ -148,6 +153,7 @@ describe('/api/workspace/migrations', () => {
 
   it('returns 400 before dispatching malformed migration payloads', async () => {
     const analyzeWorkspaceMigration = vi.fn();
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication to test validation before migration dispatch.
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -156,6 +162,7 @@ describe('/api/workspace/migrations', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Spy on migration dispatch to prove malformed payloads are rejected first.
     vi.doMock('../lib/workspaceMigration.js', () => ({
       analyzeWorkspaceMigration,
       commitWorkspaceMigration: vi.fn(),
@@ -189,7 +196,9 @@ describe('/api/workspace/migrations', () => {
 it('preserves migration domain errors instead of reporting service failure', async () => {
   vi.resetModules();
   const { DomainError } = await import('../lib/http.js');
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication to isolate domain-error response mapping.
   vi.doMock('../lib/auth.js', () => ({ authenticateRequest: async () => ({ userId: 'user-1' }) }));
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace migration dispatch to exercise domain-error preservation.
   vi.doMock('../lib/workspaceMigration.js', () => ({
     analyzeWorkspaceMigration: async () => {
       throw new DomainError(400, 'INVALID_JSON', 'Ambiguous draft');

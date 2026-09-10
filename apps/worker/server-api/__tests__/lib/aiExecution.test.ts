@@ -20,6 +20,7 @@ describe('AI execution scope', () => {
           1000,
         ),
       ),
+      // oxlint-disable-next-line anti-slop-effect/no-manual-tagged-construction -- this expectation matches the tagged error returned by the execution boundary.
     ).rejects.toMatchObject({ _tag: 'AIProviderError' });
     expect(started).toBe(false);
   });

@@ -5,6 +5,7 @@ import { createSqliteD1Database } from './helpers/sqliteD1';
 import { resolveAuthenticatedUser } from '../lib/auth.js';
 import { grantSignupCredits } from '../lib/credits.js';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- isolate the auth SDK session while exercising the real credit route and SQLite ledger
 vi.mock('../lib/betterAuth.js', () => ({
   createBetterAuth: () => ({
     api: {
@@ -37,6 +38,7 @@ describe('authentication credit initialization', () => {
         'INSERT INTO session (id,token,user_id,expires_at,created_at,updated_at) VALUES (?, ?, ?, ?, 1, 1)',
       )
       .run('session-1', 'token', 'user-1', Date.now() + 60000);
+    // SAFETY: this fixture supplies the required Worker bindings used by the route under test; optional bindings are intentionally absent.
     env = {
       USER_DB: fixture.database,
       BETTER_AUTH_SECRET: 'test-secret',
@@ -51,6 +53,7 @@ describe('authentication credit initialization', () => {
   afterEach(() => fixture.sqlite.close());
 
   const createContext = (bindings: ApiEnv['Bindings']) =>
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: this partial Hono context provides only the fields read by resolveAuthenticatedUser.
     ({
       env: bindings,
       req: { raw: { headers: new Headers() } },

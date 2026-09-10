@@ -30,10 +30,12 @@ const recordingPlatform = () => {
       };
       spans.push(item);
 
-      const span = {
-        setAttribute(key: string, value: unknown) {
+      const span: Pick<Span, 'setAttribute' | 'recordException' | 'end'> = {
+        setAttribute(key, value) {
           item.attributes.set(key, value);
 
+          // SAFETY: this fluent mock implements the span methods consumed by makeAITracer.
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the platform Span return type includes runtime methods absent from this focused double.
           return this as unknown as Span;
         },
         recordException: vi.fn(),
@@ -131,16 +133,19 @@ it('keeps D1 failure causes while excluding SQL from native recovery spans', asy
     sqlite.exec('DROP TABLE usage_events');
 
     const result = await Effect.runPromise(
+      // SAFETY: the sqlite D1 helper supplies the USER_DB binding used by this recovery test.
       reclaimStaleAIUsage({ USER_DB: database } as ApiEnv['Bindings']).pipe(
         Effect.provide(D1Client.layer({ db: database })),
         Effect.provideService(Tracer.Tracer, makeAITracer(platform)),
         Effect.result,
       ),
     );
+    // oxlint-disable anti-slop-effect/no-manual-tagged-construction -- this expectation inspects the Effect failure protocol returned by the real SQL layer.
     expect(result).toMatchObject({
       _tag: 'Failure',
       failure: { _tag: 'SqlError', reason: { cause: expect.any(Error) } },
     });
+    // oxlint-enable anti-slop-effect/no-manual-tagged-construction
     const query = spans.find((span) => span.name === 'sql.execute');
     expect(query?.parent).toBe('ai.usage.reclaim.scan');
     expect(Object.fromEntries(query?.attributes ?? [])).toEqual({

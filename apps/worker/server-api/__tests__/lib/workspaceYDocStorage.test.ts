@@ -95,7 +95,15 @@ describe('workspace binary storage', () => {
         meta(),
       );
       const before = new Map(store);
-      const put = vi.mocked(state.storage.put as (key: string, value: unknown) => Promise<void>);
+
+      type StoragePut = (
+        key: string,
+        value: WorkspaceYDocStoredMeta | ArrayBuffer | Uint8Array,
+      ) => Promise<void>;
+
+      // SAFETY: storage fixtures only write string keys and binary/object values in this test.
+
+      const put = vi.mocked(state.storage.put as StoragePut);
       const original = put.getMockImplementation();
 
       if (!original) throw new Error('Missing storage fixture');
@@ -130,11 +138,14 @@ describe('workspace binary storage', () => {
       await compactWorkspaceYDocStorage(state.storage, largeBinary(), meta());
 
       if (corruption === 'missing-chunk') store.delete('chunk:snapshot:0');
-      else
+      else {
+        // SAFETY: the corrupted snapshot was written as an object by the preceding compaction.
         store.set('snapshot', {
           ...(store.get('snapshot') as object),
           byteLength: Number.MAX_SAFE_INTEGER,
         });
+      }
+
       await expect(readWorkspaceYDocStorage(state.storage)).rejects.toThrow(/workspace binary/);
     },
   );

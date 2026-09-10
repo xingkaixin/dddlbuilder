@@ -4,7 +4,9 @@ import type * as WorkspaceEntitiesModule from '../lib/workspaceEntities.js';
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: workspace route tests do not access KV.
   SHARE_KV: {} as KVNamespace,
+  // SAFETY: workspace route tests replace database access at the route seam.
   USER_DB: {} as D1Database,
   BETTER_AUTH_SECRET: 'better-auth-secret',
   BETTER_AUTH_URL: 'http://localhost:3000',
@@ -34,9 +36,11 @@ describe('/api/workspaces', () => {
   });
 
   it('returns the active workspace for authenticated users', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this scenario isolates the authentication boundary.
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({ userId: 'user-1' }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this scenario preserves real logic and replaces workspace lookup.
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
 

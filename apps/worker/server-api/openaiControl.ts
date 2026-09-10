@@ -59,6 +59,8 @@ export type GovernanceSnapshot = {
 
 const toUtf8Bytes = (input: string) => new TextEncoder().encode(input).length;
 
+// oxlint-disable anti-slop/no-unknown-parameters -- token estimation intentionally accepts arbitrary prompt payloads.
+// oxlint-disable anti-slop/no-runtime-typeof -- serialization sizing must classify arbitrary prompt values.
 const estimateValueBytes = (value: unknown): number => {
   if (value == null) return 0;
   if (typeof value === 'string') return toUtf8Bytes(value);
@@ -87,6 +89,8 @@ export const estimateRequestTokens = (payload: unknown, maxOutputTokens = 0): nu
 
   return Math.min(Number.MAX_SAFE_INTEGER, estimatedInputTokens + outputTokens);
 };
+// oxlint-enable anti-slop/no-unknown-parameters
+// oxlint-enable anti-slop/no-runtime-typeof
 
 export const getOpenAIGovernanceSnapshot = (
   routeKey: AIRouteKey,
@@ -316,19 +320,25 @@ export function logOpenAIAudit(
   }
 }
 
+// oxlint-disable anti-slop/no-unknown-parameters -- OpenAI stream chunks are untyped SDK payloads decoded at this boundary.
+// oxlint-disable anti-slop/no-runtime-typeof -- field checks validate the external usage payload before use.
 export const readUsageFromStreamChunk = (chunk: unknown): OpenAIUsageSnapshot | null => {
   if (!chunk || typeof chunk !== 'object') {
     return null;
   }
 
+  // SAFETY: the object guard above establishes the chunk record boundary.
   const usage = (chunk as { usage?: unknown }).usage;
 
   if (!usage || typeof usage !== 'object') {
     return null;
   }
 
+  // SAFETY: the object guard above establishes the usage record boundary.
   const promptTokens = (usage as { prompt_tokens?: unknown }).prompt_tokens;
+  // SAFETY: the object guard above establishes the usage record boundary.
   const completionTokens = (usage as { completion_tokens?: unknown }).completion_tokens;
+  // SAFETY: the object guard above establishes the usage record boundary.
   const totalTokens = (usage as { total_tokens?: unknown }).total_tokens;
 
   if (
@@ -345,3 +355,5 @@ export const readUsageFromStreamChunk = (chunk: unknown): OpenAIUsageSnapshot | 
     totalTokens,
   };
 };
+// oxlint-enable anti-slop/no-unknown-parameters
+// oxlint-enable anti-slop/no-runtime-typeof

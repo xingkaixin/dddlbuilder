@@ -1,4 +1,6 @@
-import { makeAITracer, endAIRequestSpan, aiFailureKind } from './aiTracing.js';
+// oxlint-disable-next-line anti-slop-effect/no-service-constructor-imports -- withAIGovernance is the Hono/Effect composition root for request tracing.
+import { makeAITracer } from './aiTracing.js';
+import { endAIRequestSpan, aiFailureKind } from './aiTracing.js';
 import * as Tracer from 'effect/Tracer';
 import * as Clock from 'effect/Clock';
 import * as Exit from 'effect/Exit';
@@ -87,6 +89,7 @@ export type AIStreamInput = {
   temperature: number;
   jsonResponse?: boolean;
   /** 只进 stream debug 日志，用来还原是什么输入触发了这次流。 */
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- stream diagnostics accept route-specific debug fields without sending their values to the model.
   debugInput: Record<string, unknown>;
 };
 
@@ -101,7 +104,8 @@ export type AIRouteSpec<Request> = {
   outputSchema?: Schema.ConstraintDecoder<unknown>;
   bodyMaxBytes: number;
   /** 返回 rejection 表示请求体不合法。 */
-  parseRequest: (body: Record<string, unknown>) => Request | AIRequestRejection;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- each route decodes this raw JSON at its schema boundary.
+  parseRequest: (body: unknown) => Request | AIRequestRejection;
   /** 构造实际发送给模型的完整消息，同时作为额度和预算的预估输入。 */
   buildMessages: (request: Request) => AIChatMessage[];
 };
@@ -137,7 +141,10 @@ export const aiGovernance = <Request, E>(
         const startedAt = clock.currentTimeMillisUnsafe();
         const executionContext = yield* Effect.context();
 
-        const validateOutput = (value: unknown) =>
+        const validateOutput = (
+          // oxlint-disable-next-line anti-slop/no-unknown-parameters -- output validation accepts the provider's decoded JSON boundary.
+          value: unknown,
+        ) =>
           spec.outputSchema
             ? Schema.decodeUnknownEffect(spec.outputSchema)(value).pipe(
                 Effect.mapError((cause) => new AIOutputError({ reason: 'invalid-schema', cause })),
@@ -206,7 +213,11 @@ export const aiGovernance = <Request, E>(
           });
           logOpenAIAudit(
             backgroundLog
-              ? { ...c.env, EVLOG_REQUEST_LOG: backgroundLog as WorkerRequestLogger }
+              ? {
+                  ...c.env,
+                  // SAFETY: createWorkerBackgroundLogger adapts evlog's open field bag to the WorkerRequestLogger shape consumed by logOpenAIAudit.
+                  EVLOG_REQUEST_LOG: backgroundLog as WorkerRequestLogger,
+                }
               : c.env,
             {
               requestId,
@@ -243,7 +254,10 @@ export const aiGovernance = <Request, E>(
           backgroundLog?.emit();
         };
 
-        const governanceFailure = (error: unknown): Response => {
+        const governanceFailure = (
+          // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Effect governance failures can originate from any provider or database boundary.
+          error: unknown,
+        ): Response => {
           getRequestLogger(c)?.error(toWorkerError(error, 'AI governance unavailable'), {
             ai: { failurePhase: 'governance' },
           });
@@ -291,7 +305,7 @@ export const aiGovernance = <Request, E>(
         auditUserId = user.userId;
 
         const parsedBody = yield* Effect.promise(() =>
-          parseJsonBodyWithLimit<Record<string, unknown>>(c, spec.bodyMaxBytes),
+          parseJsonBodyWithLimit(c, spec.bodyMaxBytes),
         );
 
         if (!parsedBody.ok) {
@@ -307,7 +321,7 @@ export const aiGovernance = <Request, E>(
           return parsedBody.response;
         }
 
-        const parsed = spec.parseRequest(parsedBody.data ?? {});
+        const parsed = spec.parseRequest(parsedBody.data);
 
         if (isRejection(parsed)) {
           audit(parsed.status, 0, false, false, parsed.code);
@@ -431,6 +445,7 @@ export const aiGovernance = <Request, E>(
             : Effect.succeed(null);
 
         const reportSettlementError = (
+          // oxlint-disable-next-line anti-slop/no-unknown-parameters -- settlement failures cross the database and provider boundaries.
           error: unknown,
           failurePhase: string,
           outcome: 'succeeded' | 'failed',
@@ -598,7 +613,10 @@ export const aiGovernance = <Request, E>(
               );
             }),
           );
-        const classifyFailure = (error: unknown) => {
+        const classifyFailure = (
+          // oxlint-disable-next-line anti-slop/no-unknown-parameters -- classification receives arbitrary Effect causes.
+          error: unknown,
+        ) => {
           if (error instanceof AIUsageError) {
             return {
               code: 'SERVICE_UNAVAILABLE' as const,
@@ -689,7 +707,7 @@ export const aiGovernance = <Request, E>(
                       response_format: { type: 'json_object' },
                       temperature,
                       max_tokens: maxOutputTokens,
-                      ...(THINKING_DISABLED as Record<string, unknown>),
+                      ...THINKING_DISABLED,
                     },
                     openAIAbortController.signal,
                   ),
@@ -772,7 +790,7 @@ export const aiGovernance = <Request, E>(
                           max_tokens: maxOutputTokens,
                           stream: true,
                           stream_options: { include_usage: true },
-                          ...(THINKING_DISABLED as Record<string, unknown>),
+                          ...THINKING_DISABLED,
                         },
                         openAIAbortController.signal,
                       ),
@@ -892,6 +910,7 @@ export const withAIGovernance = <Request, E = AICompletionError>(
     AIRequestAccess.layer(c),
   ).pipe(Layer.provideMerge(AIConfiguration.layer(c.env)));
   const program = aiGovernance(c, spec, run).pipe(Effect.provide(services));
+  // SAFETY: the Worker runtime extends ExecutionContext with tracing when observability is enabled.
   const tracing = (c.executionCtx as { tracing?: Tracing }).tracing;
 
   return Effect.runPromise(

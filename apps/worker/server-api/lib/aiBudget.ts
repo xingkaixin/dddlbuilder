@@ -30,6 +30,7 @@ const readBudgetValue = async (env: ApiEnv['Bindings'], windowId: string) => {
   return row ? Number(row.value) : null;
 };
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- D1 exposes the budget sentinel through an arbitrary driver error.
 const isBudgetExceeded = (error: unknown) =>
   error instanceof Error && error.message.includes('BUDGET_EXCEEDED');
 

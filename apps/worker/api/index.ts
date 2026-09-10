@@ -1,6 +1,7 @@
 import * as D1Client from '@effect/sql-d1/D1Client';
 import * as Effect from 'effect/Effect';
 import * as Tracer from 'effect/Tracer';
+// oxlint-disable-next-line anti-slop-effect/no-service-constructor-imports -- scheduled is an Effect composition root for the platform tracing adapter.
 import { makeAITracer } from '../server-api/lib/aiTracing.js';
 import { AIUsageError } from '../server-api/lib/aiErrors.js';
 import { Hono } from 'hono';

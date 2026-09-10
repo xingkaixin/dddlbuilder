@@ -21,41 +21,38 @@ describe('atomic AI usage', () => {
     usageEstimated: true,
   });
 
-  it.each(['explain', 'review', 'generate-table', 'generate-comments', 'index-advisor'] as const)(
-    'reserves %s in one transaction',
-    async (routeKey) => {
-      const f = await createCreditFixture();
+  it.each([
+    ['explain', 'ai_explain'],
+    ['review', 'ai_review'],
+    ['generate-table', 'ai_generate'],
+    ['generate-comments', 'ai_generate'],
+    ['index-advisor', 'ai_generate'],
+  ] as const)('reserves %s in one transaction', async (routeKey, expectedSource) => {
+    const f = await createCreditFixture();
 
-      try {
-        const batch = vi.spyOn(f.env.USER_DB, 'batch');
+    try {
+      const batch = vi.spyOn(f.env.USER_DB, 'batch');
 
-        const reservation = await reserveAIUsage(f.env, {
-          userId: 'user-1',
-          routeKey,
-          requestId: 'request',
-          estimatedTokens: 100,
-        });
-        expect(batch).toHaveBeenCalledTimes(1);
-        expect(await f.balance()).toBe(900);
-        expect(
-          f.sqlite
-            .prepare('SELECT status FROM usage_events WHERE id = ?')
-            .get(reservation.usageEventId),
-        ).toEqual({ status: 'reserved' });
-        expect(
-          f.sqlite.prepare("SELECT source FROM credit_ledger WHERE kind = 'consume'").get()?.source,
-        ).toBe(
-          routeKey === 'explain'
-            ? 'ai_explain'
-            : routeKey === 'review'
-              ? 'ai_review'
-              : 'ai_generate',
-        );
-      } finally {
-        f.sqlite.close();
-      }
-    },
-  );
+      const reservation = await reserveAIUsage(f.env, {
+        userId: 'user-1',
+        routeKey,
+        requestId: 'request',
+        estimatedTokens: 100,
+      });
+      expect(batch).toHaveBeenCalledTimes(1);
+      expect(await f.balance()).toBe(900);
+      expect(
+        f.sqlite
+          .prepare('SELECT status FROM usage_events WHERE id = ?')
+          .get(reservation.usageEventId),
+      ).toEqual({ status: 'reserved' });
+      expect(
+        f.sqlite.prepare("SELECT source FROM credit_ledger WHERE kind = 'consume'").get()?.source,
+      ).toBe(expectedSource);
+    } finally {
+      f.sqlite.close();
+    }
+  });
 
   it.each([
     [0, 1],

@@ -27,6 +27,7 @@ const createFixture = () => {
   };
 
   return {
+    // SAFETY: the budget helpers only read USER_DB in this fixture; optional Worker bindings are intentionally absent.
     env: { USER_DB: database } as ApiEnv['Bindings'],
     sqlite,
     addUsage,
@@ -95,6 +96,7 @@ describe('AI daily budget lifecycle', () => {
     expect(await settleAIDailyBudget(env, 'usage-1', 20)).toBe(20);
     expect(await reserveAIDailyBudget(env, 'usage-2', 70, 100)).toBe(90);
 
+    // SAFETY: the INSERT/settlement setup guarantees one daily budget counter row for this query.
     const counter = sqlite.prepare('SELECT value FROM ai_daily_budget_counters').get() as {
       value: number;
     };
@@ -110,6 +112,7 @@ describe('AI daily budget lifecycle', () => {
     expect(await settleAIDailyBudget(env, 'usage-1', 15)).toBe(15);
     expect(await settleAIDailyBudget(env, 'usage-1', 5)).toBeNull();
 
+    // SAFETY: the reservation was inserted immediately above and the query selects that known row.
     const reservation = sqlite
       .prepare(
         'SELECT reserved_tokens AS reservedTokens, actual_tokens AS actualTokens FROM ai_budget_reservations WHERE usage_event_id = ?',
@@ -173,6 +176,7 @@ describe('AI daily budget lifecycle', () => {
 
     expect(await reconcileTerminalAIBudgets(env)).toBe(1);
 
+    // SAFETY: reserveAIDailyBudget creates the counter row before this read.
     const counter = sqlite.prepare('SELECT value FROM ai_daily_budget_counters').get() as {
       value: number;
     };
@@ -199,6 +203,7 @@ describe('AI daily budget lifecycle', () => {
 
       const delayedEnv = {
         ...env,
+        // SAFETY: this proxy implements the D1 prepare/bind protocol used by the budget helper.
         USER_DB: {
           prepare(sql: string) {
             const statement = prepare(sql);
@@ -221,14 +226,17 @@ describe('AI daily budget lifecycle', () => {
                       };
                     }
 
+                    // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy forwarding must preserve arbitrary D1 statement keys
                     const value = Reflect.get(target, key);
 
+                    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- dynamic Proxy forwarding binds callable statement methods
                     return typeof value === 'function' ? value.bind(target) : value;
                   },
                 });
               },
             };
           },
+          // SAFETY: delayedEnv preserves the real D1 methods and only intercepts the single race under test.
         } as D1Database,
       };
 

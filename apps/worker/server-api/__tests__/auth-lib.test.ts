@@ -5,10 +5,12 @@ import { authenticateRequest, resolveAuthenticatedUser } from '../lib/auth.js';
 
 const mocks = vi.hoisted(() => ({ getSession: vi.fn(), grantSignupCredits: vi.fn() }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- auth behavior is tested independently of the Better Auth adapter.
 vi.mock('../lib/betterAuth.js', () => ({
   createBetterAuth: () => ({ api: { getSession: mocks.getSession } }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- signup credit persistence is outside authentication behavior.
 vi.mock('../lib/credits.js', () => ({ grantSignupCredits: mocks.grantSignupCredits }));
 
 const session = {
@@ -16,6 +18,8 @@ const session = {
   user: { id: 'user-1', email: 'user@example.com', emailVerified: true, name: 'User One' },
 };
 const createEnv = (disabled = false) =>
+  // SAFETY: the auth tests provide the only USER_DB operation exercised by the implementation.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the database calls used by auth.
   ({
     USER_DB: {
       prepare: vi.fn(() => ({
@@ -31,10 +35,13 @@ const createEnv = (disabled = false) =>
 const createContext = (
   env = createEnv(),
   headers = new Headers(),
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the test logger accepts any auth failure value emitted by the boundary.
   log?: { error: (error: unknown) => void },
 ) => {
   const set = vi.fn();
 
+  // SAFETY: this context supplies the env, request headers, logger lookup, and setter used by auth.
+  // oxlint-disable anti-slop/no-chained-type-assertions -- the context fixture implements only auth's accessed fields.
   return {
     context: {
       env,
@@ -44,6 +51,7 @@ const createContext = (
     } as unknown as Context<ApiEnv>,
     set,
   };
+  // oxlint-enable anti-slop/no-chained-type-assertions
 };
 
 describe('authenticated session resolution', () => {

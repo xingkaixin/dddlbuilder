@@ -3,13 +3,16 @@ import { SqlParser, type MultiParsedResult } from '@ddlbuilder/ddl-core/parser';
 import app from '../../api/index';
 import type { ApiEnv } from '../lib/context.js';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- route tests isolate rate-limit policy to exercise SQL parsing.
 vi.mock('../lib/requestRateLimit', () => ({
   enforceIpRateLimit: vi.fn().mockResolvedValue(null),
 }));
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: parse route tests do not access KV.
   SHARE_KV: {} as KVNamespace,
+  // SAFETY: parse route tests do not access D1.
   USER_DB: {} as D1Database,
   ...overrides,
 });

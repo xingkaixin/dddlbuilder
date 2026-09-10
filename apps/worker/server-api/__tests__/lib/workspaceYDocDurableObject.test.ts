@@ -17,6 +17,7 @@ import type { ApiEnv } from '../../lib/context.js';
 import { createDurableObjectState } from '../helpers/durableObjectState';
 
 const toArrayBuffer = (bytes: Uint8Array) =>
+  // SAFETY: slice uses the exact byte range and returns an ArrayBuffer accepted by the WebSocket test API.
   bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 
 const trackedUpdate = (update: Uint8Array, requestId: number) =>
@@ -59,14 +60,18 @@ const createSnapshot = (tableName: string, updatedAt = 2): WorkspaceSnapshot => 
   folders: [],
 });
 
-const createEnv = (): ApiEnv['Bindings'] =>
-  ({
-    USER_DB: {
-      prepare: () => ({
-        bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
-      }),
-    } as unknown as D1Database,
-  }) as ApiEnv['Bindings'];
+const createEnv = (): ApiEnv['Bindings'] => {
+  // SAFETY: this fixture narrows a deliberately partial D1 surface whose prepare/bind/all methods are the only operations used here.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: the in-memory fixture is structurally checked by the test's authorization query.
+  const userDb = {
+    prepare: () => ({
+      bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
+    }),
+  } as unknown as D1Database;
+
+  // SAFETY: userDb supplies the only USER_DB methods exercised by this authorization test.
+  return { USER_DB: userDb } as ApiEnv['Bindings'];
+};
 
 const createRequest = (path: string, init: RequestInit = {}) => {
   const headers = new Headers(init.headers);
@@ -79,7 +84,11 @@ const createRequest = (path: string, init: RequestInit = {}) => {
   });
 };
 
+const readInfoLogs = () =>
+  vi.mocked(console.info).mock.calls.map((call) => JSON.parse(String(call[0])));
+
 const createWebSocket = (
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the platform attachment is intentionally arbitrary to test hibernation restoration
   attachment: unknown = {
     schemaVersion: 1,
     socketId: 'socket-1',
@@ -95,10 +104,12 @@ const createWebSocket = (
 } => {
   let storedAttachment = attachment;
 
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: send, close, and attachment methods are supplied above; browser-only WebSocket members are not used.
   return {
     readyState: 1,
     send: vi.fn(),
     close: vi.fn(),
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- serializeAttachment receives the platform's open attachment value
     serializeAttachment: vi.fn((nextAttachment: unknown) => {
       storedAttachment = nextAttachment;
     }),
@@ -397,11 +408,11 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    vi.mocked(
-      state.storage.put as (key: string, value: unknown) => Promise<void>,
-    ).mockImplementation(async (key, value) => {
-      if (key.startsWith('update:')) await gate;
-      store.set(key, value);
+    vi.mocked(state.storage.put).mockImplementation(async (key, value) => {
+      const storageKey = String(key);
+
+      if (storageKey.startsWith('update:')) await gate;
+      store.set(storageKey, value);
     });
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     const ws = createWebSocket();
@@ -461,9 +472,13 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const prepare = vi.fn((_sql: string) => ({
       bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
     }));
-    const durableObject = new WorkspaceYDocDurableObject(state, {
-      USER_DB: { prepare },
-    } as unknown as ApiEnv['Bindings']);
+    const durableObject = new WorkspaceYDocDurableObject(
+      state,
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: this partial binding is limited to the authorization query used by the test.
+      {
+        USER_DB: { prepare },
+      } as unknown as ApiEnv['Bindings'],
+    );
     const ws = createWebSocket();
     const doc = new Y.Doc();
     doc.getMap('meta').set('schemaVersion', 1);
@@ -486,6 +501,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       getWorkspaceSnapshotForWorkspace.mockRejectedValueOnce(new Error('temporary failure'));
     }
 
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test Durable Object protocol recovery
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace,
@@ -529,6 +545,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       deleted: 0,
       skipped: 0,
     });
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test checkpoint behavior
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities,
       getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -571,6 +588,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('imports newer records in place and keeps them through retries and restart', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test import checkpointing
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -656,6 +674,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       folders: [],
     };
     const getWorkspaceSnapshotForWorkspace = vi.fn().mockResolvedValue(empty);
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test restart semantics
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace,
@@ -686,6 +705,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('persists and reloads imports larger than the storage value limit', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test compact recovery
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -700,14 +720,12 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
     const { state, store } = createDurableObjectState();
     const storageValueLimit = 2 * 1024 * 1024;
-    vi.mocked(
-      state.storage.put as (key: string, value: unknown) => Promise<void>,
-    ).mockImplementation(async (key, value) => {
+    vi.mocked(state.storage.put).mockImplementation(async (key, value) => {
       if (value instanceof Uint8Array && value.byteLength > storageValueLimit) {
         throw new Error('SQLITE_TOOBIG');
       }
 
-      store.set(key, value);
+      store.set(String(key), value);
     });
 
     const snapshot: WorkspaceSnapshot = {
@@ -768,6 +786,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       deleted: 0,
       skipped: 0,
     });
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test migration merge semantics
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities,
       getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -825,6 +844,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   it.each([undefined, 'table-users'])(
     'preserves concurrent migration versions and draft ownership after restart (%s)',
     async (tableId) => {
+      // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to inject the selected initialization failure
       vi.doMock('../../lib/workspaceEntities.js', () => ({
         checkpointWorkspaceSnapshotEntities: vi.fn(),
         getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -919,6 +939,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   it.each(['import', 'migrate'])(
     'rejects %s when Durable Object storage cannot persist its update',
     async (operation) => {
+      // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to inject storage failure for this operation
       vi.doMock('../../lib/workspaceEntities.js', () => ({
         checkpointWorkspaceSnapshotEntities: vi.fn(),
         getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -933,14 +954,14 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       const { WorkspaceYDocDurableObject } =
         await import('../../lib/workspaceYDocDurableObject.js');
       const { state, store } = createDurableObjectState();
-      vi.mocked(
-        state.storage.put as (key: string, value: unknown) => Promise<void>,
-      ).mockImplementation(async (key, value) => {
-        if (key.startsWith('update:')) {
+      vi.mocked(state.storage.put).mockImplementation(async (key, value) => {
+        const storageKey = String(key);
+
+        if (storageKey.startsWith('update:')) {
           throw new Error('storage unavailable');
         }
 
-        store.set(key, value);
+        store.set(storageKey, value);
       });
       const error = vi.spyOn(console, 'error').mockImplementation(() => {});
       const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
@@ -961,6 +982,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   );
 
   it('retries a failed update before persisting later updates', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test deferred constructor work
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -974,15 +996,15 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
     let failNextUpdate = true;
-    vi.mocked(
-      state.storage.put as (key: string, value: unknown) => Promise<void>,
-    ).mockImplementation(async (key, value) => {
-      if (key.startsWith('update:') && failNextUpdate) {
+    vi.mocked(state.storage.put).mockImplementation(async (key, value) => {
+      const storageKey = String(key);
+
+      if (storageKey.startsWith('update:') && failNextUpdate) {
         failNextUpdate = false;
         throw new Error('storage temporarily unavailable');
       }
 
-      store.set(key, value);
+      store.set(storageKey, value);
     });
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
@@ -1024,6 +1046,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it.each(['import', 'migrate'])('rejects %s when its D1 checkpoint fails', async (operation) => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test health logging
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi
         .fn()
@@ -1057,6 +1080,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('keeps constructor light and defers storage reads until an event', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test alarm retry scheduling
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -1078,6 +1102,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('logs compact health metrics without per-update events or user identity', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test websocket attachment identity
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
         cursor: 1,
@@ -1104,9 +1129,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       }),
     );
 
-    const logs = (
-      console.info as unknown as { mock: { calls: Array<[unknown, ...unknown[]]> } }
-    ).mock.calls.map((call) => JSON.parse(String(call[0])) as Record<string, unknown>);
+    const logs = readInfoLogs();
     expect(response.status).toBe(200);
     expect(logs).not.toContainEqual(expect.objectContaining({ operation: 'update' }));
     expect(logs).toContainEqual(
@@ -1123,6 +1146,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('broadcasts one message for one merged update batch', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test malformed snapshot handling
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -1170,6 +1194,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   it('restores an empty Durable Object from D1 snapshot on cold start', async () => {
     const getWorkspaceSnapshotForWorkspace = vi.fn().mockResolvedValue(createSnapshot('restored'));
     const checkpointWorkspaceSnapshotEntities = vi.fn();
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test storage failure propagation
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities,
       getWorkspaceSnapshotForWorkspace,
@@ -1193,6 +1218,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('serves compacted state through a sync step after Durable Object cold start', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test update retry ordering
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
         cursor: 1,
@@ -1252,6 +1278,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
 
   it('restores workspace identity from hibernated websocket attachments', async () => {
     const getWorkspaceSnapshotForWorkspace = vi.fn().mockResolvedValue(createSnapshot('attached'));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test compact metrics
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace,
@@ -1281,6 +1308,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       ),
     );
 
+    // SAFETY: the preceding send call is the encoded sync response produced by the Durable Object.
     const sent = socket.send.mock.calls[0]?.[0] as Uint8Array | undefined;
     expect(sent).toBeDefined();
 
@@ -1303,6 +1331,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('keeps compact alarm idempotent across repeated calls and cold start', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test websocket close metrics
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
         cursor: 1,
@@ -1349,6 +1378,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('keeps compaction counters consistent when requests overlap', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test concurrent compaction counters
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -1376,6 +1406,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('does not reschedule an alarm after all updates are checkpointed', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test alarm completion
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
         cursor: 1,
@@ -1408,6 +1439,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('schedules a durable retry when automatic alarm retries are exhausted', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to inject exhausted retry behavior
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi
         .fn()
@@ -1444,6 +1476,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   });
 
   it('logs websocket close and error with attachment identity', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test websocket close/error logging
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
@@ -1470,9 +1503,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     await durableObject.webSocketClose(socket, 1000, 'done', true);
     await durableObject.webSocketError(socket, new Error('network failed'));
 
-    const logs = (
-      console.info as unknown as { mock: { calls: Array<[unknown, ...unknown[]]> } }
-    ).mock.calls.map((call) => JSON.parse(String(call[0])) as Record<string, unknown>);
+    const logs = readInfoLogs();
     expect(logs).toContainEqual(
       expect.objectContaining({
         event: 'workspace_yjs_do_health',
@@ -1509,9 +1540,13 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
       };
     });
-    const durableObject = new WorkspaceYDocDurableObject(state, {
-      USER_DB: { prepare },
-    } as unknown as ApiEnv['Bindings']);
+    const durableObject = new WorkspaceYDocDurableObject(
+      state,
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: this partial binding is limited to the authorization query used by the test.
+      {
+        USER_DB: { prepare },
+      } as unknown as ApiEnv['Bindings'],
+    );
     const matching = createWebSocket({
       schemaVersion: 1,
       workspaceId: 'ws-1',

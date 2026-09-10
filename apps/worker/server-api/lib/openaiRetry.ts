@@ -61,17 +61,21 @@ const parseRetryAfterMs = (
   return delta > 0 ? delta : null;
 };
 
+// oxlint-disable anti-slop/no-unknown-parameters -- these helpers inspect untyped SDK error payloads at the retry boundary.
+// oxlint-disable anti-slop/no-runtime-typeof -- runtime checks are required to safely read third-party error shapes.
+// oxlint-disable anti-slop/no-reflect-get -- SDK errors may expose dynamic name, cause, status, and code properties.
+// oxlint-disable anti-slop/no-object-parameters -- readErrorName intentionally accepts the checked generic object boundary.
 const readHeaderFromUnknown = (headers: unknown, key: string): string | undefined => {
   if (!headers || typeof headers !== 'object') return undefined;
   const normalizedKey = key.toLowerCase();
 
-  if ('get' in headers && typeof (headers as { get: unknown }).get === 'function') {
-    const value = (headers as { get: (header: string) => string | null }).get(normalizedKey);
+  if ('get' in headers && typeof headers.get === 'function') {
+    const value = headers.get(normalizedKey);
 
-    return value ?? undefined;
+    return typeof value === 'string' ? value : undefined;
   }
 
-  for (const [name, value] of Object.entries(headers as Record<string, unknown>)) {
+  for (const [name, value] of Object.entries(headers)) {
     if (name.toLowerCase() === normalizedKey && typeof value === 'string') {
       return value;
     }
@@ -83,7 +87,8 @@ const readHeaderFromUnknown = (headers: unknown, key: string): string | undefine
 const getErrorStatus = (error: unknown): number | null => {
   if (error instanceof AIProviderError) return getErrorStatus(error.cause);
   if (!error || typeof error !== 'object') return null;
-  const status = (error as { status?: unknown }).status;
+  if (!('status' in error)) return null;
+  const status = error.status;
 
   return typeof status === 'number' ? status : null;
 };
@@ -91,7 +96,7 @@ const getErrorStatus = (error: unknown): number | null => {
 const getRetryAfterFromError = (error: unknown, now: number): number | null => {
   if (error instanceof AIProviderError) return getRetryAfterFromError(error.cause, now);
   if (!error || typeof error !== 'object') return null;
-  const headers = (error as { headers?: unknown }).headers;
+  const headers = 'headers' in error ? error.headers : undefined;
 
   return parseRetryAfterMs(readHeaderFromUnknown(headers, 'retry-after'), now);
 };
@@ -145,6 +150,10 @@ const isRetryableError = (error: unknown): boolean => {
     return typeof code === 'string' && RETRYABLE_NETWORK_CODES.has(code.toUpperCase());
   });
 };
+// oxlint-enable anti-slop/no-unknown-parameters
+// oxlint-enable anti-slop/no-runtime-typeof
+// oxlint-enable anti-slop/no-reflect-get
+// oxlint-enable anti-slop/no-object-parameters
 
 const createRetrySchedule = (options: {
   maxAttempts: number;

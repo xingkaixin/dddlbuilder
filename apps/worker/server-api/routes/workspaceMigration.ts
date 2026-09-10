@@ -1,4 +1,5 @@
 import * as Schema from 'effect/Schema';
+import * as Option from 'effect/Option';
 import {
   WorkspaceMigrationResponseSchema,
   WorkspaceMigrationRequestSchema,
@@ -16,17 +17,12 @@ export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
   app.post('/workspace/migrations', async (c) => {
     const user = await authenticateRequest(c);
 
-    const parsedBody = await parseJsonBodyWithLimit<{ mode?: unknown; payload?: unknown }>(
-      c,
-      REQUEST_BODY_MAX_BYTES,
-    );
+    const parsedBody = await parseJsonBodyWithLimit(c, REQUEST_BODY_MAX_BYTES);
 
     if (!parsedBody.ok) return parsedBody.response;
-    const body = parsedBody.data ?? {};
+    const request = Schema.decodeUnknownOption(WorkspaceMigrationRequestSchema)(parsedBody.data);
 
-    const request = Schema.decodeUnknownOption(WorkspaceMigrationRequestSchema)(body);
-
-    if (request._tag === 'None') {
+    if (Option.isNone(request)) {
       return errorResponse(c, 400, 'Invalid migration mode', 'INVALID_JSON');
     }
 

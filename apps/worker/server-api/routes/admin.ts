@@ -1,4 +1,5 @@
 import * as Schema from 'effect/Schema';
+import * as Option from 'effect/Option';
 import {
   AdminPaginationQuerySchema,
   AdminLedgerQuerySchema,
@@ -77,14 +78,12 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
     if (limited) return limited;
 
-    const parsedBody = await parseJsonBodyWithLimit<{
-      password?: string;
-    }>(c, 1024);
+    const parsedBody = await parseJsonBodyWithLimit(c, 1024);
 
     if (!parsedBody.ok) return parsedBody.response;
     const request = Schema.decodeUnknownOption(AdminLoginRequestSchema)(parsedBody.data);
 
-    if (request._tag === 'None') {
+    if (Option.isNone(request)) {
       return errorResponse(c, 400, 'Password is required', 'ADMIN_REQUIRED');
     }
 
@@ -164,14 +163,12 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   app.post('/admin/users/:userId/disable', async (c) => {
     const userId = c.req.param('userId');
 
-    const parsedBody = await parseJsonBodyWithLimit<{
-      reason?: string;
-    }>(c, 1024);
+    const parsedBody = await parseJsonBodyWithLimit(c, 1024);
 
     if (!parsedBody.ok) return parsedBody.response;
     const request = Schema.decodeUnknownOption(AdminDisableRequestSchema)(parsedBody.data);
 
-    if (request._tag === 'None') return errorResponse(c, 400, 'Reason must be a string');
+    if (Option.isNone(request)) return errorResponse(c, 400, 'Reason must be a string');
     const body = request.value;
 
     if (!(await adminUserExists(c.env.USER_DB, userId))) {
@@ -196,9 +193,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   app.post('/admin/users/:userId/email-verification', async (c) => {
     const userId = c.req.param('userId');
 
-    const parsedBody = await parseJsonBodyWithLimit<{
-      verified?: boolean;
-    }>(c, 1024);
+    const parsedBody = await parseJsonBodyWithLimit(c, 1024);
 
     if (!parsedBody.ok) return parsedBody.response;
 
@@ -206,7 +201,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
       parsedBody.data,
     );
 
-    if (request._tag === 'None') {
+    if (Option.isNone(request)) {
       return errorResponse(c, 400, 'Verified flag must be a boolean');
     }
 
@@ -236,24 +231,28 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   app.post('/admin/users/:userId/credits', async (c) => {
     const userId = c.req.param('userId');
 
-    const parsedBody = await parseJsonBodyWithLimit<{
-      amount?: number;
-      note?: string;
-    }>(c, 1024);
+    const parsedBody = await parseJsonBodyWithLimit(c, 1024);
 
     if (!parsedBody.ok) return parsedBody.response;
     const input = parsedBody.data;
+    // oxlint-disable anti-slop/no-runtime-typeof -- raw admin JSON must be narrowed before normalizing the amount field.
+
+    const inputRecord =
+      input && typeof input === 'object' && !Array.isArray(input) ? input : undefined;
+    // oxlint-enable anti-slop/no-runtime-typeof
+    const normalizedAmount =
+      inputRecord && 'amount' in inputRecord ? Number(inputRecord.amount) : Number.NaN;
 
     const request = Schema.decodeUnknownOption(AdminCreditGrantRequestSchema)({
-      ...input,
-      amount: Number(input?.amount),
+      ...inputRecord,
+      amount: normalizedAmount,
     });
 
-    if (request._tag === 'None') {
+    if (Option.isNone(request)) {
       return errorResponse(
         c,
         400,
-        Schema.is(AdminCreditGrantRequestSchema.fields.amount)(Number(input?.amount))
+        Schema.is(AdminCreditGrantRequestSchema.fields.amount)(normalizedAmount)
           ? 'Note must be a string'
           : 'Amount must be a positive safe integer',
       );

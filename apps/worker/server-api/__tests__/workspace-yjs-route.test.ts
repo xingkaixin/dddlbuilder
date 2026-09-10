@@ -1,16 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
+import type * as AuthModule from '../lib/auth.js';
 import type * as WorkspaceEntitiesModule from '../lib/workspaceEntities.js';
 
-const createYDocNamespace = (fetch: ReturnType<typeof vi.fn>) =>
-  ({
+type DurableObjectFetch = (request: Request) => Response | Promise<Response>;
+
+const createYDocNamespace = (fetch: DurableObjectFetch) => {
+  // SAFETY: route tests only use idFromName/get/fetch from this Durable Object namespace double.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the platform namespace has runtime-only methods not needed here.
+  return {
     idFromName: vi.fn((name: string) => ({ name })),
     get: vi.fn(() => ({ fetch })),
-  }) as unknown as DurableObjectNamespace;
+  } as unknown as DurableObjectNamespace;
+};
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: Yjs route tests do not call the KV binding.
   SHARE_KV: {} as KVNamespace,
+  // SAFETY: Yjs route tests do not access the database binding.
   USER_DB: {} as D1Database,
   WORKSPACE_YDOC: createYDocNamespace(vi.fn().mockResolvedValue(new Response('ok'))),
   BETTER_AUTH_SECRET: 'better-auth-secret',
@@ -41,8 +49,9 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
   });
 
   it('returns 401 for anonymous websocket requests', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates the anonymous authentication branch.
     vi.doMock('../lib/auth.js', async (importOriginal) => {
-      const actual = await importOriginal<Record<string, unknown>>();
+      const actual = await importOriginal<typeof AuthModule>();
       const { DomainError } = await import('../lib/http.js');
 
       return {
@@ -60,6 +69,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
   });
 
   it('returns 403 when workspace ownership check fails', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test forces an authenticated owner lookup.
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -69,6 +79,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates the workspace ownership failure.
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
 
@@ -86,7 +97,10 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
   });
 
   it('forwards authorized state requests to the durable object', async () => {
-    const stubFetch = vi.fn().mockResolvedValue(new Response('state'));
+    const stubFetch = vi
+      .fn<(request: Request) => Promise<Response>>()
+      .mockResolvedValue(new Response('state'));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates authenticated forwarding.
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -96,6 +110,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates successful ownership validation.
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
 
@@ -115,14 +130,17 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     );
 
     expect(response.status).toBe(200);
-    const [forwarded] = stubFetch.mock.calls[0] as [Request];
+    const [forwarded] = stubFetch.mock.calls[0];
     expect(forwarded.headers.get('x-ddlbuilder-workspace-id')).toBe('ws-1');
     expect(forwarded.headers.get('x-ddlbuilder-user-id')).toBe('user-1');
     expect(forwarded.headers.get('x-ddlbuilder-session-id')).toBe('session-1');
   });
 
   it('returns 204 for authorized websocket health preflight', async () => {
-    const stubFetch = vi.fn().mockResolvedValue(new Response('state'));
+    const stubFetch = vi
+      .fn<(request: Request) => Promise<Response>>()
+      .mockResolvedValue(new Response('state'));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates the websocket health branch.
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -132,6 +150,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates successful ownership validation.
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
 
@@ -153,7 +172,10 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
   });
 
   it('validates import payload before forwarding', async () => {
-    const stubFetch = vi.fn().mockResolvedValue(new Response('imported'));
+    const stubFetch = vi
+      .fn<(request: Request) => Promise<Response>>()
+      .mockResolvedValue(new Response('imported'));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates import payload validation.
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -163,6 +185,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates successful ownership validation.
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
 

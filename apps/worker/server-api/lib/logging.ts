@@ -7,8 +7,12 @@ import type { ApiEnv, WorkerRequestLogger } from './context.js';
 const REQUEST_ID_PATTERN = /^[a-zA-Z0-9._:-]{1,128}$/;
 const API_PATH_PREFIX = '/api';
 
-const getRuntimeProcess = () =>
-  Reflect.get(globalThis, 'process') as { env?: Record<string, string | undefined> } | undefined;
+type RuntimeGlobal = typeof globalThis & {
+  process?: { env?: Record<string, string | undefined> };
+};
+
+// SAFETY: process is optional in the Worker runtime; this is a capability probe for local tooling only.
+const getRuntimeProcess = () => (globalThis as RuntimeGlobal).process;
 
 const isVitest = () => {
   const runtimeProcess = getRuntimeProcess();
@@ -111,8 +115,10 @@ export const withWorkerRequestLogging = (handler: WorkerFetch): WorkerFetch => {
       request,
       {
         ...env,
+        // SAFETY: withEvlog's open field bag is adapted to the WorkerRequestLogger fields consumed by this Worker request handler.
         EVLOG_REQUEST_LOG: log as WorkerRequestLogger,
       },
+      // SAFETY: withEvlog provides the platform execution context required by the Worker handler.
       ctx as ExecutionContext,
     );
 
@@ -125,6 +131,7 @@ export const withWorkerRequestLogging = (handler: WorkerFetch): WorkerFetch => {
   return (request, env, ctx) => {
     configureWorkerLoggingFromEnvironment(env.ENVIRONMENT);
 
+    // SAFETY: Cloudflare invokes the Worker fetch handler with an ExecutionContext.
     return loggedWorker.fetch(normalizeApiRequestId(request), env, ctx as ExecutionContext);
   };
 };
@@ -132,15 +139,22 @@ export const withWorkerRequestLogging = (handler: WorkerFetch): WorkerFetch => {
 export const getRequestLogger = (c: Context<ApiEnv>): WorkerRequestLogger | undefined =>
   c.get('log');
 
-export const toWorkerError = (error: unknown, fallback: string) => {
+export const toWorkerError = (
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this adapter normalizes arbitrary platform failures into Error.
+  error: unknown,
+  fallback: string,
+) => {
   if (error instanceof Error) return error;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- error normalization accepts primitive platform failures.
   if (typeof error === 'string') return new Error(error);
 
   return new Error(fallback);
 };
 
 export const logWorkerBackgroundError = (
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- background failures arrive from arbitrary asynchronous work.
   error: unknown,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- background log context is an open structured field bag.
   context: Record<string, unknown>,
   waitUntil?: (promise: Promise<unknown>) => void,
   environment?: string,
@@ -152,6 +166,7 @@ export const logWorkerBackgroundError = (
 };
 
 export const createWorkerBackgroundLogger = (
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- background log context is an open structured field bag.
   context: Record<string, unknown>,
   waitUntil: (promise: Promise<unknown>) => void,
   environment?: string,

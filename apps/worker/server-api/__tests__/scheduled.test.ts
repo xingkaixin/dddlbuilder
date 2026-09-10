@@ -10,11 +10,13 @@ const recoveryMocks = vi.hoisted(() => ({
   cleanupAIGovernance: vi.fn().mockResolvedValue(undefined),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- inject recovery outcomes while exercising the real scheduled orchestration
 vi.mock('../lib/aiUsage.js', async (importOriginal) => ({
   ...(await importOriginal<typeof AIUsageModule>()),
   reclaimStaleAIUsage: recoveryMocks.reclaimStaleAIUsage,
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- inject budget cleanup outcomes while exercising the real scheduled orchestration
 vi.mock('../lib/aiBudget.js', async (importOriginal) => ({
   ...(await importOriginal<typeof AIBudgetModule>()),
   reconcileTerminalAIBudgets: recoveryMocks.reconcileTerminalAIBudgets,
@@ -22,6 +24,18 @@ vi.mock('../lib/aiBudget.js', async (importOriginal) => ({
 }));
 
 import worker from '../../api/index.js';
+
+// SAFETY: the scheduled handler only passes these values through to mocked recovery functions.
+const emptyEvent = {} as ScheduledEvent;
+// SAFETY: recovery functions are mocked and do not read Worker bindings in this orchestration test.
+const emptyEnv = {} as ApiEnv['Bindings'];
+
+const createExecutionContext = (
+  waitUntil: (promise: Promise<unknown>) => void,
+): ExecutionContext => {
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: waitUntil and passThroughOnException are the complete context surface used by this test.
+  return { waitUntil, passThroughOnException: vi.fn() } as unknown as ExecutionContext;
+};
 
 describe('scheduled recovery', () => {
   beforeEach(() => {
@@ -34,20 +48,18 @@ describe('scheduled recovery', () => {
   });
 
   it('将完整恢复任务交给 waitUntil', async () => {
-    const env = {} as ApiEnv['Bindings'];
+    const env = emptyEnv;
     const waitUntil = vi.fn<(promise: Promise<unknown>) => void>();
 
-    const ctx = {
-      waitUntil,
-      passThroughOnException: vi.fn(),
-    } as unknown as ExecutionContext;
+    const ctx = createExecutionContext(waitUntil);
 
-    await worker.scheduled({} as ScheduledEvent, env, ctx);
+    await worker.scheduled(emptyEvent, env, ctx);
 
     expect(waitUntil).toHaveBeenCalledOnce();
-    const [task] = waitUntil.mock.calls[0] as [Promise<unknown>];
+    const task = waitUntil.mock.calls[0]?.[0];
     expect(task).toBeInstanceOf(Promise);
 
+    if (!task) throw new Error('Expected scheduled task');
     await task;
 
     expect(recoveryMocks.reclaimStaleAIUsage).toHaveBeenCalledOnce();
@@ -75,11 +87,7 @@ describe('scheduled recovery failures', () => {
       }),
     );
     const waitUntil = vi.fn<(promise: Promise<unknown>) => void>();
-    await worker.scheduled(
-      {} as ScheduledEvent,
-      {} as ApiEnv['Bindings'],
-      { waitUntil } as unknown as ExecutionContext,
-    );
+    await worker.scheduled(emptyEvent, emptyEnv, createExecutionContext(waitUntil));
     await waitUntil.mock.calls[0]?.[0];
     expect(recoveryMocks.reconcileTerminalAIBudgets).toHaveBeenCalledOnce();
     expect(recoveryMocks.cleanupAIGovernance).toHaveBeenCalledOnce();
@@ -89,11 +97,7 @@ describe('scheduled recovery failures', () => {
     const failure = new Error('D1 unavailable');
     recoveryMocks.reclaimStaleAIUsage.mockReturnValue(Effect.fail(failure));
     const waitUntil = vi.fn<(promise: Promise<unknown>) => void>();
-    await worker.scheduled(
-      {} as ScheduledEvent,
-      {} as ApiEnv['Bindings'],
-      { waitUntil } as unknown as ExecutionContext,
-    );
+    await worker.scheduled(emptyEvent, emptyEnv, createExecutionContext(waitUntil));
     await expect(waitUntil.mock.calls[0]?.[0]).rejects.toBe(failure);
     expect(recoveryMocks.reconcileTerminalAIBudgets).not.toHaveBeenCalled();
     expect(recoveryMocks.cleanupAIGovernance).not.toHaveBeenCalled();

@@ -9,8 +9,9 @@ export type { ApiErrorCode, ApiErrorPayload, ApiMeta } from '@ddlbuilder/shared-
 const REQUEST_ID_CONTEXT_KEY = 'requestId';
 
 export const getRequestId = (c: Context<ApiEnv>): string | undefined => {
-  const value = c.get(REQUEST_ID_CONTEXT_KEY) as unknown;
+  const value = c.get(REQUEST_ID_CONTEXT_KEY);
 
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Hono context values are untyped at this request boundary.
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 };
 
@@ -142,10 +143,10 @@ export class DomainError extends Error {
   }
 }
 
-export const parseJsonBodyWithLimit = async <T>(
+export const parseJsonBodyWithLimit = async (
   c: Context<ApiEnv>,
   maxBytes: number,
-): Promise<JsonBodyResult<T>> => {
+): Promise<JsonBodyResult<unknown>> => {
   const result = await readBodyWithLimit(c.req.raw, maxBytes);
 
   if (!result.ok) {
@@ -168,7 +169,7 @@ export const parseJsonBodyWithLimit = async <T>(
   try {
     const raw = new TextDecoder().decode(result.bytes);
 
-    return { ok: true, data: JSON.parse(raw) as T };
+    return { ok: true, data: JSON.parse(raw) };
   } catch {
     return {
       ok: false,

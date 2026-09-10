@@ -16,9 +16,39 @@ type Pagination = {
   offset: number;
 };
 
-const toUserSummary = (row: Record<string, unknown>): AdminUserSummary => ({
+type AdminUserSummaryRow = {
+  id: string;
+  name: string | null;
+  email: string;
+  emailVerified: number;
+  balance: number;
+  createdAt: number;
+  disabled: number | boolean;
+};
+
+type AdminUserDetailRow = AdminUserSummaryRow & {
+  updatedAt: number;
+  lastActiveAt: number | null;
+};
+
+type AdminUsageEventRow = {
+  id: string;
+  routeKey: string;
+  requestId: string;
+  estimatedTokens: number;
+  actualTotalTokens: number | null;
+  chargedTokens: number | null;
+  providerBudgetTokens: number | null;
+  attemptCount: number | null;
+  usageEstimated: number | null;
+  status: string;
+  errorCode: string | null;
+  createdAt: number;
+};
+
+const toUserSummary = (row: AdminUserSummaryRow): AdminUserSummary => ({
   id: String(row.id),
-  name: typeof row.name === 'string' ? row.name : '',
+  name: row.name ?? '',
   email: String(row.email),
   emailVerified: Number(row.emailVerified) === 1,
   balance: Number(row.balance ?? 0),
@@ -26,10 +56,9 @@ const toUserSummary = (row: Record<string, unknown>): AdminUserSummary => ({
   disabled: row.disabled === 1 || row.disabled === true,
 });
 
-const toNullableNumber = (value: unknown) =>
-  value === null || value === undefined ? null : Number(value);
+const toNullableNumber = (value: number | null) => (value === null ? null : Number(value));
 
-const toUsageEvent = (row: Record<string, unknown>): AdminUsageEvent => ({
+const toUsageEvent = (row: AdminUsageEventRow): AdminUsageEvent => ({
   id: String(row.id),
   routeKey: String(row.routeKey),
   requestId: String(row.requestId),
@@ -43,7 +72,7 @@ const toUsageEvent = (row: Record<string, unknown>): AdminUsageEvent => ({
       ? null
       : Number(row.usageEstimated) === 1,
   status: String(row.status),
-  errorCode: typeof row.errorCode === 'string' ? row.errorCode : null,
+  errorCode: row.errorCode,
   createdAt: toIsoTimestamp(row.createdAt),
 });
 
@@ -70,7 +99,7 @@ export const listAdminUsers = async (
       `,
     )
     .bind(limit, offset)
-    .all<Record<string, unknown>>();
+    .all<AdminUserSummaryRow>();
 
   return (result.results ?? []).map(toUserSummary);
 };
@@ -103,7 +132,7 @@ export const getAdminUser = async (
       `,
     )
     .bind(userId)
-    .first<Record<string, unknown>>();
+    .first<AdminUserDetailRow>();
 
   if (!row) return null;
 
@@ -180,7 +209,7 @@ export const listAdminUsageEvents = async (
         `,
       )
       .bind(userId, limit, offset)
-      .all<Record<string, unknown>>(),
+      .all<AdminUsageEventRow>(),
     db
       .prepare('SELECT COUNT(*) AS total FROM usage_events WHERE user_id = ?')
       .bind(userId)

@@ -9,6 +9,7 @@ import { applyCreditMutation } from '../../lib/credits.js';
 import type { ApiEnv } from '../../lib/context.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- this test isolates authentication to exercise Effect services.
 vi.mock('../../lib/auth.js', () => ({
   authenticateRequest: async () => ({ userId: 'effect-user', email: 'effect@example.com' }),
 }));
@@ -23,6 +24,7 @@ it('runs an injected provider through real credit reservation and settlement', a
   const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
   databases.push(sqlite);
 
+  // SAFETY: this fixture supplies every binding used by the governance path.
   const env = {
     USER_DB: database,
     OPENAI_API_KEY: 'test-key',

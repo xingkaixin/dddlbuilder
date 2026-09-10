@@ -11,7 +11,9 @@ const ORIGINAL_ENV = {
 // Helper to create env object for tests
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: CSP tests never call the KV binding; an empty platform double is sufficient.
   SHARE_KV: {} as KVNamespace,
+  // SAFETY: CSP tests do not access the database binding.
   USER_DB: {} as D1Database,
   ...overrides,
 });

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 
+// SAFETY: Route tests only read ASSETS and the mocked account bindings from this environment fixture.
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
@@ -35,6 +36,7 @@ describe('/api/credits/*', () => {
   });
 
   it('returns balance for authenticated users', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -43,6 +45,7 @@ describe('/api/credits/*', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn().mockResolvedValue({
@@ -67,9 +70,11 @@ describe('/api/credits/*', () => {
   });
 
   it('rejects invalid account output instead of returning a successful balance', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({ userId: 'user-1' }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn(),
       getCreditAccount: vi.fn().mockResolvedValue({ balance: -1, version: 0 }),
@@ -83,6 +88,7 @@ describe('/api/credits/*', () => {
   });
 
   it('returns zero balance when account does not exist', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -91,6 +97,7 @@ describe('/api/credits/*', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn().mockResolvedValue(null),
@@ -110,6 +117,7 @@ describe('/api/credits/*', () => {
   });
 
   it('returns recent ledger entries for authenticated users', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -118,6 +126,7 @@ describe('/api/credits/*', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
@@ -159,6 +168,7 @@ describe('/api/credits/*', () => {
   it('caps ledger limit at 50', async () => {
     const listCreditLedger = vi.fn().mockResolvedValue([]);
     const countCreditLedger = vi.fn().mockResolvedValue(0);
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -167,6 +177,7 @@ describe('/api/credits/*', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
@@ -189,6 +200,7 @@ describe('/api/credits/*', () => {
   it('falls back to default limit for invalid values', async () => {
     const listCreditLedger = vi.fn().mockResolvedValue([]);
     const countCreditLedger = vi.fn().mockResolvedValue(0);
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -197,6 +209,7 @@ describe('/api/credits/*', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
@@ -219,6 +232,7 @@ describe('/api/credits/*', () => {
   it('falls back to default limit for zero', async () => {
     const listCreditLedger = vi.fn().mockResolvedValue([]);
     const countCreditLedger = vi.fn().mockResolvedValue(0);
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -227,6 +241,7 @@ describe('/api/credits/*', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
@@ -249,6 +264,7 @@ describe('/api/credits/*', () => {
   it('falls back to default limit for negative values', async () => {
     const listCreditLedger = vi.fn().mockResolvedValue([]);
     const countCreditLedger = vi.fn().mockResolvedValue(0);
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -257,6 +273,7 @@ describe('/api/credits/*', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
@@ -279,6 +296,7 @@ describe('/api/credits/*', () => {
   it('passes ledger pagination and date filters', async () => {
     const listCreditLedger = vi.fn().mockResolvedValue([]);
     const countCreditLedger = vi.fn().mockResolvedValue(42);
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -287,6 +305,7 @@ describe('/api/credits/*', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),
@@ -322,6 +341,7 @@ describe('/api/credits/*', () => {
   });
 
   it('returns 503 when balance service throws', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -330,6 +350,7 @@ describe('/api/credits/*', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn().mockRejectedValue(new Error('DB down')),
@@ -348,6 +369,7 @@ describe('/api/credits/*', () => {
   });
 
   it('returns 503 when ledger service throws', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace authentication at the route boundary to exercise the response contract.
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -356,6 +378,7 @@ describe('/api/credits/*', () => {
         name: 'User One',
       }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
       grantSignupCredits: vi.fn().mockResolvedValue(undefined),
       getCreditAccount: vi.fn(),

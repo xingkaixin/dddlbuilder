@@ -9,6 +9,8 @@ const createAdminSessionDb = () => {
     { expiresAt: number; createdAt: number; revokedAt: number | null }
   >();
 
+  // SAFETY: this in-memory double implements every D1 method used by adminAuth tests.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- a platform test double cannot implement the full D1 surface.
   return {
     prepare(sql: string) {
       return {
@@ -62,6 +64,7 @@ const createAdminSessionDb = () => {
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: admin auth does not use the KV binding in these tests.
   SHARE_KV: {} as KVNamespace,
   USER_DB: createAdminSessionDb(),
   BETTER_AUTH_SECRET: 'better-auth-secret',

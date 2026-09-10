@@ -16,23 +16,28 @@ export const createWorkspaceD1Metrics = (): WorkspaceD1Metrics => ({
   durationMs: 0,
 });
 
-const readNumber = (value: unknown) =>
-  typeof value === 'number' && Number.isFinite(value) ? value : 0;
+const readNumber = (value: number | undefined): number =>
+  Number.isFinite(value) ? (value ?? 0) : 0;
 
 export const recordWorkspaceD1Result = (
   metrics: WorkspaceD1Metrics | undefined,
   result: D1ResultLike | null | undefined,
 ) => {
   if (!metrics) return;
-  metrics.queries += 1;
+  const target = metrics;
 
-  if (!result?.meta) return;
-  metrics.rowsRead += readNumber(result.meta.rows_read);
-  metrics.rowsWritten += readNumber(result.meta.rows_written);
-  metrics.durationMs += readNumber(result.meta.duration);
+  target.queries += 1;
+  const meta = result?.meta;
+
+  if (!meta) return;
+  const { rows_read: rowsRead, rows_written: rowsWritten, duration } = meta;
+
+  target.rowsRead += readNumber(rowsRead);
+  target.rowsWritten += readNumber(rowsWritten);
+  target.durationMs += readNumber(duration);
 };
 
-export const allWorkspaceD1Result = async <T = Record<string, unknown>>(
+export const allWorkspaceD1Result = async <T>(
   statement: D1PreparedStatement,
   metrics?: WorkspaceD1Metrics,
 ) => {
@@ -42,7 +47,7 @@ export const allWorkspaceD1Result = async <T = Record<string, unknown>>(
   return result;
 };
 
-export const firstWorkspaceD1Result = async <T = Record<string, unknown>>(
+export const firstWorkspaceD1Result = async <T>(
   statement: D1PreparedStatement,
   metrics?: WorkspaceD1Metrics,
 ) => {
@@ -55,7 +60,7 @@ export const firstWorkspaceD1Result = async <T = Record<string, unknown>>(
   return result.results?.[0] ?? null;
 };
 
-export const runWorkspaceD1Result = async <T = Record<string, unknown>>(
+export const runWorkspaceD1Result = async <T>(
   statement: D1PreparedStatement,
   metrics?: WorkspaceD1Metrics,
 ) => {
@@ -65,7 +70,7 @@ export const runWorkspaceD1Result = async <T = Record<string, unknown>>(
   return result;
 };
 
-export const batchWorkspaceD1Results = async <T = Record<string, unknown>>(
+export const batchWorkspaceD1Results = async <T>(
   database: D1Database,
   statements: D1PreparedStatement[],
   metrics?: WorkspaceD1Metrics,
@@ -81,6 +86,7 @@ export const batchWorkspaceD1Results = async <T = Record<string, unknown>>(
 
 export const logWorkspaceD1Metrics = (
   operation: string,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- metrics logging accepts arbitrary structured context fields.
   payload: Record<string, unknown>,
   metrics: WorkspaceD1Metrics,
 ) => {
@@ -95,7 +101,11 @@ export const logWorkspaceD1Metrics = (
   );
 };
 
-export const logWorkspaceYDocHealth = (operation: string, payload: Record<string, unknown>) => {
+export const logWorkspaceYDocHealth = (
+  operation: string,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- health logging accepts arbitrary structured context fields.
+  payload: Record<string, unknown>,
+) => {
   console.info(
     JSON.stringify({
       event: 'workspace_yjs_do_health',

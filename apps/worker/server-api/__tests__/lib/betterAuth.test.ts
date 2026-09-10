@@ -3,7 +3,10 @@ import type { ApiEnv } from '../../lib/context.js';
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: the Better Auth tests never access KV; an empty object satisfies the unused platform binding.
   SHARE_KV: {} as KVNamespace,
+  // SAFETY: this minimal D1 double implements the prepare/bind/first calls exercised by createBetterAuth.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: prepare, bind, and first are the complete database surface exercised by this test.
   USER_DB: {
     prepare: vi.fn().mockReturnValue({
       bind: vi.fn().mockReturnValue({
@@ -37,18 +40,23 @@ describe('createBetterAuth', () => {
     vi.clearAllMocks();
     resendSendMock.mockResolvedValue({ data: { id: 'email-1' }, error: null });
 
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate the external Better Auth factory to inspect its generated config
     vi.doMock('better-auth', () => ({
       betterAuth: betterAuthMock,
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- replace the external Drizzle adapter while testing Better Auth wiring
     vi.doMock('better-auth/adapters/drizzle', () => ({
       drizzleAdapter: drizzleAdapterMock.mockReturnValue({ adapter: 'drizzle' }),
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- replace the external D1 Drizzle factory to inspect adapter configuration
     vi.doMock('drizzle-orm/d1', () => ({
       drizzle: drizzleMock,
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- replace the external email SDK to verify notification wiring
     vi.doMock('resend', () => ({
       Resend: MockResend,
     }));
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate the credit side effect while testing Better Auth lifecycle hooks
     vi.doMock('../../lib/credits.js', () => ({ grantSignupCredits: grantSignupCreditsMock }));
   });
 

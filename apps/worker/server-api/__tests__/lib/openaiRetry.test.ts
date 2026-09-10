@@ -6,6 +6,7 @@ import { APIConnectionError, APIConnectionTimeoutError, APIUserAbortError } from
 import type { ApiEnv } from '../../lib/context.js';
 import { buildOpenAIConfig } from '../../openaiControl.js';
 
+// SAFETY: buildOpenAIConfig only reads optional environment values, so an empty binding fixture exercises its documented defaults.
 const config = buildOpenAIConfig({} as ApiEnv['Bindings']);
 
 const runRetry = <A>(
@@ -99,6 +100,7 @@ describe('retryOpenAI', () => {
       { scope: 'deadline', maxAttempts: 3, onRetry, signal: controller.signal },
       config,
     );
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Promise rejection values are intentionally preserved to test cancellation behavior
     const rejection = result.catch((error: unknown) => error);
     await vi.advanceTimersByTimeAsync(0);
     expect(onRetry).toHaveBeenCalledOnce();
@@ -133,6 +135,7 @@ describe('retryOpenAI', () => {
       },
       config,
     );
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Promise rejection values are intentionally preserved to test retry exhaustion identity
     const rejection = result.catch((error: unknown) => error);
     await vi.runAllTimersAsync();
 

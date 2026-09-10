@@ -8,6 +8,7 @@ import { applyCreditMutation } from '../../lib/credits.js';
 import { reclaimStaleAIUsage } from '../../lib/aiUsage.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- the deadline test fixes authentication to exercise cancellation.
 vi.mock('../../lib/auth.js', () => ({
   authenticateRequest: async () => ({ userId: 'deadline-user', email: 'deadline@example.com' }),
 }));
@@ -19,6 +20,7 @@ const startRequest = async (streaming = true) => {
   const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
   databases.push(sqlite);
 
+  // SAFETY: this fixture supplies every binding used by the deadline route and its credit ledger.
   const env = {
     USER_DB: database,
     OPENAI_API_KEY: 'test-key',
@@ -77,7 +79,7 @@ const startRequest = async (streaming = true) => {
 const mockUpstream = (chunks: unknown[], complete = false) => {
   let signal: AbortSignal | undefined;
 
-  const fetch = vi.fn(async (_url: unknown, init: RequestInit) => {
+  const fetch = vi.fn(async (_url: RequestInfo | URL, init: RequestInit) => {
     signal = init.signal ?? undefined;
 
     return new Response(
@@ -196,7 +198,7 @@ describe('AI execution deadline with the real OpenAI stream reader', () => {
     vi.useFakeTimers();
 
     const fetch = vi.fn(
-      async (_url: unknown, init: RequestInit) =>
+      async (_url: RequestInfo | URL, init: RequestInit) =>
         new Response(
           new ReadableStream({
             start(controller) {

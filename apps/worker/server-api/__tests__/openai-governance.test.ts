@@ -3,6 +3,19 @@ import type { ApiEnv, WorkerRequestLogger } from '../lib/context.js';
 import type { Context, Hono } from 'hono';
 import { createSqliteD1Database } from './helpers/sqliteD1.js';
 
+type AIAuditPayload = {
+  route?: string;
+  actualPromptTokens?: number;
+  actualCompletionTokens?: number;
+  actualTotalTokens?: number;
+  chargedTokens?: number;
+  providerBudgetTokens?: number;
+  usageEstimated?: boolean;
+  attemptCount?: number;
+  retryCount?: number;
+  estimatedTokens?: number;
+};
+
 const ORIGINAL_ENV = { ...process.env };
 
 const restoreEnv = () => {
@@ -25,6 +38,8 @@ const restoreEnv = () => {
 const createCounterDatabase = (): D1Database => {
   const counters = new Map<string, { windowId: string; value: number }>();
 
+  // SAFETY: this counter fixture implements the prepare/bind/first D1 calls used by budget tests.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the counter fixture implements the D1 calls used by governance.
   return {
     prepare: vi.fn().mockReturnValue({
       bind: (
@@ -56,19 +71,13 @@ const createCounterDatabase = (): D1Database => {
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
-  SHARE_KV: {} as KVNamespace,
+  SHARE_KV: /* SAFETY: budget tests do not access KV. */ {} as KVNamespace,
   USER_DB: createCounterDatabase(),
   ...overrides,
 });
 
 // Wrapper to make app.fetch with env easier to use
-const createAppWrapper = (
-  app: Hono<ApiEnv>,
-  env: ApiEnv['Bindings'],
-): {
-  request: (path: string, options?: RequestInit) => Promise<Response>;
-  waitUntilTasks: Promise<unknown>[];
-} => {
+const createAppWrapper = (app: Hono<ApiEnv>, env: ApiEnv['Bindings']) => {
   const waitUntilTasks: Promise<unknown>[] = [];
 
   return {
@@ -79,6 +88,8 @@ const createAppWrapper = (
         : `http://localhost${path.startsWith('/') ? path : `/${path}`}`;
       const request = new Request(url, options);
 
+      // SAFETY: this test context supplies the waitUntil and pass-through hooks consumed by Hono.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements the waitUntil hook used by the route.
       return app.fetch(request, env, {
         waitUntil: (task: Promise<unknown>) => waitUntilTasks.push(task),
         passThroughOnException: () => {},
@@ -124,6 +135,8 @@ let requestLogWarnMock = vi.fn();
 let logWorkerBackgroundErrorMock = vi.fn();
 
 const createRequestLogger = (): WorkerRequestLogger =>
+  // SAFETY: the mock implements every logger method called by the route.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the logger fixture implements only the methods asserted by governance tests.
   ({
     set: requestLogSetMock,
     audit: requestLogAuditMock,
@@ -140,6 +153,7 @@ const mockLoggingModule = () => {
   logWorkerBackgroundErrorMock = vi.fn();
   const requestLogger = createRequestLogger();
 
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- this suite injects deterministic request logging for governance assertions.
   vi.doMock('../lib/logging.js', () => ({
     normalizeIncomingRequestId: (value: string | undefined) => value?.trim() || null,
     withWorkerRequestLogging:
@@ -156,19 +170,19 @@ const mockLoggingModule = () => {
     completeRequestLogContext: (c: Context<ApiEnv>, requestId: string) =>
       c.get('log')?.set({ requestId }),
     createWorkerBackgroundLogger: () => ({ ...requestLogger, emit: vi.fn() }),
-    toWorkerError: (error: unknown, fallback: string) =>
-      error instanceof Error ? error : new Error(typeof error === 'string' ? error : fallback),
+    toWorkerError: (error: Error | string, fallback: string) =>
+      error instanceof Error ? error : new Error(error || fallback),
     logWorkerBackgroundError: logWorkerBackgroundErrorMock,
   }));
 };
 
 const getAIAuditPayload = () =>
   requestLogSetMock.mock.calls
-    .map(([fields]) => (fields as { ai?: Record<string, unknown> }).ai)
-    .find(
-      (payload): payload is Record<string, unknown> =>
-        payload !== undefined && typeof payload.route === 'string',
-    );
+    .map(([fields]) => {
+      // SAFETY: the logging mock records the structured AI fields emitted by the route.
+      return (fields as { ai?: AIAuditPayload }).ai;
+    })
+    .find((payload): payload is AIAuditPayload => payload?.route !== undefined);
 
 const mockAIBudgetModule = () => {
   const reservations = new Map<string, number>();
@@ -188,6 +202,7 @@ const mockAIBudgetModule = () => {
 
     return [...reservations.values()].reduce((total, value) => total + value, 0);
   });
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- governance tests replace budget persistence with an in-memory ledger.
   vi.doMock('../lib/aiBudget.js', () => ({
     reserveAIDailyBudget: reserveAIDailyBudgetMock,
     settleAIDailyBudget: settleAIDailyBudgetMock,
@@ -257,10 +272,13 @@ const mockAIUsageModule = async (options?: {
     }));
   finalizeAIUsageSettlementMock = vi.fn().mockResolvedValue(true);
 
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- governance scenarios control authentication outcomes.
   vi.doMock('../lib/auth.js', () => ({ authenticateRequest: authenticateRequestMock }));
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- signup credits are outside these AI usage scenarios.
   vi.doMock('../lib/credits.js', () => ({
     grantSignupCredits: vi.fn().mockResolvedValue(undefined),
   }));
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- scenarios inject deterministic usage settlement outcomes.
   vi.doMock('../lib/aiUsage.js', () => ({
     reserveAIUsage: reserveAIUsageMock,
     recordAIUsageAttempt: recordAIUsageAttemptMock,
@@ -293,6 +311,7 @@ const loadAppWithOpenAIMock = async (
   mockLoggingModule();
   await mockAIUsageModule(aiUsageOptions);
   mockAIBudgetModule();
+  // oxlint-disable-next-line anti-slop/no-module-mocking -- the test replaces the external OpenAI stream boundary.
   vi.doMock('openai', () => ({
     default: class OpenAI {
       chat = {
@@ -304,8 +323,11 @@ const loadAppWithOpenAIMock = async (
   }));
 
   const module = await import('../../api/index');
+  // SAFETY: the dynamically imported test module exposes the Hono router through its default adapter.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the module boundary is intentionally mocked and lacks a precise generated type.
   const app = module.default as unknown as Hono<ApiEnv>;
 
+  // SAFETY: filtering removes undefined values and the remaining keys are environment bindings.
   const env = createEnv(
     Object.fromEntries(Object.entries(envConfig).filter(([, v]) => v !== undefined)) as Partial<
       ApiEnv['Bindings']
@@ -330,6 +352,7 @@ const loadAuthenticatedApp = async (
       continue;
     }
 
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- process.env accepts strings while the test binding type also contains runtime objects.
     if (typeof value !== 'string') continue;
     process.env[key] = value;
   }
@@ -339,6 +362,8 @@ const loadAuthenticatedApp = async (
   await mockAIUsageModule(aiUsageOptions);
   mockAIBudgetModule();
   const module = await import('../../api/index');
+  // SAFETY: the dynamically imported test module exposes the Hono router through its default adapter.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the module boundary is intentionally mocked and lacks a precise generated type.
   const app = module.default as unknown as Hono<ApiEnv>;
   const env = createEnv(envConfig);
 
@@ -664,6 +689,7 @@ describe('openai governance', { concurrent: false }, () => {
     );
     expect(consoleInfoSpy).not.toHaveBeenCalled();
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+    // SAFETY: this test spies on fetch with a string URL and RequestInit payload.
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://api.telegram.org/botbot-token/sendMessage');
     expect(init.method).toBe('POST');
@@ -866,6 +892,7 @@ describe('openai governance', { concurrent: false }, () => {
     expect(successfulResponse.status).toBe(200);
     await successfulResponse.text();
     expect(reserveAIDailyBudgetMock).toHaveBeenCalledTimes(1);
+    // SAFETY: the preceding request establishes a reservation call with an estimatedTokens input.
     const successfulEstimate = reserveAIUsageMock.mock.calls[1]?.[1].estimatedTokens as number;
     expect(reserveAIDailyBudgetMock).toHaveBeenCalledWith(
       expect.anything(),
@@ -941,6 +968,7 @@ describe('openai governance', { concurrent: false }, () => {
     expect(response.status).toBe(200);
     await response.text();
 
+    // SAFETY: the successful request records a reservation input with estimatedTokens.
     const reservedInput = reserveAIUsageMock.mock.calls[0]?.[1] as { estimatedTokens: number };
     const providerBudgetTokens = reservedInput.estimatedTokens + 20;
     expect(recordAIUsageAttemptMock).toHaveBeenCalledTimes(2);
@@ -1085,10 +1113,12 @@ describe('openai governance', { concurrent: false }, () => {
       null,
     );
 
+    // SAFETY: the mocked OpenAI call receives the messages and max_tokens fields asserted below.
     const completionInput = createCompletionMock.mock.calls[0]?.[0] as {
       messages: unknown;
       max_tokens: number;
     };
+    // SAFETY: the successful request records a reservation input with estimatedTokens.
     const reservedInput = reserveAIUsageMock.mock.calls[0]?.[1] as { estimatedTokens: number };
 
     const utf8MessageBytes = new TextEncoder().encode(

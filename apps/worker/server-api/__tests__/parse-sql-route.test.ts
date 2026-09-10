@@ -3,11 +3,13 @@ import { SqlParseError, SqlParser } from '@ddlbuilder/ddl-core/parser';
 import app from '../../api/index';
 import type { ApiEnv } from '../lib/context.js';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Keep rate limiting outside this parser route contract test.
 vi.mock('../lib/requestRateLimit', () => ({
   enforceIpRateLimit: vi.fn().mockResolvedValue(null),
 }));
 
 // Helper to create env object for tests
+// SAFETY: The route tests provide the bindings consumed by parse-sql; empty KV/D1 doubles are never reached on the parser path.
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
@@ -28,6 +30,7 @@ describe('parse-sql route', () => {
     const result = await new SqlParser().parseAsync('CREATE TABLE users(id INT)', 'mysql');
     vi.spyOn(SqlParser.prototype, 'parseAsync').mockResolvedValueOnce({
       ...result,
+      // SAFETY: This fixture deliberately violates the parser result contract to exercise route validation.
       fields: [null as never],
     });
 

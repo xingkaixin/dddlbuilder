@@ -8,7 +8,9 @@ import type { ApiEnv } from '../lib/context';
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: notification tests never call KV; the empty object is an unused platform placeholder.
   SHARE_KV: {} as KVNamespace,
+  // SAFETY: notification tests use only fetch and notification environment values, not D1.
   USER_DB: {} as D1Database,
   ...overrides,
 });

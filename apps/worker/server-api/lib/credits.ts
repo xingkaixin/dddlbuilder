@@ -32,20 +32,33 @@ type CreditMutationInput = {
   amount: number;
   idempotencyKey: string;
   relatedUsageId?: string | null;
-  metadata?: Record<string, unknown> | null;
+  metadata?: Record<string, string> | null;
   ledgerId?: string;
 };
 
-const toLedgerRow = (row: Record<string, unknown>): CreditLedgerRow => ({
+type CreditLedgerDbRow = {
+  id: string;
+  userId: string;
+  kind: CreditLedgerKind;
+  source: CreditLedgerSource;
+  amount: number;
+  balanceAfter: number;
+  idempotencyKey: string;
+  relatedUsageId: string | null;
+  metadataJson: string | null;
+  createdAt: number | string;
+};
+
+const toLedgerRow = (row: CreditLedgerDbRow): CreditLedgerRow => ({
   id: String(row.id),
   userId: String(row.userId),
-  kind: row.kind as CreditLedgerKind,
-  source: row.source as CreditLedgerSource,
+  kind: row.kind,
+  source: row.source,
   amount: Number(row.amount),
   balanceAfter: Number(row.balanceAfter),
   idempotencyKey: String(row.idempotencyKey),
-  relatedUsageId: typeof row.relatedUsageId === 'string' ? row.relatedUsageId : null,
-  metadataJson: typeof row.metadataJson === 'string' ? row.metadataJson : null,
+  relatedUsageId: row.relatedUsageId,
+  metadataJson: row.metadataJson,
   createdAt: toIsoTimestamp(row.createdAt),
 });
 
@@ -73,7 +86,7 @@ export const readCreditLedgerEntry = async (
     `,
   )
     .bind(userId, idempotencyKey)
-    .first<Record<string, unknown>>();
+    .first<CreditLedgerDbRow>();
 
   return existing ? toLedgerRow(existing) : null;
 };
@@ -152,7 +165,7 @@ export const listCreditLedger = async (
     `,
   )
     .bind(...values, options.limit, options.offset)
-    .all<Record<string, unknown>>();
+    .all<CreditLedgerDbRow>();
 
   return (result.results ?? []).map(toLedgerRow);
 };
@@ -210,6 +223,7 @@ const LEDGER_ABORT_CODES = [
 ] as const;
 
 // 余额不变量由触发器执法（ADR-0001）；TS 只负责把 ABORT 消息还原成领域错误。
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- D1 trigger errors cross the database adapter as unknown.
 export const mapLedgerAbort = (error: unknown): Error => {
   const message = error instanceof Error ? error.message : String(error);
   const abortCode = LEDGER_ABORT_CODES.find((code) => message.includes(code));
@@ -278,7 +292,7 @@ export const applyCreditMutation = async (
   await ensureCreditAccount(env, input.userId);
 
   try {
-    const created = await statement.first<Record<string, unknown>>();
+    const created = await statement.first<CreditLedgerDbRow>();
 
     if (!created) throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_ACCOUNT_MISSING');
 

@@ -51,6 +51,7 @@ describe('workspace socket authorization', () => {
     doc = new Y.Doc();
     ensureWorkspaceYDocMeta(doc);
     ({ state } = createDurableObjectState(new Map([['snapshot', Y.encodeStateAsUpdate(doc)]])));
+    // SAFETY: The durable object access tests use only USER_DB for authorization queries.
     env = { USER_DB: fixture.database } as ApiEnv['Bindings'];
     object = new WorkspaceYDocDurableObject(state, env);
   });
@@ -75,6 +76,8 @@ describe('workspace socket authorization', () => {
         syncProtocol.writeUpdate(encoder, Y.encodeStateAsUpdate(doc)),
       ),
     );
+    // SAFETY: The socket double implements the readyState, send, close, and attachment methods consumed by webSocketMessage.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- this fixture intentionally implements a narrow platform socket.
     await target.webSocketMessage(socket as unknown as WebSocket, message.slice().buffer);
   };
 
@@ -120,11 +123,10 @@ describe('workspace socket authorization', () => {
     const origin = createSocket();
     const receiver = createSocket('revoked-session');
     const allowed = createSocket();
-    vi.mocked(state.getWebSockets).mockReturnValue([
-      origin,
-      receiver,
-      allowed,
-    ] as unknown as WebSocket[]);
+    // SAFETY: The durable object broadcasts only use the WebSocket methods implemented by these test doubles.
+    vi.mocked(state.getWebSockets)
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- this fixture intentionally implements narrow platform sockets.
+      .mockReturnValue([origin, receiver, allowed] as unknown as WebSocket[]);
     await sendUpdate(object, origin, 'allowed');
     await Promise.all(vi.mocked(state.waitUntil).mock.calls.map(([promise]) => promise));
     expect(receiver.send).not.toHaveBeenCalled();

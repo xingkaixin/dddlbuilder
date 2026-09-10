@@ -66,6 +66,7 @@ export const OpenAISettings = Config.all({
 }).pipe(
   Config.map(({ limits, ...config }): OpenAIConfig => ({
     ...config,
+    // SAFETY: Config.all defines exactly the AIRouteKey entries below; each entry receives one rate-limit rule.
     rateLimitRules: Object.fromEntries(
       Object.entries(limits).map(([route, maxRequests]) => [
         route,

@@ -24,6 +24,7 @@ const authorityMocks = vi.hoisted(() => ({
   migrateSnapshot: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- migration tests replace the durable-object authority with an in-memory Y.Doc.
 vi.mock('../../lib/workspaceYDocAuthority.js', () => ({
   openDefaultWorkspaceYDocAuthority: vi.fn(async () => authorityMocks),
 }));
@@ -79,6 +80,7 @@ describe('workspaceMigration', () => {
       return { status: 'completed' };
     });
 
+    // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
     const task = commitWorkspaceMigration(
       { USER_DB: database } as never,
       'user-1',
@@ -136,6 +138,7 @@ describe('workspaceMigration', () => {
       first: async () => null,
       run: async () => ({ success: true }),
     };
+    // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
     const env = { USER_DB: { prepare: () => statement } } as never;
     expect(await analyzeWorkspaceMigration(env, 'user-1', payload)).toMatchObject({
       createdCount: 2,
@@ -186,6 +189,7 @@ describe('workspaceMigration', () => {
         first: async () => null,
         run: async () => ({ success: true }),
       };
+      // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
       const env = { USER_DB: { prepare: () => statement } } as never;
       await commitWorkspaceMigration(env, 'user-1', payload);
       const snapshot = exportWorkspaceYDocToSnapshot(doc);
@@ -257,6 +261,7 @@ describe('workspaceMigration', () => {
           },
           first: async () => (status ? { migrationStatus: status } : null),
           run: async () => {
+            // SAFETY: migration writes bind the next status as the fourth argument.
             const nextStatus = args[3] as string;
 
             if (nextStatus === 'completed' && failCompletedOnce) {
@@ -273,6 +278,7 @@ describe('workspaceMigration', () => {
         return statement;
       },
     };
+    // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
     const env = { USER_DB: database } as never;
     await expect(commitWorkspaceMigration(env, 'user-1', payload)).rejects.toThrow(
       'workspace_links write failed',
@@ -305,6 +311,7 @@ describe('workspaceMigration', () => {
       },
     };
 
+    // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
     const result = await analyzeWorkspaceMigration(
       { USER_DB: database } as never,
       'user-1',
@@ -346,6 +353,7 @@ describe('workspaceMigration', () => {
       },
     };
 
+    // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
     const result = await commitWorkspaceMigration(
       { USER_DB: database } as never,
       'user-1',
@@ -412,6 +420,7 @@ describe('workspaceMigration', () => {
     const onUpdate = vi.fn();
     cloudDoc.on('update', onUpdate);
 
+    // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
     const result = await commitWorkspaceMigration(
       { USER_DB: database } as never,
       'user-1',
@@ -444,6 +453,7 @@ describe('workspaceMigration', () => {
     importWorkspaceSnapshotToYDoc(cloudDoc, existing);
     const statement = { bind: () => statement, first: async () => null };
 
+    // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
     const result = await analyzeWorkspaceMigration(
       { USER_DB: { prepare: () => statement } } as never,
       'user-1',
@@ -470,6 +480,7 @@ describe('workspaceMigration', () => {
       },
     };
 
+    // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
     const result = await commitWorkspaceMigration(
       { USER_DB: database } as never,
       'user-1',
@@ -554,6 +565,7 @@ describe('workspaceMigration', () => {
       },
     };
 
+    // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
     await commitWorkspaceMigration({ USER_DB: database } as never, 'user-1', payload);
 
     const snapshot = exportWorkspaceYDocToSnapshot(cloudDoc);

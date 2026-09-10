@@ -6,7 +6,9 @@ const END_DATE = Date.UTC(2026, 3, 30);
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
+  // SAFETY: credits tests never call the KV binding.
   SHARE_KV: {} as KVNamespace,
+  // SAFETY: the default database is replaced with the focused D1 test double in each test.
   USER_DB: {} as D1Database,
   BETTER_AUTH_SECRET: 'better-auth-secret',
   BETTER_AUTH_URL: 'http://localhost:3000',
@@ -37,6 +39,14 @@ const createMockDb = () => {
   };
 };
 
+type MockDb = ReturnType<typeof createMockDb>;
+
+const asD1Database = (db: MockDb): D1Database => {
+  // SAFETY: this mock implements the D1 prepare/bind/first/all/run methods exercised by credits tests.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- a partial D1 platform double cannot implement the full runtime interface.
+  return db as unknown as D1Database;
+};
+
 describe('credits', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -49,7 +59,7 @@ describe('credits', () => {
       db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
 
       const { ensureCreditAccount } = await import('../../lib/credits.js');
-      await ensureCreditAccount(createEnv({ USER_DB: db as unknown as D1Database }), 'user-1');
+      await ensureCreditAccount(createEnv({ USER_DB: asD1Database(db) }), 'user-1');
 
       expect(db.prepare).toHaveBeenCalledWith(
         expect.stringContaining('INSERT OR IGNORE INTO credit_accounts'),
@@ -67,10 +77,7 @@ describe('credits', () => {
 
       const { getCreditAccount } = await import('../../lib/credits.js');
 
-      const result = await getCreditAccount(
-        createEnv({ USER_DB: db as unknown as D1Database }),
-        'user-1',
-      );
+      const result = await getCreditAccount(createEnv({ USER_DB: asD1Database(db) }), 'user-1');
 
       expect(result).toBeNull();
       expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT OR IGNORE'));
@@ -89,10 +96,7 @@ describe('credits', () => {
 
       const { getCreditAccount } = await import('../../lib/credits.js');
 
-      const result = await getCreditAccount(
-        createEnv({ USER_DB: db as unknown as D1Database }),
-        'user-1',
-      );
+      const result = await getCreditAccount(createEnv({ USER_DB: asD1Database(db) }), 'user-1');
 
       expect(result).toEqual({
         userId: 'user-1',
@@ -110,11 +114,10 @@ describe('credits', () => {
 
       const { listCreditLedger } = await import('../../lib/credits.js');
 
-      const result = await listCreditLedger(
-        createEnv({ USER_DB: db as unknown as D1Database }),
-        'user-1',
-        { limit: 10, offset: 0 },
-      );
+      const result = await listCreditLedger(createEnv({ USER_DB: asD1Database(db) }), 'user-1', {
+        limit: 10,
+        offset: 0,
+      });
 
       expect(result).toEqual([]);
       expect(db.bind).toHaveBeenCalledWith('user-1', 10, 0);
@@ -141,11 +144,10 @@ describe('credits', () => {
 
       const { listCreditLedger } = await import('../../lib/credits.js');
 
-      const result = await listCreditLedger(
-        createEnv({ USER_DB: db as unknown as D1Database }),
-        'user-1',
-        { limit: 5, offset: 20 },
-      );
+      const result = await listCreditLedger(createEnv({ USER_DB: asD1Database(db) }), 'user-1', {
+        limit: 5,
+        offset: 20,
+      });
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -163,7 +165,7 @@ describe('credits', () => {
       db.all.mockResolvedValue({ results: [] });
 
       const { listCreditLedger } = await import('../../lib/credits.js');
-      await listCreditLedger(createEnv({ USER_DB: db as unknown as D1Database }), 'user-1', {
+      await listCreditLedger(createEnv({ USER_DB: asD1Database(db) }), 'user-1', {
         limit: 5,
         offset: 10,
         startDate: START_DATE,
@@ -181,14 +183,10 @@ describe('credits', () => {
 
       const { countCreditLedger } = await import('../../lib/credits.js');
 
-      const result = await countCreditLedger(
-        createEnv({ USER_DB: db as unknown as D1Database }),
-        'user-1',
-        {
-          startDate: START_DATE,
-          endDate: END_DATE,
-        },
-      );
+      const result = await countCreditLedger(createEnv({ USER_DB: asD1Database(db) }), 'user-1', {
+        startDate: START_DATE,
+        endDate: END_DATE,
+      });
 
       expect(result).toBe(12);
       expect(db.bind).toHaveBeenCalledWith('user-1', START_DATE, END_DATE);
@@ -205,7 +203,20 @@ describe('credits', () => {
       ...overrides,
     });
 
-    const ledgerRow = (overrides: Record<string, unknown> = {}) => ({
+    type MockLedgerRow = {
+      id: string;
+      userId: string;
+      kind: 'consume' | 'grant' | 'refund';
+      source: 'ai_generate' | 'signup_bonus' | 'ai_review' | 'ai_explain' | 'manual_adjustment';
+      amount: number;
+      balanceAfter: number;
+      idempotencyKey: string;
+      relatedUsageId: string | null;
+      metadataJson: string | null;
+      createdAt: number;
+    };
+
+    const ledgerRow = (overrides: Partial<MockLedgerRow> = {}) => ({
       id: 'consume:test-key',
       userId: 'user-1',
       kind: 'consume',
@@ -224,14 +235,14 @@ describe('credits', () => {
       const { applyCreditMutation } = await import('../../lib/credits.js');
 
       await expect(
-        applyCreditMutation(createEnv({ USER_DB: db as unknown as D1Database }), {
+        applyCreditMutation(createEnv({ USER_DB: asD1Database(db) }), {
           ...createMutationInput(),
           amount: 0,
         }),
       ).rejects.toThrow('INVALID_CREDIT_AMOUNT');
 
       await expect(
-        applyCreditMutation(createEnv({ USER_DB: db as unknown as D1Database }), {
+        applyCreditMutation(createEnv({ USER_DB: asD1Database(db) }), {
           ...createMutationInput(),
           amount: -5,
         }),
@@ -243,14 +254,14 @@ describe('credits', () => {
       const { applyCreditMutation } = await import('../../lib/credits.js');
 
       await expect(
-        applyCreditMutation(createEnv({ USER_DB: db as unknown as D1Database }), {
+        applyCreditMutation(createEnv({ USER_DB: asD1Database(db) }), {
           ...createMutationInput(),
           amount: Infinity,
         }),
       ).rejects.toThrow('INVALID_CREDIT_AMOUNT');
 
       await expect(
-        applyCreditMutation(createEnv({ USER_DB: db as unknown as D1Database }), {
+        applyCreditMutation(createEnv({ USER_DB: asD1Database(db) }), {
           ...createMutationInput(),
           amount: NaN,
         }),
@@ -263,7 +274,7 @@ describe('credits', () => {
 
       for (const amount of [1.5, Number.MAX_SAFE_INTEGER + 1]) {
         await expect(
-          applyCreditMutation(createEnv({ USER_DB: db as unknown as D1Database }), {
+          applyCreditMutation(createEnv({ USER_DB: asD1Database(db) }), {
             ...createMutationInput(),
             amount,
           }),
@@ -283,7 +294,7 @@ describe('credits', () => {
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
         applyCreditMutation(
-          createEnv({ USER_DB: db as unknown as D1Database }),
+          createEnv({ USER_DB: asD1Database(db) }),
           createMutationInput({ kind: 'grant', amount: 10 }),
         ),
       ).rejects.toThrow('CREDIT_BALANCE_OVERFLOW');
@@ -296,7 +307,7 @@ describe('credits', () => {
       const { applyCreditMutation } = await import('../../lib/credits.js');
 
       const result = await applyCreditMutation(
-        createEnv({ USER_DB: db as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(db) }),
         createMutationInput(),
       );
 
@@ -314,10 +325,7 @@ describe('credits', () => {
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
-        applyCreditMutation(
-          createEnv({ USER_DB: db as unknown as D1Database }),
-          createMutationInput(),
-        ),
+        applyCreditMutation(createEnv({ USER_DB: asD1Database(db) }), createMutationInput()),
       ).rejects.toThrow('CREDIT_IDEMPOTENCY_CONFLICT');
     });
 
@@ -329,7 +337,7 @@ describe('credits', () => {
       const { applyCreditMutation } = await import('../../lib/credits.js');
 
       const result = await applyCreditMutation(
-        createEnv({ USER_DB: db as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(db) }),
         createMutationInput(),
       );
 
@@ -355,7 +363,7 @@ describe('credits', () => {
       const { applyCreditMutation } = await import('../../lib/credits.js');
 
       const result = await applyCreditMutation(
-        createEnv({ USER_DB: db as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(db) }),
         createMutationInput({ kind: 'refund', amount: 50, source: 'manual_adjustment' }),
       );
 
@@ -375,7 +383,7 @@ describe('credits', () => {
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
         applyCreditMutation(
-          createEnv({ USER_DB: db as unknown as D1Database }),
+          createEnv({ USER_DB: asD1Database(db) }),
           createMutationInput({ amount: 10 }),
         ),
       ).rejects.toThrow('CREDIT_EXHAUSTED');
@@ -393,7 +401,7 @@ describe('credits', () => {
       const { applyCreditMutation } = await import('../../lib/credits.js');
 
       const result = await applyCreditMutation(
-        createEnv({ USER_DB: db as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(db) }),
         createMutationInput(),
       );
 
@@ -412,10 +420,7 @@ describe('credits', () => {
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
-        applyCreditMutation(
-          createEnv({ USER_DB: db as unknown as D1Database }),
-          createMutationInput(),
-        ),
+        applyCreditMutation(createEnv({ USER_DB: asD1Database(db) }), createMutationInput()),
       ).rejects.toThrow('storage exploded');
     });
 
@@ -426,10 +431,7 @@ describe('credits', () => {
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
-        applyCreditMutation(
-          createEnv({ USER_DB: db as unknown as D1Database }),
-          createMutationInput(),
-        ),
+        applyCreditMutation(createEnv({ USER_DB: asD1Database(db) }), createMutationInput()),
       ).rejects.toThrow('CREDIT_ACCOUNT_MISSING');
     });
 
@@ -443,7 +445,7 @@ describe('credits', () => {
       const { applyCreditMutation } = await import('../../lib/credits.js');
 
       const result = await applyCreditMutation(
-        createEnv({ USER_DB: db as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(db) }),
         createMutationInput({ ledgerId: 'custom-ledger-id' }),
       );
 
@@ -465,7 +467,7 @@ describe('credits', () => {
       const { applyCreditMutation } = await import('../../lib/credits.js');
 
       const result = await applyCreditMutation(
-        createEnv({ USER_DB: db as unknown as D1Database }),
+        createEnv({ USER_DB: asD1Database(db) }),
         createMutationInput({
           relatedUsageId: 'usage-123',
           metadata: { routeKey: 'generate-table' },

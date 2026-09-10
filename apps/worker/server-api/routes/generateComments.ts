@@ -20,7 +20,11 @@ const REQUEST_BODY_MAX_BYTES = 1024 * 1024;
 
 const MAX_OUTPUT_TOKENS = 1800;
 
-const normalizeResult = (payload: unknown, fields: AICommentFieldInput[]): AICommentResult => {
+const normalizeResult = (
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- provider JSON is decoded by the shared contract at this route boundary.
+  payload: unknown,
+  fields: AICommentFieldInput[],
+): AICommentResult => {
   const data = decodeAICommentResult(payload);
   const byName = new Map(data.fields.map((field) => [field.fieldName, field.fieldComment]));
 

@@ -3,6 +3,7 @@ import { createLogger } from 'evlog';
 import type { ApiEnv } from '../../lib/context.js';
 import { configureWorkerLogging, withWorkerRequestLogging } from '../../lib/logging.js';
 
+// SAFETY: The logging wrapper reads only the ASSETS, SHARE_KV, and USER_DB bindings supplied here.
 const createEnv = (): ApiEnv['Bindings'] =>
   ({
     ASSETS: { fetch: globalThis.fetch },
@@ -10,15 +11,24 @@ const createEnv = (): ApiEnv['Bindings'] =>
     USER_DB: {} as D1Database,
   }) as ApiEnv['Bindings'];
 
+type CapturedEvent = {
+  service?: string;
+  sql?: string;
+  credentials?: { token?: string };
+};
+
+type ConsoleValue = CapturedEvent | string | number | boolean | null | undefined;
+
+const isCapturedEvent = (value: ConsoleValue): value is CapturedEvent =>
+  value !== null && typeof value === 'object' && 'service' in value;
+
 const captureEvents = () => {
-  const events: Array<Record<string, unknown>> = [];
+  const events: CapturedEvent[] = [];
 
   const spies = (['log', 'info', 'warn', 'error'] as const).map((method) =>
-    vi.spyOn(console, method).mockImplementation((value: unknown) => {
-      if (value && typeof value === 'object') {
-        const event = value as Record<string, unknown>;
-
-        if (event.service === 'ddlbuilder-worker') events.push(event);
+    vi.spyOn(console, method).mockImplementation((value: ConsoleValue) => {
+      if (isCapturedEvent(value) && value.service === 'ddlbuilder-worker') {
+        events.push(value);
       }
     }),
   );

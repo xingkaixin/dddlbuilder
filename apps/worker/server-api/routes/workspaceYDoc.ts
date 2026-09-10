@@ -123,7 +123,7 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
 
   app.post('/workspaces/:workspaceId/yjs/import', async (c) =>
     withAuthenticatedWorkspace(c, async (authenticated) => {
-      const parsedBody = await parseJsonBodyWithLimit<unknown>(c, IMPORT_BODY_MAX_BYTES);
+      const parsedBody = await parseJsonBodyWithLimit(c, IMPORT_BODY_MAX_BYTES);
 
       if (!parsedBody.ok) return parsedBody.response;
       const body = parsedBody.data;

@@ -9,11 +9,14 @@ import { reclaimStaleAIUsage } from '../../lib/aiUsage.js';
 import { configureWorkerLogging, withWorkerRequestLogging } from '../../lib/logging.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates cancellation accounting from auth persistence.
 vi.mock('../../lib/auth.js', () => ({
   authenticateRequest: async () => ({ userId: 'cancel-user', email: 'cancel@example.com' }),
 }));
 
 const databases: Array<ReturnType<typeof createSqliteD1Database>['sqlite']> = [];
+
+type AuditEvent = { service?: string; ai?: object };
 
 describe('AI client cancellation accounting', () => {
   afterEach(() => {
@@ -27,13 +30,11 @@ describe('AI client cancellation accounting', () => {
   it.each([1, 2])(
     'cancels before provider attempt %i when its D1 response is delayed',
     async (cancelledAttempt) => {
-      const events: Array<Record<string, unknown>> = [];
+      const events: AuditEvent[] = [];
 
       for (const method of ['log', 'info', 'warn', 'error'] as const) {
-        vi.spyOn(console, method).mockImplementation((value: unknown) => {
-          if (value && typeof value === 'object' && 'service' in value) {
-            events.push(structuredClone(value) as Record<string, unknown>);
-          }
+        vi.spyOn(console, method).mockImplementation((value: AuditEvent) => {
+          if ('service' in value) events.push(structuredClone(value));
         });
       }
 
@@ -41,6 +42,7 @@ describe('AI client cancellation accounting', () => {
       const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
       databases.push(sqlite);
 
+      // SAFETY: the sqlite D1 helper has the complete binding surface consumed by this test.
       const env = {
         USER_DB: database,
         OPENAI_API_KEY: 'test-key',
@@ -126,6 +128,14 @@ describe('AI client cancellation accounting', () => {
       );
       const fetch = withWorkerRequestLogging(app.fetch);
 
+      // SAFETY: this context double implements the waitUntil and passThroughOnException hooks used by the route.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the platform context has many runtime-only fields.
+      const executionContext = {
+        waitUntil: (task: Promise<unknown>) => background.push(task),
+        passThroughOnException() {},
+        props: {},
+      } as unknown as ExecutionContext;
+
       const response = await fetch(
         new Request('http://localhost/api/test', {
           method: 'POST',
@@ -133,11 +143,7 @@ describe('AI client cancellation accounting', () => {
           body: '{}',
         }),
         env,
-        {
-          waitUntil: (task: Promise<unknown>) => background.push(task),
-          passThroughOnException() {},
-          props: {},
-        } as unknown as ExecutionContext,
+        executionContext,
       );
       await persisted;
 

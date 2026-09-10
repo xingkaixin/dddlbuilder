@@ -12,6 +12,7 @@ export type WorkerRequestLogFields = {
   outcome: {
     errorCode: ApiErrorCode;
   };
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- request logging intentionally accepts heterogeneous AI audit fields from established log producers.
   ai: Record<string, unknown>;
   deployment: {
     environment: string;

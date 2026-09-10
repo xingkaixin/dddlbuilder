@@ -10,6 +10,7 @@ import {
 } from '../lib/openaiConfig.js';
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] =>
+  // SAFETY: this helper intentionally supplies only optional configuration bindings.
   overrides as ApiEnv['Bindings'];
 
 describe('OpenAI execution config', () => {

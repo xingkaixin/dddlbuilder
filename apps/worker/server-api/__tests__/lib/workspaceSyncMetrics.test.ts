@@ -31,7 +31,7 @@ describe('workspaceSyncMetrics', () => {
     });
     logWorkspaceD1Metrics('checkpoint', { workspaceId: 'ws-1' }, metrics);
 
-    const payload = JSON.parse(String(info.mock.calls[0]?.[0])) as Record<string, unknown>;
+    const payload = JSON.parse(String(info.mock.calls[0]?.[0]));
     expect(payload).toMatchObject({
       event: 'workspace_sync_d1',
       operation: 'checkpoint',
@@ -48,6 +48,8 @@ describe('workspaceSyncMetrics', () => {
   it('records first queries through D1 result meta', async () => {
     const metrics = createWorkspaceD1Metrics();
 
+    // SAFETY: this statement double implements the first/all methods consumed by the metrics adapter.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- a focused D1 statement double cannot implement every platform method.
     const statement = {
       first: vi.fn(),
       all: vi.fn().mockResolvedValue({

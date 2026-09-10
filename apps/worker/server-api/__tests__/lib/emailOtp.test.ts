@@ -5,6 +5,7 @@ import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
 const { sendEmail } = vi.hoisted(() => ({ sendEmail: vi.fn() }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- replace the external email SDK while exercising real Better Auth and SQLite verification flow
 vi.mock('resend', () => ({
   Resend: class {
     emails = { send: sendEmail };
@@ -17,6 +18,7 @@ describe('email OTP verification', () => {
   const email = 'otp@example.com';
   const password = 'Password-test-123!';
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the HTTP helper serializes arbitrary request bodies to exercise Better Auth validation
   const post = (path: string, body: unknown) =>
     createBetterAuth(env).handler(
       new Request(`http://localhost:3000/api/auth${path}`, {
@@ -30,6 +32,7 @@ describe('email OTP verification', () => {
   const verify = (otp: string) => post('/email-otp/verify-email', { email, otp });
 
   const latestCode = () => {
+    // SAFETY: the mocked Resend call is created by the signup flow with an object containing text.
     const text = sendEmail.mock.lastCall?.[0].text as string;
     const code = text.match(/验证码是：(\d{6})/)?.[1];
 
@@ -41,6 +44,7 @@ describe('email OTP verification', () => {
   beforeEach(() => {
     sendEmail.mockReset().mockResolvedValue({ data: { id: 'email-1' }, error: null });
     fixture = createSqliteD1Database({ includeMeta: true });
+    // SAFETY: this fixture supplies every required Better Auth binding used by createBetterAuth.
     env = {
       USER_DB: fixture.database,
       BETTER_AUTH_SECRET: 'a-long-enough-secret-for-auth-tests',

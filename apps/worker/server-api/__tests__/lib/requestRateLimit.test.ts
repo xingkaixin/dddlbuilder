@@ -9,6 +9,12 @@ const policy = {
   windowMs: 60_000,
 };
 
+const createTestEnv = (prepare: ReturnType<typeof vi.fn>, batch: ReturnType<typeof vi.fn>) => {
+  // SAFETY: the rate-limit route only uses prepare and batch from this D1 test double.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the partial binding cannot implement the full platform interface.
+  return { USER_DB: { prepare, batch } } as unknown as ApiEnv['Bindings'];
+};
+
 const createApp = (values: Array<number | undefined>) => {
   const bindings: unknown[][] = [];
 
@@ -36,9 +42,7 @@ const createApp = (values: Array<number | undefined>) => {
   const app = new Hono<ApiEnv>();
   app.get('/', async (c) => c.json(await enforceRequestRateLimit(c, policy)));
 
-  const env = {
-    USER_DB: { prepare, batch } as unknown as D1Database,
-  } as ApiEnv['Bindings'];
+  const env = createTestEnv(prepare, batch);
 
   return { app, env, bindings, batch };
 };

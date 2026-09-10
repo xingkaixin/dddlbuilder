@@ -10,6 +10,7 @@ import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
 const fixture = async () => {
   const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
+  // SAFETY: Settlement regression tests exercise only the USER_DB binding against the real SQLite fixture.
   const env = { USER_DB: database } as ApiEnv['Bindings'];
   sqlite
     .prepare('INSERT INTO user (id, name, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')

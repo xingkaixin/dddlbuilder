@@ -36,6 +36,8 @@ describe('better-auth session revocation integration', () => {
     const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
     const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
 
+    // SAFETY: The auth integration fixture supplies every binding read by session revocation.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- this fixture intentionally omits unrelated Worker bindings.
     const env = {
       USER_DB: database,
       BETTER_AUTH_SECRET: 'a-long-enough-secret-for-auth-tests',
@@ -86,6 +88,8 @@ describe('better-auth session revocation integration', () => {
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
       .mockResolvedValue(new Response(null, { status: 204 }));
+    // SAFETY: The retry fixture supplies every binding read by session revocation.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- this fixture intentionally omits unrelated Worker bindings.
     const env = {
       USER_DB: database,
       BETTER_AUTH_SECRET: 'a-long-enough-secret-for-auth-tests',
@@ -104,7 +108,7 @@ describe('better-auth session revocation integration', () => {
 
       const firstAttempt = revokeUserSessions(env, 'u-retry').then(
         () => null,
-        (error: unknown) => error,
+        (error: Error) => error,
       );
       await vi.runAllTimersAsync();
       await expect(firstAttempt).resolves.toMatchObject({

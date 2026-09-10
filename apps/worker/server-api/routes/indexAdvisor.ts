@@ -23,6 +23,7 @@ const MAX_OUTPUT_TOKENS = 2200;
 const MAX_REQUEST_BYTES = 64_000;
 
 const normalizeResult = (
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- provider JSON is decoded by the shared contract at this route boundary.
   payload: unknown,
   fields: AIIndexAdvisorFieldInput[],
 ): AIIndexAdvisorResult => {

@@ -5,6 +5,7 @@ import { createSqliteD1Database } from './sqliteD1.js';
 
 export const createCreditFixture = async (balance = 1000) => {
   const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
+  // SAFETY: the credit fixture intentionally supplies only the USER_DB binding used by these helpers.
   const env = { USER_DB: database } as ApiEnv['Bindings'];
   sqlite
     .prepare('INSERT INTO user (id, name, email, created_at, updated_at) VALUES (?, ?, ?, 1, 1)')

@@ -2,10 +2,25 @@ import { describe, expect, it, vi } from 'vitest';
 import { createOpenAIStreamDebugLogger } from '../lib/aiStreamDebug.js';
 import type { WorkerRequestLogger } from '../lib/context.js';
 
+type StreamDebugPayload = {
+  phase?: string;
+  requestId?: string;
+  route?: string;
+  model?: string;
+  debugInput?: { sqlLength?: number; ddlLength?: number; descriptionLength?: number };
+  chunkIndex?: number;
+  chunkSize?: number;
+  totalChars?: number;
+  stage?: string;
+  errorMessage?: string;
+};
+
 const createRequestLogger = () => {
   const set = vi.fn();
 
   return {
+    // SAFETY: the test only supplies the logger method consumed by the stream-debug helper.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the logger mock intentionally implements only the method under test.
     log: { set } as unknown as WorkerRequestLogger,
     set,
   };
@@ -13,7 +28,8 @@ const createRequestLogger = () => {
 
 const readStreamDebugPayloads = (set: ReturnType<typeof vi.fn>) =>
   set.mock.calls.map(
-    ([fields]) => (fields as { ai: { streamDebug: Record<string, unknown> } }).ai.streamDebug,
+    // SAFETY: createRequestLogger records the exact structured fields written by the helper.
+    ([fields]) => (fields as { ai: { streamDebug: StreamDebugPayload } }).ai.streamDebug,
   );
 
 describe('createOpenAIStreamDebugLogger', () => {

@@ -58,6 +58,7 @@ const AUTH_CACHE_TTL_MS = 30_000;
 const MAX_SYNC_MESSAGE_BYTES = 16 * 1024 * 1024;
 
 const isSocketAttachment = (value: unknown): value is WorkspaceYDocSocketAttachment => {
+  // SAFETY: the predicate below validates the required attachment fields before narrowing this platform value.
   const record = value as Partial<WorkspaceYDocSocketAttachment> | null;
 
   return Boolean(record && record.schemaVersion === 1 && typeof record.sessionId === 'string');
@@ -164,6 +165,7 @@ export class WorkspaceYDocDurableObject {
     }
 
     if (request.method === 'POST' && url.pathname.endsWith('/import')) {
+      // SAFETY: routes/workspaceYDoc.ts decodes this body with decodeWorkspaceSnapshot before buildForwardedRequest sends it to this DO.
       const snapshot = (await request.json()) as WorkspaceSnapshot;
       doc.transact(() => {
         ensureWorkspaceYDocMeta(doc);
@@ -180,6 +182,7 @@ export class WorkspaceYDocDurableObject {
 
     if (request.method === 'POST' && url.pathname.endsWith('/migrate')) {
       if (!identity.userId) return new Response('Missing user id', { status: 400 });
+      // SAFETY: routes/workspaceMigration.ts decodes the payload with decodeWorkspaceMigrationPayload, then workspaceYDocAuthority constructs this internal request.
       const snapshot = (await request.json()) as WorkspaceMigrationSnapshot;
       const result = applyWorkspaceMigrationSnapshot(doc, identity.userId, snapshot);
       await this.awaitPersisted();
@@ -198,6 +201,7 @@ export class WorkspaceYDocDurableObject {
   }
 
   async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- WebSocket messages use the platform's declared string/binary union.
     if (typeof message === 'string') {
       ws.close(1003, 'Binary workspace updates required');
 
@@ -282,7 +286,11 @@ export class WorkspaceYDocDurableObject {
     });
   }
 
-  async webSocketError(ws: WebSocket, error: unknown) {
+  async webSocketError(
+    ws: WebSocket,
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the platform WebSocket callback provides arbitrary failure values.
+    error: unknown,
+  ) {
     const identity = this.readSocketIdentity(ws);
     logWorkspaceYDocHealth('error', {
       workspaceId: this.workspaceId ?? identity.workspaceId,
@@ -389,6 +397,7 @@ export class WorkspaceYDocDurableObject {
 
       return doc;
     })()
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Promise rejection values are arbitrary platform failures.
       .catch((error: unknown) => {
         this.doc = null;
         this.validationDoc?.destroy();
@@ -408,10 +417,15 @@ export class WorkspaceYDocDurableObject {
     return this.loadPromise;
   }
 
-  private readonly handleDocUpdate = (update: Uint8Array, origin: unknown) => {
+  private readonly handleDocUpdate = (
+    update: Uint8Array,
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Yjs origin is an opaque caller-owned value.
+    origin: unknown,
+  ) => {
     if (this.validationDoc) Y.applyUpdate(this.validationDoc, update);
     this.queuePersistUpdate(update);
     this.state.waitUntil(
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Promise rejection values are arbitrary platform failures.
       this.broadcastUpdate(update, origin).catch((error: unknown) => {
         console.error('[workspace-yjs-do] broadcast failed', error);
       }),
@@ -470,6 +484,7 @@ export class WorkspaceYDocDurableObject {
 
   private scheduleCompact() {
     this.state.waitUntil(
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Promise rejection values are arbitrary platform failures.
       this.compact().catch((error: unknown) => {
         console.error('[workspace-yjs-do] background compact failed', error);
       }),
@@ -582,7 +597,11 @@ export class WorkspaceYDocDurableObject {
     this.validationDoc = validationDoc;
   }
 
-  private async broadcastUpdate(update: Uint8Array, origin: unknown) {
+  private async broadcastUpdate(
+    update: Uint8Array,
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Yjs origin is an opaque caller-owned value used for identity filtering.
+    origin: unknown,
+  ) {
     const message = encodeWorkspaceYDocSyncMessage((encoder) =>
       syncProtocol.writeUpdate(encoder, update),
     );
