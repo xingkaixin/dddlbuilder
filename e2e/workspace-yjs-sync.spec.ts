@@ -26,6 +26,10 @@ import {
 
 const MESSAGE_SYNC = 0;
 
+const isString = (value: unknown): value is string => typeof value === 'string';
+const isNumber = (value: unknown): value is number => typeof value === 'number';
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+
 test('first cloud sync is not presented as an empty workspace', async ({ browser }) => {
   const workspaceId = `ws-initial-sync-${Date.now()}`;
   const server = new MockWorkspaceYjsServer();
@@ -202,7 +206,8 @@ class MockWorkspaceYjsServer {
       socket.send(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, this.doc)));
       socket.onMessage((message) => {
         if (this.pausedClients.has(clientId)) return;
-        if (typeof message === 'string') return;
+        // SAFETY: WebSocketRoute permits text frames; only binary frames are valid lib0 sync input.
+        if (isString(message)) return;
         const decoder = decoding.createDecoder(new Uint8Array(message));
         let messageType = decoding.readVarUint(decoder);
         let requestId: number | undefined;
@@ -417,6 +422,7 @@ const readDefaultDraftState = (doc: Y.Doc) => {
 };
 
 const readTableDocState = (tableDoc: Y.Map<unknown> | undefined) => {
+  // SAFETY: The stateSnapshot is written by the workspace codec from createState-compatible editor state.
   const snapshot = tableDoc?.get('stateSnapshot') as ReturnType<typeof createState> | undefined;
   const scalar = tableDoc?.get('scalar');
   const fields = tableDoc?.get('fields');
@@ -430,14 +436,12 @@ const readTableDocState = (tableDoc: Y.Map<unknown> | undefined) => {
     ...(snapshot ?? createState('', '')),
     ...(scalar instanceof Y.Map
       ? {
-          tableName:
-            typeof scalar.get('tableName') === 'string'
-              ? String(scalar.get('tableName'))
-              : (snapshot?.tableName ?? ''),
-          tableComment:
-            typeof scalar.get('tableComment') === 'string'
-              ? String(scalar.get('tableComment'))
-              : (snapshot?.tableComment ?? ''),
+          tableName: isString(scalar.get('tableName'))
+            ? String(scalar.get('tableName'))
+            : (snapshot?.tableName ?? ''),
+          tableComment: isString(scalar.get('tableComment'))
+            ? String(scalar.get('tableComment'))
+            : (snapshot?.tableComment ?? ''),
         }
       : {}),
     rows: fieldOrder
@@ -449,35 +453,28 @@ const readTableDocState = (tableDoc: Y.Map<unknown> | undefined) => {
         const fallback = snapshot?.rows[index];
 
         return {
-          order: typeof field.get('order') === 'number' ? Number(field.get('order')) : index + 1,
-          fieldName:
-            typeof field.get('fieldName') === 'string'
-              ? String(field.get('fieldName'))
-              : (fallback?.fieldName ?? ''),
-          fieldType:
-            typeof field.get('fieldType') === 'string'
-              ? String(field.get('fieldType'))
-              : (fallback?.fieldType ?? ''),
-          fieldComment:
-            typeof field.get('fieldComment') === 'string'
-              ? String(field.get('fieldComment'))
-              : (fallback?.fieldComment ?? ''),
-          nullable:
-            typeof field.get('nullable') === 'boolean'
-              ? Boolean(field.get('nullable'))
-              : (fallback?.nullable ?? true),
-          defaultKind:
-            typeof field.get('defaultKind') === 'string'
-              ? String(field.get('defaultKind'))
-              : (fallback?.defaultKind ?? 'none'),
-          defaultValue:
-            typeof field.get('defaultValue') === 'string'
-              ? String(field.get('defaultValue'))
-              : (fallback?.defaultValue ?? ''),
-          onUpdate:
-            typeof field.get('onUpdate') === 'string'
-              ? String(field.get('onUpdate'))
-              : (fallback?.onUpdate ?? 'none'),
+          order: isNumber(field.get('order')) ? Number(field.get('order')) : index + 1,
+          fieldName: isString(field.get('fieldName'))
+            ? String(field.get('fieldName'))
+            : (fallback?.fieldName ?? ''),
+          fieldType: isString(field.get('fieldType'))
+            ? String(field.get('fieldType'))
+            : (fallback?.fieldType ?? ''),
+          fieldComment: isString(field.get('fieldComment'))
+            ? String(field.get('fieldComment'))
+            : (fallback?.fieldComment ?? ''),
+          nullable: isBoolean(field.get('nullable'))
+            ? Boolean(field.get('nullable'))
+            : (fallback?.nullable ?? true),
+          defaultKind: isString(field.get('defaultKind'))
+            ? String(field.get('defaultKind'))
+            : (fallback?.defaultKind ?? 'none'),
+          defaultValue: isString(field.get('defaultValue'))
+            ? String(field.get('defaultValue'))
+            : (fallback?.defaultValue ?? ''),
+          onUpdate: isString(field.get('onUpdate'))
+            ? String(field.get('onUpdate'))
+            : (fallback?.onUpdate ?? 'none'),
         };
       })
       .filter((row): row is ReturnType<typeof createState>['rows'][number] => row != null),
@@ -506,14 +503,14 @@ const readSavedTableFolderId = (doc: Y.Doc, normalizedName: string) => {
   const metadata = readMetadata(tableDoc);
   const folderId = metadata?.get('folderId');
 
-  return typeof folderId === 'string' ? folderId : undefined;
+  return isString(folderId) ? folderId : undefined;
 };
 
 const readSavedTableTrashedAt = (doc: Y.Doc, normalizedName: string) => {
   const tableDoc = savedTableDoc(doc, normalizedName);
   const trashedAt = readMetadata(tableDoc)?.get('trashedAt');
 
-  return typeof trashedAt === 'number' ? trashedAt : undefined;
+  return isNumber(trashedAt) ? trashedAt : undefined;
 };
 
 const findFolderIdByName = (doc: Y.Doc, name: string) => {
@@ -653,6 +650,7 @@ for (const action of ['dismiss', 'confirm'] as const) {
     await mockSignedInWorkspace(context, server, workspaceId);
     const modes: string[] = [];
     await context.route('**/api/workspace/migrations', async (route) => {
+      // SAFETY: This route is the typed migration request produced by the migration UI in this test.
       const { mode, payload } = route.request().postDataJSON() as {
         mode: 'analyze' | 'commit';
         payload: WorkspaceMigrationPayload;
@@ -792,6 +790,7 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
     await mockSignedInWorkspace(contextA, server, workspaceId);
     await mockSignedInWorkspace(contextB, server, workspaceId);
     await contextA.route('**/api/generate-table', async (route) => {
+      // SAFETY: The generate-table route is invoked by the typed AI client with this request contract.
       const { existingConfig } = route.request().postDataJSON() as {
         existingConfig: PersistedState;
       };
@@ -1446,6 +1445,7 @@ test('ER relationship deletion preserves synced edits on the selected copy', asy
 
       if (foreignKeys instanceof Y.Map) return foreignKeys.size;
 
+      // SAFETY: Legacy stateSnapshot in this fixture is produced by the workspace codec with foreignKeys.
       return (table.get('stateSnapshot') as { foreignKeys: unknown[] }).foreignKeys.length;
     };
     await expect.poll(() => foreignKeyCount('copy')).toBe(0);

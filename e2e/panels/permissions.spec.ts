@@ -54,9 +54,11 @@ test.describe('权限管理验证 @panels', () => {
 
     await page.getByRole('tab', { name: /授权 DCL/i }).click();
     await page.evaluate(() => {
+      // SAFETY: This browser test installs a mutable clipboard probe on the page global.
       (window as any).__copyTriggered = false;
 
       const writeText = async () => {
+        // SAFETY: This browser test reads the boolean flag installed on the same page global above.
         (window as any).__copyTriggered = true;
       };
 
@@ -66,11 +68,13 @@ test.describe('权限管理验证 @panels', () => {
           configurable: true,
         });
       } catch {
+        // SAFETY: The fallback replaces the same test-only clipboard probe when the property is not configurable.
         (navigator as any).clipboard = { writeText };
       }
     });
     const copyButton = page.getByRole('button', { name: /复制DCL/i });
     await copyButton.click();
+    // SAFETY: This browser test reads the boolean flag installed on the same page global above.
     await expect.poll(() => page.evaluate(() => (window as any).__copyTriggered)).toBe(true);
   });
 });

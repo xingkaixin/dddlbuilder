@@ -101,8 +101,12 @@ const DEAD_SHARE_ID = '2f9c9a3e-1f2a-4c6d-8b7e-9a1c2d3e4f50';
 const stallWorkspaceIndexedDb = async (context: BrowserContext) => {
   await context.addInitScript(() => {
     const nativeOpen = indexedDB.open.bind(indexedDB);
+
+    // SAFETY: This test replaces indexedDB.open with a wrapper preserving its native call signature.
     indexedDB.open = ((name: string, version?: number) => {
       if (name.startsWith('ddlbuilder:workspace:')) {
+        // SAFETY: This test-only IndexedDB stub implements the event/result members read by the workspace opener.
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the browser API requires a structural test stub.
         return {
           onupgradeneeded: null,
           onsuccess: null,
@@ -114,6 +118,7 @@ const stallWorkspaceIndexedDb = async (context: BrowserContext) => {
         } as unknown as IDBOpenDBRequest;
       }
 
+      // SAFETY: The wrapper preserves indexedDB.open's native callable signature for non-workspace databases.
       return version === undefined ? nativeOpen(name) : nativeOpen(name, version);
     }) as typeof indexedDB.open;
   });
@@ -225,7 +230,10 @@ const workspaceYDocPersisted = (page: Page, workspaceId: string, needle: string)
       db.close();
       const decoder = new TextDecoder();
 
-      return updates.some((update) => decoder.decode(update as Uint8Array).includes(text));
+      return updates.some((update) => {
+        // SAFETY: The y-indexeddb updates object store contains Uint8Array-encoded Yjs updates.
+        return decoder.decode(update as Uint8Array).includes(text);
+      });
     },
     [`ddlbuilder:workspace:${workspaceId}`, needle] as const,
   );

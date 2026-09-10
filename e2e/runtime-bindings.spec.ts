@@ -120,6 +120,7 @@ test.describe('Cloudflare runtime bindings', () => {
     expect(signup.ok(), await signup.text()).toBe(true);
     const response = await context.request.get('/api/workspaces');
     expect(response.ok(), await response.text()).toBe(true);
+    // SAFETY: The local workspace endpoint returns the asserted workspaceId contract after the successful response check.
     const { workspaceId } = (await response.json()) as { workspaceId: string };
     const source = new Y.Doc();
     source.getMap('meta').set('schemaVersion', 1);
@@ -214,6 +215,7 @@ test.describe('Cloudflare runtime bindings', () => {
     const meResponse = await context.request.get('/api/me');
     expect(meResponse.ok()).toBe(true);
 
+    // SAFETY: The authenticated /api/me test fixture is known to return this signedIn/user shape.
     const me = (await meResponse.json()) as {
       signedIn: boolean;
       user: { email: string } | null;
@@ -225,6 +227,7 @@ test.describe('Cloudflare runtime bindings', () => {
 
     const workspacesResponse = await context.request.get('/api/workspaces');
     expect(workspacesResponse.ok()).toBe(true);
+    // SAFETY: The local workspace endpoint returns a string workspaceId after the successful response check.
     const currentWorkspace = (await workspacesResponse.json()) as { workspaceId: string };
     const { workspaceId } = currentWorkspace;
     expect(workspaceId).toMatch(/^ws_/);
@@ -283,6 +286,7 @@ test.describe('Cloudflare runtime bindings', () => {
 
     const migrationResults = await Promise.all(
       migrationResponses.map(
+        // SAFETY: Each response was checked successful above and comes from the migration route exercised by this test.
         async (response) => (await response.json()) as WorkspaceMigrationResponse,
       ),
     );
@@ -300,6 +304,7 @@ test.describe('Cloudflare runtime bindings', () => {
       data: { state },
     });
     expect(shareResponse.ok(), await shareResponse.text()).toBe(true);
+    // SAFETY: The local share endpoint returns an id for a successful create response.
     const share = (await shareResponse.json()) as { id: string };
     const sharedStateResponse = await context.request.get(`/api/share/${share.id}`);
     expect(sharedStateResponse.ok()).toBe(true);

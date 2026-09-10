@@ -4,6 +4,7 @@ import { setupHydratedState } from '../utils';
 import { encodeAIStreamEvent } from '../../packages/shared-types/src/aiStream';
 import type { PersistedState } from '../../packages/shared-types/src/index';
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- This fixture serializes route-specific JSON payloads into the shared NDJSON protocol.
 const streamedResponse = (value: unknown) => ({
   contentType: 'application/x-ndjson',
   body:
@@ -43,6 +44,7 @@ test('AI 修改保留字段身份，将改名应用为单个变更', async ({ pa
     } else if (path === '/api/credits/balance') {
       await route.fulfill({ json: { balance: 1000, version: 1, userId: 'rename-user' } });
     } else if (path === '/api/generate-table') {
+      // SAFETY: This route is a test fixture for the typed generate-table request emitted by the app.
       const { existingConfig } = route.request().postDataJSON() as {
         existingConfig: PersistedState;
       };
@@ -78,23 +80,27 @@ test('AI 修改保留字段身份，将改名应用为单个变更', async ({ pa
 });
 
 test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page }) => {
-  const responses: Record<string, unknown> = {
-    '/api/me': {
-      signedIn: true,
-      user: {
-        userId: 'partial-user',
-        email: 'partial@example.test',
-        name: 'Partial',
-        emailVerified: true,
+  const responses = new Map<string, unknown>([
+    [
+      '/api/me',
+      {
+        signedIn: true,
+        user: {
+          userId: 'partial-user',
+          email: 'partial@example.test',
+          name: 'Partial',
+          emailVerified: true,
+        },
       },
-    },
-    '/api/workspaces': { workspaceId: 'partial-workspace' },
-    '/api/credits/balance': { balance: 1000, version: 1, userId: 'partial-user' },
-  };
+    ],
+    ['/api/workspaces', { workspaceId: 'partial-workspace' }],
+    ['/api/credits/balance', { balance: 1000, version: 1, userId: 'partial-user' }],
+  ]);
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
 
     if (path === '/api/generate-table') {
+      // SAFETY: This route is a test fixture for the typed generate-table request emitted by the app.
       const { existingConfig } = route.request().postDataJSON() as {
         existingConfig: PersistedState;
       };
@@ -110,8 +116,8 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
       );
     } else {
       await route.fulfill(
-        responses[path]
-          ? { json: responses[path] }
+        responses.get(path)
+          ? { json: responses.get(path) }
           : { status: 503, json: { error: 'Not available in this test' } },
       );
     }
@@ -152,27 +158,30 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
 });
 
 test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page }) => {
-  const responses: Record<string, unknown> = {
-    '/api/me': {
-      signedIn: true,
-      user: {
-        userId: 'baseline-user',
-        email: 'baseline@example.test',
-        name: 'Baseline',
-        emailVerified: true,
+  const responses = new Map<string, unknown>([
+    [
+      '/api/me',
+      {
+        signedIn: true,
+        user: {
+          userId: 'baseline-user',
+          email: 'baseline@example.test',
+          name: 'Baseline',
+          emailVerified: true,
+        },
       },
-    },
-    '/api/workspaces': { workspaceId: 'baseline-workspace' },
-    '/api/credits/balance': { balance: 1000, version: 1, userId: 'baseline-user' },
-  };
+    ],
+    ['/api/workspaces', { workspaceId: 'baseline-workspace' }],
+    ['/api/credits/balance', { balance: 1000, version: 1, userId: 'baseline-user' }],
+  ]);
   let requests = 0;
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
 
     if (path !== '/api/generate-table') {
       await route.fulfill(
-        responses[path]
-          ? { json: responses[path] }
+        responses.get(path)
+          ? { json: responses.get(path) }
           : { status: 503, json: { error: 'Not available in this test' } },
       );
 
@@ -181,6 +190,7 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
 
     requests++;
 
+    // SAFETY: The generate-table route is invoked by the typed AI client with this request contract.
     const request = route.request().postDataJSON() as {
       existingConfig: PersistedState;
       previousSchema?: unknown;
@@ -239,42 +249,48 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
 });
 
 test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', async ({ page }) => {
-  const responses: Record<string, unknown> = {
-    '/api/me': {
-      signedIn: true,
-      user: {
-        userId: 'review-user',
-        email: 'review@example.test',
-        name: 'Review',
-        emailVerified: true,
+  const responses = new Map<string, unknown>([
+    [
+      '/api/me',
+      {
+        signedIn: true,
+        user: {
+          userId: 'review-user',
+          email: 'review@example.test',
+          name: 'Review',
+          emailVerified: true,
+        },
       },
-    },
-    '/api/workspaces': { workspaceId: 'review-workspace' },
-    '/api/credits/balance': { balance: 1000, version: 1, userId: 'review-user' },
-    '/api/review': {
-      score: 8,
-      summary: '补充审计字段和索引',
-      suggestions: [
-        {
-          id: 'add-created-at',
-          type: 'add_field',
-          actionable: true,
-          description: '新增创建时间',
-          field: { fieldName: 'created_at', fieldType: 'DATETIME' },
-        },
-        {
-          id: 'index-created-at',
-          type: 'add_index',
-          actionable: true,
-          description: '创建时间索引',
-          index: { name: 'created_lookup', fields: [{ name: 'created_at', direction: 'ASC' }] },
-        },
-      ],
-    },
-  };
+    ],
+    ['/api/workspaces', { workspaceId: 'review-workspace' }],
+    ['/api/credits/balance', { balance: 1000, version: 1, userId: 'review-user' }],
+    [
+      '/api/review',
+      {
+        score: 8,
+        summary: '补充审计字段和索引',
+        suggestions: [
+          {
+            id: 'add-created-at',
+            type: 'add_field',
+            actionable: true,
+            description: '新增创建时间',
+            field: { fieldName: 'created_at', fieldType: 'DATETIME' },
+          },
+          {
+            id: 'index-created-at',
+            type: 'add_index',
+            actionable: true,
+            description: '创建时间索引',
+            index: { name: 'created_lookup', fields: [{ name: 'created_at', direction: 'ASC' }] },
+          },
+        ],
+      },
+    ],
+  ]);
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
-    const response = responses[path];
+    const response = responses.get(path);
     await route.fulfill(
       response
         ? path === '/api/review'

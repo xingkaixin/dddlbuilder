@@ -76,7 +76,7 @@ export async function openTableAction(page: Page, name: string | RegExp): Promis
     .getByTestId('table-config-actions')
     .getByRole('button', { name: '更多', exact: true })
     .click();
-  await page.getByRole('menuitem', { name, exact: typeof name === 'string' }).click();
+  await page.getByRole('menuitem', { name, exact: !(name instanceof RegExp) }).click();
 }
 
 export async function openFieldTool(
@@ -85,7 +85,7 @@ export async function openFieldTool(
   name: string | RegExp,
 ): Promise<void> {
   await page.getByRole('button', { name: group, exact: true }).click();
-  await page.getByRole('menuitem', { name, exact: typeof name === 'string' }).click();
+  await page.getByRole('menuitem', { name, exact: !(name instanceof RegExp) }).click();
 }
 
 export async function openAdvancedSettings(page: Page, name: string | RegExp): Promise<void> {

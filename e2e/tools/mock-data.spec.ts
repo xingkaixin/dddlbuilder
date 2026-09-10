@@ -2,6 +2,25 @@ import { openFieldTool } from '../utils';
 import { test, expect } from '@playwright/test';
 import { ensureBuilderVisible } from '../utils';
 
+type MockRow = {
+  gender: number | null;
+  name: string | null;
+  balance: number | null;
+};
+
+type JsonValue = null | boolean | number | string | JsonObject | JsonValue[];
+
+type JsonObject = { [key: string]: JsonValue };
+
+const isRecord = (value: JsonValue): value is JsonObject =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const isMockRow = (value: JsonValue): value is MockRow =>
+  isRecord(value) &&
+  (value.gender === null || (typeof value.gender === 'number' && Number.isInteger(value.gender))) &&
+  (value.name === null || typeof value.name === 'string') &&
+  (value.balance === null || typeof value.balance === 'number');
+
 test('Mock 数据遵守字段类型、长度和精度 @tools', async ({ page }) => {
   await page.goto('/');
   await ensureBuilderVisible(page);
@@ -34,7 +53,13 @@ test('Mock 数据遵守字段类型、长度和精度 @tools', async ({ page }) 
   const output = dialog.getByRole('tabpanel', { name: 'JSON', exact: true }).locator('pre');
   await expect(output).toContainText('"gender"');
 
-  const rows = JSON.parse(await output.innerText()) as Record<string, unknown>[];
+  const parsed: JsonValue = JSON.parse(await output.innerText());
+
+  if (!Array.isArray(parsed)) throw new Error('Mock data output must be an array');
+
+  const rows = parsed.filter(isMockRow);
+
+  if (rows.length !== parsed.length) throw new Error('Mock data output contains an invalid row');
   expect(rows).toHaveLength(10);
 
   for (const row of rows) {
@@ -45,13 +70,11 @@ test('Mock 数据遵守字段类型、长度和精度 @tools', async ({ page }) 
     }
 
     if (row.name !== null) {
-      expect(typeof row.name).toBe('string');
-      expect(Array.from(row.name as string).length).toBeLessThanOrEqual(1);
+      expect(Array.from(row.name).length).toBeLessThanOrEqual(1);
     }
 
     if (row.balance !== null) {
-      expect(typeof row.balance).toBe('number');
-      expect(Math.abs(row.balance as number)).toBeLessThan(10);
+      expect(Math.abs(row.balance)).toBeLessThan(10);
     }
   }
 
