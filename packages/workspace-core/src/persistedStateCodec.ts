@@ -41,8 +41,10 @@ export const decodeSavedDraftBase = (
 ): { baseSignature: string; baseState?: SchemaDocumentState } => {
   const signature = typeof value.baseSignature === 'string' ? value.baseSignature : '';
   let baseState = decodeSchemaDocumentState(value.baseState);
+
   if (!baseState && savedState && buildSchemaStateSignature(savedState) === signature)
     baseState = toSchemaDocumentState(savedState);
+
   if (!baseState && signature.startsWith('{')) {
     try {
       baseState = decodeSchemaDocumentState(JSON.parse(signature));
@@ -50,6 +52,7 @@ export const decodeSavedDraftBase = (
       baseState = null;
     }
   }
+
   return baseState
     ? { baseState, baseSignature: buildSchemaStateSignature(baseState) }
     : { baseSignature: signature };
@@ -82,14 +85,18 @@ const decodeUniqueEntityId = (value: unknown, fallback: string, usedIds: Set<str
   const trimmed = typeof value === 'string' ? value.trim() : '';
   let id = trimmed || fallback;
   let suffix = 2;
+
   if (usedIds.has(id)) {
     id = fallback;
   }
+
   while (usedIds.has(id)) {
     id = `${fallback}-${suffix}`;
     suffix += 1;
   }
+
   usedIds.add(id);
+
   return id;
 };
 
@@ -97,15 +104,19 @@ const decodeIndexFields = (value: unknown): IndexField[] =>
   (Array.isArray(value) ? value : []).flatMap((item) => {
     if (!isRecord(item)) return [];
     const name = toText(item.name);
+
     return name ? [{ name, direction: item.direction === 'DESC' ? 'DESC' : 'ASC' }] : [];
   });
 
 export const decodeIndexDefinitions = (value: unknown): IndexDefinition[] => {
   const usedIds = new Set<string>();
+
   return (Array.isArray(value) ? value : []).flatMap((item, index) => {
     if (!isRecord(item)) return [];
     const name = toText(item.name);
+
     if (!name) return [];
+
     return [
       {
         id: decodeUniqueEntityId(item.id, `legacy-index-${index}`, usedIds),
@@ -120,6 +131,7 @@ export const decodeIndexDefinitions = (value: unknown): IndexDefinition[] => {
 const decodeEnumMeta = (value: unknown[]): EnumValueMeta[] =>
   value.flatMap((item) => {
     if (!isRecord(item) || typeof item.value !== 'string') return [];
+
     return [
       {
         value: item.value,
@@ -139,8 +151,10 @@ const decodeEnumMeta = (value: unknown[]): EnumValueMeta[] =>
 
 const decodeRows = (value: unknown): FieldRow[] => {
   const usedIds = new Set<string>();
+
   return (Array.isArray(value) ? value : []).map((item, index) => {
     const row = isRecord(item) ? item : {};
+
     return {
       id: decodeUniqueEntityId(
         ensureFieldId(row as Partial<FieldRow>, index),
@@ -167,12 +181,15 @@ const decodeForeignKeyFields = (value: unknown): string[] =>
 const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined => {
   if (!Array.isArray(value)) return undefined;
   const usedIds = new Set<string>();
+
   return value.flatMap((item, index) => {
     if (!isRecord(item)) return [];
     const name = toText(item.name);
     const refTable = toText(item.refTable);
+
     if (!name || !refTable) return [];
     let logical: ForeignKeyDefinition['logical'];
+
     if (item.logical !== undefined) {
       if (
         !isRecord(item.logical) ||
@@ -181,18 +198,21 @@ const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined =
       ) {
         throw new Error('Invalid logical relationship');
       }
+
       logical = {
         cardinality: item.logical.cardinality as 'many-to-one' | 'one-to-one',
         optionality: item.logical.optionality as 'required' | 'optional',
         description: toOptionalText(item.logical.description),
       };
     }
+
     const onDelete = FOREIGN_KEY_ACTIONS.has(item.onDelete as ForeignKeyAction)
       ? (item.onDelete as ForeignKeyAction)
       : undefined;
     const onUpdate = FOREIGN_KEY_ACTIONS.has(item.onUpdate as ForeignKeyAction)
       ? (item.onUpdate as ForeignKeyAction)
       : undefined;
+
     return [
       {
         id: decodeUniqueEntityId(item.id, `legacy-foreign-key-${index}`, usedIds),
@@ -213,6 +233,7 @@ const decodeCitusConfig = (value: unknown): CitusShardingConfig | undefined => {
   if (!isRecord(value) || (value.mode !== 'reference' && value.mode !== 'distributed')) {
     return undefined;
   }
+
   return {
     mode: value.mode,
     ...(typeof value.distributionColumn === 'string'
@@ -225,7 +246,9 @@ export const decodeMysqlPartitionConfig = (value: unknown): MysqlPartitionConfig
   if (!isRecord(value) || !MYSQL_PARTITION_TYPES.has(value.type as MysqlPartitionType)) {
     return undefined;
   }
+
   const usedIds = new Set<string>();
+
   const partitions = Array.isArray(value.partitions)
     ? value.partitions.flatMap((item, index) =>
         isRecord(item) && typeof item.name === 'string' && typeof item.value === 'string'
@@ -240,6 +263,7 @@ export const decodeMysqlPartitionConfig = (value: unknown): MysqlPartitionConfig
       )
     : undefined;
   const partitionCount = normalizeOptionalMysqlPartitionCount(value.partitionCount);
+
   return {
     enabled: value.enabled === true,
     type: value.type as MysqlPartitionType,
@@ -252,6 +276,7 @@ export const decodeMysqlPartitionConfig = (value: unknown): MysqlPartitionConfig
 
 const decodeHiveClustering = (value: unknown): HiveClusteringConfig | undefined => {
   if (!isRecord(value)) return undefined;
+
   return {
     enabled: value.enabled === true,
     columns: toStringArray(value.columns),
@@ -262,6 +287,7 @@ const decodeHiveClustering = (value: unknown): HiveClusteringConfig | undefined 
 const decodeHivePartitions = (value: unknown): HivePartitionConfig | undefined => {
   if (!isRecord(value)) return undefined;
   const clustering = decodeHiveClustering(value.clustering);
+
   return {
     enabled: value.enabled === true,
     columns: (Array.isArray(value.columns) ? value.columns : []).flatMap((item) =>
@@ -278,6 +304,7 @@ const decodeTableMiscConfig = (value: unknown): TableMiscConfig | undefined => {
   const fillfactor = normalizeFillfactor(value.fillfactor);
   const pctfree = normalizePctfree(value.pctfree);
   const initrans = normalizeInitrans(value.initrans);
+
   const storedAs =
     value.storedAs === 'ORC' ||
     value.storedAs === 'TEXTFILE' ||
@@ -286,6 +313,7 @@ const decodeTableMiscConfig = (value: unknown): TableMiscConfig | undefined => {
       ? value.storedAs
       : undefined;
   const partitions = decodeHivePartitions(value.partitions);
+
   return {
     enabled: value.enabled === true,
     ...(toOptionalText(value.engine) === undefined ? {} : { engine: toOptionalText(value.engine) }),
@@ -346,6 +374,7 @@ export const decodePersistedState = (
 
   const explicitSchemaName = toText(value.schemaName);
   const rawTableName = toText(value.tableName);
+
   const { schema, table } =
     explicitSchemaName || !rawTableName.includes('.')
       ? { schema: explicitSchemaName, table: rawTableName }
@@ -386,6 +415,7 @@ export const decodePersistedState = (
 export const decodeSchemaDocumentState = (value: unknown): SchemaDocumentState | null => {
   if (!isRecord(value) || !hasExternalSchemaDocumentShape(value)) return null;
   const state = decodePersistedState(value);
+
   return state ? toSchemaDocumentState(state) : null;
 };
 
@@ -399,6 +429,7 @@ const isOptionalFiniteNumber = (value: unknown) => value === undefined || isFini
 const addUniqueEntityId = (ids: Set<string>, id: string) => {
   if (ids.has(id)) return false;
   ids.add(id);
+
   return true;
 };
 
@@ -414,15 +445,18 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
   }
 
   let globalDraft: WorkspaceSnapshot['globalDraft'] = null;
+
   if (value.globalDraft !== null) {
     if (!isRecord(value.globalDraft) || !isFiniteNumber(value.globalDraft.updatedAt)) return null;
     const state = decodeSchemaDocumentState(value.globalDraft.state);
+
     if (!state) return null;
     globalDraft = { state, updatedAt: value.globalDraft.updatedAt };
   }
 
   const drafts: WorkspaceSnapshot['drafts'] = [];
   const draftIds = new Set<string>();
+
   for (const item of value.drafts) {
     if (
       !isRecord(item) ||
@@ -435,8 +469,10 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     ) {
       return null;
     }
+
     if (!addUniqueEntityId(draftIds, item.draftId)) return null;
     const state = decodeSchemaDocumentState(item.state);
+
     if (!state) return null;
     drafts.push({
       draftId: item.draftId,
@@ -451,6 +487,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
   const savedTables: WorkspaceSnapshot['savedTables'] = [];
   const savedTableIds = new Set<string>();
   const tableIdsByName = new Map<string, string | null>();
+
   for (const item of value.savedTables) {
     if (
       !isRecord(item) ||
@@ -465,7 +502,9 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     ) {
       return null;
     }
+
     const tableId = item.tableId ?? `legacy:${item.normalizedName}`;
+
     if (!addUniqueEntityId(savedTableIds, tableId)) return null;
     const existingTableId = tableIdsByName.get(item.normalizedName);
     tableIdsByName.set(
@@ -473,6 +512,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
       existingTableId === undefined || existingTableId === tableId ? tableId : null,
     );
     const state = decodeSchemaDocumentState(item.state);
+
     if (!state) return null;
     savedTables.push({
       ...(item.tableId === undefined ? {} : { tableId: item.tableId }),
@@ -488,6 +528,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
 
   const savedDrafts: WorkspaceSnapshot['savedDrafts'] = [];
   const savedDraftIds = new Set<string>();
+
   for (const item of value.savedDrafts) {
     if (
       !isRecord(item) ||
@@ -500,10 +541,13 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     ) {
       return null;
     }
+
     const tableId = item.tableId ?? tableIdsByName.get(item.normalizedName);
+
     if (tableId === null) return null;
     if (!addUniqueEntityId(savedDraftIds, tableId ?? `legacy:${item.normalizedName}`)) return null;
     const state = decodeSchemaDocumentState(item.state);
+
     if (!state) return null;
     savedDrafts.push({
       ...(item.tableId === undefined ? {} : { tableId: item.tableId }),
@@ -517,6 +561,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
 
   const folders: WorkspaceSnapshot['folders'] = [];
   const folderIds = new Set<string>();
+
   for (const item of value.folders) {
     if (
       !isRecord(item) ||
@@ -530,6 +575,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     ) {
       return null;
     }
+
     if (!addUniqueEntityId(folderIds, item.id)) return null;
     folders.push({
       id: item.id,

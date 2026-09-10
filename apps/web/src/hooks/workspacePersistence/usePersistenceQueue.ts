@@ -33,8 +33,10 @@ export function usePersistenceQueue() {
         if (chainsRef.current.get(key) === current) {
           chainsRef.current.delete(key);
         }
+
         if (versionsRef.current.get(key) !== version) return;
         failedTasksRef.current.delete(key);
+
         if (failedTasksRef.current.size === 0 && failureRef.current) {
           failureRef.current = null;
           setFailure(null);
@@ -42,9 +44,11 @@ export function usePersistenceQueue() {
       },
       (error: unknown) => {
         console.error(`[workspace-persistence] ${operation} failed`, error);
+
         if (chainsRef.current.get(key) === current) {
           chainsRef.current.delete(key);
         }
+
         if (versionsRef.current.get(key) !== version) return;
         failedTasksRef.current.set(key, { key, operation, run });
         failureIdRef.current += 1;
@@ -53,11 +57,13 @@ export function usePersistenceQueue() {
         setFailure(nextFailure);
       },
     );
+
     return current;
   }, []);
 
   const retryFailed = useCallback(() => {
     const failedTasks = [...failedTasksRef.current.values()];
+
     for (const task of failedTasks) {
       void enqueue(task.key, task.operation, task.run);
     }

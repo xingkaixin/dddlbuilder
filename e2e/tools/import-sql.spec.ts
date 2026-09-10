@@ -178,6 +178,7 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await page.getByRole('button', { name: /下一步/i }).click();
     await page.getByRole('button', { name: /确认导入/i }).click();
     await expect(page.locator('#sql-content')).toBeHidden();
+
     const nameCell = page.locator(
       '[data-testid="data-table"] tbody tr:first-child td:nth-child(2)',
     );
@@ -296,6 +297,7 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(page.getByText('customer_lookup', { exact: true }).first()).toBeVisible();
     await page.locator('#table-name').fill('renamed_table');
     await expect(page.getByText('customer_lookup', { exact: true }).first()).toBeVisible();
+
     const card = page
       .getByText('idx_import_test_id', { exact: true })
       .first()

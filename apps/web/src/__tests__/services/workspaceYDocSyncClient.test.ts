@@ -23,21 +23,25 @@ const applySyncMessage = (doc: Y.Doc, message: ArrayBuffer) => {
 
 const respondToSyncMessage = (doc: Y.Doc, message: ArrayBuffer) => {
   const decoder = decodeSyncMessage(message);
+
   const response = encodeWorkspaceYDocSyncMessage((encoder) => {
     syncProtocol.readSyncMessage(decoder, encoder, doc, null);
   });
+
   return response.byteLength > 1 ? response : null;
 };
 
 const decodeSyncMessage = (message: ArrayBuffer) => {
   const decoder = decoding.createDecoder(new Uint8Array(message));
   expect(readWorkspaceYDocMessageHeader(decoder).kind).toBe('sync');
+
   return decoder;
 };
 
 const acknowledge = (socket: MockWebSocket, message: ArrayBuffer) => {
   const decoder = decoding.createDecoder(new Uint8Array(message));
   const header = readWorkspaceYDocMessageHeader(decoder);
+
   if (header.kind !== 'sync' || header.requestId === undefined) return;
   socket.receive(encodeWorkspaceYDocAcknowledgement(header.requestId));
 };
@@ -46,8 +50,10 @@ const syncWithServer = (socket: MockWebSocket, serverDoc: Y.Doc) => {
   socket.receive(
     encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)),
   );
+
   for (const message of socket.sent) {
     const response = respondToSyncMessage(serverDoc, message);
+
     if (response) socket.receive(response);
     acknowledge(socket, message);
   }
@@ -95,12 +101,14 @@ class MockWebSocket {
 const firstSocket = () => {
   const socket = MockWebSocket.instances[0];
   expect(socket).toBeDefined();
+
   return socket as MockWebSocket;
 };
 
 const sentMessage = (socket: MockWebSocket, index: number) => {
   const message = socket.sent[index];
   expect(message).toBeInstanceOf(ArrayBuffer);
+
   return message as ArrayBuffer;
 };
 
@@ -115,6 +123,7 @@ describe('WorkspaceYDocSyncClient', () => {
     socket.open();
     syncWithServer(socket, server);
     status.mockClear();
+
     for (let i = 0; i < 10; i += 1) doc.getMap('test').set('value', i);
     const calls = status.mock.calls.length;
     client.destroy();
@@ -185,6 +194,7 @@ describe('WorkspaceYDocSyncClient', () => {
     socket.open();
 
     const fields = doc.getMap('fields');
+
     for (let index = 0; index < 50; index += 1) {
       fields.set(`field-${index}`, `value-${index}`);
     }
@@ -293,6 +303,7 @@ describe('WorkspaceYDocSyncClient', () => {
     syncWithServer(socket, server);
     doc.getMap('fields').set('first', 'value');
     let completed = false;
+
     const pending = client.flushAndWaitForSync().then(() => {
       completed = true;
     });
@@ -319,6 +330,7 @@ describe('WorkspaceYDocSyncClient', () => {
       syncWithServer(socket, new Y.Doc());
       doc.getMap('fields').set('unsynced', 'keep me');
       const pending = client.flushAndWaitForSync().catch((error: unknown) => error);
+
       if (failure === 'timeout') vi.advanceTimersByTime(WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
       else if (failure === 'offline') window.dispatchEvent(new Event('offline'));
       else client.destroy();

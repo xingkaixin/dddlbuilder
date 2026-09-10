@@ -69,13 +69,16 @@ describe('workspaceMigration', () => {
       .prepare('INSERT INTO user (id, name, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
       .run('user-1', 'User', 'user@example.com', 1, 1);
     let resume!: () => void;
+
     const gate = new Promise<void>((resolve) => {
       resume = resolve;
     });
     authorityMocks.migrateSnapshot.mockImplementationOnce(async () => {
       await gate;
+
       return { status: 'completed' };
     });
+
     const task = commitWorkspaceMigration(
       { USER_DB: database } as never,
       'user-1',
@@ -85,6 +88,7 @@ describe('workspaceMigration', () => {
     const inProgress = sqlite.prepare('SELECT migration_status FROM workspace_links').all();
     resume();
     await task;
+
     const completed = sqlite
       .prepare('SELECT migration_status, created_at FROM workspace_links')
       .get();
@@ -124,7 +128,9 @@ describe('workspaceMigration', () => {
         },
       },
     });
+
     if (!payload) throw new Error('Invalid migration fixture');
+
     const statement = {
       bind: () => statement,
       first: async () => null,
@@ -174,6 +180,7 @@ describe('workspaceMigration', () => {
         savedTables: [{ ...payload.snapshot.savedTables[0], state: createState('cloud') }],
         savedDrafts: [],
       });
+
       const statement = {
         bind: () => statement,
         first: async () => null,
@@ -232,29 +239,37 @@ describe('workspaceMigration', () => {
         folders: [{ id: 'folder-1', name: 'Folder', order: 0, createdAt: 1, updatedAt: 2 }],
       },
     });
+
     if (!payload) throw new Error('Invalid migration fixture');
     const doc = cloudDoc;
     let status: string | null = null;
     let failCompletedOnce = true;
+
     const database = {
       prepare: () => {
         let args: unknown[] = [];
+
         const statement = {
           bind: (...values: unknown[]) => {
             args = values;
+
             return statement;
           },
           first: async () => (status ? { migrationStatus: status } : null),
           run: async () => {
             const nextStatus = args[3] as string;
+
             if (nextStatus === 'completed' && failCompletedOnce) {
               failCompletedOnce = false;
               throw new Error('workspace_links write failed');
             }
+
             status = nextStatus;
+
             return { success: true };
           },
         };
+
         return statement;
       },
     };
@@ -275,14 +290,17 @@ describe('workspaceMigration', () => {
 
   it('分析迁移时识别所有待创建记录', async () => {
     const queries: string[] = [];
+
     const database = {
       prepare: (sql: string) => {
         queries.push(sql);
+
         const statement = {
           bind: () => statement,
           first: async () => null,
           all: async () => ({ results: [] }),
         };
+
         return statement;
       },
     };
@@ -312,15 +330,18 @@ describe('workspaceMigration', () => {
       savedDrafts: [],
       folders: [],
     });
+
     const database = {
       prepare: (sql: string) => {
         queries.push(sql);
+
         const statement = {
           bind: () => statement,
           first: async () => null,
           all: async () => ({ results: [] }),
           run: async () => ({ success: true }),
         };
+
         return statement;
       },
     };
@@ -375,6 +396,7 @@ describe('workspaceMigration', () => {
       savedDrafts: [],
       folders: [],
     });
+
     const database = {
       prepare: () => {
         const statement = {
@@ -382,12 +404,14 @@ describe('workspaceMigration', () => {
           first: async () => null,
           run: async () => ({ success: true }),
         };
+
         return statement;
       },
     };
 
     const onUpdate = vi.fn();
     cloudDoc.on('update', onUpdate);
+
     const result = await commitWorkspaceMigration(
       { USER_DB: database } as never,
       'user-1',
@@ -405,6 +429,7 @@ describe('workspaceMigration', () => {
 
   it('嵌套属性顺序不同不会产生迁移冲突', async () => {
     const payload = createPayload();
+
     const index = {
       id: 'index-1',
       name: 'idx_id',
@@ -418,6 +443,7 @@ describe('workspaceMigration', () => {
     ];
     importWorkspaceSnapshotToYDoc(cloudDoc, existing);
     const statement = { bind: () => statement, first: async () => null };
+
     const result = await analyzeWorkspaceMigration(
       { USER_DB: { prepare: () => statement } } as never,
       'user-1',
@@ -431,6 +457,7 @@ describe('workspaceMigration', () => {
     importWorkspaceSnapshotToYDoc(cloudDoc, payload.snapshot);
     const onUpdate = vi.fn();
     cloudDoc.on('update', onUpdate);
+
     const database = {
       prepare: () => {
         const statement = {
@@ -438,6 +465,7 @@ describe('workspaceMigration', () => {
           first: async () => null,
           run: async () => ({ success: true }),
         };
+
         return statement;
       },
     };
@@ -513,6 +541,7 @@ describe('workspaceMigration', () => {
         },
       ],
     });
+
     const database = {
       prepare: () => {
         const statement = {
@@ -520,6 +549,7 @@ describe('workspaceMigration', () => {
           first: async () => null,
           run: async () => ({ success: true }),
         };
+
         return statement;
       },
     };
@@ -529,6 +559,7 @@ describe('workspaceMigration', () => {
     const snapshot = exportWorkspaceYDocToSnapshot(cloudDoc);
     const table = snapshot.savedTables.find((item) => item.name === 'alpha (Imported)');
     const draft = snapshot.savedDrafts[0];
+
     const folder = snapshot.folders.find(
       (item: { name: string }) => item.name === 'Local (Imported)',
     );

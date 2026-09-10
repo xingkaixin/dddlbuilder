@@ -6,6 +6,7 @@ export const TABLE_DRAG_PREFIX = 'table:';
 export const FOLDER_DRAG_PREFIX = 'folder:';
 
 export type FolderParentMap = Record<string, string | undefined>;
+
 export type TableFolderMap = Record<string, string | undefined>;
 
 export type DragEntity = { kind: 'table'; tableId: string } | { kind: 'folder'; folderId: string };
@@ -50,34 +51,47 @@ export const toFolderDragId = (folderId: string) => `${FOLDER_DRAG_PREFIX}${fold
 
 export function parseDragEntity(id: UniqueIdentifier): DragEntity | null {
   const raw = String(id);
+
   if (raw.startsWith(TABLE_DRAG_PREFIX)) {
     const tableId = raw.slice(TABLE_DRAG_PREFIX.length);
+
     if (!tableId) return null;
+
     return { kind: 'table', tableId };
   }
+
   if (raw.startsWith(FOLDER_DRAG_PREFIX)) {
     const folderId = raw.slice(FOLDER_DRAG_PREFIX.length);
+
     if (!folderId) return null;
+
     return { kind: 'folder', folderId };
   }
+
   return null;
 }
 
 export function parseDropTarget(id: UniqueIdentifier): DropTarget | null {
   const raw = String(id);
+
   if (raw === ROOT_DROP_ID) {
     return { kind: 'root' };
   }
+
   if (raw.startsWith(FOLDER_DRAG_PREFIX)) {
     const folderId = raw.slice(FOLDER_DRAG_PREFIX.length);
+
     if (!folderId) return null;
+
     return { kind: 'folder', folderId };
   }
+
   return null;
 }
 
 export function buildFolderParentMap(folders: FolderTreeNode[]): FolderParentMap {
   const map: FolderParentMap = {};
+
   const walk = (nodes: FolderTreeNode[]) => {
     for (const node of nodes) {
       map[node.id] = node.parentId;
@@ -85,6 +99,7 @@ export function buildFolderParentMap(folders: FolderTreeNode[]): FolderParentMap
     }
   };
   walk(folders);
+
   return map;
 }
 
@@ -99,16 +114,20 @@ export function isFolderMoveToSelfOrDescendant(
 
   let current: string | undefined = targetParentId;
   const visited = new Set<string>();
+
   while (current) {
     if (current === movingFolderId) {
       return true;
     }
+
     if (visited.has(current)) {
       return false;
     }
+
     visited.add(current);
     current = parentMap[current];
   }
+
   return false;
 }
 

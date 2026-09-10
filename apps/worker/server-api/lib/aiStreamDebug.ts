@@ -82,6 +82,7 @@ export const createOpenAIStreamDebugLogger = ({
           phase: 'streaming',
           ...getChunkSnapshot(content),
         });
+
         return;
       }
 

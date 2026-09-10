@@ -24,6 +24,7 @@ function mockOpen() {
     onblocked: null as (() => void) | null,
   };
   vi.stubGlobal('indexedDB', { open: () => request });
+
   return { db, request, transaction };
 }
 
@@ -33,8 +34,10 @@ describe('workspace database lifecycle', () => {
   it('rejects a blocked upgrade and closes a connection delivered afterwards', async () => {
     const { db, request } = mockOpen();
     let settled = false;
+
     const result = openDb().catch((error: unknown) => {
       settled = true;
+
       return error;
     });
     request.onblocked?.();
@@ -56,6 +59,7 @@ describe('workspace database lifecycle', () => {
 
   it.each(['onerror', 'onabort'] as const)('closes a failed batch on %s', async (event) => {
     const { db, request, transaction } = mockOpen();
+
     const result = updateSavedTables(
       [{ normalizedName: 'demo', name: 'Demo', state: {} as never, createdAt: 1, updatedAt: 1 }],
       { kind: 'anonymous' },

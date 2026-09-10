@@ -18,6 +18,7 @@ export const GENERATE_COMMENTS_SYSTEM_PROMPT = `你是一位数据库建模专�
 
 export function buildGenerateCommentsUserPrompt(request: AICommentRequest) {
   const language = TARGET_LANGUAGE[request.targetLocale];
+
   const action =
     request.mode === 'translate'
       ? '将表注释和所有字段注释批量翻译为目标语言；缺失注释的项目根据上下文补全。'

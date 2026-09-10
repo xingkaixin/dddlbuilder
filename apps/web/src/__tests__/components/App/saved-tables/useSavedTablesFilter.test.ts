@@ -33,6 +33,7 @@ describe('useSavedTablesFilter', () => {
 
   it('索引只包含搜索命中的表', () => {
     const items = [table('Users', 'folder-1'), table('Orders', 'folder-1')];
+
     const { result } = renderHook(() =>
       useSavedTablesFilter({ items, folders, searchQuery: 'user' }),
     );
@@ -45,6 +46,7 @@ describe('useSavedTablesFilter', () => {
 
   it('keeps missing-folder items visible at root when folders change', () => {
     const items = [table('Restored draft', 'removed'), table('Kept', 'folder-1')];
+
     const { result, rerender } = renderHook(
       ({ currentFolders }) =>
         useSavedTablesFilter({ items, folders: currentFolders, searchQuery: '' }),

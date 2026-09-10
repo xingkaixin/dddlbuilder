@@ -25,6 +25,7 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
   const authSession = useAuthIdentity();
   const { globalDialogs, aiPatch, indexAdvisor, importDialog } = model;
   const { targetKey: aiPatchTargetKey, ...aiPatchProps } = aiPatch;
+
   const objectLabel = t(
     model.saveObjectType === 'view'
       ? 'dialogs.save.objectLabels.view'

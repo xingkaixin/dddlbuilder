@@ -18,9 +18,11 @@ import { getRequestLogger, toWorkerError } from '../lib/logging.js';
 
 const resolveAuthenticatedUser = async (c: Context<ApiEnv>) => {
   const user = await resolveSessionUser(c);
+
   if (!user) {
     throw new DomainError(401, 'AUTH_REQUIRED', 'Authentication required');
   }
+
   return user;
 };
 
@@ -40,9 +42,11 @@ const wrapCreditService = async (c: Context<ApiEnv>, handler: () => Promise<Resp
 export function registerCreditRoutes(app: Hono<ApiEnv>) {
   app.get('/credits/balance', async (c) => {
     const user = await resolveAuthenticatedUser(c);
+
     return wrapCreditService(c, async () => {
       await grantSignupCredits(c.env, user);
       const account = await getCreditAccount(c.env, user.userId);
+
       return c.json(
         Schema.decodeUnknownSync(CreditBalanceResponseSchema)(
           withMeta(c, {
@@ -57,6 +61,7 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
 
   app.get('/credits/ledger', async (c) => {
     const user = await resolveAuthenticatedUser(c);
+
     return wrapCreditService(c, async () => {
       const { limit, offset, ...filters } = Schema.decodeUnknownSync(CreditLedgerQuerySchema)(
         c.req.query(),
@@ -69,6 +74,7 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
         }),
         countCreditLedger(c.env, user.userId, filters),
       ]);
+
       return c.json(
         Schema.decodeUnknownSync(CreditLedgerResponseSchema)(
           withMeta(c, {

@@ -50,6 +50,7 @@ vi.mock('@/services/workspaceYDocStorage', async (importOriginal) => ({
     persistence.committed = true;
   }),
 }));
+
 vi.mock('@/services/workspaceAccountService', () => ({
   clearLegacyWorkspaceData: vi.fn().mockResolvedValue(undefined),
   retryPendingWorkspaceCleanup: vi.fn().mockResolvedValue(undefined),
@@ -57,6 +58,7 @@ vi.mock('@/services/workspaceAccountService', () => ({
 
 vi.mock('y-indexeddb', async () => {
   const Yjs = await import('yjs');
+
   return {
     IndexeddbPersistence: class {
       db = { onversionchange: null as (() => void) | null };
@@ -65,9 +67,11 @@ vi.mock('y-indexeddb', async () => {
       set = async () => {};
       constructor(_name: string, doc: Y.Doc) {
         persistence.databases.push(this.db);
+
         if (persistence.update) {
           Yjs.applyUpdate(doc, persistence.update);
         }
+
         doc.on('update', () => {
           persistence.update = Yjs.encodeStateAsUpdate(doc);
         });
@@ -126,6 +130,7 @@ const renderProvider = () =>
 const startProvider = async () => {
   const view = renderProvider();
   await waitFor(() => expect(view.result.current.localSynced).toBe(true));
+
   return view;
 };
 
@@ -133,9 +138,11 @@ const startProvider = async () => {
 const readPersistedSnapshot = () => {
   const doc = new Y.Doc();
   ensureWorkspaceYDocMeta(doc);
+
   if (persistence.update) Y.applyUpdate(doc, persistence.update);
   const snapshot = exportWorkspaceYDocToSnapshot(doc);
   doc.destroy();
+
   return snapshot;
 };
 
@@ -143,11 +150,15 @@ describe('WorkspaceYDocProvider', () => {
   it('blocks editing after the database closes and reopens a document on retry', async () => {
     prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(null);
     const documents: Y.Doc[] = [];
+
     function Editor() {
       const { doc } = useWorkspaceYDocDocument();
+
       if (doc && documents.at(-1) !== doc) documents.push(doc);
+
       return <div data-testid="workspace-editor" />;
     }
+
     render(
       <WorkspaceYDocProvider>
         <Editor />
@@ -180,9 +191,11 @@ describe('WorkspaceYDocProvider', () => {
 
   it('does not rerender document consumers when only connection status changes', async () => {
     let renders = 0;
+
     const { result } = renderHook(
       () => {
         renders += 1;
+
         return useWorkspaceYDocDocument();
       },
       { wrapper: WorkspaceYDocProvider },
@@ -190,6 +203,7 @@ describe('WorkspaceYDocProvider', () => {
     await waitFor(() => expect(result.current.localSynced).toBe(true));
     const before = renders;
     const call = vi.mocked(WorkspaceYDocSyncClient).mock.calls.at(-1);
+
     if (!call) throw new Error('Expected a sync client');
     const onStatus = call[2];
     act(() => onStatus({ state: 'connected', synced: true }));

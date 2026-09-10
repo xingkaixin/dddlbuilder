@@ -22,6 +22,7 @@ export function workspaceMigrationProposalOptions(
     queryFn: async () => {
       if (!doc || !isWorkspaceYDocEmpty(doc)) return null;
       const analysis = await analyzeWorkspaceMigration();
+
       if (
         !analysis ||
         analysis.result.status === 'no_data' ||

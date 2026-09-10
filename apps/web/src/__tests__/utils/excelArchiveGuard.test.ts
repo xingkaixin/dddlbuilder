@@ -16,6 +16,7 @@ async function createWorkbookArchive(): Promise<ArrayBuffer> {
     ]),
     'users',
   );
+
   return xlsx.write(workbook, { type: 'array', bookType: 'xlsx', compression: true });
 }
 
@@ -23,6 +24,7 @@ function findEndRecord(view: DataView): number {
   for (let offset = view.byteLength - 22; offset >= 0; offset -= 1) {
     if (view.getUint32(offset, true) === END_OF_CENTRAL_DIRECTORY) return offset;
   }
+
   throw new Error('missing test ZIP end record');
 }
 
@@ -30,6 +32,7 @@ function listCentralEntries(view: DataView, endOffset: number): number[] {
   const count = view.getUint16(endOffset + 10, true);
   const entries: number[] = [];
   let offset = view.getUint32(endOffset + 16, true);
+
   for (let index = 0; index < count; index += 1) {
     entries.push(offset);
     offset +=
@@ -38,6 +41,7 @@ function listCentralEntries(view: DataView, endOffset: number): number[] {
       view.getUint16(offset + 30, true) +
       view.getUint16(offset + 32, true);
   }
+
   return entries;
 }
 
@@ -76,11 +80,13 @@ describe('excelArchiveGuard', () => {
     const totalView = new DataView(oversizedTotal);
     const totalEnd = findEndRecord(totalView);
     const entries = listCentralEntries(totalView, totalEnd);
+
     for (const centralEntry of entries.slice(0, 5)) {
       const localEntry = totalView.getUint32(centralEntry + 42, true);
       totalView.setUint32(centralEntry + 24, EXCEL_ARCHIVE_LIMITS.maxEntryBytes, true);
       totalView.setUint32(localEntry + 22, EXCEL_ARCHIVE_LIMITS.maxEntryBytes, true);
     }
+
     expect(() => assertSafeExcelArchive(oversizedTotal)).toThrow('解压后过大或压缩包结构不受支持');
   });
 

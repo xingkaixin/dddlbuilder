@@ -35,6 +35,7 @@ import {
 
 const isValidCreditAmount = (value: string) => {
   const amount = Number(value);
+
   return Number.isSafeInteger(amount) && amount > 0;
 };
 
@@ -50,6 +51,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
   const [activeTab, setActiveTab] = useState('credits');
   const userQuery = useQuery(adminUserOptions(userId));
   const ledgerQuery = useQuery(adminLedgerOptions(userId, 50));
+
   const usageQuery = useQuery({
     ...adminUsageOptions(userId, 50, 0),
     enabled: activeTab === 'usage',
@@ -63,6 +65,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
   const [disableReason, setDisableReason] = useState('');
   const [creditAmount, setCreditAmount] = useState('');
   const [creditNote, setCreditNote] = useState('');
+
   const resetPasswordMutation = useMutation({
     mutationFn: () => resetUserPassword(userId),
     retry: false,
@@ -133,6 +136,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
   const handleGrantCredits = async (e: FormEvent) => {
     e.preventDefault();
     const amount = Number(creditAmount);
+
     if (!isValidCreditAmount(creditAmount)) return;
 
     try {

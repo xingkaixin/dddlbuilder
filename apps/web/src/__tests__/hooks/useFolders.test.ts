@@ -9,6 +9,7 @@ import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
   const { wrapper } = createQueryClientWrapper();
+
   return testingLibraryRenderHook(render, { wrapper });
 };
 
@@ -31,6 +32,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     userId: null,
     workspaceId: null,
   });
+
   return { useAuthIdentity };
 });
 
@@ -58,6 +60,7 @@ describe('useFolders', () => {
       useFolders();
       useFolders();
     });
+
     const count = listen.mock.calls.filter(
       ([event]) => event === WORKSPACE_SNAPSHOT_APPLIED_EVENT,
     ).length;
@@ -87,6 +90,7 @@ describe('useFolders', () => {
 
     const { result } = renderHook(() => {
       useWorkspaceQuerySync();
+
       return useFolders();
     });
 

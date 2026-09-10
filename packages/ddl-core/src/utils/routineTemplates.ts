@@ -14,6 +14,7 @@ export function buildRoutineTemplateDDL(dbType: DatabaseType, config: RoutineTem
   if (dbType === 'hive') {
     return '-- Hive 不支持通用存储过程、函数或触发器模板';
   }
+
   if (!routineName) {
     return '-- 请填写程序单元名称';
   }
@@ -25,12 +26,15 @@ export function buildRoutineTemplateDDL(dbType: DatabaseType, config: RoutineTem
       return buildFunctionDDL(dbType, routineName, config);
     case 'updated_at_trigger':
       if (!tableName) return '-- 请填写触发表名';
+
       return buildUpdatedAtTriggerDDL(dbType, routineName, tableName, config.timestampColumn);
     case 'audit_trigger':
       if (!tableName) return '-- 请填写触发表名';
+
       return buildAuditTriggerDDL(dbType, routineName, tableName, config.auditTableName);
     case 'custom_trigger':
       if (!tableName) return '-- 请填写触发表名';
+
       return buildCustomTriggerDDL(dbType, routineName, tableName, config.body);
   }
 }
@@ -47,12 +51,15 @@ function buildProcedureDDL(
   if (family === 'mysql') {
     return `DELIMITER //\nCREATE PROCEDURE ${routineName}(${params})\nBEGIN\n  ${body}\nEND//\nDELIMITER ;`;
   }
+
   if (family === 'postgresql') {
     return `CREATE OR REPLACE PROCEDURE ${routineName}(${params})\nLANGUAGE plpgsql\nAS $$\nBEGIN\n  ${body};\nEND;\n$$;`;
   }
+
   if (dbType === 'sqlserver') {
     return `CREATE OR ALTER PROCEDURE ${routineName}${params ? `\n  ${params}` : ''}\nAS\nBEGIN\n  ${body};\nEND;`;
   }
+
   if (family === 'oracle' || family === 'dm') {
     return `CREATE OR REPLACE PROCEDURE ${routineName}${params ? `(${params})` : ''}\nAS\nBEGIN\n  ${body};\nEND;\n/`;
   }
@@ -73,12 +80,15 @@ function buildFunctionDDL(
   if (family === 'mysql') {
     return `DELIMITER //\nCREATE FUNCTION ${routineName}(${params})\nRETURNS ${returnType}\nDETERMINISTIC\nBEGIN\n  ${body};\nEND//\nDELIMITER ;`;
   }
+
   if (family === 'postgresql') {
     return `CREATE OR REPLACE FUNCTION ${routineName}(${params})\nRETURNS ${returnType}\nLANGUAGE plpgsql\nAS $$\nBEGIN\n  ${body};\nEND;\n$$;`;
   }
+
   if (dbType === 'sqlserver') {
     return `CREATE OR ALTER FUNCTION ${routineName}(${params})\nRETURNS ${returnType}\nAS\nBEGIN\n  ${body};\nEND;`;
   }
+
   if (family === 'oracle' || family === 'dm') {
     return `CREATE OR REPLACE FUNCTION ${routineName}${params ? `(${params})` : ''}\nRETURN ${returnType}\nAS\nBEGIN\n  ${body};\nEND;\n/`;
   }
@@ -100,12 +110,15 @@ function buildUpdatedAtTriggerDDL(
   if (family === 'mysql') {
     return `DELIMITER //\nCREATE TRIGGER ${routineName}\nBEFORE UPDATE ON ${table}\nFOR EACH ROW\nBEGIN\n  SET NEW.${column} = CURRENT_TIMESTAMP;\nEND//\nDELIMITER ;`;
   }
+
   if (family === 'postgresql') {
     return `CREATE OR REPLACE FUNCTION ${routineName}_fn()\nRETURNS TRIGGER\nLANGUAGE plpgsql\nAS $$\nBEGIN\n  NEW.${column} = CURRENT_TIMESTAMP;\n  RETURN NEW;\nEND;\n$$;\n\nCREATE TRIGGER ${routineName}\nBEFORE UPDATE ON ${table}\nFOR EACH ROW\nEXECUTE FUNCTION ${routineName}_fn();`;
   }
+
   if (dbType === 'sqlserver') {
     return `CREATE OR ALTER TRIGGER ${routineName}\nON ${table}\nAFTER UPDATE\nAS\nBEGIN\n  SET NOCOUNT ON;\n  UPDATE target\n  SET ${column} = SYSDATETIME()\n  FROM ${table} AS target\n  INNER JOIN inserted AS i ON target.id = i.id;\nEND;`;
   }
+
   if (family === 'oracle' || family === 'dm') {
     return `CREATE OR REPLACE TRIGGER ${routineName}\nBEFORE UPDATE ON ${table}\nFOR EACH ROW\nBEGIN\n  :NEW.${column} := SYSTIMESTAMP;\nEND;\n/`;
   }
@@ -127,12 +140,15 @@ function buildAuditTriggerDDL(
   if (family === 'mysql') {
     return `DELIMITER //\nCREATE TRIGGER ${routineName}\nAFTER UPDATE ON ${table}\nFOR EACH ROW\nBEGIN\n  INSERT INTO ${auditTable} (table_name, operation, changed_at)\n  VALUES ('${tableName}', 'UPDATE', CURRENT_TIMESTAMP);\nEND//\nDELIMITER ;`;
   }
+
   if (family === 'postgresql') {
     return `CREATE OR REPLACE FUNCTION ${routineName}_fn()\nRETURNS TRIGGER\nLANGUAGE plpgsql\nAS $$\nBEGIN\n  INSERT INTO ${auditTable} (table_name, operation, changed_at)\n  VALUES ('${tableName}', TG_OP, CURRENT_TIMESTAMP);\n  RETURN NEW;\nEND;\n$$;\n\nCREATE TRIGGER ${routineName}\nAFTER INSERT OR UPDATE OR DELETE ON ${table}\nFOR EACH ROW\nEXECUTE FUNCTION ${routineName}_fn();`;
   }
+
   if (dbType === 'sqlserver') {
     return `CREATE OR ALTER TRIGGER ${routineName}\nON ${table}\nAFTER INSERT, UPDATE, DELETE\nAS\nBEGIN\n  SET NOCOUNT ON;\n  INSERT INTO ${auditTable} (table_name, operation, changed_at)\n  VALUES ('${tableName}', 'CHANGE', SYSDATETIME());\nEND;`;
   }
+
   if (family === 'oracle' || family === 'dm') {
     return `CREATE OR REPLACE TRIGGER ${routineName}\nAFTER INSERT OR UPDATE OR DELETE ON ${table}\nFOR EACH ROW\nBEGIN\n  INSERT INTO ${auditTable} (table_name, operation, changed_at)\n  VALUES ('${tableName}', ORA_SYSEVENT, SYSTIMESTAMP);\nEND;\n/`;
   }
@@ -154,12 +170,15 @@ function buildCustomTriggerDDL(
   if (family === 'mysql') {
     return `DELIMITER //\nCREATE TRIGGER ${routineName}\nBEFORE INSERT ON ${table}\nFOR EACH ROW\nBEGIN\n  ${triggerBody};\nEND//\nDELIMITER ;`;
   }
+
   if (family === 'postgresql') {
     return `CREATE OR REPLACE FUNCTION ${routineName}_fn()\nRETURNS TRIGGER\nLANGUAGE plpgsql\nAS $$\nBEGIN\n  ${triggerBody};\n  RETURN NEW;\nEND;\n$$;\n\nCREATE TRIGGER ${routineName}\nBEFORE INSERT ON ${table}\nFOR EACH ROW\nEXECUTE FUNCTION ${routineName}_fn();`;
   }
+
   if (dbType === 'sqlserver') {
     return `CREATE OR ALTER TRIGGER ${routineName}\nON ${table}\nAFTER INSERT\nAS\nBEGIN\n  SET NOCOUNT ON;\n  ${triggerBody};\nEND;`;
   }
+
   if (family === 'oracle' || family === 'dm') {
     return `CREATE OR REPLACE TRIGGER ${routineName}\nBEFORE INSERT ON ${table}\nFOR EACH ROW\nBEGIN\n  ${triggerBody};\nEND;\n/`;
   }

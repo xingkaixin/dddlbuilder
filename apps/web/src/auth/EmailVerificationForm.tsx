@@ -33,6 +33,7 @@ export function EmailVerificationForm({
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
+
     return () => window.clearInterval(timer);
   }, []);
 
@@ -40,6 +41,7 @@ export function EmailVerificationForm({
     if (pending || otp.length !== 6) return;
     setPending('verify');
     setError('');
+
     try {
       await verifyEmail(email, otp);
       onVerified();
@@ -56,6 +58,7 @@ export function EmailVerificationForm({
     if (pending || resendSeconds > 0) return;
     setPending('resend');
     setError('');
+
     try {
       await sendVerificationEmail(email);
       setOtp('');

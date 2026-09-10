@@ -29,6 +29,7 @@ export function useDataTableNavigation({
       const cell = Array.from(
         tableRef.current?.querySelectorAll<HTMLTableCellElement>('td[data-editable-column]') ?? [],
       ).find((cell) => Number(cell.dataset.rowIndex) === row && cell.dataset.columnId === col);
+
       if (!cell) return;
       handleCellActivate(row, col);
       focusFirstInteractiveInCell(cell);
@@ -44,7 +45,9 @@ export function useDataTableNavigation({
       const current = cells.findIndex(
         (cell) => Number(cell.dataset.rowIndex) === row && cell.dataset.columnId === col,
       );
+
       if (current < 0) return;
+
       for (
         let index = current + direction;
         index >= 0 && index < cells.length;
@@ -52,9 +55,11 @@ export function useDataTableNavigation({
       ) {
         const cell = cells[index];
         const columnId = cell.dataset.columnId;
+
         if (!columnId || !cell.querySelector(INTERACTIVE_SELECTOR)) continue;
         handleCellActivate(Number(cell.dataset.rowIndex), columnId);
         focusFirstInteractiveInCell(cell);
+
         return;
       }
     },

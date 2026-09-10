@@ -10,6 +10,7 @@ const MAX_CACHED_SHARES = 5;
 const rememberShare = (key: string) => {
   if (!key.startsWith(SHARE_PREFIX)) return;
   const stored: unknown = JSON.parse(localStorage.getItem(SHARE_ORDER_KEY) ?? '[]');
+
   const known = Array.isArray(stored)
     ? stored.filter(
         (item): item is string =>
@@ -18,11 +19,15 @@ const rememberShare = (key: string) => {
           localStorage.getItem(item) !== null,
       )
     : [];
+
   for (let i = 0; i < localStorage.length; i += 1) {
     const oldKey = localStorage.key(i);
+
     if (oldKey?.startsWith(SHARE_PREFIX)) known.push(oldKey);
   }
+
   const order = [...new Set([key, ...known])];
+
   for (const stale of order.slice(MAX_CACHED_SHARES)) localStorage.removeItem(stale);
   localStorage.setItem(SHARE_ORDER_KEY, JSON.stringify(order.slice(0, MAX_CACHED_SHARES)));
 };
@@ -39,9 +44,11 @@ export const writeStorageJson = (key: string, value: unknown) => {
 export const readStorageJson = <T>(key: string): T | null => {
   try {
     const raw = localStorage.getItem(key);
+
     if (!raw) return null;
     const value = JSON.parse(raw) as T;
     rememberShare(key);
+
     return value;
   } catch {
     return null;
@@ -62,9 +69,12 @@ export const parseSharePath = (pathname: string): { shareId: string | null; inva
   if (!pathname.startsWith('/share/')) {
     return { shareId: null, invalid: false };
   }
+
   const match = pathname.match(SHARE_UUID_REGEX);
+
   if (!match) {
     return { shareId: null, invalid: true };
   }
+
   return { shareId: match[1], invalid: false };
 };

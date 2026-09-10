@@ -65,6 +65,7 @@ describe('resolveSavedTableSnapshot', () => {
       base.rows[1],
     ]);
     const snapshot = resolveSavedTableSnapshot(record(saved), draft(edited));
+
     const sql = buildDDL({
       dbType: snapshot.state.dbType,
       tableName: snapshot.state.tableName,
@@ -118,6 +119,7 @@ describe('resolveSavedTableSnapshot', () => {
 
   it('合并新增和删除行，草稿修改过的行不会被远端删除吞掉', () => {
     const saved = { ...base, rows: [] };
+
     const edited = {
       ...base,
       rows: [
@@ -139,6 +141,7 @@ describe('resolveSavedTableSnapshot', () => {
     const saved = { ...base, schemaName: 'app' };
     const first = resolveSavedTableSnapshot(record(saved), draft(edited, JSON.stringify(base)));
     const nextSaved = { ...saved, tableName: 'accounts' };
+
     const next = resolveSavedTableSnapshot(
       record(nextSaved),
       draft({ ...first.state, authInput: 'reader' }, first.source.baseSignature, saved),

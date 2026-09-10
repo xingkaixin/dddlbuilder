@@ -104,6 +104,7 @@ describe('useSavedTablePersistence permanent deletion', () => {
     workspace.yDoc = {};
     mocks.beginDeletion.mockImplementation(async (_target: unknown, commit?: () => void) => {
       commit?.();
+
       return 'delete-operation-1';
     });
     mocks.cancelDeletion.mockResolvedValue(undefined);
@@ -271,9 +272,11 @@ describe('useSavedTablePersistence permanent deletion', () => {
       doc.transact(() => {
         outcome = operation(doc);
       });
+
       return outcome;
     });
     const tables = doc.getMap('savedTables');
+
     const throwAfterDelete = () => {
       throw new Error('Observer failed after commit');
     };

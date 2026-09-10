@@ -118,6 +118,7 @@ describe('tableFolders', () => {
     const child = await createFolder('Child', root.id);
     const kept = await createFolder('Kept');
     const otherScope = { kind: 'user', userId: 'u1', workspaceId: 'other' } as const;
+
     for (const [draftId, folderId] of [
       ['root-draft', root.id],
       ['child-draft', child.id],
@@ -129,6 +130,7 @@ describe('tableFolders', () => {
         anonymousScope,
       );
     }
+
     const alreadyTrashed = {
       state: createState(),
       folderId: child.id,
@@ -179,6 +181,7 @@ describe('tableFolders', () => {
       ],
       anonymousScope,
     );
+
     for (const id of ['a', 'b']) {
       await addSavedTable(
         {
@@ -281,6 +284,7 @@ describe('tableFolders', () => {
 
   it('should handle non-array records returned by indexeddb in list functions', async () => {
     let mockTx: any;
+
     const mockRequest: any = {
       onerror: null,
       onsuccess: null,

@@ -39,6 +39,7 @@ async function runWithStore<T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
   const db = await openDb();
+
   return runIndexedDbRequest(db, VERSION_STORE_NAME, mode, runner);
 }
 
@@ -46,6 +47,7 @@ const readVersions = async (target: TableVersionTarget): Promise<TableVersion[]>
   const versions = await runWithStore<TableVersion[]>('readonly', (store) =>
     store.index('tableKey').getAll(getTableVersionKey(target)),
   );
+
   return versions.sort((a, b) => b.createdAt - a.createdAt).map(decodeVersion);
 };
 
@@ -65,8 +67,10 @@ export async function createVersion(
   };
 
   const saved = await addWorkspaceEntityHistoryRecord(target, VERSION_STORE_NAME, version);
+
   if (!saved) return null;
   await pruneOldVersions(target, MAX_VERSIONS_PER_TABLE);
+
   return version;
 }
 
@@ -79,6 +83,7 @@ export async function getVersion(
   target: TableVersionTarget,
 ): Promise<TableVersion | null> {
   const result = await runWithStore<TableVersion | undefined>('readonly', (store) => store.get(id));
+
   return result?.tableKey === getTableVersionKey(target) ? decodeVersion(result) : null;
 }
 
@@ -92,7 +97,9 @@ const deleteVersions = async (versions: TableVersion[]): Promise<void> => {
   const db = await openDb();
   await runIndexedDbTransaction(db, VERSION_STORE_NAME, 'readwrite', (tx) => {
     const store = tx.objectStore(VERSION_STORE_NAME);
+
     for (const version of versions) store.delete(version.id);
+
     return () => undefined;
   });
 };
@@ -104,6 +111,7 @@ export async function pruneOldVersions(
   const versions = await listVersions(target);
   const toDelete = versions.slice(Math.max(0, maxCount));
   await deleteVersions(toDelete);
+
   return toDelete.length;
 }
 

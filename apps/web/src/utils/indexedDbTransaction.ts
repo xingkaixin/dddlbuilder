@@ -19,11 +19,13 @@ export const runIndexedDbTransaction = <T>(
     const fail = (error: unknown) => {
       if (settled) return;
       settled = true;
+
       try {
         transaction?.abort();
       } catch {
         // 已结束的事务不能再次中止，但仍需释放连接。
       }
+
       close();
       reject(error ?? new Error('IndexedDB 操作失败'));
     };
@@ -36,9 +38,11 @@ export const runIndexedDbTransaction = <T>(
         event?.preventDefault();
         fail(requestError ?? tx.error ?? new Error('IndexedDB 事务失败'));
       };
+
       tx.onabort = () => fail(tx.error ?? new Error('IndexedDB 事务被中止'));
       tx.oncomplete = () => {
         if (settled) return;
+
         try {
           const result = readResult();
           settled = true;
@@ -48,6 +52,7 @@ export const runIndexedDbTransaction = <T>(
           fail(error);
         }
       };
+
       const readResult = runner(tx, fail);
     } catch (error) {
       fail(error);
@@ -71,9 +76,12 @@ export const runIndexedDbRequest = <T>(
       request.onsuccess = () => {
         succeeded = true;
       };
+
       request.onerror = () => fail(request.error ?? new Error('IndexedDB 请求失败'));
+
       return () => {
         if (!succeeded) throw new Error('IndexedDB 请求未完成');
+
         return request.result;
       };
     },

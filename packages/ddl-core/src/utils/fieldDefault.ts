@@ -38,14 +38,18 @@ export function resolveFieldDefault(
       const sqlExpression = DIALECT_PROFILES[dbType].expressionDefaultTypes?.has(canonicalType)
         ? `(${constantExpression})`
         : constantExpression;
+
       return constantExpression
         ? { kind: 'constant', value: field.defaultValue, sqlExpression }
         : { kind: 'none' };
     }
+
     case 'expression': {
       const sqlExpression = field.defaultValue.trim();
+
       return sqlExpression ? { kind: 'expression', sqlExpression } : { kind: 'none' };
     }
+
     case 'current_timestamp':
       return supportsDefaultCurrentTimestamp(dbType, field.type)
         ? {
@@ -55,6 +59,7 @@ export function resolveFieldDefault(
         : { kind: 'none' };
     case 'uuid': {
       const sqlExpression = DIALECT_PROFILES[dbType].uuidFunction;
+
       return sqlExpression && supportsUuidDefault(canonicalType)
         ? { kind: 'uuid', sqlExpression }
         : { kind: 'none' };

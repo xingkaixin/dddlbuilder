@@ -10,6 +10,7 @@ interface DialogData {
 
 function useDialogHarness() {
   const [open, setOpen] = useState(false);
+
   return useDialogState<DialogData>({
     open,
     setOpen,
@@ -22,6 +23,7 @@ function useDialogHarness() {
 
 function useDialogHarnessWithInitialData(initialData: DialogData) {
   const [open, setOpen] = useState(false);
+
   return useDialogState<DialogData>({
     open,
     setOpen,

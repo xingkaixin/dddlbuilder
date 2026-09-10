@@ -106,6 +106,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   const shareId = pathInfo.shareId;
   const shareStorageKey = shareId ? buildShareStorageKey(shareId) : null;
   const [persistedState, setPersistedState] = useState<PersistedState | null>(null);
+
   const [activeSource, setActiveSource] = useState<WorkspaceSelection>({
     kind: 'draft',
     draftId: DEFAULT_DRAFT_ID,
@@ -124,6 +125,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   const lastLocalSaveRef = useRef<PendingLocalSave | null>(null);
 
   const { scope: currentScope, ready: workspaceScopeReady } = useWorkspaceScopeState();
+
   // 分享页没有 workspace 上下文，Y.Doc 永远不参与，本地分区即真相源。
   const { workspaceYDoc, yDoc, yDocReady, runInYDoc } = useWorkspaceYDocGateway(currentScope, {
     enabled: !shareId,
@@ -180,6 +182,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (!prevState || !nextState) {
         return prevState === nextState ? prevState : nextState;
       }
+
       return isSamePersistedState(prevState, nextState) ? prevState : nextState;
     });
   }, []);
@@ -281,10 +284,13 @@ export function usePersistedState(): UsePersistedStateReturn {
   const resolveWorkspaceSnapshot = useCallback(
     (source: WorkspaceSelection) => {
       const editorSession = toEditorSessionSnapshot(useEditorStore.getState());
+
       if (source.kind === 'draft') {
         const state = getDraftState(source.draftId);
+
         return state ? { source, state: withEditorSession(state, editorSession) } : null;
       }
+
       return yDoc ? getWorkspaceSnapshotFromYDoc(yDoc, source, editorSession) : null;
     },
     [getDraftState, yDoc],
@@ -297,14 +303,18 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (shareStorageKey) {
         writeStorageJson(shareStorageKey, payload.state);
         setPersistedState(payload.state);
+
         return;
       }
 
       const currentSource = activeSourceRef.current;
+
       if (!isSameWorkspaceSource(payload.source, currentSource)) {
         return;
       }
+
       if (payload.source.kind === 'draft' && !getDraftState(payload.source.draftId)) return;
+
       if (payload.source.kind === 'saved_table' && persistedStateRef.current) {
         lastLocalSaveRef.current = {
           source: payload.source,
@@ -319,6 +329,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         const { tableName, baseSignature } = payload.source;
         const existingDraft = getSavedTableDraft(payload.source);
         const isDirty = buildSchemaStateSignature(payload.state) !== payload.source.baseSignature;
+
         if (!isDirty) {
           if (existingDraft) dropSavedTableDraft(payload.source);
         } else if (
@@ -356,6 +367,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (shareStorageKey) {
         removeStorage(shareStorageKey);
         setPersistedState(null);
+
         return;
       }
 
@@ -367,6 +379,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   const deleteDraftById = useCallback(
     (draftId: string) => {
       if (!moveDraftToTrash(draftId)) return;
+
       if (activeSourceRef.current.kind === 'draft' && activeSourceRef.current.draftId === draftId) {
         resetToDefaultDraft();
       }

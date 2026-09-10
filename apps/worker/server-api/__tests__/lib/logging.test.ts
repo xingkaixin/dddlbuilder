@@ -12,14 +12,17 @@ const createEnv = (): ApiEnv['Bindings'] =>
 
 const captureEvents = () => {
   const events: Array<Record<string, unknown>> = [];
+
   const spies = (['log', 'info', 'warn', 'error'] as const).map((method) =>
     vi.spyOn(console, method).mockImplementation((value: unknown) => {
       if (value && typeof value === 'object') {
         const event = value as Record<string, unknown>;
+
         if (event.service === 'ddlbuilder-worker') events.push(event);
       }
     }),
   );
+
   return {
     events,
     restore: () => {
@@ -37,6 +40,7 @@ describe('worker request logging', () => {
   it('redacts protected fields before console output', () => {
     const captured = captureEvents();
     configureWorkerLogging(true);
+
     const log = createLogger({
       sql: 'select secret from users',
       credentials: { token: 'secret-token' },
@@ -56,6 +60,7 @@ describe('worker request logging', () => {
     const captured = captureEvents();
     configureWorkerLogging(true);
     let pullCount = 0;
+
     const fetch = withWorkerRequestLogging(
       () =>
         new Response(
@@ -64,8 +69,10 @@ describe('worker request logging', () => {
               if (pullCount === 0) {
                 pullCount += 1;
                 controller.enqueue(new TextEncoder().encode('{"chunk":1}\n'));
+
                 return;
               }
+
               controller.close();
             },
           }),
@@ -85,6 +92,7 @@ describe('worker request logging', () => {
   it('emits an NDJSON request once when the client cancels the body', async () => {
     const captured = captureEvents();
     configureWorkerLogging(true);
+
     const fetch = withWorkerRequestLogging(
       () =>
         new Response(

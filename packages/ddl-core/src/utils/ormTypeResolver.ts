@@ -7,9 +7,11 @@ export function mapCanonicalToORMType(ormTarget: ORMTarget, fieldType: string): 
   const parsed = parseFieldType(fieldType);
   const canonical = canonicalizeBaseType(parsed.baseType);
   const mappings = ORM_TYPE_MAPPINGS[ormTarget];
+
   if (!mappings || !Object.hasOwn(mappings, canonical)) {
     throw new Error(`Unsupported ${ormTarget} field type: ${fieldType}`);
   }
+
   return mappings[canonical];
 }
 
@@ -22,9 +24,11 @@ export function getORMTypeWithArgs(ormTarget: ORMTarget, fieldType: string): str
     if (['String', 'LargeBinary'].includes(baseMapped) && parsed.args.length > 0) {
       return `${baseMapped}(${parsed.args.join(', ')})`;
     }
+
     if (baseMapped === 'Numeric' && parsed.args.length > 0) {
       return `${baseMapped}(${parsed.args.join(', ')})`;
     }
+
     return baseMapped;
   }
 

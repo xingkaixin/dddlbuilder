@@ -46,13 +46,16 @@ for (const initialStatus of [200, 502]) {
     let attempts = 0;
     await page.route(`**/api/share/${SHARE_ID}`, async (route) => {
       attempts += 1;
+
       if (initialStatus === 502 && attempts === 1) {
         await route.fulfill({
           status: 502,
           json: { error: 'Share read failed', code: 'SHARE_LOAD_FAILED' },
         });
+
         return;
       }
+
       await route.fulfill({
         json: {
           id: SHARE_ID,
@@ -108,6 +111,7 @@ for (const { status, code, attempts: expectedAttempts, message } of [
   test(`分享读取返回 ${status} 时显示对应错误 @tools`, async ({ page }) => {
     let attempts = 0;
     let releaseAuth = () => {};
+
     const authentication = new Promise<void>((resolve) => {
       releaseAuth = resolve;
     });

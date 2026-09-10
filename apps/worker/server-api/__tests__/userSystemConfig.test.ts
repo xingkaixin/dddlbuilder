@@ -58,6 +58,7 @@ describe('getUserSystemConfig', () => {
 
   it('defaults and supports a bounded authentication body limit', () => {
     expect(getAuthBodyMaxBytes(buildEnv() as never)).toBe(16 * 1024);
+
     const env = {
       ...buildEnv(),
       AUTH_BODY_MAX_BYTES: '32768',

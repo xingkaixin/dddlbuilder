@@ -17,6 +17,7 @@ describe('review parser regressions', () => {
   });
   it('returns valid tables and the original failed statement with parser diagnostics', async () => {
     const bad = 'CREATE TABLE b (id int, x);';
+
     const result = await new SqlParser()
       .parseMultiAsync('CREATE TABLE a (id int);\n' + bad, 'mysql')
       .catch((error: Error) => ({

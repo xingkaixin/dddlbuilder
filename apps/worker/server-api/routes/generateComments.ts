@@ -61,6 +61,7 @@ export function registerGenerateCommentsRoute(app: Hono<ApiEnv>) {
             temperature: 0.2,
           });
           const result = normalizeResult(data, session.request.fields);
+
           return c.json(withMeta(c, result));
         }),
     ),

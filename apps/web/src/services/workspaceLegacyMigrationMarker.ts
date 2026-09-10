@@ -21,6 +21,7 @@ const readMarker = (scope: UserWorkspaceScope) => {
     return localStorage.getItem(buildKey(scope));
   } catch (error) {
     console.error('[workspace-yjs] failed to read legacy migration marker', error);
+
     return null;
   }
 };
@@ -40,6 +41,7 @@ export const isLegacyWorkspaceMigrationCompleted = (scope: UserWorkspaceScope) =
 export const beginLegacyWorkspaceMigration = (scope: UserWorkspaceScope) => {
   const token = `running:${crypto.randomUUID()}`;
   writeMarker(scope, token);
+
   return token;
 };
 

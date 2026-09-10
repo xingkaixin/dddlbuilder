@@ -37,6 +37,7 @@ const selectClass = 'h-9 w-full rounded-md border border-input bg-background px-
 
 function displayValue(value: unknown): string {
   if (value === undefined || value === '') return '—';
+
   return typeof value === 'string' ? value : (JSON.stringify(value) ?? '—');
 }
 
@@ -57,6 +58,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [pendingImport, setPendingImport] = useState<FieldStandard[] | null>(null);
+
   const [scan, setScan] = useState<{ scope: typeof scope; tables: SavedTableRecord[] } | null>(
     null,
   );
@@ -64,6 +66,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
   const selected = standards.find((standard) => standard.id === selectedId);
   const target = rows.find((row) => row.id === fieldId);
   const differences = selected && target ? fieldStandardDifferences(target, selected) : [];
+
   const byId = useMemo(
     () => new Map(standards.map((standard) => [standard.id, standard])),
     [standards],
@@ -84,16 +87,19 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
   const scanMatches = useMemo(() => {
     if (!scan || JSON.stringify(scan.scope) !== JSON.stringify(scope)) return null;
     const byName = new Map<string, FieldStandard[]>();
+
     for (const standard of standards) {
       const matches = byName.get(standard.field.fieldName) ?? [];
       matches.push(standard);
       byName.set(standard.field.fieldName, matches);
     }
+
     return scan.tables.flatMap((table) =>
       table.state.rows.flatMap((row) => {
         const candidates = row.standardId
           ? [byId.get(row.standardId)]
           : (byName.get(row.fieldName) ?? []);
+
         return candidates.flatMap<{
           table: string;
           row: FieldRow;
@@ -104,6 +110,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
             return row.standardId
               ? [{ table: table.name, row, standard, differences: [] as (keyof StandardField)[] }]
               : [];
+
           return [
             {
               table: table.name,
@@ -121,6 +128,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
     if (busy) return;
     setBusy(true);
     setError('');
+
     try {
       await operation();
     } catch {
@@ -147,6 +155,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
       current.map((row) => {
         if (row.id !== id) return row;
         const { standardId: _standardId, ...field } = row;
+
         return field;
       }),
     );
@@ -211,6 +220,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   event.target.value = '';
+
                   if (!file) return;
                   setPendingImport(null);
                   void run(async () => {
@@ -379,8 +389,10 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                           const row = applyFieldStandard(createEmptyRow(), selected);
                           setRows((current) => {
                             let insertAt = current.length;
+
                             while (insertAt > 0 && !current[insertAt - 1].fieldName.trim())
                               insertAt -= 1;
+
                             return [...current.slice(0, insertAt), row, ...current.slice(insertAt)];
                           });
                           setFieldId(row.id);
@@ -425,6 +437,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                 .map((row) => {
                   const standard = byId.get(row.standardId ?? '');
                   const diffs = standard ? fieldStandardDifferences(row, standard) : [];
+
                   return (
                     <div
                       key={row.id}

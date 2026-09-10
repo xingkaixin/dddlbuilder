@@ -60,6 +60,7 @@ export const toHydrationSavedTable = (
 ): HydrationSavedTable | null => {
   if (!value) return null;
   const record = value as SavedTableRecord;
+
   return {
     tableId: record.tableId,
     normalizedName: record.normalizedName,
@@ -79,6 +80,7 @@ export const resolveWorkspaceHydration = ({
   findSavedTable: (normalizedName: SavedTableTarget) => HydrationSavedTable | null;
 }): WorkspaceHydration => {
   const initialDraft = pickInitialDraft(drafts);
+
   const initialHydration = (): WorkspaceHydration => ({
     activeSource: { kind: 'draft', draftId: initialDraft?.draftId ?? DEFAULT_DRAFT_ID },
     state: initialDraft?.record.state ?? null,
@@ -88,7 +90,9 @@ export const resolveWorkspaceHydration = ({
 
   if (session.activeSource.kind === 'saved_table') {
     const savedTable = findSavedTable(session.activeSource);
+
     if (!savedTable) return initialHydration();
+
     return {
       activeSource: {
         kind: 'saved_table',
@@ -103,6 +107,7 @@ export const resolveWorkspaceHydration = ({
 
   const { draftId } = session.activeSource;
   const resolvedDraft = drafts.find((draft) => draft.draftId === draftId) ?? initialDraft;
+
   return {
     activeSource: { kind: 'draft', draftId: resolvedDraft?.draftId ?? draftId },
     state: resolvedDraft?.record.state ?? null,

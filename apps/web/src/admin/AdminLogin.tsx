@@ -15,9 +15,11 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
     if (!password.trim()) return;
 
     setLoading(true);
+
     try {
       await onLogin(password.trim());
     } catch {

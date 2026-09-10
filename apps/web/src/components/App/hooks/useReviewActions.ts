@@ -34,6 +34,7 @@ export function useReviewActions({
   const reviewState = useDDLReview(documentKey);
   const { startReview } = reviewState;
   const normalizedName = loadedTableNormalizedName || normalizeSavedTableName(tableName);
+
   const reviewTarget = useMemo<ReviewTarget | null>(
     () =>
       workspaceScope
@@ -48,7 +49,9 @@ export function useReviewActions({
   );
   const handleStartReview = useCallback(async () => {
     const result = await startReview(generatedSql, tableName, dbType);
+
     if (!result || !reviewTarget || getCurrentDocumentKey() !== documentKey) return;
+
     try {
       await saveReview(
         reviewTarget,

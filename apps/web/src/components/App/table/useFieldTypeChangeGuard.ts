@@ -32,14 +32,18 @@ export function useFieldTypeChangeGuard(
     (rowIndex, columnId, value) => {
       if (columnId === 'fieldType' && typeof value === 'string') {
         const oldType = rows[rowIndex]?.fieldType ?? '';
+
         if (oldType) {
           const risk = detectFieldTypeRisk(oldType, value);
+
           if (risk) {
             setPendingChange({ rowIndex, newType: value, risk });
+
             return;
           }
         }
       }
+
       updateCellValue(rowIndex, columnId, value);
     },
     [rows, updateCellValue],

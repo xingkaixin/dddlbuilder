@@ -29,6 +29,7 @@ describe('AI execution scope', () => {
       Effect.gen(function* () {
         const controller = new AbortController();
         let released = false;
+
         const operation = Effect.never.pipe(
           Effect.ensuring(
             Effect.sync(() => {

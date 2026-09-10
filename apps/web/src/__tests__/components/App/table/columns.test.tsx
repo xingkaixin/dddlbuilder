@@ -28,9 +28,11 @@ describe('useFieldColumns', () => {
 
     const columnIds = result.current.map((column) => {
       if ('id' in column && column.id) return column.id;
+
       if ('accessorKey' in column && column.accessorKey) {
         return String(column.accessorKey);
       }
+
       return '';
     });
 

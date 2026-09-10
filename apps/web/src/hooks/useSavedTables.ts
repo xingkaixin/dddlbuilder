@@ -53,8 +53,10 @@ const readSavedTablesProjection = (
   change?: WorkspaceYDocChange,
 ) => {
   const ids = change?.entityIds;
+
   const unchanged = (tables: SavedTableSummary[]) =>
     ids ? tables.filter((table) => !ids.has(table.tableId) && !ids.has(table.normalizedName)) : [];
+
   return {
     savedTables: [
       ...unchanged(previous?.savedTables ?? []),
@@ -70,6 +72,7 @@ const readSavedTablesProjection = (
 export function useSavedTables() {
   const { t } = useTranslation();
   const { warning, dismiss } = useToast();
+
   const {
     scope: currentScope,
     yDoc,
@@ -110,6 +113,7 @@ export function useSavedTables() {
     !currentScope ||
     (!yDocReady && (trashedTablesQuery.isPending || localSavedTablesQuery.isPending));
   const queryError = localSavedTablesQuery.error ?? trashedTablesQuery.error;
+
   const error = queryError
     ? queryError instanceof Error
       ? queryError.message
@@ -134,9 +138,11 @@ export function useSavedTables() {
         const displayName = ensureSavedTableName(name);
         const normalizedName = normalizeSavedTableName(displayName);
         const { active, trashed } = await readAllTables();
+
         if (active.some((table) => table.normalizedName === normalizedName)) {
           return { ok: false, reason: 'duplicate' };
         }
+
         const matchingTrashed = trashed.filter((table) => table.normalizedName === normalizedName);
         const existing = matchingTrashed.length === 1 ? matchingTrashed[0] : undefined;
         const now = Date.now();
@@ -153,8 +159,10 @@ export function useSavedTables() {
           existing?.trashedAt ? 'update' : 'add',
           'activate',
         );
+
         const migrateReviews = async () => {
           const toastId = `review-migration:${tableId}`;
+
           try {
             await migrateReviewsToTable(
               { scope: currentScope, tableId, normalizedName },
@@ -180,6 +188,7 @@ export function useSavedTables() {
         };
         await migrateReviews();
         await refresh();
+
         return { ok: true, normalizedName, tableId };
       } catch (err) {
         return {
@@ -197,10 +206,13 @@ export function useSavedTables() {
       try {
         if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await updateTableState(target, update);
+
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
+
         await refresh();
+
         return {
           ok: true,
           normalizedName: record.normalizedName,
@@ -222,8 +234,10 @@ export function useSavedTables() {
       try {
         if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await moveTableToTrash(target);
+
         if (!record) return { ok: false, reason: 'not_found' };
         await refresh();
+
         return {
           ok: true,
           normalizedName: record.normalizedName,
@@ -248,6 +262,7 @@ export function useSavedTables() {
       try {
         if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await readTable(target);
+
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
@@ -261,9 +276,11 @@ export function useSavedTables() {
           let counter = 1;
           const baseName = record.name;
           const baseNormalized = normalizeSavedTableName(baseName);
+
           while (existingNormalizedNames.has(`${baseNormalized}_${counter}`)) {
             counter++;
           }
+
           targetNormalizedName = `${baseNormalized}_${counter}`;
           targetName = `${baseName}_${counter}`;
         }
@@ -286,6 +303,7 @@ export function useSavedTables() {
         await replaceTable(record.normalizedName, restoredRecord, 'activate');
         await cleanupLocalTable(target);
         await refresh();
+
         return {
           ok: true,
           normalizedName: targetNormalizedName,
@@ -307,9 +325,11 @@ export function useSavedTables() {
       try {
         if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await readTable(target);
+
         if (!record) return { ok: false, reason: 'not_found' };
         await persistPermanentDeletion(record);
         await refresh();
+
         return {
           ok: true,
           normalizedName: record.normalizedName,
@@ -331,20 +351,25 @@ export function useSavedTables() {
       try {
         if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await readTable(target);
+
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
+
         const displayName = ensureSavedTableName(newName);
         const nextNormalizedName = normalizeSavedTableName(displayName);
         const { active, trashed } = await readAllTables();
+
         const existing = [...active, ...trashed].find(
           (table) =>
             table.normalizedName === nextNormalizedName &&
             resolveSavedTableId(table) !== resolveSavedTableId(record),
         );
+
         if (existing) {
           return { ok: false, reason: 'duplicate' };
         }
+
         const updatedRecord: SavedTableRecord = {
           ...record,
           name: displayName,
@@ -353,6 +378,7 @@ export function useSavedTables() {
         };
         await replaceTable(record.normalizedName, updatedRecord);
         await refresh();
+
         return {
           ok: true,
           normalizedName: nextNormalizedName,
@@ -374,11 +400,14 @@ export function useSavedTables() {
     [readTable],
   );
   const loadTables = useCallback(async () => (await readAllTables()).active, [readAllTables]);
+
   const resolveVersionTarget = useCallback(
     async (target: SavedTableTarget) => {
       if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
       const record = await readTable(target);
+
       if (!record) throw new Error(t('savedTables.toast.tableNotFound'));
+
       return {
         scope: currentScope,
         tableId: resolveSavedTableId(record),
@@ -399,7 +428,9 @@ export function useSavedTables() {
         state,
         message,
       );
+
       if (!version) throw new Error(t('savedTables.toast.tableNotFound'));
+
       return version;
     },
     [resolveVersionTarget, t],
@@ -411,10 +442,13 @@ export function useSavedTables() {
       try {
         if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const record = await updateTableMetadata(target, { folderId, updatedAt: Date.now() });
+
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
+
         await refresh();
+
         return {
           ok: true,
           normalizedName: record.normalizedName,
@@ -438,8 +472,10 @@ export function useSavedTables() {
       }
 
       let skipCount = 0;
+
       try {
         const { active: activeRecords, trashed: trashedRecords } = await readAllTables();
+
         const plan = buildSavedTableBatchImportPlan(
           request,
           [...trashedRecords, ...activeRecords],
@@ -448,6 +484,7 @@ export function useSavedTables() {
         skipCount = plan.skipCount;
 
         const activeTableIds = new Set(activeRecords.map(resolveSavedTableId));
+
         const activatedTableIds = new Set(
           plan.records.map(resolveSavedTableId).filter((tableId) => !activeTableIds.has(tableId)),
         );

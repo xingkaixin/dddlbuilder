@@ -4,6 +4,7 @@ import { createBetterAuth } from '../../lib/betterAuth.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
 const { sendEmail } = vi.hoisted(() => ({ sendEmail: vi.fn() }));
+
 vi.mock('resend', () => ({
   Resend: class {
     emails = { send: sendEmail };
@@ -15,6 +16,7 @@ describe('email OTP verification', () => {
   let env: ApiEnv['Bindings'];
   const email = 'otp@example.com';
   const password = 'Password-test-123!';
+
   const post = (path: string, body: unknown) =>
     createBetterAuth(env).handler(
       new Request(`http://localhost:3000/api/auth${path}`, {
@@ -26,10 +28,13 @@ describe('email OTP verification', () => {
   const signup = () => post('/sign-up/email', { email, password, name: 'OTP Test' });
   const resend = () => post('/send-verification-email', { email });
   const verify = (otp: string) => post('/email-otp/verify-email', { email, otp });
+
   const latestCode = () => {
     const text = sendEmail.mock.lastCall?.[0].text as string;
     const code = text.match(/验证码是：(\d{6})/)?.[1];
+
     if (!code) throw new Error('Verification email has no six-digit OTP');
+
     return code;
   };
 
@@ -69,6 +74,7 @@ describe('email OTP verification', () => {
     expect(await verified.json()).toMatchObject({ user: { emailVerified: true } });
     const cookie = verified.headers.get('set-cookie');
     expect(cookie).toContain('session_token=');
+
     const session = await createBetterAuth(env).api.getSession({
       headers: new Headers({ cookie: cookie ?? '' }),
     });
@@ -113,6 +119,7 @@ describe('email OTP verification', () => {
     ]) {
       expect((await post(path, { email, otp: '123456', password })).status).toBe(404);
     }
+
     expect(sendEmail).not.toHaveBeenCalled();
   });
 

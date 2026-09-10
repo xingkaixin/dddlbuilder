@@ -12,6 +12,7 @@ import type { DatabaseType } from '@ddlbuilder/shared-types';
 import { useLatestRequest } from './useLatestRequest';
 
 export type StructuredSuggestion = DDLReviewStructuredSuggestion;
+
 export type ReviewResult = DDLReviewResult;
 
 interface ReviewState {
@@ -24,6 +25,7 @@ interface ReviewState {
 export function useDDLReview(documentKey: string) {
   const { resolvedLocale } = useLocale();
   const requestAccess = useAIRequestAccess();
+
   const [state, setState] = useState<ReviewState>({
     documentKey,
     streamingText: '',
@@ -46,6 +48,7 @@ export function useDDLReview(documentKey: string) {
     if (!isLoading || !state.streamingText) {
       return null;
     }
+
     return parsePartialJson(state.streamingText);
   }, [isLoading, state.streamingText]);
 
@@ -58,10 +61,12 @@ export function useDDLReview(documentKey: string) {
           result: null,
           error: i18n.t('services.ddlRequired'),
         });
+
         return;
       }
 
       const accessError = requestAccess.getAccessError();
+
       if (accessError) {
         setState({
           documentKey,
@@ -69,6 +74,7 @@ export function useDDLReview(documentKey: string) {
           result: null,
           error: accessError,
         });
+
         return;
       }
 
@@ -110,6 +116,7 @@ export function useDDLReview(documentKey: string) {
             });
             requestAccess.refreshCreditsAfterSuccess();
           });
+
           return reviewResult;
         } catch (error) {
           if (!isCurrent() || (error as Error).name === 'AbortError') throw error;
@@ -120,6 +127,7 @@ export function useDDLReview(documentKey: string) {
             result: null,
             error: requestAccess.resolveRequestError(error, i18n.t('services.reviewFailed')),
           });
+
           return undefined;
         }
       }, requestKey);

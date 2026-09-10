@@ -178,6 +178,7 @@ function RecentCard({
     tone === 'draft'
       ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300'
       : 'bg-primary/10 text-primary';
+
   return (
     <button
       type="button"

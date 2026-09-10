@@ -5,6 +5,7 @@ import type { IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types'
 describe('PostgresStrategy', () => {
   it('quotes table, column, index, and referenced key names consistently', () => {
     const strategy = new ProfiledDDLStrategy('postgresql');
+
     const index = {
       id: 'index',
       name: 'OrderKey',
@@ -50,6 +51,7 @@ describe('PostgresStrategy', () => {
 
   it('应生成包含 identity、默认值和注释的 DDL', () => {
     const strategy = new ProfiledDDLStrategy('postgresql');
+
     const fields: NormalizedField[] = [
       {
         name: 'id',

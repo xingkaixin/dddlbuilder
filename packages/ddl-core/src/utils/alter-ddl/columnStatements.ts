@@ -55,6 +55,7 @@ export function generateDropColumn(
     dbType === 'sqlserver' && buildDefaultClause(fieldDiff.oldField, dbType)
       ? generateSqlServerDropDefault(tableName, fieldDiff.fieldName)
       : '';
+
   return [defaultSql, `ALTER TABLE ${tableName} DROP COLUMN ${fieldName};`]
     .filter(Boolean)
     .join('\n');
@@ -72,6 +73,7 @@ export function generateRenameColumn(
   if (getDatabaseFamily(dbType) === 'sqlserver') {
     return `EXEC sp_rename '${escapeSingleQuotes(`${tableName}.${oldName}`)}', '${escapeSingleQuotes(unquoteSqlIdentifier(newName))}', 'COLUMN';`;
   }
+
   // MySQL 8.0+ 支持 RENAME COLUMN，旧版本需要 CHANGE COLUMN
   return `ALTER TABLE ${tableName} RENAME COLUMN ${oldName} TO ${newName};`;
 }
@@ -87,12 +89,14 @@ export function generateAddColumn(
   const columnDef = buildColumnDefinition(field, dbType);
   const family = getDatabaseFamily(dbType);
   const column = `${fieldName} ${columnDef}`;
+
   const clause =
     family === 'oracle' || dbType === 'dm'
       ? `ADD (${column})`
       : dbType === 'sqlserver'
         ? `ADD ${column}`
         : `ADD COLUMN ${column}`;
+
   return [
     `ALTER TABLE ${tableName} ${clause};`,
     field.comment ? buildColumnComment(tableName, field, dbType) : '',
@@ -108,15 +112,20 @@ export function generateModifyColumn(
 ): string {
   const field = fieldDiff.newField;
   tableName = formatSqlTableName(tableName, dbType);
+
   if (dbType === 'sqlserver') return generateSqlServerModifyColumn(tableName, fieldDiff);
   const fieldName = formatSqlIdentifier(field.name, dbType);
   const family = getDatabaseFamily(dbType);
+
   if (family === 'postgresql') return generatePostgresModifyColumn(tableName, fieldDiff);
+
   const comment = fieldDiff.changes.includes('comment')
     ? buildColumnComment(tableName, field, dbType, fieldDiff.oldField.comment)
     : '';
+
   if (comment && fieldDiff.changes.every((change) => change === 'comment')) return comment;
   const changes = fieldDiff.changes;
+
   const columnDef =
     family === 'oracle' || family === 'dm'
       ? [
@@ -127,10 +136,13 @@ export function generateModifyColumn(
           .filter(Boolean)
           .join(' ')
       : buildColumnDefinition(field, dbType);
+
   if (!columnDef) return comment;
   const column = `${fieldName} ${columnDef}`;
+
   const clause =
     family === 'oracle' || dbType === 'dm' ? `MODIFY (${column})` : `MODIFY COLUMN ${column}`;
+
   return [`ALTER TABLE ${tableName} ${clause};`, comment].filter(Boolean).join('\n');
 }
 
@@ -147,6 +159,7 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: ModifyFieldD
   if (wasIdentity && !isIdentity) {
     statements.push(`${alterColumn} DROP IDENTITY;`);
   }
+
   if (addingIdentity) {
     statements.push(`${alterColumn} DROP DEFAULT;`);
   }
@@ -163,6 +176,7 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: ModifyFieldD
 
   if (changes.includes('default') && !isIdentity) {
     const defaultClause = buildDefaultClause(field, 'postgresql');
+
     if (defaultClause) {
       statements.push(`${alterColumn} SET ${defaultClause};`);
     } else if (!wasIdentity) {
@@ -181,6 +195,7 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: ModifyFieldD
     statements.push(
       `PERFORM setval(pg_get_serial_sequence('${tableLiteral}', '${columnLiteral}'), GREATEST(COALESCE(MAX(${fieldName}), 1), 1), COALESCE(MAX(${fieldName}), 0) >= 1) FROM ${tableName};`,
     );
+
     // 新建序列和定位起点必须共用 ALTER TABLE 的锁，防止并发插入复用已有值。
     return `DO '${escapeSingleQuotes(`BEGIN\n${statements.join('\n')}\nEND`)}';`;
   }
@@ -190,5 +205,6 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: ModifyFieldD
 
 export function buildColumnDefinition(field: NormalizedField, dbType: DatabaseType): string {
   const column = buildDialectColumn(field, dbType);
+
   return column.comment ? `${column.body} ${column.comment}` : column.body;
 }

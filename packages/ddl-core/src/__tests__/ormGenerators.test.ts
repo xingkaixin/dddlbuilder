@@ -481,6 +481,7 @@ describe('generated string literals', () => {
     'escapes newlines and backslashes in %s',
     (target) => {
       const value = 'line' + String.fromCharCode(10) + 'C:' + String.fromCharCode(92);
+
       const result = buildORM(target, {
         dbType: 'mysql',
         tableName: 'items',
@@ -496,6 +497,7 @@ describe('generated string literals', () => {
   );
   it('keeps Go comments out of tags when they contain tag delimiters', () => {
     const comment = 'a;b "q"';
+
     const result = buildORM('gorm', {
       dbType: 'mysql',
       tableName: 'items',

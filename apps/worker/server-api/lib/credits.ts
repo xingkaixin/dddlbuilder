@@ -4,7 +4,9 @@ import { DomainError } from './http.js';
 import { getUserSystemConfig } from './userSystemConfig.js';
 
 import type { CreditLedgerItem } from '@ddlbuilder/shared-types/api';
+
 export type CreditLedgerKind = CreditLedgerItem['kind'];
+
 export type CreditLedgerSource = CreditLedgerItem['source'];
 
 export type CreditAccountRow = {
@@ -92,6 +94,7 @@ export const getCreditAccount = async (
   userId: string,
 ): Promise<CreditAccountRow | null> => {
   await ensureCreditAccount(env, userId);
+
   const row = await env.USER_DB.prepare(
     `
       SELECT
@@ -195,6 +198,7 @@ const validateExistingLedger = (existing: CreditLedgerRow, input: CreditMutation
   ) {
     throw new DomainError(409, 'SERVICE_UNAVAILABLE', 'CREDIT_IDEMPOTENCY_CONFLICT');
   }
+
   return existing;
 };
 
@@ -209,18 +213,23 @@ const LEDGER_ABORT_CODES = [
 export const mapLedgerAbort = (error: unknown): Error => {
   const message = error instanceof Error ? error.message : String(error);
   const abortCode = LEDGER_ABORT_CODES.find((code) => message.includes(code));
+
   if (abortCode === 'CREDIT_EXHAUSTED') {
     return new DomainError(402, 'CREDIT_EXHAUSTED', 'CREDIT_EXHAUSTED');
   }
+
   if (abortCode === 'CREDIT_ACCOUNT_MISSING') {
     return new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_ACCOUNT_MISSING');
   }
+
   if (abortCode === 'INVALID_CREDIT_AMOUNT') {
     return new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_CREDIT_AMOUNT');
   }
+
   if (abortCode === 'CREDIT_BALANCE_OVERFLOW') {
     return new DomainError(409, 'SERVICE_UNAVAILABLE', 'CREDIT_BALANCE_OVERFLOW');
   }
+
   return new Error(message);
 };
 
@@ -228,6 +237,7 @@ export const prepareCreditMutation = (env: ApiEnv['Bindings'], input: CreditMuta
   if (!Number.isSafeInteger(input.amount) || input.amount <= 0) {
     throw new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_CREDIT_AMOUNT');
   }
+
   return env.USER_DB.prepare(`
     INSERT INTO credit_ledger (
       id, user_id, kind, source, amount, balance_after, idempotency_key,
@@ -263,14 +273,19 @@ export const applyCreditMutation = async (
 ): Promise<CreditLedgerRow> => {
   const statement = prepareCreditMutation(env, input);
   const existing = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
+
   if (existing) return validateExistingLedger(existing, input);
   await ensureCreditAccount(env, input.userId);
+
   try {
     const created = await statement.first<Record<string, unknown>>();
+
     if (!created) throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_ACCOUNT_MISSING');
+
     return toLedgerRow(created);
   } catch (error) {
     const concurrent = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
+
     if (concurrent) return validateExistingLedger(concurrent, input);
     throw mapLedgerAbort(error);
   }
@@ -281,6 +296,7 @@ export const grantSignupCredits = async (
   user: { userId: string; email: string },
 ): Promise<void> => {
   const idempotencyKey = `signup_bonus:${user.userId}`;
+
   if (await readCreditLedgerEntry(env, user.userId, idempotencyKey)) return;
 
   try {

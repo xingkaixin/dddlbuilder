@@ -18,9 +18,11 @@ const encode = (value: string): Uint8Array<ArrayBuffer> =>
 const timingSafeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
   let mismatch = a.length ^ b.length;
   const length = Math.max(a.length, b.length);
+
   for (let index = 0; index < length; index += 1) {
     mismatch |= (a[index] ?? 0) ^ (b[index] ?? 0);
   }
+
   return mismatch === 0;
 };
 
@@ -29,9 +31,11 @@ const readAdminAuthConfig = (
 ): { password: string; sessionKey: Uint8Array<ArrayBuffer> } | null => {
   const password = env.ADMIN_CONSOLE_PASSWORD;
   const sessionSecret = env.ADMIN_SESSION_SECRET;
+
   if (!password || !sessionSecret?.trim()) return null;
 
   const sessionKey = encode(sessionSecret);
+
   if (
     sessionKey.byteLength < ADMIN_SESSION_SECRET_MIN_BYTES ||
     timingSafeEqual(sessionKey, encode(password))
@@ -51,6 +55,7 @@ const hmacSign = async (key: BufferSource, data: string): Promise<string> => {
     ['sign'],
   );
   const signature = await crypto.subtle.sign('HMAC', cryptoKey, encode(data));
+
   return Array.from(new Uint8Array(signature))
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
@@ -61,10 +66,12 @@ export const createAdminSession = async (
   password: string,
 ): Promise<{ success: true; setCookie: string } | { success: false }> => {
   const config = readAdminAuthConfig(env);
+
   if (!config) return { success: false };
 
   const a = encode(password);
   const b = encode(config.password);
+
   if (!timingSafeEqual(a, b)) {
     return { success: false };
   }
@@ -99,6 +106,7 @@ export const resolveAdminSession = async (
   cookieHeader: string | null | undefined,
 ): Promise<boolean> => {
   const config = readAdminAuthConfig(env);
+
   if (!config) return false;
 
   if (!cookieHeader) return false;
@@ -107,20 +115,25 @@ export const resolveAdminSession = async (
     .split(';')
     .map((c) => c.trim())
     .find((c) => c.startsWith(`${ADMIN_COOKIE_NAME}=`));
+
   if (!match) return false;
 
   const token = match.slice(`${ADMIN_COOKIE_NAME}=`.length);
   const parts = token.split(SEPARATOR);
+
   if (parts.length !== 3) return false;
   const [uuid, expiresAtRaw, mac] = parts;
+
   if (!uuid || !expiresAtRaw || !mac) return false;
   const expiresAt = Number(expiresAtRaw);
+
   if (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now()) return false;
 
   const payload = `${uuid}${SEPARATOR}${expiresAtRaw}`;
   const expected = await hmacSign(config.sessionKey, payload);
   const actualBytes = encode(mac);
   const expectedBytes = encode(expected);
+
   if (!timingSafeEqual(actualBytes, expectedBytes)) {
     return false;
   }
@@ -135,6 +148,7 @@ export const resolveAdminSession = async (
   )
     .bind(uuid, expiresAt, Date.now())
     .first<{ id: string }>();
+
   return Boolean(session);
 };
 
@@ -157,6 +171,7 @@ export const deleteAdminSession = async (
     .map((cookie) => cookie.trim())
     .find((cookie) => cookie.startsWith(`${ADMIN_COOKIE_NAME}=`));
   const sessionId = match?.slice(`${ADMIN_COOKIE_NAME}=`.length).split(SEPARATOR)[0];
+
   if (sessionId) {
     await env.USER_DB.prepare(
       'UPDATE admin_sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL',
@@ -164,5 +179,6 @@ export const deleteAdminSession = async (
       .bind(Date.now(), sessionId)
       .run();
   }
+
   return expiredAdminCookie();
 };

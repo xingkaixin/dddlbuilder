@@ -52,6 +52,7 @@ const renderActions = (overrides: Partial<WorkspaceTrashActionsParams> = {}) => 
       .mockResolvedValue(undefined),
     ...overrides,
   };
+
   return { ...renderHook(() => useWorkspaceTrashActions(params)), params };
 };
 

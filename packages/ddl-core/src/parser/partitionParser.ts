@@ -20,6 +20,7 @@ const DEFAULT_PARTITION_COUNT = 4;
 
 function normalizePartitionType(rawType: string): MysqlPartitionType | null {
   const normalized = rawType.toUpperCase().replace(/\s+/g, ' ').trim();
+
   return MYSQL_PARTITION_TYPES.find((type) => type === normalized) ?? null;
 }
 
@@ -59,6 +60,7 @@ function parseBalancedSegment(
       depth++;
     } else if (char === ')') {
       depth--;
+
       if (depth === 0) {
         return {
           content: text.slice(openParenIndex + 1, i).trim(),
@@ -103,9 +105,11 @@ function splitTopLevelByComma(input: string): string[] {
 
       if (char === ',' && depth === 0) {
         const token = current.trim();
+
         if (token) {
           parts.push(token);
         }
+
         current = '';
         continue;
       }
@@ -115,6 +119,7 @@ function splitTopLevelByComma(input: string): string[] {
   }
 
   const tail = current.trim();
+
   if (tail) {
     parts.push(tail);
   }
@@ -124,6 +129,7 @@ function splitTopLevelByComma(input: string): string[] {
 
 function unwrapIdentifier(token: string): string {
   const trimmed = token.trim();
+
   return trimmed.replace(/^`([^`]+)`$/, '$1').replace(/^"([^"]+)"$/, '$1');
 }
 
@@ -132,11 +138,13 @@ function resolvePartitionKey(partitionKey: string): {
   expression?: string;
 } {
   const keyText = partitionKey.trim();
+
   if (!keyText) {
     return { columns: [] };
   }
 
   const parts = splitTopLevelByComma(keyText);
+
   const isSimpleIdentifierList =
     parts.length > 0 && parts.every((part) => /^`?[\w.$]+`?$/i.test(part.trim()));
 
@@ -153,12 +161,14 @@ function parsePartitionDefinitions(definitionsText: string, partitionType: Mysql
   if (!definitionsText.trim()) return [];
 
   const partitions: PartitionDefinition[] = [];
+
   const valuePattern =
     partitionType === 'RANGE' || partitionType === 'RANGE COLUMNS'
       ? /PARTITION\s+([`"\w]+)\s+VALUES\s+LESS\s+THAN\s*\(([^)]*)\)/gi
       : /PARTITION\s+([`"\w]+)\s+VALUES\s+IN\s*\(([^)]*)\)/gi;
 
   let match = valuePattern.exec(definitionsText);
+
   while (match !== null) {
     partitions.push({
       id: createEntityId(),
@@ -173,32 +183,40 @@ function parsePartitionDefinitions(definitionsText: string, partitionType: Mysql
 
 function extractPartitionClause(sql: string): string {
   const partitionMatch = PARTITION_BY_REGEX.exec(sql);
+
   if (!partitionMatch) return '';
 
   const start = partitionMatch.index;
   const fromPartition = sql.slice(start);
   const semicolonIndex = fromPartition.indexOf(';');
+
   if (semicolonIndex === -1) return fromPartition.trim();
+
   return fromPartition.slice(0, semicolonIndex).trim();
 }
 
 export function extractPartitionConfig(sql: string): MysqlPartitionConfig | undefined {
   const partitionClause = extractPartitionClause(sql);
+
   if (!partitionClause) return undefined;
 
   const typeMatch = partitionClause.match(
     /^PARTITION\s+BY\s+(RANGE\s+COLUMNS|LIST\s+COLUMNS|RANGE|LIST|HASH|KEY)\b/i,
   );
+
   if (!typeMatch) return undefined;
 
   const type = normalizePartitionType(typeMatch[1]);
+
   if (!type) return undefined;
 
   const keyOpenParenIndex = partitionClause.indexOf('(', typeMatch[0].length);
   const keySegment = parseBalancedSegment(partitionClause, keyOpenParenIndex);
+
   if (!keySegment) return undefined;
 
   const key = resolvePartitionKey(keySegment.content);
+
   const config: MysqlPartitionConfig = {
     enabled: true,
     type,
@@ -212,22 +230,27 @@ export function extractPartitionConfig(sql: string): MysqlPartitionConfig | unde
 
   if (type === 'HASH' || type === 'KEY') {
     const partitionCountMatch = tail.match(/\bPARTITIONS\s+(\d+)\b/i);
+
     if (partitionCountMatch) {
       config.partitionCount = normalizeMysqlPartitionCount(Number(partitionCountMatch[1]));
     }
+
     return config;
   }
 
   const definitionOpenParenIndex = tail.indexOf('(');
+
   if (definitionOpenParenIndex === -1) {
     return config;
   }
 
   const definitions = parseBalancedSegment(tail, definitionOpenParenIndex);
+
   if (!definitions) {
     return config;
   }
 
   config.partitions = parsePartitionDefinitions(definitions.content, type);
+
   return config;
 }

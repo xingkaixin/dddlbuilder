@@ -35,6 +35,7 @@ async function setShareState(
     await kv.put(key, JSON.stringify(state), {
       expirationTtl: SHARE_TTL_SECONDS,
     });
+
     return true;
   } catch {
     return false;
@@ -43,6 +44,7 @@ async function setShareState(
 
 async function getShareState(kv: KVNamespace, key: string): Promise<PersistedState | null> {
   const value = await kv.get(key);
+
   if (!value) return null;
 
   try {
@@ -55,14 +57,17 @@ async function getShareState(kv: KVNamespace, key: string): Promise<PersistedSta
 export function registerShareRoutes(app: Hono<ApiEnv>) {
   app.post('/share', async (c) => {
     const limited = await enforceIpRateLimit(c, SHARE_CREATE_RATE_LIMIT, 'Too many share requests');
+
     if (limited) return limited;
 
     const kv = c.env.SHARE_KV;
+
     if (!kv) {
       return errorResponse(c, 500, 'KV binding missing', 'KV_CONFIG_MISSING');
     }
 
     const parsed = await parseJsonBodyWithLimit<ShareCreateBody>(c, SHARE_BODY_MAX_BYTES);
+
     if (!parsed.ok) return parsed.response;
 
     const body = parsed.data || {};
@@ -73,6 +78,7 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
     }
 
     const decodedState = decodePersistedState(state, 'external');
+
     if (!decodedState) {
       return errorResponse(c, 400, 'Invalid state', 'SHARE_STATE_INVALID');
     }
@@ -87,6 +93,7 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
     }
 
     const origin = new URL(c.req.url).origin;
+
     return c.json(
       Schema.decodeUnknownSync(CreateShareResponseSchema)(
         withMeta(c, {
@@ -100,11 +107,13 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
 
   app.get('/share/:uuid', async (c) => {
     const kv = c.env.SHARE_KV;
+
     if (!kv) {
       return errorResponse(c, 500, 'KV binding missing', 'KV_CONFIG_MISSING');
     }
 
     const shareId = c.req.param('uuid');
+
     if (!isValidShareUuid(shareId)) {
       return errorResponse(c, 400, 'Invalid share id', 'SHARE_UUID_INVALID');
     }
@@ -112,12 +121,14 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
     const key = `${SHARE_KEY_PREFIX}${shareId}`;
 
     let state: PersistedState | null;
+
     try {
       state = await getShareState(kv, key);
     } catch (error) {
       getRequestLogger(c)?.error(toWorkerError(error, 'Share storage read failed'), {
         outcome: { errorCode: 'SHARE_LOAD_FAILED' },
       });
+
       return errorResponse(c, 502, 'Share read failed', 'SHARE_LOAD_FAILED');
     }
 

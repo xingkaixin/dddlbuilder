@@ -17,22 +17,27 @@ export function generateDropIndex(
   const index = idxDiff.index;
   const indexName = formatSqlIdentifier(index.name, dbType);
   const family = getDatabaseFamily(dbType);
+
   if (!family || family === 'hive') {
     return `-- Manual migration required: drop index ${indexName} on ${tableName} (${dbType}).`;
   }
+
   const qualifiedIndex = buildQualifiedTableName(
     getSchemaAndTable(tableName).schema,
     index.name,
     dbType,
   );
+
   if (index.kind === 'primary') {
     return family === 'mysql'
       ? `ALTER TABLE ${tableName} DROP PRIMARY KEY;`
       : `ALTER TABLE ${tableName} DROP CONSTRAINT ${indexName};`;
   }
+
   if (index.kind === 'unique_constraint' && family !== 'mysql') {
     return `ALTER TABLE ${tableName} DROP CONSTRAINT ${indexName};`;
   }
+
   return family === 'mysql' || family === 'sqlserver'
     ? `DROP INDEX ${indexName} ON ${tableName};`
     : `DROP INDEX ${qualifiedIndex};`;
@@ -47,15 +52,18 @@ export function generateAddIndex(
   const index = idxDiff.index;
   const indexName = formatSqlIdentifier(index.name, dbType);
   const family = getDatabaseFamily(dbType);
+
   if (!family || family === 'hive') {
     return `-- Manual migration required: add index ${indexName} on ${tableName} (${dbType}).`;
   }
 
   if (index.kind === 'primary' || index.kind === 'unique_constraint') {
     const columns = index.fields.map((field) => formatSqlIdentifier(field.name, dbType)).join(', ');
+
     const constraint =
       index.kind === 'primary' && family === 'mysql' ? '' : `CONSTRAINT ${indexName} `;
     const kind = index.kind === 'primary' ? 'PRIMARY KEY' : 'UNIQUE';
+
     return `ALTER TABLE ${tableName} ADD ${constraint}${kind} (${columns});`;
   }
 
@@ -63,6 +71,7 @@ export function generateAddIndex(
     .map((field) => `${formatSqlIdentifier(field.name, dbType)} ${field.direction}`)
     .join(', ');
   const indexType = index.kind !== 'index' ? 'UNIQUE INDEX' : 'INDEX';
+
   return `CREATE ${indexType} ${indexName} ON ${tableName} (${fieldList});`;
 }
 
@@ -74,13 +83,16 @@ export function generateRenameIndex(
 ): string {
   const oldName = formatSqlIdentifier(oldIndex.name, dbType);
   const newName = formatSqlIdentifier(newIndex.name, dbType);
+
   if (oldIndex.kind === 'primary' || oldIndex.kind === 'unique_constraint') {
     return `ALTER TABLE ${tableName} RENAME CONSTRAINT ${oldName} TO ${newName};`;
   }
+
   const qualifiedIndex = buildQualifiedTableName(
     getSchemaAndTable(tableName).schema,
     oldIndex.name,
     dbType,
   );
+
   return `ALTER INDEX ${qualifiedIndex} RENAME TO ${newName};`;
 }

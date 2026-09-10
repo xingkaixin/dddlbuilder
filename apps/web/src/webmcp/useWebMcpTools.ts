@@ -50,9 +50,11 @@ const MAX_OUTPUT_CHARS = 1200;
 
 const requireString = (input: Record<string, unknown>, key: string) => {
   const value = input[key];
+
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new WebMcpToolError('INVALID_INPUT', `${key} is required`);
   }
+
   return value.trim();
 };
 
@@ -64,10 +66,13 @@ const readInteger = (
   maximum: number,
 ) => {
   const value = input[key];
+
   if (value === undefined) return fallback;
+
   if (!Number.isInteger(value) || (value as number) < minimum || (value as number) > maximum) {
     throw new WebMcpToolError('INVALID_INPUT', `${key} is outside the supported range`);
   }
+
   return value as number;
 };
 
@@ -76,12 +81,14 @@ const buildSignature = (state: PersistedState) =>
 
 const applyPatchOperations = (state: PersistedState, operations: WebMcpChangeSet['operations']) => {
   if (!operations) throw new WebMcpToolError('INVALID_INPUT', 'Operations are required');
+
   try {
     return applySchemaPatchOperations(state, operations);
   } catch (error) {
     if (error instanceof Error) {
       throw new WebMcpToolError('INVALID_INPUT', error.message);
     }
+
     throw error;
   }
 };
@@ -103,6 +110,7 @@ const assertReady = (snapshot: RuntimeSnapshot) => {
 
 const assertMutable = (snapshot: RuntimeSnapshot) => {
   assertReady(snapshot);
+
   if (snapshot.isShareView) {
     throw new WebMcpToolError('READ_ONLY', 'Shared workspaces are read-only');
   }
@@ -141,27 +149,35 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     ) => {
       const snapshot = snapshotRef.current;
       assertMutable(snapshot);
+
       if (confirmationRef.current) {
         throw new WebMcpToolError('BUSY', 'Another change set is awaiting user confirmation');
       }
+
       const currentSignature = await buildSignature(snapshot.state);
+
       if (snapshotRef.current.state !== snapshot.state) {
         throw new WebMcpToolError(
           'CONFLICT',
           'The active document changed. Inspect it again before proposing changes.',
         );
       }
+
       if (requestedSignature !== currentSignature) {
         throw new WebMcpToolError(
           'CONFLICT',
           'The active document changed. Inspect it again before proposing changes.',
         );
       }
+
       const diff = diffPersistedState(snapshot.state, candidateState);
+
       if (!hasTableChanges(diff)) {
         throw new WebMcpToolError('NO_CHANGES', 'The proposal changes nothing');
       }
+
       const issues = lintState(candidateState);
+
       const next: WebMcpChangeSet = {
         id: crypto.randomUUID(),
         source,
@@ -174,6 +190,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         createdAt: Date.now(),
       };
       storeChangeSet(next);
+
       return {
         ok: true,
         status: 'preview_ready',
@@ -188,11 +205,14 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
 
   const settleConfirmation = useCallback((confirmed: boolean) => {
     const pending = confirmationRef.current;
+
     if (!pending) {
       setDialogRequest(null);
       setDialogMode(null);
+
       return;
     }
+
     confirmationRef.current = null;
     pending.signal.removeEventListener('abort', pending.onAbort);
     setDialogRequest(null);
@@ -205,12 +225,15 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
       if (confirmationRef.current) {
         settleConfirmation(false);
       }
+
       setDialogRequest(request);
       setDialogMode('confirm');
+
       return new Promise<boolean>((resolve) => {
         const onAbort = () => settleConfirmation(false);
         confirmationRef.current = { resolve, signal, onAbort };
         signal.addEventListener('abort', onAbort, { once: true });
+
         if (signal.aborted) onAbort();
       });
     },
@@ -251,6 +274,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         },
       };
     }
+
     if (section === 'fields') {
       const fields = state.rows
         .filter((row) => row.fieldName.trim())
@@ -264,9 +288,12 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
           defaultValue: row.defaultValue ?? '',
           onUpdate: row.onUpdate ?? 'none',
         }));
+
       return { ...base, ...page(fields, offset, limit) };
     }
+
     if (section === 'indexes') return { ...base, ...page(state.indexes, offset, limit) };
+
     if (section === 'relations') {
       return {
         ...base,
@@ -274,6 +301,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         authObjects: state.authObjects,
       };
     }
+
     if (section === 'options') {
       return {
         ...base,
@@ -282,6 +310,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         tableMiscConfig: state.tableMiscConfig,
       };
     }
+
     throw new WebMcpToolError('INVALID_INPUT', `Unsupported section: ${section}`);
   }, []);
 
@@ -293,6 +322,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     const maxChars = readInteger(toolInput, 'maxChars', MAX_OUTPUT_CHARS, 1, MAX_OUTPUT_CHARS);
     const pending = changeSetRef.current;
     let content = '';
+
     if (kind === 'ddl') content = snapshot.generatedSql;
     else if (kind === 'dcl') content = snapshot.generatedDcl;
     else if (kind === 'orm') content = snapshot.generatedOrm;
@@ -303,6 +333,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     } else {
       throw new WebMcpToolError('INVALID_INPUT', `Unsupported output kind: ${kind}`);
     }
+
     return {
       ok: true,
       kind,
@@ -319,6 +350,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
       readOnly: input.isShareView,
       getAuthStatus: () => {
         const snapshot = snapshotRef.current;
+
         return {
           ok: true,
           status: snapshot.authStatus,
@@ -328,8 +360,10 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
       },
       startSignIn: () => {
         const snapshot = snapshotRef.current;
+
         if (snapshot.authStatus === 'signed_in') return { ok: true, status: 'already_signed_in' };
         snapshot.openAuthDialog();
+
         return { ok: true, status: 'user_action_required' };
       },
       inspectSchema,
@@ -337,6 +371,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         const snapshot = snapshotRef.current;
         assertReady(snapshot);
         const issues = lintState(snapshot.state);
+
         return {
           ok: true,
           counts: {
@@ -354,15 +389,19 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         assertMutable(snapshot);
         const baseSignature = requireString(toolInput, 'baseSignature');
         let operations: WebMcpChangeSet['operations'];
+
         try {
           operations = parseSchemaPatchOperations(toolInput.operations);
         } catch (error) {
           if (error instanceof Error) {
             throw new WebMcpToolError('INVALID_INPUT', error.message);
           }
+
           throw error;
         }
+
         const candidate = applyPatchOperations(snapshot.state, operations);
+
         return stageCandidate('schema_patch', baseSignature, candidate, operations);
       },
       previewSqlImport: async (toolInput: Record<string, unknown>) => {
@@ -370,16 +409,21 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         assertMutable(snapshot);
         const baseSignature = requireString(toolInput, 'baseSignature');
         const sql = requireString(toolInput, 'sql');
+
         if (sql.length > 50_000) throw new WebMcpToolError('INVALID_INPUT', 'SQL is too long');
         const dbType = toolInput.dbType;
+
         if (!isDatabaseType(dbType)) {
           throw new WebMcpToolError('INVALID_INPUT', 'Unsupported database type');
         }
+
         const parsed = await requestSqlParse({ sql, dbType });
+
         const candidate = preserveImportedFieldIds(
           snapshot.state,
           convertParsedResultToPersistedState(parsed, dbType),
         );
+
         return stageCandidate('sql_import', baseSignature, candidate);
       },
       applyPatch: async (toolInput: Record<string, unknown>, signal: AbortSignal) => {
@@ -387,33 +431,44 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         assertMutable(snapshot);
         const id = requireString(toolInput, 'changeSetId');
         const pending = changeSetRef.current;
+
         if (!pending || pending.id !== id) {
           throw new WebMcpToolError('NOT_FOUND', 'The staged change set is no longer available');
         }
+
         const rawOperationIds = toolInput.operationIds;
+
         if (rawOperationIds !== undefined && !Array.isArray(rawOperationIds)) {
           throw new WebMcpToolError('INVALID_INPUT', 'operationIds must be an array');
         }
+
         const operationIds = rawOperationIds?.map((value) => {
           if (typeof value !== 'string') {
             throw new WebMcpToolError('INVALID_INPUT', 'operationIds must contain strings');
           }
+
           return value;
         });
+
         if (operationIds && pending.source !== 'schema_patch') {
           throw new WebMcpToolError('INVALID_INPUT', 'SQL imports must be applied as a whole');
         }
+
         let requestChangeSet = pending;
+
         if (operationIds && pending.operations) {
           if (operationIds.length === 0) {
             throw new WebMcpToolError('INVALID_INPUT', 'At least one operation id is required');
           }
+
           const selected = pending.operations.filter((operation) =>
             operationIds.includes(operation.id),
           );
+
           if (selected.length !== operationIds.length) {
             throw new WebMcpToolError('INVALID_INPUT', 'Unknown operation id');
           }
+
           const candidateState = applyPatchOperations(pending.baseState, selected);
           const diff = diffPersistedState(pending.baseState, candidateState);
           requestChangeSet = {
@@ -424,22 +479,27 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
             operations: selected,
           };
         }
+
         const confirmed = await requestConfirmation(
           { changeSet: requestChangeSet, operationIds },
           signal,
         );
+
         if (!confirmed) return { ok: true, status: 'canceled_by_user' };
 
         const currentSignature = await buildSignature(snapshotRef.current.state);
+
         if (currentSignature !== pending.baseSignature) {
           throw new WebMcpToolError(
             'CONFLICT',
             'The active document changed while confirmation was pending',
           );
         }
+
         snapshotRef.current.replaceState(requestChangeSet.candidateState);
         changeSetRef.current = null;
         setChangeSet(null);
+
         return { ok: true, status: 'applied', changeSetId: pending.id };
       },
     }),
@@ -455,6 +515,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
 
   useEffect(() => {
     const modelContext = document.modelContext;
+
     if (!modelContext) return;
     const controller = new AbortController();
     const definitions = createWebMcpTools(dependencies);
@@ -470,12 +531,14 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         }
       });
     });
+
     return () => controller.abort();
   }, [dependencies]);
 
   useEffect(
     () => () => {
       const pending = confirmationRef.current;
+
       if (pending) pending.resolve(false);
     },
     [],

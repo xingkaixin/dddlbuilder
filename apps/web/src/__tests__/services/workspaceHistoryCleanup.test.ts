@@ -96,14 +96,17 @@ describe('workspaceHistoryCleanup', () => {
     const metaRequest: Partial<IDBRequest> = {};
     const versionRequest: Partial<IDBRequest> = {};
     const reviewRequest: Partial<IDBRequest> = {};
+
     const transaction = {
       abort: vi.fn(),
       objectStore: vi.fn((storeName: string) => {
         if (storeName === workspaceDb.WORKSPACE_ENTITY_META_STORE_NAME) {
           return { get: () => metaRequest, put: vi.fn() };
         }
+
         const request =
           storeName === workspaceDb.VERSION_STORE_NAME ? versionRequest : reviewRequest;
+
         return { index: () => ({ getAll: () => request }), delete: vi.fn() };
       }),
       onerror: null,
@@ -149,6 +152,7 @@ describe('workspaceHistoryCleanup', () => {
 
   it('稳定 ID 删除不影响同名独立草稿评审', async () => {
     const target = { scope, tableId: 'saved-id', normalizedName: 'users' };
+
     const draftTarget = {
       scope,
       draftId: 'independent-users-draft',

@@ -14,6 +14,7 @@ vi.mock('../../lib/auth.js', () => ({
 }));
 
 const databases: Array<ReturnType<typeof createSqliteD1Database>['sqlite']> = [];
+
 afterEach(() => {
   for (const sqlite of databases.splice(0)) sqlite.close();
 });
@@ -21,6 +22,7 @@ afterEach(() => {
 it('runs an injected provider through real credit reservation and settlement', async () => {
   const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
   databases.push(sqlite);
+
   const env = {
     USER_DB: database,
     OPENAI_API_KEY: 'test-key',
@@ -36,6 +38,7 @@ it('runs an injected provider through real credit reservation and settlement', a
     amount: 1000,
     idempotencyKey: 'signup_bonus:effect-user',
   });
+
   const complete = vi.fn(() =>
     Effect.succeed({
       id: 'completion',
@@ -79,6 +82,7 @@ it('runs an injected provider through real credit reservation and settlement', a
   );
 
   expect(complete).not.toHaveBeenCalled();
+
   const response = await app.fetch(
     new Request('http://localhost/test', {
       method: 'POST',

@@ -74,4 +74,5 @@ export const TemplateListItem = memo<TemplateListItemProps>(
     );
   },
 );
+
 TemplateListItem.displayName = 'TemplateListItem';

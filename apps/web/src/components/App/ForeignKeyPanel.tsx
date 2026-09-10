@@ -45,6 +45,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
 
   const deleteActions = getForeignKeyActions(dbType, 'onDelete');
   const updateActions = getForeignKeyActions(dbType, 'onUpdate');
+
   const pendingForeignKey = draft && {
     fields: draft.fields,
     refTable: draft.refTable.trim(),
@@ -53,6 +54,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
     onUpdate: draft.onUpdate,
   };
   const pendingIssue = pendingForeignKey && getForeignKeyIssue(pendingForeignKey, dbType);
+
   const updateDraft = (patch: Partial<ForeignKeyDraft>) =>
     setDraft((current) => current && { ...current, ...patch });
   const commitRefField = () => {
@@ -76,6 +78,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
     if (editingId && editingName.trim()) {
       updateForeignKey(editingId, { name: editingName.trim() });
     }
+
     setEditingId(null);
     setEditingName('');
   };
@@ -96,6 +99,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
 
   const handleAdd = () => {
     if (!draft || !pendingForeignKey || pendingIssue) return;
+
     const name =
       draft.name.trim() ||
       buildIndexName('fk', tableName || 'table', draft.fields, getIdentifierNameMaxLength(dbType));
@@ -345,6 +349,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
               <div className="grid gap-3 sm:grid-cols-1 xl:grid-cols-2">
                 {foreignKeys.map((fk) => {
                   const issue = fk.logical ? null : getForeignKeyIssue(fk, dbType);
+
                   return (
                     <div
                       key={fk.id}

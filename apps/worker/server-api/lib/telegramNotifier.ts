@@ -33,6 +33,7 @@ const readTelegramNotifyConfig = (env: ApiEnv['Bindings']): TelegramNotifyConfig
 
 export const shouldSendTelegramNotification = (env: ApiEnv['Bindings']) => {
   const config = readTelegramNotifyConfig(env);
+
   return config.enabled && Boolean(config.botToken) && Boolean(config.chatId);
 };
 
@@ -68,6 +69,7 @@ export const sendTelegramAuditNotification = async (
   payload: AuditNotificationPayload,
 ) => {
   const config = readTelegramNotifyConfig(env);
+
   if (!config.enabled || !config.botToken || !config.chatId) {
     return;
   }
@@ -97,6 +99,7 @@ export const dispatchTelegramAuditNotification = (
   if (payload.status !== 200 && payload.status < 500 && payload.errorCode !== 'BUDGET_EXCEEDED') {
     return null;
   }
+
   const config = readTelegramNotifyConfig(env);
 
   if (!config.enabled || !config.botToken || !config.chatId) {

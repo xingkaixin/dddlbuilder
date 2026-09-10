@@ -40,6 +40,7 @@ export async function readTextStream(
     if (!onUpdate) {
       return;
     }
+
     lastEmittedText = fullText;
     onUpdate(lastEmittedText);
     logAiStreamDebug(
@@ -67,6 +68,7 @@ export async function readTextStream(
   try {
     while (true) {
       const { done, value } = await reader.read();
+
       if (done) {
         break;
       }
@@ -76,16 +78,20 @@ export async function readTextStream(
       buffered += decoder.decode(value, { stream: true });
       const previousLength = fullText.length;
       let newline: number;
+
       while ((newline = buffered.indexOf('\n')) !== -1) {
         const line = buffered.slice(0, newline);
         buffered = buffered.slice(newline + 1);
         const event = decodeAIStreamEvent(line);
+
         if (completed || !event) {
           throw new Error(i18n.t('services.aiServiceUnavailable'));
         }
+
         if (event.type === 'error') {
           throw new Error(getAIErrorMessage(event) ?? i18n.t('services.aiServiceUnavailable'));
         }
+
         if (event.type === 'done') {
           completed = true;
         } else if (event.type === 'delta') {
@@ -94,6 +100,7 @@ export async function readTextStream(
           throw new Error(i18n.t('services.aiServiceUnavailable'));
         }
       }
+
       if (fullText.length === previousLength) continue;
 
       if (!hasEmittedFirstChunk) {
@@ -118,12 +125,15 @@ export async function readTextStream(
       }
 
       const now = Date.now();
+
       if (now - lastEmitAt >= updateIntervalMs) {
         emitText('throttled', now);
         lastEmitAt = now;
       }
     }
+
     buffered += decoder.decode();
+
     if (!completed || buffered.length > 0) {
       throw new Error(i18n.t('services.aiServiceUnavailable'));
     }

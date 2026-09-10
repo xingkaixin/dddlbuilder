@@ -32,6 +32,7 @@ const SHARE_LINK_CACHE_KEY = 'ddlbuilder:share:last:v2';
 
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
+
   return {
     getItem: vi.fn((key: string) => store[key] ?? null),
     setItem: vi.fn((key: string, value: string) => {
@@ -74,6 +75,7 @@ function renderShareAction(
   buildState: () => PersistedState = buildPersistedState,
 ) {
   const { wrapper } = createQueryClientWrapper();
+
   return renderHook(
     () =>
       useShareAction({

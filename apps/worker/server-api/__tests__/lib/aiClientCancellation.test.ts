@@ -20,6 +20,7 @@ describe('AI client cancellation accounting', () => {
     configureWorkerLogging(false);
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+
     for (const sqlite of databases.splice(0)) sqlite.close();
   });
 
@@ -27,6 +28,7 @@ describe('AI client cancellation accounting', () => {
     'cancels before provider attempt %i when its D1 response is delayed',
     async (cancelledAttempt) => {
       const events: Array<Record<string, unknown>> = [];
+
       for (const method of ['log', 'info', 'warn', 'error'] as const) {
         vi.spyOn(console, method).mockImplementation((value: unknown) => {
           if (value && typeof value === 'object' && 'service' in value) {
@@ -34,9 +36,11 @@ describe('AI client cancellation accounting', () => {
           }
         });
       }
+
       configureWorkerLogging(true);
       const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
       databases.push(sqlite);
+
       const env = {
         USER_DB: database,
         OPENAI_API_KEY: 'test-key',
@@ -60,16 +64,19 @@ describe('AI client cancellation accounting', () => {
       });
 
       let reportPersisted!: () => void;
+
       const persisted = new Promise<void>((resolve) => {
         reportPersisted = resolve;
       });
       let releaseAttempt!: () => void;
+
       const reply = new Promise<void>((resolve) => {
         releaseAttempt = resolve;
       });
       const originalPrepare = database.prepare.bind(database);
       vi.spyOn(database, 'prepare').mockImplementation((sql) => {
         const statement = originalPrepare(sql);
+
         if (!sql.includes('SET attempt_count = COALESCE(attempt_count, 0) + 1')) return statement;
         const bind = statement.bind.bind(statement);
         statement.bind = (...values: unknown[]) => {
@@ -78,14 +85,18 @@ describe('AI client cancellation accounting', () => {
           bound.first = async <T>(column?: string) => {
             const row = column === undefined ? await first<T>() : await first<T>(column);
             const attempt = sqlite.prepare('SELECT attempt_count FROM usage_events').get();
+
             if (attempt?.attempt_count === cancelledAttempt) {
               reportPersisted();
               await reply;
             }
+
             return row;
           };
+
           return bound;
         };
+
         return statement;
       });
 
@@ -114,6 +125,7 @@ describe('AI client cancellation accounting', () => {
         ),
       );
       const fetch = withWorkerRequestLogging(app.fetch);
+
       const response = await fetch(
         new Request('http://localhost/api/test', {
           method: 'POST',
@@ -128,12 +140,14 @@ describe('AI client cancellation accounting', () => {
         } as unknown as ExecutionContext,
       );
       await persisted;
+
       const readUsage = () =>
         sqlite
           .prepare(
             'SELECT status, attempt_count, charged_tokens, estimated_tokens, provider_budget_tokens FROM usage_events',
           )
           .get();
+
       if (!response.body) throw new Error('Missing stream response body');
       await response.body.cancel();
       expect(readUsage()).toMatchObject({ status: 'reserved', attempt_count: cancelledAttempt });

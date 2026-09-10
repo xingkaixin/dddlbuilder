@@ -21,6 +21,7 @@ export default function SqlCodeBlock({ code }: SqlCodeBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme === 'dark' ? 'one-dark-pro' : 'one-light';
+
   const highlighted = useMemo(
     () => highlighter.codeToTokens(code, { lang: 'sql', theme }),
     [code, theme],

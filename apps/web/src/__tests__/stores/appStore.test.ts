@@ -82,6 +82,7 @@ describe('appStore', () => {
     expect(useEditorStore.getState().activeTab).toBe('sharding');
 
     const transitions: Array<{ dbType: string; activeTab: string }> = [];
+
     const unsubscribe = useEditorStore.subscribe((current) =>
       transitions.push({ dbType: current.dbType, activeTab: current.activeTab }),
     );

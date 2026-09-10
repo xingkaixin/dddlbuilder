@@ -38,6 +38,7 @@ export function OutputCode({ code }: { code: string }) {
 export function DatabaseBadge({ dbType }: { dbType: DatabaseType }) {
   const option = DATABASE_OPTIONS.find((item) => item.value === dbType);
   const Icon = option?.icon;
+
   return (
     <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
       {Icon && <Icon className="h-3.5 w-3.5" />}
@@ -65,8 +66,10 @@ export function CopyOutputButton({
   const handleCopy = useCallback(async () => {
     if (!(await copy())) {
       showToast(t('ddlOutput.copyFailed'));
+
       return;
     }
+
     window.clearTimeout(timerRef.current);
     setCopied(true);
     timerRef.current = window.setTimeout(() => setCopied(false), 3000);

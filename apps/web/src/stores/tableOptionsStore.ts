@@ -105,6 +105,7 @@ export const createTableOptionsSlice = (set: EditorSetState): TableOptionsSlice 
               },
             )
           : value;
+
       return {
         tableMiscConfig: normalizeTableMiscConfigNumbers({
           ...state.tableMiscConfig,

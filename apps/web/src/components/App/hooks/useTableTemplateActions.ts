@@ -28,10 +28,13 @@ export function useTableTemplateActions({
 
   const handleSaveAsTemplate = useCallback(() => {
     const blueprint = createBlueprintFromState(currentState);
+
     if (blueprint.rows.length === 0) {
       showToast(i18n.t('tableTemplate.toast.noValidFieldsForSave'));
+
       return;
     }
+
     setPendingBlueprint(blueprint);
     setIsCreateDialogOpen(true);
   }, [currentState, showToast]);
@@ -44,6 +47,7 @@ export function useTableTemplateActions({
           ? i18n.t('tableTemplate.toast.created', { name })
           : (result.message ?? i18n.t('tableTemplate.toast.createFailed')),
       );
+
       return result;
     },
     [createTemplate, showToast],

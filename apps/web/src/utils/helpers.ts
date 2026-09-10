@@ -20,9 +20,11 @@ export const toStringSafe = (value: unknown) => {
   if (typeof value === 'string') {
     return value;
   }
+
   if (value == null) {
     return '';
   }
+
   // This helper intentionally preserves JavaScript's default string coercion semantics.
   // oxlint-disable-next-line typescript/no-base-to-string
   return String(value);
@@ -30,7 +32,9 @@ export const toStringSafe = (value: unknown) => {
 
 export const isReservedKeyword = (db: DatabaseType, name: string) => {
   const lower = toStringSafe(name).trim().toLowerCase();
+
   if (!lower) return false;
+
   return RESERVED_KEYWORDS[db]?.has(lower) ?? false;
 };
 
@@ -74,14 +78,20 @@ export const getUiDefaultKindOptions = (
   canonical: string,
 ): FieldDefaultKind[] => {
   const opts: FieldDefaultKind[] = ['none', 'constant', 'expression'];
+
   if (supportsAutoIncrement(db, canonical)) opts.splice(1, 0, 'auto_increment');
+
   if (supportsUuidDefault(canonical)) opts.push('uuid');
+
   if (supportsDefaultCurrentTimestamp(db, canonical)) opts.push('current_timestamp');
+
   return opts;
 };
 
 export const getUiOnUpdateOptions = (db: DatabaseType, canonical: string): FieldOnUpdate[] => {
   const opts: FieldOnUpdate[] = ['none'];
+
   if (supportsOnUpdateCurrentTimestamp(db, canonical)) opts.push('current_timestamp');
+
   return opts;
 };

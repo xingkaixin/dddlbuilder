@@ -70,11 +70,14 @@ export function WorkspaceTreeView({
   } = controls;
   const { create, rename, delete: remove } = folderActions;
   const canManageFolders = create && rename && remove;
+
   const renderTables = useCallback(
     (folderId?: string, depth = 0) => {
       const folderItems = folderId ? (itemsByFolder.get(folderId) ?? []) : ungroupedItems;
+
       if (folderItems.length === 0 || isSearching) return null;
       if (!folderId) return renderTableList(folderItems);
+
       return (
         <div style={{ marginLeft: `${(depth + 1) * 16}px` }}>{renderTableList(folderItems)}</div>
       );

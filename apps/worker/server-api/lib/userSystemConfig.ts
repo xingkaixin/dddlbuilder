@@ -5,34 +5,42 @@ const MAX_AUTH_BODY_MAX_BYTES = 1024 * 1024;
 
 const requireEnv = (value: string | undefined, key: string): string => {
   const normalized = value?.trim();
+
   if (!normalized) {
     throw new Error(`${key} is required`);
   }
+
   return normalized;
 };
 
 const requirePositiveInt = (value: string | undefined, key: string): number => {
   const normalized = requireEnv(value, key);
   const parsed = Number(normalized);
+
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     throw new Error(`${key} must be a positive integer`);
   }
+
   return parsed;
 };
 
 export const getAuthBodyMaxBytes = (env: ApiEnv['Bindings']): number => {
   const rawValue = env.AUTH_BODY_MAX_BYTES?.trim();
+
   if (!rawValue) return DEFAULT_AUTH_BODY_MAX_BYTES;
 
   const maxBytes = requirePositiveInt(rawValue, 'AUTH_BODY_MAX_BYTES');
+
   if (maxBytes > MAX_AUTH_BODY_MAX_BYTES) {
     throw new Error(`AUTH_BODY_MAX_BYTES cannot exceed ${MAX_AUTH_BODY_MAX_BYTES}`);
   }
+
   return maxBytes;
 };
 
 const readEmailVerificationRequirement = (value: string | undefined): boolean => {
   const normalized = value?.trim().toLowerCase();
+
   if (!normalized) return true;
   if (normalized === 'true') return true;
   if (normalized === 'false') return false;

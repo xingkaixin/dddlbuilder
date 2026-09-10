@@ -121,6 +121,7 @@ export const buildGenerateTableSystemPrompt = (params: {
     : '';
 
   const usePreviousSchema = mode !== 'patch' && !!previousSchema;
+
   const existingContext =
     existingConfig && !usePreviousSchema
       ? locale === 'zh-CN'

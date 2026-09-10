@@ -11,9 +11,11 @@ test.describe('核心 UI 交互功能测试 @core', () => {
 
   const selectTheme = async (page: Page, name: RegExp, legacyTestId: string) => {
     const legacyTrigger = page.getByTestId('theme-switcher-trigger');
+
     if (await legacyTrigger.isVisible({ timeout: 1000 }).catch(() => false)) {
       await legacyTrigger.click();
       await page.getByTestId(legacyTestId).click();
+
       return;
     }
 
@@ -122,6 +124,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
 
     // 收起侧边栏避免遮挡标签页
     const collapseBtn = page.getByRole('button', { name: /收起侧边栏/i });
+
     if (await collapseBtn.isVisible().catch(() => false)) {
       await collapseBtn.click();
     }
@@ -136,6 +139,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
 
     for (const tab of tabs) {
       const tabElement = page.getByRole('tab', { name: tab.name });
+
       // 检查标签是否存在（某些标签只在特定数据库下显示）
       if ((await tabElement.count()) > 0) {
         await tabElement.click();
@@ -169,6 +173,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
 
   test('场景：设计、结果和分屏视图共享同一份编辑内容', async ({ page }) => {
     const outputPanel = page.getByTestId('output-panel');
+
     const viewButton = page
       .getByTestId('workspace-tab-bar')
       .getByRole('switch', { name: '分屏预览' });
@@ -212,6 +217,7 @@ test('编辑器测试页面不依赖外部字体和统计服务完成加载', as
   await page.route(/^https:\/\//, (route) => {
     pending.push(route);
   });
+
   try {
     await page.goto('/');
     await ensureBuilderVisible(page);
@@ -234,6 +240,7 @@ test('小窗口默认展示字段，刷新后分屏默认关闭', async ({ page 
   await selectWorkspaceView(page, 'split');
   const editor = await page.getByTestId('design-panel').boundingBox();
   const output = await page.getByTestId('generated-results').boundingBox();
+
   if (!editor || !output) throw new Error('Both comparison panels must be visible');
   expect(output.y).toBeGreaterThanOrEqual(editor.y + editor.height);
   expect(output.width).toBe(editor.width);

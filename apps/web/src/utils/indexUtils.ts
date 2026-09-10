@@ -12,6 +12,7 @@ export const fillMissingIndexNames = (
   dbType: DatabaseType,
 ): IndexDefinition[] => {
   const maxLength = getIdentifierNameMaxLength(dbType);
+
   return indexes.map((index) =>
     index.name?.trim()
       ? index

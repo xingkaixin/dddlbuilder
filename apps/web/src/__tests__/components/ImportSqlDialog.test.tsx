@@ -43,6 +43,7 @@ describe('ImportSqlDialog', () => {
         ],
         failed: [],
       });
+
       const onBatchImport = vi
         .fn()
         .mockRejectedValueOnce(
@@ -164,6 +165,7 @@ describe('ImportSqlDialog', () => {
         onBatchImport={vi.fn()}
       />,
     );
+
     if (mode === 'saved') fireEvent.click(await screen.findByLabelText('保存为已保存表'));
     fireEvent.change(screen.getByLabelText('SQL 内容'), {
       target: { value: 'CREATE TABLE demo (id INT);' },
@@ -194,6 +196,7 @@ describe('ImportSqlDialog', () => {
           onBatchImport={onBatchImport}
         />,
       );
+
       if (mode === 'saved') fireEvent.click(await screen.findByLabelText('保存为已保存表'));
       fireEvent.change(screen.getByLabelText('SQL 内容'), {
         target: { value: 'CREATE TABLE totals (total INT GENERATED ALWAYS AS (1) STORED);' },
@@ -304,6 +307,7 @@ describe('ImportSqlDialog', () => {
       ],
       failed: [],
     });
+
     const onBatchImport = vi.fn().mockResolvedValue({
       successCount: 0,
       skipCount: 1,

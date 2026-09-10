@@ -25,8 +25,10 @@ describe('atomic AI usage', () => {
     'reserves %s in one transaction',
     async (routeKey) => {
       const f = await createCreditFixture();
+
       try {
         const batch = vi.spyOn(f.env.USER_DB, 'batch');
+
         const reservation = await reserveAIUsage(f.env, {
           userId: 'user-1',
           routeKey,
@@ -61,6 +63,7 @@ describe('atomic AI usage', () => {
     [2.7, 3],
   ])('normalizes estimated tokens %s to %s', async (input, expected) => {
     const f = await createCreditFixture();
+
     try {
       expect((await f.reserve(input)).reservedTokens).toBe(expected);
     } finally {
@@ -72,6 +75,7 @@ describe('atomic AI usage', () => {
     'rejects unsafe tokens %s without writing',
     async (amount) => {
       const f = await createCreditFixture();
+
       try {
         await expect(f.reserve(amount)).rejects.toThrow('INVALID_CREDIT_AMOUNT');
         expect(await f.balance()).toBe(1000);
@@ -86,6 +90,7 @@ describe('atomic AI usage', () => {
     'rejects invalid settlement facts %s',
     async (tokens) => {
       const f = await createCreditFixture();
+
       try {
         const reservation = await f.reserve();
         await recordAIUsageAttempt(f.env, reservation);
@@ -106,6 +111,7 @@ describe('atomic AI usage', () => {
 
   it('does not leave an event when the account is missing', async () => {
     const f = await createCreditFixture();
+
     try {
       await expect(
         reserveAIUsage(f.env, {
@@ -128,6 +134,7 @@ describe('atomic AI usage', () => {
     [0, 1000],
   ] as const)('settles observed success at %s with balance %s', async (actual, expected) => {
     const f = await createCreditFixture();
+
     try {
       const reservation = await f.reserve();
       await recordAIUsageAttempt(f.env, reservation);
@@ -154,6 +161,7 @@ describe('atomic AI usage', () => {
 
   it('retains the reservation for an attempted request with unknown usage', async () => {
     const f = await createCreditFixture();
+
     try {
       const reservation = await f.reserve();
       await recordAIUsageAttempt(f.env, reservation);
@@ -185,6 +193,7 @@ describe('atomic AI usage', () => {
 
   it('fully refunds a request that never reached the provider', async () => {
     const f = await createCreditFixture();
+
     try {
       const reservation = await f.reserve();
       await failAIUsage(f.env, reservation, 'BUDGET_EXCEEDED', observedUsage(0));
@@ -199,6 +208,7 @@ describe('atomic AI usage', () => {
 
   it('rejects a stale zero settlement after an attempt was durably recorded', async () => {
     const f = await createCreditFixture();
+
     try {
       const reservation = await f.reserve();
       await recordAIUsageAttempt(f.env, reservation);
@@ -224,6 +234,7 @@ describe('atomic AI usage', () => {
 
   it('persists a successful intent when supplemental credit is temporarily unavailable', async () => {
     const f = await createCreditFixture(100);
+
     try {
       const reservation = await f.reserve();
       await recordAIUsageAttempt(f.env, reservation);
@@ -274,6 +285,7 @@ describe('atomic AI usage', () => {
 
   it('keeps settlement facts when the ledger transaction fails, then retries once', async () => {
     const f = await createCreditFixture();
+
     try {
       const reservation = await f.reserve();
       await recordAIUsageAttempt(f.env, reservation);

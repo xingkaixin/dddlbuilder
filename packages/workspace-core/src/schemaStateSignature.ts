@@ -18,9 +18,11 @@ const sortValue = (value: unknown): unknown => {
   if (Array.isArray(value)) {
     return value.map(sortValue);
   }
+
   if (!isRecord(value)) {
     return value;
   }
+
   return Object.fromEntries(
     Object.keys(value)
       .filter((key) => value[key] !== undefined)
@@ -41,10 +43,12 @@ const isInactiveMysqlPartitionConfig = (config: MysqlPartitionConfig | undefined
 const isInactiveTableMiscConfig = (config: TableMiscConfig | undefined) => {
   if (!config) return true;
   const partitions = config.partitions;
+
   const hasPartitions =
     Boolean(partitions?.enabled) ||
     (partitions?.columns?.length ?? 0) > 0 ||
     Boolean(partitions?.clustering);
+
   return (
     config.enabled === false &&
     !hasText(config.engine) &&
@@ -69,6 +73,7 @@ export const normalizeSchemaStateForSignature = (state: SchemaDocumentState) => 
     ...toSchemaDocumentState(state),
     rows: state.rows.map((row) => {
       const { order: _legacyOrder, ...content } = row as typeof row & { order?: unknown };
+
       return content;
     }),
   };
@@ -76,21 +81,27 @@ export const normalizeSchemaStateForSignature = (state: SchemaDocumentState) => 
   if (!normalized.objectType || normalized.objectType === 'table') {
     delete normalized.objectType;
   }
+
   if (!normalized.viewDefinition) {
     delete normalized.viewDefinition;
   }
+
   if (normalized.viewCreateOrReplace !== false) {
     delete normalized.viewCreateOrReplace;
   }
+
   if ((normalized.foreignKeys?.length ?? 0) === 0) {
     delete normalized.foreignKeys;
   }
+
   if (isInactiveMysqlPartitionConfig(normalized.mysqlPartitionConfig)) {
     delete normalized.mysqlPartitionConfig;
   }
+
   if (isInactiveTableMiscConfig(normalized.tableMiscConfig)) {
     delete normalized.tableMiscConfig;
   }
+
   if (isDefaultCitusShardingConfig(normalized.citusShardingConfig)) {
     delete normalized.citusShardingConfig;
   }
@@ -100,6 +111,7 @@ export const normalizeSchemaStateForSignature = (state: SchemaDocumentState) => 
 
 export const buildSchemaStateSignature = (state: SchemaDocumentState) => {
   const bytes = new TextEncoder().encode(JSON.stringify(normalizeSchemaStateForSignature(state)));
+
   return `sha256:${Array.from(digest(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 };
 
@@ -119,5 +131,6 @@ export const buildPersistedStateSignature = (state: PersistedState) => {
   const bytes = new TextEncoder().encode(
     JSON.stringify(normalizePersistedStateForSignature(state)),
   );
+
   return `sha256:${Array.from(digest(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 };

@@ -97,13 +97,16 @@ describe('workspace binary storage', () => {
       const before = new Map(store);
       const put = vi.mocked(state.storage.put as (key: string, value: unknown) => Promise<void>);
       const original = put.getMockImplementation();
+
       if (!original) throw new Error('Missing storage fixture');
       put.mockImplementation(async (key, value) => {
         if (key === (operation === 'append' ? 'chunk:update:0000000000000002:1' : 'snapshot')) {
           throw new Error('storage interrupted');
         }
+
         await original(key, value);
       });
+
       const persist = () =>
         operation === 'append'
           ? appendWorkspaceYDocUpdates(
@@ -125,6 +128,7 @@ describe('workspace binary storage', () => {
     async (corruption) => {
       const { state, store } = createDurableObjectState();
       await compactWorkspaceYDocStorage(state.storage, largeBinary(), meta());
+
       if (corruption === 'missing-chunk') store.delete('chunk:snapshot:0');
       else
         store.set('snapshot', {

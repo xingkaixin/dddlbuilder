@@ -38,6 +38,7 @@ describe('workspace tab loading', () => {
       const betaState = { ...alphaState, tableName: 'beta', tableComment: 'loaded comment' };
       const doc = new Y.Doc();
       const remote = new Y.Doc();
+
       for (const state of [alphaState, betaState]) {
         upsertSavedTableInYDoc(doc, {
           tableId: state.tableName,
@@ -48,7 +49,9 @@ describe('workspace tab loading', () => {
           updatedAt: 1,
         });
       }
+
       Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+
       const staleSnapshot = getWorkspaceSnapshotFromYDoc(
         doc,
         createSource('beta'),
@@ -57,17 +60,20 @@ describe('workspace tab loading', () => {
       assert(staleSnapshot?.source.kind === 'saved_table');
       const loadedSnapshot = { ...staleSnapshot, source: staleSnapshot.source, version: 1 };
       useEditorStore.getState().replaceDocument(alphaState);
+
       const alphaId = useTabStore.getState().addTab({
         title: 'alpha',
         source: createSource('alpha'),
         stateSnapshot: alphaState,
       });
       let finishLoading!: () => void;
+
       const pending = new Promise<void>((resolve) => {
         finishLoading = resolve;
       });
       const selectWorkspaceSnapshot = vi.fn();
       const saveState = vi.fn();
+
       const resolveWorkspaceSnapshot = vi.fn((source: WorkspaceSelection) =>
         getWorkspaceSnapshotFromYDoc(
           doc,
@@ -91,6 +97,7 @@ describe('workspace tab loading', () => {
           buildPersistedState: () => toPersistedState(useEditorStore.getState()),
           loadSavedTable: async () => {
             await pending;
+
             return loadedSnapshot;
           },
           draftSummaries: [],
@@ -110,6 +117,7 @@ describe('workspace tab loading', () => {
           savedTables: [],
           tabs: tabs.tabs,
         });
+
         return { tabs, actions, presentation };
       });
 
@@ -172,6 +180,7 @@ describe('workspace tab loading', () => {
       expect(result.current.presentation.shouldShowWorkspaceSkeleton).toBe(false);
       expect(useEditorStore.getState().tableName).toBe(completedInBackground ? 'alpha' : 'beta');
       expect(selectWorkspaceSnapshot).toHaveBeenCalledTimes(completedInBackground ? 0 : 1);
+
       if (completedInBackground) act(() => result.current.tabs.switchToTabById(betaId));
 
       const authoritativeSnapshot = getWorkspaceSnapshotFromYDoc(

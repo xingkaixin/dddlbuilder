@@ -38,6 +38,7 @@ export function useAppController() {
   const domains = useEditorDomains();
   const { editor, ui, auth, sharding, animations, partition, tableOptions } = domains;
   const workspaceController = useWorkspaceController();
+
   const {
     persistenceStatus,
     document,
@@ -109,6 +110,7 @@ export function useAppController() {
     if (!isCnyFireworksEnabled) {
       return;
     }
+
     setShowFireworks(true);
   }, [setShowFireworks]);
 
@@ -123,6 +125,7 @@ export function useAppController() {
     selectWorkspaceSnapshot,
   } = document;
   const { hydrated, isShareView } = persistenceStatus;
+
   const {
     draftSummaries,
     getDraftState,
@@ -269,8 +272,10 @@ export function useAppController() {
   const handleSaveCurrent = useCallback(() => {
     if (hasLoadedTable) {
       void handleConfirmSave();
+
       return;
     }
+
     handleOpenSaveDialog();
   }, [hasLoadedTable, handleConfirmSave, handleOpenSaveDialog]);
 
@@ -386,11 +391,14 @@ export function useAppController() {
   const expandSidebar = useCallback(() => setWorkspaceSidebarOpen(true), [setWorkspaceSidebarOpen]);
   const openImportDialog = useCallback(() => setIsImportDialogOpen(true), [setIsImportDialogOpen]);
   const openErDiagram = useCallback(() => setIsErDialogOpen(true), [setIsErDialogOpen]);
+
   const openAISchemaPatch = useCallback(() => {
     if (tabs.length === 0 && !isShareView) {
       handleOpenAIGenerateDialog();
+
       return;
     }
+
     setIsAISchemaPatchOpen(true);
   }, [isShareView, handleOpenAIGenerateDialog, setIsAISchemaPatchOpen, tabs.length]);
 

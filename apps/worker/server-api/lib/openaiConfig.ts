@@ -25,10 +25,13 @@ export type OpenAIConfig = {
 
 const readEnvInt = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
+
   if (!value || !Number.isFinite(parsed) || parsed <= 0 || parsed > Number.MAX_SAFE_INTEGER) {
     return fallback;
   }
+
   const normalized = Math.floor(parsed);
+
   return Number.isSafeInteger(normalized) ? normalized : fallback;
 };
 
@@ -90,6 +93,7 @@ const AI_USAGE_RECLAIM_SAFETY_MS = 5 * 60 * 1000;
 
 export const getAIExecutionTimeoutMs = (config: OpenAIConfig) => {
   const retryDelays = Math.max(0, config.retryMaxAttempts - 1) * config.retryMaxDelayMs;
+
   return config.retryMaxAttempts * config.requestTimeoutMs + retryDelays;
 };
 

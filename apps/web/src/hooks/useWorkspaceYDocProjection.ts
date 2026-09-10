@@ -21,6 +21,7 @@ export function useWorkspaceYDocProjection<T>(
     }
 
     let snapshot = read(doc);
+
     return {
       getSnapshot: () => snapshot,
       subscribe: (notify: () => void) => {
@@ -34,6 +35,7 @@ export function useWorkspaceYDocProjection<T>(
         );
         // Capture changes made between render and subscription setup.
         snapshot = read(doc);
+
         return unsubscribe;
       },
     };

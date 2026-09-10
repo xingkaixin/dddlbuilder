@@ -103,10 +103,12 @@ export const TabBar = memo(
     onCreateTab,
   }: TabBarProps) => {
     const { t } = useTranslation();
+
     const { visibleTabs, hiddenTabs } = useMemo(() => {
       if (tabs.length <= MAX_VISIBLE_TABS) {
         return { visibleTabs: tabs, hiddenTabs: [] as WorkspaceTab[] };
       }
+
       return {
         visibleTabs: tabs.slice(0, MAX_VISIBLE_TABS),
         hiddenTabs: tabs.slice(MAX_VISIBLE_TABS),

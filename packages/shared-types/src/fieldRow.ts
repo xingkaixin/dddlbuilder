@@ -47,9 +47,11 @@ export type NormalizedField = {
 // 归一化的两类输入：历史持久化数据里的中文枚举值，以及模型可能吐出的各种同义写法。
 const toToken = (value: unknown): string => {
   if (typeof value === 'string') return value.trim().toLowerCase().replace(/\s+/g, '_');
+
   if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
     return String(value);
   }
+
   return '';
 };
 
@@ -116,10 +118,12 @@ export const normalizeFieldEnums = <T extends FieldEnumValues>(field: T): T =>
 
 export const normalizePersistedRows = <T extends { rows?: FieldRow[] }>(state: T): T => {
   if (!Array.isArray(state?.rows)) return state;
+
   return {
     ...state,
     rows: state.rows.map((row, index) => {
       const { order: _legacyOrder, ...content } = row as FieldRow & { order?: unknown };
+
       return {
         ...normalizeFieldEnums(content),
         id: ensureFieldId(row, index),

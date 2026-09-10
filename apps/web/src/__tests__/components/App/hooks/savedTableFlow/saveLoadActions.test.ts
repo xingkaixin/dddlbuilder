@@ -256,6 +256,7 @@ describe('useSaveLoadActions', () => {
 
     it('基线确实变化时仍回落到已保存版本', async () => {
       const draftState = { ...normalizePersistedRows(legacySavedState) } as PersistedState;
+
       const staleBase = JSON.stringify({
         ...legacySavedState,
         rows: [{ ...legacySavedState.rows[0], fieldType: 'int' }],
@@ -292,6 +293,7 @@ describe('useSaveLoadActions', () => {
 
   it('handleConfirmSave handles overwriteTable not found error', async () => {
     overwriteTable.mockResolvedValue({ ok: false, reason: 'not_found' });
+
     const { result } = getHook({
       hasLoadedTable: true,
       loadedTableSource: {
@@ -312,6 +314,7 @@ describe('useSaveLoadActions', () => {
       ok: false,
       message: 'Custom update error',
     });
+
     const { result } = getHook({
       hasLoadedTable: true,
       loadedTableSource: {
@@ -362,6 +365,7 @@ describe('useSaveLoadActions', () => {
   it('handleConfirmSave handles saveTable duplicate error', async () => {
     saveTable.mockResolvedValue({ ok: false, reason: 'duplicate' });
     saveDialog.data = { name: 'dup_name' };
+
     const { result } = getHook({
       hasLoadedTable: false,
     });
@@ -374,6 +378,7 @@ describe('useSaveLoadActions', () => {
   it('handleConfirmSave handles saveTable arbitrary error', async () => {
     saveTable.mockResolvedValue({ ok: false });
     saveDialog.data = { name: 'dup_name' };
+
     const { result } = getHook({
       hasLoadedTable: false,
     });
@@ -386,6 +391,7 @@ describe('useSaveLoadActions', () => {
   it('handleConfirmSave handles saveTable success', async () => {
     saveTable.mockResolvedValue({ ok: true, normalizedName: 'new_norm' });
     saveDialog.data = { name: '   new_name   ' }; // Should trim
+
     const { result } = getHook({
       hasLoadedTable: false,
       sourceDraftId: 'active-draft-id',

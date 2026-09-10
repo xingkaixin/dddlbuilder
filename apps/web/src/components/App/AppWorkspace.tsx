@@ -37,11 +37,13 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
   const [splitPreview, setSplitPreview] = useState(false);
   const contentView = view.isShareView ? shareView : editorSurface.editorView;
   const selectContentView = view.isShareView ? setShareView : editorSurface.setEditorView;
+
   const surfaceModel = {
     ...editorSurface,
     editorView: splitPreview ? ('split' as const) : contentView,
     setEditorView: (nextView: EditorView) => {
       setSplitPreview(nextView === 'split');
+
       if (nextView !== 'split') selectContentView(nextView);
     },
   };

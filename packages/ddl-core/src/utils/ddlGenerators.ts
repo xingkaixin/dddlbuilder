@@ -43,11 +43,13 @@ export const buildDDL = ({
   if (!tableName.trim()) {
     return '-- 请填写表名';
   }
+
   if (fields.length === 0) {
     return '-- 请补充字段信息';
   }
 
   const strategy = DDLStrategyFactory.create(dbType);
+
   const generatedTableDDL = strategy.generateTableDDL(
     tableName.trim(),
     tableComment,
@@ -68,6 +70,7 @@ export const buildDDL = ({
     .map((fk) => strategy.generateForeignKeyDDL(tableName.trim(), fk));
 
   const extraBlocks: string[] = [];
+
   if (fkDDLs.length > 0) {
     extraBlocks.push(fkDDLs.join('\n'));
   }
@@ -91,11 +94,13 @@ export const buildViewDDL = (
   if (!cleanViewName) {
     return '-- 请填写视图名';
   }
+
   if (!cleanDefinition) {
     return '-- 请填写视图 SQL';
   }
 
   const strategy = DDLStrategyFactory.create(dbType);
+
   const keyword =
     createOrReplace && dbType === 'sqlserver'
       ? 'CREATE OR ALTER VIEW'
@@ -116,6 +121,7 @@ export const buildDCL = (
   }
 
   const cleanTableName = formatSqlTableName(tableName, dbType);
+
   return authorizationObjects
     .map(
       (authObject) =>

@@ -208,6 +208,7 @@ describe('d1-utils', () => {
       .filter((args): args is string[] => Array.isArray(args))
       .flatMap((args) => {
         const commandIndex = args.indexOf('--command');
+
         return commandIndex >= 0 ? [args[commandIndex + 1]] : [];
       })
       .filter((command) => command.startsWith('INSERT OR IGNORE'));

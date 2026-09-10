@@ -26,6 +26,7 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
   // Try to parse as complete JSON first
   try {
     const result = JSON.parse(text);
+
     return normalizeResult(result);
   } catch {
     // Continue with partial parsing
@@ -36,17 +37,20 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
 
   // Extract score - look for "score": followed by a number
   const scoreMatch = text.match(/"score"\s*:\s*(\d+(?:\.\d+)?)/);
+
   if (scoreMatch) {
     result.score = Math.min(10, Math.max(1, Number(scoreMatch[1])));
   }
 
   // Extract summary - look for "summary": followed by a quoted string
   const summaryMatch = text.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+
   if (summaryMatch) {
     result.summary = unescapeJsonString(summaryMatch[1]);
   } else {
     // Try to get partial summary (string not yet closed)
     const partialSummaryMatch = text.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)$/);
+
     if (partialSummaryMatch) {
       result.summary = unescapeJsonString(partialSummaryMatch[1]);
     }
@@ -54,6 +58,7 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
 
   // Extract suggestions array
   const suggestionsStart = text.indexOf('"suggestions"');
+
   if (suggestionsStart !== -1) {
     const afterSuggestions = text.slice(suggestionsStart);
     const arrayStart = afterSuggestions.indexOf('[');
@@ -117,7 +122,9 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
         if (itemType === null) {
           itemType = 'string';
         }
+
         inString = true;
+
         if (itemType === 'string' && depth === 0) {
           currentItem = '';
         } else {
@@ -125,6 +132,7 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
         }
       } else {
         inString = false;
+
         if (itemType === 'string' && depth === 0) {
           // Complete string item
           items.push(unescapeJsonString(currentItem));
@@ -134,6 +142,7 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
           currentItem += char;
         }
       }
+
       continue;
     }
 
@@ -147,6 +156,7 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
         depth += 1;
         currentItem += char;
       }
+
       continue;
     }
 
@@ -154,6 +164,7 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
     if (char === '}' && !inString && itemType === 'object') {
       currentItem += char;
       depth -= 1;
+
       if (depth === 0) {
         // Try to parse the complete object
         try {
@@ -162,9 +173,11 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
         } catch {
           // Incomplete object, skip it
         }
+
         currentItem = '';
         itemType = null;
       }
+
       continue;
     }
 

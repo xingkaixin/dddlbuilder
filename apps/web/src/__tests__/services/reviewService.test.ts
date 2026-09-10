@@ -119,6 +119,7 @@ describe('requestDDLReview', () => {
 
   it('should handle null payload via JSON.parse intervention', async () => {
     const parse = JSON.parse;
+
     const parseSpy = vi
       .spyOn(JSON, 'parse')
       .mockImplementation((text) => (text === '{}' ? null : parse(text)));

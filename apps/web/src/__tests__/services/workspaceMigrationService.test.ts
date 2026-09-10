@@ -115,6 +115,7 @@ const seedLegacyWorkspace = async () => {
 const createWorkspaceYDoc = () => {
   const doc = new Y.Doc();
   ensureWorkspaceYDocMeta(doc);
+
   return doc;
 };
 
@@ -147,6 +148,7 @@ describe('workspaceMigrationService legacy promotion', () => {
       legacyScope,
     );
     const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
+
     if (!snapshot) throw new Error('Expected legacy snapshot');
     const doc = createWorkspaceYDoc();
     mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
@@ -164,6 +166,7 @@ describe('workspaceMigrationService legacy promotion', () => {
 
   it('无字段的默认视图草稿应进入匿名迁移快照', async () => {
     const anonymous = { kind: 'anonymous' as const };
+
     const state: PersistedState = {
       ...createState('active_orders'),
       objectType: 'view',
@@ -190,9 +193,11 @@ describe('workspaceMigrationService legacy promotion', () => {
       },
       anonymous,
     );
+
     const payload = decodeWorkspaceMigrationPayload(
       await collectWorkspaceMigrationPayload(anonymous),
     );
+
     if (!payload) throw new Error('Expected migration payload');
     const doc = createWorkspaceYDoc();
     mergeWorkspaceSnapshotIntoYDoc(doc, normalizeWorkspaceMigrationSnapshot(payload.snapshot));
@@ -249,6 +254,7 @@ describe('workspaceMigrationService legacy promotion', () => {
     );
     const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
     expect(snapshot).not.toBeNull();
+
     if (!snapshot) throw new Error('Expected view snapshot');
     const doc = createWorkspaceYDoc();
     mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
@@ -376,6 +382,7 @@ describe('workspaceMigrationService legacy promotion', () => {
 
     const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
     expect(snapshot).not.toBeNull();
+
     if (!snapshot) throw new Error('Expected legacy snapshot');
 
     const doc = createWorkspaceYDoc();
@@ -418,6 +425,7 @@ describe('workspaceMigrationService legacy promotion', () => {
     );
 
     const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
+
     if (!snapshot) throw new Error('Expected legacy snapshot');
 
     const doc = createWorkspaceYDoc();
@@ -447,6 +455,7 @@ describe('workspaceMigrationService legacy promotion', () => {
     );
 
     const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
+
     if (!snapshot) throw new Error('Expected legacy snapshot');
 
     expect((await listSavedTables(scope))[0]?.createdAt).toBe(111);

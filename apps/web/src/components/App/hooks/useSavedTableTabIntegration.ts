@@ -90,14 +90,18 @@ export function useSavedTableTabIntegration({
         } catch {
           // 本地会话写入失败也必须离开只读分享页。
         }
+
         window.location.replace('/');
+
         return;
       }
 
       const tab = activeTabId ? getTabById(activeTabId) : undefined;
+
       if (!tab) return;
       const isActive = getActiveTab()?.id === tab.id;
       const state = isActive ? buildPersistedState() : tab.stateSnapshot;
+
       const source: WorkspaceSelection = {
         kind: 'saved_table',
         normalizedName,
@@ -105,6 +109,7 @@ export function useSavedTableTabIntegration({
         tableName: displayName,
         baseSignature,
       };
+
       if (buildSchemaStateSignature(state) === baseSignature) {
         removeSavedTableDraft(source);
       } else {
@@ -116,8 +121,11 @@ export function useSavedTableTabIntegration({
           updatedAt: Date.now(),
         });
       }
+
       hydrateTab(tab.id, source, state);
+
       if (isActive) selectWorkspaceSnapshot(source, state);
+
       if (mode === 'create' && activeSource.kind === 'draft') {
         deleteDraftById(activeSource.draftId);
       }
@@ -142,6 +150,7 @@ export function useSavedTableTabIntegration({
     (target: SavedTableTarget, normalizedName: string, tableName: string) => {
       const activeTab = getActiveTab();
       renameSavedTableTabs(target, normalizedName, tableName);
+
       if (
         activeTab?.source.kind !== 'saved_table' ||
         activeTab.isLoading ||
@@ -149,7 +158,9 @@ export function useSavedTableTabIntegration({
       ) {
         return;
       }
+
       const renamedTab = getTabById(activeTab.id);
+
       if (renamedTab) selectWorkspaceSnapshot(renamedTab.source, buildPersistedState());
     },
     [buildPersistedState, getActiveTab, getTabById, renameSavedTableTabs, selectWorkspaceSnapshot],

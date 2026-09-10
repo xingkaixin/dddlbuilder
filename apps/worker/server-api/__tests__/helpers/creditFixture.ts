@@ -16,6 +16,7 @@ export const createCreditFixture = async (balance = 1000) => {
     amount: balance,
     idempotencyKey: 'signup_bonus:user-1',
   });
+
   const reserve = (estimatedTokens = 100, requestId = 'request-1') =>
     reserveAIUsage(env, {
       userId: 'user-1',
@@ -23,6 +24,7 @@ export const createCreditFixture = async (balance = 1000) => {
       requestId,
       estimatedTokens,
     });
+
   return {
     env,
     sqlite,

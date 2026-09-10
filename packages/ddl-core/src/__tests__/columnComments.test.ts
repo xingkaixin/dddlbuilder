@@ -48,6 +48,7 @@ describe('column comment migrations', () => {
         authObjects: [],
       });
       const after = { ...before, rows: [field] };
+
       const create = buildDDL({
         dbType,
         tableName: 'app.users',

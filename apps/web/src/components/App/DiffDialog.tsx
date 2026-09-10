@@ -35,6 +35,7 @@ interface DiffDialogProps {
  */
 const FieldDiffRow = memo<{ diff: FieldDiff }>(({ diff }) => {
   const { t } = useTranslation();
+
   const icon =
     diff.type === 'add' ? (
       <Plus className="h-3.5 w-3.5 text-green-500" />
@@ -95,6 +96,7 @@ FieldDiffRow.displayName = 'FieldDiffRow';
  */
 const IndexDiffRow = memo<{ diff: IndexDiff }>(({ diff }) => {
   const { t } = useTranslation();
+
   const icon =
     diff.type === 'add' ? (
       <Plus className="h-3.5 w-3.5 text-green-500" />
@@ -107,6 +109,7 @@ const IndexDiffRow = memo<{ diff: IndexDiff }>(({ diff }) => {
 
   const index = diff.index;
   const fieldList = index.fields.map((f) => f.name).join(', ');
+
   const typeLabel =
     index.kind === 'primary'
       ? t('diffDialog.indexTypePrimary')
@@ -138,16 +141,19 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
 
   const alterDDL = useMemo(() => {
     if (!diff || !hasTableChanges(diff)) return '';
+
     return generateAlterDDL(diff);
   }, [diff]);
 
   const rollbackDDL = useMemo(() => {
     if (!diff || !hasTableChanges(diff)) return '';
+
     return generateRollbackDDL(diff);
   }, [diff]);
 
   const handleCopy = useCallback(async () => {
     if (!alterDDL) return;
+
     try {
       await navigator.clipboard.writeText(alterDDL);
       onCopy?.();
@@ -158,6 +164,7 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
 
   const handleCopyRollback = useCallback(async () => {
     if (!rollbackDDL) return;
+
     try {
       await navigator.clipboard.writeText(rollbackDDL);
       onCopy?.();
@@ -170,6 +177,7 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
 
   const hasFieldChanges = diff.fields.length > 0;
   const hasIndexChanges = diff.indexes.length > 0;
+
   const hasTableMetaChanges =
     Boolean(diff.manualChanges?.length) ||
     diff.tableNameChanged ||
@@ -417,4 +425,5 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
     </Dialog>
   );
 });
+
 DiffDialog.displayName = 'DiffDialog';

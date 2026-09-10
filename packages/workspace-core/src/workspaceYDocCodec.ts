@@ -54,6 +54,7 @@ export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSna
 export const createWorkspaceYDocUpdateFromSnapshot = (snapshot: WorkspaceSnapshot) => {
   const doc = new Y.Doc();
   importWorkspaceSnapshotToYDoc(doc, snapshot);
+
   return Y.encodeStateAsUpdate(doc);
 };
 
@@ -64,6 +65,7 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
     globalDraft: null,
     drafts: Array.from(drafts.keys()).flatMap((draftId) => {
       const record = getDraftRecordFromYDoc(doc, draftId);
+
       return record ? [{ draftId, ...record }] : [];
     }),
     savedTables: listWorkspaceSavedTableRecords(doc),
@@ -76,10 +78,12 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
   const normalizedSnapshot = normalizeWorkspaceSnapshot(snapshot);
   const current = exportWorkspaceYDocToSnapshot(doc);
   const currentDrafts = new Map(current.drafts.map((draft) => [draft.draftId, draft]));
+
   const currentTables = new Map(
     current.savedTables.map((table) => [table.tableId ?? `legacy:${table.normalizedName}`, table]),
   );
   const currentFolders = new Map(current.folders.map((folder) => [folder.id, folder]));
+
   const merged: WorkspaceSnapshot = {
     globalDraft: null,
     drafts: [],
@@ -93,6 +97,7 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
       merged.drafts.push(draft);
     }
   }
+
   for (const table of normalizedSnapshot.savedTables) {
     if (
       shouldAcceptSnapshotRecord(
@@ -103,6 +108,7 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
       merged.savedTables.push(table);
     }
   }
+
   for (const draft of normalizedSnapshot.savedDrafts) {
     if (
       shouldAcceptSnapshotRecord(draft.updatedAt, getWorkspaceSavedDraft(doc, draft)?.updatedAt)
@@ -110,6 +116,7 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
       merged.savedDrafts.push(draft);
     }
   }
+
   for (const folder of normalizedSnapshot.folders) {
     if (shouldAcceptSnapshotRecord(folder.updatedAt, currentFolders.get(folder.id)?.updatedAt)) {
       merged.folders.push(folder);

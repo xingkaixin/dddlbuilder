@@ -24,6 +24,7 @@ type TablePresentation = {
   title: string;
   isDirty: boolean;
 };
+
 const drawerIconButtonClass =
   'h-7 w-7 text-muted-foreground/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50';
 
@@ -108,6 +109,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       [draftItems],
     );
     const allItems = useMemo(() => [...draftAsSavedItems, ...items], [draftAsSavedItems, items]);
+
     const draftIdSet = useMemo(
       () => new Set(draftAsSavedItems.map((d) => d.tableId)),
       [draftAsSavedItems],
@@ -126,11 +128,13 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
         <div className="space-y-2">
           {tableItems.map((item) => {
             const isDraft = draftIdSet.has(item.tableId);
+
             const isActive = isDraft
               ? activeDraftId === item.normalizedName
               : activeTableId
                 ? activeTableId === item.tableId
                 : activeNormalizedName === item.normalizedName;
+
             return (
               <TableItem
                 key={item.tableId}

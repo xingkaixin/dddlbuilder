@@ -9,6 +9,7 @@ export function useWorkspaceAuthority() {
   const scope = useWorkspaceScope();
   const queryClient = useQueryClient();
   const yDocGateway = useWorkspaceYDocGateway(scope);
+
   const storage = useWorkspaceStorageTarget({
     scope,
     yDoc: yDocGateway.yDoc,

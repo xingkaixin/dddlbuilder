@@ -137,4 +137,5 @@ export type EditorStoreState = AppSlice &
   };
 
 export type EditorSetState = StoreApi<EditorStoreState>['setState'];
+
 export type EditorGetState = StoreApi<EditorStoreState>['getState'];

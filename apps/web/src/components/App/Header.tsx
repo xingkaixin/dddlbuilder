@@ -40,6 +40,7 @@ import {
 import { useTheme } from 'next-themes';
 import { useThemeTransition } from './hooks/useThemeTransition';
 import { WorkspaceYDocStatus } from './WorkspaceYDocStatus';
+
 const FEEDBACK_URL = 'https://my.feishu.cn/share/base/form/shrcnqGnCdcvgRomQ5syagGW2He';
 
 interface HeaderProps {
@@ -69,6 +70,7 @@ export const Header = memo<HeaderProps>(
     const authDialog = useAuthDialog();
     const authSession = { ...authIdentity, ...authActions, ...authDialog };
     const { theme, resolvedTheme, setTheme } = useTheme();
+
     const selectedTheme: 'system' | 'light' | 'dark' =
       theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system';
     const { phase, isTransitioning, targetEffectiveTheme, runThemeTransition } = useThemeTransition(

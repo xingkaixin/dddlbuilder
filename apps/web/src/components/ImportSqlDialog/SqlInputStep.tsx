@@ -49,6 +49,7 @@ export function SqlInputStep({
   const downloadExcelTemplate = async () => {
     const xlsx = await import('xlsx');
     const workbook = xlsx.utils.book_new();
+
     const usersSheet = xlsx.utils.aoa_to_sheet([
       ['字段名', '字段类型', '字段注释'],
       ['id', 'bigint', '用户 ID'],
@@ -68,6 +69,7 @@ export function SqlInputStep({
     xlsx.utils.book_append_sheet(workbook, ordersSheet, 'orders');
 
     const data = xlsx.write(workbook, { type: 'array', bookType: 'xlsx' });
+
     const blob = new Blob([data], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
@@ -254,6 +256,7 @@ function ModeRadio({
   description: string;
 }) {
   const id = `import-mode-${value}`;
+
   return (
     <label
       htmlFor={id}

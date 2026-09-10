@@ -21,6 +21,7 @@ export const getBetterAuthClient = () => {
 
   if (!isBetterAuthConfigured()) {
     authClient = null;
+
     return authClient;
   }
 

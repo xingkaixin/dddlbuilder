@@ -11,6 +11,7 @@ describe('http lib utilities', () => {
     return {
       get: (key: string) => {
         if (key === 'requestId') return requestId;
+
         return undefined;
       },
       json: (data: any, status: number) => ({ data, status }),
@@ -83,6 +84,7 @@ describe('http lib utilities', () => {
       const c = mockContext('', undefined, { 'content-length': '1000' });
       const result = await parseJsonBodyWithLimit(c, 500);
       expect(result.ok).toBe(false);
+
       if (result.ok) throw new Error('Expected body rejection');
       const errorResponse = result.response;
       expect((errorResponse as any).status).toBe(413);
@@ -93,6 +95,7 @@ describe('http lib utilities', () => {
       const c = mockContext('');
       const result = await parseJsonBodyWithLimit(c, 500);
       expect(result.ok).toBe(false);
+
       if (result.ok) throw new Error('Expected body rejection');
       const errorResponse = result.response;
       expect((errorResponse as any).status).toBe(400);
@@ -104,6 +107,7 @@ describe('http lib utilities', () => {
       const c = mockContext('', longString);
       const result = await parseJsonBodyWithLimit(c, 500);
       expect(result.ok).toBe(false);
+
       if (result.ok) throw new Error('Expected body rejection');
       const errorResponse = result.response;
       expect((errorResponse as any).status).toBe(413);
@@ -114,6 +118,7 @@ describe('http lib utilities', () => {
       const c = mockContext('', 'not-json');
       const result = await parseJsonBodyWithLimit(c, 500);
       expect(result.ok).toBe(false);
+
       if (result.ok) throw new Error('Expected body rejection');
       const errorResponse = result.response;
       expect((errorResponse as any).status).toBe(400);

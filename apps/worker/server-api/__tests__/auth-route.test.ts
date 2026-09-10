@@ -12,6 +12,7 @@ const requestRateLimitMocks = vi.hoisted(() => ({
 vi.mock('../lib/betterAuth.js', () => ({
   createBetterAuth: betterAuthMocks.createBetterAuth,
 }));
+
 vi.mock('../lib/requestRateLimit.js', () => requestRateLimitMocks);
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
@@ -56,6 +57,7 @@ describe('/api/auth/*', () => {
         }),
       );
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -71,6 +73,7 @@ describe('/api/auth/*', () => {
 
     it('returns 400 when JSON body is invalid', async () => {
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -89,6 +92,7 @@ describe('/api/auth/*', () => {
 
     it('uses the configured authentication body limit', async () => {
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -105,6 +109,7 @@ describe('/api/auth/*', () => {
 
     it('returns 400 when token is missing', async () => {
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -123,6 +128,7 @@ describe('/api/auth/*', () => {
 
     it('returns 400 when token is empty string', async () => {
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -141,6 +147,7 @@ describe('/api/auth/*', () => {
 
     it('returns 400 when token is not a string', async () => {
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -159,6 +166,7 @@ describe('/api/auth/*', () => {
 
     it('returns 400 when token is null', async () => {
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -185,6 +193,7 @@ describe('/api/auth/*', () => {
       );
 
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -216,6 +225,7 @@ describe('/api/auth/*', () => {
       );
 
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -247,6 +257,7 @@ describe('/api/auth/*', () => {
       );
 
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -267,6 +278,7 @@ describe('/api/auth/*', () => {
       vi.stubGlobal('fetch', fetchMock);
 
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -295,6 +307,7 @@ describe('/api/auth/*', () => {
         }),
       );
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
@@ -352,6 +365,7 @@ describe('/api/auth/*', () => {
         new Response(null, { status: 429 }),
       );
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest(`/api/auth/${endpoint}`, {
           method: 'POST',
@@ -371,6 +385,7 @@ describe('/api/auth/*', () => {
           new Response(null, { status: 429 }),
         );
         const { default: app } = await import('../../api/index');
+
         const response = await app.fetch(
           createRequest('/api/auth/session', {
             method,
@@ -395,6 +410,7 @@ describe('/api/auth/*', () => {
       );
 
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-in/email', {
           method: 'POST',
@@ -412,6 +428,7 @@ describe('/api/auth/*', () => {
       'rejects an oversized %s body before invoking better-auth',
       async (method) => {
         const { default: app } = await import('../../api/index');
+
         const response = await app.fetch(
           createRequest('/api/auth/session', {
             method,
@@ -432,6 +449,7 @@ describe('/api/auth/*', () => {
         Response.json({ body: await request.json() }),
       );
       const { default: app } = await import('../../api/index');
+
       const response = await app.fetch(
         createRequest('/api/auth/sign-in/email', {
           method: 'POST',
@@ -493,6 +511,7 @@ describe('/api/me', () => {
     }));
 
     const { default: app } = await import('../../api/index');
+
     const response = await app.fetch(
       createRequest('/api/me', {
         headers: { Cookie: 'session=ok' },
@@ -533,6 +552,7 @@ describe('/api/me', () => {
     }));
 
     const { default: app } = await import('../../api/index');
+
     const response = await app.fetch(
       createRequest('/api/me', {
         headers: { Cookie: 'session=ok' },
@@ -558,6 +578,7 @@ describe('/api/me', () => {
     }));
 
     const { default: app } = await import('../../api/index');
+
     const response = await app.fetch(
       createRequest('/api/me', {
         headers: { Cookie: 'session=ok' },

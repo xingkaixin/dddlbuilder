@@ -16,9 +16,11 @@ interface WebMcpChangeDialogProps {
 export function WebMcpChangeDialog({ model }: WebMcpChangeDialogProps) {
   const { t } = useTranslation();
   const { request, mode, onCancel, onConfirm } = model;
+
   if (!request || !mode) return null;
 
   const { changeSet } = request;
+
   const summary = {
     table: Number(changeSet.diff.tableNameChanged) + Number(changeSet.diff.tableCommentChanged),
     fields: changeSet.diff.fields.length,
@@ -26,6 +28,7 @@ export function WebMcpChangeDialog({ model }: WebMcpChangeDialogProps) {
     foreignKeys: changeSet.diff.foreignKeys.length,
   };
   const selectedIds = request.operationIds ? new Set(request.operationIds) : null;
+
   const operations = changeSet.operations?.filter(
     (operation) => !selectedIds || selectedIds.has(operation.id),
   );

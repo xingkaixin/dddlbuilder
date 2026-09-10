@@ -56,6 +56,7 @@ describe('buildSavedTableBatchImportPlan', () => {
     expect(
       buildSavedTableBatchImportPlan({ items, conflictStrategy: 'skip' }, existing, 100).records,
     ).toEqual([]);
+
     const renamed = buildSavedTableBatchImportPlan(
       { items, conflictStrategy: 'rename' },
       existing,

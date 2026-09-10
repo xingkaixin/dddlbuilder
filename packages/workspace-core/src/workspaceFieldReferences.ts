@@ -11,6 +11,7 @@ import {
 } from '@ddlbuilder/shared-types';
 
 type StoredIndexField = IndexField & { fieldId?: string };
+
 export type StoredIndexDefinition = Omit<IndexDefinition, 'fields'> & {
   fields: StoredIndexField[];
 };
@@ -48,12 +49,14 @@ const buildFieldReferences = (rows: FieldRow[]) => {
     idsByName.set(name, idsByName.has(name) ? null : id);
     namesById.set(id, name);
   });
+
   return { idsByName, namesById };
 };
 
 const encodeFieldIds = (names: string[], rows: FieldRow[]) => {
   const { idsByName } = buildFieldReferences(rows);
   const ids = names.map((name) => idsByName.get(name.trim()) ?? null);
+
   return ids.some(Boolean) ? ids : undefined;
 };
 
@@ -64,8 +67,10 @@ const decodeFieldNames = (
 ) => {
   if (!ids) return names;
   const { namesById } = buildFieldReferences(rows);
+
   return names.map((name, index) => {
     const id = ids[index];
+
     return id ? (namesById.get(id) ?? name) : name;
   });
 };
@@ -75,10 +80,12 @@ export const encodeIndexFieldReferences = (
   rows: FieldRow[],
 ): StoredIndexDefinition[] => {
   const { idsByName } = buildFieldReferences(rows);
+
   return indexes.map((index) => ({
     ...index,
     fields: index.fields.map((field) => {
       const fieldId = idsByName.get(field.name.trim());
+
       return {
         name: field.name,
         direction: field.direction,
@@ -93,6 +100,7 @@ export const decodeIndexFieldReferences = (
   rows: FieldRow[],
 ): IndexDefinition[] => {
   const { namesById } = buildFieldReferences(rows);
+
   return indexes.map((index) => ({
     ...index,
     kind: indexKindOf(index),
@@ -109,6 +117,7 @@ export const encodeForeignKeyFieldReferences = (
 ): StoredForeignKeyDefinition[] =>
   foreignKeys.map((foreignKey) => {
     const localFieldIds = encodeFieldIds(foreignKey.fields, rows);
+
     return {
       ...foreignKey,
       ...(localFieldIds ? { localFieldIds } : {}),
@@ -129,9 +138,11 @@ export const encodeCitusFieldReference = (
   rows: FieldRow[],
 ): StoredCitusShardingConfig | undefined => {
   if (!config) return undefined;
+
   const distributionColumnFieldId = config.distributionColumn
     ? encodeFieldIds([config.distributionColumn], rows)?.[0]
     : undefined;
+
   return {
     ...config,
     ...(distributionColumnFieldId ? { distributionColumnFieldId } : {}),
@@ -144,6 +155,7 @@ export const decodeCitusFieldReference = (
 ): CitusShardingConfig | undefined => {
   if (!config) return undefined;
   const { distributionColumnFieldId, ...decoded } = config;
+
   return {
     ...decoded,
     ...(decoded.distributionColumn && distributionColumnFieldId
@@ -164,6 +176,7 @@ export const encodeMysqlPartitionFieldReferences = (
 ): StoredMysqlPartitionConfig | undefined => {
   if (!config) return undefined;
   const columnFieldIds = encodeFieldIds(config.columns, rows);
+
   return { ...config, ...(columnFieldIds ? { columnFieldIds } : {}) };
 };
 
@@ -173,6 +186,7 @@ export const decodeMysqlPartitionFieldReferences = (
 ): MysqlPartitionConfig | undefined => {
   if (!config) return undefined;
   const { columnFieldIds, ...decoded } = config;
+
   return {
     ...decoded,
     columns: decodeFieldNames(decoded.columns, columnFieldIds, rows),
@@ -186,6 +200,7 @@ export const encodeTableMiscFieldReferences = (
   if (!config?.partitions?.clustering) return config;
   const clustering = config.partitions.clustering;
   const columnFieldIds = encodeFieldIds(clustering.columns, rows);
+
   return {
     ...config,
     partitions: {
@@ -201,6 +216,7 @@ export const decodeTableMiscFieldReferences = (
 ): TableMiscConfig | undefined => {
   if (!config?.partitions?.clustering) return config;
   const { columnFieldIds, ...clustering } = config.partitions.clustering;
+
   return {
     ...config,
     partitions: {

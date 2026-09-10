@@ -84,6 +84,7 @@ describe('ImportSqlDialog limits', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: '选择 CSV' }));
     const file = new File(['small'], 'fields.csv', { type: 'text/csv' });
+
     const readText = vi
       .fn()
       .mockResolvedValue(`fieldName,fieldType\nid,bigint${' '.repeat(200_000)}`);
@@ -132,6 +133,7 @@ describe('ImportSqlDialog limits', () => {
       fireEvent.click(screen.getByRole('button', { name: '选择 CSV' }));
 
       let resolveOldFile: (value: string) => void = () => undefined;
+
       const oldFileText = new Promise<string>((resolve) => {
         resolveOldFile = resolve;
       });

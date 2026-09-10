@@ -49,6 +49,7 @@ export function useSuggestionAnimation() {
       return new Promise((resolve) => {
         // Clear any existing timeout for this index
         const existingTimeout = timeoutsRef.current.get(`index-${indexId}`);
+
         if (existingTimeout) {
           clearTimeout(existingTimeout);
         }
@@ -56,11 +57,13 @@ export function useSuggestionAnimation() {
         // Add to appropriate set based on type
         setState((prev) => {
           const newState = { ...prev };
+
           if (type === 'add') {
             newState.animatingIndexIds = new Set(prev.animatingIndexIds).add(indexId);
           } else if (type === 'remove') {
             newState.removingIndexIds = new Set(prev.removingIndexIds).add(indexId);
           }
+
           return newState;
         });
 
@@ -68,6 +71,7 @@ export function useSuggestionAnimation() {
         const timeout = setTimeout(() => {
           setState((prev) => {
             const newState = { ...prev };
+
             if (type === 'add') {
               const newSet = new Set(prev.animatingIndexIds);
               newSet.delete(indexId);
@@ -77,6 +81,7 @@ export function useSuggestionAnimation() {
               newSet.delete(indexId);
               newState.removingIndexIds = newSet;
             }
+
             return newState;
           });
           timeoutsRef.current.delete(`index-${indexId}`);
@@ -100,6 +105,7 @@ export function useSuggestionAnimation() {
       return new Promise((resolve) => {
         // Clear any existing timeout for this field
         const existingTimeout = timeoutsRef.current.get(`field-${fieldName}`);
+
         if (existingTimeout) {
           clearTimeout(existingTimeout);
         }
@@ -107,6 +113,7 @@ export function useSuggestionAnimation() {
         // Add to appropriate set based on type
         setState((prev) => {
           const newState = { ...prev };
+
           if (type === 'add') {
             newState.animatingFieldNames = new Set(prev.animatingFieldNames).add(fieldName);
           } else if (type === 'remove') {
@@ -114,6 +121,7 @@ export function useSuggestionAnimation() {
           } else if (type === 'modify') {
             newState.modifyingFieldNames = new Set(prev.modifyingFieldNames).add(fieldName);
           }
+
           return newState;
         });
 
@@ -121,6 +129,7 @@ export function useSuggestionAnimation() {
         const timeout = setTimeout(() => {
           setState((prev) => {
             const newState = { ...prev };
+
             if (type === 'add') {
               const newSet = new Set(prev.animatingFieldNames);
               newSet.delete(fieldName);
@@ -134,6 +143,7 @@ export function useSuggestionAnimation() {
               newSet.delete(fieldName);
               newState.modifyingFieldNames = newSet;
             }
+
             return newState;
           });
           timeoutsRef.current.delete(`field-${fieldName}`);
@@ -154,6 +164,7 @@ export function useSuggestionAnimation() {
     for (const timeout of timeoutsRef.current.values()) {
       clearTimeout(timeout);
     }
+
     timeoutsRef.current.clear();
 
     // Reset state
@@ -175,6 +186,7 @@ export function useSuggestionAnimation() {
   const triggerFieldTableHighlight = useCallback((rowIndex?: number) => {
     // Clear any existing highlight timeout
     const existingTimeout = timeoutsRef.current.get('field-table-highlight');
+
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }

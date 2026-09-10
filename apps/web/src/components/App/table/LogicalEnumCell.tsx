@@ -39,6 +39,7 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
     const finishEditing = useCallback(
       (value: string) => {
         setIsEditing(false);
+
         if (value !== fieldType) {
           onTypeChange(value);
         }
@@ -53,12 +54,14 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
         if (e.key === 'Enter' || e.key === 'F2') {
           e.preventDefault();
           setOpen(true);
+
           return;
         }
 
         if (e.key === 'Tab') {
           e.preventDefault();
           onTabNavigate?.(e.shiftKey ? -1 : 1);
+
           return;
         }
 
@@ -66,6 +69,7 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
           e.preventDefault();
           setIsEditing(true);
           setEditValue('');
+
           return;
         }
 
@@ -84,13 +88,17 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
           e.preventDefault();
           finishEditing(editValue);
           setTimeout(() => onTabNavigate?.(e.shiftKey ? -1 : 1), 0);
+
           return;
         }
+
         if (e.key === 'Enter') {
           e.preventDefault();
           finishEditing(editValue);
+
           return;
         }
+
         if (e.key === 'Escape') {
           e.preventDefault();
           setIsEditing(false);

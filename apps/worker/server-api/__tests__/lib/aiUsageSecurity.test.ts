@@ -20,6 +20,7 @@ describe('usage identity and terminal state', () => {
 
   it('uses server identities even when request ids are reused', async () => {
     const f = await createCreditFixture();
+
     try {
       const first = await f.reserve();
       const second = await f.reserve();
@@ -35,9 +36,11 @@ describe('usage identity and terminal state', () => {
     'keeps the first terminal settlement, succeeded=%s',
     async (successFirst) => {
       const f = await createCreditFixture();
+
       try {
         const reservation = await f.reserve();
         await recordAIUsageAttempt(f.env, reservation);
+
         if (successFirst) {
           await completeAIUsage(f.env, reservation, observedUsage(50));
           await failAIUsage(f.env, reservation, 'failure', failedUsage);
@@ -45,6 +48,7 @@ describe('usage identity and terminal state', () => {
           await failAIUsage(f.env, reservation, 'failure', failedUsage);
           await completeAIUsage(f.env, reservation, observedUsage(50));
         }
+
         expect(await f.balance()).toBe(successFirst ? 950 : 900);
         expect(f.sqlite.prepare('SELECT status FROM usage_events').get()?.status).toBe(
           successFirst ? 'succeeded' : 'failed',
@@ -57,6 +61,7 @@ describe('usage identity and terminal state', () => {
 
   it('does not settle another user’s reservation', async () => {
     const f = await createCreditFixture();
+
     try {
       const reservation = await f.reserve();
       await failAIUsage(f.env, { ...reservation, userId: 'another-user' }, 'failure', failedUsage);

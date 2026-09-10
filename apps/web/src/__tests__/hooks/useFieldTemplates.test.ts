@@ -7,6 +7,7 @@ import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 function renderHook<Result>(callback: () => Result) {
   const { wrapper } = createQueryClientWrapper();
+
   return renderTestingHook(callback, { wrapper });
 }
 
@@ -283,6 +284,7 @@ describe('useFieldTemplates', () => {
     await act(async () => {
       const res = await result.current.update('missing', { name: 'New' });
       expect(res.ok).toBe(false);
+
       if (res.ok) throw new Error('Expected update to fail');
       expect(res.reason).toBe('not_found');
     });
@@ -298,6 +300,7 @@ describe('useFieldTemplates', () => {
     await act(async () => {
       const res = await result.current.rename('missing', 'New Name');
       expect(res.ok).toBe(false);
+
       if (res.ok) throw new Error('Expected rename to fail');
       expect(res.reason).toBe('not_found');
     });
@@ -313,6 +316,7 @@ describe('useFieldTemplates', () => {
     await act(async () => {
       const res = await result.current.duplicate('missing');
       expect(res.ok).toBe(false);
+
       if (res.ok) throw new Error('Expected duplicate to fail');
       expect(res.reason).toBe('not_found');
     });

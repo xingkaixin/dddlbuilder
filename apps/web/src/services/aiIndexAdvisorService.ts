@@ -31,6 +31,7 @@ export function assertAIIndexAdvisorTarget(payload: AIIndexAdvisorRequest) {
   if (!payload.tableName.trim() || payload.fields.length === 0) {
     throw new Error(i18n.t('aiIndexAdvisor.schemaRequired'));
   }
+
   if (!payload.queryPatterns.trim()) {
     throw new Error(i18n.t('aiIndexAdvisor.queryRequired'));
   }

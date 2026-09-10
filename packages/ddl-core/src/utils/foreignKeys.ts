@@ -13,6 +13,7 @@ interface ForeignKeyIssue {
 }
 
 type ForeignKeyEvent = 'onDelete' | 'onUpdate';
+
 const mysqlActions: readonly ForeignKeyAction[] = ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'];
 const standardActions: readonly ForeignKeyAction[] = [
   'CASCADE',
@@ -35,6 +36,7 @@ export const getForeignKeyActions = (
   event: ForeignKeyEvent,
 ): readonly ForeignKeyAction[] => {
   const family = getDatabaseFamily(dbType);
+
   return family ? actions[family][event] : [];
 };
 
@@ -43,11 +45,14 @@ export const getForeignKeyIssue = (
   dbType: DatabaseType,
 ): ForeignKeyIssue | null => {
   const family = getDatabaseFamily(dbType);
+
   if (!family || family === 'hive') {
     return { kind: 'actions', message: `Foreign keys are not supported by ${dbType}` };
   }
+
   for (const event of ['onDelete', 'onUpdate'] as const) {
     const action = fk[event];
+
     if (action && !getForeignKeyActions(dbType, event).includes(action)) {
       return {
         kind: 'actions',
@@ -55,12 +60,14 @@ export const getForeignKeyIssue = (
       };
     }
   }
+
   if (
     !fk.refTable.trim() ||
     fk.fields.length === 0 ||
     fk.fields.length !== fk.refFields.length ||
     [fk.fields, fk.refFields].some((fields) => {
       const names = fields.map((name) => getSqlIdentifierKey(name, dbType));
+
       return names.some((name) => !name.trim()) || new Set(names).size !== names.length;
     })
   ) {
@@ -69,6 +76,7 @@ export const getForeignKeyIssue = (
       message: 'A referenced table and matching non-empty, distinct field lists are required',
     };
   }
+
   return null;
 };
 
@@ -79,8 +87,10 @@ export const buildForeignKeyDDL = (
 ): string => {
   const table = formatSqlTableName(tableName, dbType);
   const constraint = formatSqlIdentifier(fk.name, dbType);
+
   if (fk.logical) return '';
   const issue = getForeignKeyIssue(fk, dbType);
+
   if (issue)
     return `-- Manual migration required: foreign key ${constraint} on ${table}. ${issue.message}.`;
   const fields = fk.fields.map((name) => formatSqlIdentifier(name, dbType)).join(', ');
@@ -88,5 +98,6 @@ export const buildForeignKeyDDL = (
   const refTable = buildQualifiedTableName(fk.refSchema ?? '', fk.refTable, dbType);
   const onDelete = fk.onDelete ? ` ON DELETE ${fk.onDelete}` : '';
   const onUpdate = fk.onUpdate ? ` ON UPDATE ${fk.onUpdate}` : '';
+
   return `ALTER TABLE ${table} ADD CONSTRAINT ${constraint} FOREIGN KEY (${fields}) REFERENCES ${refTable} (${refFields})${onDelete}${onUpdate};`;
 };

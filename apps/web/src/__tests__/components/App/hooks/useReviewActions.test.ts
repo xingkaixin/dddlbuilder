@@ -6,7 +6,9 @@ import { saveReview } from '@/utils/reviewHistory';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 vi.mock('@/services/reviewService', () => ({ requestDDLReview: vi.fn() }));
+
 vi.mock('@/utils/reviewHistory', () => ({ saveReview: vi.fn().mockResolvedValue({}) }));
+
 vi.mock('@/hooks/useAIRequestAccess', () => ({
   useAIRequestAccess: () => ({
     getAccessError: () => null,
@@ -29,6 +31,7 @@ function renderReview({
 } = {}) {
   const { wrapper } = createQueryClientWrapper();
   let currentDocumentKey = 'A-v1';
+
   const hook = renderHook(
     ({ documentKey, ddl }) =>
       useReviewActions({
@@ -45,6 +48,7 @@ function renderReview({
       }),
     { wrapper, initialProps: { documentKey: 'A-v1', ddl: 'ddl-v1' } },
   );
+
   return {
     ...hook,
     rerender: (props: { documentKey: string; ddl: string }) => {
@@ -159,6 +163,7 @@ describe('review request ownership', () => {
           complete = resolve;
         }),
     );
+
     const hook = renderReview({
       loadedTableId: null,
       loadedTableNormalizedName: null,

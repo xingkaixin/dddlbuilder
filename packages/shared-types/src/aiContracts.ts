@@ -11,6 +11,7 @@ const defaulted = <S extends Schema.Constraint>(schema: S, fallback: () => S['Ty
   const recovered = Schema.catchDecoding<S>(() => Effect.sync(() => Option.some(fallback())))(
     schema,
   );
+
   return Schema.withDecodingDefaultType<typeof recovered>(Effect.sync(fallback))(recovered);
 };
 
@@ -26,11 +27,13 @@ const validItems = <S extends Schema.ConstraintDecoder<unknown>>(
   map: (value: S['Type'], index: number) => S['Type'] = (value) => value,
 ) => {
   const decode = Schema.decodeUnknownResult(item);
+
   return defaulted(Schema.Array(Schema.Unknown), () => []).pipe(
     Schema.decodeTo(Schema.Array(Schema.toType(item)).pipe(Schema.mutable), {
       decode: SchemaGetter.transform((items) =>
         items.flatMap((value, index) => {
           const result = decode(value);
+
           return Result.isSuccess(result) ? [map(result.success, index)] : [];
         }),
       ),
@@ -64,6 +67,7 @@ const conversationHistory = Schema.NullOr(
 );
 
 export const AIExplainRequestSchema = Schema.Struct({ sql: requiredText, context: text, locale });
+
 export type AIExplainRequest = typeof AIExplainRequestSchema.Type;
 
 export const AIReviewRequestSchema = Schema.Struct({
@@ -72,6 +76,7 @@ export const AIReviewRequestSchema = Schema.Struct({
   tableName: text,
   locale,
 });
+
 export type AIReviewRequest = typeof AIReviewRequestSchema.Type;
 
 export const AIGenerateTableRequestSchema = Schema.Struct({
@@ -84,6 +89,7 @@ export const AIGenerateTableRequestSchema = Schema.Struct({
   existingConfig: Schema.optional(Schema.Unknown),
   previousSchema: Schema.optional(Schema.Unknown),
 });
+
 export type AIGenerateTableRequest = typeof AIGenerateTableRequestSchema.Type;
 
 export const AICommentFieldInputSchema = Schema.Struct({
@@ -176,17 +182,28 @@ const indexAdvisorResult = (preserveIds: boolean) =>
   });
 
 export type ConversationMessage = typeof ConversationMessageSchema.Type;
+
 export type AICommentMode = typeof AICommentModeSchema.Type;
+
 export type AICommentFieldInput = typeof AICommentFieldInputSchema.Type;
+
 export type AICommentRequest = typeof AICommentRequestSchema.Type;
+
 export type AICommentFieldResult = typeof AICommentFieldResultSchema.Type;
+
 export type AICommentResult = typeof AICommentResultSchema.Type;
+
 export type AIIndexAdvisorFieldInput = typeof AIIndexAdvisorFieldInputSchema.Type;
+
 export type AIIndexAdvisorIndexInput = typeof AIIndexAdvisorIndexInputSchema.Type;
+
 export type AIIndexAdvisorRequest = typeof AIIndexAdvisorRequestSchema.Type;
+
 export type AIIndexAdvisorRecommendationCategory =
   typeof AIIndexAdvisorRecommendationCategorySchema.Type;
+
 export type AIIndexAdvisorRecommendation = typeof AIIndexAdvisorRecommendationSchema.Type;
+
 export type AIIndexAdvisorResult = typeof AIIndexAdvisorResultSchema.Type;
 
 export const AIIndexAdvisorResultSchema = indexAdvisorResult(true);

@@ -6,4 +6,5 @@ if (process.argv.slice(2).includes('--remote')) {
 }
 
 console.log('[d1] seeding local database');
+
 runD1Execute('local', { file: seedSqlPath });

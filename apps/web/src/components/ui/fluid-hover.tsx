@@ -12,10 +12,13 @@ type ItemBox = { element: HTMLElement; left: number; top: number; width: number;
 export function FluidHover({ className, children, ref, ...props }: ComponentProps<'div'>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const highlightRef = useRef<HTMLDivElement | null>(null);
+
   const mergedRef = useCallback(
     (node: HTMLDivElement | null) => {
       containerRef.current = node;
+
       if (typeof ref === 'function') return ref(node);
+
       if (ref) ref.current = node;
     },
     [ref],
@@ -24,6 +27,7 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
   useEffect(() => {
     const container = containerRef.current;
     const highlight = highlightRef.current;
+
     if (!container || !highlight) return;
     let items: ItemBox[] = [];
     let contentBounds = { left: 0, top: 0, right: 0, bottom: 0 };
@@ -48,11 +52,13 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
           let left = element.offsetLeft;
           let top = element.offsetTop;
           let parent = element.offsetParent as HTMLElement | null;
+
           while (parent && parent !== container && container.contains(parent)) {
             left += parent.offsetLeft + parent.clientLeft;
             top += parent.offsetTop + parent.clientTop;
             parent = parent.offsetParent as HTMLElement | null;
           }
+
           return { element, left, top, width: element.offsetWidth, height: element.offsetHeight };
         });
       contentBounds = {
@@ -70,6 +76,7 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
       const scaleY = bounds.height / container.offsetHeight || 1;
       const x = (pointer.x - bounds.left) / scaleX + container.scrollLeft - container.clientLeft;
       const y = (pointer.y - bounds.top) / scaleY + container.scrollTop - container.clientTop;
+
       if (
         x < contentBounds.left ||
         x > contentBounds.right ||
@@ -77,33 +84,42 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
         y > contentBounds.bottom
       ) {
         clear();
+
         return;
       }
+
       const horizontal = container.getAttribute('data-orientation') === 'horizontal';
       let nearest: ItemBox | undefined;
       let distance = Infinity;
+
       for (const item of items) {
         if (item.element.matches(disabledSelector)) continue;
         const start = horizontal ? item.left : item.top;
         const size = horizontal ? item.width : item.height;
         const position = horizontal ? x : y;
+
         const nextDistance =
           position >= start && position <= start + size ? 0 : Math.abs(position - start - size / 2);
+
         if (nextDistance < distance) {
           distance = nextDistance;
           nearest = item;
         }
       }
+
       if (!nearest) {
         clear();
+
         return;
       }
+
       active?.removeAttribute('data-fluid-hover-active');
       active = nearest.element;
       active.setAttribute('data-fluid-hover-active', '');
       highlight.style.transform = `translate(${nearest.left}px, ${nearest.top}px)`;
       highlight.style.width = `${nearest.width}px`;
       highlight.style.height = `${nearest.height}px`;
+
       if (!container.hasAttribute('data-fluid-hovering')) {
         // Commit the entry position before enabling travel, including after keyboard use.
         highlight.getBoundingClientRect();
@@ -114,13 +130,18 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
     const move = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse' || !mouseQuery.matches) {
         clear();
+
         return;
       }
+
       const target = event.target as Element;
+
       if (target.closest('[data-fluid-hover]') !== container) {
         clear();
+
         return;
       }
+
       if (!pointer) measure();
       pointer = { x: event.clientX, y: event.clientY };
       cancelAnimationFrame(frame);
@@ -137,6 +158,7 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
       });
     };
     const resize = new ResizeObserver(refresh);
+
     const observeItems = () => {
       resize.disconnect();
       resize.observe(container);
@@ -158,6 +180,7 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
     container.addEventListener('focusin', focus);
     container.addEventListener('scroll', clear, true);
     mouseQuery.addEventListener('change', clear);
+
     return () => {
       clear();
       resize.disconnect();

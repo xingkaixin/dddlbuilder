@@ -39,10 +39,13 @@ function getFieldSize(type: string, dbType: DatabaseType): number {
   // 变长字段处理 (假设平均长度为定义长度的 50%)
   if (['varchar', 'nvarchar', 'char', 'nchar'].includes(canonicalType) && args[0]) {
     const len = Number.parseInt(args[0], 10);
+
     if (!Number.isFinite(len)) return 8;
     const isN = canonicalType === 'nchar' || canonicalType === 'nvarchar';
     const factor = isN ? 2 : 1;
+
     if (canonicalType === 'char' || canonicalType === 'nchar') return len * factor;
+
     return Math.ceil(len * 0.5) * factor; // 默认按 50% 填充率估算
   }
 
@@ -50,6 +53,7 @@ function getFieldSize(type: string, dbType: DatabaseType): number {
   if (canonicalType.includes('text') || canonicalType === 'blob') {
     if (databaseFamily === 'mysql') return 20; // 溢出页指针
     if (databaseFamily === 'postgresql') return 24; // TOAST 指针
+
     return 32;
   }
 
@@ -312,14 +316,17 @@ function computeIndexBytesPerRow(
   const isClustered = CLUSTERED_DATABASES.has(dbType);
 
   const pkIndex = indexes.find((idx) => idx.kind === 'primary');
+
   const pkKeySize = pkIndex
     ? pkIndex.fields.reduce((sum, f) => {
         const field = fieldMap.get(f.name);
+
         return sum + (field ? getFieldSize(field.type, dbType) : 8);
       }, 0)
     : 6; // default row-id size when no PK defined
 
   let totalBytesPerRow = 0;
+
   for (const index of indexes) {
     if (index.kind === 'primary' && isClustered) {
       continue;
@@ -330,6 +337,7 @@ function computeIndexBytesPerRow(
         ? pkKeySize
         : index.fields.reduce((sum, f) => {
             const field = fieldMap.get(f.name);
+
             return sum + (field ? getFieldSize(field.type, dbType) : 8);
           }, 0);
 
@@ -340,6 +348,7 @@ function computeIndexBytesPerRow(
   }
 
   const factor = INDEX_STORAGE_FACTORS[dbType] ?? 1;
+
   return Math.ceil(totalBytesPerRow * factor);
 }
 
@@ -354,6 +363,7 @@ function computeRedundancyBytesPerRow(
 
   const factor = REDUNDANCY_FACTORS[dbType];
   const bytesPerRow = Math.ceil((rawDataPerRow + indexPerRow) * factor);
+
   return { bytesPerRow, rate: factor };
 }
 

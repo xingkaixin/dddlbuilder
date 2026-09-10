@@ -33,15 +33,19 @@ export const listMigrationFiles = (dir = migrationDir): string[] =>
 const deriveRequiredRuntimeTables = (dir: string): string[] => {
   const tables = new Set<string>();
   const statements: Array<{ index: number; apply: () => void }> = [];
+
   for (const file of listMigrationFiles(dir)) {
     const sql = readFileSync(file, 'utf8');
     const scoped: Array<{ index: number; apply: () => void }> = [];
+
     for (const match of sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?"?(\w+)"?/gi)) {
       scoped.push({ index: match.index ?? 0, apply: () => tables.add(match[1]) });
     }
+
     for (const match of sql.matchAll(/DROP TABLE (?:IF EXISTS )?"?(\w+)"?/gi)) {
       scoped.push({ index: match.index ?? 0, apply: () => tables.delete(match[1]) });
     }
+
     for (const match of sql.matchAll(/ALTER TABLE "?(\w+)"? RENAME TO "?(\w+)"?/gi)) {
       scoped.push({
         index: match.index ?? 0,
@@ -51,9 +55,12 @@ const deriveRequiredRuntimeTables = (dir: string): string[] => {
         },
       });
     }
+
     statements.push(...scoped.sort((a, b) => a.index - b.index));
   }
+
   for (const { apply } of statements) apply();
+
   return [...tables].sort();
 };
 
@@ -77,18 +84,23 @@ export const buildD1ExecuteArgs = (
     D1_BINDING,
     getD1Flag(mode),
   ];
+
   if (mode === 'local') {
     args.push('--persist-to', localPersistDir);
   }
+
   if (input.file) {
     args.push('--file', input.file);
   }
+
   if (input.command) {
     args.push('--command', input.command);
   }
+
   if (input.json) {
     args.push('--json');
   }
+
   return args;
 };
 
@@ -122,6 +134,7 @@ const runD1ExecuteJson = <T>(mode: D1Mode, input: { file?: string; command?: str
 
 const queryD1Rows = <T>(mode: D1Mode, command: string): T[] => {
   const payload = runD1ExecuteJson<Array<{ results?: T[] }>>(mode, { command });
+
   return payload[0]?.results ?? [];
 };
 
@@ -141,6 +154,7 @@ const listAppliedMigrations = (mode: D1Mode): Set<string> => {
     mode,
     'SELECT name FROM __ddlbuilder_migrations ORDER BY name',
   );
+
   return new Set(rows.map((row) => row.name));
 };
 
@@ -154,6 +168,7 @@ const hasExistingAppSchema = (mode: D1Mode): boolean => {
       LIMIT 1
     `,
   );
+
   return rows.length > 0;
 };
 
@@ -165,17 +180,22 @@ const recordMigration = (mode: D1Mode, name: string): void => {
 
 export const baselineExistingMigrations = (mode: D1Mode, throughName: string): void => {
   ensureMigrationLedger(mode);
+
   if (listAppliedMigrations(mode).size > 0) {
     throw new Error('迁移账本不为空，拒绝重复 baseline');
   }
+
   if (!hasExistingAppSchema(mode)) {
     throw new Error('未检测到既有业务表，无需 baseline；请直接运行迁移');
   }
+
   const migrations = listMigrationFiles();
   const throughIndex = migrations.findIndex((file) => path.basename(file) === throughName);
+
   if (throughIndex < 0) {
     throw new Error(`未知迁移：${throughName}`);
   }
+
   for (const file of migrations.slice(0, throughIndex + 1)) {
     recordMigration(mode, path.basename(file));
   }
@@ -196,6 +216,7 @@ export const resetDatabase = (mode: D1Mode): void => {
     `DROP ${type.toUpperCase()} IF EXISTS "${name}"`;
   const triggers = rows.filter(({ type }) => type === 'trigger');
   const tables = rows.filter(({ type }) => type === 'table');
+
   for (const statement of [...triggers, ...tables].map(dropStatement)) {
     // 逐条执行：打包成单条多语句时，父表先删会触发后续语句对 FK 父表的解析失败
     runD1Execute(mode, { command: statement });
@@ -207,6 +228,7 @@ export const runPendingMigrations = (mode: D1Mode): void => {
 
   const migrations = listMigrationFiles();
   const applied = listAppliedMigrations(mode);
+
   if (applied.size === 0 && hasExistingAppSchema(mode)) {
     throw new Error(
       '检测到既有业务表但迁移账本为空。请先显式运行 db:baseline:* -- --through <migration.sql>',
@@ -215,6 +237,7 @@ export const runPendingMigrations = (mode: D1Mode): void => {
 
   for (const file of migrations) {
     const name = path.basename(file);
+
     if (applied.has(name)) {
       continue;
     }
@@ -235,6 +258,7 @@ export const verifyRequiredD1Tables = (
   );
   const actualTables = new Set(rows.map((row) => row.name));
   const missingTables = requiredTables.filter((table) => !actualTables.has(table));
+
   if (missingTables.length > 0) {
     throw new Error(`D1 缺少运行时必需表：${missingTables.join(', ')}`);
   }

@@ -59,6 +59,7 @@ function appendConversation(
 export function useAIGenerateTable() {
   const { resolvedLocale } = useLocale();
   const requestAccess = useAIRequestAccess();
+
   const [state, setState] = useState<GenerateState>({
     streamingText: '',
     result: null,
@@ -69,10 +70,12 @@ export function useAIGenerateTable() {
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
   const previousSchemaRef = useRef<GeneratedTableSchema | null>(null);
   const { isPending, run, cancel } = useLatestRequest();
+
   const partialResult = useMemo<PartialTableSchema | null>(() => {
     if (!isPending || !state.streamingText) {
       return null;
     }
+
     return parsePartialTableSchema(state.streamingText);
   }, [isPending, state.streamingText]);
 
@@ -83,15 +86,18 @@ export function useAIGenerateTable() {
           ...prev,
           error: i18n.t('services.inputDescribeRequired'),
         }));
+
         return false;
       }
 
       const accessError = requestAccess.getAccessError();
+
       if (accessError) {
         setState((prev) => ({
           ...prev,
           error: accessError,
         }));
+
         return false;
       }
 
@@ -99,6 +105,7 @@ export function useAIGenerateTable() {
       const previousSchema = options?.continueConversation ? previousSchemaRef.current : null;
       const normalizedDescription = description.trim();
       const baseState = options?.mode === 'patch' ? structuredClone(options.existingConfig) : null;
+
       const requestOptions = {
         mode: options?.mode,
         templates: options?.templates,
@@ -150,6 +157,7 @@ export function useAIGenerateTable() {
             );
             requestAccess.refreshCreditsAfterSuccess();
           });
+
           return true;
         } catch (error) {
           if (!isCurrent() || (error as Error).name === 'AbortError') throw error;
@@ -161,6 +169,7 @@ export function useAIGenerateTable() {
             previousResult: null,
             error: requestAccess.resolveRequestError(error, i18n.t('services.generationFailed')),
           });
+
           return false;
         }
       }, requestKey);

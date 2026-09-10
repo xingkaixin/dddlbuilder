@@ -15,6 +15,7 @@ describe('useSavedTableTabIntegration', () => {
     const deleteDraftById = vi.fn();
     const removeSavedTableDraft = vi.fn();
     const state = { ...toPersistedState(useEditorStore.getInitialState()), tableName: 'Users' };
+
     const tabId = useTabStore.getState().addTab({
       title: 'Draft',
       source: { kind: 'draft', draftId: 'draft-a' },
@@ -22,6 +23,7 @@ describe('useSavedTableTabIntegration', () => {
     });
     const tabs = { ...useTabStore.getState(), closeTabBySource: vi.fn() };
     const signature = buildSchemaStateSignature(state);
+
     const { result } = renderHook(() =>
       useSavedTableTabIntegration({
         isShareView: false,
@@ -64,6 +66,7 @@ describe('useSavedTableTabIntegration', () => {
 
   it.each([true, false])('重命名后仍可切换和关闭标签（初始激活=%s）', (active) => {
     const state = toPersistedState(useEditorStore.getInitialState());
+
     const source = {
       kind: 'saved_table' as const,
       normalizedName: 'old',
@@ -78,8 +81,10 @@ describe('useSavedTableTabIntegration', () => {
       source: { kind: 'draft', draftId: 'draft-a' },
       stateSnapshot: state,
     });
+
     if (active) useTabStore.getState().activateTab(savedTabId);
     const selectWorkspaceSnapshot = vi.fn();
+
     const { result, unmount } = renderHook(() => {
       const tabs = useTabLifecycle({
         enabled: true,
@@ -90,6 +95,7 @@ describe('useSavedTableTabIntegration', () => {
         resolveWorkspaceSnapshot: () => null,
         resetWorkspaceSelection: vi.fn(),
       });
+
       return {
         tabs,
         ...useSavedTableTabIntegration({
@@ -135,6 +141,7 @@ describe('useSavedTableTabIntegration', () => {
     let editorState = original;
     const getCurrentState = () => editorState;
     const store = useTabStore.getState();
+
     const firstId = store.addTab({
       title: 'users',
       source: { kind: 'draft', draftId: 'first' },
@@ -147,11 +154,13 @@ describe('useSavedTableTabIntegration', () => {
     });
     store.activateTab(firstId);
     let resolvePending!: () => void;
+
     const pending = new Promise<void>((resolve) => {
       resolvePending = resolve;
     });
     const saveTable = vi.fn(async () => {
       if (pendingStage === 'table') await pending;
+
       return { ok: true as const, normalizedName: 'users', tableId: 'table-users' };
     });
     const createTableVersion = vi.fn(async () => {
@@ -161,6 +170,7 @@ describe('useSavedTableTabIntegration', () => {
     const persistSavedTableDraft = vi.fn();
     const removeSavedTableDraft = vi.fn();
     const setLoadedTableVersion = vi.fn();
+
     const { result, unmount } = renderHook(() => {
       const tabs = useTabLifecycle({
         enabled: true,
@@ -203,6 +213,7 @@ describe('useSavedTableTabIntegration', () => {
         showToast: vi.fn(),
         onSaveSuccess: integration.onSaveSuccess,
       });
+
       return { tabs, flow };
     });
 
@@ -242,6 +253,7 @@ describe('useSavedTableTabIntegration', () => {
       source: { kind: 'draft', draftId: 'second' },
       stateSnapshot: other,
     });
+
     const savedSource = {
       kind: 'saved_table',
       normalizedName: 'users',
@@ -257,6 +269,7 @@ describe('useSavedTableTabIntegration', () => {
       stateSnapshot: action === 'edit' ? editorState : original,
     };
     expect(store.getTabById(firstId)).toEqual(action === 'close' ? undefined : expectedSavedTab);
+
     const draftCall = [
       savedSource,
       {

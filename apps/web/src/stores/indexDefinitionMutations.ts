@@ -19,12 +19,14 @@ const findConflict = (
   ) {
     return 'duplicate-name';
   }
+
   if (
     candidate.kind === 'primary' &&
     indexes.some((index) => index.id !== candidate.id && index.kind === 'primary')
   ) {
     return 'primary-exists';
   }
+
   return null;
 };
 
@@ -33,6 +35,7 @@ export const insertIndexDefinition = (
   candidate: IndexDefinition,
 ): IndexWriteResult => {
   const reason = findConflict(indexes, candidate);
+
   return reason ? { ok: false, reason } : { ok: true, indexes: [...indexes, candidate] };
 };
 
@@ -43,7 +46,9 @@ export const replaceIndexDefinition = (
   if (!indexes.some((index) => index.id === candidate.id)) {
     return { ok: false, reason: 'not-found' };
   }
+
   const reason = findConflict(indexes, candidate);
+
   return reason
     ? { ok: false, reason }
     : {
@@ -58,5 +63,6 @@ export const describeIndexWriteFailure = (
 ) => {
   if (reason === 'duplicate-name') return `Duplicate index name: ${candidate.name}`;
   if (reason === 'primary-exists') return 'Primary index already exists';
+
   return `Index not found: ${candidate.id}`;
 };

@@ -28,6 +28,7 @@ const createState = (rows = [row('id', 1)]): PersistedState => ({
 describe('AI field changes', () => {
   it('inserts a field at its candidate position', () => {
     const email = row('email', 2);
+
     const result = applyAISchemaChanges(createState(), createState([row('id', 1), email]), [
       {
         id: 'field:add:email',
@@ -43,6 +44,7 @@ describe('AI field changes', () => {
 
   it('renames a field case-insensitively', () => {
     const renamed = row('account_id', 1);
+
     const result = applyAISchemaChanges(createState([row('User_ID', 1)]), createState([renamed]), [
       {
         id: 'field:rename:user_id:account_id',
@@ -76,6 +78,7 @@ describe('AI field changes', () => {
 
   it('leaves unsupported incomplete changes unchanged', () => {
     const rows = [row('id', 1)];
+
     const result = applyAISchemaChanges(createState(rows), createState(rows), [
       {
         id: 'field:add:email',
@@ -90,6 +93,7 @@ describe('AI field changes', () => {
 
   it('does not add the same field twice', () => {
     const email = row('email', 2);
+
     const change = {
       id: 'field:add:email',
       kind: 'field' as const,
@@ -140,6 +144,7 @@ describe('applyAISchemaChanges', () => {
         rows: [{ ...current.rows[0], fieldName: 'account_id' }],
       };
       const changes = buildAISchemaChanges(current, candidate);
+
       if (reverse) changes.reverse();
       const next = applyAISchemaChanges(current, candidate, changes);
       expect(next.foreignKeys?.[0]).toMatchObject({
@@ -174,6 +179,7 @@ describe('applyAISchemaChanges', () => {
           kind: 'index',
         },
       ];
+
       const candidate = {
         ...current,
         rows: [{ ...current.rows[0], fieldName: 'id' }],
@@ -182,6 +188,7 @@ describe('applyAISchemaChanges', () => {
       const changes = buildAISchemaChanges(current, candidate).filter(
         (change) => change.kind === 'field',
       );
+
       if (reverse) changes.reverse();
       const result = applyAISchemaChanges(current, candidate, changes);
       expect(result.rows).toEqual(candidate.rows);
@@ -193,11 +200,13 @@ describe('applyAISchemaChanges', () => {
 
   it.each([false, true])('adds a field with a name vacated by a rename (reverse=%s)', (reverse) => {
     const current = createState([{ ...row('id', 1), id: 'original' }]);
+
     const candidate = createState([
       { ...row('id', 1), id: 'new' },
       { ...current.rows[0], fieldName: 'legacy_id' },
     ]);
     const changes = buildAISchemaChanges(current, candidate);
+
     if (reverse) changes.reverse();
     const result = applyAISchemaChanges(current, candidate, changes);
     expect(result.rows).toEqual(candidate.rows);
@@ -216,14 +225,17 @@ describe('applyAISchemaChanges', () => {
 
   it.each(['add', 'modify'] as const)('rejects a selected index %s without its field', (type) => {
     const current = createState();
+
     const index: IndexDefinition = {
       id: 'email-index',
       name: 'idx_email',
       kind: 'index',
       fields: [{ name: 'email', direction: 'ASC' as const }],
     };
+
     if (type === 'modify')
       current.indexes = [{ ...index, fields: [{ name: 'id', direction: 'ASC' }] }];
+
     const candidate = {
       ...current,
       tableComment: 'New comment',
@@ -266,6 +278,7 @@ describe('applyAISchemaChanges', () => {
         indexes: [{ ...current.indexes[0], fields: [current.indexes[0].fields[1]] }],
       };
       const changes = buildAISchemaChanges(current, candidate);
+
       if (reverse) changes.reverse();
       const next = applyAISchemaChanges(current, candidate, changes);
 
@@ -278,6 +291,7 @@ describe('applyAISchemaChanges', () => {
   it('replaces an auto-renamed index independently of change order', () => {
     const oldRow = { ...row('old_name', 1), id: 'f1' };
     const newRow = { ...oldRow, fieldName: 'new_name' };
+
     const oldIndex: IndexDefinition = {
       id: 'i1',
       name: 'idx_old_name',
@@ -346,6 +360,7 @@ describe('applyAISchemaChanges', () => {
     };
     const candidate = { ...current, rows: [current.rows[0]], indexes: [], foreignKeys: [] };
     const changes = buildAISchemaChanges(current, candidate);
+
     const next = applyAISchemaChanges(
       current,
       candidate,
@@ -361,6 +376,7 @@ describe('applyAISchemaChanges', () => {
   it('applies a selected batch as one state transition and stays idempotent', () => {
     const current = createState();
     const email = row('email', 2);
+
     const index: IndexDefinition = {
       id: 'idx-email',
       name: 'idx_users_email',

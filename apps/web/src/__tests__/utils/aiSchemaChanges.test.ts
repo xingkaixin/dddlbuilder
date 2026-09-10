@@ -86,6 +86,7 @@ describe('aiSchemaChanges', () => {
         const upper = { ...baseState.rows[1], id: 'upper', fieldName: 'UserID' };
         const lower = { ...baseState.rows[1], id: 'lower', fieldName: 'userid' };
         baseState.rows = operation === 'add' ? [upper] : [upper, lower];
+
         const rows =
           operation === 'remove'
             ? [upper]
@@ -119,6 +120,7 @@ describe('aiSchemaChanges', () => {
       const upper = { ...baseState.indexes[0], id: 'upper', name: 'Idx_phone' };
       const lower = { ...baseState.indexes[0], id: 'lower', name: 'idx_phone' };
       baseState.indexes = [upper];
+
       const candidate = buildPersistedStateFromAISchema(
         {
           tableName: baseState.tableName,
@@ -136,6 +138,7 @@ describe('aiSchemaChanges', () => {
       expect(added.indexes.map((index) => index.name)).toEqual(['Idx_phone', 'idx_phone']);
       expect(new Set(added.indexes.map((index) => index.id)).size).toBe(2);
       const removedCandidate = { ...added, indexes: [added.indexes[0]] };
+
       const removed = applyAISchemaChanges(
         added,
         removedCandidate,
@@ -153,12 +156,14 @@ describe('aiSchemaChanges', () => {
         fieldName,
         enumMeta: [{ value: String(index) }],
       }));
+
       const candidate = buildPersistedStateFromAISchema(
         {
           tableName: baseState.tableName,
           tableComment: baseState.tableComment,
           fields: baseState.rows.map((row) => {
             const { id: _id, ...field } = toGeneratedField(row);
+
             return field;
           }),
         },
@@ -173,6 +178,7 @@ describe('aiSchemaChanges', () => {
     baseState.rows[1].enumMeta = [
       { value: '1', color: '#00ff00', i18n: { 'zh-CN': '启用', 'en-US': 'Active' } },
     ];
+
     const schema: GeneratedTableSchema = {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
@@ -200,6 +206,7 @@ describe('aiSchemaChanges', () => {
     (operation) => {
       const baseState = createBaseState();
       baseState.rows[1].enumMeta = [{ value: '1', color: '#123456', i18n: { 'zh-CN': '启用' } }];
+
       const schema: GeneratedTableSchema = {
         tableName: baseState.tableName,
         tableComment: baseState.tableComment,
@@ -212,6 +219,7 @@ describe('aiSchemaChanges', () => {
         indexes: [],
       };
       const candidate = buildPersistedStateFromAISchema(schema, { baseState });
+
       const changes = buildAISchemaChanges(baseState, candidate).filter(
         (change) => change.kind === 'field',
       );
@@ -224,6 +232,7 @@ describe('aiSchemaChanges', () => {
   it.each([null, 'new-field'])('does not inherit metadata for a new field identity %s', (id) => {
     const baseState = createBaseState();
     baseState.rows[1].enumMeta = [{ value: '1' }];
+
     const candidate = buildPersistedStateFromAISchema(
       {
         tableName: 'users',
@@ -246,6 +255,7 @@ describe('aiSchemaChanges', () => {
         refFields: ['phone'],
       },
     ];
+
     const schema: GeneratedTableSchema = {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
@@ -256,6 +266,7 @@ describe('aiSchemaChanges', () => {
       indexes: [],
     };
     const candidate = buildPersistedStateFromAISchema(schema, { baseState });
+
     const changes = buildAISchemaChanges(baseState, candidate).filter(
       (change) => change.kind === 'field',
     );
@@ -272,6 +283,7 @@ describe('aiSchemaChanges', () => {
 
   it('applies explicitly selected index changes after propagating a field rename', () => {
     const baseState = createBaseState();
+
     const schema: GeneratedTableSchema = {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
@@ -295,6 +307,7 @@ describe('aiSchemaChanges', () => {
     });
 
     const removedCandidate = { ...candidate, indexes: [] };
+
     const removed = applyAISchemaChanges(
       baseState,
       removedCandidate,
@@ -305,6 +318,7 @@ describe('aiSchemaChanges', () => {
 
   it('applies simultaneous field renames by identity without rewriting a field twice', () => {
     const baseState = createBaseState();
+
     const schema: GeneratedTableSchema = {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
@@ -315,6 +329,7 @@ describe('aiSchemaChanges', () => {
       indexes: [],
     };
     const candidate = buildPersistedStateFromAISchema(schema, { baseState });
+
     const changes = buildAISchemaChanges(baseState, candidate).filter(
       (change) => change.kind === 'field',
     );
@@ -329,6 +344,7 @@ describe('aiSchemaChanges', () => {
   it('retains the kind of existing unique constraints in an AI candidate', () => {
     const baseState = createBaseState();
     baseState.indexes = baseState.indexes.map((index) => ({ ...index, kind: 'unique_constraint' }));
+
     const schema: GeneratedTableSchema = {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,
@@ -342,6 +358,7 @@ describe('aiSchemaChanges', () => {
   it.each([true, false])('preserves a named composite primary key (returned=%s)', (returned) => {
     const baseState = createBaseState();
     baseState.dbType = 'postgresql';
+
     const primary: IndexDefinition = {
       id: 'primary',
       name: 'users_pkey',
@@ -353,6 +370,7 @@ describe('aiSchemaChanges', () => {
       ],
     };
     baseState.indexes = [primary];
+
     const candidate = buildPersistedStateFromAISchema(
       {
         tableName: baseState.tableName,
@@ -378,6 +396,7 @@ describe('aiSchemaChanges', () => {
         fields: [{ name: 'id', direction: 'ASC' }],
       },
     ];
+
     const candidate = buildPersistedStateFromAISchema(
       {
         tableName: baseState.tableName,
@@ -402,6 +421,7 @@ describe('aiSchemaChanges', () => {
 
   it('keeps existing secondary indexes separate when creating a primary key', () => {
     const baseState = createBaseState();
+
     const candidate = buildPersistedStateFromAISchema(
       {
         tableName: baseState.tableName,
@@ -422,6 +442,7 @@ describe('aiSchemaChanges', () => {
   it('uses the supplied unique index for a new primary key without naming heuristics', () => {
     const baseState = createBaseState();
     baseState.indexes = [];
+
     const candidate = buildPersistedStateFromAISchema(
       {
         tableName: baseState.tableName,
@@ -450,6 +471,7 @@ describe('aiSchemaChanges', () => {
         fields: [{ name: 'id', direction: 'ASC' }],
       },
     ];
+
     const candidate = buildPersistedStateFromAISchema(
       {
         tableName: baseState.tableName,
@@ -467,6 +489,7 @@ describe('aiSchemaChanges', () => {
 
   it('builds reviewable changes from an AI candidate schema', () => {
     const baseState = createBaseState();
+
     const schema: GeneratedTableSchema = {
       tableName: 'user_accounts',
       tableComment: '用户账户',
@@ -527,6 +550,7 @@ describe('aiSchemaChanges', () => {
 
   it('preserves existing field identities when applying an incremental addition', () => {
     const baseState = createBaseState();
+
     const schema: GeneratedTableSchema = {
       tableName: baseState.tableName,
       tableComment: baseState.tableComment,

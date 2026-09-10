@@ -9,11 +9,13 @@ it('captures updates before subscription and continues observing changes', () =>
   const doc = new Y.Doc();
   const collections = ['folders'] as const;
   const read = (current: Y.Doc) => getWorkspaceRoot(current).folders.size;
+
   const { result, unmount } = renderHook(() => {
     const count = useWorkspaceYDocProjection(doc, collections, read, 0);
     useLayoutEffect(() => {
       getWorkspaceRoot(doc).folders.set('first', new Y.Map());
     }, []);
+
     return count;
   });
 

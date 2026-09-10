@@ -54,6 +54,7 @@ export const TableItem = memo<TableItemProps>(
     dragDisabled = false,
   }) => {
     const { t } = useTranslation();
+
     const { attributes, listeners, setNodeRef, transform } = useDraggable({
       id: toTableDragId(item.tableId),
       disabled: dragDisabled,

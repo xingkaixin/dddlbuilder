@@ -13,6 +13,7 @@ const SAVED_TABLE_COLLECTIONS = ['savedTables'] as const;
 export function useSavedTableRecord(target: SavedTableTarget | null) {
   const scope = useWorkspaceScope();
   const { yDoc } = useWorkspaceYDocGateway(scope);
+
   const { tableId, normalizedName } = target
     ? savedTableReference(target)
     : { tableId: undefined, normalizedName: '' };
@@ -22,9 +23,11 @@ export function useSavedTableRecord(target: SavedTableTarget | null) {
     [tableId, normalizedName],
   );
   const record = useWorkspaceYDocProjection(yDoc, SAVED_TABLE_COLLECTIONS, readRecord, null);
+
   const localQuery = useQuery({
     ...localSavedTableOptions(scope, { tableId, normalizedName }),
     enabled: !yDoc && Boolean(scope && normalizedName),
   });
+
   return yDoc ? record : (localQuery.data ?? null);
 }

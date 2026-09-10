@@ -246,6 +246,7 @@ describe('savedTablesDb', () => {
       value: {
         open: vi.fn(() => {
           queueMicrotask(() => request.onerror?.());
+
           return request;
         }),
       },
@@ -295,6 +296,7 @@ describe('savedTablesDb', () => {
       value: {
         open: vi.fn(() => {
           queueMicrotask(() => mockOpenRequest.onsuccess?.());
+
           return mockOpenRequest;
         }),
       },
@@ -347,6 +349,7 @@ describe('savedTablesDb', () => {
 
   it('should handle non-array records returned by indexeddb in list functions', async () => {
     let mockTx: any;
+
     const mockRequest: any = {
       onerror: null,
       onsuccess: null,
@@ -370,6 +373,7 @@ describe('savedTablesDb', () => {
       value: {
         open: vi.fn(() => {
           queueMicrotask(() => mockOpenRequest.onsuccess?.());
+
           return mockOpenRequest;
         }),
       },

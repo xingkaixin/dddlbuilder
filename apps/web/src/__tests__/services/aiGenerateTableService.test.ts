@@ -52,6 +52,7 @@ describe('requestGenerateTable', () => {
         ]),
       ),
     );
+
     const { result } = await requestGenerateTable(
       { description: '生成用户表', dbType: 'mysql' },
       { signal: new AbortController().signal },
@@ -85,6 +86,7 @@ describe('requestGenerateTable', () => {
         ]),
       ),
     );
+
     const response = await requestGenerateTable(
       {
         description: '保留字段',
@@ -175,6 +177,7 @@ describe('requestGenerateTable', () => {
       defaultKind: 'none' as const,
     };
     const schema = { tableName: 'users', tableComment: '', fields: [field], indexes: [] };
+
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(createTextStream([JSON.stringify(schema)])));
@@ -254,6 +257,7 @@ describe('requestGenerateTable', () => {
         ]),
       ),
     );
+
     const response = await requestGenerateTable(
       {
         description: '重命名 phone',

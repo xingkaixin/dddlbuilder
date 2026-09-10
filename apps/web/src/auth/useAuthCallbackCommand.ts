@@ -9,9 +9,11 @@ const readAuthCallbackCommand = (): AuthCallbackCommand | null => {
   const action = query.get('auth_action');
 
   if (action === 'verify-email') return { type: 'verify-email' };
+
   if (action === 'reset-password') {
     return { type: 'reset-password', token: query.get('token') };
   }
+
   return null;
 };
 
@@ -37,6 +39,7 @@ export const useAuthCallbackCommand = () => {
     consumedRef.current = true;
     setCommand(null);
     clearAuthCallbackQuery();
+
     return command;
   }, [command]);
 

@@ -7,12 +7,14 @@ import { createTestQueryClient } from '@/__tests__/utils/queryClient';
 // Custom render function with providers if needed
 const customRender = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) => {
   const queryClient = createTestQueryClient();
+
   // Wrap with TooltipProvider for components using Tooltip
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>{children}</TooltipProvider>
     </QueryClientProvider>
   );
+
   return render(ui, { wrapper: Wrapper, ...options });
 };
 

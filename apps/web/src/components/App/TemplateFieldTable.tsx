@@ -145,13 +145,17 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
     return rows.map((row) => {
       const warnings: string[] = [];
       const name = toStringSafe(row?.fieldName).trim();
+
       if (!name) return warnings;
+
       if (duplicateNameSet.has(name)) {
         warnings.push(t('dataTable.duplicateName'));
       }
+
       if (isReservedKeyword(dbType, name)) {
         warnings.push(t('dataTable.reservedKeyword'));
       }
+
       return warnings;
     });
   }, [rows, duplicateNameSet, dbType, t]);
@@ -166,6 +170,7 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
       setRows((prev) => {
         const next = [...prev];
         next[rowIndex] = { ...next[rowIndex], fieldType, enumMeta };
+
         return next;
       });
     },
@@ -192,9 +197,11 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
       setRows((prev) => {
         const next = prev.slice();
         next.splice(index, amount);
+
         if (next.length === 0) {
           next.push(createEmptyRow());
         }
+
         return next;
       });
     },
@@ -213,6 +220,7 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
   });
 
   const editableColumnKeys = useMemo(() => getEditableColumnKeys(columns), [columns]);
+
   const { handlePaste } = useDataTableClipboard({
     rows,
     setRows,

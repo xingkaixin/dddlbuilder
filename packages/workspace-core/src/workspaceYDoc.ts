@@ -44,6 +44,7 @@ export const getWorkspaceRoot = (doc: Y.Doc): WorkspaceYDocRoot => ({
 
 const assertWorkspaceYDocSchemaVersion = (doc: Y.Doc) => {
   const schemaVersion = getWorkspaceRoot(doc).meta.get('schemaVersion');
+
   if (schemaVersion !== WORKSPACE_YDOC_SCHEMA_VERSION) {
     throw new Error(`Unsupported workspace schema version: ${String(schemaVersion)}`);
   }
@@ -52,13 +53,17 @@ const assertWorkspaceYDocSchemaVersion = (doc: Y.Doc) => {
 export const ensureWorkspaceYDocMeta = (doc: Y.Doc) => {
   const { meta } = getWorkspaceRoot(doc);
   const schemaVersion = meta.get('schemaVersion');
+
   if (!meta.has('schemaVersion')) {
     if (!isWorkspaceYDocEmpty(doc)) {
       throw new Error(`Unsupported workspace schema version: ${String(schemaVersion)}`);
     }
+
     meta.set('schemaVersion', WORKSPACE_YDOC_SCHEMA_VERSION);
+
     return;
   }
+
   assertWorkspaceYDocSchemaVersion(doc);
 };
 
@@ -69,19 +74,25 @@ const ORDERED_TABLE_DOC_MAP_KEYS = ['fields', 'indexes', 'foreignKeys'] as const
 const assertTableDocStructure = (tableDoc: Y.Map<unknown>, collection: string) => {
   for (const key of TABLE_DOC_MAP_KEYS) {
     const value = tableDoc.get(key);
+
     if (value !== undefined && !(value instanceof Y.Map)) {
       throw new Error(`${collection}.${key} must be a Y.Map`);
     }
   }
+
   for (const key of TABLE_DOC_ARRAY_KEYS) {
     const value = tableDoc.get(key);
+
     if (value !== undefined && !(value instanceof Y.Array)) {
       throw new Error(`${collection}.${key} must be a Y.Array`);
     }
   }
+
   for (const key of ORDERED_TABLE_DOC_MAP_KEYS) {
     const map = tableDoc.get(key);
+
     if (!(map instanceof Y.Map)) continue;
+
     for (const value of map.values()) {
       if (!(value instanceof Y.Map)) {
         throw new Error(`${collection}.${key} entries must be Y.Maps`);
@@ -92,11 +103,13 @@ const assertTableDocStructure = (tableDoc: Y.Map<unknown>, collection: string) =
 
 const assertWorkspaceYDocCollections = (doc: Y.Doc) => {
   const root = getWorkspaceRoot(doc);
+
   for (const collection of WORKSPACE_YDOC_COLLECTIONS) {
     for (const [key, value] of root[collection].entries()) {
       if (!(value instanceof Y.Map)) {
         throw new Error(`${collection} entries must be Y.Maps`);
       }
+
       if (collection !== 'folders') {
         const path = `${collection}.${key}`;
         assertTableDocStructure(value, path);
@@ -113,27 +126,33 @@ export const assertWorkspaceYDocStructure = (doc: Y.Doc) => {
 
 export const initializeOrMigrateWorkspaceYDoc = (doc: Y.Doc) => {
   const { meta } = getWorkspaceRoot(doc);
+
   if (meta.has('schemaVersion')) {
     assertWorkspaceYDocStructure(doc);
+
     return;
   }
+
   if (!isWorkspaceYDocEmpty(doc)) assertWorkspaceYDocCollections(doc);
   meta.set('schemaVersion', WORKSPACE_YDOC_SCHEMA_VERSION);
 };
 
 export const isWorkspaceYDocEmpty = (doc: Y.Doc) => {
   const root = getWorkspaceRoot(doc);
+
   return WORKSPACE_YDOC_COLLECTIONS.every((collection) => root[collection].size === 0);
 };
 
 export const materializeWorkspaceYDoc = (doc: Y.Doc) => {
   const { drafts, savedTables, savedDrafts } = getWorkspaceRoot(doc);
   let materialized = false;
+
   for (const collection of [drafts, savedTables, savedDrafts]) {
     for (const tableDoc of collection.values()) {
       materialized = materializeTableDoc(tableDoc) || materialized;
     }
   }
+
   return materialized;
 };
 
@@ -154,8 +173,10 @@ export const getDraftRecordFromYDoc = (
   draftId: string,
 ): WorkspaceYDocDraftRecord | null => {
   const tableDoc = getWorkspaceRoot(doc).drafts.get(draftId);
+
   if (!tableDoc) return null;
   const metadata = tableMetadata(tableDoc);
+
   return {
     state: tableDocToSchemaDocumentState(tableDoc),
     createdAt: typeof metadata.createdAt === 'number' ? metadata.createdAt : undefined,
@@ -173,7 +194,9 @@ export const readFolderRecords = (doc: Y.Doc): TableFolderSnapshot[] =>
   Array.from(getWorkspaceRoot(doc).folders.entries())
     .map(([id, map]): TableFolderSnapshot | null => {
       const record = readJsonMap(map);
+
       if (typeof record.name !== 'string') return null;
+
       return {
         id,
         name: record.name,

@@ -16,11 +16,13 @@ function normalizeError(error: unknown): Error {
   if (error instanceof Error) {
     return error;
   }
+
   return new Error(typeof error === 'string' ? error : 'Unknown error');
 }
 
 export function reportError(error: unknown, context: ErrorContext): void {
   const normalized = normalizeError(error);
+
   const event: NormalizedErrorEvent = {
     message: normalized.message,
     stack: normalized.stack,

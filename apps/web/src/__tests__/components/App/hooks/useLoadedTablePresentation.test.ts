@@ -7,6 +7,7 @@ const countTableVersions = vi.fn();
 describe('useLoadedTablePresentation', () => {
   it('切换表时不展示上一张表尚未完成的版本查询结果', async () => {
     let resolveAlpha: (count: number) => void = () => {};
+
     countTableVersions
       .mockImplementationOnce(
         () =>
@@ -15,6 +16,7 @@ describe('useLoadedTablePresentation', () => {
           }),
       )
       .mockResolvedValueOnce(2);
+
     const { result, rerender } = renderHook(
       ({ normalizedName, tableName }) =>
         useLoadedTablePresentation({

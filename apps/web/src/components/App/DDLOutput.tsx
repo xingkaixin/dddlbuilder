@@ -44,6 +44,7 @@ interface DDLOutputProps {
 
 export const DDLOutput = memo<DDLOutputProps>((props) => {
   const { t } = useTranslation();
+
   const tabs = [
     { value: 'ddl', label: t('ddlOutput.ddlTab'), icon: ScrollText },
     { value: 'dcl', label: t('ddlOutput.dclTab'), icon: ShieldCheck },

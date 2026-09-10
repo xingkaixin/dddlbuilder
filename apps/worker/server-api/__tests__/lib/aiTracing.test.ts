@@ -10,6 +10,7 @@ import { makeAITracer } from '../../lib/aiTracing.js';
 
 const recordingPlatform = () => {
   const active = new AsyncLocalStorage<string>();
+
   const spans: Array<{
     name: string;
     parent?: string;
@@ -28,34 +29,42 @@ const recordingPlatform = () => {
         end: vi.fn(),
       };
       spans.push(item);
+
       const span = {
         setAttribute(key: string, value: unknown) {
           item.attributes.set(key, value);
+
           return this as unknown as Span;
         },
         recordException: vi.fn(),
         end: item.end,
       };
+
       return active.run(name, () => callback(span));
     },
   };
+
   return { active, spans, platform };
 };
 
 describe('Effect to Worker tracing', () => {
   it('restores the active platform span across fiber scheduling and isolates siblings', async () => {
     const { platform, active, spans } = recordingPlatform();
+
     const child = (name: string) =>
       Effect.gen(function* () {
         yield* Effect.yieldNow;
         const before = active.getStore();
+
         const after = yield* Effect.promise(async () => {
           await Promise.resolve();
+
           return active.getStore();
         });
         const nested = yield* Effect.sync(() => active.getStore()).pipe(
           Effect.withSpan(`${name}.child`),
         );
+
         return { before, after, nested };
       }).pipe(Effect.withSpan(name));
     const result = await Effect.runPromise(
@@ -76,6 +85,7 @@ describe('Effect to Worker tracing', () => {
         ['right.child', 'right'],
       ]),
     );
+
     for (const span of spans) expect(span.end).toHaveBeenCalledOnce();
     expect(active.getStore()).toBeUndefined();
   });
@@ -116,8 +126,10 @@ describe('Effect to Worker tracing', () => {
 it('keeps D1 failure causes while excluding SQL from native recovery spans', async () => {
   const { database, sqlite } = createSqliteD1Database();
   const { platform, spans } = recordingPlatform();
+
   try {
     sqlite.exec('DROP TABLE usage_events');
+
     const result = await Effect.runPromise(
       reclaimStaleAIUsage({ USER_DB: database } as ApiEnv['Bindings']).pipe(
         Effect.provide(D1Client.layer({ db: database })),
@@ -135,6 +147,7 @@ it('keeps D1 failure causes while excluding SQL from native recovery spans', asy
       'ai.outcome': 'failed',
       'ai.failure_kind': 'accounting',
     });
+
     for (const span of spans) expect(span.end).toHaveBeenCalledOnce();
   } finally {
     sqlite.close();

@@ -18,6 +18,7 @@ type GenerateCommentsInput = Omit<AICommentRequest, 'mode' | 'targetLocale'> & {
 export function useAIComments() {
   const requestAccess = useAIRequestAccess();
   const { resolvedLocale } = useLocale();
+
   const [state, setState] = useState<AICommentState>({
     error: null,
   });
@@ -26,6 +27,7 @@ export function useAIComments() {
   const generateComments = useCallback(
     async (input: GenerateCommentsInput): Promise<AICommentResult | null> => {
       const accessError = requestAccess.getAccessError();
+
       if (accessError) {
         setState({ error: accessError });
         throw new Error(accessError);
@@ -53,6 +55,7 @@ export function useAIComments() {
             setState({ error: null });
             requestAccess.refreshCreditsAfterSuccess();
           });
+
           return result;
         } catch (error) {
           if (!isCurrent() || (error as Error).name === 'AbortError') throw error;

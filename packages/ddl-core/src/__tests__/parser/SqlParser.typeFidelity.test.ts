@@ -50,6 +50,7 @@ describe('SQL import fidelity', () => {
     ['ZEROFILL', 'code INT(8) ZEROFILL'],
   ])('批量导入将无法保留的 %s 定义报告为失败', async (feature, definition) => {
     const unsupportedSql = `CREATE TABLE unsupported_table (${definition});`;
+
     const { results, failed } = await new SqlParser().parseMultiAsync(
       `CREATE TABLE supported_table (id INT); ${unsupportedSql}`,
       'mysql',

@@ -51,8 +51,10 @@ export function useSavedTableDraftRecords({
   const getRecord = useCallback((target: SavedTableTarget) => {
     const { normalizedName, tableId } = savedTableReference(target);
     const record = recordsRef.current.get(savedTableKey(target));
+
     if (record) return record;
     const legacy = recordsRef.current.get(normalizedName);
+
     return legacy && (!legacy.tableId || legacy.tableId === tableId) ? legacy : null;
   }, []);
 
@@ -60,20 +62,25 @@ export function useSavedTableDraftRecords({
     (target: SavedTableTarget, record: SavedTableDraftRecord) => {
       const { normalizedName, tableId } = savedTableReference(target);
       const key = savedTableKey(target);
+
       if (key !== normalizedName && !recordsRef.current.get(normalizedName)?.tableId) {
         recordsRef.current.delete(normalizedName);
       }
+
       const existing = recordsRef.current.get(key);
+
       const nextRecord = {
         ...record,
         ...decodeSavedDraftBase(record),
         ...(tableId ? { tableId } : {}),
       };
+
       if (!nextRecord.baseState && existing?.baseSignature === nextRecord.baseSignature)
         nextRecord.baseState = existing.baseState;
       recordsRef.current.set(key, nextRecord);
       void enqueuePersistence(`saved-draft:${key}`, 'save saved-table draft', async () => {
         const destination = requireReadyWorkspaceStorage(storage);
+
         if (destination.kind === 'ydoc') {
           destination.transact((doc) =>
             upsertSavedDraftInYDoc(
@@ -83,8 +90,10 @@ export function useSavedTableDraftRecords({
               { compactSnapshotBase: true },
             ),
           );
+
           return;
         }
+
         await upsertSavedDraft(
           normalizedName,
           withSavedBase(nextRecord, (await getSavedTable(target, destination.scope))?.state),
@@ -100,14 +109,18 @@ export function useSavedTableDraftRecords({
       const { normalizedName } = savedTableReference(target);
       const key = savedTableKey(target);
       recordsRef.current.delete(key);
+
       if (key !== normalizedName && !recordsRef.current.get(normalizedName)?.tableId) {
         recordsRef.current.delete(normalizedName);
       }
+
       void enqueuePersistence(`saved-draft:${key}`, 'delete saved-table draft', async () => {
         const destination = requireReadyWorkspaceStorage(storage);
+
         if (destination.kind === 'ydoc') {
           destination.transact((doc) => deleteSavedDraftFromYDoc(doc, target));
         }
+
         await deleteSavedDraft(normalizedName, destination.scope);
       });
     },
@@ -126,9 +139,11 @@ export function useSavedTableDraftRecords({
       const { normalizedName: fromNormalizedName, tableId } = savedTableReference(target);
       const oldKey = savedTableKey(target);
       const newKey = tableId ?? toNormalizedName;
+
       if (disabled) return;
       const record = getRecord(target);
       const keyChanged = fromNormalizedName !== toNormalizedName;
+
       if (record) {
         const nextRecord = {
           ...record,
@@ -137,19 +152,26 @@ export function useSavedTableDraftRecords({
           updatedAt: Date.now(),
         };
         recordsRef.current.set(newKey, nextRecord);
+
         if (oldKey !== newKey) recordsRef.current.delete(oldKey);
+
         if (oldKey !== fromNormalizedName && !record.tableId)
           recordsRef.current.delete(fromNormalizedName);
       }
+
       void enqueuePersistence(`saved-draft:${oldKey}`, 'rename saved-table draft', async () => {
         const destination = requireReadyWorkspaceStorage(storage);
+
         if (destination.kind === 'ydoc') {
           destination.transact((doc) =>
             renameSavedDraftInYDoc(doc, target, toNormalizedName, nextTableName),
           );
+
           if (keyChanged) await deleteSavedDraft(fromNormalizedName, destination.scope);
+
           return;
         }
+
         await renameSavedDraftKey(
           fromNormalizedName,
           toNormalizedName,

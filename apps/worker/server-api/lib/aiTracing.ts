@@ -55,8 +55,11 @@ class WorkerSpan extends Tracer.NativeSpan {
     if (this.status._tag === 'Ended') return;
     super.end(endTime, exit);
     const failure = Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined;
+
     if (Exit.isFailure(exit)) this.attribute('ai.failure_kind', aiFailureKind(failure));
+
     if (failure instanceof DomainError) this.attribute('ai.error_code', failure.code);
+
     if (!this.attributes.has('ai.outcome') || Exit.isFailure(exit)) {
       this.attribute(
         'ai.outcome',
@@ -69,6 +72,7 @@ class WorkerSpan extends Tracer.NativeSpan {
           : 'succeeded',
       );
     }
+
     if (this.attributes.get('ai.outcome') === 'failed') {
       safely(() =>
         this.platform.recordException({
@@ -77,6 +81,7 @@ class WorkerSpan extends Tracer.NativeSpan {
         }),
       );
     }
+
     safely(() => this.platform.end());
   }
 }
@@ -88,16 +93,20 @@ export const makeAITracer = (platform: {
   ): T;
 }): Tracer.Tracer => {
   const contexts = new WeakMap<Tracer.AnySpan, ReturnType<typeof AsyncLocalStorage.snapshot>>();
+
   return Tracer.make({
     span(options) {
       const parent = Option.getOrUndefined(options.parent);
       const restore = parent ? contexts.get(parent) : undefined;
+
       const create = () =>
         platform.startActiveSpan(options.name, (platformSpan) => {
           const span = new WorkerSpan(options, platformSpan);
           contexts.set(span, AsyncLocalStorage.snapshot());
+
           return span;
         });
+
       try {
         return restore ? restore(create) : create();
       } catch {
@@ -107,6 +116,7 @@ export const makeAITracer = (platform: {
     context(primitive, fiber) {
       const restore = fiber.currentSpan ? contexts.get(fiber.currentSpan) : undefined;
       const evaluate = () => primitive['~effect/Effect/evaluate'](fiber);
+
       return restore ? restore(evaluate) : evaluate();
     },
   });
@@ -122,10 +132,13 @@ export const aiFailureKind = (error: unknown): string => {
   if (error instanceof AIOutputError) return `output_${error.reason}`;
   if (error instanceof AIUsageError || isSqlError(error)) return 'accounting';
   if (error instanceof AIGovernanceError) return error.phase;
+
   if (error instanceof AIProviderError) {
     if (error.cause instanceof Error && error.cause.name === 'TimeoutError') return 'timeout';
     if (error.cause instanceof Error && error.cause.name === 'AbortError') return 'cancelled';
+
     return 'provider';
   }
+
   return 'internal';
 };

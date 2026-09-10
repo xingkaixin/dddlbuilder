@@ -87,7 +87,9 @@ const decodeScopedTableRecord = (
   scope: WorkspaceScope,
 ): SavedTableRecord | null => {
   const decoded = decodeWorkspaceScopedKey(record.normalizedName, record.scope, scope);
+
   if (!decoded) return null;
+
   return {
     ...record,
     tableId: resolveSavedTableId({ ...record, normalizedName: decoded.key }),
@@ -108,6 +110,7 @@ const runWithStore = async <T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> => {
   const db = await openDb();
+
   return runIndexedDbRequest(db, STORE_NAME, mode, runner);
 };
 
@@ -115,12 +118,15 @@ export const normalizeSavedTableName = (name: string): string => name.trim().toL
 
 export const ensureSavedTableName = (name: string): string => {
   const trimmed = name.trim();
+
   return trimmed || DEFAULT_SAVED_TABLE_NAME;
 };
 
 export const listSavedTables = async (scope: WorkspaceScope): Promise<SavedTableRecord[]> => {
   const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
+
   if (!Array.isArray(records)) return [];
+
   return records
     .map((record) => decodeScopedTableRecord(record, scope))
     .filter((record): record is SavedTableRecord => record != null && !record.trashedAt);
@@ -130,7 +136,9 @@ export const listTrashedSavedTables = async (
   scope: WorkspaceScope,
 ): Promise<SavedTableRecord[]> => {
   const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
+
   if (!Array.isArray(records)) return [];
+
   return records
     .map((record) => decodeScopedTableRecord(record, scope))
     .filter((record): record is SavedTableRecord => record != null && Boolean(record.trashedAt));
@@ -177,20 +185,25 @@ export const getSavedTable = async (
   scope: WorkspaceScope,
 ): Promise<SavedTableRecord | null> => {
   const { normalizedName, tableId } = savedTableReference(target);
+
   if (tableId) {
     const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
+
     return (
       records
         .map((item) => decodeScopedTableRecord(item, scope))
         .find((item) => item?.tableId === tableId) ?? null
     );
   }
+
   const record = await runWithStore<SavedTableRecord | undefined>('readonly', (store) =>
     store.get(withScopeKey(scope, normalizedName)),
   );
+
   if (record) {
     return decodeScopedTableRecord(record, scope);
   }
+
   return null;
 };
 
@@ -245,6 +258,7 @@ export const updateSavedTables = async (
     STORE_NAME,
     (tx, fail) => {
       const store = tx.objectStore(STORE_NAME);
+
       for (const record of records) {
         rejectFailedWrite(store.put(encodeScopedTableRecord(record, scope)), fail);
       }
@@ -263,10 +277,13 @@ export const replaceSavedTable = async (
     STORE_NAME,
     (tx, fail) => {
       const store = tx.objectStore(STORE_NAME);
+
       if (record.normalizedName === previousNormalizedName) {
         rejectFailedWrite(store.put(encodeScopedTableRecord(record, scope)), fail);
+
         return;
       }
+
       rejectFailedWrite(store.add(encodeScopedTableRecord(record, scope)), fail);
       rejectFailedWrite(store.delete(withScopeKey(scope, previousNormalizedName)), fail);
     },
@@ -279,6 +296,7 @@ export const updateSavedTableState = async (
   scope: WorkspaceScope,
 ): Promise<SavedTableRecord | null> => {
   const db = await openDb();
+
   return runIndexedDbTransaction(db, STORE_NAME, 'readwrite', (tx, fail) => {
     const store = tx.objectStore(STORE_NAME);
     const request: IDBRequest<SavedTableRecord[]> = store.getAll();
@@ -291,12 +309,14 @@ export const updateSavedTableState = async (
           .filter((record): record is SavedTableRecord => record !== null);
         updated = applySavedTableStateUpdate(target, update, (reference) => {
           const { tableId, normalizedName } = savedTableReference(reference);
+
           return (
             records.find((record) =>
               tableId ? record.tableId === tableId : record.normalizedName === normalizedName,
             ) ?? null
           );
         });
+
         if (updated) {
           store.put({
             ...updated,
@@ -308,6 +328,7 @@ export const updateSavedTableState = async (
         fail(error);
       }
     };
+
     return () => updated;
   });
 };
@@ -318,6 +339,7 @@ export const updateSavedTableMetadata = async (
   scope: WorkspaceScope,
 ): Promise<SavedTableRecord | null> => {
   const current = await getSavedTable(target, scope);
+
   if (!current) return null;
   const tableId = resolveSavedTableId(current);
   let updated: SavedTableRecord | null = null;
@@ -330,6 +352,7 @@ export const updateSavedTableMetadata = async (
         const record = request.result
           .map((item) => decodeScopedTableRecord(item, scope))
           .find((item) => item?.tableId === tableId);
+
         if (!record) return;
         updated = { ...record, ...update };
         rejectFailedWrite(store.put(encodeScopedTableRecord(updated, scope)), fail);
@@ -338,6 +361,7 @@ export const updateSavedTableMetadata = async (
       }
     };
   });
+
   return updated;
 };
 
@@ -346,6 +370,7 @@ export const deleteSavedTable = async (
   scope: WorkspaceScope,
 ): Promise<void> => {
   const record = await getSavedTable(target, scope);
+
   if (!record) return;
   const normalizedName = record.normalizedName;
   await runWithStore<undefined>('readwrite', (store) =>

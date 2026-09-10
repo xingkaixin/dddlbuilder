@@ -3,7 +3,9 @@ import { expect, type Page } from '@playwright/test';
 export async function selectWorkspaceView(page: Page, view: 'design' | 'output' | 'split') {
   const toggle = page.getByRole('switch', { name: '分屏预览', exact: true });
   const isSplit = (await toggle.getAttribute('aria-checked')) === 'true';
+
   if (isSplit !== (view === 'split')) await toggle.click();
+
   if (view !== 'split') {
     await page
       .getByRole('button', { name: view === 'design' ? '设计' : '生成结果', exact: true })
@@ -17,6 +19,7 @@ export async function selectWorkspaceView(page: Page, view: 'design' | 'output' 
  */
 export async function confirmFieldTypeChangeIfNeeded(page: Page): Promise<void> {
   const confirmButton = page.getByRole('button', { name: '仍然修改' });
+
   try {
     await confirmButton.waitFor({ state: 'visible', timeout: 800 });
     await confirmButton.click();
@@ -31,12 +34,14 @@ export async function confirmFieldTypeChangeIfNeeded(page: Page): Promise<void> 
  */
 export async function ensureBuilderVisible(page: Page): Promise<void> {
   const tableNameInput = page.locator('#table-name');
+
   try {
     await tableNameInput.waitFor({ state: 'visible', timeout: 3000 });
   } catch {
     await page.getByRole('button', { name: '创建新表' }).click();
     await tableNameInput.waitFor({ state: 'visible', timeout: 10000 });
   }
+
   await selectWorkspaceView(page, 'split');
 }
 

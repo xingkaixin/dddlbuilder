@@ -27,6 +27,7 @@ describe('createBetterAuth', () => {
   const drizzleMock = vi.fn(() => ({ db: 'mocked' }));
   const resendSendMock = vi.fn();
   const grantSignupCreditsMock = vi.fn();
+
   class MockResend {
     emails = { send: resendSendMock };
   }
@@ -103,6 +104,7 @@ describe('createBetterAuth', () => {
 
   it('parses multiple comma-separated CORS_ALLOWED_ORIGINS', async () => {
     const { createBetterAuth } = await import('../../lib/betterAuth.js');
+
     const env = createEnv({
       CORS_ALLOWED_ORIGINS: 'https://a.com, https://b.com ,https://c.com',
     });
@@ -199,6 +201,7 @@ describe('createBetterAuth', () => {
     });
 
     const sender = section === 'otp' ? config.plugins[0].options : config[section];
+
     const outcome = await sender[method]({
       email: 'user@example.com',
       otp: '123456',
@@ -238,6 +241,7 @@ describe('createBetterAuth', () => {
 
   it('normalizes relative password reset URLs into absolute HTTPS URLs', async () => {
     const { createBetterAuth } = await import('../../lib/betterAuth.js');
+
     const env = createEnv({
       BETTER_AUTH_URL: 'https://ddl.xingkaixin.me/api/auth',
     });
@@ -256,6 +260,7 @@ describe('createBetterAuth', () => {
 
   it('normalizes scheme-less password reset URLs into absolute HTTPS URLs', async () => {
     const { createBetterAuth } = await import('../../lib/betterAuth.js');
+
     const env = createEnv({
       BETTER_AUTH_URL: 'https://ddl.xingkaixin.me/api/auth',
     });
@@ -308,6 +313,7 @@ describe('createBetterAuth', () => {
 
   it('deduplicates trustedOrigins when authBaseUrl matches an allowed origin', async () => {
     const { createBetterAuth } = await import('../../lib/betterAuth.js');
+
     const env = createEnv({
       BETTER_AUTH_URL: 'http://localhost:5173',
       CORS_ALLOWED_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173',

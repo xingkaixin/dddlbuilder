@@ -30,6 +30,7 @@ describe('saved draft baselines', () => {
 
   it('keeps the original merge base when the saved table advances', () => {
     const doc = new Y.Doc();
+
     const record = {
       tableId: 'users',
       normalizedName: 'users',

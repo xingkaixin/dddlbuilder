@@ -35,6 +35,7 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
   replaceDocument: (state) =>
     set((current) => {
       const document = toEditorDocumentState(state);
+
       return {
         ...document,
         activeTab: resolveActiveTab(current.activeTab, {

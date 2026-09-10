@@ -9,10 +9,12 @@ const DEFAULT_CSP_POLICY =
 
 const normalizeMode = (raw: string | undefined): CspMode => {
   const value = raw?.trim().toLowerCase();
+
   if (value === 'off') return 'off';
   if (value === 'report-only') return 'report-only';
   if (value === 'enforce') return 'enforce';
   if (value === 'both') return 'both';
+
   return 'both';
 };
 
@@ -45,6 +47,7 @@ export const resolveCspConfig = (env: ApiEnv['Bindings']): ResolvedCspConfig => 
 
 export const applyCspHeaders = (c: Context<ApiEnv>) => {
   const config = resolveCspConfig(c.env);
+
   if (!config.enabled) {
     return;
   }

@@ -8,6 +8,7 @@ import { createFieldRow, createPersistedState } from '@/__tests__/utils/testFact
 
 function renderHook<Result>(callback: () => Result) {
   const { wrapper } = createQueryClientWrapper();
+
   return renderTestingHook(callback, { wrapper });
 }
 

@@ -68,6 +68,7 @@ export function useWorkspaceTabActions({
 }: UseWorkspaceTabActionsParams) {
   const { t } = useTranslation();
   const { showToast } = useToast();
+
   const {
     tabs: openTabs,
     addTab,
@@ -90,8 +91,10 @@ export function useWorkspaceTabActions({
         normalizedName: item.normalizedName,
         tableId: item.tableId,
       });
+
       if (existingTab) {
         switchToTab(existingTab);
+
         return;
       }
 
@@ -113,17 +116,22 @@ export function useWorkspaceTabActions({
 
       const result = await loadSavedTable(item);
       const isLoadedTabActive = useTabStore.getState().activeTabId === newTabId;
+
       if (!result) {
         closeTab(newTabId);
+
         if (isLoadedTabActive) {
           const currentTab = getActiveTab();
+
           if (currentTab) showTab(currentTab);
         }
+
         return;
       }
 
       hydrateTab(newTabId, result.source, result.state);
       const loadedTab = getActiveTab();
+
       if (loadedTab?.id === newTabId) {
         showTab(loadedTab);
         showToast(`已加载：${result.source.tableName} (v${result.version})`);
@@ -152,8 +160,10 @@ export function useWorkspaceTabActions({
       setSavedTablesDrawerOpen(false);
 
       const existingTab = findTabBySource({ kind: 'draft', draftId });
+
       if (existingTab) {
         switchToTab(existingTab);
+
         return;
       }
 
@@ -161,6 +171,7 @@ export function useWorkspaceTabActions({
 
       const existingState = getDraftState(draftId);
       const nextState = existingState ?? createEmptyDraftState();
+
       const draftName =
         draftSummaries.find((draft) => draft.draftId === draftId)?.name ??
         t('app.workspace.globalDraft');
@@ -195,6 +206,7 @@ export function useWorkspaceTabActions({
       if (openTabs.length > 0) flushActiveTab();
       const draftId = `draft_${createEntityId()}`;
       const uniqueName = createDraft(draftId, initialState);
+
       const finalState =
         uniqueName === initialState.tableName
           ? initialState
@@ -215,6 +227,7 @@ export function useWorkspaceTabActions({
     (draftId: string) => {
       deleteDraftById(draftId);
       const tab = findTabBySource({ kind: 'draft', draftId });
+
       if (tab) closeTab(tab.id);
       showToast(t('app.draftDeleted'));
     },

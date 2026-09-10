@@ -15,7 +15,9 @@ vi.mock('openai', () => ({
 vi.mock('../lib/auth.js', () => ({
   authenticateRequest: vi.fn().mockResolvedValue({ userId: 'user-1', email: 'user@example.com' }),
 }));
+
 vi.mock('../lib/credits.js', () => ({ grantSignupCredits: vi.fn().mockResolvedValue(undefined) }));
+
 vi.mock('../lib/aiUsage.js', () => ({
   reserveAIUsage: vi.fn().mockImplementation(async (_env, input) => ({
     usageEventId: 'usage-1',
@@ -70,6 +72,7 @@ const requestAdvice = async (index?: unknown) => {
   const app = new Hono<ApiEnv>();
   registerIndexAdvisorRoute(app);
   const tasks: Promise<unknown>[] = [];
+
   const env: ApiEnv['Bindings'] = {
     ASSETS: { fetch: globalThis.fetch },
     SHARE_KV: {} as KVNamespace,
@@ -98,6 +101,7 @@ const requestAdvice = async (index?: unknown) => {
   );
   await Promise.all(tasks);
   expect(response.status).toBe(200);
+
   return response.json();
 };
 

@@ -18,6 +18,7 @@ vi.mock('@dnd-kit/core', () => ({
     onDragEnd?: (event: any) => void | Promise<void>;
   }) => {
     latestOnDragEnd = onDragEnd;
+
     return <div>{children}</div>;
   },
   PointerSensor: class {},
@@ -78,6 +79,7 @@ describe('SavedTablesDrawer', () => {
 
   it('非法文件夹循环拖拽应阻断移动并显示反馈', async () => {
     const onMoveFolder = vi.fn();
+
     const folders: FolderTreeNode[] = [
       createFolderTreeNode('root-a', {
         name: 'A',
@@ -136,6 +138,7 @@ describe('SavedTablesDrawer', () => {
 
   it('应将表拖拽移动交给共享树控制逻辑', async () => {
     const onMoveToFolder = vi.fn().mockResolvedValue({ ok: true });
+
     const folder: FolderTreeNode = createFolderTreeNode('folder-a', {
       name: 'A',
       parentId: undefined,

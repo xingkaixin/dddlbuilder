@@ -63,6 +63,7 @@ const setLegacyTableDoc = (collection: Y.Map<Y.Map<unknown>>, key: string, table
   const tableDoc = new Y.Map<unknown>();
   collection.set(key, tableDoc);
   tableDoc.set('stateSnapshot', createState(tableName));
+
   return tableDoc;
 };
 
@@ -70,6 +71,7 @@ describe('saved table identity', () => {
   it('does not attach another legacy table draft when names collide', () => {
     const doc = new Y.Doc();
     const { savedTables, savedDrafts } = getWorkspaceRoot(doc);
+
     for (const key of ['first', 'second']) {
       upsertTableRecord(savedTables, key, toSchemaDocumentState(createState(key)), {
         tableId: `table-${key}`,
@@ -78,6 +80,7 @@ describe('saved table identity', () => {
         updatedAt: 1,
       });
     }
+
     upsertTableRecord(savedDrafts, 'first', toSchemaDocumentState(createState('first-draft')), {
       normalizedName: 'shared',
       tableName: 'Shared',
@@ -86,6 +89,7 @@ describe('saved table identity', () => {
     const target = { tableId: 'table-second', normalizedName: 'shared' };
     expect(getWorkspaceSavedDraft(doc, target)).toBeNull();
     const saved = getWorkspaceSavedTable(doc, target);
+
     if (!saved) throw new Error('Missing fixture table');
     renameWorkspaceSavedTable(doc, 'shared', {
       ...saved,
@@ -100,6 +104,7 @@ describe('saved table identity', () => {
 
   it('targets tables and drafts by ID after concurrent same-name renames', () => {
     const doc = new Y.Doc();
+
     const records = ['users', 'orders'].map((name) => ({
       tableId: `table-${name}`,
       normalizedName: name,
@@ -108,6 +113,7 @@ describe('saved table identity', () => {
       createdAt: 1,
       updatedAt: 1,
     }));
+
     for (const record of records) upsertWorkspaceSavedTable(doc, record);
     const peer = new Y.Doc();
     Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
@@ -122,6 +128,7 @@ describe('saved table identity', () => {
       name: 'Archive',
     });
     Y.applyUpdate(doc, Y.encodeStateAsUpdate(peer));
+
     for (const record of records) {
       expect(getWorkspaceSavedTable(doc, record)?.state.tableName).toBe(record.name);
       upsertWorkspaceSavedDraft(doc, {
@@ -132,6 +139,7 @@ describe('saved table identity', () => {
       });
       expect(getWorkspaceSavedDraft(doc, record)?.state.tableName).toBe(record.name);
     }
+
     expect(() => getWorkspaceSavedTable(doc, 'archive')).toThrow('Multiple saved tables');
     expect(() => deleteWorkspaceSavedTable(doc, 'archive')).toThrow('Multiple saved tables');
     deleteWorkspaceSavedTable(doc, records[1]);
@@ -145,6 +153,7 @@ describe('saved table identity', () => {
   it('重新激活记录不会被过期副本上的并发父节点删除吞掉', () => {
     const deleting = new Y.Doc();
     const stale = new Y.Doc();
+
     const record = {
       tableId: 'table-users',
       normalizedName: 'users',
@@ -170,6 +179,7 @@ describe('saved table identity', () => {
     for (const replica of [deleting, stale]) {
       expect(getWorkspaceSavedTable(replica, record)?.state.tableComment).toBe('restored');
     }
+
     deleting.destroy();
     stale.destroy();
   });
@@ -178,6 +188,7 @@ describe('saved table identity', () => {
     '%s 重命名保留并发字段编辑和草稿',
     (format) => {
       const doc = new Y.Doc();
+
       const record = {
         tableId: format === 'legacy-without-id' ? 'legacy:users' : 'table-users',
         normalizedName: 'users',
@@ -186,6 +197,7 @@ describe('saved table identity', () => {
         createdAt: 1,
         updatedAt: 1,
       };
+
       if (format === 'id-key') upsertWorkspaceSavedTable(doc, record, { forceFineGrained: true });
       else
         upsertTableRecord(
@@ -201,6 +213,7 @@ describe('saved table identity', () => {
           },
           { forceFineGrained: true },
         );
+
       if (format !== 'id-key') {
         upsertTableRecord(
           getWorkspaceRoot(doc).savedDrafts,
@@ -215,6 +228,7 @@ describe('saved table identity', () => {
           { forceFineGrained: true },
         );
       }
+
       const originalNode = [...getWorkspaceRoot(doc).savedTables.values()][0];
       const peer = new Y.Doc();
       Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
@@ -244,6 +258,7 @@ describe('saved table identity', () => {
       Y.applyUpdate(peer, update);
 
       expect([...getWorkspaceRoot(doc).savedTables.values()]).toEqual([originalNode]);
+
       for (const replica of [doc, peer]) {
         expect(getWorkspaceSavedTable(replica, 'users')).toBeNull();
         expect(getWorkspaceSavedTable(replica, 'accounts')).toMatchObject({
@@ -264,6 +279,7 @@ describe('saved table identity', () => {
           'accounts',
         );
       }
+
       expect(exportWorkspaceYDocToSnapshot(doc)).toEqual(exportWorkspaceYDocToSnapshot(peer));
 
       mergeWorkspaceSnapshotIntoYDoc(doc, {
@@ -299,6 +315,7 @@ describe('saved table identity', () => {
 
   it('重命名只更新名称，并对外通知逻辑名称的变化和删除', () => {
     const doc = new Y.Doc();
+
     const record = {
       tableId: 'table-users',
       normalizedName: 'users',
@@ -321,6 +338,7 @@ describe('saved table identity', () => {
       state: { ...record.state, tableComment: '新内容' },
     });
     const changes: WorkspaceYDocChange[] = [];
+
     const unsubscribe = subscribeWorkspaceYDoc(doc, (change) => changes.push(change), [
       'savedTables',
     ]);
@@ -416,6 +434,7 @@ describe('workspace YDoc roots', () => {
       { updatedAt: 1 },
     );
     const indexTable = getWorkspaceRoot(missingIndexFields).drafts.get('draft');
+
     if (!indexTable) throw new Error('Missing test table');
     const index = (indexTable.get('indexes') as Y.Map<Y.Map<unknown>>).get('index-id');
     index?.delete('fields');
@@ -433,6 +452,7 @@ describe('workspace YDoc roots', () => {
       { updatedAt: 1 },
     );
     const fieldTable = getWorkspaceRoot(invalidFieldType).drafts.get('draft');
+
     if (!fieldTable) throw new Error('Missing test table');
     const field = (fieldTable.get('fields') as Y.Map<Y.Map<unknown>>).get('field-id');
     field?.set('fieldName', 42);
@@ -452,11 +472,13 @@ describe('workspace YDoc roots', () => {
         { flags: { unique: true, isUniqueConstraint: true }, kind: 'unique_constraint' },
         { flags: { unique: true, isPrimary: true }, kind: 'primary' },
       ];
+
       for (const storage of ['snapshot', 'map']) {
         for (const { flags, kind } of cases) {
           const doc = new Y.Doc();
           ensureWorkspaceYDocMeta(doc);
           const table = setLegacyTableDoc(getWorkspaceRoot(doc)[collection], 'users', 'users');
+
           const legacyIndex = {
             id: 'index-id',
             name: 'idx_id',
@@ -464,6 +486,7 @@ describe('workspace YDoc roots', () => {
             ...flags,
           };
           table.set('stateSnapshot', { ...createState('users'), indexes: [legacyIndex] });
+
           if (storage === 'map') {
             const indexes = new Y.Map<Y.Map<unknown>>();
             table.set('indexes', indexes);
@@ -483,6 +506,7 @@ describe('workspace YDoc roots', () => {
           Y.applyUpdate(reloaded, Y.encodeStateAsUpdate(doc));
           expect(() => initializeOrMigrateWorkspaceYDoc(reloaded)).not.toThrow();
           const reloadedTable = getWorkspaceRoot(reloaded)[collection].get('users');
+
           if (!reloadedTable) throw new Error('Missing reloaded table');
           expect(tableDocToSchemaDocumentState(reloadedTable).indexes[0].kind).toBe(kind);
         }
@@ -526,6 +550,7 @@ describe('workspace YDoc roots', () => {
       { updatedAt: 1 },
     );
     const tableDoc = getWorkspaceRoot(doc).drafts.get('draft');
+
     if (!tableDoc) throw new Error('Missing test table');
     const order = tableDoc.get('fieldOrder') as Y.Array<string>;
     order.delete(0, order.length);

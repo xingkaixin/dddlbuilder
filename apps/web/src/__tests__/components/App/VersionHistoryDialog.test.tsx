@@ -4,9 +4,11 @@ import { render, screen, fireEvent, waitFor } from '@/__tests__/utils/test-utils
 import { withDefaultEditorSession } from '@ddlbuilder/shared-types';
 import { VersionHistoryDialog } from '@/components/App/VersionHistoryDialog';
 import { listVersions, getVersion } from '@/utils/tableVersions';
+
 vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ resolvedLocale: 'zh-CN' }) }));
 
 const { showToast } = vi.hoisted(() => ({ showToast: vi.fn() }));
+
 vi.mock('@/hooks/useToast', () => ({ useToast: () => ({ showToast }) }));
 
 vi.mock('@/utils/tableVersions', () => ({
@@ -25,6 +27,7 @@ describe('version history identity', () => {
       'versionHistory.fieldCount',
       '版本1包含{{count}}个字段',
     );
+
     try {
       const state = withDefaultEditorSession({
         schemaName: '',
@@ -59,6 +62,7 @@ describe('version history identity', () => {
     { failure: 'failed', remaining: true, notice: '回滚失败，请稍后重试。' },
   ])('reports a rollback failure: $failure', async ({ failure, remaining, notice }) => {
     showToast.mockClear();
+
     const state = withDefaultEditorSession({
       schemaName: '',
       tableName: 'users',
@@ -86,6 +90,7 @@ describe('version history identity', () => {
       ])
       .mockResolvedValue([]);
     vi.mocked(getVersion).mockReset();
+
     if (failure === 'missing') vi.mocked(getVersion).mockResolvedValue(null);
     else vi.mocked(getVersion).mockRejectedValue(new Error('storage failure'));
     const onRollback = vi.fn();
@@ -128,6 +133,7 @@ describe('version history identity', () => {
         message: 'version-' + version,
       })),
     );
+
     const target = {
       scope: { kind: 'anonymous' as const },
       tableId: 'users',

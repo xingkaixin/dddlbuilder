@@ -14,10 +14,12 @@ export const decodeWorkspaceScopedKey = (
   scope: WorkspaceScope,
 ): DecodedScopedKey | null => {
   const scopeKey = getWorkspaceScopeStorageKey(scope);
+
   if (recordScope && recordScope !== scopeKey) return null;
 
   if (rawKey.includes('::')) {
     const prefix = `${scopeKey}::`;
+
     return rawKey.startsWith(prefix) ? { key: rawKey.slice(prefix.length), scope: scopeKey } : null;
   }
 

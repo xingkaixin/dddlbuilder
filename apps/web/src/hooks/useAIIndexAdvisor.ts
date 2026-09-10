@@ -13,6 +13,7 @@ interface AIIndexAdvisorState {
 
 export function useAIIndexAdvisor(documentKey: string) {
   const requestAccess = useAIRequestAccess();
+
   const [state, setState] = useState<AIIndexAdvisorState>({
     documentKey,
     result: null,
@@ -23,6 +24,7 @@ export function useAIIndexAdvisor(documentKey: string) {
   const analyzeIndexes = useCallback(
     async (payload: AIIndexAdvisorRequest): Promise<AIIndexAdvisorResult | null> => {
       const accessError = requestAccess.getAccessError();
+
       if (accessError) {
         setState({ documentKey, result: null, error: accessError });
         throw new Error(accessError);
@@ -45,6 +47,7 @@ export function useAIIndexAdvisor(documentKey: string) {
             setState({ documentKey, result, error: null });
             requestAccess.refreshCreditsAfterSuccess();
           });
+
           return result;
         } catch (error) {
           if (!isCurrent() || (error as Error).name === 'AbortError') throw error;

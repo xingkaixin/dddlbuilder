@@ -45,10 +45,15 @@ export const GeneratedTableSchema = Schema.Struct({
 });
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+
 export type GeneratedField = Mutable<typeof GeneratedFieldSchema.Type>;
+
 export type GeneratedIndex = Mutable<typeof GeneratedIndexSchema.Type>;
+
 export type GeneratedDesignDecision = Mutable<typeof GeneratedDesignDecisionSchema.Type>;
+
 export type GeneratedTableSchema = Mutable<typeof GeneratedTableSchema.Type>;
+
 export type PartialTableSchema = Partial<GeneratedTableSchema>;
 
 const providerField = Schema.Struct({

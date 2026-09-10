@@ -66,17 +66,23 @@ const isRecord = (value: unknown): value is JsonRecord =>
 
 const readString = (record: JsonRecord, key: string, required = false) => {
   const value = record[key];
+
   if (value === undefined && !required) return undefined;
+
   if (typeof value !== 'string' || (required && value.trim().length === 0)) {
     throw new Error(`Invalid ${key}`);
   }
+
   return value.trim();
 };
 
 const readBoolean = (record: JsonRecord, key: string, fallback: boolean) => {
   const value = record[key];
+
   if (value === undefined) return fallback;
+
   if (typeof value !== 'boolean') throw new Error(`Invalid ${key}`);
+
   return value;
 };
 
@@ -86,6 +92,7 @@ const parseField = (value: unknown, partial: boolean): Partial<Omit<FieldRow, 'i
   const fieldType = readString(value, 'fieldType', !partial);
   const fieldComment = readString(value, 'fieldComment');
   const defaultValue = readString(value, 'defaultValue');
+
   const nullable =
     value.nullable === undefined ? undefined : normalizeFieldNullable(value.nullable);
   const defaultKind =
@@ -106,11 +113,14 @@ const parseField = (value: unknown, partial: boolean): Partial<Omit<FieldRow, 'i
 
 const parseIndexFields = (value: unknown) => {
   if (!Array.isArray(value) || value.length === 0) throw new Error('Invalid index fields');
+
   return value.map((item) => {
     if (!isRecord(item)) throw new Error('Invalid index field');
     const name = readString(item, 'name', true) as string;
     const direction = item.direction ?? 'ASC';
+
     if (direction !== 'ASC' && direction !== 'DESC') throw new Error('Invalid index direction');
+
     return { name, direction: direction as 'ASC' | 'DESC' };
   });
 };
@@ -119,8 +129,11 @@ const parseIndex = (value: unknown, partial: boolean): Partial<Omit<IndexDefinit
   if (!isRecord(value)) throw new Error('Invalid index');
   const name = readString(value, 'name', !partial);
   const fields = value.fields === undefined ? undefined : parseIndexFields(value.fields);
+
   if (!partial && !fields) throw new Error('Invalid index fields');
+
   if (value.kind !== undefined && !isIndexKind(value.kind)) throw new Error('Invalid index kind');
+
   const hasKind =
     value.kind !== undefined ||
     value.unique !== undefined ||
@@ -132,6 +145,7 @@ const parseIndex = (value: unknown, partial: boolean): Partial<Omit<IndexDefinit
     isPrimary: readBoolean(value, 'isPrimary', false),
     isUniqueConstraint: readBoolean(value, 'isUniqueConstraint', false),
   });
+
   return {
     ...(name === undefined ? {} : { name }),
     ...(fields === undefined ? {} : { fields }),
@@ -143,10 +157,12 @@ export function parseSchemaPatchOperations(value: unknown): SchemaPatchOperation
   if (!Array.isArray(value) || value.length === 0) throw new Error('Operations are required');
 
   const ids = new Set<string>();
+
   return value.map((item, index) => {
     if (!isRecord(item)) throw new Error(`Invalid operation at index ${index}`);
     const kind = readString(item, 'kind', true);
     const id = readString(item, 'id') ?? `operation-${index + 1}`;
+
     if (ids.has(id)) throw new Error(`Duplicate operation id: ${id}`);
     ids.add(id);
 
@@ -241,12 +257,15 @@ export function applySchemaPatchOperations(
       case 'field.add': {
         const row = { ...operation.field, id: createEntityId() };
         const firstEmptyIndex = state.rows.findIndex((item) => !item.fieldName.trim());
+
         const afterIndex = operation.afterFieldId
           ? state.rows.findIndex((item) => item.id === operation.afterFieldId)
           : -1;
+
         if (operation.afterFieldId && afterIndex < 0) {
           throw new Error(`Field not found: ${operation.afterFieldId}`);
         }
+
         const insertIndex =
           afterIndex >= 0
             ? afterIndex + 1
@@ -259,8 +278,10 @@ export function applySchemaPatchOperations(
         state = { ...state, rows };
         break;
       }
+
       case 'field.update': {
         const rowIndex = state.rows.findIndex((row) => row.id === operation.fieldId);
+
         if (rowIndex < 0) throw new Error(`Field not found: ${operation.fieldId}`);
         const oldRow = state.rows[rowIndex];
         const rows = [...state.rows];
@@ -269,47 +290,61 @@ export function applySchemaPatchOperations(
         state = updateDocumentFields(state, rows);
         break;
       }
+
       case 'field.remove': {
         const row = state.rows.find((item) => item.id === operation.fieldId);
+
         if (!row) throw new Error(`Field not found: ${operation.fieldId}`);
         state = removeFieldsFromDocument(state, (item) => item.id === operation.fieldId);
         break;
       }
+
       case 'field.reorder': {
         const fromIndex = state.rows.findIndex((row) => row.id === operation.fieldId);
+
         if (fromIndex < 0) throw new Error(`Field not found: ${operation.fieldId}`);
         const rows = [...state.rows];
         const [row] = rows.splice(fromIndex, 1);
+
         const afterIndex = operation.afterFieldId
           ? rows.findIndex((item) => item.id === operation.afterFieldId)
           : -1;
+
         if (operation.afterFieldId && afterIndex < 0) {
           throw new Error(`Field not found: ${operation.afterFieldId}`);
         }
+
         rows.splice(afterIndex + 1, 0, row);
         state = { ...state, rows };
         break;
       }
+
       case 'index.add': {
         const candidate = { ...operation.index, id: createEntityId() };
         const result = insertIndexDefinition(state.indexes, candidate);
+
         if (!result.ok) throw new Error(describeIndexWriteFailure(result.reason, candidate));
         state = { ...state, indexes: result.indexes };
         break;
       }
+
       case 'index.update': {
         const target = state.indexes.find((index) => index.id === operation.indexId);
+
         if (!target) throw new Error(`Index not found: ${operation.indexId}`);
         const candidate = { ...target, ...operation.changes, id: target.id };
         const result = replaceIndexDefinition(state.indexes, candidate);
+
         if (!result.ok) throw new Error(describeIndexWriteFailure(result.reason, candidate));
         state = { ...state, indexes: result.indexes };
         break;
       }
+
       case 'index.remove': {
         if (!state.indexes.some((index) => index.id === operation.indexId)) {
           throw new Error(`Index not found: ${operation.indexId}`);
         }
+
         state = {
           ...state,
           indexes: state.indexes.filter((index) => index.id !== operation.indexId),
@@ -320,5 +355,6 @@ export function applySchemaPatchOperations(
   }
 
   validateDocumentFields(state);
+
   return state;
 }

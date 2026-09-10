@@ -16,12 +16,15 @@ export const getAIErrorMessage = (payload: ApiErrorPayload | null): string | nul
   if (code === 'AUTH_REQUIRED' || code === 'INVALID_AUTH_TOKEN') {
     return i18n.t('services.authRequired');
   }
+
   if (code === 'CREDIT_EXHAUSTED') {
     return i18n.t('services.creditExhausted');
   }
+
   if (code === 'AI_OUTPUT_TRUNCATED') {
     return i18n.t('services.aiOutputTruncated');
   }
+
   if (code === 'SERVICE_UNAVAILABLE' || code === 'UPSTREAM_OPENAI_ERROR') {
     return i18n.t('services.aiServiceUnavailable');
   }
@@ -38,6 +41,7 @@ export const readAIErrorMessage = async (
   fallbackKey: 'generationFailed' | 'reviewFailed' | 'explainFailed',
 ) => {
   const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null;
+
   return (
     getAIErrorMessage(payload) ??
     (response.status

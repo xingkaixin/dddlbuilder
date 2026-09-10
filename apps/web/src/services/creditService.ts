@@ -29,12 +29,16 @@ export async function fetchCreditBalance(signal?: AbortSignal): Promise<number> 
     signal,
   });
   const payload: unknown = await response.json().catch(() => null);
+
   if (!response.ok) {
     const error = decodeApiError(payload);
     throw new ApiError(error.error ?? 'Failed to load credit balance', response.status, error.code);
   }
+
   const decoded = decodeCreditBalanceResponse(payload);
+
   if (decoded._tag === 'None') throw new Error('Invalid credit balance response');
+
   return decoded.value.balance;
 }
 
@@ -46,7 +50,9 @@ export async function fetchCreditLedger(
     limit: String(filters.limit),
     offset: String(filters.offset),
   });
+
   if (filters.startAt) params.set('startAt', filters.startAt);
+
   if (filters.endAt) params.set('endAt', filters.endAt);
 
   const response = await fetch(`/api/credits/ledger?${params.toString()}`, {
@@ -54,12 +60,16 @@ export async function fetchCreditLedger(
     signal,
   });
   const payload: unknown = await response.json().catch(() => null);
+
   if (!response.ok) {
     const error = decodeApiError(payload);
     throw new ApiError(error.error ?? 'Failed to load credit ledger', response.status, error.code);
   }
+
   const decoded = decodeCreditLedgerResponse(payload);
+
   if (decoded._tag === 'None') throw new Error('Invalid credit ledger response');
+
   return {
     items: decoded.value.items.map((item) => ({ ...item, createdAt: Date.parse(item.createdAt) })),
     total: decoded.value.total,

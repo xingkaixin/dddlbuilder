@@ -37,6 +37,7 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
       (session) =>
         Effect.gen(function* () {
           const { ddl, tableName, dbType, locale } = session.request;
+
           return yield* session.streamCompletion({
             scope: 'Review',
             temperature: 0.3,

@@ -27,6 +27,7 @@ describe('schemaStateSignature', () => {
 
   it('normalizes implicit editor defaults', () => {
     const stored = createState();
+
     const current = createState({
       fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 3 },
     });

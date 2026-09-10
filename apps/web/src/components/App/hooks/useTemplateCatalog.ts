@@ -20,6 +20,7 @@ export function useTemplateCatalog({
 }: TemplateCatalogParams) {
   const fieldTemplateData = useFieldTemplates();
   const tableTemplateData = useTableTemplates();
+
   const templates = useMemo(
     () => [...fieldTemplateData.templates, ...tableTemplateData.templates],
     [fieldTemplateData.templates, tableTemplateData.templates],
@@ -48,6 +49,7 @@ export function useTemplateCatalog({
     handleManageTableTemplates: tableTemplateActions.handleManageTemplates,
     handleSaveAsTableTemplate: tableTemplateActions.handleSaveAsTemplate,
   });
+
   return {
     templates,
     toolbar,

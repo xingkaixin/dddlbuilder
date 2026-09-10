@@ -62,6 +62,7 @@ function parseOnAction(actionList: OnActionNode[]): {
   onUpdate?: ForeignKeyAction;
 } {
   const result: { onDelete?: ForeignKeyAction; onUpdate?: ForeignKeyAction } = {};
+
   if (!Array.isArray(actionList)) return result;
 
   for (const action of actionList) {
@@ -87,14 +88,17 @@ function collectColumnNames(columns: Array<ColumnListNode | string> | undefined)
 
 function pushForeignKey(result: ParsedResult, def: ForeignKeyNode) {
   const fieldNames = collectColumnNames(def.definition);
+
   if (fieldNames.length === 0) return;
   if (!def.reference_definition) return;
 
   const refDef = def.reference_definition;
   const refTableInfo = refDef.table?.[0];
+
   if (!refTableInfo) return;
 
   const refFieldNames = collectColumnNames(refDef.definition);
+
   if (refFieldNames.length === 0) return;
 
   const constraintName =
@@ -137,9 +141,11 @@ function pushPrimaryKey(result: ParsedResult, fields: IndexField[], name?: strin
 
 function normalizeTableOptionValue(value: unknown): string {
   if (value === null || value === undefined) return '';
+
   if (typeof value === 'string') {
     return normalizeLiteral(value);
   }
+
   if (
     typeof value === 'object' &&
     value &&
@@ -148,12 +154,15 @@ function normalizeTableOptionValue(value: unknown): string {
   ) {
     return normalizeLiteral((value as Record<string, string>).value);
   }
+
   return '';
 }
 
 function normalizeEngineName(engine: string): string {
   const normalized = engine.trim();
+
   if (!normalized) return '';
+
   return MYSQL_ENGINE_NAME_MAP[normalized.toLowerCase()] ?? normalized;
 }
 
@@ -164,17 +173,20 @@ function mapColumnToField(
   for (const [attribute, feature] of UNSUPPORTED_COLUMN_ATTRIBUTES) {
     if (colDef[attribute]) throw SqlParseError.unsupported(feature);
   }
+
   const name = normalizeColumnName(colDef.column);
   const typeStr = buildTypeString(colDef.definition, serializeExpression);
 
   // Comment
   let comment = '';
+
   if (colDef.comment) {
     comment = normalizeLiteral(colDef.comment.value.value);
   }
 
   // Nullable
   let nullable = true;
+
   if (colDef.nullable) {
     if (colDef.nullable.value === 'not null') {
       nullable = false;
@@ -182,6 +194,7 @@ function mapColumnToField(
       nullable = true;
     }
   }
+
   if (colDef.primary_key) {
     nullable = false;
   }
@@ -194,6 +207,7 @@ function mapColumnToField(
     const val = colDef.default_val.value;
     const funcName = extractFunctionName(val);
     const literalType = readField(val, 'type');
+
     if (literalType === 'single_quote_string' || literalType === 'double_quote_string') {
       defaultKind = 'constant';
       const value = stringifyAstValue(readField(val, 'value') ?? '');
@@ -222,9 +236,11 @@ function mapColumnToField(
 
   // On Update
   let onUpdate: NormalizedField['onUpdate'] = 'none';
+
   const onUpdateSource =
     colDef.on_update?.value || colDef.on_update || readField(colDef.default_val?.value, 'over');
   const onUpdateFuncName = extractFunctionName(onUpdateSource);
+
   if (onUpdateFuncName && ['now', 'current_timestamp', 'sysdate'].includes(onUpdateFuncName)) {
     onUpdate = 'current_timestamp';
   }
@@ -248,9 +264,11 @@ export function parseCreateTable(
   // 1. Table Name
   if (stmt.table && stmt.table.length > 0) {
     const schema = stmt.table[0].db || stmt.table[0].schema || '';
+
     if (typeof schema === 'string' && schema.trim()) {
       result.schemaName = schema.trim();
     }
+
     result.tableName = stmt.table[0].table;
   }
 
@@ -269,25 +287,30 @@ export function parseCreateTable(
         .toLowerCase()
         .trim();
       const optionValue = normalizeTableOptionValue(option.value);
+
       if (!optionValue) return;
 
       if (keyword === 'comment' && !result.tableComment) {
         result.tableComment = optionValue;
+
         return;
       }
 
       if (keyword === 'engine') {
         tableMiscConfig.engine = normalizeEngineName(optionValue);
+
         return;
       }
 
       if (keyword === 'default charset' || keyword === 'charset') {
         tableMiscConfig.charset = optionValue;
+
         return;
       }
 
       if (keyword === 'collate' || keyword === 'collation') {
         tableMiscConfig.collation = optionValue;
+
         return;
       }
 
@@ -338,6 +361,7 @@ export function parseCreateTable(
           pushPrimaryKey(result, buildIndexFields(def.definition), def.constraint || def.index);
         } else if (def.constraint_type === 'unique key' || def.constraint_type === 'unique') {
           const fields = buildIndexFields(def.definition || []);
+
           const indexName =
             def.constraint ||
             def.index ||
@@ -372,11 +396,13 @@ export function parseCreateIndex(
 
   // Only process if table name matches (simple validation)
   const effectiveTableName = targetTableName ?? result.tableName;
+
   if (effectiveTableName && tableName !== effectiveTableName) {
     return;
   }
 
   const columns = stmt.index_columns || stmt.columns;
+
   if (!columns || !Array.isArray(columns)) {
     return;
   }
@@ -400,6 +426,7 @@ export function parseAlterTable(
   if (!stmt.expr || !Array.isArray(stmt.expr)) return;
 
   const alterTargetTable = Array.isArray(stmt.table) ? undefined : stmt.table?.table;
+
   if (targetTableName && alterTargetTable && alterTargetTable !== targetTableName) {
     return;
   }
@@ -407,9 +434,11 @@ export function parseAlterTable(
   stmt.expr.forEach((expr) => {
     if (expr.action !== 'add') return;
     const definition = expr.create_definitions ?? (expr.resource === 'constraint' ? expr : null);
+
     if (!definition) return;
     const name = definition.constraint || expr.create_definitions?.index;
     const fields = buildIndexFields(definition.definition);
+
     switch (definition.constraint_type?.toLowerCase()) {
       case 'primary key':
         pushPrimaryKey(result, fields, name);

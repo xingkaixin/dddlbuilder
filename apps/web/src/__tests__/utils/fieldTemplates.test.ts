@@ -170,6 +170,7 @@ describe('fieldTemplates', () => {
 
   it('should close db and reject when transaction throws', async () => {
     const close = vi.fn();
+
     const brokenDb = {
       transaction: () => {
         throw new Error('tx failed');
@@ -194,6 +195,7 @@ describe('fieldTemplates', () => {
       value: {
         open: () => {
           queueMicrotask(() => request.onsuccess?.());
+
           return request;
         },
       },

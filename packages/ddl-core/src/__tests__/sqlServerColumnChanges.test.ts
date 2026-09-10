@@ -28,6 +28,7 @@ const state = (row: FieldRow) =>
   });
 const sqlFor = (before: FieldRow, after: FieldRow) => {
   const diff = diffPersistedState(state(before), state(after));
+
   return {
     forward: generateAlterDDL(diff),
     rollback: generateRollbackDDL(diff),
@@ -93,6 +94,7 @@ describe('SQL Server column changes', () => {
     'uses the shared default renderer for %s',
     (defaultKind) => {
       const before = { ...field, fieldType: defaultKind === 'uuid' ? 'uuid' : 'datetime' };
+
       const defaults = {
         constant: "'2026-08-27'",
         expression: 'GETDATE()',
@@ -141,12 +143,14 @@ describe('SQL Server column changes', () => {
     'requires manual migration for identity transitions from %s in both directions',
     (defaultKind) => {
       const before = state({ ...field, defaultKind, defaultValue: '1' });
+
       const after = {
         ...before,
         tableName: 'accounts',
         rows: [{ ...field, defaultKind: 'auto_increment' as const }],
       };
       const diff = diffPersistedState(before, after);
+
       for (const sql of [generateAlterDDL(diff), generateRollbackDDL(diff)]) {
         expect(sql).toContain('Manual migration required');
         expect(sql).toContain('IDENTITY');

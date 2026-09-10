@@ -46,6 +46,7 @@ const forkPeers = (initial: PersistedState) => {
     const updateA = Y.encodeStateAsUpdate(docA);
     Y.applyUpdate(docA, Y.encodeStateAsUpdate(docB));
     Y.applyUpdate(docB, updateA);
+
     return [tableDocToSchemaDocumentState(tableA), tableDocToSchemaDocumentState(tableB)] as const;
   };
 

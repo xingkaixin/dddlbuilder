@@ -23,6 +23,7 @@ test('Logical relationships persist without adding SQL constraints @panels', asy
   await node
     .locator('.react-flow__handle.source[data-handleid="parent_id"]')
     .dragTo(node.locator('.react-flow__handle.target[data-handleid="HYDRATED_FIELD"]'));
+
   const wizard = page
     .getByRole('dialog')
     .filter({ has: page.getByRole('button', { name: '创建关系', exact: true }) });

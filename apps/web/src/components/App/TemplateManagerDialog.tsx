@@ -85,6 +85,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     const filteredTemplates = useMemo(() => {
       if (!searchTerm.trim()) return templates;
       const term = searchTerm.toLowerCase();
+
       return templates.filter(
         (t) => t.name.toLowerCase().includes(term) || t.description?.toLowerCase().includes(term),
       );
@@ -106,6 +107,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         // 新建时提供一个空字段
         setEditRows([createEmptyRow()]);
       }
+
       setEditError('');
       setIsSaving(false);
       setIsEditDialogOpen(true);
@@ -119,8 +121,10 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     // 保存模板
     const handleSaveTemplate = useCallback(async () => {
       const trimmedName = editName.trim();
+
       if (!trimmedName) {
         setEditError(t('templateManager.editor.nameRequired'));
+
         return;
       }
 
@@ -131,6 +135,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
 
       try {
         let result: { ok: boolean; message?: string };
+
         if (editingTemplate) {
           result = await onUpdateTemplate(editingTemplate.id, {
             name: trimmedName,
@@ -175,6 +180,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     const handleDuplicate = useCallback(
       async (template: FieldTemplate) => {
         const result = await onDuplicateTemplate(template.id);
+
         if (result.ok) {
           showToast(t('templateManager.toast.duplicated', { name: template.name }));
         } else {
@@ -194,11 +200,13 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     const handleConfirmDelete = useCallback(async () => {
       if (!deleteTarget) return;
       const result = await onDeleteTemplate(deleteTarget.id);
+
       if (result.ok) {
         showToast(t('templateManager.toast.deleted', { name: deleteTarget.name }));
       } else {
         showToast(result.message ?? t('templateManager.toast.deleteFailed'));
       }
+
       setIsDeleteDialogOpen(false);
       setDeleteTarget(null);
     }, [deleteTarget, onDeleteTemplate, showToast, t]);
@@ -373,4 +381,5 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     );
   },
 );
+
 TemplateManagerDialog.displayName = 'TemplateManagerDialog';

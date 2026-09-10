@@ -11,14 +11,17 @@ const policy = {
 
 const createApp = (values: Array<number | undefined>) => {
   const bindings: unknown[][] = [];
+
   const prepare = vi.fn(() => ({
     bind: (...args: unknown[]) => {
       bindings.push(args);
+
       return { args };
     },
   }));
   const batch = vi.fn(async () => {
     const value = values.shift();
+
     return [
       {
         success: true,
@@ -32,9 +35,11 @@ const createApp = (values: Array<number | undefined>) => {
   });
   const app = new Hono<ApiEnv>();
   app.get('/', async (c) => c.json(await enforceRequestRateLimit(c, policy)));
+
   const env = {
     USER_DB: { prepare, batch } as unknown as D1Database,
   } as ApiEnv['Bindings'];
+
   return { app, env, bindings, batch };
 };
 
@@ -50,6 +55,7 @@ describe('enforceRequestRateLimit', () => {
 
   it('increments the current window and reports remaining capacity', async () => {
     const { app, env, bindings, batch } = createApp([2]);
+
     const response = await app.request(
       new Request('https://ddlbuilder.test/', {
         headers: { 'cf-connecting-ip': '203.0.113.10' },
@@ -78,6 +84,7 @@ describe('enforceRequestRateLimit', () => {
 
   it('denies requests when the atomic upsert returns no row', async () => {
     const { app, env } = createApp([undefined]);
+
     const response = await app.request(
       new Request('https://ddlbuilder.test/', {
         headers: { 'x-forwarded-for': '198.51.100.2, 198.51.100.3' },

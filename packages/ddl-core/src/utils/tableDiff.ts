@@ -158,6 +158,7 @@ type DiffField = {
 
 function normalizeFieldRow(row: FieldRow): DiffField | null {
   const name = row.fieldName?.trim();
+
   if (!name) return null;
 
   return {
@@ -182,6 +183,7 @@ function normalizeFieldRow(row: FieldRow): DiffField | null {
  */
 function extractFields(state: PersistedState): DiffField[] {
   if (!state.rows) return [];
+
   return state.rows.map(normalizeFieldRow).filter((field): field is DiffField => field !== null);
 }
 
@@ -190,6 +192,7 @@ function extractFields(state: PersistedState): DiffField[] {
  */
 const stableTypeKey = (type: string) => {
   const parsed = parseFieldType(type);
+
   return JSON.stringify([parsed.baseType, parsed.args, parsed.unsigned]);
 };
 
@@ -213,9 +216,11 @@ function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): 
   if (stableTypeKey(oldField.type) !== stableTypeKey(newField.type)) {
     changes.push('type');
   }
+
   if (oldField.nullable !== newField.nullable) {
     changes.push('nullable');
   }
+
   if (
     oldField.defaultKind !== newField.defaultKind ||
     oldField.defaultValue !== newField.defaultValue ||
@@ -223,6 +228,7 @@ function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): 
   ) {
     changes.push('default');
   }
+
   if (oldField.comment !== newField.comment) {
     changes.push('comment');
   }
@@ -232,6 +238,7 @@ function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): 
 
 function toFieldChanges(changes: FieldChangeType[]): FieldChanges | null {
   const first = changes[0];
+
   return first ? [first, ...changes.slice(1)] : null;
 }
 
@@ -242,6 +249,7 @@ function createMatchedFieldDiff(
 ) {
   const changes = getFieldChanges(oldField, newField);
   const fieldChanges = toFieldChanges(changes);
+
   if (getSqlIdentifierKey(oldField.name, dbType) !== getSqlIdentifierKey(newField.name, dbType)) {
     return {
       type: 'rename',
@@ -253,8 +261,10 @@ function createMatchedFieldDiff(
       ...(fieldChanges ? { changes: fieldChanges } : {}),
     } satisfies FieldDiff;
   }
+
   if (fieldsEqual(oldField, newField)) return null;
   if (!fieldChanges) return null;
+
   return {
     type: 'modify',
     fieldName: newField.name,
@@ -276,11 +286,13 @@ function diffFields(
   const match = (oldIndex: number, newIndex: number) => {
     unmatchedOld.delete(oldIndex);
     unmatchedNew.delete(newIndex);
+
     const diff = createMatchedFieldDiff(
       oldFields[oldIndex].field,
       newFields[newIndex].field,
       dbType,
     );
+
     if (diff) diffs.push(diff);
   };
 
@@ -290,18 +302,22 @@ function diffFields(
   oldFields.forEach((field, oldIndex) => {
     if (!field.id) return;
     const newIndex = newIndexById.get(field.id);
+
     if (newIndex !== undefined && unmatchedNew.has(newIndex)) match(oldIndex, newIndex);
   });
 
   for (const oldIndex of Array.from(unmatchedOld)) {
     const oldField = oldFields[oldIndex];
+
     const candidates = Array.from(unmatchedNew).filter((newIndex) => {
       const newField = newFields[newIndex];
+
       return (
         getSqlIdentifierKey(oldField.field.name, dbType) ===
         getSqlIdentifierKey(newField.field.name, dbType)
       );
     });
+
     if (candidates.length === 1) match(oldIndex, candidates[0]);
   }
 
@@ -309,15 +325,18 @@ function diffFields(
     const oldField = oldFields[oldIndex].field;
     diffs.push({ type: 'remove', fieldName: oldField.name, oldField });
   }
+
   for (const newIndex of unmatchedNew) {
     const newField = newFields[newIndex].field;
     diffs.push({ type: 'add', fieldName: newField.name, newField });
   }
+
   return diffs;
 }
 
 function normalizeMiscConfig(config?: TableMiscConfig): TableMiscConfig {
   if (!config?.enabled) return { enabled: false };
+
   const partitions = config.partitions?.enabled
     ? {
         enabled: true,
@@ -337,6 +356,7 @@ function normalizeMiscConfig(config?: TableMiscConfig): TableMiscConfig {
           : {}),
       }
     : undefined;
+
   return {
     enabled: true,
     engine: config.engine?.trim() || '',
@@ -365,6 +385,7 @@ function getIndexSignature(index: IndexDefinition, dbType: PersistedState['dbTyp
         : index.kind !== 'index'
           ? 'UQ'
           : 'IX';
+
   return JSON.stringify([
     prefix,
     getSqlIdentifierKey(index.name, dbType),
@@ -395,8 +416,11 @@ function getManualSchemaChanges(
   const changes: ManualSchemaChange[] = [];
   const oldType = oldState.objectType ?? 'table';
   const newType = newState.objectType ?? 'table';
+
   if (oldType !== newType) changes.push('objectType');
+
   if (oldState.dbType !== newState.dbType) changes.push('dbType');
+
   if (
     oldType === 'view' &&
     newType === 'view' &&
@@ -410,13 +434,16 @@ function getManualSchemaChanges(
     supportsMysqlPartition(state.dbType) && state.mysqlPartitionConfig
       ? buildMysqlPartitionClause(state.mysqlPartitionConfig)
       : '';
+
   if (partitionClause(oldState) !== partitionClause(newState)) changes.push('mysqlPartition');
 
   const shardingDDL = (state: PersistedState) =>
     state.dbType === 'postgresql-citus' && state.citusShardingConfig
       ? buildCitusShardingDDL('', state.citusShardingConfig)
       : '';
+
   if (shardingDDL(oldState) !== shardingDDL(newState)) changes.push('citusSharding');
+
   return changes;
 }
 
@@ -425,6 +452,7 @@ function getManualSchemaChanges(
  */
 export function diffPersistedState(oldState: PersistedState, newState: PersistedState): TableDiff {
   const dbType = newState.dbType;
+
   const result: TableDiff = {
     oldDbType: oldState.dbType,
     newDbType: newState.dbType,
@@ -448,8 +476,10 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   ) {
     result.schemaNameChanged = true;
   }
+
   const oldTableName = oldState.tableName?.trim() || '';
   const newTableName = newState.tableName?.trim() || '';
+
   if (getSqlIdentifierKey(oldTableName, dbType) !== getSqlIdentifierKey(newTableName, dbType)) {
     result.tableNameChanged = true;
     result.oldTableName = oldTableName;
@@ -459,6 +489,7 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   // 2. 表注释变更
   const oldTableComment = oldState.tableComment?.trim() || '';
   const newTableComment = newState.tableComment?.trim() || '';
+
   if (oldTableComment !== newTableComment) {
     result.tableCommentChanged = true;
     result.oldTableComment = oldTableComment;
@@ -468,6 +499,7 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   // 2.5 杂项设置变更
   const oldMiscConfig = normalizeMiscConfig(oldState.tableMiscConfig);
   const newMiscConfig = normalizeMiscConfig(newState.tableMiscConfig);
+
   if (JSON.stringify(oldMiscConfig) !== JSON.stringify(newMiscConfig)) {
     result.miscConfigChanged = true;
     result.oldMiscConfig = oldMiscConfig;
@@ -484,11 +516,13 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   const newIndexes = newState.indexes || [];
 
   const oldIndexSigs = new Map<string, IndexDefinition>();
+
   for (const idx of oldIndexes) {
     oldIndexSigs.set(getIndexSignature(idx, dbType), idx);
   }
 
   const newIndexSigs = new Map<string, IndexDefinition>();
+
   for (const idx of newIndexes) {
     newIndexSigs.set(getIndexSignature(idx, dbType), idx);
   }
@@ -514,11 +548,13 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   const newForeignKeys = (newState.foreignKeys || []).filter((fk) => !fk.logical);
 
   const oldFkSigs = new Map<string, ForeignKeyDefinition>();
+
   for (const fk of oldForeignKeys) {
     oldFkSigs.set(getForeignKeySignature(fk, dbType), fk);
   }
 
   const newFkSigs = new Map<string, ForeignKeyDefinition>();
+
   for (const fk of newForeignKeys) {
     newFkSigs.set(getForeignKeySignature(fk, dbType), fk);
   }
@@ -540,6 +576,7 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   }
 
   const manualChanges = getManualSchemaChanges(oldState, newState, hasTableChanges(result));
+
   if (manualChanges.length > 0) {
     result.manualChanges = manualChanges;
   }

@@ -48,6 +48,7 @@ function validateSqlPayload(
   }
 
   const decoded = Schema.decodeUnknownOption(SqlParseRequestSchema)(parsed.data);
+
   if (decoded._tag === 'None') {
     return {
       errorResponse: errorResponse(c, 400, 'Invalid database type', 'INVALID_DATABASE_TYPE'),
@@ -60,6 +61,7 @@ function validateSqlPayload(
 export function registerParseSqlRoute(app: Hono<ApiEnv>) {
   app.post('/parse-sql', async (c) => {
     const limited = await enforceIpRateLimit(c, PARSE_SQL_RATE_LIMIT, 'Too many parse requests');
+
     if (limited) return limited;
 
     const parsed = await parseJsonBodyWithLimit<{
@@ -68,6 +70,7 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     }>(c, MAX_PARSE_SQL_BODY_BYTES);
 
     const validation = validateSqlPayload(parsed, c);
+
     if ('errorResponse' in validation) return validation.errorResponse;
     const { sql, dbType } = validation;
 
@@ -80,12 +83,14 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
       if (error instanceof SqlParseError) {
         return errorResponse(c, 400, error.message, 'SQL_PARSE_FAILED');
       }
+
       throw error;
     }
   });
 
   app.post('/parse-multi-sql', async (c) => {
     const limited = await enforceIpRateLimit(c, PARSE_SQL_RATE_LIMIT, 'Too many parse requests');
+
     if (limited) return limited;
 
     const parsed = await parseJsonBodyWithLimit<{
@@ -94,14 +99,17 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     }>(c, MAX_PARSE_SQL_BODY_BYTES);
 
     const validation = validateSqlPayload(parsed, c);
+
     if ('errorResponse' in validation) return validation.errorResponse;
     const { sql, dbType } = validation;
 
     const parser = new SqlParser();
+
     const response = Schema.decodeUnknownSync(MultiSqlParseResponseSchema)(
       withMeta(c, await parser.parseMultiAsync(sql, dbType)),
     );
     const { results, failed } = response;
+
     if (results.length === 0 && failed.length > 0) {
       return c.json(
         {

@@ -27,8 +27,10 @@ export function useWorkspaceNotifications({
 
   useEffect(() => {
     if (isShareView) return;
+
     try {
       const savedCopyName = sessionStorage.getItem(SHARE_COPY_SAVED_TOAST_KEY);
+
       if (!savedCopyName) return;
       sessionStorage.removeItem(SHARE_COPY_SAVED_TOAST_KEY);
       showToast(t('app.shareCopySaved', { name: savedCopyName }));

@@ -11,6 +11,7 @@ export function WorkspaceSplitToggle({
 }) {
   const { t } = useTranslation();
   const id = useId();
+
   return (
     <div className="flex h-7 items-center gap-2 px-2">
       <label htmlFor={id} className="cursor-pointer text-xs text-muted-foreground">

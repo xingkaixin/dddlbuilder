@@ -13,11 +13,13 @@ const mocks = vi.hoisted(() => ({
     });
 
     let pendingRequests = 0;
+
     const completeRequest = (request: ReturnType<typeof createRequest>) => {
       pendingRequests += 1;
       queueMicrotask(() => {
         request.onsuccess?.();
         pendingRequests -= 1;
+
         if (pendingRequests === 0) queueMicrotask(() => tx.oncomplete?.());
       });
     };
@@ -30,11 +32,13 @@ const mocks = vi.hoisted(() => ({
       objectStore: () => ({
         get: () => {
           const req = createRequest();
+
           if (mocks.behavior === 'get_request_error_null') {
             queueMicrotask(() => req.onerror?.());
           } else if (mocks.behavior === 'get_tx_error_null') {
             queueMicrotask(() => tx.onerror?.());
           }
+
           return req as any;
         },
         index: () => ({
@@ -42,12 +46,14 @@ const mocks = vi.hoisted(() => ({
             const req = createRequest();
             req.result = [];
             completeRequest(req);
+
             return req as any;
           },
           count: () => {
             const req = createRequest();
             req.result = 0;
             completeRequest(req);
+
             return req as any;
           },
         }),

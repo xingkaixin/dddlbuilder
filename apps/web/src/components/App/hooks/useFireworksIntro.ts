@@ -14,6 +14,7 @@ export function useFireworksIntro({ enabled, setShowFireworks }: UseFireworksInt
     }
 
     const hasShown = localStorage.getItem(CNY_FIREWORKS_FLAG_KEY);
+
     if (!hasShown) {
       setShowFireworks(true);
     }
@@ -21,6 +22,7 @@ export function useFireworksIntro({ enabled, setShowFireworks }: UseFireworksInt
 
   const handleFireworksComplete = useCallback(() => {
     setShowFireworks(false);
+
     if (!enabled) {
       return;
     }

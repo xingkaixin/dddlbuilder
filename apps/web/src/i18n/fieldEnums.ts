@@ -21,10 +21,12 @@ export function getNullableLabel(value: boolean, t: TFunction) {
 
 export function getDefaultKindLabel(value: FieldDefaultKind | undefined, t: TFunction) {
   const key = (value && DEFAULT_KIND_KEY_MAP[value]) ?? 'none';
+
   return t(`fieldEnums.defaultKind.${key}`);
 }
 
 export function getOnUpdateLabel(value: FieldOnUpdate | undefined, t: TFunction) {
   const key = (value && ON_UPDATE_KEY_MAP[value]) ?? 'none';
+
   return t(`fieldEnums.onUpdate.${key}`);
 }

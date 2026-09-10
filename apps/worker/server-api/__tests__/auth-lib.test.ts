@@ -4,9 +4,11 @@ import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest, resolveAuthenticatedUser } from '../lib/auth.js';
 
 const mocks = vi.hoisted(() => ({ getSession: vi.fn(), grantSignupCredits: vi.fn() }));
+
 vi.mock('../lib/betterAuth.js', () => ({
   createBetterAuth: () => ({ api: { getSession: mocks.getSession } }),
 }));
+
 vi.mock('../lib/credits.js', () => ({ grantSignupCredits: mocks.grantSignupCredits }));
 
 const session = {
@@ -32,6 +34,7 @@ const createContext = (
   log?: { error: (error: unknown) => void },
 ) => {
   const set = vi.fn();
+
   return {
     context: {
       env,

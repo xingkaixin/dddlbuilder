@@ -28,6 +28,7 @@ describe('useThemeTransition', () => {
 
   it('should return initial state', () => {
     const setTheme = vi.fn();
+
     const { result } = renderHook(() =>
       useThemeTransition({ theme: 'system', resolvedTheme: 'dark', setTheme }),
     );
@@ -46,6 +47,7 @@ describe('useThemeTransition', () => {
     });
 
     const setTheme = vi.fn();
+
     const { result } = renderHook(() =>
       useThemeTransition({ theme: 'system', resolvedTheme: 'dark', setTheme }),
     );
@@ -61,6 +63,7 @@ describe('useThemeTransition', () => {
 
   it('should return systemTheme from resolveCurrentEffectiveTheme', () => {
     const setTheme = vi.fn();
+
     const { result } = renderHook(() =>
       // Pass a theme that isn't light or dark, and invalid resolvedTheme
       useThemeTransition({
@@ -93,6 +96,7 @@ describe('useThemeTransition', () => {
     });
 
     const setTheme = vi.fn();
+
     const { result } = renderHook(() =>
       useThemeTransition({ theme: 'system', resolvedTheme: 'dark', setTheme }),
     );
@@ -114,6 +118,7 @@ describe('useThemeTransition', () => {
     });
 
     const setTheme = vi.fn();
+
     const { result } = renderHook(() =>
       useThemeTransition({ theme: 'system', resolvedTheme: 'light', setTheme }),
     );
@@ -133,6 +138,7 @@ describe('useThemeTransition', () => {
     });
 
     const setTheme = vi.fn();
+
     const { result } = renderHook(() =>
       useThemeTransition({
         theme: 'system',
@@ -150,6 +156,7 @@ describe('useThemeTransition', () => {
 
   it('should not run transition if phase is not idle', () => {
     const setTheme = vi.fn();
+
     const { result } = renderHook(() =>
       useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme }),
     );
@@ -170,6 +177,7 @@ describe('useThemeTransition', () => {
 
   it('should return immediately if next effective theme equals current effective theme', () => {
     const setTheme = vi.fn();
+
     const { result } = renderHook(() =>
       useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme }),
     );
@@ -190,6 +198,7 @@ describe('useThemeTransition', () => {
     const mockFinished = Promise.resolve();
     (document as any).startViewTransition = vi.fn((cb: any) => {
       transitionCallback = cb;
+
       return { finished: mockFinished };
     });
 
@@ -223,6 +232,7 @@ describe('useThemeTransition', () => {
 
   it('should fallback to wipe, fade and idle timers without startViewTransition', () => {
     const setTheme = vi.fn();
+
     const { result } = renderHook(() =>
       useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme }),
     );

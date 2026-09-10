@@ -9,6 +9,7 @@ export function useAIRequestAccess() {
   const { openAuthDialog } = useAuthDialog();
 
   const authenticated = status === 'signed_in' && Boolean(userId);
+
   const accessError = !authenticated
     ? t('services.authRequired')
     : creditsStatus === 'ready' && (creditBalance ?? 0) <= 0
@@ -16,15 +17,18 @@ export function useAIRequestAccess() {
       : null;
   const getAccessError = useCallback(() => {
     if (!authenticated) openAuthDialog();
+
     return accessError;
   }, [accessError, authenticated, openAuthDialog]);
 
   const resolveRequestError = useCallback(
     (error: unknown, fallbackMessage: string) => {
       const message = error instanceof Error ? error.message || fallbackMessage : fallbackMessage;
+
       if (message === t('services.authRequired')) {
         openAuthDialog();
       }
+
       return message;
     },
     [openAuthDialog, t],

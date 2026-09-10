@@ -28,6 +28,7 @@ const normalizeResult = (
 ): AIIndexAdvisorResult => {
   const result = decodeAIIndexAdvisorProviderResult(payload);
   const fieldNames = new Set(fields.map((field) => field.fieldName));
+
   return {
     ...result,
     recommendations: result.recommendations.map((recommendation) => {
@@ -37,6 +38,7 @@ const normalizeResult = (
       )
         return recommendation;
       const { index: _index, ...rest } = recommendation;
+
       return rest;
     }),
   };
@@ -73,6 +75,7 @@ export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
             temperature: 0.2,
           });
           const result = normalizeResult(data, session.request.fields);
+
           return c.json(
             withMeta(c, { summary: result.summary, recommendations: result.recommendations }),
           );

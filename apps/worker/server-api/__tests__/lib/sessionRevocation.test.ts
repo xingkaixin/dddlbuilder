@@ -30,6 +30,7 @@ describe('kickWorkspaceSockets', () => {
 
   it('retries transient failures before reporting success', async () => {
     vi.useFakeTimers();
+
     const fetch = vi
       .fn()
       .mockRejectedValueOnce(new Error('connection reset'))
@@ -59,8 +60,10 @@ describe('kickWorkspaceSockets', () => {
   it('waits for every workspace and rejects after retries are exhausted', async () => {
     vi.useFakeTimers();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
     const fetch = vi.fn(async (workspaceId: string) => {
       if (workspaceId === 'workspace-1') return new Response(null, { status: 503 });
+
       return new Response(null, { status: 204 });
     });
     const result = kickWorkspaceSockets(createEnv(['workspace-1', 'workspace-2'], fetch), {

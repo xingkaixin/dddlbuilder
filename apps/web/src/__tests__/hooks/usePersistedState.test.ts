@@ -120,6 +120,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     name: null,
     emailVerified: false,
   }));
+
   return { useAuthIdentity };
 });
 
@@ -159,15 +160,18 @@ const signedInIdentity: AuthIdentityState = {
 const createDeferred = <T>() => {
   let resolve!: (value: T | PromiseLike<T>) => void;
   let reject!: (reason?: unknown) => void;
+
   const promise = new Promise<T>((res, rej) => {
     resolve = res;
     reject = rej;
   });
+
   return { promise, resolve, reject };
 };
 
 const useTestPersistedState = () => {
   const { status, document, drafts, savedTableDrafts } = usePersistedState();
+
   return { ...status, ...document, ...drafts, ...savedTableDrafts };
 };
 
@@ -210,6 +214,7 @@ describe('usePersistedState', () => {
       async (documentKind) => {
         const doc = new Y.Doc();
         const base = createState('before_clear');
+
         const source: WorkspaceSavePayload['source'] =
           documentKind === 'saved_table'
             ? {
@@ -220,6 +225,7 @@ describe('usePersistedState', () => {
                 baseSignature: buildSchemaStateSignature(base),
               }
             : { kind: 'draft', draftId: documentKind };
+
         if (source.kind === 'saved_table') {
           upsertSavedTableInYDoc(doc, {
             tableId: source.tableId,
@@ -242,11 +248,13 @@ describe('usePersistedState', () => {
             updatedAt: 1,
           });
         }
+
         mockSignedInWorkspaceYDoc(doc);
         await writeWorkspaceSession(
           { activeSource: source, updatedAt: 1 },
           { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
         );
+
         const tabId = useTabStore.getState().addTab({
           title: base.tableName,
           source,
@@ -263,17 +271,21 @@ describe('usePersistedState', () => {
               unrelatedDraft: getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID),
             };
           }
+
           const draft = getDraftRecordFromYDoc(doc, source.draftId);
+
           return { folderId: draft?.folderId, createdAt: draft?.createdAt };
         };
         const preservedRecords = getPreservedRecords();
         const { wrapper } = createQueryClientWrapper();
         const getCurrentState = () => toPersistedState(useEditorStore.getState());
+
         const { result, unmount } = renderHook(
           () => {
             const persistence = useTestPersistedState();
             const editor = useEditorStore();
             const currentState = useMemo(() => toPersistedState(editor), [editor]);
+
             const tabs = useTabLifecycle({
               enabled: persistence.hydrated && !persistence.isShareView,
               activeTableName: editor.tableName,
@@ -293,11 +305,13 @@ describe('usePersistedState', () => {
               getCurrentState,
               applyPersistedState: applySavedState,
             });
+
             const clear = useClearAllActions({
               setIsClearDialogOpen: vi.fn(),
               clearState: persistence.clearState,
               resetDocument: editor.resetDocument,
             });
+
             return { persistence, tabs, clear };
           },
           { wrapper },
@@ -353,6 +367,7 @@ describe('usePersistedState', () => {
       mockSignedInWorkspaceYDoc(doc);
       const { wrapper } = createQueryClientWrapper();
       const getCurrentState = () => toPersistedState(useEditorStore.getState());
+
       const hook = renderHook(
         () => {
           const persistence = useTestPersistedState();
@@ -369,11 +384,13 @@ describe('usePersistedState', () => {
             getCurrentState,
             applyPersistedState: editor.replaceDocument,
           });
+
           return persistence;
         },
         { wrapper },
       );
       await waitFor(() => expect(hook.result.current.hydrated).toBe(true));
+
       return hook;
     };
 
@@ -390,11 +407,13 @@ describe('usePersistedState', () => {
       const next = createState('neighbor');
       upsertDraftInYDoc(doc, 'default', { state: base, createdAt: 1, updatedAt: 1 });
       const tabs = useTabStore.getState();
+
       const removedTabId = tabs.addTab({
         title: 'removed',
         source: { kind: 'draft', draftId: 'default' },
         stateSnapshot: base,
       });
+
       if (neighbor === 'draft') {
         upsertDraftInYDoc(doc, 'neighbor', { state: next, createdAt: 2, updatedAt: 2 });
         tabs.addTab({
@@ -425,6 +444,7 @@ describe('usePersistedState', () => {
           isLoading: neighbor === 'loading',
         });
       }
+
       tabs.activateTab(removedTabId);
       Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
       const { result, unmount } = await renderSyncedWorkspace(doc);
@@ -456,9 +476,11 @@ describe('usePersistedState', () => {
         }),
       );
       expect(result.current.getDraftState('default')).toBeNull();
+
       if (operation === 'trash' && neighbor === 'none') {
         await act(async () => result.current.restoreDraftById('default'));
       }
+
       expect(result.current.getDraftState('default')?.tableName).toBe(
         operation === 'trash' && neighbor === 'none' ? 'removed' : undefined,
       );
@@ -475,6 +497,7 @@ describe('usePersistedState', () => {
       upsertDraftInYDoc(doc, 'background', { state: createState('background'), updatedAt: 1 });
       Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
       const tabs = useTabStore.getState();
+
       const activeId = tabs.addTab({
         title: 'active',
         source: { kind: 'draft', draftId: 'default' },
@@ -519,6 +542,7 @@ describe('usePersistedState', () => {
 
   it('blocks writes after hydration fails and reloads existing data on retry', async () => {
     await writeDraft('default', { state: createState('kept'), updatedAt: 1 });
+
     const read = vi
       .spyOn(workspaceStateDb, 'readWorkspaceBootstrap')
       .mockRejectedValueOnce(new Error('blocked database'));
@@ -587,12 +611,14 @@ describe('usePersistedState', () => {
     const { wrapper } = createQueryClientWrapper();
     const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(result.current.hydrated).toBe(true));
+
     const loaded = result.current.resolveWorkspaceSnapshot({
       kind: 'saved_table',
       ...target,
       tableName: 'Users',
       baseSignature: '',
     });
+
     if (!loaded || loaded.source.kind !== 'saved_table')
       throw new Error('Saved table snapshot missing');
     act(() => result.current.selectWorkspaceSnapshot(loaded.source, loaded.state));
@@ -644,6 +670,7 @@ describe('usePersistedState', () => {
     const { wrapper } = createQueryClientWrapper();
     const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(result.current.hydrated).toBe(true));
+
     const source = {
       kind: 'saved_table' as const,
       ...target,
@@ -651,6 +678,7 @@ describe('usePersistedState', () => {
       baseSignature: '',
     };
     const loaded = result.current.resolveWorkspaceSnapshot(source);
+
     if (!loaded) throw new Error('Saved table snapshot missing');
     act(() => result.current.selectWorkspaceSnapshot(loaded.source, loaded.state));
     act(() =>
@@ -670,6 +698,7 @@ describe('usePersistedState', () => {
     });
     act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote)));
     const reopened = result.current.resolveWorkspaceSnapshot(result.current.activeSource);
+
     if (!reopened) throw new Error('Saved table snapshot missing');
     expect(reopened.state).toMatchObject({
       tableComment: 'local draft',
@@ -684,6 +713,7 @@ describe('usePersistedState', () => {
     const reloaded = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(reloaded.result.current.hydrated).toBe(true));
     const reloadedState = reloaded.result.current.persistedState;
+
     if (!reloadedState) throw new Error('Reloaded state missing');
     expect(buildPersistedStateSignature(reloadedState)).toBe(
       buildPersistedStateSignature(reopened.state),
@@ -746,6 +776,7 @@ describe('usePersistedState', () => {
     const doc = new Y.Doc();
     const scope = { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' } as const;
     const targets = ['first', 'second'].map((tableId) => ({ tableId, normalizedName: 'shared' }));
+
     for (const target of targets) {
       upsertSavedTableInYDoc(doc, {
         ...target,
@@ -761,6 +792,7 @@ describe('usePersistedState', () => {
         updatedAt: 2,
       });
     }
+
     upsertDraftInYDoc(doc, 'default', { state: createState('fallback'), updatedAt: 1 });
     await writeWorkspaceSession(
       { activeSource: { kind: 'saved_table', normalizedName: 'shared' }, updatedAt: 1 },
@@ -965,6 +997,7 @@ describe('usePersistedState', () => {
     useEditorStore.getState().replaceDocument(base);
     const getCurrentState = () => toPersistedState(useEditorStore.getState());
     const { wrapper } = createQueryClientWrapper();
+
     const { result, unmount } = renderHook(
       () => {
         const persistence = useTestPersistedState();
@@ -980,6 +1013,7 @@ describe('usePersistedState', () => {
           getCurrentState,
           applyPersistedState: editor.replaceDocument,
         });
+
         return persistence;
       },
       { wrapper },
@@ -1026,6 +1060,7 @@ describe('usePersistedState', () => {
     useEditorStore.getState().replaceDocument(base);
     const getCurrentState = () => toPersistedState(useEditorStore.getState());
     const { wrapper } = createQueryClientWrapper();
+
     const { result, unmount } = renderHook(
       () => {
         const persistence = useTestPersistedState();
@@ -1041,6 +1076,7 @@ describe('usePersistedState', () => {
           getCurrentState,
           applyPersistedState: editor.replaceDocument,
         });
+
         return persistence;
       },
       { wrapper },
@@ -1102,6 +1138,7 @@ describe('usePersistedState', () => {
     vi.spyOn(workspaceStateDb, 'readWorkspaceBootstrap').mockReturnValue(bootstrap.promise);
     const doc = new Y.Doc();
     mockSignedInWorkspaceYDoc(doc);
+
     const initialState: PersistedState = {
       ...createState('users'),
       rows: [
@@ -1161,6 +1198,7 @@ describe('usePersistedState', () => {
   it('保存已保存表状态时应记录来源并把未保存修改写入 saved draft', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => useTestPersistedState(), { wrapper });
+
     const savedSource: WorkspaceSavePayload['source'] = {
       kind: 'saved_table',
       normalizedName: 'users',
@@ -1194,6 +1232,7 @@ describe('usePersistedState', () => {
   it('应忽略过期 source 的保存，避免跨工作区污染', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => useTestPersistedState(), { wrapper });
+
     const savedSource: WorkspaceSavePayload['source'] = {
       kind: 'saved_table',
       normalizedName: 'users',
@@ -1373,6 +1412,7 @@ describe('usePersistedState', () => {
 
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => useTestPersistedState(), { wrapper });
+
     const savedSource: WorkspaceSavePayload['source'] = {
       kind: 'saved_table',
       normalizedName: 'users',

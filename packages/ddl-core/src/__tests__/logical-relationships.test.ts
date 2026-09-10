@@ -52,6 +52,7 @@ it('excludes logical relationships from physical DDL and every ORM output', () =
     fields: [field],
   };
   expect(buildDDL({ ...input, foreignKeys: [foreignKey] })).toBe(buildDDL(input));
+
   for (const target of ['prisma', 'typeorm', 'sqlalchemy', 'gorm', 'jpa'] as const) {
     expect(buildORM(target, { ...input, foreignKeys: [foreignKey] })).toBe(buildORM(target, input));
   }

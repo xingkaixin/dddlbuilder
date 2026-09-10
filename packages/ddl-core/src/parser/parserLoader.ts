@@ -6,12 +6,14 @@ let parserModuleLoader: () => Promise<ParserModule> = defaultParserModuleLoader;
 
 const normalizeParserConstructor = (module: ParserModule) => {
   const parserFromNamed = module.Parser;
+
   if (typeof parserFromNamed === 'function') {
     return parserFromNamed as ParserConstructor;
   }
 
   if (module.default && typeof module.default === 'object' && 'Parser' in module.default) {
     const parserFromDefaultObject = (module.default as { Parser?: unknown }).Parser;
+
     if (typeof parserFromDefaultObject === 'function') {
       return parserFromDefaultObject as ParserConstructor;
     }
@@ -30,6 +32,7 @@ export const loadParserConstructor = (): Promise<ParserConstructor> => {
       normalizeParserConstructor(module),
     );
   }
+
   return parserConstructorPromise;
 };
 

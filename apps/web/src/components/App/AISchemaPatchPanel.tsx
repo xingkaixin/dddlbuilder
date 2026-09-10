@@ -34,17 +34,21 @@ interface AISchemaPatchPanelProps {
 
 function describeIndex(index?: AISchemaChange & { kind: 'index' }) {
   const next = index?.newIndex || index?.oldIndex;
+
   if (!next) return '';
   const fields = next.fields.map((field) => field.name).join(', ');
   const type = next.kind === 'primary' ? 'PK' : next.kind !== 'index' ? 'UQ' : 'IDX';
+
   return `${type} · ${fields}`;
 }
 
 function countConfiguredPartitions(currentState: PersistedState) {
   const mysqlPartitions = currentState.mysqlPartitionConfig?.enabled ? 1 : 0;
+
   const hivePartitions = currentState.tableMiscConfig?.partitions?.enabled
     ? currentState.tableMiscConfig.partitions.columns.length
     : 0;
+
   return mysqlPartitions + hivePartitions;
 }
 
@@ -55,6 +59,7 @@ export function AISchemaPatchPanel({
   onFocusChange,
 }: AISchemaPatchPanelProps) {
   const { t } = useTranslation();
+
   const {
     input,
     isLoading,
@@ -79,6 +84,7 @@ export function AISchemaPatchPanel({
   const dbType = currentState.dbType;
   const displayFieldCount = result?.fields.length ?? partialResult?.fields?.length ?? 0;
   const configuredRows = currentState.rows.filter((row) => row.fieldName.trim());
+
   const contextItems = [
     {
       icon: Database,
@@ -130,6 +136,7 @@ export function AISchemaPatchPanel({
 
     if (change.kind === 'field') {
       const row = change.newRow || change.oldRow;
+
       return (
         <div className="grid gap-1 text-xs">
           <div className="font-mono font-medium">{row?.fieldName || change.fieldName}</div>
@@ -159,12 +166,14 @@ export function AISchemaPatchPanel({
     if (change.kind === 'table') {
       return t(`aiPatch.change.table.${change.type}`);
     }
+
     if (change.kind === 'field') {
       return t(`aiPatch.change.field.${change.type}`, {
         field: change.newFieldName || change.newField?.name || change.fieldName,
         oldField: change.oldFieldName || change.oldField?.name || change.fieldName,
       });
     }
+
     return t(`aiPatch.change.index.${change.type}`, {
       index: change.indexName,
     });

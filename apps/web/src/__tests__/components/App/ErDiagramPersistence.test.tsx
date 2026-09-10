@@ -25,16 +25,20 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     workspaceId: 'workspace',
     workspaceScope: capture.doc ? { kind: 'user', userId: 'user', workspaceId: 'workspace' } : null,
   });
+
   return { useAuthIdentity };
 });
+
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDocDocument: () => ({ doc: capture.doc, localSynced: true, synced: true }),
 }));
+
 vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactFlowModule>()),
   ReactFlow: ({ edges, onConnect }: ReactFlowModule.ReactFlowProps) => {
     capture.edges = edges ?? [];
     capture.connect = onConnect;
+
     return null;
   },
   useReactFlow: () => ({ fitView: capture.fitView }),
@@ -94,11 +98,15 @@ const read = async (target = source) => {
   const record = capture.doc
     ? getSavedTableFromYDoc(capture.doc, target)
     : await getSavedTable(target, scope);
+
   if (!record) throw new Error('Saved table not found');
+
   return record;
 };
+
 function App() {
   const saved = useSavedTables();
+
   return (
     <ErDiagramDialog
       open

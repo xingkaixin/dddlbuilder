@@ -14,7 +14,9 @@ export function applySavedTableStateUpdate(
   readTable: SavedTableReader,
 ): SavedTableRecord | null {
   const record = readTable(target);
+
   if (!record || record.trashedAt) return null;
+
   return {
     ...record,
     state: typeof update === 'function' ? update(record.state, readTable) : update,

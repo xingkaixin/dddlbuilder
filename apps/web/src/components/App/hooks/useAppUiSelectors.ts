@@ -3,9 +3,11 @@ import { useShallow } from 'zustand/react/shallow';
 
 export function useAppUiSelectors() {
   const actions = useAppUiStore.getState();
+
   const state = useAppUiStore(
     useShallow((current) => {
       const { activeDialog } = current;
+
       return {
         workspaceSidebarOpen: current.workspaceSidebarOpen,
         editorView: current.editorView,

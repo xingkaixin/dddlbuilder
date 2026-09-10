@@ -79,6 +79,7 @@ describe('field comment semantics', () => {
       const after = createState(dbType, nextField);
       const diff = diffPersistedState(before, after);
       expect(diff.fields[0].changes).toEqual(['comment']);
+
       const create = buildDDL({
         dbType,
         tableName: 'users',
@@ -100,6 +101,7 @@ describe('field comment semantics', () => {
     const withoutEnums = createState('mysql', { ...field, enumMeta: undefined });
     expect(diffPersistedState(before, withoutEnums).fields[0].changes).toEqual(['comment']);
     expect(diffPersistedState(withoutEnums, before).fields[0].changes).toEqual(['comment']);
+
     const recolored = createState('mysql', {
       ...field,
       enumMeta: field.enumMeta?.map((meta) => ({ ...meta, color: '#ffffff' })),

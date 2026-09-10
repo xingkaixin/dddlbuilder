@@ -30,6 +30,7 @@ const safeExecute =
     } catch (error) {
       console.warn('[webmcp] tool execution failed', error);
       const knownError = error instanceof WebMcpToolError;
+
       return {
         ok: false,
         error: {

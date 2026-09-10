@@ -25,6 +25,7 @@ export const recordWorkspaceD1Result = (
 ) => {
   if (!metrics) return;
   metrics.queries += 1;
+
   if (!result?.meta) return;
   metrics.rowsRead += readNumber(result.meta.rows_read);
   metrics.rowsWritten += readNumber(result.meta.rows_written);
@@ -37,6 +38,7 @@ export const allWorkspaceD1Result = async <T = Record<string, unknown>>(
 ) => {
   const result = await statement.all<T>();
   recordWorkspaceD1Result(metrics, result);
+
   return result;
 };
 
@@ -49,6 +51,7 @@ export const firstWorkspaceD1Result = async <T = Record<string, unknown>>(
   }
 
   const result = await allWorkspaceD1Result<T>(statement, metrics);
+
   return result.results?.[0] ?? null;
 };
 
@@ -58,6 +61,7 @@ export const runWorkspaceD1Result = async <T = Record<string, unknown>>(
 ) => {
   const result = await statement.run<T>();
   recordWorkspaceD1Result(metrics, result);
+
   return result;
 };
 
@@ -67,9 +71,11 @@ export const batchWorkspaceD1Results = async <T = Record<string, unknown>>(
   metrics?: WorkspaceD1Metrics,
 ) => {
   const results = await database.batch<T>(statements);
+
   for (const result of results) {
     recordWorkspaceD1Result(metrics, result);
   }
+
   return results;
 };
 

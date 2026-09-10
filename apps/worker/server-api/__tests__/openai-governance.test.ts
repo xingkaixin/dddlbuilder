@@ -17,12 +17,14 @@ const restoreEnv = () => {
       delete process.env[key];
       continue;
     }
+
     process.env[key] = value;
   }
 };
 
 const createCounterDatabase = (): D1Database => {
   const counters = new Map<string, { windowId: string; value: number }>();
+
   return {
     prepare: vi.fn().mockReturnValue({
       bind: (
@@ -38,10 +40,13 @@ const createCounterDatabase = (): D1Database => {
           const key = `${scope}:${subject}`;
           const current = counters.get(key);
           const nextValue = current?.windowId === windowId ? current.value + amount : amount;
+
           if (nextValue > limit) {
             return null;
           }
+
           counters.set(key, { windowId, value: nextValue });
+
           return { value: nextValue };
         },
       }),
@@ -65,6 +70,7 @@ const createAppWrapper = (
   waitUntilTasks: Promise<unknown>[];
 } => {
   const waitUntilTasks: Promise<unknown>[] = [];
+
   return {
     waitUntilTasks,
     request: async (path: string, options: RequestInit = {}) => {
@@ -72,6 +78,7 @@ const createAppWrapper = (
         ? path
         : `http://localhost${path.startsWith('/') ? path : `/${path}`}`;
       const request = new Request(url, options);
+
       return app.fetch(request, env, {
         waitUntil: (task: Promise<unknown>) => waitUntilTasks.push(task),
         passThroughOnException: () => {},
@@ -169,13 +176,16 @@ const mockAIBudgetModule = () => {
     .fn()
     .mockImplementation(async (_env, usageEventId, estimatedTokens, limitTokens) => {
       const usedTokens = [...reservations.values()].reduce((total, value) => total + value, 0);
+
       if (usedTokens + estimatedTokens > limitTokens) return null;
       reservations.set(usageEventId, estimatedTokens);
+
       return usedTokens + estimatedTokens;
     });
   settleAIDailyBudgetMock = vi.fn().mockImplementation(async (_env, usageEventId, actualTokens) => {
     if (!reservations.has(usageEventId)) return null;
     reservations.set(usageEventId, actualTokens ?? reservations.get(usageEventId) ?? 0);
+
     return [...reservations.values()].reduce((total, value) => total + value, 0);
   });
   vi.doMock('../lib/aiBudget.js', () => ({
@@ -196,6 +206,7 @@ const mockAIUsageModule = async (options?: {
     message: string,
   ) => {
     const { DomainError } = await import('../lib/http.js');
+
     return new DomainError(status, code, message);
   };
 
@@ -234,6 +245,7 @@ const mockAIUsageModule = async (options?: {
   recordAIUsageAttemptMock = vi.fn().mockImplementation(async (_env, reservation) => {
     const next = (attempts.get(reservation.usageEventId) ?? 0) + 1;
     attempts.set(reservation.usageEventId, next);
+
     return next;
   });
   prepareAIUsageSettlementMock = vi
@@ -267,11 +279,13 @@ const loadAppWithOpenAIMock = async (
   },
 ) => {
   restoreEnv();
+
   for (const [key, value] of Object.entries(envConfig)) {
     if (value == null) {
       delete process.env[key];
       continue;
     }
+
     process.env[key] = value;
   }
 
@@ -291,6 +305,7 @@ const loadAppWithOpenAIMock = async (
 
   const module = await import('../../api/index');
   const app = module.default as unknown as Hono<ApiEnv>;
+
   const env = createEnv(
     Object.fromEntries(Object.entries(envConfig).filter(([, v]) => v !== undefined)) as Partial<
       ApiEnv['Bindings']
@@ -308,11 +323,13 @@ const loadAuthenticatedApp = async (
   },
 ) => {
   restoreEnv();
+
   for (const [key, value] of Object.entries(envConfig)) {
     if (value == null) {
       delete process.env[key];
       continue;
     }
+
     if (typeof value !== 'string') continue;
     process.env[key] = value;
   }
@@ -656,6 +673,7 @@ describe('openai governance', { concurrent: false }, () => {
   it('Telegram 发送失败时不应影响主请求', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('fail', { status: 500 }));
@@ -727,6 +745,7 @@ describe('openai governance', { concurrent: false }, () => {
 
   it('匿名 AI 请求应返回 AUTH_REQUIRED', async () => {
     const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
+
     const app = await loadAuthenticatedApp(
       {
         USER_DB: database,
@@ -827,6 +846,7 @@ describe('openai governance', { concurrent: false }, () => {
         requestId: input.requestId,
         reservedTokens: input.estimatedTokens,
       }));
+
     const request = () =>
       app.request('https://ddlbuilder.test/api/review', {
         method: 'POST',
@@ -876,6 +896,7 @@ describe('openai governance', { concurrent: false }, () => {
 
   it('重试成功后应将未知调用计入提供商预算', async () => {
     const retryableError = Object.assign(new Error('temporary upstream failure'), { status: 503 });
+
     const createCompletionMock = vi
       .fn()
       .mockRejectedValueOnce(retryableError)
@@ -949,6 +970,7 @@ describe('openai governance', { concurrent: false }, () => {
   it('流式响应应请求真实 usage，且不透传 usage chunk', async () => {
     const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'));
+
     const createCompletionMock = vi.fn().mockResolvedValue(
       createMockStream([
         {
@@ -1068,6 +1090,7 @@ describe('openai governance', { concurrent: false }, () => {
       max_tokens: number;
     };
     const reservedInput = reserveAIUsageMock.mock.calls[0]?.[1] as { estimatedTokens: number };
+
     const utf8MessageBytes = new TextEncoder().encode(
       JSON.stringify(completionInput.messages),
     ).length;

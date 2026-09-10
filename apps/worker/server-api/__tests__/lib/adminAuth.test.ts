@@ -8,6 +8,7 @@ const createAdminSessionDb = () => {
     string,
     { expiresAt: number; createdAt: number; revokedAt: number | null }
   >();
+
   return {
     prepare(sql: string) {
       return {
@@ -16,6 +17,7 @@ const createAdminSessionDb = () => {
             async run() {
               if (sql.startsWith('DELETE FROM admin_sessions')) {
                 const [now] = args;
+
                 for (const [id, session] of sessions) {
                   if (session.expiresAt <= Number(now)) sessions.delete(id);
                 }
@@ -29,15 +31,18 @@ const createAdminSessionDb = () => {
               } else if (sql.startsWith('UPDATE admin_sessions')) {
                 const [revokedAt, id] = args;
                 const session = sessions.get(String(id));
+
                 if (session && session.revokedAt === null) {
                   session.revokedAt = Number(revokedAt);
                 }
               }
+
               return { success: true };
             },
             async first() {
               const [id, expiresAt, now] = args;
               const session = sessions.get(String(id));
+
               return session &&
                 session.expiresAt === Number(expiresAt) &&
                 session.expiresAt > Number(now) &&
@@ -74,22 +79,27 @@ type AdminSessionResult = { success: true; setCookie: string } | { success: fals
 
 const requireSetCookie = (result: AdminSessionResult): string => {
   expect(result).toMatchObject({ success: true });
+
   if (!result.success) throw new Error('Expected admin session creation to succeed');
+
   return result.setCookie;
 };
 
 const readToken = (setCookie: string): [payload: string, mac: string] => {
   const token = setCookie.match(/ddlbuilder_admin_session=([^;]+)/)?.[1] ?? '';
   const [uuid, expiresAt, mac] = token.split('.');
+
   return [`${uuid}.${expiresAt}`, mac ?? ''];
 };
 
 const hmacHex = async (key: BufferSource, data: string): Promise<string> => {
   const { subtle } = crypto;
+
   const cryptoKey = await subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, [
     'sign',
   ]);
   const signature = await subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(data));
+
   return Array.from(new Uint8Array(signature))
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
@@ -128,6 +138,7 @@ describe('adminAuth', () => {
   describe('createAdminSession', () => {
     it('returns success with set-cookie when password matches', async () => {
       const { createAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await createAdminSession(
         createEnv({ ADMIN_CONSOLE_PASSWORD: 'correct-password' }),
         'correct-password',
@@ -144,6 +155,7 @@ describe('adminAuth', () => {
 
     it('returns failure when password does not match', async () => {
       const { createAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await createAdminSession(
         createEnv({ ADMIN_CONSOLE_PASSWORD: 'correct-password' }),
         'wrong-password',
@@ -154,6 +166,7 @@ describe('adminAuth', () => {
 
     it('returns failure when password is longer but different', async () => {
       const { createAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await createAdminSession(
         createEnv({ ADMIN_CONSOLE_PASSWORD: 'short' }),
         'longer-password',
@@ -164,6 +177,7 @@ describe('adminAuth', () => {
 
     it('returns failure when ADMIN_CONSOLE_PASSWORD is not set', async () => {
       const { createAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await createAdminSession(
         createEnv({ ADMIN_CONSOLE_PASSWORD: undefined }),
         'any-password',
@@ -181,6 +195,7 @@ describe('adminAuth', () => {
 
     it('returns failure when ADMIN_SESSION_SECRET is not set', async () => {
       const { createAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await createAdminSession(
         createEnv({
           ADMIN_CONSOLE_PASSWORD: 'secret',
@@ -194,6 +209,7 @@ describe('adminAuth', () => {
 
     it('returns failure when ADMIN_SESSION_SECRET is shorter than 32 bytes', async () => {
       const { createAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await createAdminSession(
         createEnv({
           ADMIN_CONSOLE_PASSWORD: 'secret',
@@ -208,6 +224,7 @@ describe('adminAuth', () => {
     it('returns failure when ADMIN_SESSION_SECRET equals the admin password', async () => {
       const { createAdminSession } = await import('../../lib/adminAuth.js');
       const sharedSecret = '0123456789abcdef0123456789abcdef';
+
       const result = await createAdminSession(
         createEnv({
           ADMIN_CONSOLE_PASSWORD: sharedSecret,
@@ -221,6 +238,7 @@ describe('adminAuth', () => {
 
     it('includes uuid and hmac in the cookie token', async () => {
       const { createAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await createAdminSession(
         createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' }),
         'secret',
@@ -248,6 +266,7 @@ describe('adminAuth', () => {
 
     it('returns false when cookie header is null', async () => {
       const { resolveAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await resolveAdminSession(
         createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' }),
         null,
@@ -258,6 +277,7 @@ describe('adminAuth', () => {
 
     it('returns false when cookie header is undefined', async () => {
       const { resolveAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await resolveAdminSession(
         createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' }),
         undefined,
@@ -275,6 +295,7 @@ describe('adminAuth', () => {
 
     it('returns false when cookie name does not match', async () => {
       const { resolveAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await resolveAdminSession(
         createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' }),
         'other_cookie=value',
@@ -285,6 +306,7 @@ describe('adminAuth', () => {
 
     it('returns false when token format is invalid (no separator)', async () => {
       const { resolveAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await resolveAdminSession(
         createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' }),
         'ddlbuilder_admin_session=invalidtoken',
@@ -305,6 +327,7 @@ describe('adminAuth', () => {
 
     it('signs with ADMIN_SESSION_SECRET when configured', async () => {
       const { createAdminSession, resolveAdminSession } = await import('../../lib/adminAuth.js');
+
       const env = createEnv({
         ADMIN_CONSOLE_PASSWORD: 'secret',
         ADMIN_SESSION_SECRET: TEST_ADMIN_SESSION_SECRET,
@@ -334,6 +357,7 @@ describe('adminAuth', () => {
 
     it('returns false when ADMIN_CONSOLE_PASSWORD is not set', async () => {
       const { resolveAdminSession } = await import('../../lib/adminAuth.js');
+
       const result = await resolveAdminSession(
         createEnv({ ADMIN_CONSOLE_PASSWORD: undefined }),
         'ddlbuilder_admin_session=uuid.signature',

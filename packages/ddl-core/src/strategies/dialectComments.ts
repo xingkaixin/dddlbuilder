@@ -23,6 +23,7 @@ export function buildExtendedProperty({
   operation = 'add',
 }: ExtendedPropertyInput): string {
   const literal = (name: string) => `N'${escapeSingleQuotes(unquoteSqlIdentifier(name))}'`;
+
   const parameters = [
     "@name = N'MS_Description'",
     ...(operation === 'drop' ? [] : [`@value = N'${escapeSingleQuotes(value)}'`]),
@@ -31,9 +32,11 @@ export function buildExtendedProperty({
     ...(column ? [`@level2type = N'COLUMN', @level2name = ${literal(column)}`] : []),
   ];
   const statement = `EXEC sp_${operation}extendedproperty\n    ${parameters.join(',\n    ')};`;
+
   if (schema) return statement;
   // A separate batch scopes the variable so several comments can share one SQL script.
   const batch = `DECLARE @ddlbuilderSchema sysname = OBJECT_SCHEMA_NAME(OBJECT_ID(N'${escapeSingleQuotes(formatSqlTableName(table, 'sqlserver'))}'));\n${statement}`;
+
   return `EXEC sys.sp_executesql N'${escapeSingleQuotes(batch)}';`;
 }
 
@@ -50,6 +53,7 @@ export function buildColumnComment(
       return `COMMENT ON COLUMN ${formatSqlTableName(tableName, dbType)}.${formatSqlIdentifier(field.name, dbType)} IS '${escapeSingleQuotes(field.comment)}';`;
     case 'extended-property': {
       const { schema, table } = getSchemaAndTable(tableName);
+
       return buildExtendedProperty({
         value: field.comment,
         schema,

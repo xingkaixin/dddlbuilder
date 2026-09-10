@@ -59,11 +59,13 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     const { t } = useTranslation();
     const [input, setInput] = useState('');
     const [templateSelection, setTemplateSelection] = useState<Set<string> | null>(null);
+
     const selectedTemplateIds = useMemo(
       () => templateSelection ?? new Set(templates?.map((template) => template.id) ?? []),
       [templateSelection, templates],
     );
     const [showTemplateSelection, setShowTemplateSelection] = useState(false);
+
     const {
       isLoading,
       error,
@@ -83,17 +85,20 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
       (existingConfig?.rows && existingConfig.rows.length > 0);
 
     const isStreaming = isLoading && !result;
+
     const displayResult: PartialTableSchema | GeneratedTableSchema | null =
       result || (isLoading ? partialResult : null);
 
     const handleGenerate = useCallback(async () => {
       if (!input.trim()) return;
       const selectedTemplates = templates?.filter((t) => selectedTemplateIds.has(t.id)) || [];
+
       const succeeded = await generateTable(input, dbType, {
         templates: selectedTemplates.length > 0 ? selectedTemplates : undefined,
         existingConfig: hasExistingConfig ? existingConfig : undefined,
         continueConversation: conversationHistory.length > 0,
       });
+
       if (succeeded) setInput((current) => (current === input ? '' : current));
     }, [
       input,
@@ -111,11 +116,13 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
         setTemplateSelection((selection) => {
           const previous = selection ?? selectedTemplateIds;
           const next = new Set(previous);
+
           if (next.has(id)) {
             next.delete(id);
           } else {
             next.add(id);
           }
+
           return next;
         });
       },
@@ -124,6 +131,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
 
     const toggleAllTemplates = useCallback(() => {
       if (!templates) return;
+
       if (selectedTemplateIds.size === templates.length) {
         setTemplateSelection(new Set());
       } else {
@@ -148,6 +156,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
 
     const getTemplateFieldCount = useCallback((template: FieldTemplate | TableTemplate) => {
       if ('fields' in template) return template.fields.length;
+
       return template.blueprint.rows.length;
     }, []);
 
@@ -166,10 +175,12 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     }, []);
 
     const generatedFieldCount = displayResult?.fields?.length ?? 0;
+
     const fieldChanges = useMemo(() => {
       if (!previousResult || !result) {
         return [];
       }
+
       return diffPersistedState(
         buildPersistedStateFromAISchema(previousResult, { dbType, sqlFormatMode: 'compact' }),
         buildPersistedStateFromAISchema(result, { dbType, sqlFormatMode: 'compact' }),
@@ -184,17 +195,20 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
             type: change.newField.type,
           });
         }
+
         if (change.type === 'remove') {
           return t('aiGenerate.fieldChangeRemove', {
             field: change.oldField.name,
           });
         }
+
         if (change.type === 'rename') {
           return t('aiGenerate.fieldChangeRename', {
             oldField: change.oldFieldName,
             newField: change.newFieldName,
           });
         }
+
         return t('aiGenerate.fieldChangeModify', {
           field: change.fieldName,
           changes: change.changes.map((item) => t(`aiGenerate.fieldChangeType.${item}`)).join('、'),

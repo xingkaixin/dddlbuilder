@@ -34,9 +34,11 @@ export function useFreezeColumns(
   const getColumnLeftOffset = useCallback(
     (colIndex: number): number => {
       let left = 0;
+
       for (let i = 0; i < Math.min(colIndex, freezeColumnKeys.length); i++) {
         left += columnWidths[freezeColumnKeys[i]] || 100;
       }
+
       return left;
     },
     [columnWidths, freezeColumnKeys],
@@ -45,6 +47,7 @@ export function useFreezeColumns(
   const getStickyLeft = useCallback(
     (colIndex: number): number => {
       if (!freezeEnabled || colIndex >= effectiveFreezeColumns) return 0;
+
       return getColumnLeftOffset(colIndex);
     },
     [freezeEnabled, effectiveFreezeColumns, getColumnLeftOffset],

@@ -7,8 +7,10 @@ import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 describe('auth schema migration parity', () => {
   it.each(Object.values(betterAuthSchema))('matches the migrated indexes for %#', (table) => {
     const { sqlite } = createSqliteD1Database();
+
     try {
       const config = getTableConfig(table);
+
       const expected = sqlite
         .prepare(`PRAGMA index_list("${config.name}")`)
         .all()
@@ -33,6 +35,7 @@ describe('better-auth session revocation integration', () => {
     const { revokeUserSessions, readSessionAccess } = await import('../../lib/auth.js');
     const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
     const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+
     const env = {
       USER_DB: database,
       BETTER_AUTH_SECRET: 'a-long-enough-secret-for-auth-tests',
@@ -43,6 +46,7 @@ describe('better-auth session revocation integration', () => {
       SIGNUP_BONUS_CREDITS: '1000',
       WORKSPACE_YDOC: { idFromName: (id: string) => id, get: () => ({ fetch }) },
     } as unknown as ApiEnv['Bindings'];
+
     try {
       sqlite.exec(
         "INSERT INTO user (id,name,email,created_at,updated_at) VALUES ('u','User','u@example.com',1,1); INSERT INTO workspaces (id,user_id,name,created_at,updated_at) VALUES ('w','u','Workspace',1,1)",
@@ -75,6 +79,7 @@ describe('better-auth session revocation integration', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { revokeUserSessions } = await import('../../lib/auth.js');
     const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
+
     const fetch = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
@@ -91,6 +96,7 @@ describe('better-auth session revocation integration', () => {
       SIGNUP_BONUS_CREDITS: '1000',
       WORKSPACE_YDOC: { idFromName: (id: string) => id, get: () => ({ fetch }) },
     } as unknown as ApiEnv['Bindings'];
+
     try {
       sqlite.exec(
         "INSERT INTO user (id,name,email,created_at,updated_at) VALUES ('u-retry','User','retry@example.com',1,1); INSERT INTO workspaces (id,user_id,name,created_at,updated_at) VALUES ('w-retry','u-retry','Workspace',1,1); INSERT INTO session (id,token,user_id,expires_at,created_at,updated_at) VALUES ('s-retry','token-retry','u-retry',9999999999999,1,1)",

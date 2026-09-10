@@ -10,6 +10,7 @@ const REQUEST_ID_CONTEXT_KEY = 'requestId';
 
 export const getRequestId = (c: Context<ApiEnv>): string | undefined => {
   const value = c.get(REQUEST_ID_CONTEXT_KEY) as unknown;
+
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 };
 
@@ -18,7 +19,9 @@ export const withMeta = <T extends object>(
   payload: T,
 ): T & { meta?: ApiMeta } => {
   const requestId = getRequestId(c);
+
   if (!requestId) return payload;
+
   return {
     ...payload,
     meta: {
@@ -35,11 +38,13 @@ export const errorResponse = (
 ) => {
   if (code) getRequestLogger(c)?.set({ outcome: { errorCode: code } });
   const requestId = getRequestId(c);
+
   const payload: ApiErrorPayload = {
     error,
     ...(code ? { code } : {}),
     ...(requestId ? { requestId } : {}),
   };
+
   return c.json(payload, status);
 };
 
@@ -58,6 +63,7 @@ const readBodyWithLimit = async (
   maxBytes: number,
 ): Promise<BodyReadResult> => {
   const contentLength = Number(request.headers.get('content-length'));
+
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     return { ok: false, reason: 'too_large' };
   }
@@ -67,15 +73,20 @@ const readBodyWithLimit = async (
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
+
   try {
     while (true) {
       const { done, value } = await reader.read();
+
       if (done) break;
       totalBytes += value.byteLength;
+
       if (totalBytes > maxBytes) {
         await reader.cancel().catch(() => undefined);
+
         return { ok: false, reason: 'too_large' };
       }
+
       chunks.push(value);
     }
   } catch {
@@ -84,10 +95,12 @@ const readBodyWithLimit = async (
 
   const bytes = new Uint8Array(totalBytes);
   let offset = 0;
+
   for (const chunk of chunks) {
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+
   return { ok: true, bytes };
 };
 
@@ -99,6 +112,7 @@ export const validateRequestBodyWithLimit = async (
   maxBytes: number,
 ): Promise<BodyValidationResult> => {
   const result = await readBodyWithLimit(c.req.raw.clone(), maxBytes);
+
   if (!result.ok) {
     return {
       ok: false,
@@ -108,6 +122,7 @@ export const validateRequestBodyWithLimit = async (
           : errorResponse(c, 400, 'Invalid request body'),
     };
   }
+
   return { ok: true };
 };
 
@@ -132,6 +147,7 @@ export const parseJsonBodyWithLimit = async <T>(
   maxBytes: number,
 ): Promise<JsonBodyResult<T>> => {
   const result = await readBodyWithLimit(c.req.raw, maxBytes);
+
   if (!result.ok) {
     return {
       ok: false,
@@ -151,6 +167,7 @@ export const parseJsonBodyWithLimit = async <T>(
 
   try {
     const raw = new TextDecoder().decode(result.bytes);
+
     return { ok: true, data: JSON.parse(raw) as T };
   } catch {
     return {

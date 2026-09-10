@@ -37,6 +37,7 @@ const createPersistedState = (overrides: Partial<PersistedState> = {}): Persiste
 
 const createRow = (overrides: Partial<FieldRow> = {}): FieldRow => {
   const fieldName = overrides.fieldName ?? 'id';
+
   return {
     id: `field-${fieldName}`,
     fieldName,
@@ -57,6 +58,7 @@ describe('diffPersistedState', () => {
       enumMeta: [{ value: 'active', i18n: { 'en-US': 'Active' } }],
     });
     const before = createPersistedState({ rows: [row] });
+
     const after = createPersistedState({
       rows: [{ ...row, enumMeta: [{ value: 'active', i18n: { 'en-US': 'Enabled' } }] }],
     });
@@ -151,6 +153,7 @@ describe('diffPersistedState', () => {
 
   it('detects added field', () => {
     const oldState = createPersistedState({ rows: [createRow()] });
+
     const newState = createPersistedState({
       rows: [createRow(), createRow({ fieldName: 'age', fieldType: 'int' })],
     });
@@ -322,6 +325,7 @@ describe('diffPersistedState', () => {
       kind: 'index',
     };
     const oldState = createPersistedState({ indexes: [index] });
+
     const newState = createPersistedState({
       indexes: [{ ...index, name: 'idx_accounts_email' }],
     });
@@ -336,6 +340,7 @@ describe('diffPersistedState', () => {
 
   it('detects added index', () => {
     const oldState = createPersistedState({ indexes: [] });
+
     const newState = createPersistedState({
       indexes: [
         {
@@ -384,6 +389,7 @@ describe('diffPersistedState', () => {
 
   it('detects added foreign key', () => {
     const oldState = createPersistedState({ foreignKeys: [] });
+
     const newState = createPersistedState({
       foreignKeys: [
         {

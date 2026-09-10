@@ -132,12 +132,14 @@ describe('structuredImportParser', () => {
     const schemas = Object.fromEntries(
       Array.from({ length: 6 }, (_, tableIndex) => {
         const fieldCount = tableIndex === 5 ? 1 : STRUCTURED_IMPORT_LIMITS.maxFieldsPerTable;
+
         const properties = Object.fromEntries(
           Array.from({ length: fieldCount }, (_, fieldIndex) => [
             `field_${fieldIndex}`,
             { type: 'integer' },
           ]),
         );
+
         return [`Table_${tableIndex}`, { type: 'object', properties }];
       }),
     );
@@ -177,6 +179,7 @@ describe('structuredImportParser', () => {
 
   it('rejects excessively nested JSON Schema compositions', () => {
     let property: Record<string, unknown> = { type: 'integer' };
+
     for (let depth = 0; depth <= 32; depth += 1) property = { allOf: [property] };
 
     expect(() =>
@@ -191,6 +194,7 @@ describe('structuredImportParser', () => {
   it('parses Excel sheets into table collection', async () => {
     const xlsx = await import('xlsx');
     const workbook = xlsx.utils.book_new();
+
     const sheet = xlsx.utils.aoa_to_sheet([
       ['fieldName', 'fieldType', 'fieldComment'],
       ['id', 'bigint', 'User ID'],
@@ -245,6 +249,7 @@ describe('structuredImportParser', () => {
   it('applies the same field limit to legacy XLS workbooks', async () => {
     const xlsx = await import('xlsx');
     const workbook = xlsx.utils.book_new();
+
     const sheet = xlsx.utils.aoa_to_sheet([
       ['fieldName', 'fieldType'],
       ...Array.from({ length: EXCEL_WORKBOOK_LIMITS.maxFieldsPerSheet + 1 }, (_, index) => [
@@ -263,6 +268,7 @@ describe('structuredImportParser', () => {
   it('accepts exactly 1,000 Excel fields', async () => {
     const xlsx = await import('xlsx');
     const workbook = xlsx.utils.book_new();
+
     const sheet = xlsx.utils.aoa_to_sheet([
       ['fieldName', 'fieldType', 'fieldComment'],
       ...Array.from({ length: EXCEL_WORKBOOK_LIMITS.maxFieldsPerSheet }, (_, index) => [
@@ -282,6 +288,7 @@ describe('structuredImportParser', () => {
   it('rejects Excel workbooks with more than 50 sheets', async () => {
     const xlsx = await import('xlsx');
     const workbook = xlsx.utils.book_new();
+
     for (let index = 0; index <= EXCEL_WORKBOOK_LIMITS.maxSheets; index += 1) {
       xlsx.utils.book_append_sheet(
         workbook,
@@ -289,6 +296,7 @@ describe('structuredImportParser', () => {
         `sheet_${index}`,
       );
     }
+
     const data = xlsx.write(workbook, { type: 'array', bookType: 'xlsx' });
 
     await expect(parseExcelImport(new File([data], 'many-sheets.xlsx'))).rejects.toThrow(
@@ -313,6 +321,7 @@ describe('structuredImportParser', () => {
   it('rejects Excel workbooks with more than 5,000 total fields', async () => {
     const xlsx = await import('xlsx');
     const workbook = xlsx.utils.book_new();
+
     for (let index = 0; index < 6; index += 1) {
       const sheet = xlsx.utils.aoa_to_sheet([['fieldName', 'fieldType', 'fieldComment']]);
       const lastRow = index === 5 ? 2 : 1001;
@@ -320,6 +329,7 @@ describe('structuredImportParser', () => {
       sheet['!ref'] = `A1:C${lastRow}`;
       xlsx.utils.book_append_sheet(workbook, sheet, `sheet_${index}`);
     }
+
     const data = xlsx.write(workbook, { type: 'array', bookType: 'xlsx' });
 
     await expect(parseExcelImport(new File([data], 'many-fields.xlsx'))).rejects.toThrow(
@@ -330,6 +340,7 @@ describe('structuredImportParser', () => {
   it('applies the 200,000 character limit to Excel cell content', async () => {
     const xlsx = await import('xlsx');
     const workbook = xlsx.utils.book_new();
+
     const sheet = xlsx.utils.aoa_to_sheet([
       ['fieldName', 'fieldType', 'fieldComment'],
       ...Array.from({ length: 7 }, (_, index) => [

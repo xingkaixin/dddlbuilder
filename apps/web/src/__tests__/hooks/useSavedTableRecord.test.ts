@@ -16,7 +16,9 @@ const workspace = vi.hoisted(() => ({
   localSynced: true,
 }));
 vi.mock('@/hooks/useWorkspaceScope', () => ({ useWorkspaceScope: () => workspace.scope }));
+
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDocDocument: () => workspace }));
+
 vi.mock('@/utils/savedTablesDb', async (importOriginal) => ({
   ...(await importOriginal<typeof SavedTablesDb>()),
   getSavedTable: vi.fn(),
@@ -49,6 +51,7 @@ describe('useSavedTableRecord', () => {
 
   it('caches by table identity and refreshes the baseline after local writes', async () => {
     const { wrapper, queryClient } = createQueryClientWrapper();
+
     const { result, rerender, unmount } = renderHook(() => useSavedTableRecord({ ...target }), {
       wrapper,
     });
@@ -95,6 +98,7 @@ describe('useSavedTableRecord', () => {
 
   it('does not keep the previous workspace record after switching scope', async () => {
     const { wrapper, queryClient } = createQueryClientWrapper();
+
     const { result, rerender, unmount } = renderHook(() => useSavedTableRecord(target), {
       wrapper,
     });

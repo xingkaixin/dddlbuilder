@@ -103,6 +103,7 @@ describe('tableTemplates', () => {
 
   it('applies blueprint while preserving current table identity', () => {
     const blueprint = createBlueprintFromState(state);
+
     const next = applyBlueprintToState(
       {
         ...state,
@@ -143,6 +144,7 @@ describe('tableTemplates', () => {
         fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
       };
       const next = applyBlueprintToState(current, createBlueprintFromState(state));
+
       const ddl = buildDDL({
         ...next,
         fields: next.rows.map((row) => ({

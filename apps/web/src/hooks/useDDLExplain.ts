@@ -34,12 +34,15 @@ export function useDDLExplain() {
           explanation: null,
           error: i18n.t('services.explainInvalidSql'),
         });
+
         return;
       }
 
       const accessError = requestAccess.getAccessError();
+
       if (accessError) {
         setState({ phase: 'error', explanation: null, error: accessError });
+
         return;
       }
 

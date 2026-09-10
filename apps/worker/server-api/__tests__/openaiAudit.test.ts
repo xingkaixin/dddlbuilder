@@ -80,6 +80,7 @@ describe('openai audit', () => {
     const { audit, logger, set } = createRequestLogger();
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'));
     const waitUntil = vi.fn();
+
     const payload = createPayload({
       status: 429,
       userId: null,

@@ -44,6 +44,7 @@ describe('retryOpenAI', () => {
 
   it('retries a transient HTTP failure and reports the total attempts', async () => {
     vi.useFakeTimers();
+
     const operation = vi
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(createStatusError(503))
@@ -92,6 +93,7 @@ describe('retryOpenAI', () => {
     const controller = new AbortController();
     const operation = vi.fn().mockRejectedValue(createStatusError(503));
     const onRetry = vi.fn();
+
     const result = runRetry(
       operation,
       { scope: 'deadline', maxAttempts: 3, onRetry, signal: controller.signal },
@@ -112,6 +114,7 @@ describe('retryOpenAI', () => {
     const firstError = createStatusError(503);
     const secondError = createStatusError(503);
     const finalError = createStatusError(503);
+
     const operation = vi
       .fn<() => Promise<never>>()
       .mockRejectedValueOnce(firstError)
@@ -154,6 +157,7 @@ describe('retryOpenAI', () => {
   it('retries known network failures without an HTTP status', async () => {
     vi.useFakeTimers();
     const networkError = Object.assign(new Error('connection reset'), { code: 'ECONNRESET' });
+
     const operation = vi
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(networkError)
@@ -182,6 +186,7 @@ describe('retryOpenAI', () => {
     ['APIConnectionTimeoutError', new APIConnectionTimeoutError({ message: 'connect timed out' })],
   ])('retries OpenAI SDK %s without relying on instanceof', async (_label, connectionError) => {
     vi.useFakeTimers();
+
     const operation = vi
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(connectionError)
@@ -200,6 +205,7 @@ describe('retryOpenAI', () => {
 
   it('retries a known network code nested in an error cause', async () => {
     vi.useFakeTimers();
+
     const nestedError = new Error('fetch failed', {
       cause: Object.assign(new Error('socket reset'), { code: 'ECONNRESET' }),
     });
@@ -231,6 +237,7 @@ describe('retryOpenAI', () => {
   it('honors Retry-After while capping it to the configured maximum delay', async () => {
     vi.useFakeTimers();
     const error = createStatusError(429, new Headers({ 'Retry-After': '5' }));
+
     const operation = vi
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(error)
@@ -265,6 +272,7 @@ describe('retryOpenAI', () => {
     vi.setSystemTime(new Date('2026-08-29T12:00:00.000Z'));
     const retryAt = new Date('2026-08-29T12:00:05.000Z').toUTCString();
     const error = createStatusError(503, new Headers({ 'Retry-After': retryAt }));
+
     const operation = vi
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(error)
@@ -292,6 +300,7 @@ describe('retryOpenAI', () => {
   it('retries a transient error thrown synchronously by the operation', async () => {
     vi.useFakeTimers();
     const error = createStatusError(503);
+
     const operation = vi
       .fn<() => Promise<string>>()
       .mockImplementationOnce(() => {

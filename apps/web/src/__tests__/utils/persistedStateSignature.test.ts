@@ -26,6 +26,7 @@ describe('persistedStateSignature', () => {
   });
   it('treats UI defaults as unchanged table state', () => {
     const stored = createState();
+
     const current = createState({
       objectType: 'table',
       viewDefinition: '',
@@ -56,6 +57,7 @@ describe('persistedStateSignature', () => {
 
   it('ignores editor session changes when comparing schema documents', () => {
     const stored = createState();
+
     const current = createState({
       sqlFormatMode: 'aligned',
       addCount: 50,
@@ -71,6 +73,7 @@ describe('persistedStateSignature', () => {
 
   it('normalizes omitted editor defaults in full-state signatures', () => {
     const stored = createState();
+
     const current = createState({
       fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 3 },
     });

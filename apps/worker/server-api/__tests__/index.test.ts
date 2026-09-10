@@ -20,9 +20,11 @@ const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Binding
 const createRequest = (path: string, options: RequestInit & { origin?: string } = {}) => {
   const { origin, ...rest } = options;
   const headers = new Headers(rest.headers);
+
   if (origin) {
     headers.set('origin', origin);
   }
+
   return new Request(`http://localhost${path}`, {
     ...rest,
     headers,
@@ -40,6 +42,7 @@ describe('api security guards', () => {
 
   it('应在 localhost 下代理 /docs/* 到 VitePress 开发服务', async () => {
     const env = createEnv();
+
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('<!doctype html><title>docs</title>', {
         status: 200,
@@ -60,6 +63,7 @@ describe('api security guards', () => {
 
   it('应在非 localhost 下对 /docs/* 回落到静态资源', async () => {
     const assetsFetch = vi.fn().mockResolvedValue(new Response('prod docs', { status: 200 }));
+
     const env = createEnv({
       ASSETS: { fetch: assetsFetch as typeof fetch },
     });
@@ -98,6 +102,7 @@ describe('api security guards', () => {
 
   it('应对超大请求体返回 413', async () => {
     const env = createEnv();
+
     const response = await app.fetch(
       createRequest('/api/parse-sql', {
         method: 'POST',
@@ -125,6 +130,7 @@ describe('api security guards', () => {
 
   it('应对超长 SQL 返回 400', async () => {
     const env = createEnv();
+
     const response = await app.fetch(
       createRequest('/api/parse-sql', {
         method: 'POST',
@@ -149,6 +155,7 @@ describe('api security guards', () => {
 
   it('应拒绝非白名单 Origin 的 CORS', async () => {
     const env = createEnv();
+
     const response = await app.fetch(
       createRequest('/api/health', { origin: 'https://evil.example.com' }),
       env,
@@ -170,6 +177,7 @@ describe('api security guards', () => {
   describe('requestId generation and normalization', () => {
     it('should use provided valid x-request-id', async () => {
       const env = createEnv();
+
       const response = await app.fetch(
         createRequest('/api/health', {
           headers: {
@@ -183,6 +191,7 @@ describe('api security guards', () => {
 
     it('should generate new UUID if provided x-request-id is invalid', async () => {
       const env = createEnv();
+
       const response = await app.fetch(
         createRequest('/api/health', {
           headers: {
@@ -199,6 +208,7 @@ describe('api security guards', () => {
 
     it('should generate new UUID if x-request-id is entirely whitespace', async () => {
       const env = createEnv();
+
       const response = await app.fetch(
         createRequest('/api/health', {
           headers: {
@@ -215,10 +225,12 @@ describe('api security guards', () => {
   describe('structured request logging', () => {
     it('emits one canonical event with the response request id', async () => {
       const events: Array<Record<string, unknown>> = [];
+
       const spies = (['log', 'info', 'warn', 'error'] as const).map((method) =>
         vi.spyOn(console, method).mockImplementation((value: unknown) => {
           if (value && typeof value === 'object') {
             const event = value as Record<string, unknown>;
+
             if (event.service === 'ddlbuilder-worker') events.push(event);
           }
         }),
@@ -245,15 +257,18 @@ describe('api security guards', () => {
         });
       } finally {
         configureWorkerLogging(false);
+
         for (const spy of spies) spy.mockRestore();
       }
     });
 
     it('does not emit request events for health checks', async () => {
       const events: Array<Record<string, unknown>> = [];
+
       const infoSpy = vi.spyOn(console, 'info').mockImplementation((value: unknown) => {
         if (value && typeof value === 'object') {
           const event = value as Record<string, unknown>;
+
           if (event.service === 'ddlbuilder-worker') events.push(event);
         }
       });
@@ -272,9 +287,11 @@ describe('api security guards', () => {
 
     it('records unexpected failures without exposing their details', async () => {
       const events: Array<Record<string, unknown>> = [];
+
       const errorSpy = vi.spyOn(console, 'error').mockImplementation((value: unknown) => {
         if (value && typeof value === 'object') {
           const event = value as Record<string, unknown>;
+
           if (event.service === 'ddlbuilder-worker') events.push(event);
         }
       });

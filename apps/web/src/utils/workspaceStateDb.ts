@@ -56,6 +56,7 @@ type WorkspaceSessionEntity = {
 export type WorkspaceDraftRecord = Omit<WorkspaceDraftEntity, 'id'>;
 
 export type WorkspaceSessionRecord = Omit<WorkspaceSessionEntity, 'id' | 'activeState'>;
+
 type LegacyWorkspaceSessionRecord = Omit<WorkspaceSessionEntity, 'id'>;
 
 type WorkspaceStoreName =
@@ -72,9 +73,12 @@ const decodeScopedEntity = <T extends { id?: string; normalizedName?: string; sc
   scope: WorkspaceScope,
 ): T | null => {
   const rawKey = typeof entity.id === 'string' ? entity.id : entity.normalizedName;
+
   if (!rawKey) return null;
   const decoded = decodeWorkspaceScopedKey(rawKey, entity.scope, scope);
+
   if (!decoded) return null;
+
   return typeof entity.id === 'string'
     ? { ...entity, id: decoded.key, scope: decoded.scope }
     : { ...entity, normalizedName: decoded.key, scope: decoded.scope };
@@ -85,8 +89,10 @@ const decodeDrafts = (
   scope: WorkspaceScope,
 ): WorkspaceDraftEntity[] => {
   if (!Array.isArray(entities)) return [];
+
   return entities.flatMap((entity) => {
     const decoded = decodeScopedEntity(entity, scope);
+
     return decoded ? [decoded] : [];
   });
 };
@@ -97,11 +103,13 @@ const decodeSavedTableEntity = (
 ): SavedTableRecord | null => {
   const decoded = decodeScopedEntity(entity, scope);
   const state = decodePersistedState(decoded?.state);
+
   return decoded && state ? { ...decoded, state } : null;
 };
 
 const toSessionRecord = (entity: WorkspaceSessionEntity): LegacyWorkspaceSessionRecord => {
   const activeState = decodePersistedState(entity.activeState);
+
   return {
     activeSource: entity.activeSource,
     ...(activeState ? { activeState } : {}),
@@ -111,6 +119,7 @@ const toSessionRecord = (entity: WorkspaceSessionEntity): LegacyWorkspaceSession
 
 const toDraftRecord = (entity: WorkspaceDraftEntity): WorkspaceDraftRecord | null => {
   const state = decodePersistedState(entity.state);
+
   return state
     ? {
         state,
@@ -128,7 +137,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const parseStorageJson = <T>(key: string): T | null => {
   try {
     const raw = localStorage.getItem(key);
+
     if (!raw) return null;
+
     return JSON.parse(raw) as T;
   } catch {
     return null;
@@ -149,6 +160,7 @@ const runWithStore = async <T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> => {
   const db = await openDb();
+
   return runIndexedDbRequest(db, storeName, mode, runner);
 };
 
@@ -161,8 +173,10 @@ export const readDraft = async (
     'readonly',
     (store) => store.get(withScopeKey(scope, draftId)),
   );
+
   if (!entity) return null;
   const decoded = decodeScopedEntity(entity, scope);
+
   return decoded ? toDraftRecord(decoded) : null;
 };
 
@@ -198,6 +212,7 @@ export const listDrafts = async (
     .filter((entity) => entity.trashedAt == null)
     .flatMap((entity) => {
       const record = toDraftRecord(entity);
+
       return record ? [{ draftId: entity.id, record }] : [];
     });
 
@@ -208,6 +223,7 @@ export const listTrashedDrafts = async (
     .filter((entity) => entity.trashedAt != null)
     .flatMap((entity) => {
       const record = toDraftRecord(entity);
+
       return record ? [{ draftId: entity.id, record }] : [];
     })
     .sort((a, b) => (b.record.trashedAt ?? 0) - (a.record.trashedAt ?? 0));
@@ -220,12 +236,16 @@ export const listSavedDrafts = async (
     'readonly',
     (store) => store.getAll(),
   );
+
   if (!Array.isArray(records)) return {};
   const map: Record<string, SavedTableDraftRecord> = {};
+
   for (const record of records) {
     const decoded = decodeScopedEntity(record, scope);
+
     if (!decoded?.normalizedName) continue;
     const state = decodePersistedState(decoded.state);
+
     if (!state) continue;
     map[decoded.normalizedName] = {
       ...(decoded.tableId ? { tableId: decoded.tableId } : {}),
@@ -235,6 +255,7 @@ export const listSavedDrafts = async (
       updatedAt: decoded.updatedAt,
     };
   }
+
   return map;
 };
 
@@ -247,11 +268,15 @@ export const readSavedDraft = async (
     'readonly',
     (store) => store.get(withScopeKey(scope, normalizedName)),
   );
+
   if (!record) return null;
   const decoded = decodeScopedEntity(record, scope);
+
   if (!decoded) return null;
   const state = decodePersistedState(decoded.state);
+
   if (!state) return null;
+
   return {
     ...(decoded.tableId ? { tableId: decoded.tableId } : {}),
     state,
@@ -291,6 +316,7 @@ export const renameSavedDraftKey = async (
   scope: WorkspaceScope,
 ): Promise<void> => {
   const record = await readSavedDraft(fromNormalizedName, scope);
+
   if (!record) return;
 
   await upsertSavedDraft(
@@ -316,8 +342,10 @@ export const readWorkspaceSession = async (
     'readonly',
     (store) => store.get(withScopeKey(scope, WORKSPACE_SESSION_ROW_ID)),
   );
+
   if (!entity) return null;
   const decoded = decodeScopedEntity(entity, scope);
+
   return decoded ? toSessionRecord(decoded) : null;
 };
 
@@ -330,6 +358,7 @@ export const readWorkspaceBootstrap = async (
   savedTable: SavedTableRecord | null;
 }> => {
   const db = await openDb();
+
   const readStore = <T>(
     storeName: BootstrapReadableStoreName,
     runner: (store: IDBObjectStore) => IDBRequest<T>,
@@ -349,6 +378,7 @@ export const readWorkspaceBootstrap = async (
       .filter((entity) => entity.trashedAt == null)
       .flatMap((entity) => {
         const record = toDraftRecord(entity);
+
         return record ? [{ draftId: entity.id, record }] : [];
       });
 
@@ -395,9 +425,12 @@ export const clearWorkspaceSession = async (scope: WorkspaceScope): Promise<void
 
 const readLegacyGlobalDraftRecord = (): WorkspaceDraftRecord | null => {
   const parsed = parseStorageJson<unknown>(GLOBAL_DRAFT_STORAGE_KEY);
+
   if (isRecord(parsed) && parsed.state && typeof parsed.updatedAt === 'number') {
     const state = decodePersistedState(parsed.state);
+
     if (!state) return null;
+
     return {
       state,
       updatedAt: parsed.updatedAt,
@@ -405,6 +438,7 @@ const readLegacyGlobalDraftRecord = (): WorkspaceDraftRecord | null => {
   }
 
   const parsedState = decodePersistedState(parsed);
+
   if (parsedState) {
     return {
       state: parsedState,
@@ -414,7 +448,9 @@ const readLegacyGlobalDraftRecord = (): WorkspaceDraftRecord | null => {
 
   const legacy = parseStorageJson<unknown>(STORAGE_KEY);
   const legacyState = decodePersistedState(legacy);
+
   if (!legacyState) return null;
+
   return {
     state: legacyState,
     updatedAt: Date.now(),
@@ -423,14 +459,19 @@ const readLegacyGlobalDraftRecord = (): WorkspaceDraftRecord | null => {
 
 const readLegacySavedDraftMap = (): Record<string, SavedTableDraftRecord> => {
   const parsed = parseStorageJson<unknown>(SAVED_TABLE_DRAFTS_STORAGE_KEY);
+
   if (!isRecord(parsed)) return {};
 
   const next: Record<string, SavedTableDraftRecord> = {};
+
   for (const [normalizedName, value] of Object.entries(parsed)) {
     if (!isRecord(value)) continue;
+
     if (typeof value.tableName !== 'string') continue;
+
     if (typeof value.baseSignature !== 'string') continue;
     const state = decodePersistedState(value.state);
+
     if (!state) continue;
     const updatedAt = typeof value.updatedAt === 'number' ? value.updatedAt : Date.now();
     next[normalizedName] = {
@@ -440,11 +481,13 @@ const readLegacySavedDraftMap = (): Record<string, SavedTableDraftRecord> => {
       updatedAt,
     };
   }
+
   return next;
 };
 
 const readLegacyWorkspaceSession = (): LegacyWorkspaceSessionRecord | null => {
   const parsed = parseStorageJson<unknown>(WORKSPACE_SESSION_STORAGE_KEY);
+
   if (!isRecord(parsed) || !parsed.activeSource) return null;
   const activeState = decodePersistedState(parsed.activeState);
 
@@ -460,6 +503,7 @@ let migrationPromise: Promise<void> | null = null;
 export const migrateLegacyWorkspaceFromLocalStorage = async (): Promise<void> => {
   if (migrationPromise) {
     await migrationPromise;
+
     return;
   }
 
@@ -467,6 +511,7 @@ export const migrateLegacyWorkspaceFromLocalStorage = async (): Promise<void> =>
     const globalDraftRecord = readLegacyGlobalDraftRecord();
     const savedDraftMap = readLegacySavedDraftMap();
     const workspaceSession = readLegacyWorkspaceSession();
+
     const hasLegacyData =
       Boolean(globalDraftRecord) ||
       Object.keys(savedDraftMap).length > 0 ||

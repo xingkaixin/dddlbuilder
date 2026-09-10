@@ -27,6 +27,7 @@ const toMigrationEntityRecord = (
 ): MigrationEntityRecord => {
   const kind = entity.entityType;
   const sourcePayload = entity.payload as Record<string, unknown>;
+
   const payload: Record<string, unknown> = {
     ...sourcePayload,
     ...(kind !== 'folder'
@@ -37,6 +38,7 @@ const toMigrationEntityRecord = (
       : {}),
   };
   const payloadName = typeof payload.name === 'string' ? payload.name : entity.entityId;
+
   const payloadTableName =
     typeof payload.tableName === 'string' ? payload.tableName : entity.entityId;
   const displayName =
@@ -75,6 +77,7 @@ const buildCopyEntity = (
       const tableId = source.entity.entityId.startsWith('legacy:')
         ? `legacy:${normalizedName}`
         : `import:${source.entity.entityId}:${normalizedName}`;
+
       return {
         ...source.entity,
         entityId: tableId,
@@ -86,6 +89,7 @@ const buildCopyEntity = (
         },
       };
     }
+
     case 'folder':
       return {
         ...source.entity,
@@ -109,6 +113,7 @@ export const buildMigrationEntityRecords = (
     tableId: table.tableId ?? `legacy:${table.normalizedName}`,
   }));
   const tableIdsByName = new Map<string, string | null>();
+
   for (const table of savedTables) {
     const existing = tableIdsByName.get(table.normalizedName);
     tableIdsByName.set(
@@ -116,8 +121,10 @@ export const buildMigrationEntityRecords = (
       existing === undefined || existing === table.tableId ? table.tableId : null,
     );
   }
+
   const savedDrafts = snapshot.savedDrafts.map((draft) => {
     const tableId = draft.tableId ?? tableIdsByName.get(draft.normalizedName);
+
     if (tableId === null) {
       throw new DomainError(
         400,
@@ -125,6 +132,7 @@ export const buildMigrationEntityRecords = (
         'Cannot migrate an ambiguous saved draft without a table ID',
       );
     }
+
     return { ...draft, tableId: tableId ?? `legacy:${draft.normalizedName}` };
   });
   const records = workspaceSnapshotToEntities({
@@ -133,6 +141,7 @@ export const buildMigrationEntityRecords = (
     savedDrafts,
   }).map((entity) => toMigrationEntityRecord(userId, entity));
   orderFoldersByParent(records);
+
   return records;
 };
 
@@ -147,9 +156,12 @@ const replaceFolderReference = (
   const payload = record.entity.payload as Record<string, unknown>;
   const referenceName = record.kind === 'folder' ? 'parentId' : 'folderId';
   const sourceFolderId = payload[referenceName];
+
   if (typeof sourceFolderId !== 'string') return record;
   const targetFolderId = folderIds.get(sourceFolderId);
+
   if (!targetFolderId || targetFolderId === sourceFolderId) return record;
+
   return toMigrationEntityRecord(userId, {
     ...record.entity,
     payload: { ...payload, [referenceName]: targetFolderId },
@@ -162,6 +174,7 @@ const canReserveRecords = (
 ) =>
   records.every((record) => {
     const payload = reservedPayloads.get(record.id);
+
     return payload === undefined || payload === record.payloadJson;
   });
 
@@ -179,14 +192,18 @@ const copyRecordGroup = (
 ) => {
   const baseName =
     records.find((record) => record.kind === 'saved_table')?.displayName ?? records[0].displayName;
+
   for (let counter = 0; counter <= reservedPayloads.size; counter += 1) {
     const displayName = buildLocalCopyName(baseName, counter);
     const normalizedName = normalizeName(displayName);
+
     const candidates = records.map((record) =>
       toMigrationEntityRecord(userId, buildCopyEntity(record, displayName, normalizedName)),
     );
+
     if (canReserveRecords(candidates, reservedPayloads)) return candidates;
   }
+
   throw new Error('Unable to reserve a migration copy name');
 };
 
@@ -199,6 +216,7 @@ const orderFoldersByParent = (records: MigrationEntityRecord[]) => {
   for (const folder of folders) {
     const folderId = folder.entity.entityId;
     const parentId = (folder.entity.payload as Record<string, unknown>).parentId;
+
     if (typeof parentId !== 'string' || !foldersById.has(parentId)) continue;
     pendingParentCount.set(folderId, 1);
     childIdsByParent.set(parentId, [...(childIdsByParent.get(parentId) ?? []), folderId]);
@@ -208,13 +226,17 @@ const orderFoldersByParent = (records: MigrationEntityRecord[]) => {
     .map((folder) => folder.entity.entityId)
     .filter((folderId) => pendingParentCount.get(folderId) === 0);
   const ordered: MigrationEntityRecord[] = [];
+
   for (let index = 0; index < ready.length; index += 1) {
     const folderId = ready[index];
     const folder = foldersById.get(folderId);
+
     if (!folder) throw new Error(`Migration folder not found: ${folderId}`);
     ordered.push(folder);
+
     for (const childId of childIdsByParent.get(folderId) ?? []) ready.push(childId);
   }
+
   if (ordered.length !== folders.length) {
     throw new DomainError(
       400,
@@ -222,6 +244,7 @@ const orderFoldersByParent = (records: MigrationEntityRecord[]) => {
       'Migration folders contain a parent cycle',
     );
   }
+
   return ordered;
 };
 
@@ -236,6 +259,7 @@ const resolveMigrationRecords = (
 
   for (const source of orderFoldersByParent(sourceRecords)) {
     const referenced = replaceFolderReference(userId, source, folderIds);
+
     const records = canReserveRecords([referenced], reservedPayloads)
       ? [referenced]
       : copyRecordGroup(userId, [referenced], reservedPayloads);
@@ -246,12 +270,14 @@ const resolveMigrationRecords = (
   }
 
   const tableGroups = new Map<string, MigrationEntityRecord[]>();
+
   for (const record of sourceRecords) {
     if (record.kind !== 'saved_table' && record.kind !== 'saved_draft') continue;
     const group = tableGroups.get(record.entity.entityId) ?? [];
     group.push(replaceFolderReference(userId, record, folderIds));
     tableGroups.set(record.entity.entityId, group);
   }
+
   for (const group of tableGroups.values()) {
     const records = canReserveRecords(group, reservedPayloads)
       ? group
@@ -262,6 +288,7 @@ const resolveMigrationRecords = (
 
   for (const source of sourceRecords.filter((record) => record.kind === 'draft')) {
     const referenced = replaceFolderReference(userId, source, folderIds);
+
     const records = canReserveRecords([referenced], reservedPayloads)
       ? [referenced]
       : copyRecordGroup(userId, [referenced], reservedPayloads);
@@ -283,14 +310,17 @@ export const analyzeMigrationRecords = (
 
   for (const record of sourceRecords) {
     const existingPayload = existingPayloads.get(record.id);
+
     if (existingPayload === undefined) {
       createdCount += 1;
       continue;
     }
+
     if (existingPayload === record.payloadJson) {
       skippedCount += 1;
       continue;
     }
+
     const normalizedName = (record.entity.payload as Record<string, unknown>).normalizedName;
     conflicts.push({
       kind: record.kind,
@@ -319,7 +349,9 @@ export const buildMigrationWritePlan = (
       skippedCount += 1;
       continue;
     }
+
     entities.push(record.entity);
+
     if (sourceIds.has(record.id)) createdCount += 1;
     else copiedCount += 1;
   }

@@ -44,6 +44,7 @@ type DraftIndex = {
 };
 
 type PanelState = { kind: 'view'; id: string | null } | { kind: 'edit'; draft: DraftIndex };
+
 const EMPTY_DRAFT: DraftIndex = { id: null, name: '', type: 'index', fields: [] };
 
 export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIndexIds }) => {
@@ -69,6 +70,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
   );
   const [deleteIndexId, setDeleteIndexId] = useState<string | null>(null);
   const draft = panel.kind === 'edit' ? panel.draft : EMPTY_DRAFT;
+
   const setDraft = (update: DraftIndex | ((draft: DraftIndex) => DraftIndex)) => {
     setPanel((current) =>
       current.kind === 'edit'
@@ -84,6 +86,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
   const requestedIndex = indexes.find((index) => index.id === selectedIndexId) ?? null;
   const selectedIndex = requestedIndex ?? (panel.kind === 'view' ? (indexes[0] ?? null) : null);
   const visibleMode = panel.kind;
+
   const selectedFieldNames = useMemo(
     () => new Set(draft.fields.map((field) => field.name)),
     [draft.fields],
@@ -91,7 +94,9 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
 
   const fieldSuggestions = useMemo(() => {
     const query = fieldQuery.trim().toLowerCase();
+
     if (!query) return [];
+
     return availableFields.filter(
       (field) => field.toLowerCase().includes(query) && !selectedFieldNames.has(field),
     );
@@ -135,8 +140,10 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
   const buildDraftName = () => {
     const trimmedName = draft.name.trim();
     const maxLength = getIndexNameMaxLength(dbType as DatabaseType);
+
     if (trimmedName) return truncateIndexName(trimmedName, maxLength);
     if (draft.type === 'primary') return buildPrimaryKeyName(tableName, maxLength);
+
     return buildIndexName(
       draft.type !== 'index' ? 'uk' : 'idx',
       tableName || 'table',
@@ -148,6 +155,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
   const saveDraft = () => {
     if (draft.fields.length === 0) return;
     const latestIndexes = useEditorStore.getState().indexes;
+
     const nextIndex: IndexDefinition = {
       id: draft.id ?? createEntityId(),
       name: buildDraftName(),
@@ -157,6 +165,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     const result = draft.id
       ? replaceIndexDefinition(latestIndexes, nextIndex)
       : insertIndexDefinition(latestIndexes, nextIndex);
+
     if (!result.ok) {
       if (result.reason === 'not-found') {
         setDraft({ ...draft, id: null });
@@ -166,6 +175,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
       } else {
         showToast(t('indexPanel.duplicateName'));
       }
+
       return;
     }
 
@@ -195,6 +205,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
       const nextFields = [...prev.fields];
       const [moved] = nextFields.splice(from, 1);
       nextFields.splice(to, 0, moved);
+
       return { ...prev, fields: nextFields };
     });
   };
@@ -220,6 +231,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
         : type === 'unique_index' || type === 'unique_constraint'
           ? Lock
           : Hash;
+
     return (
       <span
         className={cn(
@@ -319,6 +331,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
             {indexes.map((index) => {
               const type = index.kind;
               const active = selectedIndex?.id === index.id;
+
               return (
                 <div
                   key={index.id}
@@ -470,6 +483,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                           }}
                           onKeyDown={(event) => {
                             if (fieldSuggestions.length === 0) return;
+
                             if (event.key === 'ArrowDown') {
                               event.preventDefault();
                               setActiveSuggestionIndex(

@@ -17,8 +17,10 @@ const SHARE_LINK_CACHE_KEY = 'ddlbuilder:share:last:v2';
 const readShareLinkCache = (): ShareLinkCacheRecord | null => {
   try {
     const raw = localStorage.getItem(SHARE_LINK_CACHE_KEY);
+
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<ShareLinkCacheRecord>;
+
     if (
       typeof parsed.signature !== 'string' ||
       typeof parsed.url !== 'string' ||
@@ -26,6 +28,7 @@ const readShareLinkCache = (): ShareLinkCacheRecord | null => {
     ) {
       return null;
     }
+
     return {
       signature: parsed.signature,
       url: parsed.url,
@@ -51,6 +54,7 @@ interface UseShareActionParams {
 
 export function useShareAction({ buildPersistedState, showToast }: UseShareActionParams) {
   const inFlightRef = useRef(false);
+
   const createShareMutation = useMutation({
     mutationFn: (state: PersistedState) => createShare(state),
     retry: false,
@@ -77,6 +81,7 @@ export function useShareAction({ buildPersistedState, showToast }: UseShareActio
       ) {
         await navigator.clipboard.writeText(cached.url);
         showToast(i18n.t('services.shareCopiedReused'));
+
         return;
       }
 
@@ -93,10 +98,13 @@ export function useShareAction({ buildPersistedState, showToast }: UseShareActio
         scope: 'App',
         action: 'generateShareLink',
       });
+
       if (e instanceof ShareApiError && e.code === 'REDIS_CONFIG_MISSING') {
         showToast(i18n.t('services.shareRedisMissing'));
+
         return;
       }
+
       showToast(i18n.t('services.shareCreateFailed'));
     } finally {
       inFlightRef.current = false;

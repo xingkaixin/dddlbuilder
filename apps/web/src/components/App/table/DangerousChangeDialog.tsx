@@ -27,6 +27,7 @@ export const DangerousChangeDialog = memo<DangerousChangeDialogProps>(
     if (!risk) return null;
 
     const isTypeChange = risk.kind === 'type_change';
+
     const titleKey = isTypeChange
       ? 'dataTable.dangerousChange.typeChangeTitle'
       : 'dataTable.dangerousChange.lengthShrinkTitle';

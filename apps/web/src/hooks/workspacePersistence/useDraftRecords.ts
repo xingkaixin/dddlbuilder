@@ -35,15 +35,19 @@ const EMPTY_DRAFTS: DraftEntry[] = [];
 const readDraftProjection = (doc: Y.Doc, previous?: DraftEntry[], change?: WorkspaceYDocChange) => {
   if (!previous || !change) return listAllDraftRecordsFromYDoc(doc);
   const records = new Map(previous.map((entry) => [entry.draftId, entry]));
+
   for (const draftId of change.entityIds) {
     const record = getDraftRecordFromYDoc(doc, draftId);
+
     if (record) records.set(draftId, { draftId, record });
     else records.delete(draftId);
   }
+
   return [...records.values()];
 };
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   drafts.sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
+
 type UseDraftRecordsParams = {
   yDoc: Y.Doc | null;
   disabled: boolean;
@@ -59,6 +63,7 @@ export function useDraftRecords({
 }: UseDraftRecordsParams) {
   const [localRecords, setLocalRecords] = useState<Map<string, GlobalDraftRecord>>(() => new Map());
   const localRecordsRef = useRef(localRecords);
+
   const yDocDrafts = useWorkspaceYDocProjection(
     yDoc,
     DRAFT_COLLECTIONS,
@@ -71,11 +76,14 @@ export function useDraftRecords({
       : Array.from(localRecords, ([draftId, record]) => ({ draftId, record }));
     const draftSummaries: DraftSummary[] = [];
     const trashedDrafts: DraftSummary[] = [];
+
     for (const { draftId, record } of records) {
       const summary = toDraftSummary(draftId, record);
+
       if (record.trashedAt == null) draftSummaries.push(summary);
       else trashedDrafts.push(summary);
     }
+
     return {
       draftSummaries: sortDraftSummaries(draftSummaries),
       trashedDrafts: trashedDrafts.sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0)),
@@ -84,6 +92,7 @@ export function useDraftRecords({
 
   const updateLocalRecord = useCallback((draftId: string, record: GlobalDraftRecord | null) => {
     const next = new Map(localRecordsRef.current);
+
     if (record) next.set(draftId, record);
     else next.delete(draftId);
     localRecordsRef.current = next;
@@ -93,9 +102,11 @@ export function useDraftRecords({
   const replaceLocalRecords = useCallback(
     (drafts: DraftEntry[], trashed: boolean) => {
       if (yDoc) return;
+
       const next = new Map(
         [...localRecordsRef.current].filter(([, record]) => (record.trashedAt != null) !== trashed),
       );
+
       for (const { draftId, record } of drafts) next.set(draftId, record);
       localRecordsRef.current = next;
       setLocalRecords(next);
@@ -112,6 +123,7 @@ export function useDraftRecords({
   );
   const refreshDrafts = useCallback(async () => {
     if (disabled || storage.kind !== 'indexeddb') return;
+
     const [drafts, trashed] = await Promise.all([
       listDrafts(storage.scope),
       listTrashedDrafts(storage.scope),
@@ -127,6 +139,7 @@ export function useDraftRecords({
   const getDraftState = useCallback(
     (draftId: string) => {
       const record = getRecord(draftId);
+
       return record?.trashedAt == null ? (record?.state ?? null) : null;
     },
     [getRecord],
@@ -136,15 +149,20 @@ export function useDraftRecords({
     (draftId: string, record: GlobalDraftRecord, operation: string) => {
       if (storage.kind === 'loading') {
         updateLocalRecord(draftId, record);
+
         return;
       }
+
       const target = storage;
+
       if (target.kind === 'ydoc') {
         target.transact((doc) =>
           upsertDraftInYDoc(doc, draftId, record, { compactSnapshotBase: true }),
         );
+
         return;
       }
+
       updateLocalRecord(draftId, record);
       void enqueuePersistence(`draft:${draftId}`, operation, () =>
         writeDraft(draftId, record, target.scope),
@@ -157,10 +175,13 @@ export function useDraftRecords({
     (draftId: string, state: PersistedState) => {
       if (disabled) return;
       const existing = getRecord(draftId);
+
       if (existing) {
         const buildSignature = yDoc ? buildSchemaStateSignature : buildPersistedStateSignature;
+
         if (buildSignature(existing.state) === buildSignature(state)) return;
       }
+
       persistRecord(
         draftId,
         {
@@ -183,6 +204,7 @@ export function useDraftRecords({
       const takenNames = new Set(records.map((record) => getDraftDisplayName(record.state)));
       const baseName = getDraftDisplayName(state);
       const uniqueName = resolveUniqueDraftName(baseName, takenNames);
+
       return {
         uniqueName,
         state: uniqueName === baseName ? state : { ...state, tableName: uniqueName },
@@ -201,6 +223,7 @@ export function useDraftRecords({
         { createdAt: now, updatedAt: now, state: resolved.state },
         'create draft',
       );
+
       return resolved.uniqueName;
     },
     [disabled, persistRecord, resolveDraftNameConflict],
@@ -210,9 +233,11 @@ export function useDraftRecords({
     (draftId: string) => {
       if (disabled) return false;
       const record = getRecord(draftId);
+
       if (!record || record.trashedAt != null) return false;
       const now = Date.now();
       persistRecord(draftId, { ...record, updatedAt: now, trashedAt: now }, 'move draft to trash');
+
       return true;
     },
     [disabled, getRecord, persistRecord],
@@ -223,13 +248,16 @@ export function useDraftRecords({
       if (disabled) return;
       const target = requireReadyWorkspaceStorage(storage);
       const record = getRecord(draftId) ?? (await readDraft(draftId, target.scope));
+
       if (!record) return;
+
       const restored = {
         ...record,
         state: resolveDraftNameConflict(record.state).state,
         updatedAt: Date.now(),
         trashedAt: undefined,
       };
+
       if (target.kind === 'ydoc') persistRecord(draftId, restored, 'restore draft');
       else {
         await enqueuePersistence(`draft:${draftId}`, 'restore draft', async () => {
@@ -237,6 +265,7 @@ export function useDraftRecords({
           updateLocalRecord(draftId, restored);
         });
       }
+
       if (target.kind === 'ydoc') {
         void enqueuePersistence(`draft-cleanup:${draftId}`, 'clean up restored draft', () =>
           deleteDraft(draftId, target.scope),
@@ -258,11 +287,14 @@ export function useDraftRecords({
     async (draftId: string) => {
       if (disabled) return;
       const target = requireReadyWorkspaceStorage(storage);
+
       if (target.kind === 'ydoc') {
         target.transact((doc) => deleteDraftFromYDoc(doc, draftId));
       }
+
       await enqueuePersistence(`draft:${draftId}`, 'permanently delete draft', async () => {
         await deleteDraft(draftId, target.scope);
+
         if (target.kind === 'indexeddb') updateLocalRecord(draftId, null);
       });
     },
@@ -273,6 +305,7 @@ export function useDraftRecords({
     (draftId: string, folderId?: string) => {
       if (disabled) return;
       const record = getRecord(draftId);
+
       if (record)
         persistRecord(
           draftId,

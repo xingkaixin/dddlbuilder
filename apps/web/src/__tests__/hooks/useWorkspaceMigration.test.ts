@@ -21,9 +21,11 @@ import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const scope = { kind: 'user' as const, userId: 'user-1', workspaceId: 'ws-1' };
 const ydoc = vi.hoisted(() => ({ doc: null as Y.Doc | null }));
+
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDoc: () => ({ doc: ydoc.doc, localSynced: true, synced: true }),
 }));
+
 const authState = {
   status: 'signed_in' as const,
   userId: scope.userId,
@@ -62,6 +64,7 @@ const migrationResponse = (status: 'ready' | 'completed') =>
 
 const renderHook = () => {
   const { wrapper } = createQueryClientWrapper();
+
   return testingLibraryRenderHook(useWorkspaceMigration, { initialProps: authState, wrapper });
 };
 
@@ -125,6 +128,7 @@ describe('useWorkspaceMigration', () => {
 
   it('workspace 未解析出来之前不应检查迁移', () => {
     const { wrapper } = createQueryClientWrapper();
+
     const { result } = testingLibraryRenderHook(
       () => useWorkspaceMigration({ ...authState, workspaceId: null }),
       { wrapper },

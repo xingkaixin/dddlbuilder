@@ -57,13 +57,17 @@ export const buildSavedTableBatchImportPlan = (
 ): SavedTableBatchImportPlan => {
   const recordsByName = new Map<string, SavedTableRecord>();
   const ambiguousNames = new Set<string>();
+
   for (const record of existingRecords) {
     const previous = recordsByName.get(record.normalizedName);
+
     if (previous && resolveSavedTableId(previous) !== resolveSavedTableId(record)) {
       ambiguousNames.add(record.normalizedName);
     }
+
     recordsByName.set(record.normalizedName, record);
   }
+
   const occupiedNames = new Set(recordsByName.keys());
   const pendingRecords = new Map<string, SavedTableRecord>();
   let successCount = 0;
@@ -72,10 +76,13 @@ export const buildSavedTableBatchImportPlan = (
   for (const item of request.items) {
     const displayName = ensureSavedTableName(item.name);
     const normalizedName = normalizeSavedTableName(displayName);
+
     if (ambiguousNames.has(normalizedName) && request.conflictStrategy === 'overwrite') {
       throw new AmbiguousTableOverwriteError();
     }
+
     const existing = pendingRecords.get(normalizedName) ?? recordsByName.get(normalizedName);
+
     const hasActiveConflict =
       ambiguousNames.has(normalizedName) || Boolean(existing && !existing.trashedAt);
 
@@ -86,6 +93,7 @@ export const buildSavedTableBatchImportPlan = (
 
     if (hasActiveConflict && request.conflictStrategy === 'rename') {
       const uniqueIdentity = createUniqueIdentity(displayName, occupiedNames);
+
       const record: SavedTableRecord = {
         tableId: createSavedTableId(),
         normalizedName: uniqueIdentity.normalizedName,

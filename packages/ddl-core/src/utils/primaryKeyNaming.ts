@@ -7,5 +7,6 @@ export const buildPrimaryKeyName = (
 ) => {
   const { table } = getSchemaAndTable(tableName);
   const base = table || tableName.trim();
+
   return truncateIdentifierName(base ? `pk_${base}` : 'pk', maxLength);
 };

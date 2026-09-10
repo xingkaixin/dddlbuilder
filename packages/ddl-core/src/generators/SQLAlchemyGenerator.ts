@@ -16,14 +16,17 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       indexes = [],
       foreignKeys = [],
     } = input;
+
     if (!tableName.trim()) {
       return '# 请填写表名';
     }
+
     if (fields.length === 0) {
       return '# 请补充字段信息';
     }
 
     const propertyNames = buildORMPropertyNames('sqlalchemy', input);
+
     if (!propertyNames.ok) return propertyNames.diagnostic;
     const names = propertyNames.names;
     const lines: string[] = [];
@@ -64,9 +67,11 @@ export class SQLAlchemyGenerator implements ORMGenerator {
     const className = this.toClassName(tableName.trim());
     lines.push(`class ${className}(Base):`);
     lines.push(`    __tablename__ = '${escapePythonString(tableName.trim())}'`);
+
     if (tableComment.trim()) {
       lines.push(`    __doc__ = '${escapePythonString(tableComment.trim())}'`);
     }
+
     lines.push('');
 
     const tableArgs: string[] = [];
@@ -75,24 +80,29 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       const defaultValue = defaults[fieldIndex];
       const colType = getORMTypeWithArgs('sqlalchemy', field.type);
       const isPk = primaryFields.has(field.name);
+
       const isAutoInc =
         defaultValue.kind === 'auto_increment' ||
         ['serial', 'bigserial'].includes(getCanonicalBaseType(field.type));
       const isNullable = field.nullable && !isPk;
 
       const propertyName = names.field(field.name);
+
       const args: string[] = [
         ...(propertyName !== field.name ? [`'${escapePythonString(field.name)}'`] : []),
         colType,
       ];
+
       if (isPk) {
         args.push('primary_key=True', `autoincrement=${isAutoInc ? 'True' : 'False'}`);
       }
+
       if (isNullable) {
         args.push('nullable=True');
       } else if (!isPk) {
         args.push('nullable=False');
       }
+
       if (defaultValue.kind === 'constant') {
         args.push(
           `server_default=literal_column('${escapePythonString(defaultValue.sqlExpression)}')`,
@@ -102,6 +112,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       } else if (defaultValue.kind === 'current_timestamp') {
         args.push('default=func.now()');
       }
+
       if (field.comment.trim()) {
         args.push(`comment='${escapePythonString(field.comment.trim())}'`);
       }
@@ -120,6 +131,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
     for (const fk of foreignKeys) {
       const localFields = fk.fields.map((field) => `'${escapePythonString(field)}'`).join(', ');
       const referencedTable = [fk.refSchema, fk.refTable].filter(Boolean).join('.');
+
       const referencedFields = fk.refFields
         .map((field) => `'${escapePythonString(`${referencedTable}.${field}`)}'`)
         .join(', ');
@@ -137,9 +149,11 @@ export class SQLAlchemyGenerator implements ORMGenerator {
     if (tableArgs.length > 0) {
       lines.push('');
       lines.push('    __table_args__ = (');
+
       for (const arg of tableArgs) {
         lines.push(`${arg},`);
       }
+
       lines.push('    )');
     }
 

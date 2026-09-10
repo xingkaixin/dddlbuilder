@@ -75,10 +75,12 @@ export class HiveStrategy extends AbstractDDLStrategy {
     }
 
     const typeMapper = this.createTypeMapper();
+
     const columns = config.columns.map((col) => {
       const parsedType = parseFieldType(col.type);
       const type = typeMapper.mapType(parsedType);
       const comment = col.comment ? ` COMMENT '${escapeSqlString(col.comment, 'hive')}'` : '';
+
       return `  ${this.formatFieldName(col.name)} ${type}${comment}`;
     });
 
@@ -91,6 +93,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
     }
 
     const columns = config.columns.map((name) => this.formatFieldName(name)).join(', ');
+
     return `\nCLUSTERED BY (${columns}) INTO ${normalizeHiveBucketCount(config.bucketCount)} BUCKETS`;
   }
 }

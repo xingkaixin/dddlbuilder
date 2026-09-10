@@ -12,6 +12,7 @@ test('Mock 数据遵守字段类型、长度和精度 @tools', async ({ page }) 
     ['name', 'VARCHAR(1)'],
     ['balance', 'DECIMAL(3,2)'],
   ];
+
   for (const [index, [name, type]] of columns.entries()) {
     const row = page.locator('[data-testid="data-table"] tbody tr').nth(index);
     const nameCell = row.locator('td').nth(1);
@@ -35,16 +36,19 @@ test('Mock 数据遵守字段类型、长度和精度 @tools', async ({ page }) 
 
   const rows = JSON.parse(await output.innerText()) as Record<string, unknown>[];
   expect(rows).toHaveLength(10);
+
   for (const row of rows) {
     if (row.gender !== null) {
       expect(Number.isInteger(row.gender)).toBe(true);
       expect(row.gender).toBeGreaterThanOrEqual(-128);
       expect(row.gender).toBeLessThanOrEqual(127);
     }
+
     if (row.name !== null) {
       expect(typeof row.name).toBe('string');
       expect(Array.from(row.name as string).length).toBeLessThanOrEqual(1);
     }
+
     if (row.balance !== null) {
       expect(typeof row.balance).toBe('number');
       expect(Math.abs(row.balance as number)).toBeLessThan(10);

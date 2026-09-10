@@ -44,6 +44,7 @@ export function useTableOptions(): UseTableOptionsReturn {
   const setHivePartitionConfig = useEditorStore((state) => state.setHivePartitionConfig);
   const setTableMiscConfig = useEditorStore((state) => state.setTableMiscConfig);
   const resetTableMiscConfig = useEditorStore((state) => state.resetTableMiscConfig);
+
   const setHivePartitionEnabled = useCallback(
     (enabled: boolean) => setHivePartitionConfig((previous) => ({ ...previous, enabled })),
     [setHivePartitionConfig],

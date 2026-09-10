@@ -44,6 +44,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     vi.doMock('../lib/auth.js', async (importOriginal) => {
       const actual = await importOriginal<Record<string, unknown>>();
       const { DomainError } = await import('../lib/http.js');
+
       return {
         ...actual,
         authenticateRequest: vi
@@ -70,6 +71,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     }));
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
+
       return {
         ...actual,
         assertWorkspaceOwner: vi.fn().mockRejectedValue(new actual.WorkspaceNotFoundError()),
@@ -96,6 +98,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     }));
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
+
       return {
         ...actual,
         assertWorkspaceOwner: vi.fn().mockResolvedValue(undefined),
@@ -103,6 +106,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     });
 
     const { default: app } = await import('../../api/index');
+
     const response = await app.fetch(
       createRequest('/api/workspaces/ws-1/yjs/state', {
         headers: { 'x-ddlbuilder-session-id': 'untrusted-session' },
@@ -130,6 +134,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     }));
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
+
       return {
         ...actual,
         assertWorkspaceOwner: vi.fn().mockResolvedValue(undefined),
@@ -137,6 +142,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     });
 
     const { default: app } = await import('../../api/index');
+
     const response = await app.fetch(
       createRequest('/api/workspaces/ws-1/yjs', { method: 'HEAD' }),
       createEnv({ WORKSPACE_YDOC: createYDocNamespace(stubFetch) }),
@@ -159,6 +165,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     }));
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
+
       return {
         ...actual,
         assertWorkspaceOwner: vi.fn().mockResolvedValue(undefined),
@@ -167,6 +174,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
 
     const { default: app } = await import('../../api/index');
     const env = createEnv({ WORKSPACE_YDOC: createYDocNamespace(stubFetch) });
+
     const invalid = await app.fetch(
       createRequest('/api/workspaces/ws-1/yjs/import', {
         method: 'POST',

@@ -9,6 +9,7 @@ const FieldStandardsDialog = lazy(() =>
 export function FieldStandardsButton() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+
   return (
     <>
       <Button

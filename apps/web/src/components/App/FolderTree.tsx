@@ -74,6 +74,7 @@ const FolderNode = memo<FolderNodeProps>(
     const { t } = useTranslation();
     const hasChildren = folder.children.length > 0 || (folder.tableCount && folder.tableCount > 0);
     const dragId = toFolderDragId(folder.id);
+
     const { setNodeRef: setDropRef, isOver } = useDroppable({
       id: dragId,
       disabled: dragDisabled,
@@ -227,6 +228,7 @@ export const FolderTree = memo<FolderTreeProps>(
     renderTables,
   }) => {
     const { t } = useTranslation();
+
     // 递归渲染文件夹
     const renderFolder = useCallback(
       function renderFolder(folder: FolderTreeNode, depth: number): React.ReactNode {
@@ -283,12 +285,15 @@ export const FolderTree = memo<FolderTreeProps>(
     );
   },
 );
+
 FolderTree.displayName = 'FolderTree';
 
 export function useFolderExpansion(folders: FolderTreeNode[]) {
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(() => new Set());
+
   const expandedFolders = useMemo(() => {
     const expanded = new Set<string>();
+
     const visit = (nodes: FolderTreeNode[]) => {
       for (const folder of nodes) {
         if (!collapsedFolders.has(folder.id)) expanded.add(folder.id);
@@ -296,14 +301,17 @@ export function useFolderExpansion(folders: FolderTreeNode[]) {
       }
     };
     visit(folders);
+
     return expanded;
   }, [folders, collapsedFolders]);
 
   const toggleFolder = useCallback((folderId: string) => {
     setCollapsedFolders((previous) => {
       const next = new Set(previous);
+
       if (next.has(folderId)) next.delete(folderId);
       else next.add(folderId);
+
       return next;
     });
   }, []);
@@ -313,6 +321,7 @@ export function useFolderExpansion(folders: FolderTreeNode[]) {
       if (!previous.has(folderId)) return previous;
       const next = new Set(previous);
       next.delete(folderId);
+
       return next;
     });
   }, []);

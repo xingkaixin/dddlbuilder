@@ -6,10 +6,15 @@ import { useSavedTableFlowActions } from '@/components/App/hooks/useSavedTableFl
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 
 type SavedTableFlowParams = Parameters<typeof useSavedTableFlowActions>[0];
+
 type DialogData<TDialog> = TDialog extends { data: infer TData } ? TData : never;
+
 type SaveDialogData = DialogData<SavedTableFlowParams['saveDialog']>;
+
 type RenameDialogData = DialogData<SavedTableFlowParams['renameDialog']>;
+
 type DeleteDialogData = DialogData<SavedTableFlowParams['deleteDialog']>;
+
 type SavedTableSummary = NonNullable<RenameDialogData['target']>;
 
 const createState = (tableName: string): PersistedState => ({
@@ -59,6 +64,7 @@ const createSavedTableSummary = (name: string, normalizedName: string): SavedTab
 describe('useSavedTableFlowActions', () => {
   it('首次保存成功后通知发起保存的调用方', async () => {
     const state = createState('Users');
+
     const saveDialog = createSaveDialog({
       name: 'Users',
     });
@@ -191,6 +197,7 @@ describe('useSavedTableFlowActions', () => {
     const savedState = createState('Users');
     const draftState = createState('UnsavedUsers');
     const onTableLoadStateChange = vi.fn();
+
     const loadTable = vi.fn().mockResolvedValue({
       normalizedName: 'users',
       name: 'Users',

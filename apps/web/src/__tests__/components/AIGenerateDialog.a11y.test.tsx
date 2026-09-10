@@ -26,6 +26,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     openAuthDialog: vi.fn(),
     closeAuthDialog: vi.fn(),
   });
+
   return { useAuthIdentity, useAuthCredits, useAuthDialog };
 });
 
@@ -51,6 +52,7 @@ function createHookState(overrides: Partial<ReturnType<typeof useAIGenerateTable
 describe('AIGenerateDialog a11y', () => {
   it('does not clear text typed while a request is pending', async () => {
     let complete: (success: boolean) => void = () => {};
+
     const generateTable = vi.fn(
       () =>
         new Promise<boolean>((resolve) => {

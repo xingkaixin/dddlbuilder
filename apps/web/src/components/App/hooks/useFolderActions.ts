@@ -72,6 +72,7 @@ export function useFolderActions({
       if (folderDialogMode === 'create') {
         await createFolder(name, folderDialogParent?.id);
         showToast(i18n.t('savedTables.toast.createdFolder', { name }));
+
         return;
       }
 
@@ -105,16 +106,19 @@ export function useFolderActions({
       await deleteFolderAction(deleteFolderTarget.id);
       await refreshDrafts();
       const { tabs, activeTabId } = useTabStore.getState();
+
       const removedTabs = tabs.filter(
         (tab) =>
           openDraftIds.has(tab.id) &&
           tab.source.kind === 'draft' &&
           !getDraftState(tab.source.draftId),
       );
+
       // 先移除后台标签，避免活动标签切换到即将删除的草稿。
       for (const tab of removedTabs) {
         if (tab.id !== activeTabId) closeTab(tab.id);
       }
+
       if (activeTabId && removedTabs.some((tab) => tab.id === activeTabId)) closeTab(activeTabId);
       showToast(
         i18n.t('savedTables.toast.deletedFolder', {
@@ -140,15 +144,19 @@ export function useFolderActions({
   const handleMoveTableToFolder = useCallback(
     async (item: SavedTableSummary, folderId?: string) => {
       const result = await moveTableToFolder(item, folderId);
+
       if (result.ok) {
         showToast(
           folderId
             ? i18n.t('savedTables.toast.movedToFolder')
             : i18n.t('savedTables.toast.movedToUngrouped'),
         );
+
         return { ok: true as const };
       }
+
       showToast(result.message ?? i18n.t('savedTables.toast.moveFailed'));
+
       return {
         ok: false as const,
         message: result.message ?? i18n.t('savedTables.toast.moveFailed'),
@@ -166,11 +174,13 @@ export function useFolderActions({
             ? i18n.t('savedTables.toast.movedFolder')
             : i18n.t('savedTables.toast.movedFolderToRoot'),
         );
+
         return { ok: true as const };
       } catch (error) {
         const message =
           error instanceof Error ? error.message : i18n.t('savedTables.toast.moveFolderFailed');
         showToast(message);
+
         return { ok: false as const, message };
       }
     },

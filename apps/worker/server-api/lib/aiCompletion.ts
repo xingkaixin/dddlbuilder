@@ -16,6 +16,7 @@ export const readCompletedContent = (
     if (finishReason !== 'stop') return yield* new AIOutputError({ reason: 'incomplete' });
     if (!content.trim()) return yield* new AIOutputError({ reason: 'empty' });
     if (!jsonResponse) return content;
+
     return yield* decodeCompletion(content).pipe(
       Effect.mapError((cause) => new AIOutputError({ reason: 'invalid-json', cause })),
     );

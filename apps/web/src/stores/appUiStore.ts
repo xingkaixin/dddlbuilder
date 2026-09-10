@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 export type EditorContentView = 'design' | 'output';
+
 export type EditorView = EditorContentView | 'split';
 
 const editorViewKey = 'ddlbuilder:editor-view';
@@ -8,10 +9,12 @@ const editorViewKey = 'ddlbuilder:editor-view';
 function readEditorView(): EditorContentView {
   try {
     const value = localStorage.getItem(editorViewKey);
+
     if (value === 'output') return value;
   } catch {
     // Layout preferences are optional when browser storage is unavailable.
   }
+
   return 'design';
 }
 
@@ -92,6 +95,7 @@ export const useAppUiStore = create<AppUiState>((set) => {
     setWorkspaceSidebarOpen: (workspaceSidebarOpen) => set({ workspaceSidebarOpen }),
     setEditorView: (editorView) => {
       set({ editorView });
+
       try {
         localStorage.setItem(editorViewKey, editorView);
       } catch {

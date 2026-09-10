@@ -15,10 +15,12 @@ export function renameIndexNameTokens(
 ): string {
   if (!source || renames.size === 0) return source;
   const tokens = [...renames.keys()].sort((a, b) => b.length - a.length).map(escapeRegExp);
+
   const pattern = new RegExp(
     `(^|[^\\p{L}\\p{N}])(${tokens.join('|')})(?=[^\\p{L}\\p{N}]|$)`,
     getDatabaseFamily(dbType) === 'postgresql' ? 'gu' : 'giu',
   );
+
   return source.replace(
     pattern,
     (_match, prefix: string, token: string) =>

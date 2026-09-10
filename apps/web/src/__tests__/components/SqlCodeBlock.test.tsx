@@ -6,6 +6,7 @@ import SqlCodeBlock from '@/components/App/SqlCodeBlock';
 const theme = vi.hoisted(() => ({ resolvedTheme: 'light' }));
 
 vi.mock('next-themes', () => ({ useTheme: () => theme }));
+
 vi.mock('@/components/App/ExplainPopover', () => ({
   ExplainPopover: ({ children }: { children: ReactNode }) => children,
 }));

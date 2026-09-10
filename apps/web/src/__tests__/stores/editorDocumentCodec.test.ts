@@ -65,6 +65,7 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
 describe('editorDocumentCodec', () => {
   it('清空操作一次性重置完整文档并为新字段分配身份', () => {
     useEditorStore.getState().replaceDocument(createState());
+
     const { result, unmount } = renderHook(() =>
       useClearAllActions({
         setIsClearDialogOpen: () => {},

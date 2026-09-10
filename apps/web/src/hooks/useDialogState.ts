@@ -39,6 +39,7 @@ export function useDialogState<TData>(
       if (nextData !== undefined) {
         setData(nextData);
       }
+
       setError('');
       setOpen(true);
     },

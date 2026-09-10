@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 const columnHelper = createColumnHelper<FieldTableFeatures, FieldRow>();
 
 const LOGICAL_ENUM_BASES = new Set(['tinyint', 'smallint', 'int', 'bigint', 'char', 'varchar']);
+
 type EditingCell = { row: number; col: string };
 
 interface UseFieldColumnsParams {
@@ -35,6 +36,7 @@ interface UseFieldColumnsParams {
 
 export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumnDef[] {
   const { t } = useTranslation();
+
   const {
     mode = 'table',
     columnWidths,
@@ -127,8 +129,10 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         size: columnWidths.fieldType,
         cell: ({ row, getValue }) => {
           const fieldTypeValue = getValue() as string;
+
           const isEditingFieldType =
             editingCell?.row === row.index && editingCell.col === 'fieldType';
+
           if (isEditingFieldType) {
             return (
               <EditableCell
@@ -156,7 +160,9 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
               />
             );
           }
+
           const canonical = getCanonicalBaseType(fieldTypeValue);
+
           if (canonical === 'enum' || canonical === 'set') {
             return (
               <EnumSetCell
@@ -175,6 +181,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
               />
             );
           }
+
           if (LOGICAL_ENUM_BASES.has(canonical)) {
             return (
               <LogicalEnumCell
@@ -188,6 +195,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
               />
             );
           }
+
           return (
             <EditableCell
               value={fieldTypeValue}
@@ -232,6 +240,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
           const fieldType = toStringSafe(row.original.fieldType);
           const base = getCanonicalBaseType(fieldType);
           const options = getUiDefaultKindOptions(dbType, base);
+
           return (
             <SelectCell
               value={getValue() ?? 'none'}
@@ -251,6 +260,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         cell: ({ row, getValue }) => {
           const disabled =
             row.original.defaultKind !== 'constant' && row.original.defaultKind !== 'expression';
+
           return (
             <EditableCell
               value={(getValue() as string) || ''}

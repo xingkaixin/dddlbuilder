@@ -50,10 +50,12 @@ describe('workspaceAccountService', () => {
   it('removes every registered workspace for an account without touching another account', async () => {
     const older = { ...scope, workspaceId: 'older' };
     const other = { ...scope, userId: 'other', workspaceId: 'other' };
+
     for (const current of [scope, older, other]) {
       rememberWorkspaceCache(current);
       await writeDraft('draft', { state: createState(current.workspaceId), updatedAt: 1 }, current);
     }
+
     const deleted = vi.spyOn(indexedDB, 'deleteDatabase');
     await clearLocalWorkspaceData(scope);
     expect(deleted.mock.calls.map(([name]) => name).sort()).toEqual([
@@ -68,9 +70,11 @@ describe('workspaceAccountService', () => {
   it('retries durable cleanup after a blocked database deletion', async () => {
     writeWorkspaceIdentity(scope);
     markWorkspaceCleanupPending(scope);
+
     const blocked = vi.spyOn(indexedDB, 'deleteDatabase').mockImplementationOnce(() => {
       const request = { onblocked: null as (() => void) | null };
       queueMicrotask(() => request.onblocked?.());
+
       return request as unknown as IDBOpenDBRequest;
     });
     await expect(clearLocalWorkspaceData(scope)).rejects.toThrow('Close other workspace tabs');
@@ -86,6 +90,7 @@ describe('workspaceAccountService', () => {
     const remote = new Y.Doc();
     const deleted = { scope, tableId: 'deleted', normalizedName: 'deleted' };
     const trashed = { scope, tableId: 'trashed', normalizedName: 'trashed' };
+
     for (const target of [deleted, trashed]) {
       upsertSavedTableInYDoc(doc, {
         tableId: target.tableId,
@@ -98,6 +103,7 @@ describe('workspaceAccountService', () => {
       });
       await createVersion(target, createState(target.normalizedName));
     }
+
     Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
     const stop = watchWorkspaceHistory(doc, scope);
     deleteSavedTableFromYDoc(remote, deleted);
@@ -135,6 +141,7 @@ describe('workspaceAccountService', () => {
     const doc = new Y.Doc();
     const stale = new Y.Doc();
     const target = { scope, tableId: 'crashed-delete', normalizedName: 'crashed-delete' };
+
     const record = {
       tableId: target.tableId,
       normalizedName: target.normalizedName,
@@ -178,11 +185,13 @@ describe('workspaceAccountService', () => {
   it('启动历史巡检保留未保存文档的 name-key 评审', async () => {
     const doc = new Y.Doc();
     const draftTarget = { scope, normalizedName: 'draft-only' };
+
     const review = await saveReview(draftTarget, 'draft-only', 'ddl', 'mysql', {
       score: 8,
       summary: 'draft',
       suggestions: [],
     });
+
     if (!review) throw new Error('Expected draft review to be persisted');
 
     const stop = watchWorkspaceHistory(doc, scope);
@@ -278,8 +287,10 @@ describe('workspaceAccountService', () => {
 
   it('clears only the selected local workspace partition', async () => {
     const deletion = { onsuccess: null as (() => void) | null };
+
     const deleteDatabase = vi.fn(() => {
       queueMicrotask(() => deletion.onsuccess?.());
+
       return deletion;
     });
     Object.defineProperty(indexedDB, 'deleteDatabase', {

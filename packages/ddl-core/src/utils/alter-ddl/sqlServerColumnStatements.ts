@@ -11,12 +11,14 @@ export function getSqlServerColumnChangeNotice(diff: ModifyFieldDiff): string {
   ) {
     return `-- Manual migration required: SQL Server cannot add or remove IDENTITY on column ${formatSqlIdentifier(diff.newField.name, 'sqlserver')}. This column modification was skipped.`;
   }
+
   return '';
 }
 
 export function generateSqlServerDropDefault(tableName: string, fieldName: string): string {
   const tableLiteral = escapeSingleQuotes(tableName);
   const fieldLiteral = escapeSingleQuotes(unquoteSqlIdentifier(fieldName));
+
   const batch = [
     'DECLARE @ddlbuilderDefaultSql nvarchar(max);',
     `SELECT @ddlbuilderDefaultSql = N'ALTER TABLE ${tableLiteral} DROP CONSTRAINT ' + QUOTENAME(d.name) + N';'`,
@@ -25,6 +27,7 @@ export function generateSqlServerDropDefault(tableName: string, fieldName: strin
     `WHERE d.parent_object_id = OBJECT_ID(N'${tableLiteral}') AND c.name = N'${fieldLiteral}';`,
     'IF @ddlbuilderDefaultSql IS NOT NULL EXEC sys.sp_executesql @ddlbuilderDefaultSql;',
   ].join('\n');
+
   // 独立批次避免同一迁移里多列默认约束操作重复声明变量。
   return `EXEC sys.sp_executesql N'${escapeSingleQuotes(batch)}';`;
 }
@@ -32,6 +35,7 @@ export function generateSqlServerDropDefault(tableName: string, fieldName: strin
 export function generateSqlServerModifyColumn(tableName: string, diff: ModifyFieldDiff): string {
   const field = diff.newField;
   const notice = getSqlServerColumnChangeNotice(diff);
+
   if (notice) return notice;
   const fieldName = formatSqlIdentifier(field.name, 'sqlserver');
   const type = getFieldTypeForDatabase('sqlserver', field.type);
@@ -41,17 +45,22 @@ export function generateSqlServerModifyColumn(tableName: string, diff: ModifyFie
   const newDefault = buildDialectDefaultClause(field, 'sqlserver');
   const replaceDefault = oldDefault !== newDefault || (typeChanged && !!(oldDefault || newDefault));
   const statements: string[] = [];
+
   if (replaceDefault && oldDefault)
     statements.push(generateSqlServerDropDefault(tableName, field.name));
+
   if (typeChanged || field.nullable !== diff.oldField.nullable) {
     statements.push(
       `ALTER TABLE ${tableName} ALTER COLUMN ${fieldName} ${type} ${field.nullable ? 'NULL' : 'NOT NULL'};`,
     );
   }
+
   if (replaceDefault && newDefault)
     statements.push(`ALTER TABLE ${tableName} ADD ${newDefault} FOR ${fieldName};`);
+
   if (diff.changes.includes('comment')) {
     statements.push(buildColumnComment(tableName, field, 'sqlserver', diff.oldField.comment));
   }
+
   return statements.filter(Boolean).join('\n');
 }

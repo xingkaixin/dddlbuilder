@@ -114,6 +114,7 @@ describe('generateAlterDDL', () => {
     (dbType) => {
       const primary = createIndex({ name: 'users_pkey', kind: 'primary' });
       const index = createIndex();
+
       const diff = createTableDiff(
         {
           oldSchemaName: 'audit',
@@ -1022,6 +1023,7 @@ describe('generateTableCommentAlter', () => {
 
 describe('generateDropColumn', () => {
   const dbs: DatabaseType[] = ['mysql', 'postgresql', 'sqlserver', 'oracle', 'dm'];
+
   for (const db of dbs) {
     it(`generates correct SQL for ${db}`, () => {
       const diff: FieldDiff = {

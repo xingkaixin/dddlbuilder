@@ -54,6 +54,7 @@ export const supportsOracleStorageOption = (dbType: DatabaseType): boolean =>
 
 const normalizeValue = (value?: string): string => {
   const normalized = (value || '').trim();
+
   return normalized.toLowerCase() === 'default' ? '' : normalized;
 };
 
@@ -72,27 +73,34 @@ export const buildTableOptionsClause = (dbType: DatabaseType, config?: TableMisc
   if (supportsEngineOption(dbType) && engine) {
     parts.push(`ENGINE=${engine}`);
   }
+
   if (supportsCharsetOption(dbType) && charset) {
     parts.push(`DEFAULT CHARSET=${charset}`);
   }
+
   if (supportsCollationOption(dbType) && collation) {
     parts.push(`COLLATE=${collation}`);
   }
+
   if (supportsFillfactorOption(dbType) && normalizedConfig.fillfactor != null) {
     parts.push(`WITH (fillfactor = ${normalizedConfig.fillfactor})`);
   }
+
   if (supportsOracleStorageOption(dbType)) {
     if (normalizedConfig.pctfree != null) {
       parts.push(`PCTFREE ${normalizedConfig.pctfree}`);
     }
+
     if (normalizedConfig.initrans != null) {
       parts.push(`INITRANS ${normalizedConfig.initrans}`);
     }
   }
+
   if (supportsTablespaceOption(dbType) && tablespace) {
     parts.push(`TABLESPACE ${tablespace}`);
   }
 
   if (parts.length === 0) return '';
+
   return ` ${parts.join(' ')}`;
 };

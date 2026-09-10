@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, act } from '@/__tests__/utils/test-utils';
 import { UserSettingsDialog } from '@/components/App/UserSettingsDialog';
 import { fetchCreditLedger } from '@/services/creditService';
+
 const auth = vi.hoisted(() => ({ userId: 'ledger-user', name: 'Tester' }));
 
 vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ locale: 'zh-CN' }) }));
+
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: 'signed_in',
@@ -14,12 +16,14 @@ vi.mock('@/auth/AuthSessionProvider', () => {
   });
   const useAuthActions = () => ({ updateUserName: vi.fn(), changePassword: vi.fn() });
   const useAuthCredits = () => ({ creditBalance: 100 });
+
   return {
     useAuthIdentity,
     useAuthActions,
     useAuthCredits,
   };
 });
+
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDoc: () => ({
     connectionState: 'synced',
@@ -66,6 +70,7 @@ describe('credit ledger rendering', () => {
 
   it('keeps the current page visible while fetching the next page', async () => {
     let resolvePage: (response: Response) => void = () => {};
+
     const pendingPage = new Promise<Response>((resolve) => {
       resolvePage = resolve;
     });
@@ -105,6 +110,7 @@ describe('credit ledger rendering', () => {
 
   it('does not retain another account ledger while the account changes', async () => {
     let resolvePage: (response: Response) => void = () => {};
+
     vi.stubGlobal(
       'fetch',
       vi

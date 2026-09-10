@@ -85,6 +85,7 @@ export type ApplySchemaDocumentStateOptions = {
 
 const writeStateSnapshot = (tableDoc: Y.Map<unknown>, state: SchemaDocumentState) => {
   const nextSnapshot = JSON.parse(JSON.stringify(state));
+
   if (stableStringify(tableDoc.get('stateSnapshot')) !== stableStringify(nextSnapshot)) {
     tableDoc.set('stateSnapshot', nextSnapshot);
   }
@@ -98,20 +99,25 @@ const hasRemovedKey = <T>(previous: T | undefined, next: T, keys: readonly (keyo
 const hasRemovedStateKey = (previous: SchemaDocumentState, next: SchemaDocumentState) => {
   if (hasRemovedKey(previous, next, TABLE_SCALAR_KEYS)) return true;
   const previousRows = new Map((previous.rows ?? []).map((row) => [row.id, row]));
+
   return (next.rows ?? []).some((row) => hasRemovedKey(previousRows.get(row.id), row, FIELD_KEYS));
 };
 
 const readStateSnapshot = (tableDoc: Y.Map<unknown>): SchemaDocumentState | null => {
   const snapshot = tableDoc.get('stateSnapshot');
+
   if (!snapshot || typeof snapshot !== 'object') return null;
   const state = snapshot as Partial<SchemaDocumentState>;
+
   if (!Array.isArray(state.rows)) return null;
+
   return toSchemaDocumentState(state as SchemaDocumentState);
 };
 
 const hasEditorSessionState = (tableDoc: Y.Map<unknown>) => {
   const snapshot = tableDoc.get('stateSnapshot');
   const scalar = readMap(tableDoc, 'scalar');
+
   return EDITOR_SESSION_KEYS.some(
     (key) =>
       (snapshot != null && typeof snapshot === 'object' && key in snapshot) || scalar?.has(key),
@@ -144,6 +150,7 @@ const readFieldRow = (
   const fallback = (fallbackRow ?? {}) as unknown as JsonRecord;
   const candidates = (key: string) => (row[key] === null ? [] : [row[key], fallback[key]]);
   const text = (key: string) => candidates(key).find((value) => typeof value === 'string');
+
   // nullable 迁移前存中文字符串、迁移后存布尔，两种都算合法值，其余类型继续回落
   const nullable = candidates('nullable').find(
     (value) => typeof value === 'boolean' || typeof value === 'string',
@@ -177,11 +184,14 @@ const buildPatch = <T>(
   writeAllKeys: boolean,
 ): JsonRecord => {
   const values: JsonRecord = {};
+
   for (const key of keys) {
     const current = map?.has(key) ? map.get(key) : snapshot?.[key];
+
     if (!writeAllKeys && stableStringify(current) === stableStringify(next[key])) continue;
     values[key] = next[key];
   }
+
   return values;
 };
 
@@ -203,6 +213,7 @@ export const applySchemaDocumentStateToTableDoc = (
     'foreignKeys',
   );
   const previousSnapshot = readStateSnapshot(tableDoc);
+
   const previousIndexes = hasIndexDoc(tableDoc)
     ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')
     : (previousSnapshot?.indexes ?? []);
@@ -210,6 +221,7 @@ export const applySchemaDocumentStateToTableDoc = (
     ? readOrderedMap<StoredForeignKeyDefinition>(tableDoc, 'foreignKeys', 'foreignKeyOrder')
     : (previousSnapshot?.foreignKeys ?? []);
   const encodedIndexes = encodeIndexFieldReferences(documentState.indexes ?? [], nextRows);
+
   const encodedForeignKeys = encodeForeignKeyFieldReferences(
     documentState.foreignKeys ?? [],
     nextRows,
@@ -224,6 +236,7 @@ export const applySchemaDocumentStateToTableDoc = (
     tableMiscConfig: encodeTableMiscFieldReferences(documentState.tableMiscConfig, nextRows),
   };
   const containsEditorSessionState = hasEditorSessionState(tableDoc);
+
   if (
     options.compactSnapshotBase !== true ||
     previousSnapshot == null ||
@@ -232,6 +245,7 @@ export const applySchemaDocumentStateToTableDoc = (
   ) {
     writeStateSnapshot(tableDoc, documentState);
   }
+
   const writeAllKeys = options.forceFineGrained === true || previousSnapshot == null;
 
   const scalarValues = buildPatch(
@@ -241,9 +255,11 @@ export const applySchemaDocumentStateToTableDoc = (
     previousSnapshot,
     writeAllKeys,
   );
+
   if (Object.keys(scalarValues).length > 0) {
     writeJsonMapPatch(ensureMap(tableDoc, 'scalar'), scalarValues);
   }
+
   if (containsEditorSessionState) {
     const scalar = readMap(tableDoc, 'scalar');
     EDITOR_SESSION_KEYS.forEach((key) => scalar?.delete(key));
@@ -251,14 +267,17 @@ export const applySchemaDocumentStateToTableDoc = (
 
   const snapshotRows = previousSnapshot?.rows ?? [];
   const snapshotRowsById = new Map(snapshotRows.map((row) => [row.id, row]));
+
   if (
     writeAllKeys ||
     hasFieldDoc(tableDoc) ||
     stableStringify(snapshotRows) !== stableStringify(nextRows)
   ) {
     const existingFields = getFields(tableDoc);
+
     const fieldPatches = nextRows.map((row, index) => {
       const field = existingFields?.get(fieldIds[index]);
+
       const patch = buildPatch(
         field,
         FIELD_KEYS,
@@ -266,16 +285,19 @@ export const applySchemaDocumentStateToTableDoc = (
         snapshotRowsById.get(fieldIds[index]),
         writeAllKeys || FIELD_KEYS.some((key) => !field?.has(key)),
       );
+
       // null 是显式清除，缺键仅供旧稀疏文档按字段身份读取快照。
       return Object.fromEntries(Object.entries(patch).map(([key, value]) => [key, value ?? null]));
     });
     const fields = ensureMap(tableDoc, 'fields');
     const activeFieldIds = new Set(fieldIds);
+
     for (const fieldId of Array.from(fields.keys())) {
       if (!activeFieldIds.has(fieldId)) {
         fields.delete(fieldId);
       }
     }
+
     fieldIds.forEach((fieldId, index) => {
       writeJsonMapPatch(ensureMap(fields, fieldId), fieldPatches[index]);
     });
@@ -289,6 +311,7 @@ export const applySchemaDocumentStateToTableDoc = (
   ) {
     writeOrderedMap(tableDoc, 'indexes', 'indexOrder', encodedIndexes);
   }
+
   if (
     writeAllKeys ||
     hasForeignKeyDoc(tableDoc) ||
@@ -328,12 +351,14 @@ export const normalizeSchemaDocumentState = (
 const readTableRows = (tableDoc: Y.Map<unknown>, stateSnapshot: SchemaDocumentState | null) => {
   const snapshotRowsById = new Map((stateSnapshot?.rows ?? []).map((row) => [row.id, row]));
   const fields = getFields(tableDoc);
+
   return !hasFieldDoc(tableDoc)
     ? (stateSnapshot?.rows ?? [])
     : fields
       ? getFieldOrder(tableDoc)
           .map((fieldId) => {
             const fieldMap = fields.get(fieldId);
+
             return fieldMap ? readFieldRow(fieldId, fieldMap, snapshotRowsById.get(fieldId)) : null;
           })
           .filter((row): row is FieldRow => row != null)
@@ -344,6 +369,7 @@ export const tableDocToSchemaSummary = (tableDoc: Y.Map<unknown>) => {
   const snapshot = readStateSnapshot(tableDoc);
   const scalarDbType = readMap(tableDoc, 'scalar')?.get('dbType');
   const dbType = scalarDbType === undefined ? snapshot?.dbType : scalarDbType;
+
   return {
     dbType: typeof dbType === 'string' ? dbType : 'mysql',
     fieldCount: readTableRows(tableDoc, snapshot).filter(
@@ -354,6 +380,7 @@ export const tableDocToSchemaSummary = (tableDoc: Y.Map<unknown>) => {
 
 export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaDocumentState => {
   const stateSnapshot = readStateSnapshot(tableDoc);
+
   const state = {
     ...stateSnapshot,
     ...Object.fromEntries(
@@ -363,6 +390,7 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
     ),
   } as Partial<SchemaDocumentState>;
   const rows = readTableRows(tableDoc, stateSnapshot);
+
   const indexes = decodeIndexFieldReferences(
     hasIndexDoc(tableDoc)
       ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')
@@ -403,6 +431,7 @@ export const materializeTableDoc = (tableDoc: Y.Map<unknown>) => {
   if (hasFineGrainedTableDoc(tableDoc)) {
     const state = tableDocToSchemaDocumentState(tableDoc);
     const indexes = readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder');
+
     const foreignKeys = readOrderedMap<StoredForeignKeyDefinition>(
       tableDoc,
       'foreignKeys',
@@ -412,37 +441,46 @@ export const materializeTableDoc = (tableDoc: Y.Map<unknown>) => {
     const encodedIndexes = encodeIndexFieldReferences(state.indexes, state.rows);
     const encodedForeignKeys = encodeForeignKeyFieldReferences(state.foreignKeys ?? [], state.rows);
     const encodedCitus = encodeCitusFieldReference(state.citusShardingConfig, state.rows);
+
     const encodedMysql = encodeMysqlPartitionFieldReferences(
       state.mysqlPartitionConfig,
       state.rows,
     );
     const encodedMisc = encodeTableMiscFieldReferences(state.tableMiscConfig, state.rows);
     let materialized = false;
+
     if (stableStringify(indexes) !== stableStringify(encodedIndexes)) {
       writeOrderedMap(tableDoc, 'indexes', 'indexOrder', encodedIndexes);
       materialized = true;
     }
+
     if (stableStringify(foreignKeys) !== stableStringify(encodedForeignKeys)) {
       writeOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder', encodedForeignKeys);
       materialized = true;
     }
+
     const scalarReferences = {
       citusShardingConfig: encodedCitus,
       mysqlPartitionConfig: encodedMysql,
       tableMiscConfig: encodedMisc,
     };
+
     for (const [key, value] of Object.entries(scalarReferences)) {
       if (stableStringify(scalar?.get(key)) === stableStringify(value)) continue;
       writeJsonMapPatch(ensureMap(tableDoc, 'scalar'), { [key]: value });
       materialized = true;
     }
+
     return materialized;
   }
+
   const stateSnapshot = readStateSnapshot(tableDoc);
+
   if (!stateSnapshot) return false;
   applySchemaDocumentStateToTableDoc(tableDoc, tableDocToSchemaDocumentState(tableDoc), {
     forceFineGrained: true,
   });
+
   return true;
 };
 

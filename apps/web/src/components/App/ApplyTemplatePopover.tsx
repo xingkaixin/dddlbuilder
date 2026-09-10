@@ -23,6 +23,7 @@ interface ApplyTemplatePopoverProps {
 
 function includesQuery(value: string | undefined, query: string): boolean {
   if (!value) return false;
+
   return value.toLowerCase().includes(query);
 }
 
@@ -87,6 +88,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
 
     const handleOpenChange = useCallback((nextOpen: boolean) => {
       setOpen(nextOpen);
+
       if (!nextOpen) {
         setSearchQuery('');
       }
@@ -217,4 +219,5 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     );
   },
 );
+
 ApplyTemplatePopover.displayName = 'ApplyTemplatePopover';

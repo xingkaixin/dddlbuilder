@@ -109,6 +109,7 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
             onPointerMove={(event) => {
               if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
               const bounds = panesRef.current?.getBoundingClientRect();
+
               if (bounds?.height) resize(((event.clientY - bounds.top) / bounds.height) * 100);
             }}
             onPointerUp={(event) => event.currentTarget.releasePointerCapture(event.pointerId)}

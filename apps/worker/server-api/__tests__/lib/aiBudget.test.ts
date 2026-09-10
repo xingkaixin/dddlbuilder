@@ -42,11 +42,13 @@ describe('AI daily budget lifecycle', () => {
     const { reserveAIDailyBudget, settleAIDailyBudget, cleanupAIGovernance } =
       await import('../../lib/aiBudget.js');
     const { env, sqlite, addUsage } = createFixture();
+
     try {
       for (const id of ['old', 'active', 'recent']) {
         addUsage(id);
         await reserveAIDailyBudget(env, id, 10, 1000);
       }
+
       await settleAIDailyBudget(env, 'old', 5);
       await settleAIDailyBudget(env, 'recent', 5);
       const now = Date.now();
@@ -121,6 +123,7 @@ describe('AI daily budget lifecycle', () => {
     async (actualTokens) => {
       const { reserveAIDailyBudget, settleAIDailyBudget } = await import('../../lib/aiBudget.js');
       const { env, sqlite, addUsage } = createFixture();
+
       try {
         addUsage('usage-1');
         await reserveAIDailyBudget(env, 'usage-1', 10, 100);
@@ -141,6 +144,7 @@ describe('AI daily budget lifecycle', () => {
   it('rejects a budget counter overflow atomically', async () => {
     const { reserveAIDailyBudget, settleAIDailyBudget } = await import('../../lib/aiBudget.js');
     const { env, sqlite, addUsage } = createFixture();
+
     try {
       addUsage('usage-1');
       await reserveAIDailyBudget(env, 'usage-1', 1, Number.MAX_SAFE_INTEGER);
@@ -168,6 +172,7 @@ describe('AI daily budget lifecycle', () => {
     sqlite.prepare("UPDATE usage_events SET status = 'failed' WHERE id = ?").run('usage-1');
 
     expect(await reconcileTerminalAIBudgets(env)).toBe(1);
+
     const counter = sqlite.prepare('SELECT value FROM ai_daily_budget_counters').get() as {
       value: number;
     };
@@ -178,24 +183,30 @@ describe('AI daily budget lifecycle', () => {
     const { reserveAIDailyBudget, settleAIDailyBudget, reconcileTerminalAIBudgets } =
       await import('../../lib/aiBudget.js');
     const { env, sqlite, addUsage } = createFixture();
+
     try {
       vi.useFakeTimers();
       vi.setSystemTime('2026-08-31T23:59:59.990Z');
+
       for (const id of ['old-late', 'new-first', 'new-second', 'old-extra']) addUsage(id);
 
       let releaseOld = () => {};
+
       const waitForOld = new Promise<void>((resolve) => {
         releaseOld = resolve;
       });
       const prepare = env.USER_DB.prepare.bind(env.USER_DB);
+
       const delayedEnv = {
         ...env,
         USER_DB: {
           prepare(sql: string) {
             const statement = prepare(sql);
+
             return {
               bind(...bindings: unknown[]) {
                 const bound = statement.bind(...bindings);
+
                 return new Proxy(bound, {
                   get(target, key) {
                     if (
@@ -205,10 +216,13 @@ describe('AI daily budget lifecycle', () => {
                     ) {
                       return async () => {
                         await waitForOld;
+
                         return target.run();
                       };
                     }
+
                     const value = Reflect.get(target, key);
+
                     return typeof value === 'function' ? value.bind(target) : value;
                   },
                 });

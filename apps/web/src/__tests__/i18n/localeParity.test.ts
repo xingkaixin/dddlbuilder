@@ -5,6 +5,7 @@ import { zhCNCommon } from '@/i18n/locales/zh-CN/common';
 
 const listLeafKeys = (value: unknown, prefix = ''): string[] => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return [prefix];
+
   return Object.entries(value).flatMap(([key, child]) =>
     listLeafKeys(child, prefix ? `${prefix}.${key}` : key),
   );
@@ -14,7 +15,9 @@ const listInterpolations = (value: unknown, prefix = ''): Record<string, string[
   if (typeof value === 'string') {
     return { [prefix]: value.match(/\{\{[^}]+\}\}/g)?.sort() ?? [] };
   }
+
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
   return Object.assign(
     {},
     ...Object.entries(value).map(([key, child]) =>

@@ -22,6 +22,7 @@ const defineClipboard = (writeText: (value: string) => Promise<void>) => {
 
   if (existing && typeof existing.writeText === 'function') {
     const spy = vi.spyOn(existing, 'writeText').mockImplementation(writeText);
+
     return {
       mock: spy,
       restore: () => spy.mockRestore(),

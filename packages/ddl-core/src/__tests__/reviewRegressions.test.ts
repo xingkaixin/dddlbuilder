@@ -62,6 +62,7 @@ describe('review DDL regressions', () => {
       db,
     );
     expect(sql).toContain(`MODIFY (${formatSqlIdentifier('uid', db)} NULL)`);
+
     const typeSql = generateModifyColumn(
       't',
       {
@@ -77,6 +78,7 @@ describe('review DDL regressions', () => {
   });
   it('escapes backslashes in MySQL comments and defaults', () => {
     const value = 'path C:' + String.fromCharCode(92);
+
     const sql = buildDDL({
       dbType: 'mysql',
       tableName: 't',
@@ -156,6 +158,7 @@ describe('review DDL regressions', () => {
   });
   it('ignores field type case and spacing in diffs', () => {
     const before = state('id');
+
     const after = {
       ...before,
       rows: before.rows.map((row) => ({ ...row, fieldType: 'VARCHAR(255)' })),
@@ -200,6 +203,7 @@ describe('review DDL regressions', () => {
       foreignKeys: [fk],
     });
     const before = { ...state('a'), dbType: 'oracle' as const, rows: [] };
+
     const after = {
       ...before,
       rows: [{ ...state('a').rows[0], fieldName: 'uid' }],

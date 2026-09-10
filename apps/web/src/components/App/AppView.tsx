@@ -6,6 +6,7 @@ import { useAppController } from './useAppController';
 
 export function AppView() {
   const { workspaceView, dialogLayer, hydrationFailed, retryHydration } = useAppController();
+
   if (hydrationFailed) return <WorkspaceBootstrapScreen failed onRetry={retryHydration} />;
 
   return (

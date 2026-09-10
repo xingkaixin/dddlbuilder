@@ -32,6 +32,7 @@ import { registerWorkspaceYDocRoutes } from '../server-api/routes/workspaceYDoc.
 import { registerAdminRoutes } from '../server-api/routes/admin.js';
 import { reclaimStaleAIUsage } from '../server-api/lib/aiUsage.js';
 import { cleanupAIGovernance, reconcileTerminalAIBudgets } from '../server-api/lib/aiBudget.js';
+
 export { WorkspaceYDocDurableObject } from '../server-api/lib/workspaceYDocDurableObject.js';
 
 const DOCS_DEV_ORIGIN = 'http://127.0.0.1:5174';
@@ -45,8 +46,10 @@ api.use('/*', async (c, next) => {
   const incoming = normalizeIncomingRequestId(c.req.header('x-request-id'));
   const requestId = incoming ?? crypto.randomUUID();
   c.set('requestId', requestId);
+
   if (c.env.EVLOG_REQUEST_LOG) c.set('log', c.env.EVLOG_REQUEST_LOG);
   c.header('X-Request-Id', requestId);
+
   try {
     await next();
   } finally {
@@ -59,6 +62,7 @@ api.use(
   cors({
     origin: (origin, c) => {
       const allowed = parseAllowedOrigins(c.env.CORS_ALLOWED_ORIGINS);
+
       return allowed.includes(origin) ? origin : null;
     },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -88,22 +92,36 @@ api.onError((error, c) => {
   if (error instanceof DomainError) {
     return errorResponse(c, error.status, error.message, error.code);
   }
+
   getRequestLogger(c)?.error(error);
+
   return errorResponse(c, 500, 'Internal server error', 'INTERNAL_ERROR');
 });
 
 registerParseSqlRoute(api);
+
 registerExplainRoute(api);
+
 registerReviewRoute(api);
+
 registerGenerateTableRoute(api);
+
 registerGenerateCommentsRoute(api);
+
 registerIndexAdvisorRoute(api);
+
 registerShareRoutes(api);
+
 registerAuthRoutes(api);
+
 registerCreditRoutes(api);
+
 registerWorkspaceMigrationRoutes(api);
+
 registerWorkspaceRoutes(api);
+
 registerWorkspaceYDocRoutes(api);
+
 registerAdminRoutes(api);
 
 const isLocalDevRequest = (url: URL) => LOCAL_DEV_HOSTS.has(url.hostname);
@@ -117,14 +135,18 @@ const createProxyRequest = (targetUrl: URL, request: Request) =>
   });
 
 app.route('/api', api);
+
 app.get('/docs', (c) => c.redirect('/docs/', 301));
+
 app.all('/docs/*', async (c) => {
   const currentUrl = new URL(c.req.url);
+
   if (!isLocalDevRequest(currentUrl)) {
     return c.env.ASSETS.fetch(c.req.raw);
   }
 
   const targetUrl = new URL(currentUrl.pathname + currentUrl.search, DOCS_DEV_ORIGIN);
+
   return fetch(createProxyRequest(targetUrl, c.req.raw));
 });
 
@@ -135,8 +157,10 @@ app.get('*', async (c) => {
   }
 
   const res = await c.env.ASSETS.fetch(c.req.raw);
+
   if (res.ok) return res;
   const indexRes = await c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
+
   return new Response(indexRes.body, {
     headers: { 'content-type': 'text/html; charset=utf-8' },
   });
@@ -154,9 +178,11 @@ export const runAIUsageRecovery = async (
     waitUntil,
     env.ENVIRONMENT,
   );
+
   try {
     const program = Effect.gen(function* () {
       const recovery = yield* reclaimStaleAIUsage(env);
+
       const reconciledBudgets = yield* Effect.tryPromise({
         try: () => reconcileTerminalAIBudgets(env),
         catch: (cause) => new AIUsageError({ cause }),
@@ -165,7 +191,9 @@ export const runAIUsageRecovery = async (
         try: () => cleanupAIGovernance(env),
         catch: (cause) => new AIUsageError({ cause }),
       }).pipe(Effect.uninterruptible, Effect.withSpan('ai.governance.cleanup'));
+
       if (recovery.failures.length > 0) yield* Effect.annotateCurrentSpan('ai.outcome', 'failed');
+
       return { ...recovery, reconciledBudgets };
     }).pipe(
       Effect.withSpan('ai.usage.recovery'),
@@ -183,6 +211,7 @@ export const runAIUsageRecovery = async (
         reconciledBudgets,
       },
     });
+
     if (failures.length > 0) {
       const firstFailure = failures[0];
       log.error(toWorkerError(firstFailure?.error, 'AI usage recovery failed'), {

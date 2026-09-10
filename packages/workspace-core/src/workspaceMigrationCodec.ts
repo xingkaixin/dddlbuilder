@@ -11,12 +11,16 @@ const readRequiredText = (value: unknown) =>
 
 const decodeWorkspaceSource = (value: unknown): WorkspaceSource | null => {
   if (!isRecord(value)) return null;
+
   if (value.kind === 'draft') {
     const draftId = readRequiredText(value.draftId);
+
     return draftId ? { kind: 'draft', draftId } : null;
   }
+
   if (value.kind === 'saved_table') {
     const normalizedName = readRequiredText(value.normalizedName);
+
     return normalizedName
       ? {
           kind: 'saved_table',
@@ -25,6 +29,7 @@ const decodeWorkspaceSource = (value: unknown): WorkspaceSource | null => {
         }
       : null;
   }
+
   return null;
 };
 
@@ -32,6 +37,7 @@ const decodeActiveSession = (
   value: unknown,
 ): WorkspaceMigrationSnapshot['activeSession'] | undefined => {
   if (value === null) return null;
+
   if (
     !isRecord(value) ||
     typeof value.updatedAt !== 'number' ||
@@ -41,12 +47,15 @@ const decodeActiveSession = (
   }
 
   const activeSource = decodeWorkspaceSource(value.activeSource);
+
   if (!activeSource) return undefined;
+
   if (value.activeState === null) {
     return { activeSource, activeState: null, updatedAt: value.updatedAt };
   }
 
   const activeState = decodePersistedState(value.activeState, 'external');
+
   return activeState ? { activeSource, activeState, updatedAt: value.updatedAt } : undefined;
 };
 
@@ -57,15 +66,18 @@ export const decodeWorkspaceMigrationPayload = (
 
   const localFingerprint = readRequiredText(value.localFingerprint);
   const idempotencyKey = readRequiredText(value.idempotencyKey);
+
   if (!localFingerprint || !idempotencyKey) return null;
 
   const snapshotInput = value.snapshot;
+
   const snapshot = decodeWorkspaceSnapshot({
     ...snapshotInput,
     drafts: snapshotInput.drafts ?? [],
     folders: snapshotInput.folders ?? [],
   });
   const activeSession = decodeActiveSession(snapshotInput.activeSession);
+
   if (!snapshot || activeSession === undefined) return null;
 
   return {

@@ -16,9 +16,13 @@ import type { useWorkspaceController } from './hooks/useWorkspaceController';
 import type { useWorkspaceTrashActions } from './hooks/useWorkspaceTrashActions';
 
 type EditorDomains = ReturnType<typeof useEditorDomains>;
+
 type WorkspaceController = ReturnType<typeof useWorkspaceController>;
+
 type SchemaController = ReturnType<typeof useSchemaController>;
+
 type FieldTemplateData = ReturnType<typeof useFieldTemplates>;
+
 type TableTemplateData = ReturnType<typeof useTableTemplates>;
 
 interface BuildAppDialogLayerModelParams {
@@ -78,6 +82,7 @@ export function buildAppDialogLayerModel({
   const { editor, ui, tableOptions } = domains;
   const { persistenceStatus, tables, folders, scope: workspaceScope } = workspaceController;
   const { derived, indexAdvisor } = schemaController;
+
   const versionTarget =
     ui.versionHistoryTarget && workspaceScope
       ? {

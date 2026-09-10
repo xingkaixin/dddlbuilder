@@ -38,6 +38,7 @@ Object.defineProperty(window.navigator, 'languages', {
 });
 
 void i18n.changeLanguage('zh-CN');
+
 document.documentElement.lang = 'zh-CN';
 
 // Mock clipboard API

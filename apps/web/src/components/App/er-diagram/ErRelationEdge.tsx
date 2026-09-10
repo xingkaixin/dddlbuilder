@@ -6,6 +6,7 @@ import type { ErEdgeData } from './types';
 
 function ErRelationEdge(props: EdgeProps) {
   const { t } = useTranslation();
+
   const {
     sourceX,
     sourceY,
@@ -28,6 +29,7 @@ function ErRelationEdge(props: EdgeProps) {
   });
 
   const logical = data?.fk?.logical;
+
   const label = logical
     ? `${t('erDiagram.relationship.logical')} · ${logical.cardinality === 'one-to-one' ? '1:1' : 'N:1'} · ${t(`erDiagram.relationship.${logical.optionality}`)}`
     : data?.fk?.onDelete || data?.fk?.onUpdate

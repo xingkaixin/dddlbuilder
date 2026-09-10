@@ -37,6 +37,7 @@ describe('useWebMcpTools', () => {
   beforeEach(() => {
     registrations.clear();
     originalModelContext = Object.getOwnPropertyDescriptor(document, 'modelContext');
+
     const modelContext = Object.assign(new EventTarget(), {
       ontoolchange: null,
       getTools: vi.fn(async () => []),
@@ -66,6 +67,7 @@ describe('useWebMcpTools', () => {
   it('registers an anonymous workflow and applies a patch only after confirmation', async () => {
     const replaceState = vi.fn();
     const openAuthDialog = vi.fn();
+
     const hook = renderHook(() =>
       useWebMcpTools({
         authStatus: 'signed_out',
@@ -85,6 +87,7 @@ describe('useWebMcpTools', () => {
     const inspect = registrations.get('inspect_active_schema');
     const preview = registrations.get('preview_schema_patch');
     const apply = registrations.get('apply_schema_patch');
+
     if (!inspect || !preview || !apply) throw new Error('WebMCP tools are incomplete');
 
     const inspected = (await execute(inspect, { section: 'overview' })) as {
@@ -112,6 +115,7 @@ describe('useWebMcpTools', () => {
     act(() => {
       applyPromise = execute(apply, { changeSetId });
     });
+
     if (!applyPromise) throw new Error('Apply request did not start');
     await waitFor(() => expect(hook.result.current.mode).toBe('confirm'));
     act(() => hook.result.current.onConfirm());

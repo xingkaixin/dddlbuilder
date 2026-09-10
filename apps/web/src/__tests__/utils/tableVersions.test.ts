@@ -44,7 +44,9 @@ function createMockState(overrides: Partial<PersistedState> = {}): PersistedStat
 
 const createPersistedVersion = async (...args: Parameters<typeof createVersion>) => {
   const version = await createVersion(...args);
+
   if (!version) throw new Error('Expected version to be persisted');
+
   return version;
 };
 
@@ -71,8 +73,10 @@ describe('tableVersions', () => {
     expect(loaded?.state.indexes[0]).toMatchObject({ kind: 'unique_constraint' });
   });
   let testId = 0;
+
   const getTestTableName = () => {
     const normalizedName = `test_table_${Date.now()}_${testId++}`;
+
     return { scope: { kind: 'anonymous' } as const, tableId: normalizedName, normalizedName };
   };
   const defaultTarget = {
@@ -148,6 +152,7 @@ describe('tableVersions', () => {
 
     it('同名表在不同工作区中互不影响', async () => {
       const normalizedName = getTestTableName().normalizedName;
+
       const anonymousTarget = {
         scope: { kind: 'anonymous' } as const,
         tableId: 'shared-id',
@@ -175,6 +180,7 @@ describe('tableVersions', () => {
     it('表重命名后仍通过稳定 ID 读取原有历史', async () => {
       const originalTarget = getTestTableName();
       await createVersion(originalTarget, createMockState(), 'before-rename');
+
       const renamedTarget = {
         ...originalTarget,
         normalizedName: `${originalTarget.normalizedName}_v2`,
@@ -187,6 +193,7 @@ describe('tableVersions', () => {
 
     it('读取不认领未分区历史', async () => {
       const target = getTestTableName();
+
       const competingTarget = {
         scope: {
           kind: 'user' as const,
@@ -356,6 +363,7 @@ describe('tableVersions', () => {
     it('propagates version history transaction failures', async () => {
       let mockTx: any;
       const mockRequest = { onerror: null, onsuccess: null };
+
       const mockDb = {
         transaction: () => mockTx,
         close: vi.fn(),

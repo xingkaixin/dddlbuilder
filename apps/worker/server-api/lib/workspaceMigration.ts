@@ -83,6 +83,7 @@ export const analyzeWorkspaceMigration = async (
     userId,
     normalizeWorkspaceMigrationSnapshot(payload.snapshot),
   );
+
   if (records.length === 0) {
     return {
       status: 'no_data',
@@ -95,6 +96,7 @@ export const analyzeWorkspaceMigration = async (
   }
 
   const existingLink = await readWorkspaceLink(env, userId, payload.localFingerprint);
+
   if (existingLink?.migrationStatus === 'completed') {
     return {
       status: 'completed',
@@ -107,6 +109,7 @@ export const analyzeWorkspaceMigration = async (
   }
 
   const authority = await openDefaultWorkspaceYDocAuthority(env, userId);
+
   const analysis = analyzeMigrationRecords(
     records,
     buildMigrationEntityRecords(userId, await authority.readSnapshot()),
@@ -136,6 +139,7 @@ export const applyWorkspaceMigrationSnapshot = (
     records,
     buildMigrationEntityRecords(userId, exportWorkspaceYDocToSnapshot(doc)),
   );
+
   if (plan.entities.length > 0) {
     mergeWorkspaceSnapshotIntoYDoc(
       doc,
@@ -149,6 +153,7 @@ export const applyWorkspaceMigrationSnapshot = (
       ),
     );
   }
+
   return {
     status: records.length === 0 ? 'no_data' : 'completed',
     createdCount: plan.createdCount,
@@ -168,6 +173,7 @@ export const commitWorkspaceMigration = async (
     userId,
     normalizeWorkspaceMigrationSnapshot(payload.snapshot),
   );
+
   if (records.length === 0) {
     return {
       status: 'no_data',
@@ -180,6 +186,7 @@ export const commitWorkspaceMigration = async (
   }
 
   const existingLink = await readWorkspaceLink(env, userId, payload.localFingerprint);
+
   if (existingLink?.migrationStatus === 'completed') {
     return {
       status: 'completed',
@@ -198,5 +205,6 @@ export const commitWorkspaceMigration = async (
     localFingerprint: payload.localFingerprint,
     idempotencyKey: payload.idempotencyKey,
   });
+
   return result;
 };

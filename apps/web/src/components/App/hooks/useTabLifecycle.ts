@@ -33,6 +33,7 @@ export function useTabLifecycle({
   resetWorkspaceSelection,
 }: UseTabLifecycleParams) {
   const { t } = useTranslation();
+
   const { tabs, activeTabId } = useTabStore(
     useShallow((state) => ({ tabs: state.tabs, activeTabId: state.activeTabId })),
   );
@@ -62,14 +63,18 @@ export function useTabLifecycle({
   useLayoutEffect(() => {
     const activeTabChanged = previousActiveTabId.current !== activeTabId;
     previousActiveTabId.current = activeTabId;
+
     if (activeTabChanged) pendingDraftTitleId.current = activeDraftId;
+
     if (!enabled || !activeDraftId) return;
+
     if (
       pendingDraftTitleId.current === activeDraftId &&
       activeTableName !== activeSnapshotTableName
     ) {
       return;
     }
+
     pendingDraftTitleId.current = null;
     const title = activeTableName.trim() || t('app.workspace.unnamedDraft');
     updateDraftTitle(activeDraftId, title);
@@ -82,11 +87,13 @@ export function useTabLifecycle({
     t,
     updateDraftTitle,
   ]);
+
   // 编辑器是唯一真相源，标签快照只在冲刷点回写；内容没变时跳过，避免无谓的持久化。
   const flushActiveTab = useCallback(() => {
     if (!enabled || !activeWorkspaceTab || activeWorkspaceTab.isLoading) return;
     const currentState = getCurrentState();
     const tabSnapshotSignature = buildPersistedStateSignature(activeWorkspaceTab.stateSnapshot);
+
     if (tabSnapshotSignature === buildPersistedStateSignature(currentState)) return;
 
     updateActiveTabSnapshot(currentState);
@@ -97,8 +104,10 @@ export function useTabLifecycle({
     (tab: WorkspaceTab) => {
       if (tab.isLoading) {
         activateTab(tab.id);
+
         return;
       }
+
       const snapshot = resolveWorkspaceSnapshot(tab.source) ?? {
         source: tab.source,
         state: tab.stateSnapshot,
@@ -122,6 +131,7 @@ export function useTabLifecycle({
   const switchToTabById = useCallback(
     (tabId: string) => {
       const tab = tabs.find((item) => item.id === tabId);
+
       if (!tab || tab.id === activeTabId) return;
       switchToTab(tab);
     },
@@ -131,14 +141,17 @@ export function useTabLifecycle({
   const closeTab = useCallback(
     (tabId: string) => {
       const closingActiveTab = tabId === activeTabId;
+
       if (closingActiveTab) {
         flushActiveTab();
       }
+
       closeTabStore(tabId);
 
       // 关闭后台标签时激活对象没变，重放旧快照会把尚未冲刷的编辑回滚掉。
       if (!closingActiveTab) return;
       const nextActive = getActiveTab();
+
       if (nextActive) {
         showTab(nextActive);
       } else {
@@ -151,6 +164,7 @@ export function useTabLifecycle({
   const closeTabBySource = useCallback(
     (source: WorkspaceSource) => {
       const tab = findTabBySource(source);
+
       if (tab) closeTab(tab.id);
     },
     [closeTab, findTabBySource],

@@ -29,8 +29,10 @@ vi.mock('@dnd-kit/sortable', () => ({
   arrayMove: (array: unknown[], from: number, to: number) => {
     const next = [...array];
     const [target] = next.splice(from, 1);
+
     if (target === undefined) return next;
     next.splice(to, 0, target);
+
     return next;
   },
 }));
@@ -75,11 +77,13 @@ describe('DataTable 冻结列样式', () => {
 
   it('冻结列单元格应保留行 hover 高亮类，且不使用旧渐变背景', () => {
     const { container } = render(<DataTable />);
+
     const frozenCell = container.querySelector<HTMLTableCellElement>(
       'tbody td[data-row-index="0"][data-col-index="0"]',
     );
 
     expect(frozenCell).not.toBeNull();
+
     if (!frozenCell) return;
 
     expect(frozenCell).toHaveClass('group-hover/row:bg-muted/30');
@@ -90,11 +94,13 @@ describe('DataTable 冻结列样式', () => {
 
   it('程序高亮命中时，冻结列单元格应展示高亮背景', () => {
     const { container } = render(<DataTable highlightedRowIndex={0} />);
+
     const frozenCell = container.querySelector<HTMLTableCellElement>(
       'tbody td[data-row-index="0"][data-col-index="0"]',
     );
 
     expect(frozenCell).not.toBeNull();
+
     if (!frozenCell) return;
 
     expect(frozenCell).toHaveClass('bg-blue-500/10');
@@ -102,10 +108,12 @@ describe('DataTable 冻结列样式', () => {
 
   it('冻结表头应与普通表头保持一致底色，并移除旧渐变背景', () => {
     const { container } = render(<DataTable />);
+
     const frozenHeader =
       container.querySelector<HTMLTableHeaderCellElement>('thead th:first-child');
 
     expect(frozenHeader).not.toBeNull();
+
     if (!frozenHeader) return;
 
     expect(frozenHeader).toHaveClass('bg-muted/30');

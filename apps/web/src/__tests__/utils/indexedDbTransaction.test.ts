@@ -25,6 +25,7 @@ const createHarness = <T>(result: T) => {
     onerror: null,
   };
   const store = {} as IDBObjectStore;
+
   const transaction: TransactionHandlers = {
     error: null,
     oncomplete: null,
@@ -34,6 +35,7 @@ const createHarness = <T>(result: T) => {
     abort: vi.fn(),
   };
   const close = vi.fn();
+
   const db = {
     transaction: vi.fn(() => transaction),
     close,
@@ -69,6 +71,7 @@ describe('runIndexedDbRequest', () => {
 
   it('can leave a shared connection open after committing', async () => {
     const harness = createHarness(undefined);
+
     const result = runIndexedDbTransaction(harness.db, 'records', 'readwrite', () => () => 2, {
       closeDatabase: false,
     });
@@ -79,6 +82,7 @@ describe('runIndexedDbRequest', () => {
   it('resolves only after the transaction commits', async () => {
     const harness = createHarness('saved');
     let resolved = false;
+
     const result = runIndexedDbRequest(
       harness.db,
       'records',
@@ -86,6 +90,7 @@ describe('runIndexedDbRequest', () => {
       () => harness.request as unknown as IDBRequest<string>,
     ).then((value) => {
       resolved = true;
+
       return value;
     });
 
@@ -100,6 +105,7 @@ describe('runIndexedDbRequest', () => {
 
   it('rejects when a successful request is followed by a transaction abort', async () => {
     const harness = createHarness('not-committed');
+
     const result = runIndexedDbRequest(
       harness.db,
       'records',

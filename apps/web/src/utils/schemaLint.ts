@@ -88,6 +88,7 @@ function hasCurrentTimestampDefault(field: FieldRow): boolean {
 function buildExpectedIndexPrefix(tableName: string, index: IndexDefinition): string {
   const prefix = index.kind !== 'index' ? 'uk' : 'idx';
   const fields = index.fields.map((field) => field.name.trim()).filter(Boolean);
+
   return `${prefix}_${tableName}_${fields.join('_')}`;
 }
 
@@ -105,9 +106,11 @@ export function lintSchema({
   const filledRows = getFilledRows(rows);
   const fieldNames = new Set(filledRows.map((row) => row.fieldName.trim().toLowerCase()));
   const danglingReferences = new Set<string>();
+
   const addDanglingReference = (owner: string, fieldName: string) => {
     if (!fieldName.trim() || fieldNames.has(fieldName.trim().toLowerCase())) return;
     const referenceKey = `${owner}:${fieldName}`;
+
     if (danglingReferences.has(referenceKey)) return;
     danglingReferences.add(referenceKey);
     issues.push(
@@ -121,17 +124,21 @@ export function lintSchema({
   for (const index of indexes) {
     for (const field of index.fields) addDanglingReference(index.name || 'index', field.name);
   }
+
   for (const foreignKey of foreignKeys) {
     for (const field of foreignKey.fields) {
       addDanglingReference(foreignKey.name || 'foreign key', field);
     }
   }
+
   for (const column of mysqlPartitionConfig?.columns ?? []) {
     addDanglingReference('MySQL partition', column);
   }
+
   if (citusShardingConfig?.distributionColumn) {
     addDanglingReference('Citus distribution', citusShardingConfig.distributionColumn);
   }
+
   for (const column of tableMiscConfig?.partitions?.clustering?.columns ?? []) {
     addDanglingReference('Hive clustering', column);
   }
@@ -142,6 +149,7 @@ export function lintSchema({
 
   for (const row of filledRows) {
     const fieldName = row.fieldName.trim();
+
     if (!isSnakeCaseName(fieldName)) {
       issues.push(createIssue('field-name-snake-case', 'warning', fieldName, {}, row.id));
     }
@@ -155,6 +163,7 @@ export function lintSchema({
     for (const index of indexes) {
       if (index.kind === 'primary' || index.fields.length === 0) continue;
       const expectedPrefix = buildExpectedIndexPrefix(normalizedTableName, index);
+
       if (!index.name.trim().startsWith(expectedPrefix)) {
         issues.push(
           createIssue(
@@ -171,6 +180,7 @@ export function lintSchema({
 
   for (const auditFieldName of AUDIT_FIELDS) {
     const auditField = findField(filledRows, auditFieldName);
+
     if (!auditField) {
       issues.push(createIssue('audit-field-required', 'suggestion', auditFieldName));
       continue;

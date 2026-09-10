@@ -35,6 +35,7 @@ export const buildDialectColumn = (
   const canonicalType = getCanonicalBaseType(field.type);
   const type = typeMapper.mapType(parseFieldType(field.type));
   const defaultValue = resolveFieldDefault(field, dbType);
+
   const segments: Record<'identity' | 'nullability' | 'default', string> = {
     identity:
       profile.identityClause && defaultValue.kind === 'auto_increment'
@@ -43,6 +44,7 @@ export const buildDialectColumn = (
     nullability: field.nullable ? (profile.explicitNull ? ' NULL' : '') : ' NOT NULL',
     default: (() => {
       const clause = renderDialectDefaultClause(defaultValue);
+
       return clause ? ` ${clause}` : '';
     })(),
   };

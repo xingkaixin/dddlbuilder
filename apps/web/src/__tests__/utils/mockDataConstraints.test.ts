@@ -20,6 +20,7 @@ const field = (
 const generate = (column: NormalizedField, dbType: DatabaseType = 'mysql') => {
   const result = generateMockData('sample', '', [column], dbType, { rowCount: 3 });
   const rows = JSON.parse(result.json) as Record<string, unknown>[];
+
   return {
     ...result,
     values: rows.map((row) => row[column.name]),
@@ -86,7 +87,9 @@ describe('Mock data field constraints', () => {
       for (const value of generate(field('price', type)).values)
         expect(Number.isInteger(value)).toBe(true);
     }
+
     vi.mocked(Math.random).mockReturnValue(0.123456789);
+
     for (const value of generate(field('price', 'decimal(4,2)')).values) {
       expect(String(value).split('.')[1]?.length ?? 0).toBeLessThanOrEqual(2);
     }
@@ -94,6 +97,7 @@ describe('Mock data field constraints', () => {
 
   it.each([0, 1 - Number.EPSILON])('keeps boundary samples in range at random=%s', (sample) => {
     vi.mocked(Math.random).mockReturnValue(sample);
+
     for (const [type, max] of [
       ['tinyint', 127],
       ['tinyint unsigned', 255],
@@ -120,6 +124,7 @@ describe('Mock data field constraints', () => {
     const column = field('gender', 'tinyint', {
       enumMeta: [{ value: '0' }, { value: '1' }],
     });
+
     for (const value of generate(column).values) expect([0, 1]).toContain(value);
   });
 

@@ -45,14 +45,18 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
 
     const handleConfirm = useCallback(async () => {
       const trimmedName = name.trim();
+
       if (!trimmedName) {
         setError(t('templateManager.createFromFieldsDialog.nameRequired'));
+
         return;
       }
 
       setLoading(true);
+
       try {
         const result = await onConfirm(trimmedName, validFields, description.trim() || undefined);
+
         if (result.ok) {
           onOpenChange(false);
         } else {
@@ -137,4 +141,5 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
     );
   },
 );
+
 CreateTemplateDialog.displayName = 'CreateTemplateDialog';

@@ -36,15 +36,19 @@ const migrateLegacyTableHistory = (transaction: IDBTransaction) => {
     const tables = tablesRequest.result.map((record) => {
       const scope = record.scope ?? LEGACY_SCOPE;
       const prefix = `${scope}::`;
+
       const name = record.normalizedName.startsWith(prefix)
         ? record.normalizedName.slice(prefix.length)
         : record.normalizedName;
+
       return { record, scope, name, tableId: record.tableId ?? `legacy:${name}` };
     });
     const tableKeys = new Set(tables.map(({ scope, tableId }) => `${scope}::${tableId}`));
     const aliases = new Map<string, string>();
+
     for (const { record, scope, name, tableId } of tables) {
       const legacyKey = `${scope}::legacy:${name}`;
+
       // Only the stored scoped name proves this ID came from the old decode order.
       if (
         record.normalizedName === `${scope}::${name}` &&
@@ -59,6 +63,7 @@ const migrateLegacyTableHistory = (transaction: IDBTransaction) => {
       const cursorRequest = transaction.objectStore(storeName).openCursor();
       cursorRequest.onsuccess = () => {
         const cursor = cursorRequest.result;
+
         if (!cursor) return;
         const record = cursor.value as TableVersion;
         const previousId = record.tableId ?? `legacy:${record.tableNormalizedName}`;
@@ -67,6 +72,7 @@ const migrateLegacyTableHistory = (transaction: IDBTransaction) => {
         const scope = previousKey.slice(0, separator);
         const key = previousKey.slice(separator + 2);
         const isReview = storeName === REVIEW_STORE_NAME;
+
         if (
           separator !== -1 &&
           (key === previousId || (isReview && key === `table:${previousId}`))
@@ -75,10 +81,12 @@ const migrateLegacyTableHistory = (transaction: IDBTransaction) => {
           const tableId = alias ?? previousId;
           const isTableReview = isReview && (alias != null || key === `table:${previousId}`);
           const tableKey = `${scope}::${isTableReview ? 'table:' : ''}${tableId}`;
+
           if (record.tableId !== tableId || record.tableKey !== tableKey) {
             cursor.update({ ...record, tableId, tableKey });
           }
         }
+
         cursor.continue();
       };
     }
@@ -95,6 +103,7 @@ export const openDb = (): Promise<IDBDatabase> =>
         blocked = true;
         reject(new Error('数据库升级被其他页面阻塞，请关闭其他页面后重试'));
       };
+
       request.onerror = () => reject(request.error ?? new Error('打开 IndexedDB 失败'));
       request.onupgradeneeded = (event) => {
         const db = request.result;
@@ -105,18 +114,21 @@ export const openDb = (): Promise<IDBDatabase> =>
           store.createIndex('updatedAt', 'updatedAt', { unique: false });
           store.createIndex('name', 'name', { unique: false });
         }
+
         if (!db.objectStoreNames.contains(VERSION_STORE_NAME)) {
           const store = db.createObjectStore(VERSION_STORE_NAME, { keyPath: 'id' });
           store.createIndex('tableKey', 'tableKey', { unique: false });
           store.createIndex('tableNormalizedName', 'tableNormalizedName', { unique: false });
           store.createIndex('createdAt', 'createdAt', { unique: false });
         }
+
         if (!db.objectStoreNames.contains(REVIEW_STORE_NAME)) {
           const store = db.createObjectStore(REVIEW_STORE_NAME, { keyPath: 'id' });
           store.createIndex('tableKey', 'tableKey', { unique: false });
           store.createIndex('tableNormalizedName', 'tableNormalizedName', { unique: false });
           store.createIndex('createdAt', 'createdAt', { unique: false });
         }
+
         if (!db.objectStoreNames.contains(FOLDER_STORE_NAME)) {
           const store = db.createObjectStore(FOLDER_STORE_NAME, { keyPath: 'id' });
           store.createIndex('parentId', 'parentId', { unique: false });
@@ -124,20 +136,26 @@ export const openDb = (): Promise<IDBDatabase> =>
         }
 
         const transaction = request.transaction;
+
         if (transaction && db.objectStoreNames.contains(VERSION_STORE_NAME)) {
           const store = transaction.objectStore(VERSION_STORE_NAME);
+
           if (!store.indexNames.contains('tableKey')) {
             store.createIndex('tableKey', 'tableKey', { unique: false });
           }
         }
+
         if (transaction && db.objectStoreNames.contains(REVIEW_STORE_NAME)) {
           const store = transaction.objectStore(REVIEW_STORE_NAME);
+
           if (!store.indexNames.contains('tableKey')) {
             store.createIndex('tableKey', 'tableKey', { unique: false });
           }
         }
+
         if (transaction && db.objectStoreNames.contains(STORE_NAME)) {
           const store = transaction.objectStore(STORE_NAME);
+
           if (!store.indexNames.contains('folderId')) {
             store.createIndex('folderId', 'folderId', { unique: false });
           }
@@ -146,11 +164,13 @@ export const openDb = (): Promise<IDBDatabase> =>
         if (!db.objectStoreNames.contains(FIELD_STANDARD_STORE_NAME)) {
           db.createObjectStore(FIELD_STANDARD_STORE_NAME, { keyPath: 'id' });
         }
+
         if (!db.objectStoreNames.contains(TEMPLATE_STORE_NAME)) {
           const store = db.createObjectStore(TEMPLATE_STORE_NAME, { keyPath: 'id' });
           store.createIndex('name', 'name', { unique: false });
           store.createIndex('updatedAt', 'updatedAt', { unique: false });
         }
+
         if (!db.objectStoreNames.contains(TABLE_TEMPLATE_STORE_NAME)) {
           const store = db.createObjectStore(TABLE_TEMPLATE_STORE_NAME, { keyPath: 'id' });
           store.createIndex('name', 'name', { unique: false });
@@ -179,8 +199,10 @@ export const openDb = (): Promise<IDBDatabase> =>
           const cursorRequest = store.openCursor();
           cursorRequest.onsuccess = () => {
             const cursor = cursorRequest.result;
+
             if (!cursor) return;
             const value = cursor.value as SavedTableRecord;
+
             if (!value.scope && !value.normalizedName.includes('::')) {
               store.delete(cursor.primaryKey);
               store.put({
@@ -192,6 +214,7 @@ export const openDb = (): Promise<IDBDatabase> =>
                 scope: LEGACY_SCOPE,
               } satisfies SavedTableRecord);
             }
+
             cursor.continue();
           };
         }
@@ -205,24 +228,32 @@ export const openDb = (): Promise<IDBDatabase> =>
           const cursorRequest = store.openCursor();
           cursorRequest.onsuccess = () => {
             const cursor = cursorRequest.result;
+
             if (!cursor) return;
             const value = cursor.value as { id: string };
+
             if (typeof value.id === 'string' && value.id.endsWith('::global')) {
               store.put({ ...value, id: `${value.id.slice(0, -'::global'.length)}::default` });
               store.delete(value.id);
             }
+
             cursor.continue();
           };
         }
+
         if (transaction && oldVersion < 16) migrateLegacyTableHistory(transaction);
       };
+
       request.onsuccess = () => {
         const db = request.result;
         db.onversionchange = () => db.close();
+
         if (blocked) {
           db.close();
+
           return;
         }
+
         resolve(db);
       };
     } catch (error) {

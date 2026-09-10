@@ -26,6 +26,7 @@ const reservedProperties: Record<ORMTarget, Set<string>> = {
 
 function propertyIdentifier(target: ORMTarget, name: string): string {
   const sanitized = name.replace(/[^A-Za-z0-9_]/g, '_');
+
   let candidate =
     target === 'sqlalchemy'
       ? sanitized
@@ -33,15 +34,18 @@ function propertyIdentifier(target: ORMTarget, name: string): string {
         ? toPascalCase(sanitized)
         : toCamelCase(sanitized);
   const validStart = target === 'prisma' || target === 'gorm' ? /^[A-Za-z]/ : /^[A-Za-z_]/;
+
   if (!validStart.test(candidate) || (target === 'sqlalchemy' && /^(__|_sa_)/.test(candidate))) {
     candidate = `${target === 'gorm' ? 'Field' : 'field'}_${candidate}`;
   }
+
   if (
     reservedProperties[target].has(candidate) ||
     (target === 'jpa' && toPascalCase(candidate) === 'Class')
   ) {
     candidate += '_';
   }
+
   return candidate;
 }
 
@@ -54,11 +58,14 @@ function createPropertyAllocator(target: ORMTarget) {
     const base = propertyIdentifier(target, name);
     let candidate = base;
     let suffix = nextSuffix.get(identity(base)) ?? 2;
+
     while (used.has(identity(candidate))) {
       candidate = `${base}_${suffix++}`;
     }
+
     nextSuffix.set(identity(base), suffix);
     used.add(identity(candidate));
+
     return candidate;
   };
 }
@@ -73,6 +80,7 @@ export function buildORMPropertyNames(
   const { fields, foreignKeys = [], tableName, schemaName = '', referencedModels = [] } = input;
   const allocate = createPropertyAllocator(target);
   const fieldNames = new Map(fields.map((field) => [field.name, allocate(field.name)]));
+
   const relationSource = (foreignKey: ForeignKeyDefinition) =>
     foreignKey.name || `${foreignKey.refTable}_relation`;
   const relationNames = new Map(
@@ -98,13 +106,16 @@ export function buildORMPropertyNames(
       if (referenceKey(foreignKey) === currentModelKey) continue;
       const qualifiedTarget = [foreignKey.refSchema, foreignKey.refTable].filter(Boolean).join('.');
       const names = referencedFields.get(referenceKey(foreignKey));
+
       if (!names) {
         return {
           ok: false as const,
           diagnostic: `// Manual mapping required: foreign key ${JSON.stringify(foreignKey.name)} references model ${JSON.stringify(qualifiedTarget)} without complete field metadata in referencedModels.`,
         };
       }
+
       const missingField = foreignKey.refFields.find((name) => !names.has(name));
+
       if (missingField) {
         return {
           ok: false as const,
@@ -115,12 +126,16 @@ export function buildORMPropertyNames(
   }
 
   const field = (name: string) => fieldNames.get(name) ?? propertyIdentifier(target, name);
+
   const reference = (foreignKey: ForeignKeyDefinition, name: string) => {
     if (referenceKey(foreignKey) === currentModelKey) return field(name);
     const referencedName = referencedFields.get(referenceKey(foreignKey))?.get(name);
+
     if (!referencedName) throw new Error('Referenced model metadata was not resolved');
+
     return referencedName;
   };
+
   return {
     ok: true as const,
     names: {

@@ -8,11 +8,15 @@ export async function fetchCurrentUser(signal?: AbortSignal): Promise<MeApiRespo
     signal,
   });
   const payload = await response.json().catch(() => null);
+
   if (!response.ok) {
     const error = decodeApiError(payload);
     throw new ApiError(error.error ?? 'Failed to load current user', response.status, error.code);
   }
+
   const decoded = decodeMeResponse(payload);
+
   if (decoded._tag === 'None') throw new Error('Invalid user response');
+
   return decoded.value;
 }

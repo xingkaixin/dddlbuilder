@@ -15,24 +15,29 @@ export class GORMGenerator implements ORMGenerator {
       indexes = [],
       foreignKeys = [],
     } = input;
+
     if (!tableName.trim()) {
       return '// 请填写表名';
     }
+
     if (fields.length === 0) {
       return '// 请补充字段信息';
     }
 
     const propertyNames = buildORMPropertyNames('gorm', input);
+
     if (!propertyNames.ok) return propertyNames.diagnostic;
     const names = propertyNames.names;
     const lines: string[] = [];
     const { primaryFields, singleUniqueFields } = buildIndexFieldLookup(indexes);
+
     const needsTime = fields.some((f) =>
       mapCanonicalToORMType('gorm', f.type).includes('time.Time'),
     );
 
     lines.push('package models');
     lines.push('');
+
     if (needsTime) {
       lines.push('import "time"');
       lines.push('');
@@ -56,6 +61,7 @@ export class GORMGenerator implements ORMGenerator {
 
       if (isPk) {
         tagParts.push('primaryKey');
+
         if (defaultValue.kind === 'auto_increment') {
           tagParts.push('autoIncrement');
         }
@@ -83,10 +89,12 @@ export class GORMGenerator implements ORMGenerator {
     for (const foreignKey of foreignKeys) {
       const fieldName = names.relation(foreignKey);
       const referencedType = toPascalCase(foreignKey.refTable);
+
       const isNullable = foreignKey.fields.some(
         (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,
       );
       const localFields = foreignKey.fields.map(names.field).join(',');
+
       const referencedFields = foreignKey.refFields
         .map((name) => names.reference(foreignKey, name))
         .join(',');

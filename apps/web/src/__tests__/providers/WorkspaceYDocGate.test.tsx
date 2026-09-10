@@ -30,6 +30,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
           }
         : null,
   });
+
   return {
     useAuthIdentity,
     useAuthActions: () => ({ refreshSession: authSession.current.refreshSession }),

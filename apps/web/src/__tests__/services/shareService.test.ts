@@ -238,6 +238,7 @@ describe('shareService', () => {
       }),
     );
     const result = await getShareState('s1');
+
     const ddl = buildDDL({
       dbType: result.dbType,
       tableName: result.tableName,

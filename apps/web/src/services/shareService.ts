@@ -29,6 +29,7 @@ async function parseError(response: Response): Promise<ShareApiError> {
   const payload = decodeApiError(await response.json().catch(() => null));
   const message = payload.error ?? i18n.t('services.requestFailed', { status: response.status });
   const code = payload.code;
+
   return new ShareApiError(message, response.status, code);
 }
 
@@ -46,9 +47,11 @@ export async function createShare(state: PersistedState): Promise<CreateShareRes
   }
 
   const data = decodeCreateShareResponse(await response.json());
+
   if (data._tag === 'None') {
     throw new Error(i18n.t('services.shareResponseInvalid'));
   }
+
   return data.value;
 }
 
@@ -60,12 +63,15 @@ export async function getShareState(shareId: string): Promise<PersistedState> {
   }
 
   const data = decodeGetShareResponse(await response.json());
+
   if (data._tag === 'None') {
     throw new Error(i18n.t('services.shareDataInvalid'));
   }
 
   // 分享内容存活于服务端 KV，升级后仍会读到迁移前写入的历史枚举值。
   const state = decodePersistedState(data.value.state, 'external');
+
   if (!state) throw new Error('Invalid shared state');
+
   return state;
 }

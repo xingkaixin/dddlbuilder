@@ -14,6 +14,7 @@ const fillBasicField = async (page: any, name = 'f1') => {
 
 const getSavedTableRow = (page: any, pattern: RegExp) => {
   const drawer = page.getByRole('dialog', { name: /工作区/i });
+
   return drawer
     .locator('[data-testid^="saved-table-row:"]')
     .filter({ hasText: pattern })
@@ -30,6 +31,7 @@ const openHistoryDialog = async (page: any) => {
   await page.getByRole('button', { name: /历史版本/i }).click();
   const dialog = page.getByRole('dialog', { name: /版本历史/i });
   await expect(dialog).toBeVisible();
+
   return dialog;
 };
 

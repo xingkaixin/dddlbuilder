@@ -14,6 +14,7 @@ const applyMigrations = (sqlite: DatabaseSync) => {
   const migrationFiles = readdirSync(migrationsDirectory)
     .filter((file) => file.endsWith('.sql'))
     .sort();
+
   for (const migrationFile of migrationFiles) {
     sqlite.exec(readFileSync(`${migrationsDirectory}/${migrationFile}`, 'utf8'));
   }
@@ -23,9 +24,11 @@ const normalizeD1Binding = (value: unknown): SQLInputValue => {
   if (value === null || typeof value === 'number' || typeof value === 'string') return value;
   if (typeof value === 'boolean') return Number(value);
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
+
   if (ArrayBuffer.isView(value)) {
     return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
   }
+
   throw new TypeError(`Unsupported D1 binding type: ${typeof value}`);
 };
 
@@ -58,12 +61,15 @@ class SqliteD1Statement {
 
   async first<T>(column?: string): Promise<T | null> {
     const row = this.statement.get(...this.bindings) as Record<string, unknown> | undefined;
+
     if (!row) return null;
+
     return (column ? row[column] : row) as T;
   }
 
   async all<T>() {
     const results = this.statement.all(...this.bindings) as T[];
+
     return this.withMeta({ success: true, results }, this.isReadQuery() ? results.length : 0, 0);
   }
 
@@ -71,16 +77,19 @@ class SqliteD1Statement {
     const columns = this.statement.columns().map((column) => column.name);
     const rows = (await this.all<Record<string, unknown>>()).results ?? [];
     const values = rows.map((row) => columns.map((column) => row[column])) as T[];
+
     return options?.columnNames ? ([columns, ...values] as T[]) : values;
   }
 
   async run<T>() {
     if (this.statement.columns().length > 0) {
       const results = this.statement.all(...this.bindings) as T[];
+
       return this.withMeta({ success: true, results }, 0, results.length);
     }
 
     const result = this.statement.run(...this.bindings);
+
     return this.withMeta({ success: true, results: [] as T[] }, 0, Number(result.changes));
   }
 
@@ -94,6 +103,7 @@ class SqliteD1Statement {
     rowsWritten: number,
   ) {
     if (!this.includeMeta) return result;
+
     return {
       ...result,
       meta: {
@@ -116,12 +126,16 @@ export const createSqliteD1Database = (options: SqliteD1Options = {}) => {
     },
     async batch(statements: SqliteD1Statement[]) {
       sqlite.exec('BEGIN');
+
       try {
         const results = [];
+
         for (const statement of statements) {
           results.push(await statement.run());
         }
+
         sqlite.exec('COMMIT');
+
         return results;
       } catch (error) {
         sqlite.exec('ROLLBACK');

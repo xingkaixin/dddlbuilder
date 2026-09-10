@@ -8,6 +8,7 @@ import { useShallow } from 'zustand/react/shallow';
 export function useEditorDomains() {
   const editor = useAppSelectors();
   const ui = useAppUiSelectors();
+
   const auth = useEditorStore(
     useShallow((state) => ({
       authInput: state.authInput,

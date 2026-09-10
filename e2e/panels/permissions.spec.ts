@@ -34,6 +34,7 @@ test.describe('权限管理验证 @panels', () => {
     // 根据 useSqlGeneration.ts，生成的 DCL 在 generatedDcl 中
     // 在 UI 中，DDLOutput 可能有切换 DDL/DCL 的 Tab
     const dclTab = page.getByRole('tab', { name: /授权 DCL/i });
+
     if (await dclTab.isVisible()) {
       await dclTab.click();
       const dclOutput = page.locator('[role="tabpanel"]:visible pre');
@@ -54,9 +55,11 @@ test.describe('权限管理验证 @panels', () => {
     await page.getByRole('tab', { name: /授权 DCL/i }).click();
     await page.evaluate(() => {
       (window as any).__copyTriggered = false;
+
       const writeText = async () => {
         (window as any).__copyTriggered = true;
       };
+
       try {
         Object.defineProperty(navigator, 'clipboard', {
           value: { writeText },

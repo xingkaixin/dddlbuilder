@@ -4,6 +4,7 @@ const STORAGE_KEY = 'ddlbuilder:ai-stream-debug';
 const LOG_PREFIX = '[AIStreamDebug]';
 
 export type AiStreamDebugPayload = Record<string, unknown>;
+
 type AiStreamDebugOptions = {
   force?: boolean;
 };

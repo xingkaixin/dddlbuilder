@@ -47,11 +47,13 @@ export function parseStructuredImportText(
       ? parseJsonSchemaImport(content)
       : [parseDelimitedTable(content, fallbackTableName)];
   assertStructuredImportLimits(tables.map((table) => table.fields.length));
+
   return tables;
 }
 
 export async function parseExcelImport(file: File): Promise<ParsedResult[]> {
   const maxFileBytes = getImportFileByteLimit('excel');
+
   if (maxFileBytes !== null && file.size > maxFileBytes) {
     throw new Error(
       i18n.t('importSql.file.tooLarge', {
@@ -63,6 +65,7 @@ export async function parseExcelImport(file: File): Promise<ParsedResult[]> {
   const workbook = await import('xlsx');
   const data = await file.arrayBuffer();
   assertSafeExcelArchive(data);
+
   const parsed = workbook.read(data, {
     type: 'array',
     sheets: Array.from({ length: EXCEL_WORKBOOK_LIMITS.maxSheets }, (_, index) => index),
@@ -71,18 +74,22 @@ export async function parseExcelImport(file: File): Promise<ParsedResult[]> {
     cellFormula: false,
     cellHTML: false,
   });
+
   if (parsed.SheetNames.length > EXCEL_WORKBOOK_LIMITS.maxSheets) {
     throwExcelWorkbookLimitError();
   }
 
   const sheets = parsed.SheetNames.flatMap((sheetName) => {
     const sheet = parsed.Sheets[sheetName];
+
     if (!sheet) return [];
     const range = readExcelSheetRange((reference) => workbook.utils.decode_range(reference), sheet);
+
     return range ? [{ sheetName, sheet, range }] : [];
   });
 
   const totalFields = sheets.reduce((total, { range }) => total + range.e.r, 0);
+
   if (totalFields > EXCEL_WORKBOOK_LIMITS.maxTotalFields) {
     throwExcelWorkbookLimitError();
   }
@@ -90,6 +97,7 @@ export async function parseExcelImport(file: File): Promise<ParsedResult[]> {
   const maxCharacters = getImportCharacterLimit('excel');
   let totalCharacters = 0;
   const tables: ParsedResult[] = [];
+
   for (const { sheetName, sheet, range } of sheets) {
     const rows = workbook.utils.sheet_to_json<string[]>(sheet, {
       header: 1,
@@ -102,15 +110,18 @@ export async function parseExcelImport(file: File): Promise<ParsedResult[]> {
         rowTotal + row.reduce((cellTotal, cell) => cellTotal + String(cell ?? '').length, 0),
       0,
     );
+
     if (maxCharacters !== null && totalCharacters > maxCharacters) {
       throw new Error(i18n.t('importSql.contentTooLong', { max: maxCharacters.toLocaleString() }));
     }
 
     const table = tableFromRows(rows, sheetName);
+
     if (table.fields.length > 0) tables.push(table);
   }
 
   assertStructuredImportLimits(tables.map((table) => table.fields.length));
+
   return tables;
 }
 
@@ -119,9 +130,11 @@ function readExcelSheetRange(
   sheet: WorkSheet,
 ): Range | null {
   const reference = sheet['!fullref'] ?? sheet['!ref'];
+
   if (typeof reference !== 'string') return null;
 
   let range: Range;
+
   try {
     range = decodeRange(reference);
   } catch {
@@ -155,6 +168,7 @@ function throwExcelWorkbookLimitError(): never {
 
 function parseDelimitedTable(content: string, fallbackTableName: string): ParsedResult {
   const delimiter = detectDelimiter(content);
+
   const rows = content
     .split(/\r?\n/)
     .map((line) => parseDelimitedLine(line, delimiter))
@@ -193,6 +207,7 @@ function tableFromRows(rows: string[][], fallbackTableName: string): ParsedResul
 
 function findHeaderIndex(headers: string[], names: string[], fallback: number): number {
   const index = headers.findIndex((header) => names.includes(header));
+
   return index >= 0 ? index : fallback;
 }
 
@@ -207,13 +222,16 @@ function parseJsonSchemaImport(content: string): ParsedResult[] {
   const root = JSON.parse(content) as Record<string, unknown>;
   const schemas = collectSchemas(root);
   const entries = Object.entries(schemas);
+
   const tableSchemas: Array<[string, JsonSchemaLike]> =
     entries.length > 0
       ? entries
       : [[typeof root.title === 'string' ? root.title : 'imported_table', root as JsonSchemaLike]];
+
   if (tableSchemas.length > STRUCTURED_IMPORT_LIMITS.maxTables) {
     throwStructuredImportLimitError();
   }
+
   const resolvedSchemas = tableSchemas.map(([name, schema]) => ({
     name,
     schema: resolveSchema(schema, root),
@@ -228,6 +246,7 @@ function parseJsonSchemaImport(content: string): ParsedResult[] {
 function collectSchemas(root: Record<string, unknown>): Record<string, JsonSchemaLike> {
   const components = root.components as { schemas?: Record<string, JsonSchemaLike> } | undefined;
   const swaggerDefinitions = root.definitions as Record<string, JsonSchemaLike> | undefined;
+
   const schemaDefinitions = (root.$defs ?? root.definitions) as
     | Record<string, JsonSchemaLike>
     | undefined;
@@ -242,6 +261,7 @@ function schemaToTable(
 ): ParsedResult {
   const required = new Set(schema.required ?? []);
   const properties = schema.properties ?? {};
+
   const fields = Object.entries(properties).map(([fieldName, fieldSchema]) =>
     schemaPropertyToField(fieldName, resolveSchema(fieldSchema, root), required.has(fieldName)),
   );
@@ -280,17 +300,21 @@ function resolveSchema(schema: JsonSchemaLike, root: Record<string, unknown>): J
     visited.add(current);
 
     let next: JsonSchemaLike | undefined;
+
     if (current.$ref) {
       const target = resolveRef(current.$ref, root);
+
       if (!target) return current;
       next = target;
     } else {
       const composed = current.allOf ?? current.oneOf ?? current.anyOf;
+
       if (!composed?.length) return current;
       next = composed[0];
     }
 
     steps += 1;
+
     if (steps > MAX_SCHEMA_RESOLUTION_STEPS) return throwJsonSchemaResolutionError();
     current = next;
   }
@@ -300,9 +324,11 @@ function resolveRef(ref: string, root: Record<string, unknown>): JsonSchemaLike 
   if (!ref.startsWith('#/')) return null;
 
   let current: unknown = root;
+
   for (const part of ref.slice(2).split('/')) {
     if (!current || typeof current !== 'object') return null;
     const key = part.replace(/~1/g, '/').replace(/~0/g, '~');
+
     if (!Object.prototype.hasOwnProperty.call(current, key)) return null;
     current = (current as Record<string, unknown>)[key];
   }
@@ -316,6 +342,7 @@ function assertStructuredImportLimits(fieldCounts: readonly number[]): void {
   }
 
   let totalFields = 0;
+
   for (const fieldCount of fieldCounts) {
     if (
       fieldCount > STRUCTURED_IMPORT_LIMITS.maxFieldsPerTable ||
@@ -323,6 +350,7 @@ function assertStructuredImportLimits(fieldCounts: readonly number[]): void {
     ) {
       throwStructuredImportLimitError();
     }
+
     totalFields += fieldCount;
   }
 }
@@ -369,12 +397,14 @@ function jsonSchemaTypeToSqlType(schema: JsonSchemaLike): string {
 
 function normalizeType(value: string | undefined): string {
   const type = value?.trim();
+
   return type || 'varchar(255)';
 }
 
 function detectDelimiter(content: string): ',' | '\t' | ';' {
   const firstLine = content.split(/\r?\n/, 1)[0] ?? '';
   const candidates: Array<',' | '\t' | ';'> = [',', '\t', ';'];
+
   return candidates.reduce((best, candidate) =>
     firstLine.split(candidate).length > firstLine.split(best).length ? candidate : best,
   );
@@ -403,6 +433,7 @@ function parseDelimitedLine(line: string, delimiter: string): string[] {
   }
 
   cells.push(current.trim());
+
   return cells;
 }
 

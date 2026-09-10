@@ -2,6 +2,7 @@ import type { IndexDefinition } from '@ddlbuilder/shared-types';
 
 export function getPrimaryKeyFieldNames(indexes: IndexDefinition[]): string[] {
   const primaryIndex = indexes.find((i) => i.kind === 'primary');
+
   return primaryIndex?.fields.map((f) => f.name) ?? [];
 }
 
@@ -28,6 +29,7 @@ export function toCamelCase(str: string): string {
 
 export function toPascalCase(str: string): string {
   const camel = toCamelCase(str);
+
   return camel.charAt(0).toUpperCase() + camel.slice(1);
 }
 
@@ -35,10 +37,12 @@ export function escapePrismaDefault(value: string): string {
   if (value.toLowerCase() === 'current_timestamp' || value.toLowerCase() === 'now()') {
     return 'now()';
   }
+
   // For numeric/boolean values, return as-is; for strings, quote them
   if (/^-?\d+(\.\d+)?$/.test(value) || value === 'true' || value === 'false') {
     return value;
   }
+
   return JSON.stringify(value);
 }
 

@@ -10,6 +10,7 @@ vi.mock('@number-flow/react', () => ({
   default: (props: unknown) => {
     mockNumberFlowRender(props);
     const value = (props as { value: number }).value;
+
     return <span data-testid="number-flow">{String(value)}</span>;
   },
   usePrefersReducedMotion: () => mockUsePrefersReducedMotion(),

@@ -37,6 +37,7 @@ describe('mergeSchemaStates', () => {
       ],
     });
     const renamed = updateDocumentFields(base, [row('a', { fieldName: 'account_id' }), row('b')]);
+
     const indexed: PersistedState = {
       ...base,
       indexes: [
@@ -77,6 +78,7 @@ describe('mergeSchemaStates', () => {
   it('改名同步调整独立新增的外键、分区和分布字段引用', () => {
     const base = state();
     const renamed = updateDocumentFields(base, [row('a', { fieldName: 'account_id' }), row('b')]);
+
     const configured = state({
       foreignKeys: [
         { id: 'self', name: 'self', fields: ['b'], refTable: 'users', refFields: ['a'] },
@@ -112,6 +114,7 @@ describe('mergeSchemaStates', () => {
   it.each([true, false])('删除字段时清理另一端独立新增的引用 (%s)', (preferDeletion) => {
     const base = state();
     const removed = state({ rows: [row('b')] });
+
     const configured = state({
       indexes: [
         { id: 'a', name: 'idx_a', fields: [{ name: 'a', direction: 'ASC' }], kind: 'index' },
@@ -253,6 +256,7 @@ describe('mergeSchemaStates', () => {
 
   it('保留本地对行内每一个可选键的修改', () => {
     const base = state({ rows: [row('a')] });
+
     const local = state({
       rows: [row('a', { defaultKind: 'uuid', defaultValue: 'x', enumMeta: [{ value: '1' }] })],
     });

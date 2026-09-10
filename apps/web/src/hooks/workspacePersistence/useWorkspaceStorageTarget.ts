@@ -38,6 +38,7 @@ export const requireReadyWorkspaceStorage = (
   storage: WorkspaceStorageTarget,
 ): ReadyWorkspaceStorage => {
   if (storage.kind === 'loading') throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
+
   return storage;
 };
 
@@ -49,6 +50,7 @@ export function useWorkspaceStorageTarget({
   return useMemo<WorkspaceStorageTarget>(() => {
     if (yDoc && scope) return { kind: 'ydoc', scope, yDoc, transact: runInYDoc };
     if (scope?.kind === 'anonymous') return { kind: 'indexeddb', scope };
+
     return { kind: 'loading', scope };
   }, [runInYDoc, scope, yDoc]);
 }

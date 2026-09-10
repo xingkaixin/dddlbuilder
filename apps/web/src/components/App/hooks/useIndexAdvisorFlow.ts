@@ -43,10 +43,12 @@ export const buildSuggestedIndexQuery = (
   fields: { name: string }[],
 ) => {
   const table = tableName.trim();
+
   if (!table || fields.length === 0) return '';
 
   const qualifiedTable = schemaName.trim() ? `${schemaName.trim()}.${table}` : table;
   const selectFields = fields.slice(0, Math.min(fields.length, 6)).map((field) => field.name);
+
   const filterField =
     fields.find((field) => /(^|_)(tenant|user|account|org)_?id$/i.test(field.name)) ?? fields[0];
   const orderField = fields.find((field) =>
@@ -77,6 +79,7 @@ export function useIndexAdvisorFlow({
   const blockingMessage = useMemo(() => {
     if (!tableName.trim()) return t('aiIndexAdvisor.tableNameRequired');
     if (fields.length === 0) return t('aiIndexAdvisor.schemaRequired');
+
     return null;
   }, [fields.length, t, tableName]);
 
@@ -88,6 +91,7 @@ export function useIndexAdvisorFlow({
   const setDialogOpen = useCallback(
     (nextOpen: boolean) => {
       setOpen(nextOpen);
+
       if (!nextOpen) clearAdvice();
     },
     [clearAdvice],
@@ -98,8 +102,10 @@ export function useIndexAdvisorFlow({
       void (async () => {
         try {
           if (getCurrentDocumentKey() !== documentKey) return;
+
           if (blockingMessage) {
             showToast(blockingMessage);
+
             return;
           }
 
@@ -151,16 +157,20 @@ export function useIndexAdvisorFlow({
       ) {
         return;
       }
+
       const recommendedIndex = recommendation.index;
+
       if (!recommendedIndex) return;
 
       const current = useEditorStore.getState();
+
       const availableFieldNames = new Set(
         buildNormalizedFields(current.rows).map((field) =>
           getSqlIdentifierKey(field.name, current.dbType),
         ),
       );
       const recommendedFields = recommendedIndex.fields;
+
       if (
         recommendedFields.length === 0 ||
         recommendedFields.some(
@@ -168,6 +178,7 @@ export function useIndexAdvisorFlow({
         )
       ) {
         showToast(t('aiIndexAdvisor.invalidIndexFields'));
+
         return;
       }
 
@@ -179,6 +190,7 @@ export function useIndexAdvisorFlow({
         )
       ) {
         showToast(t('aiIndexAdvisor.indexExists'));
+
         return;
       }
 
@@ -195,8 +207,10 @@ export function useIndexAdvisorFlow({
       };
 
       const writeResult = insertIndexDefinition(current.indexes, nextIndex);
+
       if (!writeResult.ok) {
         showToast(t('indexPanel.duplicateName'));
+
         return;
       }
 

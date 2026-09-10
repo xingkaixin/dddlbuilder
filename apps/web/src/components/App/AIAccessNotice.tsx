@@ -3,7 +3,9 @@ import { cn } from '@/lib/utils';
 
 export function AIAccessNotice({ className }: { className?: string }) {
   const { accessError } = useAIRequestAccess();
+
   if (!accessError) return null;
+
   return (
     <div
       className={cn(

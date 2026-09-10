@@ -88,6 +88,7 @@ const renderFlow = (overrides: Partial<Parameters<typeof useIndexAdvisorFlow>[0]
     })),
     indexes: params.indexes,
   });
+
   return renderHook(
     (updatedParams: Partial<Parameters<typeof useIndexAdvisorFlow>[0]>) =>
       useIndexAdvisorFlow({ ...params, ...updatedParams }),
@@ -97,6 +98,7 @@ const renderFlow = (overrides: Partial<Parameters<typeof useIndexAdvisorFlow>[0]
 
 const offerRecommendation = (recommendation: AIIndexAdvisorRecommendation) => {
   mocks.advice.recommendations.push(recommendation);
+
   return recommendation;
 };
 
@@ -269,6 +271,7 @@ describe('useIndexAdvisorFlow', () => {
 
   it('reports a name conflict without claiming the different-direction index was applied', () => {
     const { result } = renderFlow({ indexes: [index] });
+
     const recommendation = offerRecommendation({
       ...emailRecommendation(false),
       index: {
@@ -376,6 +379,7 @@ describe('useIndexAdvisorFlow', () => {
   it('applies multiple recommendations to the same document', () => {
     const { result } = renderFlow();
     const email = emailRecommendation(false);
+
     const id = offerRecommendation({
       ...email,
       id: 'id',

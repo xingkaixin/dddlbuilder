@@ -23,6 +23,7 @@ function normalizeGeneratedFields(
   dbType: DatabaseType,
 ): GeneratedField[] {
   const existingFields = baseFields.filter((field) => field.fieldName.trim());
+
   const baseIds = new Set(
     existingFields.map((field) => field.id).filter((id): id is string => !!id),
   );
@@ -31,23 +32,30 @@ function normalizeGeneratedFields(
   );
   const usedIds = new Set<string>();
   let hasUnidentifiedAddition = false;
+
   const normalized = fields.map((field) => {
     if (field.id != null && (typeof field.id !== 'string' || !baseIds.has(field.id))) {
       throw new Error('Unknown AI field identity');
     }
+
     const existingId =
       field.id === null
         ? undefined
         : (field.id ?? idsByName.get(getSqlIdentifierKey(field.fieldName, dbType)));
+
     if (!existingId && field.id === undefined) hasUnidentifiedAddition = true;
     const id = existingId || createEntityId();
+
     if (usedIds.has(id)) throw new Error('Duplicate AI field identity');
     usedIds.add(id);
+
     return { ...normalizeGeneratedField(field), id };
   });
+
   if (hasUnidentifiedAddition && [...baseIds].some((id) => !usedIds.has(id))) {
     throw new Error('AI field replacement requires an explicit identity');
   }
+
   return normalized;
 }
 

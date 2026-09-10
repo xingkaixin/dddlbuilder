@@ -12,11 +12,13 @@ const getRuntimeProcess = () =>
 
 const isVitest = () => {
   const runtimeProcess = getRuntimeProcess();
+
   return runtimeProcess?.env?.VITEST === 'true';
 };
 
 const getRuntimeEnvironment = () => {
   const runtimeEnv = getRuntimeProcess()?.env;
+
   return runtimeEnv?.ENVIRONMENT?.trim() || runtimeEnv?.NODE_ENV?.trim() || undefined;
 };
 
@@ -63,6 +65,7 @@ configureWorkerLogging();
 
 const configureWorkerLoggingFromEnvironment = (environment: string | undefined) => {
   const normalized = environment?.trim() || undefined;
+
   if (!normalized || normalized === configuredEnvironment) return;
   configureWorkerLogging(!isVitest(), normalized);
 };
@@ -75,6 +78,7 @@ export const WORKER_LOGGING_OPTIONS = {
 export const normalizeIncomingRequestId = (value: string | undefined) => {
   if (!value) return null;
   const trimmed = value.trim();
+
   return REQUEST_ID_PATTERN.test(trimmed) ? trimmed : null;
 };
 
@@ -87,6 +91,7 @@ export const normalizeApiRequestId = (request: Request) => {
   const headers = new Headers(request.headers);
   const requestId = normalizeIncomingRequestId(headers.get('x-request-id') ?? undefined);
   headers.set('x-request-id', requestId ?? crypto.randomUUID());
+
   return new Request(request, { headers });
 };
 
@@ -101,6 +106,7 @@ export const withWorkerRequestLogging = (handler: WorkerFetch): WorkerFetch => {
     if (env.ENVIRONMENT) {
       log.set({ deployment: { environment: env.ENVIRONMENT } });
     }
+
     const response = await handler(
       request,
       {
@@ -109,13 +115,16 @@ export const withWorkerRequestLogging = (handler: WorkerFetch): WorkerFetch => {
       },
       ctx as ExecutionContext,
     );
+
     if (response.status >= 500) log.setLevel('error');
     else if (response.status >= 400) log.setLevel('warn');
+
     return response;
   }, WORKER_LOGGING_OPTIONS);
 
   return (request, env, ctx) => {
     configureWorkerLoggingFromEnvironment(env.ENVIRONMENT);
+
     return loggedWorker.fetch(normalizeApiRequestId(request), env, ctx as ExecutionContext);
   };
 };
@@ -126,6 +135,7 @@ export const getRequestLogger = (c: Context<ApiEnv>): WorkerRequestLogger | unde
 export const toWorkerError = (error: unknown, fallback: string) => {
   if (error instanceof Error) return error;
   if (typeof error === 'string') return new Error(error);
+
   return new Error(fallback);
 };
 
@@ -147,21 +157,27 @@ export const createWorkerBackgroundLogger = (
   environment?: string,
 ) => {
   configureWorkerLoggingFromEnvironment(environment);
+
   return createLogger(context, { waitUntil });
 };
 
 const getCanonicalRequestPath = (c: Context<ApiEnv>) => {
   const routes = matchedRoutes(c);
+
   for (let index = routes.length - 1; index >= 0; index -= 1) {
     const route = routes[index];
+
     if (!route || route.path === '*' || route.path === '/*') continue;
+
     return route.path.startsWith(API_PATH_PREFIX) ? route.path : `${API_PATH_PREFIX}${route.path}`;
   }
+
   return '/api/*';
 };
 
 export const completeRequestLogContext = (c: Context<ApiEnv>, requestId: string) => {
   const log = getRequestLogger(c);
+
   if (!log) return;
 
   const currentUserId = c.get('currentUserId');

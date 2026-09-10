@@ -778,7 +778,9 @@ describe('decodeWorkspaceSnapshot', () => {
     { item: { ...completeSnapshot().folders[0], createdAt: Number.NaN }, path: 'folders' },
   ])('拒绝 $path 中字段非法的实体', ({ globalDraft, item, path }) => {
     const snapshot = completeSnapshot();
+
     if (globalDraft !== undefined) snapshot.globalDraft = globalDraft;
+
     if (item !== undefined) {
       (snapshot[path as 'drafts'] as unknown[]).splice(0, 1, item);
     }

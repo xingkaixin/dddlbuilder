@@ -124,6 +124,7 @@ export const aiGovernance = <Request, E>(
       },
     });
     let streamed = false;
+
     return yield* Effect.uninterruptibleMask((restore) =>
       Effect.gen(function* () {
         const { route, maxOutputTokens } = spec;
@@ -135,6 +136,7 @@ export const aiGovernance = <Request, E>(
         const clock = yield* Clock.Clock;
         const startedAt = clock.currentTimeMillisUnsafe();
         const executionContext = yield* Effect.context();
+
         const validateOutput = (value: unknown) =>
           spec.outputSchema
             ? Schema.decodeUnknownEffect(spec.outputSchema)(value).pipe(
@@ -177,11 +179,14 @@ export const aiGovernance = <Request, E>(
                   ? 'rejected'
                   : 'succeeded',
           );
+
           if (errorCode) requestSpan.attribute('ai.error_code', errorCode);
           requestSpan.attribute('ai.retry_count', retryCount);
           requestSpan.attribute('ai.attempt_count', attemptCount);
           requestSpan.attribute('ai.accounting_finalized', accountingFinalized);
+
           if (chargedTokens !== null) requestSpan.attribute('ai.charged_tokens', chargedTokens);
+
           const backgroundLog =
             requestAborted || streamed
               ? createWorkerBackgroundLogger(
@@ -243,40 +248,52 @@ export const aiGovernance = <Request, E>(
             ai: { failurePhase: 'governance' },
           });
           audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+
           return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
         };
         const authentication = yield* Effect.result(
           access.authenticate.pipe(Effect.withSpan('ai.authenticate')),
         );
+
         if (Result.isFailure(authentication)) {
           const error = authentication.failure;
+
           if (error instanceof DomainError) {
             if (error.status === 401 && config.rateLimitEnabled) {
               const limitResult = yield* Effect.result(
                 access.limitAnonymous.pipe(Effect.withSpan('ai.rate_limit')),
               );
+
               if (Result.isFailure(limitResult)) return governanceFailure(limitResult.failure);
               const limited = limitResult.success;
+
               if (limited) {
                 audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
+
                 return limited;
               }
             }
+
             audit(error.status, 0, false, false, error.code);
+
             return errorResponse(c, error.status, error.message, error.code);
           }
+
           getRequestLogger(c)?.error(toWorkerError(error, 'Authentication failed'), {
             ai: { failurePhase: 'authentication' },
           });
           audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+
           return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
         }
+
         const user = authentication.success;
         auditUserId = user.userId;
 
         const parsedBody = yield* Effect.promise(() =>
           parseJsonBodyWithLimit<Record<string, unknown>>(c, spec.bodyMaxBytes),
         );
+
         if (!parsedBody.ok) {
           const tooLarge = parsedBody.response.status === 413;
           audit(
@@ -286,23 +303,29 @@ export const aiGovernance = <Request, E>(
             false,
             tooLarge ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON',
           );
+
           return parsedBody.response;
         }
 
         const parsed = spec.parseRequest(parsedBody.data ?? {});
+
         if (isRejection(parsed)) {
           audit(parsed.status, 0, false, false, parsed.code);
+
           return errorResponse(c, parsed.status, parsed.message, parsed.code);
         }
 
         const limitResult = yield* Effect.result(
           access.limitUser(route, config, user.userId).pipe(Effect.withSpan('ai.rate_limit')),
         );
+
         if (Result.isFailure(limitResult)) return governanceFailure(limitResult.failure);
         const rateLimit = limitResult.success;
         rateLimitRemaining = rateLimit.remaining;
+
         if (rateLimit.response) {
           audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
+
           return rateLimit.response;
         }
 
@@ -311,12 +334,14 @@ export const aiGovernance = <Request, E>(
 
         if (!apiKey) {
           audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+
           return errorResponse(c, 503, 'OpenAI service unavailable', 'SERVICE_UNAVAILABLE');
         }
 
         const credit = yield* Effect.result(
           Effect.gen(function* () {
             yield* ledger.grantSignup(user);
+
             return yield* ledger.reserve({
               userId: user.userId,
               routeKey: route,
@@ -325,16 +350,21 @@ export const aiGovernance = <Request, E>(
             });
           }).pipe(Effect.withSpan('ai.reserve')),
         );
+
         if (Result.isFailure(credit)) {
           const error = credit.failure;
+
           if (error instanceof DomainError) {
             audit(error.status, 0, false, false, error.code);
+
             return errorResponse(c, error.status, error.message, error.code);
           }
+
           getRequestLogger(c)?.error(toWorkerError(error, 'Credit reservation failed'), {
             ai: { failurePhase: 'credit_reservation' },
           });
           audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+
           return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
         }
 
@@ -345,9 +375,11 @@ export const aiGovernance = <Request, E>(
           const baseTokens = observedTokens ?? 0;
           const unknownAttempts = observedTokens === null ? attemptCount : attemptCount - 1;
           const remaining = Number.MAX_SAFE_INTEGER - baseTokens;
+
           if (unknownAttempts > Math.floor(remaining / reservation.reservedTokens)) {
             return Number.MAX_SAFE_INTEGER;
           }
+
           return baseTokens + unknownAttempts * reservation.reservedTokens;
         };
 
@@ -359,6 +391,7 @@ export const aiGovernance = <Request, E>(
                 : usage.totalTokens;
             providerBudgetTokens = getProviderBudgetTokens(usage.totalTokens);
             usageEstimated = attemptCount > 1;
+
             return {
               observedTotalTokens: usage.totalTokens,
               chargedTokens,
@@ -366,10 +399,12 @@ export const aiGovernance = <Request, E>(
               usageEstimated,
             };
           }
+
           if (attemptCount === 0) {
             chargedTokens = 0;
             providerBudgetTokens = 0;
             usageEstimated = false;
+
             return {
               observedTotalTokens: 0,
               chargedTokens,
@@ -377,9 +412,11 @@ export const aiGovernance = <Request, E>(
               usageEstimated,
             };
           }
+
           chargedTokens = reservation.reservedTokens;
           providerBudgetTokens = getProviderBudgetTokens(null);
           usageEstimated = true;
+
           return {
             observedTotalTokens: null,
             chargedTokens,
@@ -399,6 +436,7 @@ export const aiGovernance = <Request, E>(
           outcome: 'succeeded' | 'failed',
         ) => {
           const context = { ai: { failurePhase, settlementOutcome: outcome } };
+
           if (requestAborted) {
             logWorkerBackgroundError(
               error,
@@ -412,8 +450,10 @@ export const aiGovernance = <Request, E>(
               waitUntil,
               c.env.ENVIRONMENT,
             );
+
             return;
           }
+
           getRequestLogger(c)?.error(
             error instanceof Error ? error : new Error('Unknown error'),
             context,
@@ -437,15 +477,19 @@ export const aiGovernance = <Request, E>(
             const preparation = yield* Effect.result(
               persistSettlementIntent(outcome, createSettlement(), code),
             );
+
             if (Result.isFailure(preparation)) {
               yield* Effect.annotateCurrentSpan('ai.outcome', 'failed');
               reportSettlementError(preparation.failure, 'credit_settlement_intent', outcome);
+
               return;
             }
+
             const prepared = preparation.success;
             chargedTokens = prepared.chargedTokens;
             providerBudgetTokens = prepared.providerBudgetTokens;
             accountingSnapshotReliable = true;
+
             const [creditResult, budgetResult] = yield* Effect.all(
               [
                 Effect.result(
@@ -457,12 +501,14 @@ export const aiGovernance = <Request, E>(
               ],
               { concurrency: 2 },
             );
+
             if (Result.isFailure(creditResult)) {
               yield* Effect.annotateCurrentSpan('ai.outcome', 'failed');
               reportSettlementError(creditResult.failure, 'credit_settlement', outcome);
             } else {
               accountingFinalized = !prepared.needsFinalization || creditResult.success;
             }
+
             if (Result.isFailure(budgetResult)) {
               yield* Effect.annotateCurrentSpan('ai.outcome', 'failed');
               reportSettlementError(budgetResult.failure, 'budget_settlement', outcome);
@@ -476,6 +522,7 @@ export const aiGovernance = <Request, E>(
             .reserveBudget(reservation.usageEventId, estimatedTokens, config)
             .pipe(Effect.withSpan('ai.budget.reserve')),
         );
+
         if (Result.isFailure(budgetResult)) {
           yield* settleUsage('failed', 'SERVICE_UNAVAILABLE');
           getRequestLogger(c)?.error(
@@ -485,19 +532,24 @@ export const aiGovernance = <Request, E>(
             },
           );
           audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+
           return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
         }
+
         const budget = budgetResult.success;
         budgetUsedTokens = budget.usedTokens;
+
         if (budget.response) {
           yield* settleUsage('failed', 'BUDGET_EXCEEDED');
           audit(429, 0, false, true, 'BUDGET_EXCEEDED');
+
           return budget.response;
         }
 
         let settled = false;
         let retryCount = 0;
         const openAIAbortController = new AbortController();
+
         const reportUsage = (next: OpenAIUsageSnapshot | null | undefined) => {
           if (next) usage = next;
         };
@@ -512,15 +564,19 @@ export const aiGovernance = <Request, E>(
               yield* checkAborted;
               // D1 may commit before its response arrives; finish the write before deciding whether to refund.
               attemptCount = yield* ledger.recordAttempt(reservation);
+
               if (openAIAbortController.signal.aborted) {
                 attemptCount = yield* ledger.cancelAttempt(reservation, attemptCount);
               }
+
               yield* checkAborted;
               let started = false;
+
               return yield* restore(
                 Effect.suspend(() => {
                   started = true;
                   retryCount = Math.max(0, attemptCount - 1);
+
                   return operation.pipe(
                     Effect.withSpan('ai.provider.attempt', {
                       attributes: { 'ai.attempt': attemptCount },
@@ -550,6 +606,7 @@ export const aiGovernance = <Request, E>(
               message: 'AI usage service unavailable',
             };
           }
+
           if (error instanceof AIOutputError && error.reason === 'truncated') {
             return {
               code: 'AI_OUTPUT_TRUNCATED' as const,
@@ -557,9 +614,11 @@ export const aiGovernance = <Request, E>(
               message: error.message,
             };
           }
+
           if (error instanceof DomainError) {
             return { code: error.code, status: 502 as const, message: error.message };
           }
+
           if (error instanceof AIProviderError || error instanceof AIOutputError) {
             return {
               code: 'UPSTREAM_OPENAI_ERROR' as const,
@@ -567,6 +626,7 @@ export const aiGovernance = <Request, E>(
               message: 'Upstream OpenAI error',
             };
           }
+
           return {
             code: 'INTERNAL_ERROR' as const,
             status: 500 as const,
@@ -612,6 +672,7 @@ export const aiGovernance = <Request, E>(
           if (Exit.isSuccess(exit)) return settleSuccess(retryCount);
           requestSpan.attribute('ai.failure_kind', aiFailureKind(Cause.squash(exit.cause)));
           const failure = classifyFailure(Cause.squash(exit.cause));
+
           return settleFailure(failure.code, requestAborted ? 499 : failure.status, retryCount);
         };
 
@@ -648,6 +709,7 @@ export const aiGovernance = <Request, E>(
               );
               const choice = response.choices[0];
               const content = choice?.message?.content ?? '';
+
               return yield* readCompletedContent(content, choice?.finish_reason, true).pipe(
                 Effect.flatMap(validateOutput),
                 Effect.tapError((error) =>
@@ -670,6 +732,7 @@ export const aiGovernance = <Request, E>(
             Effect.sync(() => {
               c.header('X-AI-Stream-Debug', config.streamDebugEnabled ? '1' : '0');
               streamed = true;
+
               const streamDebug = createOpenAIStreamDebugLogger({
                 enabled: config.streamDebugEnabled,
                 requestId,
@@ -681,11 +744,13 @@ export const aiGovernance = <Request, E>(
               });
               c.header('Content-Type', 'application/x-ndjson; charset=utf-8');
               c.header('Cache-Control', 'no-cache');
+
               return stream(c, async (output) => {
                 output.onAbort(() => {
                   requestAborted = true;
                   openAIAbortController.abort();
                 });
+
                 const write = (event: Parameters<typeof encodeAIStreamEvent>[0]) =>
                   Effect.tryPromise({
                     try: () => output.write(encodeAIStreamEvent(event)),
@@ -693,6 +758,7 @@ export const aiGovernance = <Request, E>(
                   });
                 const completion = Effect.gen(function* () {
                   streamDebug.start();
+
                   const { data: response } = yield* retryOpenAI(
                     runOpenAIAttempt(
                       provider.stream(
@@ -725,8 +791,10 @@ export const aiGovernance = <Request, E>(
                       Effect.gen(function* () {
                         reportUsage(readUsageFromStreamChunk(chunk));
                         const choice = chunk.choices[0];
+
                         if (choice?.finish_reason) finishReason = choice.finish_reason;
                         const content = choice?.delta?.content ?? '';
+
                         if (content) {
                           if (!fullText)
                             requestSpan.attribute(
@@ -742,6 +810,7 @@ export const aiGovernance = <Request, E>(
                     Effect.withSpan('ai.stream.consume'),
                   );
                   yield* checkAborted;
+
                   const completed = yield* readCompletedContent(
                     fullText,
                     finishReason,
@@ -759,10 +828,13 @@ export const aiGovernance = <Request, E>(
                     Effect.catchCause((cause) =>
                       Effect.gen(function* () {
                         const error = Cause.squash(cause);
+
                         if (requestAborted) {
                           streamDebug.error(new Error('Client aborted AI stream'));
+
                           return;
                         }
+
                         streamDebug.error(error);
                         getRequestLogger(c)?.error(toWorkerError(error, 'Unknown stream error'), {
                           ai: { failurePhase: 'stream' },
@@ -795,6 +867,7 @@ export const aiGovernance = <Request, E>(
                 ai: { failurePhase: 'request' },
               });
               const failure = classifyFailure(error);
+
               return errorResponse(c, failure.status, failure.message, failure.code);
             }),
           ),
@@ -820,6 +893,7 @@ export const withAIGovernance = <Request, E = AICompletionError>(
   ).pipe(Layer.provideMerge(AIConfiguration.layer(c.env)));
   const program = aiGovernance(c, spec, run).pipe(Effect.provide(services));
   const tracing = (c.executionCtx as { tracing?: Tracing }).tracing;
+
   return Effect.runPromise(
     tracing ? program.pipe(Effect.provideService(Tracer.Tracer, makeAITracer(tracing))) : program,
   );

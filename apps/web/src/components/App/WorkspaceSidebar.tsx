@@ -114,6 +114,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
   }) => {
     const { t } = useTranslation();
     const [showTrash, setShowTrash] = useState(false);
+
     const treeControls = useWorkspaceTreeControls({
       items,
       folders,
@@ -123,6 +124,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     const { searchQuery, setSearchQuery, filteredItems, isSearching } = treeControls;
 
     const normalizedQuery = searchQuery.trim().toLowerCase();
+
     const visibleDrafts = useMemo(
       () =>
         normalizedQuery
@@ -132,6 +134,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     );
     const flatFolders = useMemo(() => {
       const result: Array<{ id: string; name: string; depth: number }> = [];
+
       const walk = (nodes: FolderTreeNode[], depth: number) => {
         for (const folder of nodes) {
           result.push({ id: folder.id, name: folder.name, depth });
@@ -139,6 +142,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
         }
       };
       walk(folders, 0);
+
       return result;
     }, [folders]);
     const renderTableList = useCallback(
@@ -246,6 +250,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                 </div>
                 {visibleDrafts.map((draft) => {
                   const isActive = activeDraftId === draft.draftId;
+
                   return (
                     <div
                       key={draft.draftId}
@@ -424,6 +429,7 @@ function TrashRow({
   onDeletePermanently?: () => void;
 }) {
   const { t } = useTranslation();
+
   return (
     <div className="group flex items-center gap-1 rounded-md px-2 py-1.5 text-[13px] leading-5 hover:bg-accent">
       <Trash2 className="h-4 w-4 shrink-0 text-muted-foreground" />

@@ -12,6 +12,7 @@ import { STORAGE_KEY } from '@/utils/constants';
 describe('workspacePersistence/storage', () => {
   it('bounds cached share snapshots to the five most recently used entries', () => {
     const memory = setupMemoryLocalStorage();
+
     for (let i = 0; i < 7; i += 1)
       writeStorageJson(buildShareStorageKey(String(i)), { tableName: String(i) });
     const shares = [...memory.keys()].filter((key) => key.startsWith(`${STORAGE_KEY}:share:`));

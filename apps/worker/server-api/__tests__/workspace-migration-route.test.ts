@@ -37,6 +37,7 @@ describe('/api/workspace/migrations', () => {
 
   it('returns 401 for anonymous migration requests', async () => {
     const { default: app } = await import('../../api/index');
+
     const response = await app.fetch(
       createRequest('/api/workspace/migrations', {
         method: 'POST',
@@ -79,6 +80,7 @@ describe('/api/workspace/migrations', () => {
     }));
 
     const { default: app } = await import('../../api/index');
+
     const response = await app.fetch(
       createRequest('/api/workspace/migrations', {
         method: 'POST',
@@ -122,6 +124,7 @@ describe('/api/workspace/migrations', () => {
     }));
 
     const { default: app } = await import('../../api/index');
+
     const response = await app.fetch(
       createRequest('/api/workspace/migrations', {
         method: 'POST',
@@ -159,6 +162,7 @@ describe('/api/workspace/migrations', () => {
     }));
 
     const { default: app } = await import('../../api/index');
+
     const response = await app.fetch(
       createRequest('/api/workspace/migrations', {
         method: 'POST',
@@ -193,6 +197,7 @@ it('preserves migration domain errors instead of reporting service failure', asy
     commitWorkspaceMigration: vi.fn(),
   }));
   const { default: app } = await import('../../api/index');
+
   const response = await app.fetch(
     createRequest('/api/workspace/migrations', {
       method: 'POST',

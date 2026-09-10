@@ -40,6 +40,7 @@ describe('SqlParser internals', () => {
 
     for (const filePath of sqlParserRuntimeImportFiles) {
       const content = readFileSync(filePath, 'utf8');
+
       const matches = content.matchAll(
         /(?:import|export)\s+(?:type\s+)?(?:[^'"]+?\s+from\s+)?['"](\.[^'"]+)['"]/g,
       );
@@ -48,6 +49,7 @@ describe('SqlParser internals', () => {
         if (specifier.endsWith('.js')) {
           continue;
         }
+
         invalidImports.push(`${filePath}: ${specifier}`);
       }
     }
@@ -76,6 +78,7 @@ describe('SqlParser internals', () => {
 
   it('parseAsync 应保留 astify 内部异常', async () => {
     const internalError = new Error('internal failure');
+
     const parser = new SqlParser({
       astify: vi.fn(() => {
         throw internalError;
@@ -122,6 +125,7 @@ describe('SqlParser internals', () => {
 
   it('mergeComments 应仅在缺失时写入表注释并更新字段注释', () => {
     const parser = new SqlParser();
+
     const result: ParsedResult = {
       ...createEmptyResult(),
       tableComment: '已有表注释',

@@ -13,6 +13,7 @@ test.describe('邮箱验证码', () => {
         turnstile: {
           render: (_container: HTMLElement, options: { callback: (token: string) => void }) => {
             options.callback('test-token');
+
             return 'test-widget';
           },
           remove: () => {},
@@ -39,6 +40,7 @@ test.describe('邮箱验证码', () => {
       expect(route.request().postDataJSON()).toMatchObject({ email });
       expect(route.request().headers()['x-turnstile-token']).toBe('test-token');
       codesSent++;
+
       return route.fulfill({ json: { token: null, user: { email } } });
     });
     await page.route('**/api/auth/sign-in/email', (route) =>
@@ -50,17 +52,20 @@ test.describe('邮箱验证码', () => {
     await page.route('**/api/auth/send-verification-email', (route) => {
       expect(route.request().postDataJSON()).toEqual({ email });
       codesSent++;
+
       return route.fulfill({ json: { success: true } });
     });
     await page.route('**/api/auth/email-otp/verify-email', (route) => {
       const body = route.request().postDataJSON();
       expect(body.email).toBe(email);
+
       if (body.otp !== '123456')
         return route.fulfill({
           status: 400,
           json: { code: 'INVALID_OTP', message: 'Invalid OTP' },
         });
       signedIn = true;
+
       return route.fulfill({ json: { status: true, token: 'test-session' } });
     });
     await page.goto('/');

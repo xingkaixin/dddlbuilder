@@ -26,6 +26,7 @@ import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 
 vi.mock('@/auth/AuthSessionProvider', () => ({ useAuthIdentity: vi.fn() }));
+
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDocDocument: vi.fn() }));
 
 const signedOutIdentity: AuthIdentityState = {
@@ -57,6 +58,7 @@ function useFolderWorkspace() {
   const persistence = usePersistedState();
   const folders = useFolders();
   const tableName = useEditorStore((state) => state.tableName);
+
   const lifecycle = useTabLifecycle({
     enabled: persistence.status.hydrated,
     activeTableName: tableName,
@@ -87,6 +89,7 @@ function useFolderWorkspace() {
     folders: folders.folderTree,
     searchQuery: '',
   });
+
   return { ...persistence, folders, actions, ungroupedItems };
 }
 
@@ -117,6 +120,7 @@ describe('目录删除的草稿闭环', () => {
     '%s 删除父目录后同步回收站和标签，恢复草稿可在根目录找到',
     async (storage) => {
       const doc = storage === 'ydoc' ? new Y.Doc() : null;
+
       const folders = [
         { id: 'root', name: 'Root', order: 0, createdAt: 1, updatedAt: 1 },
         { id: 'child', name: 'Child', parentId: 'root', order: 0, createdAt: 1, updatedAt: 1 },
@@ -136,6 +140,7 @@ describe('目录删除的草稿闭环', () => {
         updatedAt: 1,
         state: createState('saved_child'),
       };
+
       if (doc) {
         vi.mocked(useAuthIdentity).mockReturnValue({
           ...signedOutIdentity,
@@ -150,14 +155,17 @@ describe('目录删除的草稿闭环', () => {
           localSynced: true,
           retry: vi.fn(),
         });
+
         for (const folder of folders) upsertFolderInYDoc(doc, folder);
         upsertSavedTableInYDoc(doc, savedTable);
       } else {
         await bulkPutFolders(folders, anonymousScope);
         await addSavedTable(savedTable, anonymousScope);
       }
+
       for (const { draftId, ...draft } of drafts) {
         const record = { ...draft, createdAt: 1, updatedAt: 1 };
+
         if (doc) upsertDraftInYDoc(doc, draftId, record);
         else await writeDraft(draftId, record, anonymousScope);
         useTabStore.getState().addTab({
@@ -166,14 +174,17 @@ describe('目录删除的草稿闭环', () => {
           stateSnapshot: draftId === 'survivor' ? createState('stale_survivor') : draft.state,
         });
       }
+
       const activeTab = useTabStore
         .getState()
         .findTabBySource({ kind: 'draft', draftId: 'default' });
+
       if (!activeTab) throw new Error('活动草稿标签缺失');
       useTabStore.getState().activateTab(activeTab.id);
       useEditorStore.getState().replaceDocument(createState('active'));
       const { wrapper } = createQueryClientWrapper();
       const { result, unmount } = renderHook(useFolderWorkspace, { wrapper });
+
       const readStoredDraft = (draftId: string) =>
         doc ? getDraftRecordFromYDoc(doc, draftId) : readDraft(draftId, anonymousScope);
 
@@ -181,6 +192,7 @@ describe('目录删除的草稿闭环', () => {
         await waitFor(() => expect(result.current.status.hydrated).toBe(true));
         await waitFor(() => expect(result.current.folders.folders).toHaveLength(3));
         const root = result.current.folders.folderTree.find((folder) => folder.id === 'root');
+
         if (!root) throw new Error('待删除目录缺失');
         const delayedSave = result.current.document.saveState;
         act(() => result.current.actions.handleOpenDeleteFolderDialog(root));
@@ -203,6 +215,7 @@ describe('目录删除的草稿闭环', () => {
         });
         expect(useEditorStore.getState().tableName).toBe('survivor');
         expect(useEditorStore.getState().tableComment).toBe('');
+
         const trashedTable = doc
           ? getSavedTableFromYDoc(doc, savedTable)
           : await getSavedTable(savedTable, anonymousScope);
@@ -221,6 +234,7 @@ describe('目录删除的草稿闭环', () => {
         await waitFor(async () => {
           expect((await readStoredDraft('survivor'))?.state.tableComment).toBe('continued edit');
         });
+
         for (const [draftId, tableName] of [
           ['default', 'active'],
           ['nested', 'background'],

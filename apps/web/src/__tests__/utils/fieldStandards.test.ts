@@ -13,6 +13,7 @@ import {
 } from '@/utils/fieldStandards';
 
 beforeEach(setupFakeIndexedDB);
+
 afterEach(teardownFakeIndexedDB);
 
 it('keeps references through persistence and reports changes without mutating the field', async () => {
@@ -42,6 +43,7 @@ it('keeps references through persistence and reports changes without mutating th
   await deleteFieldStandard(standard.id);
   expect(await listFieldStandards()).toEqual([]);
   expect(row.standardId).toBe(standard.id);
+
   const imported = decodeFieldStandards(
     JSON.parse(JSON.stringify({ version: 1, standards: [saved] })),
   );

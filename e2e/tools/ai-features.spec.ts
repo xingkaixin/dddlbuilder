@@ -25,6 +25,7 @@ const expectAppliedPatchHistory = async (dialog: Locator, count: number) => {
 test('AI 修改保留字段身份，将改名应用为单个变更', async ({ page }) => {
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
+
     if (path === '/api/me') {
       await route.fulfill({
         json: {
@@ -92,6 +93,7 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
   };
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
+
     if (path === '/api/generate-table') {
       const { existingConfig } = route.request().postDataJSON() as {
         existingConfig: PersistedState;
@@ -128,6 +130,7 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
   await dialog.getByRole('button', { name: '发送', exact: true }).click();
   const changes = dialog.getByRole('button', { name: '切换变更选择' });
   await expect(changes).toHaveCount(2);
+
   const rename = dialog
     .getByRole('button', { name: '字段 HYDRATED_FIELD 改名为 occupied', exact: true })
     .locator('xpath=../../..')
@@ -165,15 +168,19 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
   let requests = 0;
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
+
     if (path !== '/api/generate-table') {
       await route.fulfill(
         responses[path]
           ? { json: responses[path] }
           : { status: 503, json: { error: 'Not available in this test' } },
       );
+
       return;
     }
+
     requests++;
+
     const request = route.request().postDataJSON() as {
       existingConfig: PersistedState;
       previousSchema?: unknown;
@@ -182,11 +189,13 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
     const { existingConfig } = request;
     const fields = existingConfig.rows.filter((row) => row.fieldName.trim());
     expect(fields.map((row) => row.fieldName)).toEqual(['HYDRATED_FIELD']);
+
     if (requests === 2) {
       expect(request.previousSchema).toBeUndefined();
       expect(request.conversationHistory).toHaveLength(2);
       expect(existingConfig.tableComment).toBe('第一轮注释');
     }
+
     await route.fulfill(
       streamedResponse({
         tableName: existingConfig.tableName,
@@ -297,11 +306,13 @@ test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', a
 
 test('AI 注释请求在切换文档后取消，不覆盖另一张表', async ({ page }) => {
   let finishResponse!: () => void;
+
   const responseReady = new Promise<void>((resolve) => {
     finishResponse = resolve;
   });
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
+
     if (path === '/api/me') {
       await route.fulfill({
         json: {
@@ -464,6 +475,7 @@ test.describe('AI 功能 UI 测试 @tools @ai', () => {
 test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async ({ page }) => {
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
+
     if (path === '/api/me') {
       await route.fulfill({
         json: {

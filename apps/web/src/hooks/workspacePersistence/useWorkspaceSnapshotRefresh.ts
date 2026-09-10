@@ -42,16 +42,19 @@ export function useWorkspaceSnapshotRefresh({
     if (disabled) return;
 
     let cancelled = false;
+
     const handleSnapshotApplied = () => {
       void (async () => {
         const bootstrap = await getWorkspaceBootstrap(currentScope);
         const savedDrafts = await listSavedDrafts(currentScope);
+
         if (cancelled) return;
         replaceSavedTableDrafts(new Map(Object.entries(savedDrafts)));
 
         const drafts = collectBootstrapDrafts(bootstrap);
         replaceDrafts(drafts);
         const session = normalizeWorkspaceSession(bootstrap.session);
+
         const savedTable =
           session?.activeSource.kind === 'saved_table'
             ? toHydrationSavedTable(
@@ -70,6 +73,7 @@ export function useWorkspaceSnapshotRefresh({
           });
           setPersistedStateIfChanged(savedTable.draftState ?? savedTable.state);
           setHydrated(true);
+
           return;
         }
 
@@ -86,6 +90,7 @@ export function useWorkspaceSnapshotRefresh({
     };
 
     window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
+
     return () => {
       cancelled = true;
       window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);

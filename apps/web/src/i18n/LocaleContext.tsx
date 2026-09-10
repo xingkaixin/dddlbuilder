@@ -23,6 +23,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   const setLocale = useCallback((nextLocale: AppLocale) => {
     setLocaleState(nextLocale);
+
     try {
       window.localStorage.setItem(LOCAL_STORAGE_KEY, nextLocale);
     } catch {
@@ -38,6 +39,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleLanguageChanged = (language: string) => {
       const normalized = normalizeLocale(language);
+
       if (!normalized) return;
 
       setLocaleState((currentLocale) => {
@@ -56,6 +58,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     };
 
     i18n.on('languageChanged', handleLanguageChanged);
+
     return () => {
       i18n.off('languageChanged', handleLanguageChanged);
     };
@@ -75,8 +78,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
 export function useLocale() {
   const context = useContext(LocaleContext);
+
   if (!context) {
     throw new Error('useLocale must be used within LocaleProvider');
   }
+
   return context;
 }

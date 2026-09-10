@@ -41,6 +41,7 @@ export const EditableCell = memo<EditableCellProps>(
         if (controlledIsEditing === undefined) {
           setUncontrolledIsEditing(nextIsEditing);
         }
+
         onEditingChange?.(nextIsEditing);
       },
       [controlledIsEditing, onEditingChange],
@@ -101,6 +102,7 @@ export const EditableCell = memo<EditableCellProps>(
       finishEditing(inputRef.current?.value ?? editValue);
       const direction = pendingTabDirectionRef.current;
       pendingTabDirectionRef.current = null;
+
       if (direction) {
         setTimeout(() => {
           onTabNavigate?.(direction);
@@ -121,6 +123,7 @@ export const EditableCell = memo<EditableCellProps>(
           setEditValue(currentValue);
           finishEditing(currentValue);
           inputRef.current?.blur();
+
           return;
         } else if (e.key === 'Enter') {
           e.preventDefault();
@@ -149,6 +152,7 @@ export const EditableCell = memo<EditableCellProps>(
         if (e.key === 'Enter' || e.key === 'F2') {
           e.preventDefault();
           startEditingWithCurrentValue('keyboard');
+
           return;
         }
 
@@ -156,6 +160,7 @@ export const EditableCell = memo<EditableCellProps>(
         if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault();
           startEditingWithReplace('');
+
           return;
         }
 
@@ -172,14 +177,17 @@ export const EditableCell = memo<EditableCellProps>(
     useEffect(() => {
       if (isEditing && inputRef.current) {
         inputRef.current.focus();
+
         const shouldSelectAll =
           triggerSourceRef.current === 'keyboard' || triggerSourceRef.current === 'focus';
+
         if (shouldSelectAll) {
           inputRef.current.select();
         } else {
           const len = inputRef.current.value.length;
           inputRef.current.setSelectionRange(len, len);
         }
+
         triggerSourceRef.current = null;
       }
     }, [isEditing]);

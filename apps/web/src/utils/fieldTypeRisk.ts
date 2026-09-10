@@ -87,10 +87,12 @@ export function detectFieldTypeRisk(oldType: string, newType: string): FieldType
     if (oldParsed.args.length > 0 && newParsed.args.length > 0) {
       const oldLen = Number(oldParsed.args[0]);
       const newLen = Number(newParsed.args[0]);
+
       if (!isNaN(oldLen) && !isNaN(newLen) && newLen < oldLen) {
         return { kind: 'length_shrink', fromType: oldType, toType: newType };
       }
     }
+
     return null;
   }
 
@@ -106,6 +108,7 @@ export function detectFieldTypeRisk(oldType: string, newType: string): FieldType
   if (oldCategory === 'integer') {
     const oldBytes = INTEGER_BYTES[oldBase] ?? 0;
     const newBytes = INTEGER_BYTES[newBase] ?? 0;
+
     if (newBytes > 0 && newBytes < oldBytes) {
       return { kind: 'length_shrink', fromType: oldType, toType: newType };
     }

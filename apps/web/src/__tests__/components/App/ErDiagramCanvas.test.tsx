@@ -18,6 +18,7 @@ vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactFlowModule>()),
   ReactFlow: ({ edges }: ReactFlowModule.ReactFlowProps) => {
     capture.edges = edges ?? [];
+
     return null;
   },
   useReactFlow: () => ({ fitView: capture.fitView }),
@@ -61,9 +62,12 @@ describe('ER relationship ownership', () => {
       state: { ...original.state, tableName: 'parent', foreignKeys: [] },
     };
     const updates: SavedTableRecord[] = [];
+
     const onUpdateTable = vi.fn((target: SavedTableTarget, update: SavedTableStateUpdate) => {
       const record = applySavedTableStateUpdate(target, update, () => (copy ? imported : original));
+
       if (record) updates.push(record);
+
       return Promise.resolve({ ok: true as const, tableId: 'updated', normalizedName: 'updated' });
     });
     const onRefresh = vi.fn().mockResolvedValue(undefined);
@@ -81,6 +85,7 @@ describe('ER relationship ownership', () => {
     expect(new Set(capture.edges.map((edge) => edge.id)).size).toBe(2);
     const target = copy ? imported : original;
     const edge = capture.edges.find((item) => item.source === target.tableId);
+
     if (!edge?.data) throw new Error('Selected relationship was not rendered');
     await act(async () => {
       await (edge.data as ErEdgeData).onDelete();

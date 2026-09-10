@@ -20,15 +20,19 @@ export function foldUnquotedPostgresIdentifiers(sql: string): string {
 export function extractStandaloneComments(sql: string): PreprocessResult {
   const metadataByTable = new Map<string, PreprocessResult['tableMetadata'][number]>();
   const unescapeComment = (value: string) => value.replace(/''/g, "'");
+
   const getTableMetadata = (tableName: string) => {
     const existing = metadataByTable.get(tableName);
+
     if (existing) return existing;
+
     const metadata: PreprocessResult['tableMetadata'][number] = {
       tableName,
       tableComment: '',
       columnComments: {},
     };
     metadataByTable.set(tableName, metadata);
+
     return metadata;
   };
 
@@ -37,6 +41,7 @@ export function extractStandaloneComments(sql: string): PreprocessResult {
       /COMMENT\s+ON\s+TABLE\s+([\w".]+)\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
       (_m, tableName, comment) => {
         getTableMetadata(tableName).tableComment = unescapeComment(comment);
+
         return '';
       },
     )
@@ -44,6 +49,7 @@ export function extractStandaloneComments(sql: string): PreprocessResult {
       /COMMENT\s+ON\s+COLUMN\s+([\w".]+)\.(["\w]+)\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
       (_m, tableName, column, comment) => {
         getTableMetadata(tableName).columnComments[column] = unescapeComment(comment);
+
         return '';
       },
     );

@@ -19,12 +19,14 @@ export type AIUsageReservation<RouteKey extends AIRouteKey = AIRouteKey> = {
 };
 
 type AIUsageTerminalStatus = 'succeeded' | 'failed';
+
 export type AIUsageSettlement = {
   observedTotalTokens: number | null;
   chargedTokens: number;
   providerBudgetTokens: number;
   usageEstimated: boolean;
 };
+
 export type PreparedAIUsageSettlement = {
   chargedTokens: number;
   providerBudgetTokens: number;
@@ -41,7 +43,9 @@ export const AI_USAGE_STATUS = {
   settlingFailed: 'settling_failed',
   reclaiming: 'reclaiming',
 } as const;
+
 export type AIUsageStatus = (typeof AI_USAGE_STATUS)[keyof typeof AI_USAGE_STATUS];
+
 export const isTerminalAIUsageStatus = (status: string): status is AIUsageTerminalStatus =>
   status === 'succeeded' || status === 'failed';
 
@@ -55,9 +59,11 @@ const ROUTE_SOURCES: Record<AIRouteKey, CreditLedgerSource> = {
 
 const normalizeTokenAmount = (value: number, minimum = 0) => {
   const amount = Math.max(minimum, Math.ceil(value));
+
   if (!Number.isFinite(value) || !Number.isSafeInteger(amount)) {
     throw new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_CREDIT_AMOUNT');
   }
+
   return amount;
 };
 
@@ -65,6 +71,7 @@ const normalizeSettlementTokenAmount = (value: number) => {
   if (value < 0 || !Number.isSafeInteger(value)) {
     throw new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_CREDIT_AMOUNT');
   }
+
   return value;
 };
 
@@ -72,6 +79,7 @@ const normalizeSettlement = (settlement: AIUsageSettlement): AIUsageSettlement =
   if (typeof settlement.usageEstimated !== 'boolean') {
     throw new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_USAGE_MEASUREMENT');
   }
+
   const observedTotalTokens =
     settlement.observedTotalTokens === null
       ? null
@@ -82,6 +90,7 @@ const normalizeSettlement = (settlement: AIUsageSettlement): AIUsageSettlement =
     providerBudgetTokens: normalizeSettlementTokenAmount(settlement.providerBudgetTokens),
     usageEstimated: settlement.usageEstimated,
   };
+
   if (
     (!normalized.usageEstimated && normalized.observedTotalTokens === null) ||
     (!normalized.usageEstimated && normalized.observedTotalTokens !== normalized.chargedTokens) ||
@@ -89,6 +98,7 @@ const normalizeSettlement = (settlement: AIUsageSettlement): AIUsageSettlement =
   ) {
     throw new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_USAGE_MEASUREMENT');
   }
+
   return normalized;
 };
 
@@ -104,6 +114,7 @@ export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
     reservedTokens: normalizeTokenAmount(input.estimatedTokens, 1),
   };
   const ledgerIdentity = `${reservation.usageEventId}:reserve`;
+
   try {
     const result = await env.USER_DB.batch([
       env.USER_DB.prepare(`
@@ -131,14 +142,17 @@ export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
         metadata: { routeKey: input.routeKey, requestId: input.requestId },
       }),
     ]);
+
     if (!result[0]?.results.length) {
       throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_ACCOUNT_MISSING');
     }
+
     return reservation;
   } catch (error) {
     if (error instanceof Error && error.message.includes('AI_USAGE_DEBT_PENDING')) {
       throw new DomainError(402, 'CREDIT_EXHAUSTED', 'CREDIT_SETTLEMENT_PENDING');
     }
+
     throw mapLedgerAbort(error);
   }
 };
@@ -155,9 +169,11 @@ export const recordAIUsageAttempt = async (
   `)
     .bind(reservation.usageEventId, reservation.userId)
     .first<{ attemptCount: number }>();
+
   if (!row) {
     throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'AI_USAGE_NOT_RESERVED');
   }
+
   return Number(row.attemptCount);
 };
 
@@ -175,9 +191,11 @@ export const cancelUnstartedAIUsageAttempt = async (
   `)
     .bind(reservation.usageEventId, reservation.userId, attemptCount)
     .first<{ attemptCount: number }>();
+
   if (!row) {
     throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'AI_USAGE_NOT_RESERVED');
   }
+
   return Number(row.attemptCount);
 };
 
@@ -200,6 +218,7 @@ export const prepareAIUsageSettlement = async (
 ): Promise<PreparedAIUsageSettlement> => {
   const settlement = normalizeSettlement(input);
   const settlingStatus = getSettlingStatus(status);
+
   const isZeroWithoutAttempt =
     settlement.observedTotalTokens === 0 &&
     settlement.chargedTokens === 0 &&
@@ -273,6 +292,7 @@ export const prepareAIUsageSettlement = async (
       chargedTokens: number | null;
       providerBudgetTokens: number | null;
     }>();
+
   if (
     !prepared ||
     !isSettlementStatus(prepared.status) ||
@@ -281,6 +301,7 @@ export const prepareAIUsageSettlement = async (
   ) {
     throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'AI_USAGE_SETTLEMENT_NOT_PREPARED');
   }
+
   return {
     chargedTokens: normalizeSettlementTokenAmount(Number(prepared.chargedTokens)),
     providerBudgetTokens: normalizeSettlementTokenAmount(Number(prepared.providerBudgetTokens)),
@@ -296,6 +317,7 @@ export const finalizeAIUsageSettlement = async (
 ) => {
   const settlingStatus = getSettlingStatus(status);
   const ledgerIdentity = `${reservation.usageEventId}:settlement`;
+
   const metadata = JSON.stringify({
     routeKey: reservation.routeKey,
     requestId: reservation.requestId,
@@ -399,6 +421,7 @@ export const finalizeAIUsageSettlement = async (
         RETURNING id
       `).bind(status, reservation.usageEventId, reservation.userId, settlingStatus, ledgerIdentity),
     ]);
+
     return result[2].results.length > 0;
   } catch (error) {
     throw mapLedgerAbort(error);
@@ -414,15 +437,19 @@ const settleUsage = async (
   from: AIUsageStatus = AI_USAGE_STATUS.reserved,
 ) => {
   let prepared: PreparedAIUsageSettlement;
+
   try {
     prepared = await prepareAIUsageSettlement(env, reservation, status, input, errorCode, from);
   } catch (error) {
     if (error instanceof DomainError && error.message === 'AI_USAGE_SETTLEMENT_NOT_PREPARED') {
       return false;
     }
+
     throw error;
   }
+
   if (!prepared.needsFinalization) return false;
+
   return finalizeAIUsageSettlement(env, reservation, status, errorCode);
 };
 
@@ -457,9 +484,11 @@ const getRecoveredCharge = (row: StaleUsageRow, attemptCount: number) => {
   if (row.status === AI_USAGE_STATUS.pending) return 0;
   if (row.status === AI_USAGE_STATUS.settlingFailed) return row.actualTotalTokens ?? 0;
   if (row.status === AI_USAGE_STATUS.reclaiming) return row.actualTotalTokens ?? 0;
+
   if (row.status === AI_USAGE_STATUS.settlingSucceeded) {
     return row.actualTotalTokens ?? row.estimatedTokens;
   }
+
   return (
     row.actualTotalTokens ??
     (attemptCount > 0 && row.hasReservationLedger ? row.estimatedTokens : 0)
@@ -468,7 +497,9 @@ const getRecoveredCharge = (row: StaleUsageRow, attemptCount: number) => {
 
 const addProviderBudgetTokens = (baseTokens: number, attempts: number, reservedTokens: number) => {
   const remaining = Number.MAX_SAFE_INTEGER - baseTokens;
+
   if (attempts > Math.floor(remaining / reservedTokens)) return Number.MAX_SAFE_INTEGER;
+
   return baseTokens + attempts * reservedTokens;
 };
 
@@ -482,6 +513,7 @@ const getRecoveredProviderBudget = (
   if (row.attemptCount === null) return Math.max(chargedTokens, row.estimatedTokens);
   const observedTokens = row.actualTotalTokens ?? 0;
   const unknownAttempts = row.actualTotalTokens === null ? attemptCount : attemptCount - 1;
+
   return Math.max(
     chargedTokens,
     addProviderBudgetTokens(observedTokens, unknownAttempts, row.estimatedTokens),
@@ -496,6 +528,7 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
   const now = options.now ?? (yield* Clock.currentTimeMillis);
   const cutoff = now - ttlMs;
   const sql = yield* D1Client.D1Client;
+
   const stale = yield* sql<StaleUsageRow>`
     SELECT id, user_id AS userId, route_key AS routeKey, request_id AS requestId,
       estimated_tokens AS estimatedTokens, actual_total_tokens AS actualTotalTokens,
@@ -527,22 +560,27 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
   `.pipe(Effect.withSpan('ai.usage.reclaim.scan'));
   let reclaimed = 0;
   const failures: Array<{ usageEventId: string; error: unknown }> = [];
+
   const deferRecovery = (usageEventId: string) =>
     sql`
       UPDATE usage_events SET recovery_after = ${now + AI_USAGE_RECOVERY_RETRY_DELAY_MS}
       WHERE id = ${usageEventId} AND ${sql.in('status', RECLAIMABLE_STATUSES)}
     `.pipe(Effect.uninterruptible, Effect.withSpan('ai.usage.reclaim.defer'));
+
   for (const row of stale) {
     const result = yield* Effect.gen(function* () {
       if (!Object.hasOwn(ROUTE_SOURCES, row.routeKey)) {
         return yield* new AIUsageError({ cause: new Error('UNKNOWN_AI_ROUTE') });
       }
+
       const succeeded = row.status === AI_USAGE_STATUS.settlingSucceeded;
+
       const attemptCount =
         row.attemptCount ??
         (row.status === AI_USAGE_STATUS.pending ? 0 : row.hasReservationLedger ? 1 : 0);
       const chargedTokens = getRecoveredCharge(row, attemptCount);
       const providerBudgetTokens = getRecoveredProviderBudget(row, attemptCount, chargedTokens);
+
       const usageEstimated =
         row.usageEstimated === null
           ? attemptCount === 0 && chargedTokens === 0
@@ -575,19 +613,25 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
           ),
         catch: (cause) => new AIUsageError({ cause }),
       }).pipe(Effect.uninterruptible, Effect.withSpan('ai.usage.reclaim.settle'));
+
       if (!changed) {
         const [current] = yield* sql<{ status: string }>`
           SELECT status FROM usage_events WHERE id = ${row.id} AND user_id = ${row.userId}
         `;
+
         if (current && isTerminalAIUsageStatus(current.status)) return false;
+
         return yield* new AIUsageError({ cause: new Error('AI_USAGE_SETTLEMENT_INCOMPLETE') });
       }
+
       return true;
     }).pipe(Effect.withSpan('ai.usage.reclaim.entry'), Effect.result);
+
     if (result._tag === 'Success') {
       if (result.success) reclaimed += 1;
       continue;
     }
+
     const deferred = yield* Effect.result(deferRecovery(row.id));
     failures.push({
       usageEventId: row.id,
@@ -600,5 +644,6 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
           : result.failure,
     });
   }
+
   return { scanned: stale.length, reclaimed, failures };
 });

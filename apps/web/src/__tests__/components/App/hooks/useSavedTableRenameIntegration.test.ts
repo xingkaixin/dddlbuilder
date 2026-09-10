@@ -23,6 +23,7 @@ describe('saved table rename integration', () => {
     async (action) => {
       const original = { ...getCurrentState(), tableName: 'users' };
       const other = { ...original, tableName: 'orders' };
+
       const source = {
         kind: 'saved_table' as const,
         tableId: 'users-id',
@@ -32,6 +33,7 @@ describe('saved table rename integration', () => {
       };
       const store = useTabStore.getState();
       const targetTabId = store.addTab({ title: 'Users', source, stateSnapshot: original });
+
       const otherTabId = store.addTab({
         title: 'Orders',
         source: { kind: 'draft', draftId: 'orders-draft' },
@@ -40,10 +42,12 @@ describe('saved table rename integration', () => {
       store.activateTab(targetTabId);
       useEditorStore.getState().replaceDocument(original);
       let completeRename!: (result: SaveTableResult) => void;
+
       const pending = new Promise<SaveTableResult>((resolve) => {
         completeRename = resolve;
       });
       const selectWorkspaceSnapshot = vi.fn();
+
       const { result } = renderHook(() => {
         const tabs = useTabLifecycle({
           enabled: true,
@@ -94,6 +98,7 @@ describe('saved table rename integration', () => {
           showToast: vi.fn(),
           onTabRename: integration.onTabRename,
         });
+
         return { tabs, flow };
       });
 
@@ -143,6 +148,7 @@ describe('saved table rename integration', () => {
 
   it('重命名加载中的表时不把上一张表的编辑内容关联到目标表', () => {
     const state = { ...getCurrentState(), tableName: 'previous_table' };
+
     const source = {
       kind: 'saved_table' as const,
       tableId: 'loading-id',
@@ -157,6 +163,7 @@ describe('saved table rename integration', () => {
       isLoading: true,
     });
     const selectWorkspaceSnapshot = vi.fn();
+
     const { result } = renderHook(() =>
       useSavedTableTabIntegration({
         isShareView: false,

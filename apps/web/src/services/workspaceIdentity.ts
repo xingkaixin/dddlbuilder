@@ -13,8 +13,10 @@ export const readWorkspaceIdentity = (): string | null => {
 
 export const parseWorkspaceIdentity = (value: string | null): UserWorkspaceScope | null => {
   if (!value) return null;
+
   try {
     const parsed: unknown = JSON.parse(value);
+
     if (
       typeof parsed !== 'object' ||
       parsed === null ||
@@ -26,6 +28,7 @@ export const parseWorkspaceIdentity = (value: string | null): UserWorkspaceScope
       !parsed.workspaceId.trim()
     )
       return null;
+
     return { kind: 'user', userId: parsed.userId, workspaceId: parsed.workspaceId };
   } catch {
     return null;
@@ -36,7 +39,9 @@ export const writeWorkspaceIdentity = (scope: UserWorkspaceScope | null) => {
   const value = scope
     ? JSON.stringify({ userId: scope.userId, workspaceId: scope.workspaceId })
     : null;
+
   if (readWorkspaceIdentity() === value) return;
+
   try {
     if (value) localStorage.setItem(WORKSPACE_IDENTITY_KEY, value);
     else localStorage.removeItem(WORKSPACE_IDENTITY_KEY);
@@ -52,6 +57,7 @@ export const subscribeWorkspaceIdentity = (onChange: () => void) => {
   };
   window.addEventListener('storage', onStorage);
   window.addEventListener(IDENTITY_CHANGED, onChange);
+
   return () => {
     window.removeEventListener('storage', onStorage);
     window.removeEventListener(IDENTITY_CHANGED, onChange);

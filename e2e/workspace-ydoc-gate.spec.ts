@@ -13,7 +13,9 @@ test('cached workspace opens before authentication and workspace requests finish
   );
   const page = await context.newPage();
   let releaseMe = () => {};
+
   let releaseWorkspace = () => {};
+
   try {
     await page.goto('/');
     await page.getByRole('button', { name: '新建草稿' }).click();
@@ -21,6 +23,7 @@ test('cached workspace opens before authentication and workspace requests finish
     await expect
       .poll(() => workspaceYDocPersisted(page, workspaceId, 'LOCAL_FIRST_RESTORE'))
       .toBe(true);
+
     const me = new Promise<void>((resolve) => {
       releaseMe = resolve;
     });
@@ -64,6 +67,7 @@ for (const failure of ['me', 'workspaces', 'expired']) {
       route.fulfill({ status: 503 }),
     );
     const page = await context.newPage();
+
     try {
       await page.goto('/');
       await page.getByRole('button', { name: '新建草稿' }).click();
@@ -90,6 +94,7 @@ for (const failure of ['me', 'workspaces', 'expired']) {
     }
   });
 }
+
 const DEAD_SHARE_ID = '2f9c9a3e-1f2a-4c6d-8b7e-9a1c2d3e4f50';
 
 /** 复现 IndexedDB 打不开的真实故障：open() 既不 success 也不 error，whenSynced 永远 pending。 */
@@ -108,6 +113,7 @@ const stallWorkspaceIndexedDb = async (context: BrowserContext) => {
           removeEventListener: () => {},
         } as unknown as IDBOpenDBRequest;
       }
+
       return version === undefined ? nativeOpen(name) : nativeOpen(name, version);
     }) as typeof indexedDB.open;
   });
@@ -120,6 +126,7 @@ const mockSignedInWorkspace = async (
 ) => {
   await context.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
+
     if (url.pathname === '/api/me') {
       await route.fulfill({
         json: {
@@ -133,30 +140,39 @@ const mockSignedInWorkspace = async (
           meta: { requestId: 'e2e' },
         },
       });
+
       return;
     }
+
     if (url.pathname === '/api/credits/balance') {
       await route.fulfill({ json: { balance: 10000, version: 1, userId: 'user-gate' } });
+
       return;
     }
+
     if (url.pathname === '/api/workspaces') {
       if (options.workspacesDelayMs) {
         await new Promise((resolve) => setTimeout(resolve, options.workspacesDelayMs));
       }
+
       await route.fulfill({
         json: {
           workspaceId,
         },
       });
+
       return;
     }
+
     if (url.pathname.startsWith('/api/share/')) {
       await route.fulfill({
         status: 404,
         json: { error: 'Share not found', code: 'SHARE_NOT_FOUND' },
       });
+
       return;
     }
+
     await route.fallback();
   });
 };
@@ -178,6 +194,7 @@ const readWorkspaceDraftScopes = (page: Page) =>
       request.onerror = () => reject(request.error);
     });
     db.close();
+
     return [...new Set(keys.map((key) => String(key).split('::')[0]))].sort();
   });
 
@@ -193,10 +210,13 @@ const workspaceYDocPersisted = (page: Page, workspaceId: string, needle: string)
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       });
+
       if (!db.objectStoreNames.contains('updates')) {
         db.close();
+
         return false;
       }
+
       const updates = await new Promise<unknown[]>((resolve, reject) => {
         const request = db.transaction('updates', 'readonly').objectStore('updates').getAll();
         request.onsuccess = () => resolve(request.result);
@@ -204,6 +224,7 @@ const workspaceYDocPersisted = (page: Page, workspaceId: string, needle: string)
       });
       db.close();
       const decoder = new TextDecoder();
+
       return updates.some((update) => decoder.decode(update as Uint8Array).includes(text));
     },
     [`ddlbuilder:workspace:${workspaceId}`, needle] as const,

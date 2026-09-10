@@ -59,6 +59,7 @@ function getValidationErrorMessage(
   ) {
     return error.message;
   }
+
   return fallback;
 }
 
@@ -83,6 +84,7 @@ export function ImportSqlDialog({
   });
   const { t } = useTranslation();
   const { showToast } = useToast();
+
   const {
     isPending: isValidating,
     run: runValidation,
@@ -116,6 +118,7 @@ export function ImportSqlDialog({
       if (!nextOpen) {
         resetDialog();
       }
+
       onOpenChange(nextOpen);
     },
     [onOpenChange, resetDialog],
@@ -153,6 +156,7 @@ export function ImportSqlDialog({
   const fileSizeError = useCallback(
     (candidate: File): string | null => {
       const maxBytes = getImportFileByteLimit(sourceType);
+
       return maxBytes !== null && candidate.size > maxBytes
         ? t('importSql.file.tooLarge', { max: toMebibytes(maxBytes).toLocaleString() })
         : null;
@@ -163,7 +167,9 @@ export function ImportSqlDialog({
   const contentLengthError = useCallback(
     (content: string): string | null => {
       const maxCharacters = getImportCharacterLimit(sourceType);
+
       if (maxCharacters === null || content.length <= maxCharacters) return null;
+
       return t(sourceType === 'sql' ? 'importSql.sqlTooLong' : 'importSql.contentTooLong', {
         max: maxCharacters.toLocaleString(),
       });
@@ -174,17 +180,21 @@ export function ImportSqlDialog({
   const handleFileChange = useCallback(
     (nextFile: File | null) => {
       cancelValidation();
+
       if (nextFile) {
         const error = fileSizeError(nextFile);
+
         if (error) {
           dispatch({ type: 'set_file', file: null });
           dispatch({
             type: 'validation_failed',
             result: { success: false, error, lineNumber: 1 },
           });
+
           return;
         }
       }
+
       dispatch({ type: 'set_file', file: nextFile });
     },
     [cancelValidation, fileSizeError],
@@ -193,13 +203,16 @@ export function ImportSqlDialog({
   const buildStructuredTables = useCallback(async (): Promise<ParsedResult[]> => {
     if (sourceType === 'excel') {
       if (!file) throw new Error(t('importSql.file.required'));
+
       return parseExcelImport(file);
     }
 
     const content = file ? await file.text() : sql;
+
     if (file) {
       if (!content.trim()) throw new Error(t('importSql.sqlRequired'));
       const error = contentLengthError(content);
+
       if (error) throw new Error(error);
     }
 
@@ -230,6 +243,7 @@ export function ImportSqlDialog({
               result: { success: false, error: t('importSql.sqlNoTable') },
             }),
           );
+
           return;
         }
 
@@ -268,6 +282,7 @@ export function ImportSqlDialog({
               result: { success: false, error: t('importSql.sqlNoTable') },
             }),
           );
+
           return;
         }
 
@@ -306,32 +321,42 @@ export function ImportSqlDialog({
   const validateAndAdvance = useCallback(() => {
     const trimmedSql = sql.trim();
     const needsText = sourceType !== 'excel' && !file;
+
     if (needsText && !trimmedSql) {
       dispatch({
         type: 'validation_failed',
         result: { success: false, error: t('importSql.sqlRequired'), lineNumber: 1 },
       });
+
       return;
     }
+
     if (sourceType === 'excel' && !file) {
       dispatch({
         type: 'validation_failed',
         result: { success: false, error: t('importSql.file.required'), lineNumber: 1 },
       });
+
       return;
     }
+
     const contentError = !file ? contentLengthError(sql) : null;
+
     if (contentError) {
       dispatch({
         type: 'validation_failed',
         result: { success: false, error: contentError, lineNumber: 1 },
       });
+
       return;
     }
+
     if (importMode === 'saved' && batchImportSupported) {
       void validateForSaved();
+
       return;
     }
+
     void validateForWorkspace();
   }, [
     sql,
@@ -412,6 +437,7 @@ export function ImportSqlDialog({
 
     dispatch({ type: 'import_started' });
     let result: SavedTableBatchImportResult;
+
     try {
       result = await onBatchImport({
         items: selectedTables.map((table) => ({
@@ -431,8 +457,10 @@ export function ImportSqlDialog({
             : 'importSql.batch.importFailed',
         ),
       });
+
       return;
     }
+
     setOpen(false);
     showToast(
       t('importSql.batch.importResult', {
@@ -453,6 +481,7 @@ export function ImportSqlDialog({
         { key: 'save' as const, label: t('importSql.batch.stepSave') },
       ];
     }
+
     return [
       { key: 'validate' as const, label: t('importSql.stepValidate') },
       { key: 'preview' as const, label: t('importSql.stepPreview') },

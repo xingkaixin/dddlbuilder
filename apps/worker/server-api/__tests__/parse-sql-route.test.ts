@@ -30,6 +30,7 @@ describe('parse-sql route', () => {
       ...result,
       fields: [null as never],
     });
+
     const response = await app.fetch(
       createRequest('/api/parse-sql', {
         method: 'POST',
@@ -44,6 +45,7 @@ describe('parse-sql route', () => {
 
   it('sql 为空时应返回 SQL_REQUIRED', async () => {
     const env = createEnv();
+
     const response = await app.fetch(
       createRequest('/api/parse-sql', {
         method: 'POST',
@@ -69,6 +71,7 @@ describe('parse-sql route', () => {
 
   it('dbType 非法时应返回 INVALID_DATABASE_TYPE', async () => {
     const env = createEnv();
+
     const response = await app.fetch(
       createRequest('/api/parse-sql', {
         method: 'POST',
@@ -108,6 +111,7 @@ describe('parse-sql route', () => {
 
   it('SQL 语法错误时应返回 SQL_PARSE_FAILED', async () => {
     const env = createEnv();
+
     const response = await app.fetch(
       createRequest('/api/parse-sql', {
         method: 'POST',

@@ -21,6 +21,7 @@ const loadTable = async () => {
   useEditorStore.getState().replaceDocument(convertParsedResultToPersistedState(parsed, 'mysql'));
   const signature = buildSchemaStateSignature(toPersistedState(useEditorStore.getState()));
   const loadedTableState = toPersistedState(useEditorStore.getState());
+
   return renderHook(() =>
     useDerivedTableState({
       ...useEditorStore(),

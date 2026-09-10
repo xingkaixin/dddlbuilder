@@ -82,24 +82,29 @@ export function useSaveLoadActions({
 
       try {
         const record = await loadTable(target);
+
         if (!record) {
           showToast(t('savedTables.toast.tableNotFound'));
+
           return null;
         }
 
         const snapshot = resolveSavedTableSnapshot(record, getSavedTableDraft?.(record) ?? null);
 
         let versionCount = 0;
+
         try {
           versionCount = await countTableVersions(record);
         } catch (error) {
           console.error('[saved-table] failed to count versions', error);
         }
+
         const resolvedVersion = versionCount > 0 ? versionCount : 1;
 
         return { ...snapshot, version: resolvedVersion };
       } catch (error) {
         showToast(error instanceof Error ? error.message : t('savedTables.toast.loadFailed'));
+
         return null;
       } finally {
         onTableLoadStateChange?.(false);
@@ -116,8 +121,10 @@ export function useSaveLoadActions({
   const handleConfirmSave = useCallback(async () => {
     if (!canSaveCurrent) {
       showToast(t('savedTables.toast.noChangesToSave'));
+
       return;
     }
+
     const nextState = buildPersistedState();
     const nextSignature = buildSchemaStateSignature(nextState);
 
@@ -128,14 +135,19 @@ export function useSaveLoadActions({
 
     if (hasLoadedTable && loadedTableSource) {
       const result = await overwriteTable(loadedTableSource, nextState);
+
       if (!result.ok) {
         if (result.reason === 'not_found') {
           showToast(t('savedTables.toast.tableNotFound'));
+
           return;
         }
+
         showToast(result.message ?? t('savedTables.toast.updateFailed'));
+
         return;
       }
+
       savedNormalizedName = result.normalizedName;
       savedTableId = result.tableId ?? loadedTableSource.tableId;
       savedDisplayName = loadedTableName ?? saveName;
@@ -143,14 +155,19 @@ export function useSaveLoadActions({
       showToast(t('savedTables.toast.tableUpdated', { name: loadedTableName ?? saveName }));
     } else {
       const result = await saveTable(saveName, nextState, sourceDraftId);
+
       if (!result.ok) {
         if (result.reason === 'duplicate') {
           saveDialog.setError(t('savedTables.toast.nameExists'));
+
           return;
         }
+
         showToast(result.message ?? t('savedTables.toast.saveFailed'));
+
         return;
       }
+
       const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
       const normalizedName = result.normalizedName;
       savedNormalizedName = normalizedName;
@@ -159,6 +176,7 @@ export function useSaveLoadActions({
       saveMode = 'create';
       showToast(t('savedTables.toast.tableSaved', { name: displayName }));
     }
+
     saveDialog.closeDialog();
 
     try {
@@ -167,6 +185,7 @@ export function useSaveLoadActions({
           { normalizedName: savedNormalizedName, tableId: savedTableId },
           nextState,
         );
+
         const versionCount = await countTableVersions({
           normalizedName: savedNormalizedName,
           tableId: savedTableId,

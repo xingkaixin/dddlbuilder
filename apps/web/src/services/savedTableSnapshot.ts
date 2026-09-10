@@ -19,8 +19,10 @@ export const resolveSavedTableSnapshot = (
 } => {
   const baseSignature = buildSchemaStateSignature(record.state);
   let state = draft?.state ?? record.state;
+
   if (draft && draft.baseSignature !== baseSignature) {
     const base = draft.baseState ? withDefaultEditorSession(draft.baseState) : null;
+
     // 未保存的修改优先；缺少可读基线时保留草稿，不能将无法合并视为可以丢弃。
     if (base) state = mergeSchemaStates(base, record.state, draft.state);
   }

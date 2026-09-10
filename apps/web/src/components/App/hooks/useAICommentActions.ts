@@ -56,15 +56,19 @@ export function useAICommentActions({
           const commentsByField = new Map(
             result.fields.map((field) => [field.fieldName, field.fieldComment]),
           );
+
           if (result.tableComment && (mode === 'translate' || !tableComment.trim())) {
             setTableComment(result.tableComment);
           }
+
           setRows((previous) =>
             previous.map((row) => {
               const nextComment = commentsByField.get(row.fieldName.trim());
+
               if (!nextComment || (mode === 'fill_missing' && row.fieldComment.trim())) {
                 return row;
               }
+
               return { ...row, fieldComment: nextComment };
             }),
           );

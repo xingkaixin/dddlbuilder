@@ -52,6 +52,7 @@ const runWithTemplateStore = async <T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> => {
   const db = await openDb();
+
   return runIndexedDbRequest(db, TEMPLATE_STORE_NAME, mode, runner);
 };
 
@@ -62,6 +63,7 @@ export const listTemplates = async (): Promise<FieldTemplate[]> => {
   const templates = await runWithTemplateStore<FieldTemplate[]>('readonly', (store) =>
     store.getAll(),
   );
+
   // 按更新时间降序排列
   return templates.map(decodeTemplate).sort((a, b) => b.updatedAt - a.updatedAt);
 };
@@ -73,6 +75,7 @@ export const getTemplate = async (id: string): Promise<FieldTemplate | undefined
   const template = await runWithTemplateStore<FieldTemplate | undefined>('readonly', (store) =>
     store.get(id),
   );
+
   return template ? decodeTemplate(template) : undefined;
 };
 
@@ -85,6 +88,7 @@ export const createTemplate = async (
   description?: string,
 ): Promise<FieldTemplate> => {
   const now = Date.now();
+
   const template: FieldTemplate = {
     id: generateId(),
     name: name.trim() || '未命名模板',
@@ -95,6 +99,7 @@ export const createTemplate = async (
   };
 
   await runWithTemplateStore('readwrite', (store) => store.add(template));
+
   return template;
 };
 
@@ -106,6 +111,7 @@ export const updateTemplate = async (
   updates: Partial<Pick<FieldTemplate, 'name' | 'description' | 'keywords' | 'fields'>>,
 ): Promise<FieldTemplate | null> => {
   const existing = await getTemplate(id);
+
   if (!existing) return null;
 
   const updated: FieldTemplate = {
@@ -122,6 +128,7 @@ export const updateTemplate = async (
   };
 
   await runWithTemplateStore('readwrite', (store) => store.put(updated));
+
   return updated;
 };
 
@@ -154,8 +161,10 @@ export const duplicateTemplate = async (
   newName?: string,
 ): Promise<FieldTemplate | null> => {
   const existing = await getTemplate(id);
+
   if (!existing) return null;
 
   const name = newName?.trim() || `${existing.name} (副本)`;
+
   return createTemplate(name, [...existing.fields], existing.description);
 };

@@ -28,15 +28,18 @@ export function useFieldRowMutations({ setRows }: UseFieldRowMutationsParams) {
           if (value !== 'constant' && value !== 'expression') {
             row.defaultValue = '';
           }
+
           if (value === 'auto_increment') {
             row.nullable = false;
           }
+
           if (value === 'uuid') {
             row.onUpdate = 'none';
           }
         }
 
         newRows[rowIndex] = row;
+
         return newRows;
       });
     },

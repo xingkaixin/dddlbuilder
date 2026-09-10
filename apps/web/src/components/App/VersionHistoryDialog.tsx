@@ -45,6 +45,7 @@ interface VersionHistoryDialogProps {
   onRollback?: (state: PersistedState) => void;
   onPlayTimeline?: () => void;
 }
+
 const EMPTY_VERSIONS: TableVersion[] = [];
 
 function formatDate(
@@ -78,6 +79,7 @@ function buildDiffSummary(diff: TableDiff | null, t: TFunction): string {
   const parts: string[] = [];
   const addedFields = diff.fields.filter((f) => f.type === 'add').length;
   const removedFields = diff.fields.filter((f) => f.type === 'remove').length;
+
   const modifiedFields = diff.fields.filter(
     (f) => f.type === 'modify' || f.type === 'rename',
   ).length;
@@ -85,17 +87,26 @@ function buildDiffSummary(diff: TableDiff | null, t: TFunction): string {
   const removedIndexes = diff.indexes.filter((i) => i.type === 'remove').length;
 
   if (addedFields > 0) parts.push(t('versionHistory.diff.fieldAdded', { count: addedFields }));
+
   if (removedFields > 0)
     parts.push(t('versionHistory.diff.fieldRemoved', { count: removedFields }));
+
   if (modifiedFields > 0)
     parts.push(t('versionHistory.diff.fieldModified', { count: modifiedFields }));
+
   if (addedIndexes > 0) parts.push(t('versionHistory.diff.indexAdded', { count: addedIndexes }));
+
   if (removedIndexes > 0)
     parts.push(t('versionHistory.diff.indexRemoved', { count: removedIndexes }));
+
   if (diff.tableNameChanged) parts.push(t('versionHistory.diff.tableNameChanged'));
+
   if (diff.schemaNameChanged) parts.push(t('versionHistory.diff.schemaNameChanged'));
+
   if (diff.tableCommentChanged) parts.push(t('versionHistory.diff.tableCommentChanged'));
+
   if (diff.miscConfigChanged) parts.push(t('versionHistory.diff.miscChanged'));
+
   for (const change of diff.manualChanges ?? [])
     parts.push(t(`diffDialog.manualChanges.${change}`));
 
@@ -105,6 +116,7 @@ function buildDiffSummary(diff: TableDiff | null, t: TFunction): string {
 function toDateInputValue(timestamp: number): string {
   const date = new Date(timestamp);
   const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
 }
 
@@ -114,6 +126,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
     const queryClient = useQueryClient();
+
     const { data: versions = EMPTY_VERSIONS, isPending: loading } = useQuery({
       ...tableVersionsOptions(target),
       enabled: open && Boolean(target),
@@ -127,6 +140,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     const resolveVersionMessage = useCallback(
       (message?: string | null) => {
         if (!message) return '';
+
         if (
           message === INITIAL_VERSION_MESSAGE_KEY ||
           message === '初始版本' ||
@@ -134,6 +148,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
         ) {
           return t('versionHistory.initialVersion');
         }
+
         return message;
       },
       [t],
@@ -142,6 +157,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     // 预计算相邻版本之间的 diff（时间轴上每个节点 vs 它的下一个/更老的版本）
     const versionDiffs = useMemo(() => {
       const diffs: (TableDiff | null)[] = [];
+
       for (let i = 0; i < versions.length; i++) {
         if (i < versions.length - 1) {
           diffs.push(diffPersistedState(versions[i + 1].state, versions[i].state));
@@ -149,6 +165,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
           diffs.push(null);
         }
       }
+
       return diffs;
     }, [versions]);
 
@@ -162,9 +179,11 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
 
     const filteredVersions = useMemo(() => {
       const start = startTime ? new Date(`${startTime}T00:00`).getTime() : Number.NEGATIVE_INFINITY;
+
       const end = endTime
         ? new Date(`${endTime}T00:00`).getTime() + 24 * 60 * 60 * 1000 - 1
         : Number.POSITIVE_INFINITY;
+
       return versions.filter((version) => version.createdAt >= start && version.createdAt <= end);
     }, [endTime, startTime, versions]);
 
@@ -176,13 +195,17 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     const handleRollback = useCallback(async () => {
       if (!selectedId || !onRollback || !target) return;
       setActionLoading(true);
+
       try {
         const version = await getVersion(selectedId, target);
+
         if (!version) {
           showToast(t('versionHistory.versionMissing'));
           await queryClient.invalidateQueries({ queryKey: tableVersionsOptions(target).queryKey });
+
           return;
         }
+
         onRollback(version.state);
         onOpenChange(false);
       } catch (error) {
@@ -197,6 +220,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     const handleDelete = useCallback(async () => {
       if (!deleteConfirmId || !target) return;
       setActionLoading(true);
+
       try {
         await deleteVersion(deleteConfirmId, target);
         setDeleteConfirmId(null);
@@ -450,4 +474,5 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     );
   },
 );
+
 VersionHistoryDialog.displayName = 'VersionHistoryDialog';

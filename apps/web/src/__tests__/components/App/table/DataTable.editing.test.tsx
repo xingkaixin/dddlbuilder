@@ -29,8 +29,10 @@ vi.mock('@dnd-kit/sortable', () => ({
   arrayMove: (array: unknown[], from: number, to: number) => {
     const next = [...array];
     const [target] = next.splice(from, 1);
+
     if (target === undefined) return next;
     next.splice(to, 0, target);
+
     return next;
   },
 }));
@@ -74,8 +76,10 @@ describe('DataTable 单元格编辑切换', () => {
   it('a pointer click schedules cell activation only once', () => {
     const { container } = render(<DataTable />);
     const cell = container.querySelector('tbody td[data-col-index="2"]');
+
     if (!cell) throw new Error('Missing comment cell');
     const timers = vi.spyOn(globalThis, 'setTimeout');
+
     try {
       fireEvent.pointerDown(cell, { button: 0 });
       const scheduledAfterPointer = timers.mock.calls.length;
@@ -110,6 +114,7 @@ describe('DataTable 单元格编辑切换', () => {
     render(<DataTable />);
     const changes = vi.fn();
     const unsubscribe = useEditorStore.subscribe(changes);
+
     try {
       fireEvent.doubleClick(screen.getByTitle('user_id'));
       const input = screen.getByDisplayValue('user_id');
@@ -157,10 +162,12 @@ describe('DataTable 单元格编辑切换', () => {
     });
     const { container } = render(<DataTable />);
     const cell = container.querySelector('tbody td[data-row-index="0"][data-col-index="1"]');
+
     if (!cell) throw new Error('Expected the first field name cell');
     fireEvent.pointerDown(cell, { button: 0 });
     const changes = vi.fn();
     const unsubscribe = useEditorStore.subscribe(changes);
+
     try {
       fireEvent.paste(cell, { clipboardData: { getData: () => 'b\na' } });
       const state = useEditorStore.getState();
@@ -189,6 +196,7 @@ describe('DataTable 单元格编辑切换', () => {
       'tbody td[data-row-index="0"][data-col-index="2"]',
     );
     expect(commentCell).not.toBeNull();
+
     if (!commentCell) return;
 
     fireEvent.pointerDown(commentCell, { button: 0 });

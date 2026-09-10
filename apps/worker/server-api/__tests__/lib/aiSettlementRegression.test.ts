@@ -21,18 +21,21 @@ const fixture = async () => {
     amount: 1000,
     idempotencyKey: 'signup',
   });
+
   const reservation = await reserveAIUsage(env, {
     userId: 'user-1',
     routeKey: 'explain',
     requestId: 'request-1',
     estimatedTokens: 100,
   });
+
   return { env, sqlite, reservation };
 };
 
 describe('AI settlement regressions', () => {
   it('rolls back usage and ledger together when reservation is rejected', async () => {
     const { env, sqlite } = await fixture();
+
     try {
       const before = sqlite.prepare('SELECT COUNT(*) AS count FROM usage_events').get()?.count;
       const prepare = vi.spyOn(env.USER_DB, 'prepare');
@@ -54,6 +57,7 @@ describe('AI settlement regressions', () => {
 
   it('charges measured usage even when local response processing fails', async () => {
     const { env, sqlite, reservation } = await fixture();
+
     try {
       await reserveAIDailyBudget(env, reservation.usageEventId, 100, 1000);
       await recordAIUsageAttempt(env, reservation);
@@ -66,6 +70,7 @@ describe('AI settlement regressions', () => {
       await reconcileTerminalAIBudgets(env);
       const balance = (await getCreditAccount(env, 'user-1'))?.balance;
       const usage = sqlite.prepare('SELECT status, actual_total_tokens FROM usage_events').get();
+
       const budget = sqlite
         .prepare('SELECT actual_tokens, created_at FROM ai_budget_reservations')
         .get();
@@ -80,10 +85,12 @@ describe('AI settlement regressions', () => {
 
   it.each(['reserved', 'pending'])('reclaims %s using durable execution facts', async (status) => {
     const { env, sqlite, reservation } = await fixture();
+
     try {
       sqlite
         .prepare('UPDATE usage_events SET status = ?, created_at = 1 WHERE id = ?')
         .run(status, reservation.usageEventId);
+
       if (status === 'reserved') await recordAIUsageAttempt(env, reservation);
       await Effect.runPromise(
         reclaimStaleAIUsage(env).pipe(Effect.provide(D1Client.layer({ db: env.USER_DB }))),

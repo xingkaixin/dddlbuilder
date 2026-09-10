@@ -4,7 +4,9 @@ import { getDatabaseFamily, quoteIdentifier } from './databaseFamily.js';
 
 export function unquoteSqlIdentifier(value: string): string {
   const quoted = value.match(/^(?:"((?:[^"]|"")*)"|`((?:[^`]|``)*)`|\[((?:[^\]]|\]\])*)\])$/);
+
   if (!quoted) return value;
+
   return (
     quoted[1]?.replace(/""/g, '"') ??
     quoted[2]?.replace(/``/g, '`') ??
@@ -17,19 +19,25 @@ export function getSqlIdentifierKey(name: string, dbType: DatabaseType): string 
   const source = name.trim();
   const value = unquoteSqlIdentifier(source);
   const family = getDatabaseFamily(dbType);
+
   if (family === 'postgresql') return value;
+
   if (family === 'oracle' || family === 'dm') {
     return value === source ? value.toUpperCase() : value;
   }
+
   return value.toLowerCase();
 }
 
 export function formatSqlIdentifier(name: string, dbType: DatabaseType): string {
   const value = name.trim();
+
   if (!value) return '';
   const unquoted = unquoteSqlIdentifier(value);
+
   if (unquoted !== value) return quoteIdentifier(unquoted, dbType);
   const lower = value.toLowerCase();
+
   if (
     (getDatabaseFamily(dbType) === 'hive' ? /^[a-z_][a-z0-9_]*$/i : /^[a-z_][a-z0-9_$]*$/i).test(
       value,
@@ -39,5 +47,6 @@ export function formatSqlIdentifier(name: string, dbType: DatabaseType): string 
   ) {
     return value;
   }
+
   return quoteIdentifier(value, dbType);
 }

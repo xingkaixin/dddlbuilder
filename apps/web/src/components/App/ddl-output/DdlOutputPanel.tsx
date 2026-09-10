@@ -48,10 +48,12 @@ export function DdlOutputPanel({
   const { t } = useTranslation();
   const { accessError } = useAIRequestAccess();
   const canReview = Boolean(code && !code.startsWith('--'));
+
   const formatControls = (
     <div className="inline-flex overflow-hidden rounded-md border border-border/70 bg-background shadow-xs">
       {(['compact', 'aligned'] as const).map((mode) => {
         const Icon = mode === 'compact' ? AlignLeft : AlignJustify;
+
         return (
           <Tooltip key={mode}>
             <TooltipTrigger asChild>

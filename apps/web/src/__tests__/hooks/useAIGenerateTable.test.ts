@@ -23,11 +23,13 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     openAuthDialog: vi.fn(),
     closeAuthDialog: vi.fn(),
   });
+
   return { useAuthIdentity, useAuthCredits, useAuthDialog };
 });
 
 function renderAIGenerateTableHook() {
   const { wrapper } = createQueryClientWrapper();
+
   return renderHook(() => useAIGenerateTable(), { wrapper });
 }
 

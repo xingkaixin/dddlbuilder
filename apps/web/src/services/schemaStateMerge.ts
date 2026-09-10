@@ -33,12 +33,16 @@ const ROW_MERGE_KEYS = [
 /** 本地改过、远端没动的键归本地；两边都改则让远端赢，与 Y.Doc 的收敛方向一致。 */
 const pickLocalEdits = <T>(base: T, local: T, remote: T, keys: readonly (keyof T)[]) => {
   const picked: Partial<T> = {};
+
   for (const key of keys) {
     const baseValue = stableStringify(base[key]);
+
     if (baseValue === stableStringify(local[key])) continue;
+
     if (baseValue !== stableStringify(remote[key])) continue;
     picked[key] = local[key];
   }
+
   return picked;
 };
 
@@ -51,6 +55,7 @@ const hasReorderedBaseRows = (baseRows: FieldRow[], candidateRows: FieldRow[]) =
   const candidateIdSet = new Set(candidateIds);
   const expectedOrder = baseIds.filter((id) => candidateIdSet.has(id));
   const candidateOrder = candidateIds.filter((id) => baseIdSet.has(id));
+
   return stableStringify(expectedOrder) !== stableStringify(candidateOrder);
 };
 
@@ -66,21 +71,27 @@ const mergeRowOrder = (
     if (order.includes(id)) return;
 
     let previousId: string | undefined;
+
     for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
       const candidate = secondaryOrder[cursor];
+
       if (candidate && order.includes(candidate)) {
         previousId = candidate;
         break;
       }
     }
+
     if (previousId) {
       order.splice(order.indexOf(previousId) + 1, 0, id);
+
       return;
     }
 
     const nextId = secondaryOrder.slice(index + 1).find((candidate) => order.includes(candidate));
+
     if (nextId) {
       order.splice(order.indexOf(nextId), 0, id);
+
       return;
     }
 
@@ -104,14 +115,18 @@ const resolveRows = (baseRows: FieldRow[], localRows: FieldRow[], remoteRows: Fi
 
     if (!baseRow) {
       const addedRow = remoteRow ?? localRow;
+
       if (addedRow) resolvedRows.set(id, addedRow);
       continue;
     }
+
     if (!remoteRow) continue;
+
     if (!localRow) {
       if (stableStringify(baseRow) !== stableStringify(remoteRow)) {
         resolvedRows.set(id, remoteRow);
       }
+
       continue;
     }
 
@@ -126,8 +141,10 @@ const resolveRows = (baseRows: FieldRow[], localRows: FieldRow[], remoteRows: Fi
   const order = localOrderWins
     ? mergeRowOrder(localRows, remoteRows, resolvedRows)
     : mergeRowOrder(remoteRows, localRows, resolvedRows);
+
   return order.flatMap((id) => {
     const row = resolvedRows.get(id);
+
     return row ? [row] : [];
   });
 };
@@ -140,11 +157,14 @@ export const mergeSchemaStates = (
 ): PersistedState => {
   const rows = resolveRows(baseState.rows, otherState.rows, preferredState.rows);
   const resolvedIds = new Set(rowIds(rows));
+
   const alignFieldReferences = (state: PersistedState) => {
     const isRemoved = (row: FieldRow) => !resolvedIds.has(row.id);
+
     const retained = state.rows.some(isRemoved)
       ? removeFieldsFromDocument(state, isRemoved)
       : state;
+
     return updateDocumentFields(retained, rows);
   };
 
@@ -152,6 +172,7 @@ export const mergeSchemaStates = (
   const base = alignFieldReferences(baseState);
   const other = alignFieldReferences(otherState);
   const preferred = alignFieldReferences(preferredState);
+
   return {
     ...preferred,
     ...pickLocalEdits(base, other, preferred, SCALAR_MERGE_KEYS),

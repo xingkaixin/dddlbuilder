@@ -83,12 +83,15 @@ function PartitionCountInput({
   onChange: (count: number) => void;
 }) {
   const [input, setInput] = useState<string | null>(null);
+
   const commit = () => {
     const text = input ?? String(value);
     const count = normalizeMysqlPartitionCount(text.trim() ? Number(text) : Number.NaN);
     setInput(null);
+
     if (count !== value) onChange(count);
   };
+
   return (
     <Input
       type="number"
@@ -99,6 +102,7 @@ function PartitionCountInput({
         const text = event.target.value;
         setInput(text);
         const count = Number(text);
+
         if (text && count !== value && count === normalizeMysqlPartitionCount(count)) {
           onChange(count);
         }
@@ -131,6 +135,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
     const handleAddPartition = () => {
       const existingNames = new Set((config.partitions ?? []).map((partition) => partition.name));
       let nextIndex = (config.partitions?.length || 0) + 1;
+
       while (existingNames.has(`p${nextIndex}`)) nextIndex += 1;
       onAddPartition({
         id: createEntityId(),
@@ -257,6 +262,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                       <div className="flex flex-wrap gap-2">
                         {availableFields.map((field) => {
                           const isSelected = config.columns.includes(field);
+
                           return (
                             <button
                               key={field}

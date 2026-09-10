@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { D1_BINDING, listMigrationFiles } from './d1-utils';
+
 export { REQUIRED_RUNTIME_TABLES } from './d1-utils';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -32,29 +33,36 @@ const runWrangler = (
     '--persist-to',
     options.persistDir,
   ];
+
   if (sqlInput.file) args.push('--file', sqlInput.file);
+
   if (sqlInput.command) args.push('--command', sqlInput.command);
+
   if (sqlInput.json) args.push('--json');
 
   const result = spawnSync('pnpm', args, {
     cwd: repoRoot,
     encoding: 'utf8',
   });
+
   if ((result.status ?? 1) !== 0) {
     const output = [result.stdout, result.stderr].filter(Boolean).join('\n');
     throw new Error(`D1 runtime command failed:\n${output}`);
   }
+
   return result.stdout;
 };
 
 export const queryLocalD1 = <T>(options: D1RuntimeOptions, command: string): T[] => {
   const output = runWrangler(options, { command, json: true });
   const payload = JSON.parse(output) as D1QueryResult<T>;
+
   return payload[0]?.results ?? [];
 };
 
 export const prepareLocalD1Runtime = (options: D1RuntimeOptions): void => {
   mkdirSync(options.persistDir, { recursive: true });
+
   for (const file of listMigrationFiles()) {
     runWrangler(options, { file });
   }
@@ -70,11 +78,13 @@ export const verifyLocalD1Runtime = (
   );
   const actualTables = new Set(rows.map((row) => row.name));
   const missingTables = requiredTables.filter((table) => !actualTables.has(table));
+
   if (missingTables.length > 0) {
     throw new Error(`D1 runtime is missing tables: ${missingTables.join(', ')}`);
   }
 
   const foreignKeys = queryLocalD1<{ foreign_keys: number }>(options, 'PRAGMA foreign_keys');
+
   if (foreignKeys[0]?.foreign_keys !== 1) {
     throw new Error('D1 runtime did not enable foreign key enforcement');
   }

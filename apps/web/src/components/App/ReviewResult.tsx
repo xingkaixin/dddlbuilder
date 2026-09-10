@@ -40,12 +40,14 @@ interface ReviewResultPanelProps {
 function getScoreColor(score: number): string {
   if (score >= 8) return 'text-emerald-500';
   if (score >= 6) return 'text-amber-500';
+
   return 'text-red-500';
 }
 
 function getScoreBgColor(score: number): string {
   if (score >= 8) return 'bg-emerald-500/10';
   if (score >= 6) return 'bg-amber-500/10';
+
   return 'bg-red-500/10';
 }
 
@@ -55,6 +57,7 @@ function isRenderableSuggestion(
   suggestion: string | Record<string, unknown> | StructuredSuggestion,
 ): suggestion is string | StructuredSuggestion {
   if (typeof suggestion === 'string') return true;
+
   return (
     typeof suggestion.id === 'string' &&
     typeof suggestion.description === 'string' &&
@@ -102,6 +105,7 @@ const SuggestionItem = memo<{
   isStreaming?: boolean;
 }>(({ suggestion, onApply, isStreaming }) => {
   const { t } = useTranslation();
+
   if (typeof suggestion === 'string') {
     return <li className="text-sm text-foreground/70 list-disc relative pl-1">{suggestion}</li>;
   }
@@ -227,6 +231,7 @@ function SuggestionsList({
   onApply?: (suggestion: StructuredSuggestion) => void;
 }) {
   const { t } = useTranslation();
+
   if (suggestions.length === 0) return null;
 
   return (
@@ -261,6 +266,7 @@ function SuggestionsList({
 
 function SuggestionsSkeleton({ count = SUGGESTION_SKELETON_COUNT, showHeader = false }) {
   const { t } = useTranslation();
+
   return (
     <div className="space-y-3">
       {showHeader && (
@@ -290,6 +296,7 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
     const isStreaming = isLoading && !result;
     // Determine what to show: final result or partial result during streaming
     const displayResult = result || (isLoading ? partialResult : null);
+
     const suggestions: (string | StructuredSuggestion)[] = result
       ? result.suggestions
       : (partialResult?.suggestions ?? []).filter(isRenderableSuggestion);

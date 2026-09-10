@@ -8,6 +8,7 @@ export function useRowHighlight(
     if (highlightedRowIndex == null || highlightedRowIndex < 0) return;
 
     const rowElement = tableRef.current?.querySelector(`[data-row-index="${highlightedRowIndex}"]`);
+
     if (!rowElement) return;
 
     rowElement.classList.add('animate-row-highlight');

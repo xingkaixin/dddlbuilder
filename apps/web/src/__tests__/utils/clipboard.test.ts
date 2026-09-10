@@ -5,6 +5,7 @@ const commandDescriptor = Object.getOwnPropertyDescriptor(document, 'execCommand
 
 afterEach(() => {
   vi.restoreAllMocks();
+
   if (commandDescriptor) Object.defineProperty(document, 'execCommand', commandDescriptor);
   else Reflect.deleteProperty(document, 'execCommand');
 });
@@ -17,7 +18,9 @@ it.each(['success', 'denied', 'throws'] as const)(
       configurable: true,
       value: vi.fn(() => {
         expect(document.querySelector('textarea')?.value).toBe('SELECT 1');
+
         if (outcome === 'throws') throw new Error('Copy failed');
+
         return outcome === 'success';
       }),
     });

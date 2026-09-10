@@ -79,6 +79,7 @@ export const TableConfig = memo<TableConfigProps>(
   }) => {
     const { t } = useTranslation();
     const selectedDbOption = DATABASE_OPTIONS.find((option) => option.value === dbType);
+
     return (
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1 basis-60">
@@ -134,6 +135,7 @@ export const TableConfig = memo<TableConfigProps>(
               renderTrigger={() => {
                 if (!selectedDbOption) return t('tableConfig.dbTypePlaceholder');
                 const Icon = selectedDbOption.icon;
+
                 return (
                   <div className="flex min-w-0 items-center gap-1.5">
                     <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
@@ -143,8 +145,10 @@ export const TableConfig = memo<TableConfigProps>(
               }}
               renderItem={(option) => {
                 const dbOption = DATABASE_OPTIONS.find((opt) => opt.value === option.value);
+
                 if (!dbOption) return <span>{option.label}</span>;
                 const Icon = dbOption.icon;
+
                 return (
                   <div className="flex items-center gap-2">
                     <Icon className="h-4 w-4 text-primary" />
@@ -176,6 +180,7 @@ export const TableConfig = memo<TableConfigProps>(
                   triggerClassName="h-8 text-sm"
                   renderTrigger={() => {
                     const Icon = objectType === 'view' ? Eye : Table;
+
                     return (
                       <div className="flex items-center gap-2">
                         <Icon className="h-4 w-4 text-primary" />
@@ -189,6 +194,7 @@ export const TableConfig = memo<TableConfigProps>(
                   }}
                   renderItem={(option) => {
                     const Icon = option.value === 'view' ? Eye : Table;
+
                     return (
                       <div className="flex items-center gap-2">
                         <Icon className="h-4 w-4 text-primary" />

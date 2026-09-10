@@ -55,8 +55,10 @@ interface EnumItem {
 
 function parseEnumValues(fieldType: string): string[] {
   const match = fieldType.match(/^(?:enum|set)\s*\((.*)\)\s*$/i);
+
   if (!match) return [];
   const inner = match[1].trim();
+
   if (!inner) return [];
 
   const values: string[] = [];
@@ -64,11 +66,13 @@ function parseEnumValues(fieldType: string): string[] {
 
   while (i < inner.length) {
     while (i < inner.length && (inner[i] === ',' || inner[i] === ' ')) i++;
+
     if (i >= inner.length) break;
 
     if (inner[i] === "'") {
       i++;
       let value = '';
+
       while (i < inner.length) {
         if (inner[i] === "'" && inner[i + 1] === "'") {
           value += "'";
@@ -80,13 +84,17 @@ function parseEnumValues(fieldType: string): string[] {
           value += inner[i++];
         }
       }
+
       values.push(value);
     } else {
       let value = '';
+
       while (i < inner.length && inner[i] !== ',') {
         value += inner[i++];
       }
+
       value = value.trim();
+
       if (value) values.push(value);
     }
   }
@@ -97,13 +105,16 @@ function parseEnumValues(fieldType: string): string[] {
 export function serializeEnumType(baseType: string, values: string[]): string {
   if (values.length === 0) return baseType.toUpperCase();
   const quoted = values.map((v) => `'${v.replace(/'/g, "''")}'`);
+
   return `${baseType.toUpperCase()}(${quoted.join(',')})`;
 }
 
 function metaToItems(parsedValues: string[], enumMeta: EnumValueMeta[] | undefined): EnumItem[] {
   const metaMap = new Map<string, EnumValueMeta>(enumMeta?.map((m) => [m.value, m]) ?? []);
+
   return parsedValues.map((value, idx) => {
     const meta = metaMap.get(value);
+
     return {
       id: `${value}-${idx}`,
       value,
@@ -117,8 +128,11 @@ function metaToItems(parsedValues: string[], enumMeta: EnumValueMeta[] | undefin
 function itemsToMeta(items: EnumItem[]): EnumValueMeta[] {
   return items.map(({ value, color, zhComment, enComment }) => {
     const i18n: Record<string, string> = {};
+
     if (zhComment) i18n['zh-CN'] = zhComment;
+
     if (enComment) i18n['en-US'] = enComment;
+
     return { value, color, ...(Object.keys(i18n).length > 0 ? { i18n } : {}) };
   });
 }
@@ -168,6 +182,7 @@ interface SortableItemProps {
 
 const SortableItem = memo<SortableItemProps>(({ item, onUpdate, onDelete, duplicates }) => {
   const { t } = useTranslation();
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
   });
@@ -245,6 +260,7 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
   ({ open, onOpenChange, fieldType, enumMeta, onSave, mode = 'native' }) => {
     const { t } = useTranslation();
     const isLogical = mode === 'logical';
+
     const baseType = isLogical
       ? fieldType
       : (fieldType.match(/^(enum|set)\s*/i)?.[1]?.toUpperCase() ?? 'ENUM');
@@ -263,11 +279,14 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
 
     const handleDragEnd = useCallback((event: DragEndEvent) => {
       const { active, over } = event;
+
       if (!over || active.id === over.id) return;
       setItems((prev) => {
         const oldIdx = prev.findIndex((i) => i.id === active.id);
         const newIdx = prev.findIndex((i) => i.id === over.id);
+
         if (oldIdx < 0 || newIdx < 0) return prev;
+
         return arrayMove(prev, oldIdx, newIdx);
       });
     }, []);
@@ -286,14 +305,19 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
 
     const handleAdd = useCallback(() => {
       const trimmed = newValue.trim();
+
       if (!trimmed) {
         setAddError(t('enumEditor.emptyValue'));
+
         return;
       }
+
       if (items.some((i) => i.value === trimmed)) {
         setAddError(t('enumEditor.duplicateValue'));
+
         return;
       }
+
       const nextIdx = items.length;
       setItems((prev) => [
         ...prev,
@@ -322,14 +346,17 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
     const handleConfirm = useCallback(() => {
       const values = items.map((i) => i.value).filter(Boolean);
       const hasDuplicates = new Set(values).size !== values.length;
+
       if (hasDuplicates) return;
       const newMeta = itemsToMeta(items.filter((i) => i.value));
+
       if (isLogical) {
         onSave(fieldType, newMeta);
       } else {
         const newFieldType = serializeEnumType(baseType, values);
         onSave(newFieldType, newMeta);
       }
+
       onOpenChange(false);
     }, [items, baseType, onSave, onOpenChange, isLogical, fieldType]);
 

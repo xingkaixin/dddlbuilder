@@ -23,6 +23,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     openAuthDialog: vi.fn(),
     closeAuthDialog: vi.fn(),
   });
+
   return { useAuthIdentity, useAuthCredits, useAuthDialog };
 });
 
@@ -37,16 +38,19 @@ vi.mock('@/services/streamingText', () => ({
 function createAbortError() {
   const err = new Error('aborted');
   err.name = 'AbortError';
+
   return err;
 }
 
 function renderDDLExplainHook() {
   const { wrapper } = createQueryClientWrapper();
+
   return renderHook(() => useDDLExplain(), { wrapper });
 }
 
 function renderDDLExplainWithLocaleHook() {
   const { wrapper } = createQueryClientWrapper();
+
   return renderHook(
     () => ({
       explain: useDDLExplain(),
@@ -82,6 +86,7 @@ describe('useDDLExplain', () => {
 
     streamingMocks.readTextStream.mockImplementation(async (_, options) => {
       options?.onUpdate?.('partial explanation');
+
       return 'full explanation';
     });
 
@@ -237,14 +242,17 @@ describe('useDDLExplain', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation((_, init) => {
       requestCount += 1;
       const signal = init?.signal as AbortSignal | undefined;
+
       if (requestCount === 1) {
         firstSignal = signal;
+
         return new Promise<Response>((_, reject) => {
           signal?.addEventListener('abort', () => {
             reject(createAbortError());
           });
         });
       }
+
       return Promise.resolve({
         ok: true,
         status: 200,
@@ -279,6 +287,7 @@ describe('useDDLExplain', () => {
     streamingMocks.readTextStream
       .mockImplementationOnce(async (_, options) => {
         options?.onUpdate?.('older partial');
+
         return new Promise<string>((resolve) => {
           completeOlder = resolve;
         });
@@ -316,6 +325,7 @@ describe('useDDLExplain', () => {
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((_, init) => {
       currentSignal = init?.signal as AbortSignal | undefined;
+
       return new Promise<Response>(() => {});
     });
 

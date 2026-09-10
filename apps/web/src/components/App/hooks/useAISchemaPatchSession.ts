@@ -13,6 +13,7 @@ import {
 
 export const MAX_PATCH_INPUT_LENGTH = 500;
 const EMPTY_CHANGE_STATUSES: Record<string, AISchemaChangeStatus> = {};
+
 export interface AISchemaPatchSessionParams {
   currentState: PersistedState;
   templates?: Array<FieldTemplate | TableTemplate>;
@@ -31,6 +32,7 @@ export function useAISchemaPatchSession({
   const { t } = useTranslation();
   const dbType = currentState.dbType;
   const [input, setInput] = useState('');
+
   const {
     isLoading,
     error,
@@ -50,6 +52,7 @@ export function useAISchemaPatchSession({
     error: null as string | null,
   }));
   const statuses = statusState.result === result ? statusState.values : EMPTY_CHANGE_STATUSES;
+
   const expectedState =
     (statusState.result === result && statusState.expectedState) || resultBaseState;
   const updateStatuses = useCallback(
@@ -72,26 +75,31 @@ export function useAISchemaPatchSession({
 
   const candidateState = useMemo(() => {
     if (!result || !resultBaseState) return null;
+
     return buildPersistedStateFromAISchema(result, { baseState: resultBaseState });
   }, [resultBaseState, result]);
 
   const originalChanges = useMemo(() => {
     if (!candidateState || !resultBaseState) return [];
+
     return buildAISchemaChanges(resultBaseState, candidateState);
   }, [candidateState, resultBaseState]);
 
   const changes = useMemo(() => {
     if (!candidateState || !expectedState) return [];
+
     const applied = originalChanges
       .filter((change) => statuses[change.id] === 'applied')
       .map((change) => ({ ...change, status: 'applied' as const }));
     const appliedIds = new Set(applied.map((change) => change.id));
+
     const remaining = buildAISchemaChanges(expectedState, candidateState)
       .filter((change) => !appliedIds.has(change.id))
       .map((change) => ({
         ...change,
         status: statuses[change.id] || 'pending',
       }));
+
     return [...applied, ...remaining];
   }, [candidateState, expectedState, originalChanges, statuses]);
 
@@ -99,8 +107,10 @@ export function useAISchemaPatchSession({
   const acceptedChanges = changes.filter((change) => change.status === 'accepted');
   const appliedChanges = changes.filter((change) => change.status === 'applied');
   const selectableChanges = changes.filter((change) => change.status !== 'applied');
+
   const handleGenerate = useCallback(() => {
     const description = input.trim();
+
     if (!description) return;
     void generateTable(description, dbType, {
       existingConfig: currentState,
@@ -134,6 +144,7 @@ export function useAISchemaPatchSession({
   const handleApplyAccepted = useCallback(() => {
     if (!candidateState || !expectedState) return;
     let appliedState: PersistedState;
+
     try {
       appliedState = onApplyChanges(acceptedChanges, candidateState, expectedState);
     } catch (error) {
@@ -144,12 +155,16 @@ export function useAISchemaPatchSession({
           reason: error instanceof Error ? error.message : String(error),
         }),
       }));
+
       return;
     }
+
     const appliedIds = new Set(acceptedChanges.map((change) => change.id));
     updateStatuses((current) => {
       const next = { ...current };
+
       for (const id of appliedIds) next[id] = 'applied';
+
       return next;
     }, appliedState);
   }, [acceptedChanges, candidateState, expectedState, onApplyChanges, result, t, updateStatuses]);
@@ -157,9 +172,11 @@ export function useAISchemaPatchSession({
   const handleSelectAll = useCallback(() => {
     updateStatuses((current) => {
       const next = { ...current };
+
       for (const change of selectableChanges) {
         next[change.id] = 'accepted';
       }
+
       return next;
     });
   }, [selectableChanges, updateStatuses]);
@@ -167,9 +184,11 @@ export function useAISchemaPatchSession({
   const handleUnselectAll = useCallback(() => {
     updateStatuses((current) => {
       const next = { ...current };
+
       for (const change of selectableChanges) {
         next[change.id] = 'rejected';
       }
+
       return next;
     });
   }, [selectableChanges, updateStatuses]);

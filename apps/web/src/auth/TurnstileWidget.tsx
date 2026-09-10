@@ -40,9 +40,11 @@ const loadTurnstile = () => {
         reject(new Error('Turnstile API unavailable'));
       }
     };
+
     script.onerror = () => reject(new Error('Turnstile script failed to load'));
     document.head.append(script);
   });
+
   return turnstileScript;
 };
 
@@ -56,6 +58,7 @@ export function TurnstileWidget({ siteKey, onTokenChange }: TurnstileWidgetProps
 
   useEffect(() => {
     const container = containerRef.current;
+
     if (!container || !siteKey) return;
     let disposed = false;
     let widgetId: string | null = null;
@@ -77,6 +80,7 @@ export function TurnstileWidget({ siteKey, onTokenChange }: TurnstileWidgetProps
     return () => {
       disposed = true;
       onTokenChange(null);
+
       if (widgetId && window.turnstile) {
         window.turnstile.remove(widgetId);
       }

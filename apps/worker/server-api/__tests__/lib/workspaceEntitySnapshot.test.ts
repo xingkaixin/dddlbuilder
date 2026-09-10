@@ -61,6 +61,7 @@ describe('workspaceEntitySnapshot', () => {
 
   it('round-trips every workspace entity type through stored rows', () => {
     const entities = workspaceSnapshotToEntities(snapshot());
+
     const storedRows = entities.map((entity) => ({
       entityType: entity.entityType,
       entityId: entity.entityId,
@@ -109,6 +110,7 @@ describe('workspaceEntitySnapshot', () => {
       tableId,
     }));
     const entities = workspaceSnapshotToEntities(source);
+
     const restored = storedEntitiesToWorkspaceSnapshot(
       entities.map((entity) => ({
         entityType: entity.entityType,

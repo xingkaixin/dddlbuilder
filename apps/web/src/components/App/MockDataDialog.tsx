@@ -42,6 +42,7 @@ export const MockDataDialog = memo<MockDataDialogProps>(
       if (!open) return null;
       // seed 用于强制刷新
       void seed;
+
       return generateMockData(tableName, schemaName, fields, dbType, { rowCount });
     }, [open, tableName, schemaName, fields, dbType, rowCount, seed]);
 
@@ -49,11 +50,13 @@ export const MockDataDialog = memo<MockDataDialogProps>(
       if (!output) return '';
       if (format === 'insert-sql') return output.insertSql;
       if (format === 'csv') return output.csv;
+
       return output.json;
     }, [output, format]);
 
     const handleRowCountChange = useCallback((raw: string) => {
       const n = parseInt(raw, 10);
+
       if (!Number.isNaN(n)) {
         setRowCount(Math.min(MAX_ROWS, Math.max(MIN_ROWS, n)));
       }
@@ -62,12 +65,14 @@ export const MockDataDialog = memo<MockDataDialogProps>(
     const handleCopy = useCallback(async () => {
       const copied = await copyText(currentContent);
       setCopied(copied);
+
       if (!copied) return;
       window.setTimeout(() => setCopied(false), 2000);
     }, [currentContent]);
 
     const handleDownload = useCallback(() => {
       const safeName = (tableName || 'table').replace(/[^\w-]/g, '_');
+
       if (format === 'insert-sql') {
         downloadFile(currentContent, `${safeName}_mock.sql`, 'text/plain;charset=utf-8');
       } else if (format === 'csv') {
@@ -231,4 +236,5 @@ export const MockDataDialog = memo<MockDataDialogProps>(
     );
   },
 );
+
 MockDataDialog.displayName = 'MockDataDialog';

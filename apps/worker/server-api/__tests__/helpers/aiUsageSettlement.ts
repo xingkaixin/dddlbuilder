@@ -16,15 +16,19 @@ const settleUsage = async (
   errorCode: string | null,
 ) => {
   let prepared: PreparedAIUsageSettlement;
+
   try {
     prepared = await prepareAIUsageSettlement(env, reservation, status, input, errorCode);
   } catch (error) {
     if (error instanceof DomainError && error.message === 'AI_USAGE_SETTLEMENT_NOT_PREPARED') {
       return false;
     }
+
     throw error;
   }
+
   if (!prepared.needsFinalization) return false;
+
   return finalizeAIUsageSettlement(env, reservation, status, errorCode);
 };
 

@@ -9,6 +9,7 @@ const workerDir = path.join(repoRoot, 'apps', 'worker');
 
 const runPreflight = (label: string, args: string[]) => {
   console.log(`[dev:worker] ${label}`);
+
   const result = spawnSync('pnpm', args, {
     stdio: 'inherit',
     cwd: repoRoot,
@@ -24,6 +25,7 @@ const runPreflight = (label: string, args: string[]) => {
 };
 
 runPreflight('applying pending D1 migrations', ['run', 'db:migrate:local']);
+
 runPreflight('building Worker runtime assets', ['run', 'build:wrangler-dev']);
 
 const child = spawn(
@@ -60,6 +62,7 @@ const shutdown = (code = 0) => {
     if (!child.killed && child.exitCode === null) {
       child.kill('SIGKILL');
     }
+
     process.exit(code);
   }, 1_000).unref();
 };
@@ -70,6 +73,7 @@ child.on('exit', (code, signal) => {
   if (signal) {
     console.error(`[dev:worker] wrangler exited with signal ${signal}`);
     shutdown(1);
+
     return;
   }
 
@@ -86,4 +90,5 @@ child.on('error', (error) => {
 });
 
 process.on('SIGINT', () => shutdown(0));
+
 process.on('SIGTERM', () => shutdown(0));

@@ -40,6 +40,7 @@ export const openDefaultWorkspaceYDocAuthority = async (
   userId: string,
 ): Promise<WorkspaceYDocAuthority> => {
   const namespace = env.WORKSPACE_YDOC;
+
   if (!namespace) {
     throw new Error('Workspace Y.Doc authority is unavailable');
   }
@@ -53,11 +54,13 @@ export const openDefaultWorkspaceYDocAuthority = async (
       await assertSuccessfulResponse(response, 'read');
       const doc = new Y.Doc();
       Y.applyUpdate(doc, new Uint8Array(await response.arrayBuffer()));
+
       return exportWorkspaceYDocToSnapshot(doc);
     },
     migrateSnapshot: async (snapshot) => {
       const response = await stub.fetch(buildRequest(workspace.id, userId, 'migrate', snapshot));
       await assertSuccessfulResponse(response, 'migrate');
+
       return response.json<WorkspaceMigrationResult>();
     },
   };

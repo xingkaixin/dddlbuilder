@@ -66,6 +66,7 @@ describe('folderModel', () => {
     const original = new Y.Doc();
     const left = new Y.Doc();
     const right = new Y.Doc();
+
     try {
       for (const id of ['a', 'b']) {
         upsertWorkspaceFolder(original, {
@@ -76,6 +77,7 @@ describe('folderModel', () => {
           updatedAt: 1,
         });
       }
+
       const seed = Y.encodeStateAsUpdate(original);
       Y.applyUpdate(left, seed);
       Y.applyUpdate(right, seed);
@@ -88,6 +90,7 @@ describe('folderModel', () => {
       const displayedFolder = findFolderTreeNode(tree, 'a');
       assert(displayedFolder, 'Folder A must be present in the displayed tree');
       const displayedIds = getFolderTreeNodeIds(displayedFolder);
+
       const plan = buildFolderDeletionPlan(
         merged,
         ['a', 'b'].map((id) => ({ id: `table-${id}`, folderId: id, updatedAt: 1 })),
@@ -162,6 +165,7 @@ describe('folderModel', () => {
     const tree = buildFolderTreeModel(deepFolders);
     let current = tree[0];
     let depth = 0;
+
     while (current) {
       depth += 1;
       current = current.children[0];

@@ -26,6 +26,7 @@ it.each([false, true])(
     const doc = new Y.Doc();
     const table = doc.getMap('table');
     const state = createClientState();
+
     const check = () => {
       const full = tableDocToSchemaDocumentState(table);
       expect(tableDocToSchemaSummary(table)).toEqual({
@@ -99,6 +100,7 @@ const createTableDoc = (state: PersistedState) => {
   const tableDoc = new Y.Map<unknown>();
   doc.getMap<Y.Map<unknown>>('drafts').set('draft-1', tableDoc);
   applySchemaDocumentStateToTableDoc(tableDoc, state);
+
   return tableDoc;
 };
 
@@ -107,6 +109,7 @@ const createLegacyTableDoc = (state: PersistedState) => {
   const tableDoc = new Y.Map<unknown>();
   doc.getMap<Y.Map<unknown>>('drafts').set('draft-1', tableDoc);
   tableDoc.set('stateSnapshot', JSON.parse(JSON.stringify(state)));
+
   return tableDoc;
 };
 
@@ -177,6 +180,7 @@ describe('workspace table doc', () => {
 
   it('decodes without mutating the document', () => {
     const clientState = createClientState();
+
     for (const tableDoc of [createTableDoc(clientState), createLegacyTableDoc(clientState)]) {
       const doc = tableDoc.doc as Y.Doc;
       const before = Y.encodeStateAsUpdate(doc);
@@ -243,6 +247,7 @@ describe('workspace table doc', () => {
 
   it('fills missing field values from the matching snapshot row', () => {
     const enumMeta = [{ value: 'a', color: '#fff' }];
+
     const clientState = createClientState({
       rows: [{ ...createClientState().rows[0], id: 'field-1', enumMeta }],
     });
@@ -312,6 +317,7 @@ describe('workspace table doc writes', () => {
   const collectUpdates = (doc: Y.Doc) => {
     const updates: Uint8Array[] = [];
     doc.on('update', (update: Uint8Array) => updates.push(update));
+
     return updates;
   };
 
@@ -402,6 +408,7 @@ describe('workspace table doc writes', () => {
   it('patches changed scalars and fields against the previous snapshot', () => {
     const clientState = createClientState();
     const tableDoc = createTableDoc(clientState);
+
     const nextRows = clientState.rows.map((row, index) =>
       index === 1 ? { ...row, fieldComment: '登录邮箱' } : row,
     );
@@ -441,6 +448,7 @@ describe('workspace table doc writes', () => {
   it('rewrites indexes and foreign keys when they change', () => {
     const clientState = createClientState();
     const tableDoc = createTableDoc(clientState);
+
     const indexes: PersistedState['indexes'] = [
       {
         id: 'idx_email',
@@ -462,6 +470,7 @@ describe('workspace table doc key removals', () => {
     const tableDoc = new Y.Map<unknown>();
     doc.getMap<Y.Map<unknown>>('drafts').set('draft-1', tableDoc);
     applySchemaDocumentStateToTableDoc(tableDoc, state, { compactSnapshotBase: true });
+
     return tableDoc;
   };
 
@@ -469,6 +478,7 @@ describe('workspace table doc key removals', () => {
     applySchemaDocumentStateToTableDoc(tableDoc, state, { compactSnapshotBase: true });
 
   const enumMeta = [{ value: 'a', color: '#fff' }];
+
   const configuredState = createClientState({
     citusShardingConfig: { mode: 'distributed', distributionColumn: 'id' },
     mysqlPartitionConfig: { enabled: true, type: 'RANGE', columns: ['id'] },
@@ -498,6 +508,7 @@ describe('workspace table doc key removals', () => {
 
   it('drops cleared field values from the decoded state', () => {
     const tableDoc = createCompactedTableDoc(createClientState({ rows: rowsWithOptionalKeys }));
+
     const {
       defaultKind: _kind,
       onUpdate: _onUpdate,
@@ -525,6 +536,7 @@ describe('workspace table doc key removals', () => {
 
     applyCompacted(tableDoc, createClientState({ rows: [clearedRow, rowsWithOptionalKeys[1]] }));
     const restoredEnumMeta = [{ value: 'b', color: '#000' }];
+
     const restoredState = createClientState({
       mysqlPartitionConfig: { enabled: true, type: 'LIST', columns: ['tenant_id'] },
       rows: [{ ...clearedRow, enumMeta: restoredEnumMeta }, rowsWithOptionalKeys[1]],
@@ -536,6 +548,7 @@ describe('workspace table doc key removals', () => {
 
   it('keeps the decoded content hash aligned across an incremental edit sequence', async () => {
     const [first, second] = rowsWithOptionalKeys;
+
     const sequence: PersistedState[] = [
       configuredState,
       createClientState({ rows: rowsWithOptionalKeys }),
@@ -550,6 +563,7 @@ describe('workspace table doc key removals', () => {
     ];
 
     const tableDoc = createCompactedTableDoc(sequence[0]);
+
     for (const state of sequence) {
       applyCompacted(tableDoc, state);
       await expect(

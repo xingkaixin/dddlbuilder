@@ -50,6 +50,7 @@ function renderFolderActions() {
   const getDraftState = vi.fn();
   const refreshDrafts = vi.fn().mockResolvedValue(undefined);
   const closeTab = vi.fn(useTabStore.getState().closeTab);
+
   const hook = renderHook(() =>
     useFolderActions({
       folderTree: [rootFolder],

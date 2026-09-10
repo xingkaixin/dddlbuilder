@@ -26,6 +26,7 @@ export function usePersistedSync({
 }: UsePersistedSyncParams) {
   const pendingAppliedStateRef = useRef<{ sourceId: string; signature: string } | null>(null);
   const lastSavedKeyRef = useRef<string | null>(null);
+
   const currentSignature = useMemo(
     () => buildPersistedStateSignature(currentState),
     [currentState],
@@ -66,6 +67,7 @@ export function usePersistedSync({
 
   useLayoutEffect(() => {
     const pendingAppliedState = pendingAppliedStateRef.current;
+
     if (pendingAppliedState) {
       if (pendingAppliedState.sourceId !== sourceId) {
         pendingAppliedStateRef.current = null;
@@ -74,6 +76,7 @@ export function usePersistedSync({
         lastSavedKeyRef.current = currentSaveKey;
       }
     }
+
     saveSnapshot(currentState, currentSaveKey);
   }, [currentSaveKey, currentSignature, currentState, saveSnapshot, sourceId]);
 
@@ -86,6 +89,7 @@ export function usePersistedSync({
     window.addEventListener('blur', saveCurrentState);
     window.addEventListener('pagehide', saveCurrentState);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       window.removeEventListener('blur', saveCurrentState);
       window.removeEventListener('pagehide', saveCurrentState);

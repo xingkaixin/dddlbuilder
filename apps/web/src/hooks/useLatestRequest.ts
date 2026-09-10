@@ -30,11 +30,13 @@ export function useLatestRequest() {
 
   const cancel = useCallback(() => {
     const activeRequest = activeRequestRef.current;
+
     if (!activeRequest) return false;
 
     activeRequestRef.current = null;
     activeRequest.controller.abort();
     setIsPending(false);
+
     return true;
   }, []);
 
@@ -44,6 +46,7 @@ export function useLatestRequest() {
       key?: string,
     ): Promise<Result | null> => {
       const previousRequest = activeRequestRef.current;
+
       if (key !== undefined && previousRequest?.key === key) {
         return null;
       }
@@ -58,6 +61,7 @@ export function useLatestRequest() {
       setIsPending(true);
 
       const isCurrent = () => activeRequestRef.current === activeRequest;
+
       const commitIfCurrent = (commit: () => void) => {
         if (isCurrent()) commit();
       };
@@ -68,6 +72,7 @@ export function useLatestRequest() {
           isCurrent,
           commitIfCurrent,
         });
+
         return isCurrent() ? result : null;
       } catch (error) {
         if (!isCurrent() || isAbortError(error)) return null;

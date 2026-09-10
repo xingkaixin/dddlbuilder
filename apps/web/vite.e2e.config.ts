@@ -11,6 +11,7 @@ const configureE2EServer = (server: ViteDevServer | PreviewServer) => {
   server.middlewares.use('/api/me', (request, response, next) => {
     if (request.method !== 'GET') {
       next();
+
       return;
     }
 

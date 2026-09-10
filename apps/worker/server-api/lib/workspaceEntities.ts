@@ -90,6 +90,7 @@ export const getOrCreateDefaultWorkspace = async (
   userId: string,
 ): Promise<WorkspaceRow> => {
   const existing = await readDefaultWorkspace(env, userId);
+
   if (existing) {
     return existing;
   }
@@ -124,6 +125,7 @@ export const getOrCreateDefaultWorkspace = async (
   ]);
 
   const created = await readDefaultWorkspace(env, userId);
+
   if (!created) {
     throw new Error('Default workspace creation failed');
   }
@@ -201,6 +203,7 @@ const writeEntityVersions = async (
   }
 
   const workspaceId = inputs[0].workspaceId;
+
   if (inputs.some((input) => input.workspaceId !== workspaceId)) {
     throw new Error('Workspace entity batch must target one workspace');
   }
@@ -221,6 +224,7 @@ const writeEntityVersions = async (
         const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
         const contentHash = input.op === 'delete' ? null : input.contentHash;
         const versionOffset = inputs.length - index - 1;
+
         return env.USER_DB.prepare(
           `
       INSERT INTO workspace_entities (
@@ -268,9 +272,11 @@ const writeEntityVersions = async (
 
   const cursor = Number(results[0]?.results?.[0]?.cursor);
   const versions = results.slice(1).map((result) => Number(result.results?.[0]?.version));
+
   if (!Number.isFinite(cursor) || versions.some((version) => !Number.isFinite(version))) {
     throw new Error('Workspace entity batch write failed');
   }
+
   return { cursor, versions };
 };
 
@@ -289,6 +295,7 @@ const listEntityHashes = async (
     `).bind(workspaceId),
     metrics,
   );
+
   return result.results ?? [];
 };
 
@@ -397,17 +404,20 @@ const backfillLegacySnapshotEntities = async (
   metrics?: WorkspaceD1Metrics,
 ) => {
   const legacyRows = await listLegacySnapshotRows(env, userId, metrics);
+
   if (legacyRows.length === 0) {
     return false;
   }
 
   const existingRows = await listEntityKeys(env, workspaceId, metrics);
+
   const existingKeys = new Set(
     existingRows.map((row) => buildEntityKey(row.entityType, row.entityId)),
   );
   const missingLegacyEntities = workspaceSnapshotToEntities(
     legacyRowsToWorkspaceSnapshot(legacyRows),
   ).filter((entity) => !existingKeys.has(buildEntityKey(entity.entityType, entity.entityId)));
+
   if (missingLegacyEntities.length === 0) {
     return false;
   }
@@ -429,6 +439,7 @@ const backfillLegacySnapshotEntities = async (
     },
     metrics,
   );
+
   return true;
 };
 
@@ -461,9 +472,11 @@ export const getWorkspaceSnapshotForWorkspace = async (
   workspaceId: string,
 ): Promise<WorkspaceSnapshot> => {
   const workspace = await assertWorkspaceOwner(env, userId, workspaceId);
+
   if (workspace.isDefault) {
     await ensureLegacySnapshotBackfilled(env, userId, { id: workspaceId, ...workspace });
   }
+
   return storedEntitiesToWorkspaceSnapshot(await listActiveEntities(env, workspaceId));
 };
 
@@ -476,6 +489,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
   const metrics = createWorkspaceD1Metrics();
   await assertWorkspaceOwner(env, userId, workspaceId, metrics);
   const entities = workspaceSnapshotToEntities(snapshot);
+
   const [hashedEntities, existingRows] = await Promise.all([
     Promise.all(
       entities.map(async (entity) => ({
@@ -498,6 +512,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
 
   for (const entity of hashedEntities) {
     const existing = existingByKey.get(buildEntityKey(entity.entityType, entity.entityId));
+
     if (existing && existing.deletedAt == null && existing.contentHash === entity.contentHash) {
       skipped++;
       continue;
@@ -517,6 +532,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
   }
 
   const checkpointedAt = now();
+
   for (const row of existingRows) {
     if (row.deletedAt != null || nextKeys.has(buildEntityKey(row.entityType, row.entityId))) {
       continue;
@@ -536,6 +552,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
   }
 
   const writeResult = await writeEntityVersions(env, writes, metrics);
+
   const response = {
     cursor: writeResult?.cursor ?? (await readWorkspaceCursor(env, workspaceId, metrics)),
     upserted,
@@ -553,5 +570,6 @@ export const checkpointWorkspaceSnapshotEntities = async (
     },
     metrics,
   );
+
   return response;
 };

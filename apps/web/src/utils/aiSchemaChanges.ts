@@ -57,9 +57,11 @@ function buildGeneratedRows(
   dbType: DatabaseType,
 ): FieldRow[] {
   const rowsById = new Map(baseRows.map((row) => [row.id, row]));
+
   const rowsByName = new Map(
     baseRows.map((row) => [getSqlIdentifierKey(row.fieldName, dbType), row]),
   );
+
   return schema.fields.map((field) => {
     const original =
       field.id === null
@@ -67,6 +69,7 @@ function buildGeneratedRows(
         : field.id
           ? rowsById.get(field.id)
           : rowsByName.get(getSqlIdentifierKey(field.fieldName, dbType));
+
     return {
       ...original,
       id: field.id ?? original?.id ?? createEntityId(),
@@ -88,6 +91,7 @@ function sameIndex(a: IndexDefinition, b: IndexDefinition) {
     a.fields.length === b.fields.length &&
     a.fields.every((field, index) => {
       const other = b.fields[index];
+
       return other && field.name === other.name && field.direction === other.direction;
     })
   );
@@ -100,13 +104,16 @@ function buildGeneratedIndexes(
 ): IndexDefinition[] {
   const key = (name: string) => getSqlIdentifierKey(name, dbType);
   const existingIndexes = new Map(baseIndexes.map((index) => [key(index.name), index]));
+
   const pkFields = schema.fields
     .filter((field) => field.isPrimaryKey)
     .map((field) => ({ name: field.fieldName, direction: 'ASC' as const }));
   const pkNames = new Set(pkFields.map((field) => key(field.name)));
+
   const hasSameFields = (fields: IndexDefinition['fields']) =>
     fields.length === pkFields.length && fields.every((field) => pkNames.has(key(field.name)));
   const oldPrimary = baseIndexes.find((index) => index.kind === 'primary');
+
   const primarySource =
     pkFields.length > 0
       ? schema.indexes?.find((index) =>
@@ -119,6 +126,7 @@ function buildGeneratedIndexes(
     .filter((index) => index !== primarySource)
     .map((index) => {
       const existing = existingIndexes.get(key(index.name));
+
       return {
         id: existing?.id ?? createEntityId(),
         name: index.name,
@@ -188,6 +196,7 @@ export function buildPersistedStateFromAISchema(
   context: AISchemaStateContext,
 ): PersistedState {
   const baseState = context.baseState ?? createBaseState(context.dbType, context.sqlFormatMode);
+
   const qualifiedIdentity = schema.tableName.includes('.')
     ? getSchemaAndTable(schema.tableName)
     : null;
@@ -217,12 +226,14 @@ export function buildPersistedStateFromAISchema(
 function fieldRowByName(state: PersistedState, fieldName?: string) {
   if (!fieldName) return undefined;
   const name = getSqlIdentifierKey(fieldName, state.dbType);
+
   return state.rows.find((row) => getSqlIdentifierKey(row.fieldName, state.dbType) === name);
 }
 
 function buildFieldChangeId(change: FieldDiff) {
   const oldName = change.type === 'add' ? '' : change.oldField.name;
   const newName = change.type === 'remove' ? '' : change.newField.name;
+
   return ['field', change.type, oldName, newName].join(':');
 }
 
@@ -232,6 +243,7 @@ function buildIndexChanges(
   dbType: DatabaseType,
 ): AISchemaChange[] {
   const changes: AISchemaChange[] = [];
+
   const baseByName = new Map(
     baseIndexes.map((index) => [getSqlIdentifierKey(index.name, dbType), index]),
   );
@@ -241,6 +253,7 @@ function buildIndexChanges(
 
   for (const [name, oldIndex] of baseByName) {
     const newIndex = nextByName.get(name);
+
     if (!newIndex) {
       changes.push({
         id: `index:remove:${oldIndex.name}`,
@@ -319,6 +332,7 @@ export function buildAISchemaChanges(
     const oldName = oldField?.name ?? field.fieldName;
     const newName = newField?.name ?? field.fieldName;
     const renamed = field.type === 'rename' ? field : undefined;
+
     const fieldChanges =
       field.type === 'modify' || field.type === 'rename' ? field.changes : undefined;
     changes.push({

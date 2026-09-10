@@ -8,6 +8,7 @@ import {
 import { getForeignKeyIssue } from '@ddlbuilder/ddl-core';
 
 export type RelationshipCardinality = 'many-to-one' | 'one-to-one';
+
 export type RelationshipOptionality = 'required' | 'optional';
 
 export type TableRelationshipDraft = {
@@ -29,6 +30,7 @@ export type TableRelationshipIntent = {
 };
 
 export type TableRelationshipWarning = 'field-type-mismatch';
+
 export type TableRelationshipError =
   | 'missing-name'
   | 'missing-source-field'
@@ -100,6 +102,7 @@ function buildRelationshipIndex(
   const baseName = `${prefix}_${normalizedIdentifier(state.tableName)}_${normalizedIdentifier(fieldName)}`;
   const existingNames = new Set((state.indexes ?? []).map((index) => index.name));
   let name = baseName;
+
   for (let suffix = 2; existingNames.has(name); suffix += 1) {
     name = `${baseName}_${suffix}`;
   }
@@ -142,12 +145,15 @@ export function planTableRelationship(
   intent: TableRelationshipIntent,
 ): TableRelationshipPlanResult {
   const relationshipName = intent.name.trim();
+
   if (!relationshipName) return { ok: false, error: 'missing-name' };
 
   const sourceField = draft.source.rows.find((row) => row.fieldName === intent.sourceField);
+
   if (!sourceField) return { ok: false, error: 'missing-source-field' };
 
   const targetField = draft.target.rows.find((row) => row.fieldName === intent.targetField);
+
   if (!targetField) return { ok: false, error: 'missing-target-field' };
 
   if (!intent.logical && !referencedKeyFields(draft.target).has(intent.targetField)) {
@@ -155,6 +161,7 @@ export function planTableRelationship(
   }
 
   const foreignKeys = draft.source.foreignKeys ?? [];
+
   if (
     foreignKeys.some(
       (foreignKey) =>
@@ -187,6 +194,7 @@ export function planTableRelationship(
         description: intent.description?.trim() || undefined,
       },
     };
+
     return {
       ok: true,
       plan: {
@@ -219,12 +227,14 @@ export function planTableRelationship(
     onDelete: intent.onDelete,
     onUpdate: intent.onUpdate,
   };
+
   if (getForeignKeyIssue(foreignKey, draft.source.dbType)) {
     return { ok: false, error: 'unsupported-foreign-key-action' };
   }
 
   const requiresUniqueIndex = intent.cardinality === 'one-to-one';
   const indexes = draft.source.indexes ?? [];
+
   const needsIndex =
     (requiresUniqueIndex || intent.createIndex) &&
     !hasSingleFieldIndex(indexes, intent.sourceField, requiresUniqueIndex);

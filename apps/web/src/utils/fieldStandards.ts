@@ -9,6 +9,7 @@ import { FIELD_STANDARD_STORE_NAME, openDb } from './workspaceDb';
 import { runIndexedDbRequest, runIndexedDbTransaction } from './indexedDbTransaction';
 
 export type StandardField = Omit<FieldRow, 'id' | 'standardId'>;
+
 export type FieldStandard = {
   id: string;
   name: string;
@@ -19,6 +20,7 @@ export type FieldStandard = {
 
 export function standardField(row: FieldRow): StandardField {
   const { id: _id, standardId: _standardId, ...field } = row;
+
   return structuredClone(field);
 }
 
@@ -44,12 +46,14 @@ export function fieldStandardDifferences(
     onUpdate: standard.field.onUpdate ?? 'none',
     enumMeta: standard.field.enumMeta ?? [],
   };
+
   return (Object.keys(expected) as (keyof StandardField)[]).filter((key) => {
     if (key === 'fieldType' && !/["']/.test(actual.fieldType + expected.fieldType))
       return (
         actual.fieldType.trim().toLowerCase().replaceAll(/\s+/g, '') !==
         expected.fieldType.trim().toLowerCase().replaceAll(/\s+/g, '')
       );
+
     return stableStringify(actual[key]) !== stableStringify(expected[key]);
   });
 }
@@ -66,35 +70,44 @@ export function decodeFieldStandards(value: unknown): FieldStandard[] {
   )
     throw new Error('Invalid field standards file');
   const ids = new Set<string>();
+
   return value.standards.map((item: unknown) => {
     if (!isRecord(item) || !isRecord(item.field)) throw new Error('Invalid field standard');
     const { field } = item;
+
     for (const key of ['id', 'name', 'description', 'unit'] as const) {
       if (typeof item[key] !== 'string' || item[key].length > 10000)
         throw new Error('Invalid standard metadata');
     }
+
     if (!(item.id as string).trim() || !(item.name as string).trim() || ids.has(item.id as string))
       throw new Error('Invalid standard identity');
     ids.add(item.id as string);
+
     for (const key of ['fieldName', 'fieldType', 'fieldComment'] as const) {
       if (typeof field[key] !== 'string' || field[key].length > 10000)
         throw new Error('Invalid standard field');
     }
+
     if (
       !(field.fieldName as string).trim() ||
       !(field.fieldType as string).trim() ||
       typeof field.nullable !== 'boolean'
     )
       throw new Error('Incomplete standard field');
+
     if (
       field.defaultKind !== undefined &&
       !FIELD_DEFAULT_KINDS.some((kind) => kind === field.defaultKind)
     )
       throw new Error('Invalid default kind');
+
     if (field.onUpdate !== undefined && !FIELD_ON_UPDATES.some((kind) => kind === field.onUpdate))
       throw new Error('Invalid update kind');
+
     if (field.defaultValue !== undefined && typeof field.defaultValue !== 'string')
       throw new Error('Invalid default value');
+
     if (
       field.enumMeta !== undefined &&
       (!Array.isArray(field.enumMeta) ||
@@ -109,6 +122,7 @@ export function decodeFieldStandards(value: unknown): FieldStandard[] {
         ))
     )
       throw new Error('Invalid enumeration');
+
     return {
       id: item.id as string,
       name: (item.name as string).trim(),
@@ -140,7 +154,9 @@ export async function saveFieldStandards(standards: FieldStandard[]): Promise<vo
   const validated = decodeFieldStandards({ version: 1, standards });
   await runIndexedDbTransaction(await openDb(), FIELD_STANDARD_STORE_NAME, 'readwrite', (tx) => {
     const store = tx.objectStore(FIELD_STANDARD_STORE_NAME);
+
     for (const standard of validated) store.put(standard);
+
     return () => undefined;
   });
 }

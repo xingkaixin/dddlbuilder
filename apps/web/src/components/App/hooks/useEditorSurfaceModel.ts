@@ -10,6 +10,7 @@ import type { useSchemaApplyActions } from './useSchemaApplyActions';
 import { hasTableChanges } from '@ddlbuilder/ddl-core';
 
 type EditorDomains = ReturnType<typeof useEditorDomains>;
+
 type SchemaController = ReturnType<typeof useSchemaController>;
 
 interface UseEditorSurfaceModelInput {
@@ -61,6 +62,7 @@ export function useEditorSurfaceModel({
   const { t } = useTranslation();
   const { editor, auth, sharding, animations, partition, tableOptions } = domains;
   const { setObjectType } = editor;
+
   const {
     derived: { availableFields, canSaveCurrent, filledRowCount, tableDiff },
     sql,

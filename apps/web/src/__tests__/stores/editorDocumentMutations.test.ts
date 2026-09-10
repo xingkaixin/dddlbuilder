@@ -92,6 +92,7 @@ describe('editor document references', () => {
         },
       });
       useEditorStore.getState().replaceDocument(state);
+
       if (operation === 'rename') {
         useEditorStore
           .getState()
@@ -101,6 +102,7 @@ describe('editor document references', () => {
       } else {
         useEditorStore.getState().handleRemoveRow(0, 1);
       }
+
       expect(useEditorStore.getState().mysqlPartitionConfig).toEqual(state.mysqlPartitionConfig);
     },
   );
@@ -218,6 +220,7 @@ describe('editor document references', () => {
         rows.map((row) => (row.id === 'id' ? { ...row, fieldName: 'user_id' } : row)),
       );
     const state = useEditorStore.getState();
+
     const ddl = buildDDL({
       dbType: state.dbType,
       tableName: state.tableName,
@@ -258,6 +261,7 @@ describe('editor document references', () => {
       rows.map((row) => (row.id === 'id' ? { ...row, fieldName: 'user_id' } : row)),
     );
     const state = useEditorStore.getState();
+
     const ddl = buildDDL({
       dbType: state.dbType,
       tableName: state.tableName,

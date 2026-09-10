@@ -48,6 +48,7 @@ describe('useAISchemaPatchFlow', () => {
   it('rejects accepted changes after a concurrent edit without overwriting it', () => {
     const base = { ...createState(), indexes: [] };
     const candidate = { ...base, rows: base.rows.map((field) => ({ ...field, fieldType: 'int' })) };
+
     const current = {
       ...base,
       rows: base.rows.map((field) => ({
@@ -68,6 +69,7 @@ describe('useAISchemaPatchFlow', () => {
     const dependencies = createDependencies();
     const nextRow = row('email', 2);
     const nextIndex = { ...oldIndex, unique: true };
+
     const candidate = {
       ...dependencies.currentState,
       tableComment: 'Accounts',

@@ -20,6 +20,7 @@ const escapeHtml = (value: string) =>
 
 const normalizeAuthActionUrl = (rawUrl: string, authBaseUrl: URL) => {
   const trimmed = rawUrl.trim();
+
   if (/^https?:\/\//i.test(trimmed)) {
     return trimmed;
   }
@@ -58,6 +59,7 @@ const sendEmail = async (
     html: input.html,
     text: input.text,
   });
+
   if (error) {
     console.error('[auth] email delivery failed', {
       name: error.name,
@@ -131,6 +133,7 @@ const renderVerificationEmail = (otp: string) => {
 const renderResetPasswordEmail = (url: string, name: string) => {
   const escapedName = escapeHtml(name);
   const escapedUrl = escapeHtml(url);
+
   return {
     subject: '重置你的筑表师密码',
     html: renderEmailLayout(`
@@ -163,6 +166,7 @@ const buildBetterAuth = (env: ApiEnv['Bindings']) => {
   const config = getUserSystemConfig(env);
   const db = drizzle(env.USER_DB);
   const authBaseUrl = new URL(config.betterAuthUrl);
+
   const trustedOrigins = new Set([
     authBaseUrl.origin,
     ...parseAllowedOrigins(env.CORS_ALLOWED_ORIGINS),
@@ -244,9 +248,11 @@ const authInstances = new WeakMap<ApiEnv['Bindings'], ReturnType<typeof buildBet
 
 export const createBetterAuth = (env: ApiEnv['Bindings']) => {
   let auth = authInstances.get(env);
+
   if (!auth) {
     auth = buildBetterAuth(env);
     authInstances.set(env, auth);
   }
+
   return auth;
 };

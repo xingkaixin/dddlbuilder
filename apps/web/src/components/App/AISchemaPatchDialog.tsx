@@ -35,13 +35,17 @@ export function AISchemaPatchDialog({
   const { showToast } = useToast();
   const session = useAISchemaPatchSession(params);
   const [confirmReset, setConfirmReset] = useState(false);
+
   const handleOpenChange = (next: boolean) => {
     if (!next && session.isLoading) {
       showToast(t('aiPatch.closeWhileGenerating'));
+
       return;
     }
+
     onOpenChange(next);
   };
+
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>

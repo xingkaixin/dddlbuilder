@@ -64,6 +64,7 @@ export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortabl
       const { active, over } = event;
       const activeId = String(active.id);
       const overId = over ? String(over.id) : lastOverIdRef.current;
+
       const moved =
         Boolean(overId) &&
         activeId !== overId &&

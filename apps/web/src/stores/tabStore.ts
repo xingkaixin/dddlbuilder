@@ -23,9 +23,11 @@ export const isWorkspaceTabDirty = (tab: WorkspaceTab) =>
 function isSameSourceId(a: WorkspaceSource, b: WorkspaceSource): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'draft' && b.kind === 'draft') return a.draftId === b.draftId;
+
   if (a.kind === 'saved_table' && b.kind === 'saved_table') {
     return isSameSavedTable(a, b);
   }
+
   return false;
 }
 
@@ -61,6 +63,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
       tabs: [...state.tabs, tab],
       activeTabId: id,
     }));
+
     return id;
   },
 
@@ -71,6 +74,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
   closeTab: (id) => {
     set((state) => {
       const index = state.tabs.findIndex((t) => t.id === id);
+
       if (index === -1) return state;
 
       const nextTabs = state.tabs.filter((t) => t.id !== id);
@@ -105,6 +109,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
   updateActiveTabSnapshot: (stateSnapshot) => {
     set((s) => {
       if (!s.activeTabId) return s;
+
       return {
         tabs: s.tabs.map((t) => (t.id === s.activeTabId ? { ...t, stateSnapshot } : t)),
       };
@@ -114,7 +119,9 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
   updateDraftTitle: (id, title) => {
     set((s) => {
       const tab = s.tabs.find((item) => item.id === id);
+
       if (tab?.source.kind !== 'draft' || tab.title === title) return s;
+
       return {
         tabs: s.tabs.map((item) => (item.id === id ? { ...item, title } : item)),
       };
@@ -124,6 +131,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
   updateActiveTabSource: (source) => {
     set((s) => {
       if (!s.activeTabId) return s;
+
       return {
         tabs: s.tabs.map((t) => (t.id === s.activeTabId ? { ...t, source } : t)),
       };
@@ -136,6 +144,7 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
 
   getActiveTab: () => {
     const { tabs, activeTabId } = get();
+
     return tabs.find((t) => t.id === activeTabId);
   },
 

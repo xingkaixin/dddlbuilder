@@ -129,6 +129,7 @@ describe('AbstractDDLStrategy', () => {
 
   it('应该保留用户配置的主键约束名', () => {
     const strategy = new TestStrategy();
+
     const ddl = strategy.exposeGeneratePrimaryKeyDDL('users', {
       ...primaryIndex,
       name: 'users_identity_key',
@@ -141,6 +142,7 @@ describe('AbstractDDLStrategy', () => {
 
   it('应该按数据库限制截断主键约束名', () => {
     const strategy = new TestStrategy('oracle');
+
     const ddl = strategy.exposeGeneratePrimaryKeyDDL('users', {
       ...primaryIndex,
       name: `pk_${'very_long_name_'.repeat(4)}`,

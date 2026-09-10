@@ -12,6 +12,7 @@ function getStorageItem(key: string): string | null {
   }
 
   const storage = window.localStorage;
+
   if (!storage || typeof storage.getItem !== 'function') {
     return null;
   }
@@ -32,9 +33,11 @@ export function normalizeLocale(value: string | null | undefined): AppLocale | n
   if (isSupportedLocale(value)) return value;
 
   const lowerValue = value.toLowerCase();
+
   if (lowerValue.startsWith('zh')) return 'zh-CN';
   if (lowerValue.startsWith('en')) return 'en-US';
   if (lowerValue.startsWith('ja')) return 'ja-JP';
+
   return null;
 }
 
@@ -49,6 +52,7 @@ export function resolveNavigatorLocale(): AppLocale {
 
   for (const candidate of candidates) {
     const normalized = normalizeLocale(candidate);
+
     if (normalized) {
       return normalized;
     }
@@ -63,6 +67,7 @@ export function resolveInitialLocale(): AppLocale {
   }
 
   const saved = normalizeLocale(getStorageItem(LOCAL_STORAGE_KEY));
+
   if (saved) {
     return saved;
   }

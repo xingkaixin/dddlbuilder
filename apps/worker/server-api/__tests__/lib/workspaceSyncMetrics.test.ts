@@ -47,6 +47,7 @@ describe('workspaceSyncMetrics', () => {
 
   it('records first queries through D1 result meta', async () => {
     const metrics = createWorkspaceD1Metrics();
+
     const statement = {
       first: vi.fn(),
       all: vi.fn().mockResolvedValue({

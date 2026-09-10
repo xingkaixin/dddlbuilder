@@ -19,6 +19,7 @@ export function generateDropForeignKey(
   if (getDatabaseFamily(dbType) === 'mysql') {
     return `ALTER TABLE ${tableName} DROP FOREIGN KEY ${constraintName};`;
   }
+
   return `ALTER TABLE ${tableName} DROP CONSTRAINT ${constraintName};`;
 }
 

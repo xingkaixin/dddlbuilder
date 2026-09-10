@@ -10,30 +10,39 @@ import { useEditorStore } from '@/stores/editorStore';
 vi.mock('@/components/App/TableConfig', () => ({
   TableConfig: () => null,
 }));
+
 vi.mock('@/components/App/DataTable', () => ({
   DataTable: () => <div data-testid="fields-panel" />,
 }));
+
 vi.mock('@/components/App/ViewDefinitionPanel', () => ({
   ViewDefinitionPanel: () => <div data-testid="view-panel" />,
 }));
+
 vi.mock('@/components/App/IndexPanel', () => ({
   IndexPanel: () => <div data-testid="indexes-panel" />,
 }));
+
 vi.mock('@/components/App/ForeignKeyPanel', () => ({
   ForeignKeyPanel: () => <div data-testid="foreign-keys-panel" />,
 }));
+
 vi.mock('@/components/App/AuthPanel', () => ({
   AuthPanel: () => <div data-testid="auth-panel" />,
 }));
+
 vi.mock('@/components/App/TableOptionsPanel', () => ({
   TableOptionsPanel: () => <div data-testid="misc-panel" />,
 }));
+
 vi.mock('@/components/App/ShardingPanel', () => ({
   ShardingPanel: () => <div data-testid="sharding-panel" />,
 }));
+
 vi.mock('@/components/App/PartitionPanel', () => ({
   PartitionPanel: () => <div data-testid="partition-panel" />,
 }));
+
 vi.mock('@/components/App/HivePartitionPanel', () => ({
   HivePartitionPanel: () => <div data-testid="hive-partition-panel" />,
 }));

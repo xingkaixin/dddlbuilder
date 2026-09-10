@@ -26,16 +26,19 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     openAuthDialog: vi.fn(),
     closeAuthDialog: vi.fn(),
   });
+
   return { useAuthIdentity, useAuthCredits, useAuthDialog };
 });
 
 function renderDDLReviewHook() {
   const { wrapper } = createQueryClientWrapper();
+
   return renderHook(() => useDDLReview('document'), { wrapper });
 }
 
 function renderDDLReviewWithLocaleHook() {
   const { wrapper } = createQueryClientWrapper();
+
   return renderHook(
     () => ({
       review: useDDLReview('document'),
@@ -323,6 +326,7 @@ describe('useDDLReview', () => {
 
       if (requestCount === 1) {
         firstSignal = signal;
+
         return new Promise<Response>((_, reject) => {
           signal?.addEventListener('abort', () => {
             const abortError = new Error('AbortError');
@@ -447,6 +451,7 @@ describe('useDDLReview', () => {
 
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
       fetchCount++;
+
       return Promise.resolve({
         ok: true,
         status: 200,

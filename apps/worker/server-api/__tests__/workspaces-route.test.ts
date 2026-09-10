@@ -39,6 +39,7 @@ describe('/api/workspaces', () => {
     }));
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
+
       return {
         ...actual,
         getCurrentWorkspace: vi.fn().mockResolvedValue({
@@ -58,6 +59,7 @@ describe('/api/workspaces', () => {
 
   it('does not expose the retired entity change protocol', async () => {
     const { default: app } = await import('../../api/index');
+
     const response = await app.fetch(
       createRequest('/api/workspaces/ws-1/changes', { method: 'POST' }),
       createEnv(),

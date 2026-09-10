@@ -81,6 +81,7 @@ describe('WebMCP schema patch', () => {
       refTable: 'orders',
       refFields: ['id'],
     });
+
     const next = applySchemaPatchOperations(base, [
       { id: 'rename', kind: 'table.update', schemaName: 'audit', tableName: 'purchases' },
     ]);
@@ -136,6 +137,7 @@ describe('WebMCP schema patch', () => {
 
   it.each(['account_id', 'USER_ID'])('MCP 与编辑器对 %s 使用相同的改名规则', (fieldName) => {
     const base = createState();
+
     const expected = applySchemaPatchOperations(base, [
       { id: 'rename', kind: 'field.update', fieldId: 'field-user', changes: { fieldName } },
     ]);

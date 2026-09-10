@@ -6,6 +6,9 @@ if (process.argv.slice(2).includes('--remote')) {
 }
 
 console.log('[d1] resetting local database');
+
 resetDatabase('local');
+
 runPendingMigrations('local');
+
 runD1Execute('local', { file: seedSqlPath });

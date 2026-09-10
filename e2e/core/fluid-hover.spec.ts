@@ -6,7 +6,9 @@ async function expectAligned(highlight: Locator, item: Locator) {
     .poll(async () => {
       const a = await highlight.boundingBox();
       const b = await item.boundingBox();
+
       if (!a || !b) return Infinity;
+
       return Math.max(
         Math.abs(a.x - b.x),
         Math.abs(a.y - b.y),
@@ -126,11 +128,13 @@ test('settings navigation preserves gap clicks and vertical keyboard navigation'
   await page.screenshot({ path: testInfo.outputPath('settings-hover.png') });
   const a = await first.boundingBox();
   const b = await second.boundingBox();
+
   if (!a || !b) throw new Error('Settings tabs must have layout boxes');
   await page.mouse.click(b.x + b.width / 2, b.y - 1);
   await expect(first).toHaveAttribute('aria-selected', 'true');
 
   const listBox = await list.boundingBox();
+
   if (!listBox) throw new Error('Settings navigation must be visible');
   await page.mouse.move(listBox.x + listBox.width / 2, listBox.y + listBox.height - 10);
   await expect(highlight).toHaveCSS('opacity', '0');

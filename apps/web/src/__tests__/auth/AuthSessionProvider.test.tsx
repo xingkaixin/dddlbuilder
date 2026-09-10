@@ -68,6 +68,7 @@ const useSessionProbeState = () => ({
 
 const SessionProbe = () => {
   const session = useSessionProbeState();
+
   return (
     <div>
       <span data-testid="status">{session.status}</span>
@@ -101,6 +102,7 @@ const SessionProbe = () => {
 const IdentityProbe = ({ onRender }: { onRender: () => void }) => {
   const identity = useAuthIdentity();
   onRender();
+
   return <span data-testid="identity-status">{identity.status}</span>;
 };
 
@@ -267,6 +269,7 @@ describe('AuthSessionProvider', () => {
     it('does not restore an account from an auth response arriving after another tab signs out', async () => {
       writeWorkspaceIdentity({ kind: 'user', userId: 'user-1', workspaceId: 'ws-1' });
       let respond = (_response: Response) => {};
+
       const response = new Promise<Response>((resolve) => {
         respond = resolve;
       });
@@ -274,6 +277,7 @@ describe('AuthSessionProvider', () => {
         if (input === '/api/me') return response;
         if (input === '/api/credits/balance')
           return Response.json({ balance: 100, version: 1, userId: 'user-1' });
+
         return Response.json({ workspaceId: 'ws-1' });
       });
       render(
@@ -363,6 +367,7 @@ describe('AuthSessionProvider', () => {
               signedIn: true,
               user: { userId, name: 'User', email: 'user@example.com', emailVerified: true },
             });
+
           return new Promise(() => {});
         });
         render(
@@ -448,6 +453,7 @@ describe('AuthSessionProvider', () => {
 
     it('publishes workspace id while initial credit request is still pending', async () => {
       let resolveCredit!: (response: Response) => void;
+
       const slowCredit = new Promise<Response>((resolve) => {
         resolveCredit = resolve;
       });
@@ -522,6 +528,7 @@ describe('AuthSessionProvider', () => {
 
       const Probe = () => {
         const session = UnconfiguredHook();
+
         return <span data-testid="unconfigured-status">{session.status}</span>;
       };
 
@@ -581,6 +588,7 @@ describe('AuthSessionProvider', () => {
         useEffect(() => {
           sessionApi.current = api;
         }, [api]);
+
         return null;
       };
 
@@ -624,9 +632,11 @@ describe('AuthSessionProvider', () => {
             });
           if (input === '/api/credits/balance')
             return Response.json({ balance: 100, version: 1, userId: 'user-1' });
+
           return Response.json({ workspaceId: 'ws-1' });
         });
         let settle = () => {};
+
         prepareWorkspaceSignOutMock.mockImplementation(
           () =>
             new Promise<void>((resolve, reject) => {
@@ -635,6 +645,7 @@ describe('AuthSessionProvider', () => {
         );
         signOutMock.mockResolvedValue({ error: null });
         vi.spyOn(console, 'error').mockImplementation(() => {});
+
         const session: { current: ReturnType<typeof useSessionProbeState> | null } = {
           current: null,
         };
@@ -643,6 +654,7 @@ describe('AuthSessionProvider', () => {
           useEffect(() => {
             session.current = api;
           }, [api]);
+
           return <span data-testid="sign-out-status">{api.status}</span>;
         };
         render(
@@ -651,7 +663,9 @@ describe('AuthSessionProvider', () => {
           </AuthSessionProvider>,
         );
         await waitFor(() => expect(session.current?.workspaceId).toBe('ws-1'));
+
         if (!session.current) throw new Error('Session not loaded');
+
         const outcome = session.current.signOut().then(
           () => 'signed_out',
           () => 'cancelled',
@@ -698,6 +712,7 @@ describe('AuthSessionProvider', () => {
       signOutMock.mockResolvedValue({ error: null });
       clearLocalWorkspaceDataMock.mockRejectedValue(new Error('IndexedDB unavailable'));
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
       const sessionApi: { current: ReturnType<typeof useSessionProbeState> | null } = {
         current: null,
       };
@@ -706,6 +721,7 @@ describe('AuthSessionProvider', () => {
         useEffect(() => {
           sessionApi.current = api;
         }, [api]);
+
         return <span data-testid="sign-out-status">{api.status}</span>;
       };
 
@@ -923,6 +939,7 @@ describe('AuthSessionProvider', () => {
     it('retries workspace loading when refreshing an unchanged session', async () => {
       let workspaceAvailable = false;
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
       const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
         if (input === '/api/me') {
           return Response.json({
@@ -935,13 +952,16 @@ describe('AuthSessionProvider', () => {
             },
           });
         }
+
         if (input === '/api/credits/balance')
           return Response.json({ balance: 100, version: 1, userId: 'user-1' });
+
         if (input === '/api/workspaces') {
           return workspaceAvailable
             ? Response.json({ workspaceId: 'ws-1' })
             : Response.json({ error: 'Workspace load failed' }, { status: 503 });
         }
+
         throw new Error(`Unexpected request: ${String(input)}`);
       });
 

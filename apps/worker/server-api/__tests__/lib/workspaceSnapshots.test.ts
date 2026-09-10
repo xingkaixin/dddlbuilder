@@ -84,6 +84,7 @@ const createWorkspaceSnapshotDb = (
   const insertClock = sqlite.prepare(
     'INSERT INTO workspace_clocks (workspace_id, next_version) VALUES (?, 0)',
   );
+
   for (const workspace of options.initialWorkspaces ?? []) {
     insertWorkspace.run(
       workspace.id,
@@ -149,6 +150,7 @@ const checkpointDefaultWorkspace = async (env: ApiEnv['Bindings'], snapshot: Wor
     await import('../../lib/workspaceEntities.js');
   const workspace = await getOrCreateDefaultWorkspace(env, 'user-1');
   await checkpointWorkspaceSnapshotEntities(env, 'user-1', workspace.id, snapshot);
+
   return workspace.id;
 };
 
@@ -159,6 +161,7 @@ describe('workspace entity checkpoints', () => {
 
   it('读取快照时应从旧快照补齐缺失实体', async () => {
     const { getWorkspaceSnapshotForWorkspace } = await import('../../lib/workspaceEntities.js');
+
     const env = createEnv(
       createWorkspaceSnapshotDb([
         createLegacySavedTableRow('user-1', 'legacy', 100),
@@ -189,6 +192,7 @@ describe('workspace entity checkpoints', () => {
 
   it('不应把默认 workspace 的旧快照回填到其他 workspace', async () => {
     const { getWorkspaceSnapshotForWorkspace } = await import('../../lib/workspaceEntities.js');
+
     const secondaryWorkspace: StoredWorkspace = {
       id: 'workspace-secondary',
       userId: 'user-1',

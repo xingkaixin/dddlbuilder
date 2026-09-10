@@ -26,8 +26,10 @@ export function FieldStandardEditor({
   const [unit, setUnit] = useState(standard.unit);
   const [rows, setRows] = useState<FieldRow[]>([{ ...standard.field, id: standard.id }]);
   const field = rows[0];
+
   const canSave =
     !!name.trim() && rows.length === 1 && !!field?.fieldName.trim() && !!field.fieldType.trim();
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">

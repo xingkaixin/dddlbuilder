@@ -189,6 +189,7 @@ describe('workspaceYDocAdapter records', () => {
     upsertSavedTableInYDoc(doc, createSavedTable({ tableName: 'saved_users' }));
     const savedRecord = getSavedTableFromYDoc(doc, 'users');
     expect(savedRecord).not.toBeNull();
+
     if (!savedRecord) throw new Error('saved table fixture missing');
     const savedBaseSignature = buildSchemaStateSignature(savedRecord.state);
     upsertSavedDraftInYDoc(doc, 'users', {
@@ -197,6 +198,7 @@ describe('workspaceYDocAdapter records', () => {
       baseSignature: savedBaseSignature,
       updatedAt: 30,
     });
+
     const source = {
       kind: 'saved_table' as const,
       normalizedName: 'users',
@@ -214,6 +216,7 @@ describe('workspaceYDocAdapter records', () => {
     const refreshed = getWorkspaceSnapshotFromYDoc(doc, source, editorSession);
     const remoteRecord = getSavedTableFromYDoc(doc, 'users');
     expect(remoteRecord).not.toBeNull();
+
     if (!remoteRecord) throw new Error('remote saved table fixture missing');
     expect(refreshed?.state.tableName).toBe('local_edit');
     expect(refreshed?.source).toMatchObject({

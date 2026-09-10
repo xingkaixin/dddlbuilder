@@ -7,26 +7,32 @@ export const buildWorkspaceYDocName = (workspaceId: string) =>
 
 export const LEGACY_MIGRATION_COMMITTED = 'legacy-migration-committed';
 const WORKSPACE_SIGN_OUT_TIMEOUT_MS = 10_000;
+
 type WorkspaceYDocOwner = {
   dispose: () => Promise<void>;
   prepareSignOut: () => Promise<void>;
 };
+
 const activeOwners = new Map<string, Set<WorkspaceYDocOwner>>();
 
 export const registerWorkspaceYDocOwner = (workspaceId: string, owner: WorkspaceYDocOwner) => {
   const owners = activeOwners.get(workspaceId) ?? new Set();
   owners.add(owner);
   activeOwners.set(workspaceId, owners);
+
   return () => {
     owners.delete(owner);
+
     if (owners.size === 0) activeOwners.delete(workspaceId);
   };
 };
 
 export const prepareWorkspaceSignOut = async (workspaceId: string) => {
   const owners = activeOwners.get(workspaceId);
+
   if (!owners?.size) throw new Error('Workspace is not ready');
   let timeout: ReturnType<typeof setTimeout> | undefined;
+
   try {
     await Promise.race([
       Promise.all(Array.from(owners, (owner) => owner.prepareSignOut())),
@@ -51,6 +57,7 @@ export const commitLegacyWorkspaceYDoc = async (persistence: IndexeddbPersistenc
     (tx) => {
       tx.objectStore('updates').add(Y.encodeStateAsUpdate(doc));
       tx.objectStore('custom').put(true, LEGACY_MIGRATION_COMMITTED);
+
       return () => undefined;
     },
     { closeDatabase: false },

@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@/components/App/containers/TableBuilderContainer', () => ({
   TableBuilderContainer: () => {
     const [draft, setDraft] = useState('');
+
     return (
       <input
         aria-label="index draft"
@@ -19,6 +20,7 @@ vi.mock('@/components/App/containers/TableBuilderContainer', () => ({
 vi.mock('@/components/App/containers/OutputContainer', () => ({
   OutputContainer: () => <div>Generated SQL</div>,
 }));
+
 vi.mock('@/components/App/TableConfig', () => ({ TableConfig: () => null }));
 
 const buildModel = (documentId: string): EditorSurfaceModel => ({

@@ -14,7 +14,9 @@ export const fieldTableFeatures = tableFeatures({
 });
 
 export type FieldTableFeatures = typeof fieldTableFeatures;
+
 export type FieldTableRow = Row<FieldTableFeatures, FieldRow>;
+
 // 各列的单元格类型不同，列定义数组只能放开取值类型
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FieldTableColumnDef = ColumnDef<FieldTableFeatures, FieldRow, any>;

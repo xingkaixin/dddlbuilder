@@ -16,6 +16,7 @@ test.describe('字段行操作验证 @fields', () => {
     await cell1.dblclick();
     await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('f1');
     await page.keyboard.press('Enter');
+
     const typeCell1 = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
@@ -29,6 +30,7 @@ test.describe('字段行操作验证 @fields', () => {
     await cell2.dblclick();
     await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('f2');
     await page.keyboard.press('Enter');
+
     const typeCell2 = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(4)',
     );
@@ -54,6 +56,7 @@ test.describe('字段行操作验证 @fields', () => {
         .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
         .fill(`field_${i}`);
       await page.keyboard.press('Enter');
+
       const typeCell = page.locator(
         `[data-testid="data-table"] tbody tr:nth-child(${i}) td:nth-child(4)`,
       );

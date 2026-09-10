@@ -36,12 +36,16 @@ export const fetchCurrentWorkspace = async (
 ): Promise<CurrentWorkspaceResponseWithMeta> => {
   const response = await fetch('/api/workspaces', { credentials: 'include', signal });
   const payload: unknown = await response.json().catch(() => null);
+
   if (!response.ok) {
     const error = decodeApiError(payload);
     throw new ApiError(error.error ?? '工作区获取失败', response.status, error.code);
   }
+
   const decoded = decodeCurrentWorkspaceResponse(payload);
+
   if (decoded._tag === 'None') throw new Error('工作区响应为空');
+
   return decoded.value;
 };
 
@@ -70,6 +74,7 @@ export const clearLegacyWorkspaceData = async (scope: WorkspaceScope): Promise<v
   const session = await readWorkspaceSession(scope);
   await clearWorkspacePartition(scope);
   await clearWorkspacePartition({ kind: 'legacy_user', userId: scope.userId });
+
   if (session) {
     await writeWorkspaceSession(
       { activeSource: session.activeSource, updatedAt: session.updatedAt },
@@ -81,13 +86,16 @@ export const clearLegacyWorkspaceData = async (scope: WorkspaceScope): Promise<v
 export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {
   if (scope.kind !== 'user') return;
   const scopes = markWorkspaceCleanupPending(scope);
+
   for (const cachedScope of scopes) {
     await clearWorkspaceYDocData(cachedScope.workspaceId);
     await clearWorkspacePartition(cachedScope);
     await clearWorkspaceHistory(cachedScope);
   }
+
   await clearWorkspacePartition({ kind: 'legacy_user', userId: scope.userId });
   await clearWorkspaceHistory({ kind: 'legacy_user', userId: scope.userId });
+
   for (const cachedScope of scopes) forgetWorkspaceCache(cachedScope);
   dispatchWorkspaceSnapshotApplied();
 };
@@ -98,15 +106,18 @@ export const retryPendingWorkspaceCleanup = (): Promise<void> => {
   pendingCleanup = (async () => {
     const scopes = readWorkspaceCaches().filter((cache) => cache.status === 'pending_cleanup');
     const users = new Set<string>();
+
     for (const scope of scopes) {
       if (users.has(scope.userId)) continue;
       users.add(scope.userId);
       await clearLocalWorkspaceData(scope);
+
       if (parseWorkspaceIdentity(readWorkspaceIdentity())?.userId === scope.userId)
         writeWorkspaceIdentity(null);
     }
   })().finally(() => {
     pendingCleanup = null;
   });
+
   return pendingCleanup;
 };

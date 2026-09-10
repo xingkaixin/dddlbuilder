@@ -107,10 +107,12 @@ describe('generateMockData', () => {
 
   it('handles nullable fields', () => {
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.05);
+
     const fields = [
       createField({ name: 'id', type: 'bigint', defaultKind: 'auto_increment', nullable: false }),
       createField({ name: 'deleted_at', type: 'timestamp', defaultKind: 'none', nullable: true }),
     ];
+
     try {
       const result = generateMockData('users', '', fields, 'mysql', { rowCount: 20 });
       const parsed = JSON.parse(result.json);
@@ -144,6 +146,7 @@ describe('generateMockData', () => {
     const fields = [createField({ name: 'is_active', type: 'boolean', defaultKind: 'none' })];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 5 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(typeof row.is_active).toBe('number');
       expect([0, 1]).toContain(row.is_active);
@@ -154,6 +157,7 @@ describe('generateMockData', () => {
     const fields = [createField({ name: 'is_deleted', type: 'tinyint(1)', defaultKind: 'none' })];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 5 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(typeof row.is_deleted).toBe('number');
       expect([0, 1]).toContain(row.is_deleted);
@@ -170,6 +174,7 @@ describe('generateMockData', () => {
     ];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 10 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(['active', 'inactive', 'pending']).toContain(row.role);
     }
@@ -189,6 +194,7 @@ describe('generateMockData', () => {
     const fields = [createField({ name: 'phone', type: 'varchar(20)', defaultKind: 'none' })];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 5 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(String(row.phone)).toMatch(/^1[3-9]\d{9}$/);
     }
@@ -198,6 +204,7 @@ describe('generateMockData', () => {
     const fields = [createField({ name: 'email', type: 'varchar(100)', defaultKind: 'none' })];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 3 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(String(row.email)).toMatch(/^.+@.+\..+$/);
     }
@@ -207,6 +214,7 @@ describe('generateMockData', () => {
     const fields = [createField({ name: 'age', type: 'int', defaultKind: 'none' })];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 10 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(row.age).toBeGreaterThanOrEqual(18);
       expect(row.age).toBeLessThanOrEqual(75);
@@ -219,6 +227,7 @@ describe('generateMockData', () => {
     ];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 3 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(typeof row.u_name).toBe('string');
       expect(row.u_name.length).toBeGreaterThan(0);
@@ -229,6 +238,7 @@ describe('generateMockData', () => {
     const fields = [createField({ name: 'price', type: 'decimal(10,2)', defaultKind: 'none' })];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 5 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(typeof row.price).toBe('number');
       const decimalStr = String(row.price);
@@ -241,6 +251,7 @@ describe('generateMockData', () => {
     const fields = [createField({ name: 'score', type: 'float', defaultKind: 'none' })];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 3 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(typeof row.score).toBe('number');
     }
@@ -250,6 +261,7 @@ describe('generateMockData', () => {
     const fields = [createField({ name: 'birth_date', type: 'date', defaultKind: 'none' })];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 3 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(String(row.birth_date)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
@@ -259,6 +271,7 @@ describe('generateMockData', () => {
     const fields = [createField({ name: 'start_time', type: 'time', defaultKind: 'none' })];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 2 });
     const parsed = JSON.parse(result.json);
+
     for (const row of parsed) {
       expect(String(row.start_time)).toMatch(/^\d{2}:\d{2}:\d{2}$/);
     }

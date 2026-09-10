@@ -27,6 +27,7 @@ export function PreviewStep({
   onDeleteField,
 }: PreviewStepProps) {
   const { t } = useTranslation();
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md bg-muted p-3 text-sm">

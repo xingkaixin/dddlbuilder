@@ -16,9 +16,11 @@ const IDENTIFIER_NAME_MAX_LENGTHS: Partial<Record<DatabaseType, number>> = {
 
 const generateShortHash = (value: string): string => {
   let hash = 5381;
+
   for (let index = 0; index < value.length; index++) {
     hash = (hash * 33) ^ value.charCodeAt(index);
   }
+
   return Math.abs(hash).toString(36).slice(-4).padStart(4, '0');
 };
 
@@ -31,6 +33,7 @@ export const truncateIdentifierName = (
 ): string => {
   if (name.length <= maxLength) return name;
   const hash = generateShortHash(name);
+
   return `${name.slice(0, Math.max(0, maxLength - hash.length - 1))}_${hash}`.slice(0, maxLength);
 };
 
@@ -42,5 +45,6 @@ export const buildIndexName = (
 ): string => {
   const fields = fieldNames.join('_');
   const fullName = fields ? `${prefix}_${tableName}_${fields}` : `${prefix}_${tableName}`;
+
   return truncateIdentifierName(fullName, maxLength);
 };

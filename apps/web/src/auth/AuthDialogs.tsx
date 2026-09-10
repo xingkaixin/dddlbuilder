@@ -29,6 +29,7 @@ export function AuthDialogs() {
   const authDialog = useAuthDialog();
   const authSession = useMemo(() => ({ ...authActions, ...authDialog }), [authActions, authDialog]);
   const { initialResetToken, consume: consumeAuthCallbackCommand } = useAuthCallbackCommand();
+
   const [authMode, setAuthMode] = useState<AuthMode>(() =>
     initialResetToken ? 'reset_password' : 'sign_in',
   );
@@ -44,6 +45,7 @@ export function AuthDialogs() {
 
   useEffect(() => {
     const command = consumeAuthCallbackCommand();
+
     if (!command) return;
 
     if (command.type === 'verify-email') {
@@ -51,11 +53,13 @@ export function AuthDialogs() {
         success(t('header.auth.verifyEmailSucceeded'));
         setVerifyEmailDialogOpen(true);
       });
+
       return;
     }
 
     if (!command.token) {
       error(t('header.auth.resetTokenInvalid'));
+
       return;
     }
 
@@ -66,6 +70,7 @@ export function AuthDialogs() {
     if (authMode === 'sign_up') return t('header.auth.dialogDescriptionSignUp');
     if (authMode === 'forgot_password') return t('header.auth.dialogDescriptionForgotPassword');
     if (authMode === 'reset_password') return t('header.auth.dialogDescriptionResetPassword');
+
     return t('header.auth.dialogDescriptionSignIn');
   }, [authMode, t]);
 
@@ -76,37 +81,49 @@ export function AuthDialogs() {
 
   const handleSubmitAuth = async () => {
     const trimmedEmail = email.trim();
+
     if (!trimmedEmail) {
       error(t('header.auth.emailRequired'));
+
       return;
     }
 
     try {
       setIsSubmittingAuth(true);
+
       if (authMode === 'sign_in') {
         if (!password.trim()) {
           error(t('header.auth.passwordRequired'));
+
           return;
         }
+
         await authSession.signInWithEmail(trimmedEmail, password);
         success(t('header.auth.signedIn'));
         authSession.closeAuthDialog();
+
         return;
       }
 
       if (authMode === 'sign_up') {
         if (!name.trim()) {
           error(t('header.auth.nameRequired'));
+
           return;
         }
+
         if (!password.trim()) {
           error(t('header.auth.passwordRequired'));
+
           return;
         }
+
         if (!turnstileToken) {
           error(t('header.auth.turnstileRequired'));
+
           return;
         }
+
         const result = await authSession.signUpWithEmail({
           name: name.trim(),
           email: trimmedEmail,
@@ -116,12 +133,14 @@ export function AuthDialogs() {
         setTurnstileToken(null);
         setAuthMode('sign_in');
         setPassword('');
+
         if (result === 'signed_in') {
           success(t('header.auth.signedIn'));
           authSession.closeAuthDialog();
         } else {
           showEmailVerification(trimmedEmail);
         }
+
         return;
       }
 
@@ -129,16 +148,19 @@ export function AuthDialogs() {
         await authSession.requestPasswordReset(trimmedEmail);
         success(t('header.auth.resetEmailSent', { email: trimmedEmail }));
         setAuthMode('sign_in');
+
         return;
       }
 
       if (!resetToken) {
         error(t('header.auth.resetTokenInvalid'));
+
         return;
       }
 
       if (!resetPassword.trim()) {
         error(t('header.auth.passwordRequired'));
+
         return;
       }
 
@@ -151,8 +173,10 @@ export function AuthDialogs() {
     } catch (err) {
       if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
         await handleResendVerification();
+
         return;
       }
+
       error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
     } finally {
       setIsSubmittingAuth(false);
@@ -161,8 +185,10 @@ export function AuthDialogs() {
 
   const handleResendVerification = async () => {
     const trimmedEmail = email.trim();
+
     if (!trimmedEmail) {
       error(t('header.auth.emailRequired'));
+
       return;
     }
 
@@ -183,6 +209,7 @@ export function AuthDialogs() {
       setResetToken(null);
       setAuthMode('sign_in');
     }
+
     authSession.closeAuthDialog();
   };
 

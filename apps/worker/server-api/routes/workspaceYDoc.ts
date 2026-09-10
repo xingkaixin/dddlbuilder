@@ -9,7 +9,9 @@ const IMPORT_BODY_MAX_BYTES = 5 * 1024 * 1024;
 
 const getWorkspaceYDocStub = (env: ApiEnv['Bindings'], workspaceId: string) => {
   const namespace = env.WORKSPACE_YDOC;
+
   if (!namespace) return null;
+
   return namespace.get(namespace.idFromName(workspaceId));
 };
 
@@ -24,6 +26,7 @@ const buildForwardedRequest = (
   headers.set('x-ddlbuilder-workspace-id', workspaceId);
   headers.set('x-ddlbuilder-user-id', userId);
   headers.set('x-ddlbuilder-session-id', sessionId);
+
   return new Request(request.url, {
     method: request.method,
     headers,
@@ -41,6 +44,7 @@ const authenticateWorkspaceRequest = async (
   const user = await authenticateRequest(c);
 
   const workspaceId = c.req.param('workspaceId');
+
   if (!workspaceId) {
     return {
       response: errorResponse(c, 400, 'Invalid workspace id', 'INVALID_JSON'),
@@ -55,10 +59,12 @@ const authenticateWorkspaceRequest = async (
         response: errorResponse(c, 403, 'Workspace access denied', 'WORKSPACE_ACCESS_DENIED'),
       };
     }
+
     throw error;
   }
 
   const stub = getWorkspaceYDocStub(c.env, workspaceId);
+
   if (!stub) {
     return {
       response: errorResponse(c, 503, 'Workspace sync unavailable', 'SERVICE_UNAVAILABLE'),
@@ -78,7 +84,9 @@ const withAuthenticatedWorkspace = async (
   }) => Promise<Response>,
 ) => {
   const authenticated = await authenticateWorkspaceRequest(c);
+
   if ('response' in authenticated) return authenticated.response;
+
   return handle(authenticated);
 };
 
@@ -88,6 +96,7 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
       if (c.req.raw.method === 'HEAD') {
         return new Response(null, { status: 204 });
       }
+
       return authenticated.stub.fetch(
         buildForwardedRequest(
           c.req.raw,
@@ -115,10 +124,12 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
   app.post('/workspaces/:workspaceId/yjs/import', async (c) =>
     withAuthenticatedWorkspace(c, async (authenticated) => {
       const parsedBody = await parseJsonBodyWithLimit<unknown>(c, IMPORT_BODY_MAX_BYTES);
+
       if (!parsedBody.ok) return parsedBody.response;
       const body = parsedBody.data;
 
       const snapshot = decodeWorkspaceSnapshot(body);
+
       if (!snapshot) {
         return errorResponse(c, 400, 'Invalid workspace snapshot payload', 'INVALID_JSON');
       }

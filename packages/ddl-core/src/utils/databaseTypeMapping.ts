@@ -1,5 +1,7 @@
 import { splitQualifiedName } from '@ddlbuilder/shared-types';
+
 export { splitQualifiedName, getSchemaAndTable } from '@ddlbuilder/shared-types';
+
 import type { DatabaseType, ParsedFieldType } from '@ddlbuilder/shared-types';
 import { TypeMapper } from './TypeMapper.js';
 import { escapeSqlString, getDatabaseFamily } from './databaseFamily.js';
@@ -9,6 +11,7 @@ import { formatSqlIdentifier } from './sqlIdentifiers';
 export const getFieldTypeForDatabase = (databaseType: DatabaseType, fieldType: string): string => {
   const parsed = parseFieldType(fieldType);
   const typeMapper = TypeMapper.create(databaseType);
+
   return typeMapper.mapType(parsed);
 };
 
@@ -38,11 +41,14 @@ const TYPE_ARGUMENTS = new RegExp(`(?:${QUOTED_TYPE_ARGUMENT}|[^,])+`, 'g');
 
 const stripTrailingConstraints = (type: string): string => {
   const tokens = type.match(TYPE_TOKENS) ?? [];
+
   if (tokens.length === 0) return '';
 
   let end = tokens.length;
+
   for (let i = 0; i < tokens.length; i += 1) {
     const token = tokens[i].toLowerCase();
+
     if (CONSTRAINT_STARTERS.has(token)) {
       end = i;
       break;
@@ -56,12 +62,14 @@ const stripTrailingConstraints = (type: string): string => {
 const parseUnsigned = (type: string): { clean: string; isUnsigned: boolean } => {
   const isUnsigned = type.toLowerCase().endsWith('unsigned');
   const clean = isUnsigned ? type.replace(/\s+unsigned$/gi, '').trim() : type;
+
   return { clean, isUnsigned };
 };
 
 // 辅助函数：提取类型名称和参数
 const extractTypeAndArgs = (type: string): { baseType: string; args: string[] } | null => {
   const match = type.match(TYPE_WITH_ARGS);
+
   if (!match) return null;
 
   const [, baseType, argString, suffix = ''] = match;
@@ -95,6 +103,7 @@ const handleSpecialCases = (type: string): ParsedFieldType => {
 
   // 处理缺少开括号的情况，如 "varchar255)"
   const cleanBaseType = type.replace(/\)$/, '').toLowerCase();
+
   return {
     baseType: cleanBaseType,
     args: [],
@@ -135,6 +144,7 @@ export const parseFieldType = (rawType: string): ParsedFieldType => {
   if (!extracted) {
     // 处理特殊情况（如 "()" 或 "varchar255)"）
     const specialCase = handleSpecialCases(withoutConstraints);
+
     return { ...specialCase, unsigned: isUnsigned, raw: clean };
   }
 
@@ -149,6 +159,7 @@ export const parseFieldType = (rawType: string): ParsedFieldType => {
 
 export const getCanonicalBaseType = (fieldType: string): string => {
   const parsed = parseFieldType(fieldType);
+
   return canonicalizeBaseType(parsed.baseType);
 };
 
@@ -207,6 +218,7 @@ export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
 
 export const supportsDefaultCurrentTimestamp = (db: DatabaseType, fieldType: string) => {
   const canonical = getCanonicalBaseType(getFieldTypeForDatabase(db, fieldType));
+
   switch (getDatabaseFamily(db)) {
     case 'mysql':
       return new Set(['timestamp', 'datetime']).has(canonical);
@@ -224,6 +236,7 @@ export const supportsDefaultCurrentTimestamp = (db: DatabaseType, fieldType: str
 
 export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, fieldType: string) => {
   const canonical = getCanonicalBaseType(getFieldTypeForDatabase(db, fieldType));
+
   switch (getDatabaseFamily(db)) {
     // MySQL 5.6.5+、MariaDB 10.1.2+、TiDB、OceanBase MySQL 模式支持 DATETIME 的 ON UPDATE CURRENT_TIMESTAMP
     case 'mysql':
@@ -239,6 +252,7 @@ export const formatConstantDefault = (
   dbType: DatabaseType = 'postgresql',
 ) => {
   const expression = formatConstantDefaultExpression(canonical, value, dbType);
+
   return expression ? ` DEFAULT ${expression}` : '';
 };
 
@@ -248,8 +262,10 @@ export const formatConstantDefaultExpression = (
   dbType: DatabaseType = 'postgresql',
 ) => {
   const shouldQuote = shouldQuoteDefault(canonical, value);
+
   if (!shouldQuote && !value.trim()) return '';
   const cleanValue = escapeSqlString(value, dbType);
+
   return shouldQuote ? `'${cleanValue}'` : cleanValue;
 };
 
@@ -265,6 +281,7 @@ export const shouldQuoteDefault = (canonical: string, value: string) => {
   if (['boolean', 'bit'].includes(canonical)) return false;
   if (value.toLowerCase() === 'null') return false;
   if (isNumericType(canonical)) return false;
+
   return true;
 };
 
@@ -281,9 +298,11 @@ export const buildQualifiedTableName = (
   dbType?: DatabaseType,
 ) => {
   const table = tableName.trim();
+
   if (!table) return '';
 
   const schema = schemaName.trim();
   const parts = schema ? [schema, table] : [table];
+
   return parts.map((name) => (dbType ? formatSqlIdentifier(name, dbType) : name)).join('.');
 };

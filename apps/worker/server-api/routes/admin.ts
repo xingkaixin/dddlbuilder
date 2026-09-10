@@ -43,20 +43,24 @@ const ADMIN_LOGIN_RATE_LIMIT = {
 
 const requireAdminSession: MiddlewareHandler<ApiEnv> = async (c, next) => {
   const valid = await resolveAdminSession(c.env, c.req.header('cookie'));
+
   if (!valid) {
     return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
   }
+
   await next();
 };
 
 const revokeUserSessionsOrError = async (c: Context<ApiEnv>, userId: string) => {
   try {
     await revokeUserSessions(c.env, userId);
+
     return null;
   } catch (error) {
     getRequestLogger(c)?.error(toWorkerError(error, 'Admin session revocation failed'), {
       outcome: { errorCode: 'SERVICE_UNAVAILABLE' },
     });
+
     return errorResponse(c, 503, 'Failed to revoke active sessions', 'SERVICE_UNAVAILABLE');
   }
 };
@@ -70,18 +74,22 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
       ADMIN_LOGIN_RATE_LIMIT,
       'Too many admin login attempts',
     );
+
     if (limited) return limited;
 
     const parsedBody = await parseJsonBodyWithLimit<{
       password?: string;
     }>(c, 1024);
+
     if (!parsedBody.ok) return parsedBody.response;
     const request = Schema.decodeUnknownOption(AdminLoginRequestSchema)(parsedBody.data);
+
     if (request._tag === 'None') {
       return errorResponse(c, 400, 'Password is required', 'ADMIN_REQUIRED');
     }
 
     const result = await createAdminSession(c.env, request.value.password);
+
     if (!result.success) {
       return errorResponse(c, 401, 'Invalid admin password', 'ADMIN_REQUIRED');
     }
@@ -93,6 +101,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
   app.delete('/admin/session', async (c) => {
     const setCookie = await deleteAdminSession(c.env, c.req.header('cookie'));
+
     return c.json(Schema.decodeUnknownSync(AdminActionResponseSchema)({ ok: true }), 200, {
       'Set-Cookie': setCookie,
     });
@@ -100,6 +109,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
   app.get('/admin/session', async (c) => {
     const valid = await resolveAdminSession(c.env, c.req.header('cookie'));
+
     return c.json(Schema.decodeUnknownSync(AdminSessionResponseSchema)({ authenticated: valid }));
   });
 
@@ -111,14 +121,17 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   app.get('/admin/users', async (c) => {
     const { limit, offset } = Schema.decodeUnknownSync(AdminPaginationQuerySchema)(c.req.query());
     const users = await listAdminUsers(c.env.USER_DB, { limit, offset });
+
     return c.json(Schema.decodeUnknownSync(AdminUsersResponseSchema)(withMeta(c, { users })));
   });
 
   app.get('/admin/users/:userId', async (c) => {
     const user = await getAdminUser(c.env.USER_DB, c.req.param('userId'));
+
     if (!user) {
       return errorResponse(c, 404, 'User not found');
     }
+
     return c.json(Schema.decodeUnknownSync(AdminUserResponseSchema)(withMeta(c, { user })));
   });
 
@@ -141,6 +154,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
       getRequestLogger(c)?.error(toWorkerError(error, 'Admin password reset failed'), {
         outcome: { errorCode: 'SERVICE_UNAVAILABLE' },
       });
+
       return errorResponse(c, 502, 'Failed to send reset email', 'SERVICE_UNAVAILABLE');
     }
 
@@ -149,11 +163,14 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
   app.post('/admin/users/:userId/disable', async (c) => {
     const userId = c.req.param('userId');
+
     const parsedBody = await parseJsonBodyWithLimit<{
       reason?: string;
     }>(c, 1024);
+
     if (!parsedBody.ok) return parsedBody.response;
     const request = Schema.decodeUnknownOption(AdminDisableRequestSchema)(parsedBody.data);
+
     if (request._tag === 'None') return errorResponse(c, 400, 'Reason must be a string');
     const body = request.value;
 
@@ -163,6 +180,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
     await disableAdminUser(c.env.USER_DB, userId, body.reason);
     const revocationError = await revokeUserSessionsOrError(c, userId);
+
     if (revocationError) return revocationError;
 
     return c.json(Schema.decodeUnknownSync(AdminActionResponseSchema)(withMeta(c, { ok: true })));
@@ -177,16 +195,21 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
   app.post('/admin/users/:userId/email-verification', async (c) => {
     const userId = c.req.param('userId');
+
     const parsedBody = await parseJsonBodyWithLimit<{
       verified?: boolean;
     }>(c, 1024);
+
     if (!parsedBody.ok) return parsedBody.response;
+
     const request = Schema.decodeUnknownOption(AdminEmailVerificationRequestSchema)(
       parsedBody.data,
     );
+
     if (request._tag === 'None') {
       return errorResponse(c, 400, 'Verified flag must be a boolean');
     }
+
     const body = request.value;
 
     if (!(await adminUserExists(c.env.USER_DB, userId))) {
@@ -194,8 +217,10 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     }
 
     await setAdminUserEmailVerification(c.env.USER_DB, userId, body.verified);
+
     if (!body.verified) {
       const revocationError = await revokeUserSessionsOrError(c, userId);
+
       if (revocationError) return revocationError;
     }
 
@@ -210,16 +235,20 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
   app.post('/admin/users/:userId/credits', async (c) => {
     const userId = c.req.param('userId');
+
     const parsedBody = await parseJsonBodyWithLimit<{
       amount?: number;
       note?: string;
     }>(c, 1024);
+
     if (!parsedBody.ok) return parsedBody.response;
     const input = parsedBody.data;
+
     const request = Schema.decodeUnknownOption(AdminCreditGrantRequestSchema)({
       ...input,
       amount: Number(input?.amount),
     });
+
     if (request._tag === 'None') {
       return errorResponse(
         c,
@@ -229,6 +258,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
           : 'Amount must be a positive safe integer',
       );
     }
+
     const body = request.value;
     const { amount } = body;
 
@@ -237,6 +267,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     }
 
     const clientKey = c.req.header('Idempotency-Key')?.trim();
+
     if (clientKey && clientKey.length > 128) {
       return errorResponse(c, 400, 'Idempotency-Key too long');
     }
@@ -262,11 +293,13 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
   app.get('/admin/users/:userId/credits/ledger', async (c) => {
     const userId = c.req.param('userId');
+
     const { limit } = Schema.decodeUnknownSync(AdminLedgerQuerySchema)({
       limit: c.req.query('limit'),
     });
 
     const items = await listCreditLedger(c.env, userId, { limit, offset: 0 });
+
     return c.json(Schema.decodeUnknownSync(AdminLedgerResponseSchema)(withMeta(c, { items })));
   });
 
@@ -275,6 +308,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   app.get('/admin/users/:userId/usage-events', async (c) => {
     const userId = c.req.param('userId');
     const { limit, offset } = Schema.decodeUnknownSync(AdminPaginationQuerySchema)(c.req.query());
+
     return c.json(
       Schema.decodeUnknownSync(AdminUsageResponseSchema)(
         withMeta(c, await listAdminUsageEvents(c.env.USER_DB, userId, { limit, offset })),

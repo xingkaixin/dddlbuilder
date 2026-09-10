@@ -33,6 +33,7 @@ interface PersistedSyncParams {
 
 const createBaseParams = (overrides: Partial<PersistedSyncParams> = {}): PersistedSyncParams => {
   const currentState = overrides.currentState ?? createState('a');
+
   return {
     hydrated: true,
     enabled: true,
@@ -112,6 +113,7 @@ describe('usePersistedSync', () => {
     const saveState = vi.fn();
     const firstState = createState('first');
     const secondState = createState('second');
+
     const { rerender } = renderHook((params: PersistedSyncParams) => usePersistedSync(params), {
       initialProps: createBaseParams({ currentState: firstState, saveState }),
     });
@@ -132,6 +134,7 @@ describe('usePersistedSync', () => {
   it('编辑器会话变化也会保存', () => {
     const saveState = vi.fn();
     const firstState = createState('users');
+
     const secondState = {
       ...firstState,
       sqlFormatMode: 'aligned' as const,
@@ -176,6 +179,7 @@ describe('usePersistedSync', () => {
   it('离线编辑采用相同的即时保存路径', () => {
     const onlineSpy = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
     const saveState = vi.fn();
+
     const { rerender } = renderHook((params: PersistedSyncParams) => usePersistedSync(params), {
       initialProps: createBaseParams({ currentState: createState('first'), saveState }),
     });
@@ -215,6 +219,7 @@ describe('usePersistedSync', () => {
     const saveState = vi.fn();
     const persistedState = createState('remote');
     let latestState = createState('stale');
+
     const baseParams = createBaseParams({
       persistedState,
       currentState: latestState,
@@ -242,6 +247,7 @@ describe('usePersistedSync', () => {
     const saveState = vi.fn();
     const baseState = createState('users');
     const currentState = createState('users_v2');
+
     const activeSource: WorkspaceSelection = {
       kind: 'saved_table',
       normalizedName: 'users',
@@ -261,6 +267,7 @@ describe('usePersistedSync', () => {
   it('保存表只补齐 UI 默认值时保持 clean', () => {
     const saveState = vi.fn();
     const baseState = createState('users');
+
     const currentState: PersistedState = {
       ...baseState,
       objectType: 'table',
@@ -302,6 +309,7 @@ describe('usePersistedSync', () => {
   it('基线更新后用同一编辑态写入 clean 状态', () => {
     const saveState = vi.fn();
     const currentState = createState('users_v2');
+
     const dirtySource: WorkspaceSelection = {
       kind: 'saved_table',
       normalizedName: 'users',

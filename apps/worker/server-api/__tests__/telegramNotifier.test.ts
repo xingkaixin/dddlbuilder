@@ -32,6 +32,7 @@ const auditPayload = {
 describe('telegram notifier', () => {
   it.each([400, 401, 403, 429])('keeps routine %s rejections out of Telegram', async (status) => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'));
+
     try {
       await dispatchTelegramAuditNotification(
         createEnv({
@@ -50,6 +51,7 @@ describe('telegram notifier', () => {
     'notifies for usage and actionable failures: %j',
     async (outcome) => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'));
+
       try {
         await dispatchTelegramAuditNotification(
           createEnv({

@@ -16,6 +16,7 @@ test.describe('字段模板应用验证 @fields', () => {
     await expect(templateDialog.getByText(/选择模板/i)).toBeVisible();
 
     const auditTemplate = templateDialog.getByRole('button', { name: /审计字段/i });
+
     if ((await auditTemplate.count()) > 0) {
       await auditTemplate.first().click();
 

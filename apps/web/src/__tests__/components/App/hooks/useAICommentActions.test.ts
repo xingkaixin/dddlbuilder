@@ -19,7 +19,9 @@ vi.mock('@/services/aiCommentService', async (importOriginal) => ({
   ...(await importOriginal()),
   requestAIComments: mocks.requestComments,
 }));
+
 vi.mock('@/hooks/useAIRequestAccess', () => ({ useAIRequestAccess: () => mocks }));
+
 vi.mock('@/hooks/useToast', () => ({ useToast: () => ({ showToast: mocks.showToast }) }));
 
 const commentResult: AICommentResult = {
@@ -32,9 +34,11 @@ const commentResult: AICommentResult = {
 
 const renderComments = () => {
   const { wrapper } = createQueryClientWrapper();
+
   return renderHook(
     ({ documentId }) => {
       const editor = useEditorStore();
+
       return useAICommentActions({
         ...editor,
         getCurrentDocumentKey: () =>
@@ -59,12 +63,14 @@ const delayComments = () => {
       resolve = done;
     }),
   );
+
   return (value = commentResult) => resolve(value);
 };
 
 const startComments = async (hook: ReturnType<typeof renderComments>) => {
   act(() => hook.result.current.handleGenerateComments('fill_missing'));
   await waitFor(() => expect(mocks.requestComments).toHaveBeenCalled());
+
   return mocks.requestComments.mock.lastCall?.[1] as AbortSignal;
 };
 

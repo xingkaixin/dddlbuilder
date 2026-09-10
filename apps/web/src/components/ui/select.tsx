@@ -64,6 +64,7 @@ const SearchableSelect = React.forwardRef<
 
     const handleOpenChange = (nextOpen: boolean) => {
       setOpen(nextOpen);
+
       if (!nextOpen) setInputValue('');
     };
 

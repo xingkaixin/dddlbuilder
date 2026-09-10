@@ -131,11 +131,13 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
   );
   const foreignKeyCount = useEditorStore((state) => state.foreignKeys.length);
   const indexes = useEditorStore((state) => state.indexes);
+
   const indexStats = indexes.reduce<IndexStats>(
     (acc, index) => {
       if (index.kind === 'primary') acc.primary += 1;
       else if (index.kind !== 'index') acc.unique += 1;
       else acc.normal += 1;
+
       return acc;
     },
     { primary: 0, unique: 0, normal: 0 },

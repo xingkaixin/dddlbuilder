@@ -35,8 +35,10 @@ export const CreateTableTemplateDialog = memo<CreateTableTemplateDialogProps>(
     const handleConfirm = useCallback(async () => {
       if (!blueprint || !name.trim()) return;
       setSaving(true);
+
       try {
         const result = await onConfirm(name, blueprint, description.trim() || undefined);
+
         if (result.ok) {
           setName('');
           setDescription('');
@@ -90,4 +92,5 @@ export const CreateTableTemplateDialog = memo<CreateTableTemplateDialogProps>(
     );
   },
 );
+
 CreateTableTemplateDialog.displayName = 'CreateTableTemplateDialog';

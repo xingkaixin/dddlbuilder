@@ -19,11 +19,13 @@ const openTestDb = (): Promise<IDBDatabase> =>
       request.result.createObjectStore(MARKER_STORE_NAME, { keyPath: 'id' });
       request.result.createObjectStore(HISTORY_STORE_NAME, { keyPath: 'id' });
     };
+
     request.onsuccess = () => resolve(request.result);
   });
 
 const readRecord = async (storeName: string, id: string) => {
   const db = await openTestDb();
+
   return runIndexedDbRequest<RecordValue | undefined>(db, storeName, 'readonly', (store) =>
     store.get(id),
   );
@@ -48,6 +50,7 @@ describe('fakeIndexedDb', () => {
         transaction.objectStore(MARKER_STORE_NAME).put({ id: 'table', status: 'deleting' });
         transaction.objectStore(HISTORY_STORE_NAME).put({ id: 'history' });
         transaction.objectStore(HISTORY_STORE_NAME).put({ id: 'duplicate' });
+
         return () => undefined;
       },
     );
@@ -62,6 +65,7 @@ describe('fakeIndexedDb', () => {
           transaction.objectStore(MARKER_STORE_NAME).put({ id: 'table', status: 'deleted' });
           transaction.objectStore(HISTORY_STORE_NAME).delete('history');
           transaction.objectStore(HISTORY_STORE_NAME).add({ id: 'duplicate' });
+
           return () => undefined;
         },
       ),

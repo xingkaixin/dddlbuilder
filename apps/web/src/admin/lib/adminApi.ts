@@ -10,12 +10,14 @@ import {
   decodeAdminUsageResponse,
 } from '@ddlbuilder/shared-types/api';
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
+
 export type {
   AdminUserSummary,
   AdminUserDetail,
   CreditLedgerItem,
   AdminUsageEvent as UsageEventItem,
 } from '@ddlbuilder/shared-types/api';
+
 import type {
   AdminUserSummary,
   AdminUserDetail,
@@ -34,12 +36,16 @@ const adminFetch = async <T>(
 ): Promise<T> => {
   const res = await fetch(`/api/admin${path}`, { credentials: 'include', ...options });
   const json: unknown = await res.json().catch(() => null);
+
   if (!res.ok) {
     const error = decodeApiError(json);
     throw new ApiError(error.error ?? `Request failed: ${res.status}`, res.status, error.code);
   }
+
   const decoded = decode(json);
+
   if (decoded._tag === 'None') throw new Error('Invalid admin response');
+
   return decoded.value;
 };
 
@@ -50,7 +56,9 @@ export const adminLogin = async (password: string): Promise<void> => {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ password }),
   });
+
   if (!res.ok) throw new Error('INVALID_PASSWORD');
+
   if (decodeAdminActionResponse(await res.json().catch(() => null))._tag === 'None')
     throw new Error('Invalid admin response');
 };
@@ -72,11 +80,13 @@ export const listUsers = async (limit = 50, offset = 0): Promise<AdminUserSummar
     `/users?limit=${limit}&offset=${offset}`,
     decodeAdminUsersResponse,
   );
+
   return result.users;
 };
 
 export const getUserDetail = async (userId: string): Promise<AdminUserDetail> => {
   const result = await adminFetch(`/users/${userId}`, decodeAdminUserResponse);
+
   return result.user;
 };
 
@@ -111,6 +121,7 @@ export const updateUserEmailVerification = async (
       body: JSON.stringify({ verified }),
     },
   );
+
   return result.emailVerified;
 };
 
@@ -127,6 +138,7 @@ export const grantUserCredits = async (
     },
     body: JSON.stringify({ amount, note }),
   });
+
   return result.newBalance;
 };
 
@@ -138,6 +150,7 @@ export const getUserCreditLedger = async (
     `/users/${userId}/credits/ledger?limit=${limit}`,
     decodeAdminLedgerResponse,
   );
+
   return result.items;
 };
 

@@ -5,6 +5,7 @@ import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 export const useWorkspaceScope = (): WorkspaceScope | null => {
   const { scope, ready } = useWorkspaceScopeState();
+
   return ready ? scope : null;
 };
 

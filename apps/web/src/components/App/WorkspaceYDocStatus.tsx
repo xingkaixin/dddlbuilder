@@ -13,6 +13,7 @@ import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 export function WorkspaceYDocStatus() {
   const { t } = useTranslation();
   const workspaceYDoc = useWorkspaceYDoc();
+
   const status = useMemo(() => {
     if (!workspaceYDoc.localSynced) {
       return {
@@ -22,6 +23,7 @@ export function WorkspaceYDocStatus() {
         iconClassName: 'animate-spin',
       };
     }
+
     if (workspaceYDoc.connectionState === 'connected' && workspaceYDoc.synced) {
       return {
         icon: CheckCircle2,
@@ -30,6 +32,7 @@ export function WorkspaceYDocStatus() {
         iconClassName: '',
       };
     }
+
     if (workspaceYDoc.connectionState === 'connecting') {
       return {
         icon: Loader2,
@@ -38,6 +41,7 @@ export function WorkspaceYDocStatus() {
         iconClassName: 'animate-spin',
       };
     }
+
     if (workspaceYDoc.connectionState === 'offline') {
       return {
         icon: WifiOff,
@@ -46,6 +50,7 @@ export function WorkspaceYDocStatus() {
         iconClassName: '',
       };
     }
+
     if (workspaceYDoc.connectionState === 'idle') {
       return {
         icon: HardDrive,
@@ -54,6 +59,7 @@ export function WorkspaceYDocStatus() {
         iconClassName: '',
       };
     }
+
     if (workspaceYDoc.connectionState === 'error') {
       const label =
         workspaceYDoc.failureReason === 'auth'
@@ -63,6 +69,7 @@ export function WorkspaceYDocStatus() {
             : workspaceYDoc.failureReason === 'network'
               ? t('workspaceYDoc.status.networkFailed')
               : t('workspaceYDoc.status.syncFailed');
+
       return {
         icon: AlertCircle,
         label,
@@ -70,6 +77,7 @@ export function WorkspaceYDocStatus() {
         iconClassName: '',
       };
     }
+
     return {
       icon: HardDrive,
       label: t('workspaceYDoc.status.localSaved'),

@@ -47,6 +47,7 @@ describe('ALTER foreign key dependencies', () => {
     '%s preserves a renamed primary constraint and its foreign key dependencies',
     (dbType) => {
       const before = state(dbType);
+
       const after = {
         ...before,
         indexes: before.indexes.map((index) => ({ ...index, name: 'new_pkey' })),
@@ -84,6 +85,7 @@ describe('ALTER foreign key dependencies', () => {
 
   it('preserves a primary key when its column is renamed', () => {
     const before = { ...state(), foreignKeys: [] };
+
     const after = {
       ...before,
       rows: before.rows.map((row) => (row.id === 'id' ? { ...row, fieldName: 'item_id' } : row)),
@@ -96,12 +98,14 @@ describe('ALTER foreign key dependencies', () => {
 
   it('rebuilds an unchanged MySQL self reference around both column type changes', () => {
     const before = state('mysql');
+
     const after = {
       ...before,
       rows: before.rows.map((row) => ({ ...row, fieldType: 'bigint' })),
     };
     const diff = diffPersistedState(before, after);
     expect(diff.foreignKeys).toEqual([]);
+
     for (const [sql, type] of [
       [generateAlterDDL(diff), 'BIGINT'],
       [generateRollbackDDL(diff), 'INT'],
@@ -116,6 +120,7 @@ describe('ALTER foreign key dependencies', () => {
 
   it('leaves unrelated foreign keys untouched', () => {
     const before = state('mysql');
+
     const after = {
       ...before,
       rows: before.rows.map((row) =>
@@ -129,6 +134,7 @@ describe('ALTER foreign key dependencies', () => {
 
   it('does not duplicate foreign keys whose definitions already changed', () => {
     const before = state('mysql');
+
     const after = {
       ...before,
       rows: before.rows.map((row) => ({ ...row, fieldType: 'bigint' })),
@@ -156,6 +162,7 @@ describe('ALTER foreign key dependencies', () => {
 
   it('rebuilds a self reference when its supporting key must actually be replaced', () => {
     const before = state();
+
     const after = {
       ...before,
       indexes: before.indexes.map((index) => ({
@@ -172,6 +179,7 @@ describe('ALTER foreign key dependencies', () => {
 
   it('does not invent constraints for unavailable external references', () => {
     const before = { ...state(), foreignKeys: [] };
+
     const after = {
       ...before,
       rows: before.rows.map((row) => ({ ...row, fieldType: 'bigint' })),
@@ -250,6 +258,7 @@ describe('ALTER foreign key dependencies', () => {
 
   it('does not mistake a MySQL composite unique key for uniqueness of its prefix', () => {
     const before = state('mysql');
+
     const after = {
       ...before,
       indexes: [

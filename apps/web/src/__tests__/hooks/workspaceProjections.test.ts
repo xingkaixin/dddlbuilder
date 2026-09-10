@@ -23,12 +23,14 @@ const scope = vi.hoisted(() => ({
   workspaceId: 'workspace',
 }));
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({ useWorkspaceYDocDocument: () => workspace }));
+
 vi.mock('@/hooks/useWorkspaceScope', () => ({ useWorkspaceScope: () => scope }));
 
 afterEach(() => vi.restoreAllMocks());
 
 it('updates draft projections without decoding untouched drafts', () => {
   const doc = new Y.Doc();
+
   const record = {
     state: withDefaultEditorSession(createSchemaDocumentState({ tableName: 'users' })),
     createdAt: 1,
@@ -36,6 +38,7 @@ it('updates draft projections without decoding untouched drafts', () => {
   };
   upsertDraftInYDoc(doc, 'first', record);
   upsertDraftInYDoc(doc, 'untouched', record);
+
   const { result, unmount } = renderHook(() =>
     useDraftRecords({
       disabled: false,
@@ -45,6 +48,7 @@ it('updates draft projections without decoding untouched drafts', () => {
     }),
   );
   const untouched = getWorkspaceRoot(doc).drafts.get('untouched');
+
   if (!untouched) throw new Error('Expected a draft');
   const read = vi.spyOn(untouched, 'get');
   act(() =>
@@ -70,6 +74,7 @@ it('updates draft projections without decoding untouched drafts', () => {
 it('updates saved-table summaries through rename, trash, restore and deletion', () => {
   const doc = new Y.Doc();
   workspace.doc = doc;
+
   const record = {
     tableId: 'first',
     normalizedName: 'users',
@@ -84,6 +89,7 @@ it('updates saved-table summaries through rename, trash, restore and deletion', 
   const { result, unmount } = renderHook(() => useSavedTables(), { wrapper });
   const previous = result.current.savedTables.find((table) => table.tableId === 'untouched');
   const untouched = getWorkspaceRoot(doc).savedTables.get('untouched');
+
   if (!untouched) throw new Error('Expected a table');
   const read = vi.spyOn(untouched, 'get');
   act(() =>

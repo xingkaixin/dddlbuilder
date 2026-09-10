@@ -15,6 +15,7 @@ export const stableStringify = (value: unknown): string => {
   }
 
   const record = value as Record<string, unknown>;
+
   return `{${Object.keys(record)
     .filter((key) => record[key] !== undefined)
     .sort()

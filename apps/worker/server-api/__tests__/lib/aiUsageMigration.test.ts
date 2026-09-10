@@ -10,6 +10,7 @@ const applyThrough = (sqlite: DatabaseSync, through: string) => {
   const files = readdirSync(migrationsDirectory)
     .filter((file) => file.endsWith('.sql') && file <= through)
     .sort();
+
   for (const file of files) {
     sqlite.exec(readFileSync(`${migrationsDirectory}/${file}`, 'utf8'));
   }
@@ -18,8 +19,10 @@ const applyThrough = (sqlite: DatabaseSync, through: string) => {
 describe('AI usage accounting migration', () => {
   it('preserves historical charges without inventing attempt counts', () => {
     const sqlite = new DatabaseSync(':memory:');
+
     try {
       applyThrough(sqlite, '0018_unify_timestamp_storage.sql');
+
       const cases = [
         { id: 'succeeded', status: 'succeeded', actual: 60, refund: 40 },
         { id: 'failed', status: 'failed', actual: 150, refund: null },
@@ -47,6 +50,7 @@ describe('AI usage accounting migration', () => {
             actual_total_tokens, status, created_at
           ) VALUES (?, ?, 'explain', ?, 100, ?, ?, 1)`)
           .run(item.id, item.id, `request-${item.id}`, item.actual, item.status);
+
         if (!('reserve' in item) || item.reserve !== false) {
           sqlite
             .prepare(`INSERT INTO credit_ledger (
@@ -55,6 +59,7 @@ describe('AI usage accounting migration', () => {
             ) VALUES (?, ?, 'consume', 'ai_explain', 100, 900, ?, ?, 1)`)
             .run(`reserve-${item.id}`, item.id, `${item.id}:reserve`, item.id);
         }
+
         if (item.refund !== null) {
           sqlite
             .prepare(`INSERT INTO credit_ledger (

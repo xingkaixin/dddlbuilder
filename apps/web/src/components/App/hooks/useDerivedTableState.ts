@@ -157,6 +157,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   );
 
   const hasLoadedTable = Boolean(loadedTableNormalizedName);
+
   const isLoadedDirty =
     hasLoadedTable &&
     normalizedLoadedTableSignature != null &&
@@ -169,6 +170,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   // --- Diff ---
   const tableDiff = useMemo<TableDiff | null>(() => {
     if (!isLoadedDirty || !loadedTableState) return null;
+
     return diffPersistedState(loadedTableState, currentPersistedState);
   }, [isLoadedDirty, loadedTableState, currentPersistedState]);
 

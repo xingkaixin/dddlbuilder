@@ -127,6 +127,7 @@ describe('workspace YDoc codec', () => {
     importWorkspaceSnapshotToYDoc(doc, createSnapshot());
 
     expect(isWorkspaceYDocInitialized(doc)).toBe(true);
+
     const expected = {
       ...createSnapshot(),
       globalDraft: null,

@@ -16,6 +16,7 @@ test.describe('模板管理功能测试 @fields', () => {
 
     // 验证弹出菜单出现
     const popoverText = page.getByText(/将当前行保存为模板/i).or(page.getByText(/管理模板/i));
+
     if ((await popoverText.count()) > 0) {
       await expect(popoverText.first()).toBeVisible();
     }

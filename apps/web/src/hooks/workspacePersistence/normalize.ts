@@ -21,6 +21,7 @@ export const normalizePersistedState = (value: unknown) => decodePersistedState(
 export const isWorkspaceSource = (value: unknown): value is WorkspaceSource => {
   if (!isRecord(value) || typeof value.kind !== 'string') return false;
   if (value.kind === 'draft') return typeof value.draftId === 'string' && value.draftId.length > 0;
+
   return (
     value.kind === 'saved_table' &&
     typeof value.normalizedName === 'string' &&
@@ -31,12 +32,15 @@ export const isWorkspaceSource = (value: unknown): value is WorkspaceSource => {
 
 export const isSameWorkspaceSource = (a: WorkspaceSource, b: WorkspaceSource) => {
   if (a.kind !== b.kind) return false;
+
   if (a.kind === 'draft' && b.kind === 'draft') {
     return a.draftId === b.draftId;
   }
+
   if (a.kind === 'saved_table' && b.kind === 'saved_table') {
     return isSameSavedTable(a, b);
   }
+
   return false;
 };
 
@@ -65,9 +69,11 @@ export const getDraftDisplayName = (state: PersistedState) =>
 export const resolveUniqueDraftName = (baseName: string, takenNames: ReadonlySet<string>) => {
   if (!takenNames.has(baseName)) return baseName;
   let counter = 1;
+
   while (takenNames.has(`${baseName}_${counter}`)) {
     counter++;
   }
+
   return `${baseName}_${counter}`;
 };
 
@@ -92,6 +98,7 @@ export const buildDraftSummary = (
 export const normalizeWorkspaceSession = (value: unknown): WorkspaceSessionRecord | null => {
   if (!isRecord(value)) return null;
   if (!isWorkspaceSource(value.activeSource)) return null;
+
   return {
     activeSource: value.activeSource,
     updatedAt: toNumber(value.updatedAt, Date.now()),

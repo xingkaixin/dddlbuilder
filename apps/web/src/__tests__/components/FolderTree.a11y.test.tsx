@@ -39,6 +39,7 @@ describe('FolderTree a11y', () => {
         onDeleteFolder={vi.fn()}
         renderTables={(folderId, depth = 0) => {
           if (!folderId) return null;
+
           return (
             <div
               data-testid={`folder-table-container:${folderId}`}

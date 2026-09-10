@@ -23,6 +23,7 @@ const execute = (tool: WebMCP.ModelContextTool, input: Record<string, unknown> =
 describe('WebMCP tool catalog', () => {
   it('offers sign-in only to signed-out browser sessions', () => {
     const signedOutNames = createWebMcpTools(createDependencies()).map((tool) => tool.name);
+
     const signedInNames = createWebMcpTools(createDependencies({ authStatus: 'signed_in' })).map(
       (tool) => tool.name,
     );
@@ -50,6 +51,7 @@ describe('WebMCP tool catalog', () => {
       }),
     );
     const inspect = tools.find((tool) => tool.name === 'inspect_active_schema');
+
     if (!inspect) throw new Error('inspect_active_schema is not registered');
 
     await expect(execute(inspect)).resolves.toEqual({

@@ -30,6 +30,7 @@ export function useFieldTemplates() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const templatesQuery = useQuery(fieldTemplateListOptions());
+
   const invalidateTemplates = useCallback(
     () => queryClient.invalidateQueries({ queryKey: templateQueryKeys.fieldRoot }),
     [queryClient],
@@ -102,6 +103,7 @@ export function useFieldTemplates() {
     ): Promise<OperationResult & { template?: FieldTemplate }> => {
       try {
         const template = await createMutation.mutateAsync({ name, fields, description });
+
         return { ok: true, template };
       } catch (error) {
         return failure(error, t('fieldTemplate.toast.createFailed'));
@@ -122,6 +124,7 @@ export function useFieldTemplates() {
           fields,
           description,
         });
+
         return { ok: true, template };
       } catch (error) {
         return failure(error, t('fieldTemplate.toast.createFailed'));
@@ -137,6 +140,7 @@ export function useFieldTemplates() {
     ): Promise<OperationResult> => {
       try {
         const template = await updateMutation.mutateAsync({ id, updates });
+
         return template
           ? { ok: true }
           : { ok: false, reason: 'not_found', message: t('fieldTemplate.toast.notFound') };
@@ -156,6 +160,7 @@ export function useFieldTemplates() {
     async (id: string): Promise<OperationResult> => {
       try {
         await removeMutation.mutateAsync(id);
+
         return { ok: true };
       } catch (error) {
         return failure(error, t('fieldTemplate.toast.deleteFailed'));
@@ -171,6 +176,7 @@ export function useFieldTemplates() {
     ): Promise<OperationResult & { template?: FieldTemplate }> => {
       try {
         const template = await duplicateMutation.mutateAsync({ id, newName });
+
         return template
           ? { ok: true, template }
           : { ok: false, reason: 'not_found', message: t('fieldTemplate.toast.notFound') };

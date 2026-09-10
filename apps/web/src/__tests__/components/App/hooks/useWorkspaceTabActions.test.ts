@@ -46,6 +46,7 @@ const createParams = () => {
     stateSnapshot: createState('Alpha'),
   };
   const draftSummaries: WorkspaceTabActionsParams['draftSummaries'] = [];
+
   const params = {
     tabs: {
       tabs: [existingTab],
@@ -77,6 +78,7 @@ const createParams = () => {
     ),
     deleteDraftById: vi.fn<WorkspaceTabActionsParams['deleteDraftById']>(),
   } satisfies WorkspaceTabActionsParams;
+
   return { ...params, existingTab };
 };
 

@@ -55,6 +55,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
   protected generatePrimaryKeyDDL(tableName: string, index: IndexDefinition): string {
     const fieldList = index.fields.map((f) => this.formatFieldName(f.name)).join(', ');
     const maxLength = getIdentifierNameMaxLength(this.getDatabaseType());
+
     const constraintName = truncateIdentifierName(
       index.name.trim() || buildPrimaryKeyName(tableName, maxLength),
       maxLength,
@@ -77,8 +78,10 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     if (index.kind === 'primary') {
       return this.generatePrimaryKeyDDL(tableName, index);
     }
+
     if (index.kind === 'unique_constraint') {
       const fields = index.fields.map((field) => this.formatFieldName(field.name)).join(', ');
+
       return `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${this.formatFieldName(index.name)} UNIQUE (${fields});`;
     }
 
@@ -121,6 +124,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     return columns.map((column) => {
       const name = column.name.padEnd(maxNameWidth);
       const body = column.comment ? column.body.padEnd(maxBodyWidth) : column.body;
+
       return `  ${name}  ${body}${column.comment ? `  ${column.comment}` : ''}`;
     });
   }

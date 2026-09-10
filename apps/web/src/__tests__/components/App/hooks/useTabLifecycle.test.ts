@@ -33,6 +33,7 @@ describe('useTabLifecycle', () => {
     const staleState = createState('stale');
     const remoteState = createState('remote');
     const store = useTabStore.getState();
+
     const staleTabId = store.addTab({
       title: 'Draft A',
       source: { kind: 'draft', draftId: 'draft-a' },
@@ -44,6 +45,7 @@ describe('useTabLifecycle', () => {
       stateSnapshot: createState('active'),
     });
     const selectWorkspaceSnapshot = vi.fn();
+
     const resolveWorkspaceSnapshot = vi.fn(() => ({
       source: { kind: 'draft' as const, draftId: 'draft-a' },
       state: remoteState,
@@ -75,6 +77,7 @@ describe('useTabLifecycle', () => {
 
   it('离开加载中的标签时不持久化占位快照', () => {
     const store = useTabStore.getState();
+
     const targetTabId = store.addTab({
       title: 'Target',
       source: { kind: 'draft', draftId: 'target' },
@@ -119,6 +122,7 @@ describe('useTabLifecycle', () => {
       stateSnapshot: initialState,
     });
     const saveState = vi.fn();
+
     const stableParams = {
       enabled: true,
       activeTableName: 'initial',
@@ -130,6 +134,7 @@ describe('useTabLifecycle', () => {
 
     let currentState = initialState;
     const getCurrentState = () => currentState;
+
     const { result, rerender } = renderHook(() =>
       useTabLifecycle({ ...stableParams, getCurrentState }),
     );
@@ -148,6 +153,7 @@ describe('useTabLifecycle', () => {
 
   it('外部替换编辑器状态时只同步当前草稿标题', () => {
     const store = useTabStore.getState();
+
     const backgroundId = store.addTab({
       title: 'Background',
       source: { kind: 'draft', draftId: 'background' },
@@ -182,6 +188,7 @@ describe('useTabLifecycle', () => {
 
   it('空草稿保持未命名标题', () => {
     const emptyState = createState('');
+
     const tabId = useTabStore.getState().addTab({
       title: '未命名草稿',
       source: { kind: 'draft', draftId: 'empty' },
@@ -205,6 +212,7 @@ describe('useTabLifecycle', () => {
 
   it('切换草稿时等待编辑器状态匹配目标快照再同步标题', () => {
     const store = useTabStore.getState();
+
     const previousId = store.addTab({
       title: 'Previous',
       source: { kind: 'draft', draftId: 'previous' },
@@ -216,6 +224,7 @@ describe('useTabLifecycle', () => {
       stateSnapshot: createState('next_table'),
     });
     store.activateTab(previousId);
+
     const stableParams = {
       enabled: true,
       getCurrentState: () => createState('previous_table'),
@@ -241,6 +250,7 @@ describe('useTabLifecycle', () => {
 
   it('仅编辑器会话变化时也更新标签快照', () => {
     const initialState = createState('users');
+
     const latestState = {
       ...initialState,
       sqlFormatMode: 'aligned' as const,
@@ -253,6 +263,7 @@ describe('useTabLifecycle', () => {
       stateSnapshot: initialState,
     });
     const saveState = vi.fn();
+
     const { result } = renderHook(() =>
       useTabLifecycle({
         enabled: true,
@@ -277,6 +288,7 @@ describe('useTabLifecycle', () => {
   it('删除当前保存表时加载相邻标签并同步工作区选择', () => {
     const draftState = createState('Draft');
     const savedState = createState('Saved');
+
     const savedSource = {
       kind: 'saved_table' as const,
       normalizedName: 'saved',
@@ -284,6 +296,7 @@ describe('useTabLifecycle', () => {
       baseSignature: JSON.stringify(savedState),
     };
     const store = useTabStore.getState();
+
     const draftTabId = store.addTab({
       title: 'Draft',
       source: { kind: 'draft', draftId: 'draft-a' },
@@ -318,6 +331,7 @@ describe('useTabLifecycle', () => {
 
   it('关闭最后一个标签时清理工作区选择', () => {
     const savedState = createState('Saved');
+
     const savedSource = {
       kind: 'saved_table' as const,
       normalizedName: 'saved',

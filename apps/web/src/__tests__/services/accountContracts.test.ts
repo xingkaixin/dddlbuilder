@@ -10,6 +10,7 @@ import {
 } from '@/admin/lib/adminApi';
 
 afterEach(() => vi.restoreAllMocks());
+
 const reply = (data: unknown, status = 200) =>
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json(data, { status }));
 

@@ -63,6 +63,7 @@ const createHook = (
       }),
     { initialProps: { state: currentState, review: reviewResult } },
   );
+
   return { hook, actions };
 };
 
@@ -78,6 +79,7 @@ describe('useSchemaApplyActions', () => {
   it('导入当前表时保留已有字段身份', () => {
     const state = createState({ tableName: 'users', rows: [createRow('id', 'INT')] });
     const { hook, actions } = createHook(state);
+
     const parsed: ParsedResult = {
       tableName: 'users',
       tableComment: '',
@@ -104,6 +106,7 @@ describe('useSchemaApplyActions', () => {
 
   it('导入 SQL 时一次替换完整文档并补齐默认配置', () => {
     const { hook, actions } = createHook();
+
     const result: ParsedResult = {
       tableName: 'COO_SC_RAT',
       tableComment: '证券公司评级1',
@@ -141,6 +144,7 @@ describe('useSchemaApplyActions', () => {
 
   it('添加字段建议时一次替换文档并保留其他状态', () => {
     const state = createState({ tableName: 'users' });
+
     const { hook, actions } = createHook(state, {
       suggestions: [{ id: 's1', type: 'add_field', description: 'Add field' }],
     } as never);

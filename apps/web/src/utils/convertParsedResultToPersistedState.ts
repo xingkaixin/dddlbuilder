@@ -48,6 +48,7 @@ export function convertParsedResultToPersistedState(
   }));
 
   const minRows = 12;
+
   if (newRows.length < minRows) {
     for (let i = newRows.length; i < minRows; i += 1) {
       newRows.push(createEmptyRow());

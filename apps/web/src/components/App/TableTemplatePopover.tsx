@@ -25,6 +25,7 @@ interface TableTemplatePopoverProps {
 
 function matchesTemplate(template: TableTemplate, query: string): boolean {
   if (!query) return true;
+
   return (
     template.name.toLowerCase().includes(query) ||
     template.description?.toLowerCase().includes(query) === true ||
@@ -70,6 +71,7 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
 
     const handleOpenChange = useCallback((nextOpen: boolean) => {
       setOpen(nextOpen);
+
       if (!nextOpen) setSearchQuery('');
     }, []);
 
@@ -186,4 +188,5 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
     );
   },
 );
+
 TableTemplatePopover.displayName = 'TableTemplatePopover';

@@ -8,6 +8,7 @@ const requestRateLimitMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../lib/requestRateLimit.js', () => requestRateLimitMocks);
+
 vi.mock('../lib/auth.js', () => ({ revokeUserSessions: requestRateLimitMocks.revokeUserSessions }));
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
@@ -48,10 +49,13 @@ const createAdminApp = async () => {
     if (error instanceof DomainError) {
       return errorResponse(c, error.status, error.message, error.code);
     }
+
     console.error('[api] unhandled error', error);
+
     return errorResponse(c, 503, 'Service unavailable', 'SERVICE_UNAVAILABLE');
   });
   registerAdminRoutes(app);
+
   return app;
 };
 
@@ -77,6 +81,7 @@ describe('/api/admin/*', () => {
     const prepare = vi.fn();
     const app = await createAdminApp();
     const path = action === 'session' ? '/api/admin/session' : `/api/admin/users/user-1/${action}`;
+
     const response = await app.fetch(
       createRequest(path, {
         method: 'POST',
@@ -98,6 +103,7 @@ describe('/api/admin/*', () => {
     }));
     const fetchSocket = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const waitUntil = vi.fn();
+
     const env = createEnv({
       USER_DB: mockD1Results([{ id: 'workspace-1' }]) as unknown as D1Database,
       WORKSPACE_YDOC: {
@@ -106,6 +112,7 @@ describe('/api/admin/*', () => {
       } as unknown as DurableObjectNamespace,
     });
     const app = await createAdminApp();
+
     const response = await app.fetch(
       createRequest(`/api/admin/users/user-1/${action}`, {
         method: 'POST',
@@ -129,6 +136,7 @@ describe('/api/admin/*', () => {
     }));
     requestRateLimitMocks.revokeUserSessions.mockRejectedValue(new Error('kick failed'));
     const app = await createAdminApp();
+
     const response = await app.fetch(
       createRequest(`/api/admin/users/user-1/${action}`, {
         method: 'POST',
@@ -166,6 +174,7 @@ describe('/api/admin/*', () => {
         ),
       );
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           method: 'POST',
@@ -192,6 +201,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           method: 'POST',
@@ -214,6 +224,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           method: 'POST',
@@ -238,6 +249,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           method: 'POST',
@@ -262,6 +274,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           method: 'POST',
@@ -292,6 +305,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/session', { method: 'DELETE' }),
         createEnv(),
@@ -312,6 +326,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -366,6 +381,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -426,6 +442,7 @@ describe('/api/admin/*', () => {
 
       const d1Mock = mockD1Results([]);
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users?limit=10&offset=20', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -466,6 +483,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -509,6 +527,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/nonexistent', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -534,6 +553,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/reset-password', { method: 'POST' }),
         createEnv(),
@@ -554,6 +574,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/nonexistent/reset-password', {
           method: 'POST',
@@ -580,6 +601,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/reset-password', {
           method: 'POST',
@@ -616,6 +638,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/reset-password', {
           method: 'POST',
@@ -649,6 +672,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/reset-password', {
           method: 'POST',
@@ -678,6 +702,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/disable', { method: 'POST' }),
         createEnv(),
@@ -698,6 +723,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/nonexistent/disable', {
           method: 'POST',
@@ -725,6 +751,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/disable', {
           method: 'POST',
@@ -751,6 +778,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/disable', {
           method: 'POST',
@@ -778,6 +806,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/enable', { method: 'POST' }),
         createEnv(),
@@ -799,6 +828,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/enable', {
           method: 'POST',
@@ -822,6 +852,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/email-verification', { method: 'POST' }),
         createEnv(),
@@ -842,6 +873,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/email-verification', {
           method: 'POST',
@@ -868,6 +900,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/email-verification', {
           method: 'POST',
@@ -895,6 +928,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/email-verification', {
           method: 'POST',
@@ -923,6 +957,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/email-verification', {
           method: 'POST',
@@ -952,6 +987,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', { method: 'POST' }),
         createEnv(),
@@ -972,6 +1008,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', {
           method: 'POST',
@@ -998,6 +1035,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', {
           method: 'POST',
@@ -1024,6 +1062,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       for (const amount of [1.5, Number.MAX_SAFE_INTEGER + 1]) {
         const response = await app.fetch(
           createRequest('/api/admin/users/user-1/credits', {
@@ -1052,6 +1091,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/nonexistent/credits', {
           method: 'POST',
@@ -1085,6 +1125,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', {
           method: 'POST',
@@ -1122,6 +1163,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', {
           method: 'POST',
@@ -1158,6 +1200,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', {
           method: 'POST',
@@ -1188,6 +1231,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits/ledger'),
         createEnv(),
@@ -1225,6 +1269,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits/ledger', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -1256,6 +1301,7 @@ describe('/api/admin/*', () => {
       }));
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/usage-events'),
         createEnv(),
@@ -1278,6 +1324,7 @@ describe('/api/admin/*', () => {
       const d1Mock = {
         prepare: vi.fn().mockImplementation((sql: string) => {
           const isCount = sql.includes('COUNT(*)');
+
           return {
             bind: vi.fn().mockReturnValue({
               first: vi.fn().mockResolvedValue(isCount ? { total: 42 } : null),
@@ -1304,6 +1351,7 @@ describe('/api/admin/*', () => {
       };
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/usage-events?limit=10&offset=5', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -1334,6 +1382,7 @@ describe('/api/admin/*', () => {
       const d1Mock = {
         prepare: vi.fn().mockImplementation((sql: string) => {
           const isCount = sql.includes('COUNT(*)');
+
           return {
             bind: vi.fn().mockReturnValue({
               first: vi.fn().mockResolvedValue(isCount ? { total: 1 } : null),
@@ -1360,6 +1409,7 @@ describe('/api/admin/*', () => {
       };
 
       const app = await createAdminApp();
+
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/usage-events', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },

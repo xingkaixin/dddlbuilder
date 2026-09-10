@@ -11,6 +11,7 @@ describe('useWorkspaceStorageTarget', () => {
 
   it('显式表示用户工作区仍在加载', () => {
     const scope = { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' } as const;
+
     const { result } = renderHook(() =>
       useWorkspaceStorageTarget({ scope, yDoc: null, runInYDoc: vi.fn() }),
     );
@@ -22,6 +23,7 @@ describe('useWorkspaceStorageTarget', () => {
   it('匿名工作区选择本地分区', () => {
     const scope = { kind: 'anonymous' } as const;
     const runInYDoc = vi.fn();
+
     const { result } = renderHook(() =>
       useWorkspaceStorageTarget({ scope, yDoc: null, runInYDoc }),
     );
@@ -34,12 +36,15 @@ describe('useWorkspaceStorageTarget', () => {
     const scope = { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' } as const;
     const doc = {} as Y.Doc;
     const transactionSpy = vi.fn();
+
     const runInYDoc = <T>(mutate: (currentDoc: Y.Doc) => T): T => {
       transactionSpy();
+
       return mutate(doc);
     };
     const { result } = renderHook(() => useWorkspaceStorageTarget({ scope, yDoc: doc, runInYDoc }));
     const target = requireReadyWorkspaceStorage(result.current);
+
     if (target.kind !== 'ydoc') throw new Error('Y.Doc target missing');
 
     const outcome = target.transact((currentDoc) => (currentDoc === doc ? 'written' : 'invalid'));

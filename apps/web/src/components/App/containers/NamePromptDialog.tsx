@@ -57,6 +57,7 @@ export function NamePromptDialog({
       const timer = window.setTimeout(() => {
         errorRef.current?.focus();
       }, 0);
+
       return () => window.clearTimeout(timer);
     }
   }, [open, error]);

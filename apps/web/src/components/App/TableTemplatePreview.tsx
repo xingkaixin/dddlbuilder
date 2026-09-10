@@ -9,6 +9,7 @@ interface TableTemplatePreviewProps {
 
 export function TableTemplatePreview({ blueprint }: TableTemplatePreviewProps) {
   const { t } = useTranslation();
+
   const tableConfigCount = [
     blueprint.tableMiscConfig?.enabled,
     blueprint.mysqlPartitionConfig?.enabled,

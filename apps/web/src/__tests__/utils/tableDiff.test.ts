@@ -340,6 +340,7 @@ describe('diffPersistedState', () => {
 
     it('检测新增索引', () => {
       const old = createState({ indexes: [] });
+
       const newState = createState({
         indexes: [createIndex({ name: 'idx_id' })],
       });

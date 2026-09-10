@@ -20,6 +20,7 @@ function createTable(
   } = {},
 ): PersistedState {
   const fieldName = options.fieldName ?? 'id';
+
   return createPersistedState({
     tableName,
     dbType: 'mysql',
@@ -76,6 +77,7 @@ describe('tableRelationship', () => {
     const intent = defaultRelationshipIntent(draft, 'user_id', 'id');
     const result = planTableRelationship(draft, intent);
     expect(result.ok).toBe(true);
+
     if (!result.ok) return;
     expect(getForeignKeyIssue(result.plan.foreignKey, 'oracle')).toBeNull();
   });
@@ -117,6 +119,7 @@ describe('tableRelationship', () => {
     const result = planTableRelationship(createDraft(), createIntent());
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) return;
 
     expect(result.plan.foreignKey).toMatchObject({
@@ -141,6 +144,7 @@ describe('tableRelationship', () => {
     );
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) return;
 
     expect(result.plan.addedIndex).toMatchObject({
@@ -164,6 +168,7 @@ describe('tableRelationship', () => {
     const result = planTableRelationship(draft, createIntent());
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) return;
     expect(result.plan.addedIndex).toBeUndefined();
     expect(result.plan.sourceState.indexes).toHaveLength(1);
@@ -192,6 +197,7 @@ describe('tableRelationship', () => {
     const result = planTableRelationship(draft, createIntent({ cardinality: 'one-to-one' }));
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) return;
     expect(result.plan.addedIndex?.name).toBe('uk_orders_user_id_2');
   });
@@ -262,12 +268,14 @@ describe('tableRelationship', () => {
     const draft = createDraft();
     const targetField = draft.target.rows[0];
     expect(targetField).toBeDefined();
+
     if (!targetField) return;
     draft.target.rows[0] = { ...targetField, fieldType: 'VARCHAR(36)' };
 
     const result = planTableRelationship(draft, createIntent());
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) return;
     expect(result.plan.warnings).toEqual(['field-type-mismatch']);
   });
@@ -291,6 +299,7 @@ describe('tableRelationship', () => {
     );
 
     expect(result.ok).toBe(true);
+
     if (!result.ok) return;
     expect(result.plan.foreignKey.refTable).toBe('employees');
   });
@@ -300,6 +309,7 @@ it('preserves physical columns and indexes when documenting a logical relationsh
   const source = createTable('orders', { fieldName: 'user_id', nullable: true });
   const target = createTable('users');
   const intent = defaultRelationshipIntent({ source, target }, 'user_id', 'id');
+
   const result = planTableRelationship(
     { source, target },
     {
@@ -312,6 +322,7 @@ it('preserves physical columns and indexes when documenting a logical relationsh
     },
   );
   expect(result.ok).toBe(true);
+
   if (!result.ok) return;
   expect(result.plan.sourceState.rows).toEqual(source.rows);
   expect(result.plan.sourceState.indexes).toEqual(source.indexes);

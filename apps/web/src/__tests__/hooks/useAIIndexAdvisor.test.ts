@@ -84,6 +84,7 @@ describe('useAIIndexAdvisor', () => {
         }),
       );
       const { wrapper } = createQueryClientWrapper();
+
       const { result, rerender } = renderHook(({ key }) => useAIIndexAdvisor(key), {
         wrapper,
         initialProps: { key: 'workspace-1:users-draft' },
@@ -112,6 +113,7 @@ describe('useAIIndexAdvisor', () => {
   it('discards completed advice when leaving and returning to a document', async () => {
     serviceMocks.requestAIIndexAdvice.mockResolvedValueOnce(response('users advice'));
     const { wrapper } = createQueryClientWrapper();
+
     const { result, rerender } = renderHook(({ key }) => useAIIndexAdvisor(key), {
       wrapper,
       initialProps: { key: 'workspace-1:users-draft' },

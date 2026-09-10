@@ -118,6 +118,7 @@ describe('workspacePersistence/hydration', () => {
 
   it('会话指向已保存表时应优先未保存草稿状态', () => {
     const draftState = createState('users_dirty');
+
     const result = resolveWorkspaceHydration({
       drafts: [],
       session: createSession({ kind: 'saved_table', normalizedName: 'users' }),

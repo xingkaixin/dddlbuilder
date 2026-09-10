@@ -35,6 +35,7 @@ interface FolderDialogProps {
 export const FolderDialog = memo<FolderDialogProps>(
   ({ open, onOpenChange, mode, parentFolder, targetFolder, onConfirm }) => {
     const { t } = useTranslation();
+
     const [name, setName] = useState(() =>
       mode === 'rename' && targetFolder ? targetFolder.name : '',
     );
@@ -43,11 +44,15 @@ export const FolderDialog = memo<FolderDialogProps>(
 
     const handleConfirm = useCallback(async () => {
       const trimmed = name.trim();
+
       if (!trimmed) {
         setError(t('savedTables.folderDialog.nameRequired'));
+
         return;
       }
+
       setLoading(true);
+
       try {
         await onConfirm(trimmed);
         onOpenChange(false);
@@ -116,6 +121,7 @@ export const FolderDialog = memo<FolderDialogProps>(
     );
   },
 );
+
 FolderDialog.displayName = 'FolderDialog';
 
 interface DeleteFolderDialogProps {
@@ -133,6 +139,7 @@ export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
 
     const handleConfirm = useCallback(async () => {
       setLoading(true);
+
       try {
         await onConfirm();
         onOpenChange(false);
@@ -200,4 +207,5 @@ export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
     );
   },
 );
+
 DeleteFolderDialog.displayName = 'DeleteFolderDialog';

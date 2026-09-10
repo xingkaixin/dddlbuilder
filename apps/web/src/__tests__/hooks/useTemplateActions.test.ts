@@ -9,12 +9,14 @@ import { createEmptyRow } from '@/utils/helpers';
 function renderTemplateActions(initialRows: FieldRow[]) {
   return renderHook(() => {
     const [rows, setRows] = useState(initialRows);
+
     const actions = useTemplateActions({
       rows,
       setRows,
       createTemplateFromFields: vi.fn(),
       showToast: vi.fn(),
     });
+
     return { rows, ...actions };
   });
 }

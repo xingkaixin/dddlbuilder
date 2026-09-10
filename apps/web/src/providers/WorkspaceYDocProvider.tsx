@@ -79,7 +79,9 @@ type WorkspaceYDocDocument = Pick<
   WorkspaceYDocContextValue,
   'doc' | 'scope' | 'localSynced' | 'retry'
 >;
+
 type WorkspaceYDocStatus = Omit<WorkspaceYDocContextValue, keyof WorkspaceYDocDocument>;
+
 const WorkspaceYDocDocumentContext = createContext<WorkspaceYDocDocument>({
   doc: null,
   scope: null,
@@ -99,6 +101,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   const clientRef = useRef<WorkspaceYDocSyncClient | null>(null);
   const persistenceRef = useRef<IndexeddbPersistence | null>(null);
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
+
   const [cleanupResult, setCleanupResult] = useState<{
     attempt: number;
     status: 'ready' | 'error';
@@ -113,14 +116,17 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       },
       (error: unknown) => {
         console.error('[workspace] pending cleanup failed', error);
+
         if (!cancelled) setCleanupResult({ attempt: bootstrapAttempt, status: 'error' });
       },
     );
+
     return () => {
       cancelled = true;
     };
   }, [bootstrapAttempt]);
   const [timedOutAttempt, setTimedOutAttempt] = useState<number | null>(null);
+
   const retry = useCallback(() => {
     const client = clientRef.current;
     void refreshSession()
@@ -152,6 +158,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!cleanupReady) return;
+
     if (!workspaceUserId || !workspaceId) {
       // oxlint-disable-next-line react/set-state-in-effect
       setValue({
@@ -162,11 +169,13 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
         remoteLoaded: false,
         connectionState: 'idle',
       });
+
       return;
     }
 
     let cancelled = false;
     const scope: UserWorkspaceScope = { kind: 'user', userId: workspaceUserId, workspaceId };
+
     try {
       rememberWorkspaceCache(scope);
     } catch (error) {
@@ -179,12 +188,15 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
         connectionState: 'error',
         failureReason: 'unknown',
       }));
+
       return;
     }
+
     const doc = new Y.Doc();
     const persistence = new IndexeddbPersistence(buildWorkspaceYDocName(workspaceId), doc);
     persistenceRef.current = persistence;
     let disposal: Promise<void> | null = null;
+
     const dispose = (connectionState: 'idle' | 'error' = 'error') => {
       if (disposal) return disposal;
       cancelled = true;
@@ -206,14 +218,17 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
           : previous,
       );
       disposal = persistence.destroy().finally(unregister);
+
       return disposal;
     };
     const unregister = registerWorkspaceYDocOwner(workspaceId, {
       dispose,
       prepareSignOut: async () => {
         const client = clientRef.current;
+
         if (!client || cancelled) throw new Error('Workspace is not ready');
         await fetchUpdates(persistence);
+
         if (cancelled || clientRef.current !== client) throw new Error('Workspace changed');
         await client.flushAndWaitForSync();
       },
@@ -231,8 +246,10 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
 
     const initialize = async () => {
       await persistence.whenSynced;
+
       if (cancelled) return;
       initializeOrMigrateWorkspaceYDoc(doc);
+
       if (persistence.db)
         persistence.db.onversionchange = () => {
           void dispose().catch(console.error);
@@ -241,13 +258,19 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       try {
         const token = beginLegacyWorkspaceMigration(scope);
         const committed = await persistence.get(LEGACY_MIGRATION_COMMITTED);
+
         if (!committed && !hasCompletedLegacyMigration(workspaceUserId, workspaceId)) {
           const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
+
           if (cancelled) return;
+
           if (snapshot) mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
         }
+
         if (cancelled) return;
+
         if (!committed) await commitLegacyWorkspaceYDoc(persistence, doc);
+
         if (cancelled) return;
         await clearLegacyWorkspaceData(scope);
         completeLegacyWorkspaceMigration(scope, token);
@@ -257,12 +280,14 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       }
 
       const remoteLoaded = (await persistence.get(REMOTE_LOADED)) === 1;
+
       if (cancelled) return;
       setValue((prev) => ({ ...prev, doc, localSynced: true, remoteLoaded }));
     };
 
     void initialize().catch((error) => {
       console.error('[workspace-yjs] initialize failed', error);
+
       if (!cancelled) {
         setValue((prev) => ({ ...prev, connectionState: 'error', failureReason: 'unknown' }));
       }
@@ -282,11 +307,13 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!doc || !localSynced || !value.scope || !value.remoteLoaded) return;
+
     return watchWorkspaceHistory(doc, value.scope);
   }, [doc, localSynced, value.scope, value.remoteLoaded]);
 
   useEffect(() => {
     if (!doc || !localSynced || !workspaceId) return;
+
     if (!canSync) {
       // oxlint-disable-next-line react/set-state-in-effect
       setValue((prev) => ({
@@ -295,11 +322,14 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
         connectionState: 'idle',
         failureReason: undefined,
       }));
+
       return;
     }
+
     let cancelled = false;
     let rememberedRemote = false;
     const persistence = persistenceRef.current;
+
     const client = new WorkspaceYDocSyncClient(workspaceId, doc, (status) => {
       if (cancelled) return;
       setValue((prev) => {
@@ -309,6 +339,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
           prev.synced === status.synced
         )
           return prev;
+
         return {
           ...prev,
           connectionState: status.state,
@@ -317,6 +348,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
           remoteLoaded: prev.remoteLoaded || status.synced,
         };
       });
+
       if (status.synced && !rememberedRemote) {
         rememberedRemote = true;
         void persistence?.set(REMOTE_LOADED, 1).catch((error: unknown) => {
@@ -326,9 +358,11 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     });
     clientRef.current = client;
     void client.connect();
+
     return () => {
       cancelled = true;
       client.destroy();
+
       if (clientRef.current === client) clientRef.current = null;
     };
   }, [canSync, doc, localSynced, workspaceId]);
@@ -359,10 +393,12 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!blocked) return;
+
     const timer = setTimeout(
       () => setTimedOutAttempt(bootstrapAttempt),
       WORKSPACE_BOOTSTRAP_TIMEOUT_MS,
     );
+
     return () => clearTimeout(timer);
   }, [blocked, bootstrapAttempt]);
 

@@ -10,6 +10,7 @@ describe('tabUtils', () => {
   describe('getAvailableTabs', () => {
     it('should always include base tabs', () => {
       const baseTabs = ['fields', 'indexes', 'auth', 'misc'];
+
       for (const tab of baseTabs) {
         expect(getAvailableTabs(tableContext('mysql'))).toContain(tab);
         expect(getAvailableTabs(tableContext('postgresql'))).toContain(tab);
@@ -33,6 +34,7 @@ describe('tabUtils', () => {
       ] as const) {
         expect(getAvailableTabs(tableContext(databaseType))).toContain('partition');
       }
+
       expect(getAvailableTabs(tableContext('postgresql'))).not.toContain('partition');
       expect(getAvailableTabs(tableContext('oracle'))).not.toContain('partition');
     });

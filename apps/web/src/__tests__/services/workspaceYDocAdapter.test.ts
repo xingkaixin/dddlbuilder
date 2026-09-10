@@ -101,6 +101,7 @@ const collaborativeState = (state: PersistedState): PersistedState =>
 const getFirstFieldId = (doc: Y.Doc) => {
   const tableDoc = doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID);
   const fieldOrder = tableDoc?.get('fieldOrder');
+
   return fieldOrder instanceof Y.Array ? fieldOrder.get(0) : null;
 };
 
@@ -112,6 +113,7 @@ const createSyncedDocs = () => {
   const right = new Y.Doc();
   Y.applyUpdate(left, seedUpdate);
   Y.applyUpdate(right, seedUpdate);
+
   return { left, right };
 };
 
@@ -128,6 +130,7 @@ const createSnapshotOnlySyncedDocs = () => {
   const right = new Y.Doc();
   Y.applyUpdate(left, seedUpdate);
   Y.applyUpdate(right, seedUpdate);
+
   return { left, right };
 };
 
@@ -144,6 +147,7 @@ describe('workspaceYDocAdapter', () => {
   it('subscribes only to requested collections and reports changed entity ids', () => {
     const doc = new Y.Doc();
     const changes: Array<{ collection: string; entityIds: ReadonlySet<string> }> = [];
+
     const unsubscribe = subscribeWorkspaceYDoc(doc, (change) => changes.push(change), [
       'savedTables',
     ]);
@@ -372,6 +376,7 @@ describe('workspaceYDocAdapter', () => {
 
   it('reads full state snapshots instead of reconstructed field maps', () => {
     const doc = new Y.Doc();
+
     const state = createState({
       schemaName: 'tenant_1',
       tableName: 'orders',
@@ -623,6 +628,7 @@ describe('workspaceYDocAdapter', () => {
     });
 
     for (const update of leftUpdates) Y.applyUpdate(right, update);
+
     for (const update of rightUpdates) Y.applyUpdate(left, update);
 
     const leftState = getDraftRecordFromYDoc(left, DEFAULT_DRAFT_ID)?.state;
@@ -645,6 +651,7 @@ describe('workspaceYDocAdapter', () => {
       state: createState({ tableName: 'users_v1' }),
       updatedAt: 1,
     });
+
     for (const update of leftUpdates.splice(0)) Y.applyUpdate(right, update);
 
     upsertDraftInYDoc(right, DEFAULT_DRAFT_ID, {
@@ -661,6 +668,7 @@ describe('workspaceYDocAdapter', () => {
       createdAt: 3,
       updatedAt: 3,
     });
+
     for (const update of rightUpdates.splice(0)) Y.applyUpdate(left, update);
 
     upsertFolderInYDoc(left, {
@@ -672,6 +680,7 @@ describe('workspaceYDocAdapter', () => {
       updatedAt: 3,
     });
     deleteDraftFromYDoc(left, DEFAULT_DRAFT_ID);
+
     for (const update of leftUpdates.splice(0)) Y.applyUpdate(right, update);
 
     expect(getDraftRecordFromYDoc(left, DEFAULT_DRAFT_ID)).toBeNull();

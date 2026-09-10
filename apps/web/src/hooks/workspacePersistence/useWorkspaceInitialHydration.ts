@@ -68,6 +68,7 @@ export function useWorkspaceInitialHydration({
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [attempt, setAttempt] = useState(0);
   const setHydrated = useCallback((ready: boolean) => setStatus(ready ? 'ready' : 'loading'), []);
+
   const failHydration = useCallback((error: unknown) => {
     console.error('[workspace] local hydration failed', error);
     setStatus('error');
@@ -91,14 +92,17 @@ export function useWorkspaceInitialHydration({
     };
     const loadTrashedDrafts = async () => {
       const trashed = await listTrashedDrafts(currentScope);
+
       if (!cancelled) replaceTrashedDrafts(trashed);
     };
     const hydrateYDocWorkspace = async () => {
       if (!yDoc) return false;
       replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc));
+
       if (cancelled) return true;
 
       const { session } = await getWorkspaceBootstrap(currentScope);
+
       if (cancelled) return true;
       const drafts = listDraftRecordsFromYDoc(yDoc);
       applyHydration(
@@ -108,27 +112,34 @@ export function useWorkspaceInitialHydration({
           findSavedTable: (target) => {
             try {
               const savedTable = getSavedTableFromYDoc(yDoc, target);
+
               if (!savedTable || savedTable.trashedAt != null) return null;
+
               return toHydrationSavedTable(savedTable, getSavedDraftFromYDoc(yDoc, savedTable));
             } catch (error) {
               reportError(error, { scope: 'workspaceHydration', action: 'resolveSavedTable' });
+
               return null;
             }
           },
         }),
       );
+
       return true;
     };
     const hydrateMainWorkspace = async () => {
       if (await hydrateYDocWorkspace()) return;
       const bootstrap = await getWorkspaceBootstrap(currentScope);
+
       if (cancelled) return;
       const savedDrafts = await listSavedDrafts(currentScope);
+
       if (cancelled) return;
       replaceSavedTableDrafts(new Map(Object.entries(savedDrafts)));
       const drafts = collectBootstrapDrafts(bootstrap);
       replaceDrafts(drafts);
       await loadTrashedDrafts();
+
       if (cancelled) return;
       applyHydration(
         resolveWorkspaceHydration({
@@ -146,6 +157,7 @@ export function useWorkspaceInitialHydration({
     if (pathInvalid) {
       toast(i18n.t('app.shareLoadFailed'));
       leaveShareRoute();
+
       return () => {
         cancelled = true;
       };
@@ -157,15 +169,18 @@ export function useWorkspaceInitialHydration({
           cancelled = true;
         };
       }
+
       void hydrateMainWorkspace().catch((error: unknown) => {
         if (!cancelled) failHydration(error);
       });
+
       return () => {
         cancelled = true;
       };
     }
 
     const cachedShareState = normalizePersistedState(readStorageJson<unknown>(shareStorageKey));
+
     if (cachedShareState) hydrateWithState(cachedShareState);
 
     if (shareQuery.isSuccess) {

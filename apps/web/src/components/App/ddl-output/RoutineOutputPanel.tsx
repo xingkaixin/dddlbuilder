@@ -26,6 +26,7 @@ export function RoutineOutputPanel({
   const [auditTableName, setAuditTableName] = useState('');
   const [body, setBody] = useState('');
   const resolvedTableName = tableName || tableNameDefault || '';
+
   const code = useMemo(
     () =>
       buildRoutineTemplateDDL(dbType, {

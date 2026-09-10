@@ -19,18 +19,22 @@ const saveTable = async (page: any, name: string) => {
   await page.getByRole('button', { name: /保存当前表/i }).click();
   await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
   const nameInput = page.getByLabel('保存名称');
+
   if (await nameInput.isEnabled()) {
     await nameInput.fill(name);
   }
+
   await page.getByRole('button', { name: /^保存$/ }).click();
   await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
 };
 
 const openSavedTables = async (page: any) => {
   const heading = page.getByRole('heading', { name: '工作区' });
+
   if (await heading.isVisible().catch(() => false)) {
     return;
   }
+
   await page.getByRole('button', { name: '工作区' }).click();
   await expect(heading).toBeVisible();
 };
@@ -44,6 +48,7 @@ const dragToTarget = async (page: any, source: any, target: any) => {
       await expect(target).toBeVisible();
       const sourceBox = await source.boundingBox();
       const targetBox = await target.boundingBox();
+
       if (!sourceBox || !targetBox) {
         throw new Error('拖拽元素定位失败');
       }
@@ -54,6 +59,7 @@ const dragToTarget = async (page: any, source: any, target: any) => {
         steps: 12,
       });
       await page.mouse.up();
+
       return;
     } catch (error) {
       lastError = error;
@@ -68,11 +74,13 @@ const getDrawer = (page: any) => page.getByRole('dialog', { name: /工作区/i }
 
 const getTableRowByName = (page: any, name: RegExp) => {
   const drawer = getDrawer(page);
+
   return drawer.locator('[data-testid^="saved-table-row:"]').filter({ hasText: name }).first();
 };
 
 const getFolderRowByName = (page: any, name: RegExp) => {
   const drawer = getDrawer(page);
+
   return drawer.locator('[data-testid^="folder-row:"]').filter({ hasText: name }).first();
 };
 
@@ -83,16 +91,20 @@ const ensureFolderExpanded = async (page: any, folderName: string) => {
         name: new RegExp(`展开\\s*${folderName}`, 'i'),
       })
       .first();
+
     if (!(await expandButton.isVisible().catch(() => false))) {
       return;
     }
+
     try {
       await expandButton.click({ force: true, timeout: 2000 });
+
       return;
     } catch (error) {
       if (attempt === 2) {
         throw error;
       }
+
       await page.waitForTimeout(120);
     }
   }
@@ -101,6 +113,7 @@ const ensureFolderExpanded = async (page: any, folderName: string) => {
 const getLeftX = async (locator: any) => {
   const box = await locator.boundingBox();
   expect(box).not.toBeNull();
+
   return box?.x ?? 0;
 };
 
@@ -232,6 +245,7 @@ test.describe('文件夹管理验证 @storage', () => {
     await page.getByRole('button', { name: /确定/i }).click();
 
     const folderARow = getFolderRowByName(page, /FolderParentA/i);
+
     const folderAHandle = folderARow.getByRole('button', {
       name: /拖拽移动文件夹/i,
     });

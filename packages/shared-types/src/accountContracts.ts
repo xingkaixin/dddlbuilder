@@ -124,9 +124,13 @@ export const decodeAdminEmailVerificationResponse = Schema.decodeUnknownOption(
 export const decodeAdminCreditGrantResponse = Schema.decodeUnknownOption(
   AdminCreditGrantResponseSchema,
 );
+
 export type AdminUserSummary = typeof AdminUserSummarySchema.Type;
+
 export type AdminUserDetail = typeof AdminUserDetailSchema.Type;
+
 export type AdminUsageEvent = typeof AdminUsageEventSchema.Type;
+
 export type CreditLedgerItem = typeof CreditLedgerItemSchema.Type;
 
 const paginationInput = Schema.Struct({
@@ -155,6 +159,7 @@ export const AdminLedgerQuerySchema = adminPaginationQuery(20);
 const queryDate = (value: string | undefined) => {
   if (!value) return undefined;
   const time = new Date(value).getTime();
+
   return Number.isNaN(time) ? undefined : time;
 };
 export const CreditLedgerQuerySchema = Schema.Struct({
@@ -172,6 +177,7 @@ export const CreditLedgerQuerySchema = Schema.Struct({
       decode: SchemaGetter.transform((query) => {
         const limit = Number.parseInt(query.limit ?? '20', 10);
         const offset = Number.parseInt(query.offset ?? '0', 10);
+
         return {
           limit: !Number.isFinite(limit) || limit <= 0 ? 20 : Math.min(limit, 50),
           offset: !Number.isFinite(offset) || offset < 0 ? 0 : offset,

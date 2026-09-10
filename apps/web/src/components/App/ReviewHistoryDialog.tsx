@@ -60,6 +60,7 @@ function formatDate(
 function getScoreColor(score: number): string {
   if (score >= 8) return 'text-green-600';
   if (score >= 6) return 'text-yellow-600';
+
   return 'text-red-600';
 }
 
@@ -80,6 +81,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
       if (!target) {
         return;
       }
+
       try {
         const list = await listReviewMetadata(target);
         setReviews(list);
@@ -114,6 +116,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
     const handleDelete = useCallback(async () => {
       if (!deleteConfirmId || !target) return;
       setActionLoading(true);
+
       try {
         await deleteReview(deleteConfirmId, target);
         setDeleteConfirmId(null);
@@ -262,4 +265,5 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
     );
   },
 );
+
 ReviewHistoryDialog.displayName = 'ReviewHistoryDialog';

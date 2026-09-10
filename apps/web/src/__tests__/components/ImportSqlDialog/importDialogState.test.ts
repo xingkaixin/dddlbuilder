@@ -72,6 +72,7 @@ describe('importDialogReducer', () => {
   it('keeps workspace and saved-table steps mutually exclusive', () => {
     const workspace = createImportDialogState('mysql');
     const saved = importDialogReducer(workspace, { type: 'set_mode', mode: 'saved' });
+
     const selected = importDialogReducer(saved, {
       type: 'saved_validated',
       tables: [],
@@ -122,12 +123,14 @@ describe('importDialogReducer', () => {
   it('keeps only the most recently edited input', () => {
     const initial = createImportDialogState('mysql');
     const csv = importDialogReducer(initial, { type: 'set_source_type', sourceType: 'csv' });
+
     const withText = importDialogReducer(csv, {
       type: 'set_sql',
       sql: 'fieldName,fieldType\nid,bigint',
     });
     const file = new File(['fieldName,fieldType\naccount_id,bigint'], 'fields.csv');
     const withFile = importDialogReducer(withText, { type: 'set_file', file });
+
     const editedAgain = importDialogReducer(withFile, {
       type: 'set_sql',
       sql: 'fieldName,fieldType\nuser_id,bigint',
@@ -147,11 +150,13 @@ describe('importDialogReducer', () => {
     const withSource = importDialogReducer(initial, { type: 'set_source_type', sourceType: 'csv' });
     const file = new File(['id,name'], 'users.csv', { type: 'text/csv' });
     const withFile = importDialogReducer(withSource, { type: 'set_file', file });
+
     const withDatabase = importDialogReducer(withFile, {
       type: 'set_db_type',
       dbType: 'postgresql',
     });
     const validating = importDialogReducer(withDatabase, { type: 'validation_started' });
+
     const failed = importDialogReducer(validating, {
       type: 'validation_failed',
       result: { success: false, error: 'Invalid SQL' },
@@ -199,17 +204,20 @@ describe('importDialogReducer', () => {
   it('handles saved-table selection and import options', () => {
     const workspace = createImportDialogState('mysql');
     const saved = importDialogReducer(workspace, { type: 'set_mode', mode: 'saved' });
+
     const selected = importDialogReducer(saved, {
       type: 'saved_validated',
       tables: parsedTables,
       failedItems: [{ statement: 'broken', error: 'Invalid SQL' }],
     });
     const toggled = importDialogReducer(selected, { type: 'toggle_table', index: 1 });
+
     const cleared = importDialogReducer(toggled, {
       type: 'select_all_tables',
       selected: false,
     });
     const withFolder = importDialogReducer(cleared, { type: 'set_folder', folderId: 'folder-1' });
+
     const overwritten = importDialogReducer(withFolder, {
       type: 'set_conflict_strategy',
       strategy: 'overwrite',
@@ -240,6 +248,7 @@ describe('importDialogReducer', () => {
 
   it('ignores invalid edits and navigation at workflow boundaries', () => {
     const workspace = createImportDialogState('mysql');
+
     const preview = importDialogReducer(workspace, {
       type: 'workspace_validated',
       result: { ...parsedResult, fields: previewFields },

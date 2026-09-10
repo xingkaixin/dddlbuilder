@@ -35,6 +35,7 @@ export function registerExplainRoute(app: Hono<ApiEnv>) {
       (session) =>
         Effect.gen(function* () {
           const { sql, context, locale } = session.request;
+
           return yield* session.streamCompletion({
             scope: 'Explain',
             temperature: 0.3,

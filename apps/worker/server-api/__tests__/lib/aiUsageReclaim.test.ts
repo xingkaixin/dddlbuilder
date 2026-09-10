@@ -6,6 +6,7 @@ import type { ApiEnv } from '../../lib/context.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 import { createCreditFixture } from '../helpers/creditFixture.js';
 import { reclaimStaleAIUsage } from '../../lib/aiUsage.js';
+
 const createEnv = (db: unknown): ApiEnv['Bindings'] =>
   ({ USER_DB: db as D1Database }) as ApiEnv['Bindings'];
 describe('reclaimStaleAIUsage with SQLite timestamps', () => {
@@ -38,6 +39,7 @@ describe('reclaimStaleAIUsage with SQLite timestamps', () => {
           amount: 1000,
           idempotencyKey: 'signup',
         });
+
         const reserve = async (requestId: string, ageMs: number) => {
           const reservation = await reserveAIUsage(env, {
             userId: 'user-1',
@@ -48,6 +50,7 @@ describe('reclaimStaleAIUsage with SQLite timestamps', () => {
           sqlite
             .prepare('UPDATE usage_events SET created_at = ? WHERE id = ?')
             .run(now - ageMs, reservation.usageEventId);
+
           return reservation;
         };
         const fresh = await reserve('fresh', 60_000);
@@ -108,6 +111,7 @@ describe('legacy usage recovery', () => {
     ['settling_failed', null, 1000, 'failed'],
   ] as const)('recovers %s with usage %s', async (status, actual, expected, terminal) => {
     const f = await createCreditFixture();
+
     try {
       await f.reserve();
       f.sqlite
@@ -141,6 +145,7 @@ describe('legacy usage recovery', () => {
   });
   it('does not refund an old pending event with no consume entry', async () => {
     const f = await createCreditFixture();
+
     try {
       f.sqlite.exec(
         "INSERT INTO usage_events (id,user_id,route_key,request_id,estimated_tokens,status,created_at) VALUES ('legacy','user-1','explain','r',100,'pending',1)",
@@ -156,8 +161,10 @@ describe('legacy usage recovery', () => {
 
   it('defers failed settlements so later recoverable rows are not starved', async () => {
     const f = await createCreditFixture();
+
     try {
       f.sqlite.exec('BEGIN');
+
       for (let index = 0; index < 200; index += 1) {
         const suffix = String(index).padStart(3, '0');
         const userId = `debt-user-${suffix}`;
@@ -183,6 +190,7 @@ describe('legacy usage recovery', () => {
           ) VALUES (?, ?, 'consume', 'ai_explain', 1, 0, ?, ?, 1)`)
           .run(`reserve-${usageId}`, userId, `${usageId}:reserve`, usageId);
       }
+
       f.sqlite.exec(`INSERT INTO usage_events (
         id, user_id, route_key, request_id, estimated_tokens, charged_tokens,
         attempt_count, usage_is_estimated, status, created_at
@@ -218,6 +226,7 @@ describe('legacy usage recovery', () => {
 
   it('prioritizes a due retry over newly prepared settlements', async () => {
     const f = await createCreditFixture();
+
     try {
       const due = await f.reserve();
       const fresh = await f.reserve();
@@ -262,6 +271,7 @@ describe('recovery failure isolation', () => {
     'continues after settlement and deferral fail for %s',
     async (routeKey) => {
       const f = await createCreditFixture();
+
       try {
         const broken = await f.reserve(100, 'broken');
         const recoverable = await f.reserve(100, 'recoverable');

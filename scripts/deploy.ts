@@ -24,17 +24,21 @@ const runWrangler = (args: string[], captureOutput = false) => {
     encoding: captureOutput ? 'utf8' : undefined,
     env: process.env,
   });
+
   if ((result.status ?? 1) !== 0) {
     if (captureOutput) {
       process.stderr.write(result.stderr ?? '');
     }
+
     process.exit(result.status ?? 1);
   }
+
   return String(result.stdout ?? '').trim();
 };
 
 const recordRecoveryBookmark = () => {
   const timestamp = new Date().toISOString();
+
   const output = runWrangler(
     [
       'd1',
@@ -57,12 +61,17 @@ if (hasSecretsFile) {
 }
 
 recordRecoveryBookmark();
+
 runPendingMigrations('remote');
+
 verifyRequiredD1Tables('remote');
+
 console.log('[deploy] remote D1 migrations and runtime tables verified');
 
 const deployArgs = ['deploy', '--config', configPath];
+
 if (hasSecretsFile) {
   deployArgs.push('--secrets-file', secretsFile);
 }
+
 runWrangler(deployArgs);

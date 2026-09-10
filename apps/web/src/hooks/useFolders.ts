@@ -24,6 +24,7 @@ const readFolderProjection = (doc: Y.Doc) => ({
 
 export function useFolders() {
   const { t } = useTranslation();
+
   const {
     scope: currentScope,
     yDoc,
@@ -52,6 +53,7 @@ export function useFolders() {
       try {
         const folder = await createFolderEntry(name, parentId);
         await refresh();
+
         return folder;
       } catch (error) {
         throw error instanceof Error ? error : new Error(t('savedTables.toast.createFolderFailed'));
@@ -77,6 +79,7 @@ export function useFolders() {
       try {
         const allFolderIds = await deleteFolderTree(id);
         await refresh();
+
         return allFolderIds;
       } catch (error) {
         console.error('[folders] atomic deletion failed', {

@@ -14,6 +14,7 @@ const documents: Y.Doc[] = [];
 const createDoc = () => {
   const doc = new Y.Doc();
   documents.push(doc);
+
   return doc;
 };
 
@@ -53,13 +54,17 @@ const write = (doc: Y.Doc, state: SchemaDocumentState) =>
 
 const read = (doc: Y.Doc) => {
   const record = getDraftRecordFromYDoc(doc, 'draft');
+
   if (!record) throw new Error('Missing test draft');
+
   return record.state;
 };
 
 const table = (doc: Y.Doc) => {
   const tableDoc = getWorkspaceRoot(doc).drafts.get('draft');
+
   if (!tableDoc) throw new Error('Missing test table document');
+
   return tableDoc;
 };
 
@@ -77,6 +82,7 @@ const rename = (state: SchemaDocumentState, previous: string, next: string) => (
 const clone = (doc: Y.Doc) => {
   const peer = createDoc();
   Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
+
   return peer;
 };
 
@@ -86,6 +92,7 @@ const merge = (left: Y.Doc, right: Y.Doc) => {
   Y.applyUpdate(right, leftUpdate);
   const state = read(left);
   expect(read(right)).toEqual(state);
+
   return state;
 };
 
@@ -148,6 +155,7 @@ describe('index field references', () => {
     const legacyIndexes = readOrderedMap<IndexDefinition>(table(doc), 'indexes', 'indexOrder');
 
     expect(legacyIndexes[0].fields.map((field) => field.name)).toEqual(['account_id', 'org_id']);
+
     const legacyEdit = [
       { ...legacyIndexes[0], fields: [{ name: 'org_id', direction: 'DESC' as const }] },
     ];
@@ -161,6 +169,7 @@ describe('index field references', () => {
       const doc = createDoc();
       write(doc, initialState());
       const tableDoc = table(doc);
+
       if (format === 'snapshot') {
         for (const key of [
           'scalar',
@@ -176,6 +185,7 @@ describe('index field references', () => {
       } else {
         writeOrderedMap(tableDoc, 'indexes', 'indexOrder', initialState().indexes);
       }
+
       const before = read(doc);
       const beforeRead = Y.encodeStateAsUpdate(doc);
       expect(tableDocToSchemaDocumentState(tableDoc)).toEqual(before);

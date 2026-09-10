@@ -86,9 +86,12 @@ const requestWorkspaceMigration = async (
   });
 
   const data: unknown = await response.json().catch(() => null);
+
   if (!response.ok) throw new Error(decodeApiError(data).error ?? '迁移失败');
   const decoded = decodeWorkspaceMigrationResponse(data);
+
   if (decoded._tag === 'None') throw new Error('迁移响应无效');
+
   return decoded.value;
 };
 
@@ -204,6 +207,7 @@ export const promoteLegacyUserWorkspaceData = async (
 
   for (const { draftId, record } of [...drafts, ...trashedDrafts]) {
     const existing = await readDraft(draftId, scope);
+
     if (shouldPromoteRecord(record.updatedAt, existing?.updatedAt)) {
       await writeDraft(draftId, record, scope);
     }
@@ -211,6 +215,7 @@ export const promoteLegacyUserWorkspaceData = async (
 
   for (const table of [...savedTables, ...trashedTables]) {
     const existing = await getSavedTable(table.normalizedName, scope);
+
     if (!existing) {
       await addSavedTable(table, scope);
     } else if (shouldPromoteRecord(table.updatedAt, existing.updatedAt)) {
@@ -220,25 +225,30 @@ export const promoteLegacyUserWorkspaceData = async (
 
   for (const [normalizedName, draft] of Object.entries(savedDrafts)) {
     const existing = await readSavedDraft(normalizedName, scope);
+
     if (shouldPromoteRecord(draft.updatedAt, existing?.updatedAt)) {
       await upsertSavedDraft(normalizedName, draft, scope);
     }
   }
 
   const targetFolders = new Map((await listFolders(scope)).map((folder) => [folder.id, folder]));
+
   const foldersToPromote = folders.filter((folder) =>
     shouldPromoteRecord(folder.updatedAt, targetFolders.get(folder.id)?.updatedAt),
   );
+
   if (foldersToPromote.length > 0) {
     await bulkPutFolders(foldersToPromote, scope);
   }
 
   const targetSession = await readWorkspaceSession(scope);
+
   if (session && shouldPromoteRecord(session.updatedAt, targetSession?.updatedAt)) {
     await writeWorkspaceSession(session, scope);
   }
 
   dispatchWorkspaceSnapshotApplied();
+
   return true;
 };
 
@@ -248,16 +258,19 @@ export const prepareLegacyWorkspaceSnapshot = async (
 ): Promise<WorkspaceSnapshot | null> => {
   await promoteLegacyUserWorkspaceData(scope);
   const payload = await collectWorkspaceMigrationPayload(scope);
+
   return payload ? normalizeWorkspaceMigrationSnapshot(payload.snapshot) : null;
 };
 
 export const analyzeWorkspaceMigration = async () => {
   const payload = await collectWorkspaceMigrationPayload(getAnonymousWorkspaceScope());
+
   if (!payload) {
     return null;
   }
 
   const result = await requestWorkspaceMigration('analyze', payload);
+
   return {
     payload,
     result,

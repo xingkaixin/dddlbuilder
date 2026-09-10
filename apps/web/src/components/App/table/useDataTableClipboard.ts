@@ -21,6 +21,7 @@ export function useDataTableClipboard({
   const handlePaste = useCallback(
     (e: ClipboardEvent) => {
       const clipboardData = e.clipboardData?.getData('text/plain');
+
       if (!clipboardData) return;
 
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -51,6 +52,7 @@ export function useDataTableClipboard({
         const row = { ...newRows[targetRowIndex] };
         cols.forEach((cellValue, colOffset) => {
           const targetColIndex = startCol + colOffset;
+
           if (targetColIndex >= editableColumnKeys.length) return;
 
           const key = editableColumnKeys[targetColIndex];

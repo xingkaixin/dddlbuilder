@@ -17,6 +17,7 @@ const loadWorkspaceBootstrap = async (scope: WorkspaceScope): Promise<WorkspaceB
   if (scope.kind === 'anonymous') {
     await migrateLegacyWorkspaceFromLocalStorage();
   }
+
   return readWorkspaceBootstrap(scope);
 };
 
@@ -25,6 +26,7 @@ const workspaceBootstrapPromises = new Map<string, Promise<WorkspaceBootstrap>>(
 export const getWorkspaceBootstrap = (scope: WorkspaceScope = getAnonymousWorkspaceScope()) => {
   const scopeKey = getWorkspaceScopeStorageKey(scope);
   const existingPromise = workspaceBootstrapPromises.get(scopeKey);
+
   if (existingPromise) {
     return existingPromise;
   }
@@ -33,5 +35,6 @@ export const getWorkspaceBootstrap = (scope: WorkspaceScope = getAnonymousWorksp
     workspaceBootstrapPromises.delete(scopeKey);
   });
   workspaceBootstrapPromises.set(scopeKey, promise);
+
   return promise;
 };

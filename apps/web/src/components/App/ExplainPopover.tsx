@@ -17,6 +17,7 @@ interface ExplainPopoverProps {
 export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) {
   const { t } = useTranslation();
   const authSession = useAuthIdentity();
+
   const [selection, setSelection] = useState<{
     text: string;
     x: number;
@@ -24,6 +25,7 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
     bottom: number;
   } | null>(null);
   const [showResult, setShowResult] = useState(false);
+
   const { isLoading, isStreaming, isComplete, explanation, error, startExplain, clearExplain } =
     useDDLExplain();
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -33,13 +35,16 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
     if (isInteractingRef.current) return;
 
     const sel = window.getSelection();
+
     if (!sel || sel.isCollapsed || !containerRef.current) {
       if (!showResult) setSelection(null);
+
       return;
     }
 
     try {
       const range = sel.getRangeAt(0);
+
       const isInside =
         containerRef.current.contains(sel.anchorNode) ||
         containerRef.current.contains(sel.focusNode) ||
@@ -47,6 +52,7 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
 
       if (!isInside) {
         if (!showResult) setSelection(null);
+
         return;
       }
 
@@ -70,12 +76,14 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
 
   useEffect(() => {
     document.addEventListener('selectionchange', handleSelectionChange);
+
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
   }, [handleSelectionChange]);
 
   const handleExplain = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
     if (selection) {
       void startExplain(selection.text);
       setShowResult(true);
@@ -100,6 +108,7 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
+
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showResult, handleClose]);
 

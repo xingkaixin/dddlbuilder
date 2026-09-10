@@ -122,6 +122,7 @@ function createAppIcon(icon: IconSvgElement, displayName: string) {
     ),
   );
   AppIcon.displayName = displayName;
+
   return AppIcon;
 }
 

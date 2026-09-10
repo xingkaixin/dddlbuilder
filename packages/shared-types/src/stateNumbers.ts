@@ -2,6 +2,7 @@ import type { TableMiscConfig } from './schema.js';
 
 const clampInteger = (value: unknown, minimum: number, maximum: number, fallback: number) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+
   return Math.min(maximum, Math.max(minimum, Math.trunc(value)));
 };
 
@@ -53,8 +54,12 @@ export const normalizeTableMiscConfigNumbers = (config: TableMiscConfig): TableM
         }
       : {}),
   };
+
   if (normalized.fillfactor === undefined) delete normalized.fillfactor;
+
   if (normalized.pctfree === undefined) delete normalized.pctfree;
+
   if (normalized.initrans === undefined) delete normalized.initrans;
+
   return normalized;
 };

@@ -30,6 +30,7 @@ export const readSessionAccess = async (
     .bind(Date.now(), userId, workspaceId, workspaceId)
     .all<{ id: string | null; disabled: string | null }>();
   const disabled = results.some((row) => row.disabled != null);
+
   return {
     disabled,
     sessionIds: new Set(disabled ? [] : results.flatMap((row) => (row.id ? [row.id] : []))),
@@ -39,6 +40,7 @@ export const readSessionAccess = async (
 export const revokeUserSessions = async (env: ApiEnv['Bindings'], userId: string) => {
   const context = await createBetterAuth(env).$context;
   let deleteError: unknown;
+
   try {
     await context.internalAdapter.deleteUserSessions(userId);
   } catch (error) {
@@ -46,6 +48,7 @@ export const revokeUserSessions = async (env: ApiEnv['Bindings'], userId: string
   }
 
   let kickError: unknown;
+
   try {
     await kickWorkspaceSockets(env, { userId });
   } catch (error) {
@@ -55,7 +58,9 @@ export const revokeUserSessions = async (env: ApiEnv['Bindings'], userId: string
   if (deleteError && kickError) {
     throw new AggregateError([deleteError, kickError], 'Failed to revoke user sessions');
   }
+
   if (deleteError) throw deleteError;
+
   if (kickError) throw kickError;
 };
 
@@ -86,7 +91,9 @@ export const resolveAuthenticatedUser = async (
   const access = await readSessionAccess(c.env, session.user.id).catch((error: unknown) =>
     throwAuthenticationUnavailable(c, error),
   );
+
   if (access.disabled) throw new DomainError(403, 'USER_DISABLED', 'USER_DISABLED');
+
   if (!access.sessionIds.has(session.session.id)) return null;
 
   return {
@@ -100,10 +107,12 @@ export const resolveAuthenticatedUser = async (
 
 export const authenticateRequest = async (c: Context<ApiEnv>) => {
   const user = await resolveAuthenticatedUser(c);
+
   if (!user) {
     throw new DomainError(401, 'AUTH_REQUIRED', 'AUTH_REQUIRED');
   }
 
   c.set('currentUserId', user.userId);
+
   return user;
 };

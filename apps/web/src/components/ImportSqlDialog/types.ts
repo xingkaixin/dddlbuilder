@@ -1,5 +1,6 @@
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import type { SavedTableConflictStrategy } from '@/utils/savedTableBatchImport';
+
 export type { ImportSourceType } from '@/utils/importLimits';
 
 export type ImportMode = 'workspace' | 'saved';

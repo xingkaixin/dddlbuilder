@@ -18,6 +18,7 @@ const encoder = new TextEncoder();
 const startRequest = async (streaming = true) => {
   const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
   databases.push(sqlite);
+
   const env = {
     USER_DB: database,
     OPENAI_API_KEY: 'test-key',
@@ -59,6 +60,7 @@ const startRequest = async (streaming = true) => {
         }),
     ),
   );
+
   const response = await app.fetch(
     new Request('http://localhost/test', {
       method: 'POST',
@@ -68,19 +70,23 @@ const startRequest = async (streaming = true) => {
     env,
     { waitUntil: (task) => background.push(task), passThroughOnException() {}, props: {} },
   );
+
   return { response, sqlite, background, env };
 };
 
 const mockUpstream = (chunks: unknown[], complete = false) => {
   let signal: AbortSignal | undefined;
+
   const fetch = vi.fn(async (_url: unknown, init: RequestInit) => {
     signal = init.signal ?? undefined;
+
     return new Response(
       new ReadableStream({
         start(controller) {
           for (const chunk of chunks) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
           }
+
           if (complete) {
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
             controller.close();
@@ -97,6 +103,7 @@ const mockUpstream = (chunks: unknown[], complete = false) => {
     );
   });
   vi.stubGlobal('fetch', fetch);
+
   return { fetch, signal: () => signal };
 };
 
@@ -109,17 +116,20 @@ describe('AI execution deadline with the real OpenAI stream reader', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+
     for (const sqlite of databases.splice(0)) sqlite.close();
   });
 
   it('fails a stream that stops before final usage, before recovery can claim it', async () => {
     vi.useFakeTimers();
+
     const upstream = mockUpstream([
       { choices: [{ delta: { content: 'Complete text' }, finish_reason: 'stop' }] },
     ]);
     const { response, sqlite, background, env } = await startRequest();
     const body = response.text();
     await vi.advanceTimersByTimeAsync(40);
+
     const events = (await body)
       .trim()
       .split('\n')
@@ -164,6 +174,7 @@ describe('AI execution deadline with the real OpenAI stream reader', () => {
 
   it('clears the deadline after a complete stream and charges measured usage', async () => {
     vi.useFakeTimers();
+
     const upstream = mockUpstream(
       [
         { choices: [{ delta: { content: 'Complete text' }, finish_reason: 'stop' }] },
@@ -183,6 +194,7 @@ describe('AI execution deadline with the real OpenAI stream reader', () => {
 
   it('settles a non-streaming body timeout as an upstream failure', async () => {
     vi.useFakeTimers();
+
     const fetch = vi.fn(
       async (_url: unknown, init: RequestInit) =>
         new Response(

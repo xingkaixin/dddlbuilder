@@ -16,16 +16,20 @@ const fillBasicField = async (page: any, name = 'id') => {
 // 保存新表（弹对话框）
 const saveNewTable = async (page: any, name: string, comment = '') => {
   await page.locator('#table-name').fill(name);
+
   if (comment) {
     await page.locator('#table-comment').fill(comment);
   }
+
   await fillBasicField(page);
   await page.getByRole('button', { name: /保存当前表/i }).click();
   await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
   const nameInput = page.getByLabel('保存名称');
+
   if (await nameInput.isEnabled()) {
     await nameInput.fill(name);
   }
+
   await page.getByRole('button', { name: /^保存$/ }).click();
   await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
 };
@@ -40,6 +44,7 @@ const clickSidebarTable = async (page: any, pattern: RegExp) => {
 // 获取侧边栏中的保存的表项
 const getSidebarTableItem = (page: any, pattern: RegExp) => {
   const sidebar = page.locator('aside');
+
   return sidebar.locator('div.group').filter({ hasText: pattern }).first();
 };
 
@@ -57,15 +62,18 @@ const clickFirstDraft = async (page: any) => {
   const sidebar = page.locator('aside');
   const draftSection = sidebar.locator('section').first();
   const firstDraftButton = draftSection.getByRole('button').first();
+
   if ((await firstDraftButton.count()) > 0) {
     const clicked = await firstDraftButton
       .click({ timeout: 1000 })
       .then(() => true)
       .catch(() => false);
+
     if (clicked) {
       return;
     }
   }
+
   await page.getByRole('button', { name: /新建草稿|new draft/i }).click();
 };
 
@@ -131,6 +139,7 @@ test.describe('保存表管理补充 @storage', () => {
       .last()
       .click();
     const trashSection = sidebar.locator('section').filter({ hasText: /^回收站/ });
+
     const trashItem = trashSection
       .locator('div.group')
       .filter({

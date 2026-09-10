@@ -8,17 +8,21 @@ const windowMigration = '0020_ai_daily_budget_windows.sql';
 
 const createLegacyDatabase = () => {
   const sqlite = new DatabaseSync(':memory:');
+
   const files = readdirSync(migrationsDirectory)
     .filter((file) => file.endsWith('.sql') && file < windowMigration)
     .sort();
+
   for (const file of files) {
     sqlite.exec(readFileSync(new URL(file, migrationsDirectory), 'utf8'));
   }
+
   sqlite
     .prepare(
       "INSERT INTO user (id, name, email, created_at, updated_at) VALUES ('u', 'U', 'u@example.com', 1, 1)",
     )
     .run();
+
   return sqlite;
 };
 
@@ -34,6 +38,7 @@ describe('AI daily budget window migration', () => {
     'preserves reservations and legacy usage with counter $legacyValue',
     ({ legacyValue, expectedOldDay }) => {
       const sqlite = createLegacyDatabase();
+
       try {
         const reserve = (id: string, window: string, amount: number) => {
           sqlite
@@ -112,6 +117,7 @@ describe('AI daily budget window migration', () => {
 
   it('preserves counters created before reservation tracking existed', () => {
     const sqlite = createLegacyDatabase();
+
     try {
       sqlite
         .prepare(`INSERT INTO ai_governance_counters

@@ -30,6 +30,7 @@ export function useSavedTablesFilter({ items, folders, searchQuery }: UseSavedTa
 
   const { filteredItems, itemsByFolder, ungroupedItems } = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
+
     const filtered = query
       ? items.filter(
           (item) =>
@@ -45,7 +46,9 @@ export function useSavedTablesFilter({ items, folders, searchQuery }: UseSavedTa
         ungrouped.push(item);
         continue;
       }
+
       const folderItems = grouped.get(item.folderId);
+
       if (folderItems) {
         folderItems.push(item);
       } else {

@@ -68,6 +68,7 @@ describe('workspace socket authorization', () => {
     value: string,
   ) => {
     doc.getMap('fields').set('name', value);
+
     const message = encodeWorkspaceYDocTrackedSyncMessage(
       1,
       encodeWorkspaceYDocSyncMessage((encoder) =>
@@ -83,13 +84,18 @@ describe('workspace socket authorization', () => {
       const socket = createSocket();
       await sendUpdate(object, socket, 'before');
       socket.send.mockClear();
+
       if (reason === 'disabled') await disableAdminUser(fixture.database, 'user-1');
+
       if (reason === 'disabled-with-session')
         fixture.sqlite.exec(
           "INSERT INTO admin_user_flags (user_id, disabled_at) VALUES ('user-1', CURRENT_TIMESTAMP)",
         );
+
       if (reason === 'revoked') fixture.sqlite.exec('DELETE FROM session');
+
       if (reason === 'expired') fixture.sqlite.exec('UPDATE session SET expires_at = 1');
+
       if (reason === 'wrong-owner') fixture.sqlite.exec("UPDATE workspaces SET id = 'ws-other'");
 
       const resumed = new WorkspaceYDocDurableObject(state, env);
@@ -97,6 +103,7 @@ describe('workspace socket authorization', () => {
       expect(socket.close).toHaveBeenCalledWith(1008, 'Workspace access denied');
       expect(socket.send).not.toHaveBeenCalled();
       const restored = new Y.Doc();
+
       try {
         const response = await new WorkspaceYDocDurableObject(state, env).fetch(
           new Request('http://localhost/state'),

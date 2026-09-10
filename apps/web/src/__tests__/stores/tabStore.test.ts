@@ -27,6 +27,7 @@ describe('tabStore', () => {
       baseSignature: 'base',
     }));
     const store = useTabStore.getState();
+
     const ids = sources.map((source) =>
       store.addTab({ title: 'Shared', source, stateSnapshot: createSnapshot(source.tableId) }),
     );
@@ -41,6 +42,7 @@ describe('tabStore', () => {
 
   it('adds a tab and activates it', () => {
     const state = useTabStore.getState();
+
     const id = state.addTab({
       title: '草稿 1',
       source: { kind: 'draft', draftId: 'draft-1' },
@@ -55,6 +57,7 @@ describe('tabStore', () => {
 
   it('activates a tab', () => {
     const state = useTabStore.getState();
+
     const id1 = state.addTab({
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
@@ -77,6 +80,7 @@ describe('tabStore', () => {
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
     });
+
     const id2 = state.addTab({
       title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
@@ -96,6 +100,7 @@ describe('tabStore', () => {
 
   it('closes the last tab and activates the left neighbor', () => {
     const state = useTabStore.getState();
+
     const id1 = state.addTab({
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
@@ -115,6 +120,7 @@ describe('tabStore', () => {
 
   it('closing inactive tab does not change active tab', () => {
     const state = useTabStore.getState();
+
     const id1 = state.addTab({
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
@@ -134,6 +140,7 @@ describe('tabStore', () => {
 
   it('updates active tab snapshot and derives dirty state', () => {
     const state = useTabStore.getState();
+
     const id = state.addTab({
       title: 'Tab 1',
       source: {
@@ -155,6 +162,7 @@ describe('tabStore', () => {
 
   it('hydrates a background tab by id without changing the active tab', () => {
     const state = useTabStore.getState();
+
     const backgroundId = state.addTab({
       title: 'Background',
       source: { kind: 'draft', draftId: 'loading' },
@@ -192,6 +200,7 @@ describe('tabStore', () => {
 
   it('updates active tab title', () => {
     const state = useTabStore.getState();
+
     const id = state.addTab({
       title: 'Old',
       source: { kind: 'draft', draftId: 'd1' },
@@ -206,6 +215,7 @@ describe('tabStore', () => {
 
   it('does not derive a saved table title from draft edits', () => {
     const state = useTabStore.getState();
+
     const id = state.addTab({
       title: 'Saved users',
       source: {
@@ -224,6 +234,7 @@ describe('tabStore', () => {
 
   it('updates active tab source', () => {
     const state = useTabStore.getState();
+
     const id = state.addTab({
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
@@ -244,6 +255,7 @@ describe('tabStore', () => {
 
   it('finds tab by source (draft)', () => {
     const state = useTabStore.getState();
+
     const id = state.addTab({
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
@@ -285,6 +297,7 @@ describe('tabStore', () => {
 
   it('getActiveTab returns the active tab', () => {
     const state = useTabStore.getState();
+
     const id = state.addTab({
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
@@ -301,6 +314,7 @@ describe('tabStore', () => {
 
   it('renames the saved table title and source without replacing its tab or edits', () => {
     const state = useTabStore.getState();
+
     const id = state.addTab({
       title: 'Old',
       source: {

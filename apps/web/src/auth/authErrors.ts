@@ -34,5 +34,6 @@ export const translateAuthError = (error: AuthError | null, fallbackKey: string)
       : error?.code
         ? authErrorTranslationKeys[error.code]
         : undefined;
+
   return i18n.t(translationKey ?? fallbackKey);
 };

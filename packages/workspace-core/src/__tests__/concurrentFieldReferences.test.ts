@@ -19,6 +19,7 @@ const createDoc = () => {
   const doc = new Y.Doc();
   ensureWorkspaceYDocMeta(doc);
   documents.push(doc);
+
   return doc;
 };
 
@@ -48,19 +49,24 @@ const write = (doc: Y.Doc, state: SchemaDocumentState) =>
 
 const read = (doc: Y.Doc) => {
   const record = getDraftRecordFromYDoc(doc, 'draft');
+
   if (!record) throw new Error('Missing test draft');
+
   return record.state;
 };
 
 const table = (doc: Y.Doc) => {
   const tableDoc = getWorkspaceRoot(doc).drafts.get('draft');
+
   if (!tableDoc) throw new Error('Missing test table document');
+
   return tableDoc;
 };
 
 const clone = (doc: Y.Doc) => {
   const peer = createDoc();
   Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
+
   return peer;
 };
 
@@ -71,6 +77,7 @@ const merge = (left: Y.Doc, right: Y.Doc) => {
   expect(() => assertWorkspaceYDocStructure(left)).not.toThrow();
   expect(() => assertWorkspaceYDocStructure(right)).not.toThrow();
   expect(read(right)).toEqual(read(left));
+
   return read(left);
 };
 
@@ -131,6 +138,7 @@ describe('local field references', () => {
     const state = referencedState(initialState());
     write(doc, state);
     const tableDoc = table(doc);
+
     const foreignKeys = readOrderedMap<StoredForeignKeyDefinition>(
       tableDoc,
       'foreignKeys',
@@ -138,9 +146,11 @@ describe('local field references', () => {
     ).map(({ localFieldIds: _ids, ...foreignKey }) => foreignKey);
     writeOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder', foreignKeys);
     const scalar = readMap(tableDoc, 'scalar');
+
     if (!scalar) throw new Error('Missing scalar map');
     const mysql = scalar.get('mysqlPartitionConfig') as Record<string, unknown>;
     const misc = scalar.get('tableMiscConfig') as Record<string, unknown>;
+
     const { distributionColumnFieldId: _distributionId, ...legacyCitus } = scalar.get(
       'citusShardingConfig',
     ) as Record<string, unknown>;

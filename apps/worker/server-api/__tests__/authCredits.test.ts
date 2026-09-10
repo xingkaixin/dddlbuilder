@@ -76,6 +76,7 @@ describe('authentication credit initialization', () => {
     'preserves an existing grant when the policy becomes %s',
     async (amount) => {
       await grantSignupCredits(env, { userId: 'user-1', email: 'user@example.com' });
+
       const result = resolveAuthenticatedUser(
         createContext({ ...env, SIGNUP_BONUS_CREDITS: amount }),
       );

@@ -17,6 +17,7 @@ const shutdown = (code = 0) => {
       if (child.killed || child.exitCode !== null) continue;
       child.kill('SIGKILL');
     }
+
     process.exit(code);
   }, 1_000).unref();
 };
@@ -33,6 +34,7 @@ const start = (label: string, args: string[]) => {
     if (signal) {
       console.error(`[dev] ${label} exited with signal ${signal}`);
       shutdown(1);
+
       return;
     }
 
@@ -52,8 +54,11 @@ const start = (label: string, args: string[]) => {
 };
 
 start('worker', ['run', 'dev:worker']);
+
 start('app', ['run', 'dev:app']);
+
 start('docs', ['run', 'dev:docs']);
 
 process.on('SIGINT', () => shutdown(0));
+
 process.on('SIGTERM', () => shutdown(0));

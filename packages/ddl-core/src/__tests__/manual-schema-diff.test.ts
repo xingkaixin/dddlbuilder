@@ -79,6 +79,7 @@ describe('schema changes requiring manual migration', () => {
     const diff = diffPersistedState(before, after);
     expect(hasTableChanges(diff)).toBe(true);
     expect(diff.manualChanges).toContain(reason);
+
     for (const sql of [generateAlterDDL(diff), generateRollbackDDL(diff)]) {
       expect(sql).toContain('Manual migration required');
       expect(sql).toContain('No automatic changes generated');
@@ -98,6 +99,7 @@ describe('schema changes requiring manual migration', () => {
 
   it('ignores disabled partition settings and unrelated dialects', () => {
     const before = state({ mysqlPartitionConfig: { ...partition, enabled: false } });
+
     const after = state({
       mysqlPartitionConfig: { ...partition, enabled: false, partitionCount: 8 },
     });

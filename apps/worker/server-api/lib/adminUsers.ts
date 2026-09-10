@@ -4,6 +4,7 @@ import type {
   AdminUserDetail,
   AdminUsageEvent,
 } from '@ddlbuilder/shared-types/api';
+
 export type {
   AdminUserSummary,
   AdminUserDetail,
@@ -70,6 +71,7 @@ export const listAdminUsers = async (
     )
     .bind(limit, offset)
     .all<Record<string, unknown>>();
+
   return (result.results ?? []).map(toUserSummary);
 };
 
@@ -102,7 +104,9 @@ export const getAdminUser = async (
     )
     .bind(userId)
     .first<Record<string, unknown>>();
+
   if (!row) return null;
+
   return {
     ...toUserSummary(row),
     updatedAt: new Date(Number(row.updatedAt)).toISOString(),
@@ -182,6 +186,7 @@ export const listAdminUsageEvents = async (
       .bind(userId)
       .first<{ total: number }>(),
   ]);
+
   return {
     items: (dataResult.results ?? []).map(toUsageEvent),
     total: countResult?.total ?? 0,

@@ -278,6 +278,7 @@ describe('PrismaGenerator', () => {
 
   it('generates uuid default', () => {
     const fields = [createField({ name: 'uuid', type: 'varchar', defaultKind: 'uuid' })];
+
     const result = generator.generateModel({
       dbType: 'mysql',
       tableName: 'users',
@@ -493,6 +494,7 @@ describe('SQLAlchemyGenerator', () => {
 
   it('handles varchar with args', () => {
     const fields = [createField({ name: 'name', type: 'varchar(100)', defaultKind: 'none' })];
+
     const result = generator.generateModel({
       dbType: 'mysql',
       tableName: 'users',
@@ -681,6 +683,7 @@ describe('JPAGenerator', () => {
 
   it('generates getters and setters', () => {
     const fields = [createField({ name: 'name', type: 'varchar', defaultKind: 'none' })];
+
     const result = generator.generateModel({
       dbType: 'mysql',
       tableName: 'users',
@@ -693,6 +696,7 @@ describe('JPAGenerator', () => {
 
   it('marks non-nullable column', () => {
     const fields = [createField({ name: 'name', type: 'varchar', defaultKind: 'none' })];
+
     const result = generator.generateModel({
       dbType: 'mysql',
       tableName: 'users',

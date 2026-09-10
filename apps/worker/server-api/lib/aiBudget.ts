@@ -5,12 +5,14 @@ const getCurrentUtcDateKey = () => {
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, '0');
   const day = String(now.getUTCDate()).padStart(2, '0');
+
   return `${year}${month}${day}`;
 };
 
 const getBudgetExpiry = () => {
   const now = new Date();
   const tomorrow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 1);
+
   return Math.max(Date.now() + 60_000, tomorrow);
 };
 
@@ -24,6 +26,7 @@ const readBudgetValue = async (env: ApiEnv['Bindings'], windowId: string) => {
   )
     .bind(windowId)
     .first<{ value: number }>();
+
   return row ? Number(row.value) : null;
 };
 
@@ -32,9 +35,11 @@ const isBudgetExceeded = (error: unknown) =>
 
 const normalizeBudgetReservationTokens = (value: number, minimum: number) => {
   const normalized = Math.max(minimum, Math.ceil(value));
+
   if (value < 0 || !Number.isFinite(value) || !Number.isSafeInteger(normalized)) {
     throw new Error('INVALID_BUDGET_TOKEN_AMOUNT');
   }
+
   return normalized;
 };
 
@@ -42,6 +47,7 @@ const normalizeBudgetActualTokens = (value: number) => {
   if (value < 0 || !Number.isSafeInteger(value)) {
     throw new Error('INVALID_BUDGET_TOKEN_AMOUNT');
   }
+
   return value;
 };
 

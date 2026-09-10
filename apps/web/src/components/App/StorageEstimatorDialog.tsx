@@ -41,11 +41,13 @@ function formatSizeDisplay(bytes: number): SizeDisplay {
   const k = 1024;
   const units = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
   const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), units.length - 1);
+
   return { value: Number.parseFloat((bytes / k ** i).toFixed(2)), unit: units[i] };
 }
 
 function formatSizeText(bytes: number): string {
   const display = formatSizeDisplay(bytes);
+
   return `${display.value} ${display.unit}`;
 }
 
@@ -58,6 +60,7 @@ interface BreakdownCardProps {
 
 function BreakdownCard({ icon, label, bytes, colorClass }: BreakdownCardProps) {
   const display = formatSizeDisplay(bytes);
+
   return (
     <div className={`flex flex-col p-4 rounded-xl border ${colorClass}`}>
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -79,6 +82,7 @@ function BreakdownCard({ icon, label, bytes, colorClass }: BreakdownCardProps) {
 export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
   ({ open, onOpenChange, dbType, fields, indexes = [], storageFormat }) => {
     const { t } = useTranslation();
+
     const {
       estimateRows,
       setEstimateRows,
@@ -244,6 +248,7 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
     );
   },
 );
+
 StorageEstimatorDialog.displayName = 'StorageEstimatorDialog';
 
 interface ExplainSectionProps {

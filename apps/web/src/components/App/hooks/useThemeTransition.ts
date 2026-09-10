@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 type ThemeMode = 'system' | 'light' | 'dark';
+
 type EffectiveTheme = 'light' | 'dark';
+
 type TransitionPhase = 'idle' | 'view' | 'wipe' | 'fade';
 
 const SWITCH_THEME_AT_MS = 470;
@@ -78,6 +80,7 @@ export function useThemeTransition({
     for (const timer of timersRef.current) {
       window.clearTimeout(timer);
     }
+
     timersRef.current = [];
   }, []);
 
@@ -95,6 +98,7 @@ export function useThemeTransition({
 
       const systemTheme = getSystemTheme();
       const currentEffectiveTheme = resolveCurrentEffectiveTheme(theme, resolvedTheme, systemTheme);
+
       const nextEffectiveTheme = resolveTargetEffectiveTheme(
         nextTheme,
         theme,
@@ -108,15 +112,18 @@ export function useThemeTransition({
         currentEffectiveTheme === nextEffectiveTheme
       ) {
         setTheme(nextTheme);
+
         return;
       }
 
       if (prefersReducedMotion()) {
         setTheme(nextTheme);
+
         return;
       }
 
       const startViewTransition = document.startViewTransition?.bind(document);
+
       if (startViewTransition) {
         clearTimers();
         setPhase('view');
@@ -131,6 +138,7 @@ export function useThemeTransition({
           root.classList.remove('theme-view-transition-active');
           setPhase('idle');
         });
+
         return;
       }
 

@@ -26,11 +26,13 @@ const createState = (tableName: string) => ({
 test.describe('Cloudflare runtime bindings', () => {
   test('connects Effect spans to the native Worker trace', async ({ request }) => {
     const requestId = `trace-${crypto.randomUUID()}`;
+
     const response = await request.post('/api/explain', {
       headers: { 'X-Request-Id': requestId },
       data: {},
     });
     expect(response.status()).toBe(401);
+
     const sql = `WITH root AS (
       SELECT span_id FROM spans WHERE name = 'ai.request'
       AND json_extract(attributes, '$."request.id"') = '${requestId}'
@@ -46,11 +48,13 @@ test.describe('Cloudflare runtime bindings', () => {
         const payload = await query.json();
         expect(payload.success).toBe(true);
         rows = payload.result.rows;
+
         return rows.map((row) => row[0]);
       })
       .toEqual(expect.arrayContaining(['ai.request', 'ai.authenticate']));
     const root = rows.find((row) => row[0] === 'ai.request');
     const auth = rows.find((row) => row[0] === 'ai.authenticate');
+
     if (!root || !auth) throw new Error('Missing AI runtime spans');
     expect(auth[2]).toBe(root[1]);
     expect(JSON.parse(root[3])).toMatchObject({
@@ -64,6 +68,7 @@ test.describe('Cloudflare runtime bindings', () => {
     const response = await request.get('/cdn-cgi/local/scheduled?format=json');
     expect(response.ok(), await response.text()).toBe(true);
     expect(await response.json()).toMatchObject({ outcome: 'ok' });
+
     const sql = `WITH RECURSIVE recovery AS (
       SELECT name, span_id, parent_id, attributes FROM spans WHERE name = 'ai.usage.recovery'
       UNION ALL
@@ -80,6 +85,7 @@ test.describe('Cloudflare runtime bindings', () => {
         const payload = await query.json();
         expect(payload.success).toBe(true);
         rows = payload.result.rows;
+
         return rows.map((row) => row[0]);
       })
       .toEqual(
@@ -93,6 +99,7 @@ test.describe('Cloudflare runtime bindings', () => {
       );
     const scan = rows.find((row) => row[0] === 'ai.usage.reclaim.scan');
     const query = rows.find((row) => row[0] === 'sql.execute' && row[2] === scan?.[1]);
+
     if (!query) throw new Error('Missing recovery SQL span');
     expect(JSON.parse(query[3])).toMatchObject({ 'ai.outcome': 'succeeded' });
     expect(JSON.parse(query[3])).not.toHaveProperty('db.query.text');
@@ -101,6 +108,7 @@ test.describe('Cloudflare runtime bindings', () => {
   test('revokes an established workspace socket after sign-out', async ({ context, page }) => {
     const email = `socket-${crypto.randomUUID()}@ddlbuilder.test`;
     const password = 'Runtime-integration-123!';
+
     const signup = await context.request.post('/api/auth/sign-up/email', {
       data: {
         name: 'Socket Integration',
@@ -115,6 +123,7 @@ test.describe('Cloudflare runtime bindings', () => {
     const { workspaceId } = (await response.json()) as { workspaceId: string };
     const source = new Y.Doc();
     source.getMap('meta').set('schemaVersion', 1);
+
     const message = (value: string) => {
       source.getMap('authorizationProbe').set('value', value);
       const encoder = encoding.createEncoder();
@@ -122,16 +131,20 @@ test.describe('Cloudflare runtime bindings', () => {
       encoding.writeVarUint(encoder, 1);
       encoding.writeVarUint(encoder, WORKSPACE_SYNC_MESSAGE.sync);
       syncProtocol.writeUpdate(encoder, Y.encodeStateAsUpdate(source));
+
       return [...encoding.toUint8Array(encoder)];
     };
+
     try {
       const allowed = message('before');
       const denied = message('after');
       await page.goto('/api/health');
+
       const closed = await page.evaluate(
         async ({ workspaceId, allowed, denied, persisted }) => {
           const socket = new WebSocket(`ws://${location.host}/api/workspaces/${workspaceId}/yjs`);
           socket.binaryType = 'arraybuffer';
+
           const opened = new Promise<void>((resolve, reject) => {
             socket.onopen = () => resolve();
             socket.onerror = () => reject(new Error('Workspace socket failed to open'));
@@ -140,12 +153,14 @@ test.describe('Cloudflare runtime bindings', () => {
             socket.onmessage = (event: MessageEvent<ArrayBuffer>) => {
               if (new Uint8Array(event.data)[0] === persisted) resolve();
             };
+
             socket.onclose = (event) =>
               reject(new Error(`Socket closed before acknowledgement: ${event.code}`));
           });
           await opened;
           socket.send(new Uint8Array(allowed));
           await acknowledged;
+
           const closed = new Promise<number>((resolve) => {
             socket.onclose = (event) => resolve(event.code);
           });
@@ -154,8 +169,10 @@ test.describe('Cloudflare runtime bindings', () => {
             headers: { 'content-type': 'application/json' },
             body: '{}',
           });
+
           if (!signout.ok) throw new Error(`Sign-out failed: ${signout.status}`);
           socket.send(new Uint8Array(denied));
+
           return closed;
         },
         { workspaceId, allowed, denied, persisted: WORKSPACE_SYNC_MESSAGE.persisted },
@@ -169,6 +186,7 @@ test.describe('Cloudflare runtime bindings', () => {
       const current = await context.request.get(`/api/workspaces/${workspaceId}/yjs/state`);
       expect(current.ok()).toBe(true);
       const restored = new Y.Doc();
+
       try {
         Y.applyUpdate(restored, new Uint8Array(await current.body()));
         expect(restored.getMap('authorizationProbe').get('value')).toBe('before');
@@ -182,6 +200,7 @@ test.describe('Cloudflare runtime bindings', () => {
 
   test('persists auth, workspace, share and Durable Object state', async ({ context }) => {
     const email = `runtime-${crypto.randomUUID()}@ddlbuilder.test`;
+
     const signup = await context.request.post('/api/auth/sign-up/email', {
       data: {
         name: 'Runtime Integration',
@@ -194,6 +213,7 @@ test.describe('Cloudflare runtime bindings', () => {
 
     const meResponse = await context.request.get('/api/me');
     expect(meResponse.ok()).toBe(true);
+
     const me = (await meResponse.json()) as {
       signedIn: boolean;
       user: { email: string } | null;
@@ -211,6 +231,7 @@ test.describe('Cloudflare runtime bindings', () => {
 
     const state = createState(`runtime_${Date.now()}`);
     const importedAt = Date.now();
+
     const importResponse = await context.request.post(`/api/workspaces/${workspaceId}/yjs/import`, {
       data: {
         globalDraft: null,
@@ -255,9 +276,11 @@ test.describe('Cloudflare runtime bindings', () => {
     const migrationResponses = await Promise.all(
       migrations.map((data) => context.request.post('/api/workspace/migrations', { data })),
     );
+
     for (const response of migrationResponses) {
       expect(response.ok(), await response.text()).toBe(true);
     }
+
     const migrationResults = await Promise.all(
       migrationResponses.map(
         async (response) => (await response.json()) as WorkspaceMigrationResponse,
@@ -291,6 +314,7 @@ test.describe('Cloudflare runtime bindings', () => {
     expect(durableObjectResponse.ok(), await durableObjectResponse.text()).toBe(true);
     expect(durableObjectResponse.headers()['content-type']).toBe('application/octet-stream');
     const doc = new Y.Doc();
+
     try {
       Y.applyUpdate(doc, new Uint8Array(await durableObjectResponse.body()));
       const snapshot = exportWorkspaceYDocToSnapshot(doc);
@@ -306,6 +330,7 @@ test.describe('Cloudflare runtime bindings', () => {
       ]);
 
       const originalRecord = doc.getMap('drafts').get('runtime-draft');
+
       for (const [tableComment, updatedAt] of [
         ['updated', importedAt + 1],
         ['stale', importedAt],

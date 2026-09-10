@@ -54,6 +54,7 @@ const createTableDoc = () => {
   const doc = new Y.Doc();
   const tableDoc = new Y.Map<unknown>();
   doc.getMap<Y.Map<unknown>>('drafts').set('draft-1', tableDoc);
+
   return tableDoc;
 };
 
@@ -65,6 +66,7 @@ const runSequence = (states: PersistedState[], compactSnapshotBase: boolean) => 
     applySchemaDocumentStateToTableDoc(tableDoc, state, { compactSnapshotBase });
     expect(tableDocToSchemaDocumentState(tableDoc), `step ${step + 1}`).toEqual(normalize(state));
   });
+
   return tableDoc;
 };
 
@@ -74,6 +76,7 @@ const rowsOf = (tableDoc: Y.Map<unknown>) =>
 describe.each([true, false])('table doc edit sequences (compactSnapshotBase=%s)', (compact) => {
   it('A: clears an optional field key again after it was set, cleared and set once more', () => {
     const withEnum = (value: string) => createRow(0, { enumMeta: [{ value }] });
+
     const tableDoc = runSequence(
       [
         createClientState({ rows: [withEnum('a')] }),
@@ -106,6 +109,7 @@ describe.each([true, false])('table doc edit sequences (compactSnapshotBase=%s)'
   it('C: drops a row again after it was added and removed', () => {
     const three = [createRow(0), createRow(1), createRow(2)];
     const four = [...three, createRow(3)];
+
     const tableDoc = runSequence(
       [
         createClientState({ rows: three }),
@@ -122,6 +126,7 @@ describe.each([true, false])('table doc edit sequences (compactSnapshotBase=%s)'
   it('D: keeps a row that was removed and added back', () => {
     const three = [createRow(0), createRow(1), createRow(2)];
     const two = [createRow(0), createRow(1)];
+
     const tableDoc = runSequence(
       [
         createClientState({ rows: three }),
@@ -139,6 +144,7 @@ describe.each([true, false])('table doc edit sequences (compactSnapshotBase=%s)'
 describe('table doc snapshot base', () => {
   it('keeps the compacted snapshot frozen while no key is removed', () => {
     const tableDoc = createTableDoc();
+
     const sequence = [
       createClientState(),
       createClientState({ tableName: 'accounts' }),
@@ -163,11 +169,13 @@ describe('table doc snapshot base', () => {
 
 const createRandom = (seed: number) => {
   let state = seed >>> 0;
+
   return () => {
     state = (state + 0x6d2b79f5) >>> 0;
     let value = state;
     value = Math.imul(value ^ (value >>> 15), value | 1);
     value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+
     return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
   };
 };
@@ -196,6 +204,7 @@ const OPTIONAL_SCALAR_VALUES = {
 let rowCounter = 0;
 const nextRowIndex = () => {
   rowCounter += 1;
+
   return rowCounter;
 };
 
@@ -212,27 +221,32 @@ const MUTATIONS: readonly ((state: PersistedState, random: Random) => PersistedS
       Object.keys(OPTIONAL_SCALAR_VALUES) as (keyof typeof OPTIONAL_SCALAR_VALUES)[],
       random,
     );
+
     return { ...state, [key]: state[key] ? undefined : OPTIONAL_SCALAR_VALUES[key] };
   },
   (state, random) => {
     const index = Math.floor(random() * state.rows.length);
+
     return replaceRow(state, index, { ...state.rows[index], fieldName: pick(FIELD_NAMES, random) });
   },
   (state, random) => {
     const index = Math.floor(random() * state.rows.length);
     const { enumMeta, ...row } = state.rows[index];
+
     return replaceRow(state, index, enumMeta ? row : { ...row, enumMeta: [{ value: 'v0' }] });
   },
   (state, random) => {
     const index = Math.floor(random() * state.rows.length);
     const { defaultKind: _cleared, ...row } = state.rows[index];
     const next = pick(DEFAULT_KINDS, random);
+
     return replaceRow(state, index, next === undefined ? row : { ...row, defaultKind: next });
   },
   (state) => withRows(state, [...state.rows, createRow(nextRowIndex())]),
   (state, random) => {
     if (state.rows.length < 2) return state;
     const index = Math.floor(random() * state.rows.length);
+
     return withRows(
       state,
       state.rows.filter((_, position) => position !== index),
@@ -243,6 +257,7 @@ const MUTATIONS: readonly ((state: PersistedState, random: Random) => PersistedS
     const index = Math.floor(random() * (state.rows.length - 1));
     const rows = [...state.rows];
     [rows[index], rows[index + 1]] = [rows[index + 1], rows[index]];
+
     return withRows(state, rows);
   },
 ];
@@ -256,6 +271,7 @@ describe.each([true, false])(
       for (let round = 0; round < 300; round += 1) {
         const random = createRandom(round * 7919 + (compact ? 1 : 2));
         const tableDoc = createTableDoc();
+
         let state = createClientState({
           rows: Array.from({ length: (round % 3) + 1 }, (_, index) => createRow(index)),
         });
@@ -264,10 +280,12 @@ describe.each([true, false])(
         for (let step = 0; step < 6; step += 1) {
           state = pick(MUTATIONS, random)(state, random);
           applySchemaDocumentStateToTableDoc(tableDoc, state, { compactSnapshotBase: compact });
+
           const decoded = await buildWorkspaceContentHash({
             state: tableDocToSchemaDocumentState(tableDoc),
           });
           const expected = await buildWorkspaceContentHash({ state: normalize(state) });
+
           if (decoded !== expected) {
             mismatches.push(`round ${round} step ${step + 1}`);
             break;

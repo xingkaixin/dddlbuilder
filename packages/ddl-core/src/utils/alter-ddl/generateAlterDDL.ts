@@ -41,11 +41,14 @@ function orderFieldRenames(fields: TableDiff['fields'], dbType: DatabaseType) {
   const oldNames = new Set(renames.map((field) => key(field.oldFieldName)));
   const byTarget = new Map(renames.map((field) => [key(field.newFieldName), field]));
   const ordered = renames.filter((field) => !oldNames.has(key(field.newFieldName)));
+
   for (const field of ordered) {
     byTarget.delete(key(field.newFieldName));
     const waiting = byTarget.get(key(field.oldFieldName));
+
     if (waiting) ordered.push(waiting);
   }
+
   return ordered.length === renames.length ? ordered : null;
 }
 
@@ -67,19 +70,24 @@ export function generateAlterDDL(diff: TableDiff): string {
     const reasons = diff.manualChanges
       .map((change) => MANUAL_CHANGE_DESCRIPTIONS[change])
       .join(', ');
+
     return `-- Manual migration required: ${reasons} changed from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
   }
 
   const renames = orderFieldRenames(diff.fields, dbType);
+
   if (!renames) {
     return `-- Manual migration required: cyclic column renames in ${oldTableName} (${dbType}). No automatic changes generated.`;
   }
 
   const dependencies = planDependencies(oldTableName, diff, dbType);
+
   if (dependencies.error !== undefined) {
     return `-- Manual migration required: ${dependencies.error} in ${oldTableName} (${dbType}). No automatic changes generated.`;
   }
+
   const { indexes, foreignKeys, indexRenames } = dependencies;
+
   if (dependencies.needsExternalDependencyReview) {
     statements.push(
       '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.',
@@ -89,9 +97,11 @@ export function generateAlterDDL(diff: TableDiff): string {
   if (diff.schemaNameChanged) {
     const newSchema = diff.newSchemaName;
     const statement = generateTableSchemaChange(oldTableName, newSchema, dbType);
+
     if (!statement) {
       return `-- Manual migration required: schema change from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
     }
+
     statements.push(statement);
     oldTableName = buildQualifiedTableName(
       newSchema,
@@ -112,6 +122,7 @@ export function generateAlterDDL(diff: TableDiff): string {
       dbType,
       diff.oldTableComment,
     );
+
     if (commentSql) {
       statements.push(commentSql);
     }
@@ -124,6 +135,7 @@ export function generateAlterDDL(diff: TableDiff): string {
         getSqlIdentifierKey(change.foreignKey.name, dbType) ===
           getSqlIdentifierKey(fkDiff.foreignKey.name, dbType),
     );
+
     if (replacement && getForeignKeyIssue(replacement.foreignKey, dbType)) continue;
     statements.push(generateDropForeignKey(activeTableName, fkDiff, dbType));
   }
@@ -147,6 +159,7 @@ export function generateAlterDDL(diff: TableDiff): string {
     // 3. 处理重命名的字段（在删除之后、新增之前）
     for (const fieldDiff of renames) {
       statements.push(generateRenameColumn(activeTableName, fieldDiff, dbType));
+
       if (fieldDiff.changes) {
         const modification: ModifyFieldDiff = {
           type: 'modify',

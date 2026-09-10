@@ -30,9 +30,11 @@ function normalizeReviewPayload(payload: unknown): ReviewServiceResult {
 
 function extractJsonObject(text: string): string {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
+
   if (!jsonMatch) {
     throw new Error(i18n.t('services.parseReviewFailed'));
   }
+
   return jsonMatch[0];
 }
 
@@ -61,6 +63,7 @@ export async function requestDDLReview(
   });
 
   let parsed: unknown;
+
   try {
     parsed = JSON.parse(extractJsonObject(fullText));
   } catch {

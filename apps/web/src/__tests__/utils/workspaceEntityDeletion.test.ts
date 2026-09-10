@@ -23,6 +23,7 @@ const readMarker = async () =>
   );
 
 beforeEach(() => setupFakeIndexedDB());
+
 afterEach(() => teardownFakeIndexedDB());
 
 describe('workspace entity commits', () => {
@@ -30,6 +31,7 @@ describe('workspace entity commits', () => {
     'leaves Y.Doc unchanged when the %s marker transaction aborts after request success',
     async (operation) => {
       const marker = createWorkspaceEntityDeletionMarker(target, 'deleted');
+
       if (operation === 'activate') {
         await runIndexedDbRequest(
           await openDb(),
@@ -38,15 +40,18 @@ describe('workspace entity commits', () => {
           (store) => store.put(marker),
         );
       }
+
       const doc = new Y.Doc();
       doc.getMap('tables').set('table-1', 'original');
       const mutate = vi.fn(() => doc.getMap('tables').set('table-1', 'changed'));
+
       if (operation === 'activate') {
         const remove = IDBObjectStore.prototype.delete;
         vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(
           function (this: IDBObjectStore, key) {
             const request = remove.call(this, key);
             request.addEventListener('success', () => this.transaction.abort());
+
             return request;
           },
         );
@@ -56,10 +61,12 @@ describe('workspace entity commits', () => {
           function (this: IDBObjectStore, value, key) {
             const request = put.call(this, value, key);
             request.addEventListener('success', () => this.transaction.abort());
+
             return request;
           },
         );
       }
+
       const completion =
         operation === 'activate'
           ? commitWorkspaceEntityWrites([{ target, mode: 'activate' }], mutate)

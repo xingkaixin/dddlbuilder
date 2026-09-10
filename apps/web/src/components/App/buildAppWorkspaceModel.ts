@@ -13,8 +13,11 @@ import type { useWorkspaceTrashActions } from './hooks/useWorkspaceTrashActions'
 import type { useTableTemplates } from '@/hooks/useTableTemplates';
 
 type EditorDomains = ReturnType<typeof useEditorDomains>;
+
 type WorkspaceController = ReturnType<typeof useWorkspaceController>;
+
 type SchemaController = ReturnType<typeof useSchemaController>;
+
 type TabLifecycle = ReturnType<typeof useTabLifecycle>;
 
 interface BuildAppWorkspaceModelParams {
@@ -63,6 +66,7 @@ export function buildAppWorkspaceModel({
   handlePlayFireworks,
 }: BuildAppWorkspaceModelParams) {
   const { ui } = domains;
+
   const {
     persistenceStatus,
     drafts,
@@ -71,6 +75,7 @@ export function buildAppWorkspaceModel({
     loadedTable: { source: loadedTableSource, normalizedName: loadedTableNormalizedName },
   } = workspaceController;
   const { shareAction } = schemaController;
+
   const activeDraftId =
     !persistenceStatus.isShareView && activeEditorSource.kind === 'draft'
       ? activeEditorSource.draftId

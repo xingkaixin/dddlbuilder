@@ -25,6 +25,7 @@ const withScopeKey = (scope: WorkspaceScope, id: string) => buildScopedWorkspace
 
 const decodeScopedFolder = (folder: TableFolder, scope: WorkspaceScope): TableFolder | null => {
   const decoded = decodeWorkspaceScopedKey(folder.id, folder.scope, scope);
+
   return decoded
     ? {
         ...folder,
@@ -49,6 +50,7 @@ async function runWithFolderStore<T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
   const db = await openDb();
+
   return runIndexedDbRequest(db, FOLDER_STORE_NAME, mode, runner);
 }
 
@@ -57,7 +59,9 @@ async function runWithFolderStore<T>(
  */
 export async function listFolders(scope: WorkspaceScope): Promise<TableFolder[]> {
   const folders = await runWithFolderStore<TableFolder[]>('readonly', (store) => store.getAll());
+
   if (!Array.isArray(folders)) return [];
+
   return folders
     .map((folder) => decodeScopedFolder(folder, scope))
     .filter((folder): folder is TableFolder => folder != null)
@@ -75,15 +79,19 @@ export async function getFolder(id: string, scope: WorkspaceScope): Promise<Tabl
   const folder = await runWithFolderStore<TableFolder | undefined>('readonly', (store) =>
     store.get(withScopeKey(scope, id)),
   );
+
   if (folder) {
     return decodeScopedFolder(folder, scope);
   }
+
   if (scope.kind === 'anonymous') {
     const legacyFolder = await runWithFolderStore<TableFolder | undefined>('readonly', (store) =>
       store.get(id),
     );
+
     return legacyFolder ? decodeScopedFolder(legacyFolder, scope) : null;
   }
+
   return null;
 }
 
@@ -100,6 +108,7 @@ export async function createFolder(
   await runWithFolderStore<IDBValidKey>('readwrite', (store) =>
     store.add(encodeFolder(folder, scope)),
   );
+
   return folder;
 }
 
@@ -110,6 +119,7 @@ export async function updateFolder(folder: TableFolder, scope: WorkspaceScope): 
   await runWithFolderStore<IDBValidKey>('readwrite', (store) =>
     store.put(encodeFolder(folder, scope)),
   );
+
   if (scope.kind === 'anonymous') {
     await runWithFolderStore<undefined>('readwrite', (store) => store.delete(folder.id));
   }
@@ -124,9 +134,11 @@ export async function renameFolder(
   scope: WorkspaceScope,
 ): Promise<void> {
   const folder = await getFolder(id, scope);
+
   if (!folder) {
     throw new Error('文件夹不存在');
   }
+
   await updateFolder(renameFolderRecord(folder, newName), scope);
 }
 
@@ -139,6 +151,7 @@ export async function moveFolder(
   newParentId?: string,
 ): Promise<void> {
   const folder = await getFolder(id, scope);
+
   if (!folder) {
     throw new Error('文件夹不存在');
   }
@@ -155,6 +168,7 @@ export async function moveFolder(
  */
 export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<string[]> {
   const db = await openDb();
+
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(
       [FOLDER_STORE_NAME, STORE_NAME, WORKSPACE_GLOBAL_DRAFT_STORE_NAME],
@@ -180,7 +194,9 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
 
     const applyDeletion = () => {
       pendingReads -= 1;
+
       if (pendingReads > 0) return;
+
       const folders = folderRequest.result
         .map((folder) => decodeScopedFolder(folder, scope))
         .filter((folder): folder is TableFolder => folder != null);
@@ -192,6 +208,7 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
       );
       const plan = buildFolderDeletionPlan(folders, [...tables, ...drafts], id);
       affectedFolderIds = plan.folderIds;
+
       for (const record of plan.itemsToTrash) {
         if ('id' in record) draftStore.put(record);
         else tableStore.put(record);
@@ -199,6 +216,7 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
 
       for (const folderId of affectedFolderIds) {
         folderStore.delete(withScopeKey(scope, folderId));
+
         if (scope.kind === 'anonymous') folderStore.delete(folderId);
       }
     };
@@ -220,6 +238,7 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
  */
 export async function clearFolders(scope: WorkspaceScope): Promise<void> {
   const folders = await listFolders(scope);
+
   for (const folder of folders) {
     await runWithFolderStore<undefined>('readwrite', (store) => store.delete(folder.id));
     await runWithFolderStore<undefined>('readwrite', (store) =>
@@ -237,6 +256,7 @@ export async function bulkPutFolders(folders: TableFolder[], scope: WorkspaceSco
     for (let i = 0; i < folders.length - 1; i++) {
       store.put(encodeFolder(folders[i], scope));
     }
+
     return store.put(encodeFolder(folders[folders.length - 1], scope));
   });
 }

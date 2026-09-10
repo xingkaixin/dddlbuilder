@@ -19,6 +19,7 @@ describe('workspace offline storage lifecycle', () => {
     const dispose = vi.fn().mockResolvedValue(undefined);
     const otherDispose = vi.fn().mockResolvedValue(undefined);
     const unregister = registerWorkspaceYDocOwner('selected', { dispose, prepareSignOut: vi.fn() });
+
     const unregisterOther = registerWorkspaceYDocOwner('other', {
       dispose: otherDispose,
       prepareSignOut: vi.fn(),
@@ -27,6 +28,7 @@ describe('workspace offline storage lifecycle', () => {
     const deleteDatabase = vi.fn(() => request);
     vi.stubGlobal('indexedDB', { deleteDatabase });
     let completed = false;
+
     const cleanup = clearWorkspaceYDocData('selected').then(() => {
       completed = true;
     });
@@ -47,6 +49,7 @@ describe('workspace offline storage lifecycle', () => {
     const dispose = vi.fn();
     const confirmed = vi.fn().mockResolvedValue(undefined);
     const unconfirmed = vi.fn().mockRejectedValue(new Error('Sync unavailable'));
+
     const unregister = registerWorkspaceYDocOwner('selected', {
       dispose,
       prepareSignOut: confirmed,
@@ -67,6 +70,7 @@ describe('workspace offline storage lifecycle', () => {
   it('cancels sign out when local persistence stops responding', async () => {
     vi.useFakeTimers();
     const dispose = vi.fn();
+
     const unregister = registerWorkspaceYDocOwner('stalled', {
       dispose,
       prepareSignOut: () => new Promise<void>(() => {}),
@@ -90,6 +94,7 @@ describe('workspace offline storage lifecycle', () => {
     'commits migration data and marker atomically: %s',
     async (event) => {
       const store = { add: vi.fn(), put: vi.fn() };
+
       const tx = {
         objectStore: vi.fn(() => store),
         oncomplete: null as (() => void) | null,
@@ -100,9 +105,11 @@ describe('workspace offline storage lifecycle', () => {
       const doc = new Y.Doc();
       doc.getMap('drafts').set('sample', 'content');
       let completed = false;
+
       const result = commitLegacyWorkspaceYDoc({ db } as unknown as IndexeddbPersistence, doc).then(
         () => {
           completed = true;
+
           return 'complete';
         },
         () => 'abort',
@@ -114,6 +121,7 @@ describe('workspace offline storage lifecycle', () => {
       expect(recovered.getMap('drafts').get('sample')).toBe('content');
       await Promise.resolve();
       expect(completed).toBe(false);
+
       if (event === 'complete') tx.oncomplete?.();
       else tx.onabort?.();
       expect(await result).toBe(event);

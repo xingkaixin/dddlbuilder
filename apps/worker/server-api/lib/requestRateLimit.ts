@@ -17,14 +17,18 @@ export type RequestRateLimitResult = {
 
 export const getClientIp = (c: Context<ApiEnv>): string => {
   const direct = c.req.header('cf-connecting-ip')?.trim();
+
   if (direct) return direct;
   const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
+
   if (forwarded) return forwarded;
+
   return c.req.header('x-real-ip')?.trim() || 'unknown';
 };
 
 const hashSubject = async (value: string) => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
@@ -38,6 +42,7 @@ export const enforceRequestRateLimit = async (
   const windowId = String(Math.floor(now / policy.windowMs));
   const windowEndsAt = (Number(windowId) + 1) * policy.windowMs;
   const subject = await hashSubject(getClientIp(c));
+
   const results = await c.env.USER_DB.batch<{ value: number }>([
     c.env.USER_DB.prepare(
       `
@@ -70,6 +75,7 @@ export const enforceRequestRateLimit = async (
   ]);
   const value = results[0]?.results?.[0]?.value;
   const used = value == null ? policy.limit : Number(value);
+
   return {
     allowed: value != null,
     limit: policy.limit,
@@ -86,7 +92,9 @@ export const enforceIpRateLimit = async (
   const rateLimit = await enforceRequestRateLimit(c, policy);
   c.header('X-RateLimit-Limit', String(rateLimit.limit));
   c.header('X-RateLimit-Remaining', String(rateLimit.remaining));
+
   if (rateLimit.allowed) return null;
   c.header('Retry-After', String(rateLimit.retryAfterSeconds));
+
   return errorResponse(c, 429, message, 'RATE_LIMIT_EXCEEDED');
 };

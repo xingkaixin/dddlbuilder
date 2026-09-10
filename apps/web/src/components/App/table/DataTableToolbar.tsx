@@ -65,6 +65,7 @@ export function DataTableToolbar({
   onAddRowsClick,
 }: DataTableToolbarProps) {
   const { t } = useTranslation();
+
   return (
     <div className="relative border-b px-0 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">

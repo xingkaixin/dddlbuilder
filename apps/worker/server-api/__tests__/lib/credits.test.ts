@@ -66,6 +66,7 @@ describe('credits', () => {
       db.first.mockResolvedValue(null);
 
       const { getCreditAccount } = await import('../../lib/credits.js');
+
       const result = await getCreditAccount(
         createEnv({ USER_DB: db as unknown as D1Database }),
         'user-1',
@@ -87,6 +88,7 @@ describe('credits', () => {
       });
 
       const { getCreditAccount } = await import('../../lib/credits.js');
+
       const result = await getCreditAccount(
         createEnv({ USER_DB: db as unknown as D1Database }),
         'user-1',
@@ -107,6 +109,7 @@ describe('credits', () => {
       db.all.mockResolvedValue({ results: [] });
 
       const { listCreditLedger } = await import('../../lib/credits.js');
+
       const result = await listCreditLedger(
         createEnv({ USER_DB: db as unknown as D1Database }),
         'user-1',
@@ -137,6 +140,7 @@ describe('credits', () => {
       });
 
       const { listCreditLedger } = await import('../../lib/credits.js');
+
       const result = await listCreditLedger(
         createEnv({ USER_DB: db as unknown as D1Database }),
         'user-1',
@@ -176,6 +180,7 @@ describe('credits', () => {
       db.first.mockResolvedValue({ total: 12 });
 
       const { countCreditLedger } = await import('../../lib/credits.js');
+
       const result = await countCreditLedger(
         createEnv({ USER_DB: db as unknown as D1Database }),
         'user-1',
@@ -289,6 +294,7 @@ describe('credits', () => {
       db.first.mockResolvedValue(ledgerRow());
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
+
       const result = await applyCreditMutation(
         createEnv({ USER_DB: db as unknown as D1Database }),
         createMutationInput(),
@@ -321,6 +327,7 @@ describe('credits', () => {
       db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
+
       const result = await applyCreditMutation(
         createEnv({ USER_DB: db as unknown as D1Database }),
         createMutationInput(),
@@ -346,6 +353,7 @@ describe('credits', () => {
       db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
+
       const result = await applyCreditMutation(
         createEnv({ USER_DB: db as unknown as D1Database }),
         createMutationInput({ kind: 'refund', amount: 50, source: 'manual_adjustment' }),
@@ -383,6 +391,7 @@ describe('credits', () => {
         .mockResolvedValueOnce(ledgerRow());
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
+
       const result = await applyCreditMutation(
         createEnv({ USER_DB: db as unknown as D1Database }),
         createMutationInput(),
@@ -432,6 +441,7 @@ describe('credits', () => {
       db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
+
       const result = await applyCreditMutation(
         createEnv({ USER_DB: db as unknown as D1Database }),
         createMutationInput({ ledgerId: 'custom-ledger-id' }),
@@ -453,6 +463,7 @@ describe('credits', () => {
       db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
+
       const result = await applyCreditMutation(
         createEnv({ USER_DB: db as unknown as D1Database }),
         createMutationInput({

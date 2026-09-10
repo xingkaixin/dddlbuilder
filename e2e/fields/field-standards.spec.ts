@@ -51,6 +51,7 @@ test('Importing and adding a standard preserves unfinished field rows @fields', 
 }) => {
   await page.goto('/');
   await setupHydratedState(page);
+
   const unfinished = page
     .locator('[data-testid="data-table"] tbody tr')
     .nth(1)

@@ -40,8 +40,10 @@ const widthTypes = new Set(['tinyint', 'smallint', 'mediumint', 'int', 'integer'
 
 export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseType) {
   const original = parseFieldType(field.type);
+
   if (original.args.length > (numericTypes.has(original.baseType) ? 2 : 1)) return null;
   const family = getDatabaseFamily(dbType);
+
   const sqlType = getFieldTypeForDatabase(dbType, field.type).replace(
     /\s+(?:AUTO_INCREMENT|IDENTITY\b.*)$/i,
     '',
@@ -50,6 +52,7 @@ export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseTyp
   const args = parameters ? parameters[1].split(',').map((arg) => arg.trim()) : [];
   const parsed = parseFieldType(sqlType.replace(/\([^()]*\)/, ''));
   const isSerial = /^(?:big)?serial$/.test(original.baseType);
+
   const type =
     parsed.baseType === 'serial'
       ? 'integer'
@@ -59,6 +62,7 @@ export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseTyp
   const options: Record<string, string | number | boolean> = { type };
 
   if (parsed.unsigned) options.unsigned = true;
+
   if (args.length > 0) {
     const parameterName = lengthTypes.has(type)
       ? 'length'
@@ -67,6 +71,7 @@ export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseTyp
         : family === 'mysql' && widthTypes.has(type)
           ? 'width'
           : null;
+
     if (
       !parameterName ||
       args.some((arg) => !arg) ||
@@ -74,25 +79,30 @@ export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseTyp
     )
       return null;
     const value = Number(args[0]);
+
     if (parameterName === 'length' && args[0].toLowerCase() === 'max' && family === 'sqlserver') {
       options.length = 'MAX';
     } else {
       if (!Number.isSafeInteger(value) || value < 0) return null;
       options[parameterName] = value;
     }
+
     if (args.length === 2) {
       const scale = Number(args[1]);
+
       if (!Number.isSafeInteger(scale)) return null;
       options.scale = scale;
     }
   }
 
   let propertyType = mapCanonicalToORMType('typeorm', type);
+
   if (
     type === 'bigint' ||
     ((family === 'mysql' || family === 'postgresql') && (type === 'decimal' || type === 'numeric'))
   )
     propertyType = 'string';
+
   if (family === 'mysql' && type === 'bit') propertyType = 'Buffer';
 
   return {

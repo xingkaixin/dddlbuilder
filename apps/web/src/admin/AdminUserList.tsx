@@ -21,6 +21,7 @@ export function AdminUserList({ onSelectUser }: AdminUserListProps) {
   if (usersQuery.isError) {
     const message =
       usersQuery.error instanceof Error ? usersQuery.error.message : 'Failed to load users';
+
     return (
       <div className="text-center py-20">
         <p className="text-destructive">{message}</p>

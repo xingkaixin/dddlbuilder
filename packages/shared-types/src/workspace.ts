@@ -12,12 +12,14 @@ export const savedTableReference = (target: SavedTableTarget) =>
 
 export const savedTableKey = (target: SavedTableTarget) => {
   const reference = savedTableReference(target);
+
   return reference.tableId ?? reference.normalizedName;
 };
 
 export const isSameSavedTable = (left: SavedTableTarget, right: SavedTableTarget) => {
   const a = savedTableReference(left);
   const b = savedTableReference(right);
+
   return a.tableId || b.tableId ? a.tableId === b.tableId : a.normalizedName === b.normalizedName;
 };
 

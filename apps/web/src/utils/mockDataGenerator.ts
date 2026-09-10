@@ -125,6 +125,7 @@ function pick<T>(arr: T[]): T {
 
 function pickN<T>(arr: T[], n: number): T[] {
   const shuffled = [...arr].sort(() => Math.random() - 0.5);
+
   return shuffled.slice(0, n);
 }
 
@@ -133,6 +134,7 @@ function pickN<T>(arr: T[], n: number): T[] {
 function genChineseName(): string {
   const nameLen = Math.random() < 0.3 ? 3 : 2;
   const given = pickN(CN_NAMES_CHARS, nameLen - 1).join('');
+
   return `${pick(CN_SURNAMES)}${given}`;
 }
 
@@ -169,6 +171,7 @@ function genPhone(): string {
     '188',
     '189',
   ];
+
   return `${pick(prefixes)}${String(randInt(10000000, 99999999))}`;
 }
 
@@ -179,6 +182,7 @@ function genEmail(seed?: string): string {
         String.fromCharCode(...Array.from({ length: randInt(4, 8) }, () => randInt(97, 122))),
         String(randInt(100, 9999)),
       ];
+
   return `${localParts.join('_')}@${pick(EMAIL_DOMAINS)}`;
 }
 
@@ -196,12 +200,14 @@ function genIdCard(): string {
   const day = String(randInt(1, 28)).padStart(2, '0');
   const seq = String(randInt(100, 999));
   const suffix = randInt(0, 9);
+
   return `4403${String(randInt(10, 99))}${year}${month}${day}${seq}${suffix}`;
 }
 
 function genUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
+
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
   });
 }
@@ -213,6 +219,7 @@ function genIp(): string {
 function genRandomString(maxLen = 20): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   const len = randInt(Math.min(4, maxLen), Math.min(maxLen, 20));
+
   return Array.from({ length: len }, () => pick(chars.split(''))).join('');
 }
 
@@ -220,6 +227,7 @@ function genDate(): string {
   const y = randInt(2020, 2025);
   const m = String(randInt(1, 12)).padStart(2, '0');
   const d = String(randInt(1, 28)).padStart(2, '0');
+
   return `${y}-${m}-${d}`;
 }
 
@@ -228,6 +236,7 @@ function genDatetime(): string {
   const h = String(randInt(0, 23)).padStart(2, '0');
   const min = String(randInt(0, 59)).padStart(2, '0');
   const s = String(randInt(0, 59)).padStart(2, '0');
+
   return `${date} ${h}:${min}:${s}`;
 }
 
@@ -235,6 +244,7 @@ function genTime(): string {
   const h = String(randInt(0, 23)).padStart(2, '0');
   const m = String(randInt(0, 59)).padStart(2, '0');
   const s = String(randInt(0, 59)).padStart(2, '0');
+
   return `${h}:${m}:${s}`;
 }
 
@@ -290,9 +300,11 @@ const SEMANTIC_PATTERNS: Array<{ pattern: RegExp; hint: SemanticHint }> = [
 
 function inferSemanticHint(fieldName: string, fieldComment: string): SemanticHint {
   const combined = `${fieldName} ${fieldComment}`;
+
   for (const { pattern, hint } of SEMANTIC_PATTERNS) {
     if (pattern.test(combined)) return hint;
   }
+
   return null;
 }
 
@@ -300,6 +312,7 @@ function inferSemanticHint(fieldName: string, fieldComment: string): SemanticHin
 
 function generateSemanticValue(field: NormalizedField): string | number | undefined {
   const semantic = inferSemanticHint(field.name, field.comment ?? '');
+
   if (semantic) {
     switch (semantic) {
       case 'chinese_name':
@@ -346,6 +359,7 @@ function generateSemanticValue(field: NormalizedField): string | number | undefi
         return randInt(2010, 2025);
     }
   }
+
   return undefined;
 }
 
@@ -363,15 +377,18 @@ const INTEGER_BITS: Record<string, number> = {
 function generateDecimalValue(args: string[], preferred: number): number {
   const precision = Number(args[0] ?? 10);
   const scale = Number(args[1] ?? 0);
+
   if (!Number.isSafeInteger(precision) || precision < 1 || !Number.isSafeInteger(scale)) return 0;
 
   const coefficient = Math.round(preferred * 10 ** scale);
+
   // Sample a bounded coefficient instead of rounding up past the column's maximum.
   const units =
     Number.isSafeInteger(coefficient) && Math.abs(coefficient) < 10 ** precision
       ? coefficient
       : randInt(0, 10 ** Math.min(precision, 6) - 1);
   const value = Number(`${units}e${-scale}`);
+
   return Number.isFinite(value) ? value : 0;
 }
 
@@ -389,6 +406,7 @@ function generateValueForField(
 
   if (baseType === 'enum' || baseType === 'set') {
     if (args.length > 0) return pick(args).replace(/^'|'$/g, '').replace(/''/g, "'");
+
     return 'value';
   }
 
@@ -413,36 +431,45 @@ function generateValueForField(
 
   if (baseType === 'boolean') {
     const value = numeric === 0 || numeric === 1 ? numeric : randInt(0, 1);
+
     return family === 'postgresql' || family === 'hive' ? Boolean(value) : value;
   }
 
   if (baseType === 'bit') {
     const length = Number(args[0] ?? 1);
     const bits = Number.isSafeInteger(length) && length > 0 ? Math.min(length, 53) : 1;
+
     return randInt(0, 2 ** bits - 1);
   }
 
   const bits = INTEGER_BITS[baseType];
+
   if (bits) {
     const unsigned = parsed.unsigned || (family === 'sqlserver' && baseType === 'tinyint');
     const max = 2 ** Math.min(bits - (unsigned ? 0 : 1), 53) - 1;
     const min = unsigned ? 0 : -max - 1;
     const value = Math.trunc(numeric);
+
     if (Number.isSafeInteger(value) && value >= min && value <= max) return value;
     const sampleMax = baseType === 'tinyint' && args[0] === '1' ? 1 : Math.min(max, 999999);
+
     return randInt(0, sampleMax);
   }
 
   if (baseType === 'decimal') return generateDecimalValue(args, numeric);
+
   if (['float', 'double', 'real'].includes(baseType)) {
     if (args.length === 2) return generateDecimalValue(args, numeric);
+
     return Number.isFinite(numeric) ? numeric : Number((Math.random() * 999).toFixed(4));
   }
 
   const declaredLength = Number(args[0] ?? (baseType === 'char' || baseType === 'nchar' ? 1 : NaN));
+
   const maxLength =
     Number.isSafeInteger(declaredLength) && declaredLength >= 0 ? declaredLength : undefined;
   const value = preferred === undefined ? genRandomString(maxLength) : String(preferred);
+
   return maxLength === undefined ? value : Array.from(value).slice(0, maxLength).join('');
 }
 
@@ -451,6 +478,7 @@ function generateValueForField(
 function toStr(value: unknown): string {
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+
   return JSON.stringify(value) ?? '';
 }
 
@@ -459,15 +487,18 @@ function formatSqlValue(value: unknown): string {
   if (typeof value === 'number') return String(value);
   if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
   const str = toStr(value);
+
   return `'${str.replace(/'/g, "''")}'`;
 }
 
 function formatCsvValue(value: unknown): string {
   if (value === null || value === undefined) return '';
   const str = toStr(value);
+
   if (str.includes(',') || str.includes('"') || str.includes('\n')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
+
   return str;
 }
 
@@ -494,6 +525,7 @@ export function generateMockData(
 
   // 过滤掉没有字段名的字段
   const validFields = fields.filter((f) => f.name.trim() !== '');
+
   if (validFields.length === 0) {
     return { insertSql: '-- 暂无有效字段', csv: '', json: '[]' };
   }
@@ -501,9 +533,11 @@ export function generateMockData(
   // 生成 rowCount 行数据
   const rows: Record<string, unknown>[] = Array.from({ length: rowCount }, (_, i) => {
     const row: Record<string, unknown> = {};
+
     for (const field of validFields) {
       row[field.name] = generateValueForField(field, i, dbType);
     }
+
     return row;
   });
 
@@ -513,8 +547,10 @@ export function generateMockData(
     : quoteIdentifier(tableName || 'table_name', dbType);
 
   const columnList = validFields.map((f) => quoteIdentifier(f.name, dbType)).join(', ');
+
   const valueLines = rows.map((row) => {
     const vals = validFields.map((f) => formatSqlValue(row[f.name])).join(', ');
+
     return `  (${vals})`;
   });
   const insertSql = `INSERT INTO ${qualifiedTable} (${columnList})\nVALUES\n${valueLines.join(',\n')};`;

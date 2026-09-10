@@ -24,9 +24,11 @@ export class TypeMapper {
     if (!mapping) {
       // 如果没有找到映射，返回原始类型
       let result = this.formatType(parsed.baseType, parsed.args, '', true);
+
       if (parsed.unsigned && supportsUnsigned) {
         result += ' UNSIGNED';
       }
+
       return result;
     }
 
@@ -39,6 +41,7 @@ export class TypeMapper {
     const targetType = mapping.mapping || parsed.baseType;
     // 如果原始字段有参数，优先使用原始参数，否则使用默认参数
     const limit = mapping.maxArgs ?? mapping.defaultArgs?.length ?? 0;
+
     const args = (parsed.args.length > 0 ? parsed.args : (mapping.defaultArgs ?? [])).slice(
       0,
       limit,
@@ -58,11 +61,13 @@ export class TypeMapper {
   private formatType(base: string, args: string[] = [], suffix = '', preserveCase = false): string {
     const formattedArgs = args.map(this.uppercaseArg);
     const joined = formattedArgs.join(', ');
+
     const typeCore = joined
       ? `${preserveCase ? base : base.toUpperCase()}(${joined})`
       : preserveCase
         ? base
         : base.toUpperCase();
+
     return suffix ? `${typeCore} ${suffix}` : typeCore;
   }
 
@@ -70,11 +75,13 @@ export class TypeMapper {
 
   getSupportedTypes(): string[] {
     const mapping = TYPE_MAPPINGS[this.databaseType];
+
     return mapping ? Object.keys(mapping) : [];
   }
 
   hasMapping(type: string): boolean {
     const canonical = canonicalizeBaseType(type);
+
     return !!TYPE_MAPPINGS[this.databaseType]?.[canonical];
   }
 }

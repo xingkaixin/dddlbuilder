@@ -54,6 +54,7 @@ export const executeWorkspaceSignOut = async ({
   await queryClient.cancelQueries({ queryKey: authQueryKeys.me });
 
   let cleanupRegistered = !scope;
+
   if (scope) {
     try {
       markWorkspaceCleanupPending(scope);
@@ -82,6 +83,8 @@ export const executeWorkspaceSignOut = async ({
     queryClient.removeQueries({ queryKey: workspaceQueryKeys.all(userId) });
     queryClient.removeQueries({ queryKey: workspaceMigrationQueryKeys.all(userId) });
   }
+
   queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
+
   if (cleanupRegistered) writeWorkspaceIdentity(null);
 };

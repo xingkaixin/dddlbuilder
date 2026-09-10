@@ -29,6 +29,7 @@ const runWithTableTemplateStore = async <T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> => {
   const db = await openDb();
+
   return runIndexedDbRequest(db, TABLE_TEMPLATE_STORE_NAME, mode, runner);
 };
 
@@ -75,6 +76,7 @@ export const listTableTemplates = async (): Promise<TableTemplate[]> => {
   const templates = await runWithTableTemplateStore<TableTemplate[]>('readonly', (store) =>
     store.getAll(),
   );
+
   return templates.map(decodeTableTemplate).sort((a, b) => b.updatedAt - a.updatedAt);
 };
 
@@ -82,6 +84,7 @@ export const getTableTemplate = async (id: string): Promise<TableTemplate | unde
   const template = await runWithTableTemplateStore<TableTemplate | undefined>('readonly', (store) =>
     store.get(id),
   );
+
   return template ? decodeTableTemplate(template) : undefined;
 };
 
@@ -91,6 +94,7 @@ export const createTableTemplate = async (
   description?: string,
 ): Promise<TableTemplate> => {
   const now = Date.now();
+
   const template: TableTemplate = {
     id: generateId(),
     name: name.trim() || '未命名蓝本',
@@ -101,6 +105,7 @@ export const createTableTemplate = async (
   };
 
   await runWithTableTemplateStore('readwrite', (store) => store.add(template));
+
   return template;
 };
 
@@ -109,6 +114,7 @@ export const updateTableTemplate = async (
   updates: Partial<Pick<TableTemplate, 'name' | 'description' | 'blueprint'>>,
 ): Promise<TableTemplate | null> => {
   const existing = await getTableTemplate(id);
+
   if (!existing) return null;
 
   const updated: TableTemplate = {
@@ -120,6 +126,7 @@ export const updateTableTemplate = async (
   };
 
   await runWithTableTemplateStore('readwrite', (store) => store.put(updated));
+
   return updated;
 };
 
@@ -132,6 +139,7 @@ export const duplicateTableTemplate = async (
   newName?: string,
 ): Promise<TableTemplate | null> => {
   const existing = await getTableTemplate(id);
+
   if (!existing) return null;
 
   return createTableTemplate(

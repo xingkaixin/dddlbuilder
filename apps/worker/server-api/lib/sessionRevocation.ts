@@ -19,6 +19,7 @@ const kickWorkspaceSocketsOnce = async (
         ...(sessionId ? { 'x-ddlbuilder-session-id': sessionId } : {}),
       },
     });
+
   if (!response.ok) throw new Error(`Workspace revocation failed: ${response.status}`);
 };
 
@@ -28,17 +29,21 @@ const kickWorkspaceSocketsWithRetry = async (
   identity: { userId: string; sessionId?: string },
 ) => {
   let lastError: unknown;
+
   for (let attempt = 1; attempt <= KICK_MAX_ATTEMPTS; attempt += 1) {
     try {
       await kickWorkspaceSocketsOnce(namespace, workspaceId, identity);
+
       return;
     } catch (error) {
       lastError = error;
+
       if (attempt < KICK_MAX_ATTEMPTS) {
         await wait(KICK_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
       }
     }
   }
+
   throw lastError;
 };
 
@@ -51,9 +56,11 @@ export const kickWorkspaceSockets = async (
     .all<{ id: string }>();
 
   const workspaceIds = (workspaces.results ?? []).map(({ id }) => id);
+
   if (workspaceIds.length === 0) return;
 
   const namespace = env.WORKSPACE_YDOC;
+
   if (!namespace) throw new Error('Workspace socket revocation is unavailable');
 
   const results = await Promise.allSettled(
@@ -66,11 +73,13 @@ export const kickWorkspaceSockets = async (
       ? [{ workspaceId: workspaceIds[index], error: result.reason }]
       : [],
   );
+
   if (failures.length === 0) return;
 
   for (const failure of failures) {
     console.error('[auth] workspace socket revocation failed', failure);
   }
+
   throw new AggregateError(
     failures.map(({ error }) => error),
     `Workspace socket revocation failed for ${failures.length} workspace(s)`,

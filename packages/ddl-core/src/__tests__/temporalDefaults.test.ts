@@ -41,6 +41,7 @@ describe('temporal defaults after dialect conversion', () => {
     'preserves $type defaults in $dbType CREATE and ALTER',
     ({ dbType, type, column, defaultClause }) => {
       const current = { ...field, type };
+
       const ddl = buildDDL({
         dbType,
         tableName: 'events',

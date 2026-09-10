@@ -16,6 +16,7 @@ const fillBasicField = async (page: any, name = 'id') => {
 
 const getSavedTableRow = (page: any, pattern: RegExp) => {
   const drawer = page.getByRole('dialog', { name: /工作区/i });
+
   return drawer.locator('[data-testid^="saved-table-row:"]').filter({ hasText: pattern });
 };
 
@@ -71,6 +72,7 @@ test.describe('变更对比验证 @storage', () => {
       await openTableAction(page, /查看表结构变更/i);
       await expect(page.getByRole('heading', { name: /表结构变更对比/i })).toBeVisible();
       const dialog = page.getByRole('dialog', { name: /表结构变更对比/i });
+
       if (schemaOnly) {
         await expect(dialog.getByText('Schema:')).toBeVisible();
         await expect(dialog.locator('pre').first()).toContainText(
@@ -84,10 +86,12 @@ test.describe('变更对比验证 @storage', () => {
       }
     });
   }
+
   for (const kind of ['view', 'partition'] as const) {
     test(`场景：识别需要手动迁移的结构变更 (${kind})`, async ({ page }) => {
       const tableName = `manual_diff_${kind}`;
       await page.locator('#table-name').fill(tableName);
+
       if (kind === 'view') {
         await page.getByRole('button', { name: '表属性', exact: true }).click();
         await page.locator('#object-type-select').click();
@@ -104,10 +108,12 @@ test.describe('变更对比验证 @storage', () => {
         await page.getByPlaceholder(/输入表达式/).fill('id');
         await panel.getByRole('spinbutton').fill('4');
       }
+
       await page.getByRole('button', { name: /保存当前表|保存当前视图/ }).click();
       await page.getByLabel('保存名称').fill(tableName);
       await page.getByRole('button', { name: '保存', exact: true }).click();
       await expect(page.getByLabel('保存名称')).toBeHidden();
+
       if (kind === 'view') {
         await page.locator('#view-definition').fill('SELECT id FROM users WHERE active = false');
       } else {
@@ -116,6 +122,7 @@ test.describe('变更对比验证 @storage', () => {
           .getByRole('spinbutton')
           .fill('8');
       }
+
       await openTableAction(page, /查看表结构变更/);
       const dialog = page.getByRole('dialog', { name: '表结构变更对比' });
       await expect(

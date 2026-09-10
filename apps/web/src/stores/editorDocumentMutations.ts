@@ -14,6 +14,7 @@ function referencesCurrentTable(state: PersistedState, foreignKey: ForeignKeyDef
   const current = getSchemaAndTable(state.tableName);
   const target = getSchemaAndTable(foreignKey.refTable);
   const normalize = (value: string) => getSqlIdentifierKey(value, state.dbType);
+
   return (
     normalize(current.table) === normalize(target.table) &&
     normalize(state.schemaName || current.schema) ===
@@ -31,8 +32,10 @@ export function updateDocumentTable(
     tableName: changes.tableName ?? state.tableName,
     tableComment: changes.tableComment ?? state.tableComment,
   };
+
   if (next.schemaName === state.schemaName && next.tableName === state.tableName) return next;
   const target = getSchemaAndTable(next.tableName);
+
   return {
     ...next,
     foreignKeys: state.foreignKeys?.map((foreignKey) =>
@@ -52,24 +55,32 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
   const previousNames = new Map(state.rows.map((row) => [row.id, row.fieldName.trim()]));
   const renames = new Map<string, string>();
   const clearedNames: string[] = [];
+
   for (const row of rows) {
     if (!row.id) continue;
     const oldName = previousNames.get(row.id);
     const newName = row.fieldName.trim();
+
     if (oldName && !newName) clearedNames.push(oldName);
+
     if (oldName && newName && oldName !== newName) renames.set(key(oldName), newName);
   }
+
   const document = removeFieldReferences({ ...state, rows }, clearedNames);
+
   if (renames.size === 0) return document;
 
   const rename = (name: string) => renames.get(key(name)) ?? name;
+
   const renameIndexField = <T extends { name: string }>(field: T): T => {
     const name = rename(field.name);
+
     return name === field.name ? field : { ...field, name };
   };
   const tableMiscConfig = document.tableMiscConfig;
   const partitions = tableMiscConfig?.partitions;
   const clustering = partitions?.clustering;
+
   return {
     ...document,
     indexes: document.indexes.map((index) => {
@@ -78,8 +89,10 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
           .filter((field) => renames.has(key(field.name)))
           .map((field) => [key(field.name), rename(field.name)]),
       );
+
       if (indexRenames.size === 0) return index;
       const name = renameIndexNameTokens(index.name, indexRenames, state.dbType);
+
       return {
         ...index,
         name:
@@ -140,6 +153,7 @@ export function removeFieldsFromDocument(
   const removedFieldNames = state.rows.filter(shouldRemove).map((row) => row.fieldName);
   const remainingRows = state.rows.filter((row, index) => !shouldRemove(row, index));
   const rows = remainingRows.length > 0 ? remainingRows : [createEmptyRow()];
+
   return removeFieldReferences({ ...state, rows }, removedFieldNames);
 }
 
@@ -148,13 +162,16 @@ function removeFieldReferences(state: PersistedState, fieldNames: string[]): Per
     .map((name) => getSqlIdentifierKey(name, state.dbType))
     .filter(Boolean);
   const removedNames = new Set(removedFieldNames);
+
   if (removedNames.size === 0) return state;
+
   const matchesRemovedField = (name: string) =>
     removedNames.has(getSqlIdentifierKey(name, state.dbType));
   const referencesRemovedField = (expression: string) =>
     removedFieldNames.some((name) => sqlExpressionReferencesField(expression, name, state.dbType));
   const expression = state.mysqlPartitionConfig?.expression;
   const removesExpression = expression && referencesRemovedField(expression);
+
   const mysqlPartitionConfig = state.mysqlPartitionConfig
     ? {
         ...state.mysqlPartitionConfig,
@@ -164,6 +181,7 @@ function removeFieldReferences(state: PersistedState, fieldNames: string[]): Per
         expression: removesExpression ? undefined : expression,
       }
     : undefined;
+
   if (
     mysqlPartitionConfig &&
     mysqlPartitionConfig.columns.length === 0 &&
@@ -179,13 +197,16 @@ function removeFieldReferences(state: PersistedState, fieldNames: string[]): Per
     : undefined;
 
   const clustering = state.tableMiscConfig?.partitions?.clustering;
+
   const nextClustering = clustering
     ? {
         ...clustering,
         columns: clustering.columns.filter((column) => !matchesRemovedField(column)),
       }
     : undefined;
+
   if (nextClustering && nextClustering.columns.length === 0) nextClustering.enabled = false;
+
   const tableMiscConfig = state.tableMiscConfig
     ? {
         ...state.tableMiscConfig,

@@ -8,6 +8,7 @@ export function useWorkspaceQuerySync() {
     if (storage.kind !== 'indexeddb') return;
     const handleSnapshotApplied = () => void refresh();
     window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
+
     return () =>
       window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
   }, [refresh, storage.kind]);

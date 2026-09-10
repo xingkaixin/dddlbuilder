@@ -39,6 +39,7 @@ export function useWorkspaceTreeControls({
   const [dragFeedback, setDragFeedback] = useState<DragFeedback | null>(null);
   const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { expandedFolders, toggleFolder, expandFolder } = useFolderExpansion(folders);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
@@ -52,17 +53,21 @@ export function useWorkspaceTreeControls({
     });
 
   const itemMap = useMemo(() => new Map(items.map((item) => [item.tableId, item])), [items]);
+
   const tableFolderMap = useMemo(
     () =>
       items.reduce<Record<string, string | undefined>>((map, item) => {
         map[item.tableId] = item.folderId;
+
         return map;
       }, {}),
     [items],
   );
   const folderParentMap = useMemo(() => buildFolderParentMap(foldersWithCount), [foldersWithCount]);
+
   const folderNodeMap = useMemo(() => {
     const map = new Map<string, FolderTreeNode>();
+
     const visit = (nodes: FolderTreeNode[]) => {
       for (const node of nodes) {
         map.set(node.id, node);
@@ -70,6 +75,7 @@ export function useWorkspaceTreeControls({
       }
     };
     visit(foldersWithCount);
+
     return map;
   }, [foldersWithCount]);
 
@@ -84,9 +90,11 @@ export function useWorkspaceTreeControls({
 
   const showDragFeedback = useCallback((feedback: DragFeedback) => {
     setDragFeedback(feedback);
+
     if (dragFeedbackTimerRef.current) {
       clearTimeout(dragFeedbackTimerRef.current);
     }
+
     dragFeedbackTimerRef.current = setTimeout(() => setDragFeedback(null), 2400);
   }, []);
 
@@ -101,26 +109,34 @@ export function useWorkspaceTreeControls({
       });
 
       if (action.kind === 'none') return;
+
       if (action.kind === 'invalid_folder_cycle') {
         showDragFeedback({
           type: 'blocked',
           message: t('savedTables.dragFeedback.folderCycle'),
         });
+
         return;
       }
+
       if (action.kind === 'move_table') {
         if (!onMoveToFolder) return;
         const item = itemMap.get(action.tableId);
+
         if (!item) return;
+
         try {
           const result = await Promise.resolve(onMoveToFolder(item, action.folderId));
+
           if (result && result.ok === false) {
             showDragFeedback({
               type: 'error',
               message: result.message ?? t('savedTables.dragFeedback.moveFailed'),
             });
+
             return;
           }
+
           if (action.folderId) expandFolder(action.folderId);
           showDragFeedback({
             type: 'success',
@@ -138,21 +154,27 @@ export function useWorkspaceTreeControls({
             message: t('savedTables.dragFeedback.moveFailed'),
           });
         }
+
         return;
       }
 
       if (!onMoveFolder) return;
       const folder = folderNodeMap.get(action.folderId);
+
       if (!folder) return;
+
       try {
         const result = await Promise.resolve(onMoveFolder(folder, action.parentId));
+
         if (result && result.ok === false) {
           showDragFeedback({
             type: 'error',
             message: result.message ?? t('savedTables.dragFeedback.moveFailed'),
           });
+
           return;
         }
+
         if (action.parentId) expandFolder(action.parentId);
         showDragFeedback({
           type: 'success',

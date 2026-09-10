@@ -63,6 +63,7 @@ const getReviewDraftBindingId = (scope: WorkspaceScope, draftId: string) =>
 export const isReviewDraftBinding = (value: unknown): value is ReviewDraftBinding => {
   if (!value || typeof value !== 'object') return false;
   const binding = value as Partial<ReviewDraftBinding>;
+
   return (
     typeof binding.id === 'string' &&
     binding.id.startsWith(DRAFT_BINDING_PREFIX) &&
@@ -92,6 +93,7 @@ const targetFromBinding = (scope: WorkspaceScope, binding: ReviewDraftBinding): 
 
 export const getReviewTableKey = ({ scope, tableId, draftId, normalizedName }: ReviewTarget) => {
   if (tableId && draftId) throw new Error('评审目标不能同时包含 tableId 和 draftId');
+
   return `${getWorkspaceScopeStorageKey(scope)}::${
     tableId ? `table:${tableId}` : draftId ? `draft:${draftId}` : `name:${normalizedName}`
   }`;
@@ -117,6 +119,7 @@ async function runWithStore<T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
   const db = await openDb();
+
   return runIndexedDbRequest(db, REVIEW_STORE_NAME, mode, runner);
 }
 
@@ -128,8 +131,10 @@ const readReviewDraftBinding = (
 ) => {
   if (target.tableId || !target.draftId) {
     done();
+
     return;
   }
+
   const request = store.get(getReviewDraftBindingId(target.scope, target.draftId));
   request.onerror = () => failRequest(request, fail);
   request.onsuccess = () => done(isReviewDraftBinding(request.result) ? request.result : undefined);
@@ -138,15 +143,19 @@ const readReviewDraftBinding = (
 const resolveReviewTarget = async (target: ReviewTarget): Promise<ReviewTarget | null> => {
   if (!target.tableId && !target.draftId) return target;
   const db = await openDb();
+
   return runIndexedDbTransaction(db, WORKSPACE_ENTITY_META_STORE_NAME, 'readonly', (tx, fail) => {
     let result: ReviewTarget | null = null;
     const store = tx.objectStore(WORKSPACE_ENTITY_META_STORE_NAME);
     readReviewDraftBinding(store, target, fail, (binding) => {
       const resolvedTarget = binding ? targetFromBinding(target.scope, binding) : target;
+
       if (!resolvedTarget.tableId) {
         result = resolvedTarget;
+
         return;
       }
+
       const markerRequest = store.get(
         getWorkspaceEntityDeletionMarkerId({
           ...resolvedTarget,
@@ -162,12 +171,14 @@ const resolveReviewTarget = async (target: ReviewTarget): Promise<ReviewTarget |
             : resolvedTarget;
       };
     });
+
     return () => result;
   });
 };
 
 export const getReadableReviewTableKeys = (target: ReviewTarget) => {
   const legacyId = `legacy:${target.normalizedName}`;
+
   return [
     getReviewTableKey(target),
     ...(target.scope.kind === 'anonymous' &&
@@ -187,6 +198,7 @@ export async function saveReview(
   isCurrentDocument: () => boolean = () => true,
 ): Promise<ReviewRecord | null> {
   const db = await openDb();
+
   const saved = await runIndexedDbTransaction(
     db,
     [WORKSPACE_ENTITY_META_STORE_NAME, REVIEW_STORE_NAME],
@@ -194,8 +206,10 @@ export async function saveReview(
     (tx, fail) => {
       let persisted: { record: ReviewRecord; target: ReviewTarget } | null = null;
       const metaStore = tx.objectStore(WORKSPACE_ENTITY_META_STORE_NAME);
+
       const persist = (resolvedTarget: ReviewTarget) => {
         if (!isCurrentDocument()) return;
+
         const record: ReviewRecord = {
           id: generateId(),
           tableKey: getReviewTableKey(resolvedTarget),
@@ -213,10 +227,13 @@ export async function saveReview(
       };
       readReviewDraftBinding(metaStore, target, fail, (binding) => {
         const resolvedTarget = binding ? targetFromBinding(target.scope, binding) : target;
+
         if (!resolvedTarget.tableId) {
           persist(resolvedTarget);
+
           return;
         }
+
         const stableTarget = { ...resolvedTarget, tableId: resolvedTarget.tableId };
         const markerRequest = metaStore.get(getWorkspaceEntityDeletionMarkerId(stableTarget));
         markerRequest.onerror = () => failRequest(markerRequest, fail);
@@ -224,23 +241,28 @@ export async function saveReview(
           if (!isWorkspaceEntityDeletionMarker(markerRequest.result)) persist(stableTarget);
         };
       });
+
       return () => persisted;
     },
   );
 
   if (!saved) return null;
   await pruneOldReviews(saved.target, MAX_REVIEWS_PER_TABLE);
+
   return saved.record;
 }
 
 export async function listReviews(target: ReviewTarget): Promise<ReviewRecord[]> {
   const resolvedTarget = await resolveReviewTarget(target);
+
   if (!resolvedTarget) return [];
+
   const groups = await Promise.all(
     getReadableReviewTableKeys(resolvedTarget).map((key) =>
       runWithStore<ReviewRecord[]>('readonly', (store) => store.index('tableKey').getAll(key)),
     ),
   );
+
   return groups
     .flat()
     .map(normalizeReviewRecord)
@@ -265,6 +287,7 @@ export async function migrateReviewsToTable(
     (tx, fail) => {
       const metaStore = tx.objectStore(WORKSPACE_ENTITY_META_STORE_NAME);
       const reviewStore = tx.objectStore(REVIEW_STORE_NAME);
+
       const migrate = () => {
         const markerRequest = metaStore.get(getWorkspaceEntityDeletionMarkerId(target));
         markerRequest.onerror = () => failRequest(markerRequest, fail);
@@ -282,6 +305,7 @@ export async function migrateReviewsToTable(
                 reviewStore.delete(record.id);
                 continue;
               }
+
               reviewStore.put({
                 ...record,
                 tableKey: getReviewTableKey(target),
@@ -293,10 +317,13 @@ export async function migrateReviewsToTable(
         };
       };
       const draftId = source.draftId;
+
       if (!draftId) {
         migrate();
+
         return () => undefined;
       }
+
       const bindingId = getReviewDraftBindingId(target.scope, draftId);
       const bindingRequest = metaStore.get(bindingId);
       bindingRequest.onerror = () => failRequest(bindingRequest, fail);
@@ -304,13 +331,17 @@ export async function migrateReviewsToTable(
         const existing = isReviewDraftBinding(bindingRequest.result)
           ? bindingRequest.result
           : undefined;
+
         if (existing && existing.tableId !== target.tableId) {
           fail(new Error('评审草稿已绑定到其他表'));
+
           return;
         }
+
         metaStore.put(createReviewDraftBinding(target, draftId));
         migrate();
       };
+
       return () => undefined;
     },
   );
@@ -318,6 +349,7 @@ export async function migrateReviewsToTable(
 
 export async function listReviewMetadata(target: ReviewTarget): Promise<ReviewRecordMetadata[]> {
   const records = await listReviews(target);
+
   return records.map((r) => ({
     id: r.id,
     tableNormalizedName: r.tableNormalizedName,
@@ -334,6 +366,7 @@ export async function getReview(id: string, target: ReviewTarget): Promise<Revie
     runWithStore<ReviewRecord | undefined>('readonly', (store) => store.get(id)),
     resolveReviewTarget(target),
   ]);
+
   return resolvedTarget &&
     result?.tableKey &&
     getReadableReviewTableKeys(resolvedTarget).includes(result.tableKey)
@@ -362,5 +395,6 @@ export async function pruneOldReviews(target: ReviewTarget, maxCount: number): P
   const records = await listReviews(target);
   const toDelete = records.slice(Math.max(0, maxCount));
   await deleteReviews(toDelete);
+
   return toDelete.length;
 }

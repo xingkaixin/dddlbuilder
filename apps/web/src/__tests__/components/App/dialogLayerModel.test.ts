@@ -4,6 +4,7 @@ import { buildAppDialogLayerModel } from '@/components/App/buildAppDialogLayerMo
 describe('dialog template catalog', () => {
   it('shares the same template catalog between AI generation and editing', () => {
     const templates: never[] = [];
+
     const model = buildAppDialogLayerModel({
       domains: {
         editor: { schemaName: '', tableName: '' },

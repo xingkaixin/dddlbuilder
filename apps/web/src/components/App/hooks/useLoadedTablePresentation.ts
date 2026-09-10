@@ -25,6 +25,7 @@ export function useLoadedTablePresentation({
   const identityKey = tableId ?? normalizedName;
   const [versionState, setVersionState] = useState({ identityKey, value: 0 });
   const version = versionState.identityKey === identityKey ? versionState.value : 0;
+
   const setVersion = useCallback(
     (value: number, target?: SavedTableTarget) =>
       setVersionState({ identityKey: target ? savedTableKey(target) : identityKey, value }),
@@ -52,6 +53,7 @@ export function useLoadedTablePresentation({
   const label = useMemo(() => {
     if (isShareView) return t('app.workspace.shareReadonly');
     if (!tableName) return t('app.workspace.globalDraft');
+
     return t('app.workspace.currentTable', {
       name: tableName,
       version: version > 0 ? t('app.workspace.version', { version }) : '',

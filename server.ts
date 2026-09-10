@@ -16,6 +16,7 @@ app.use('/api/*', async (c, next) => {
       Object.fromEntries(ENV_VARIABLE_KEYS.map((key) => [key, process.env[key]])),
     );
   }
+
   await next();
 });
 
@@ -39,4 +40,5 @@ app.get('*', serveStatic({ path: './apps/web/dist/client/index.html' }));
 const port = Number(process.env.PORT) || 3000;
 
 serve({ fetch: app.fetch, port });
+
 console.log(`🚀 Server running at http://localhost:${port}`);

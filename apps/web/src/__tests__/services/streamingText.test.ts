@@ -4,6 +4,7 @@ import { createAITextStream } from '@/__tests__/utils/aiStream';
 
 function createTextStream(chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
+
   return new ReadableStream({
     start(controller) {
       chunks.forEach((chunk) => {
@@ -31,6 +32,7 @@ describe('readTextStream', () => {
 
   it('cancels the reader and releases its lock when a frame cannot be decoded', async () => {
     const cancel = vi.fn();
+
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(new TextEncoder().encode('{"type":"delta","text":42}\n'));

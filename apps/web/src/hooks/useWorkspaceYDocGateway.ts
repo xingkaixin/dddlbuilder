@@ -14,6 +14,7 @@ export function useWorkspaceYDocGateway(
   { enabled = true }: WorkspaceYDocGatewayOptions = {},
 ) {
   const workspaceYDoc = useWorkspaceYDocDocument();
+
   const yDocReady = Boolean(
     enabled && workspaceYDoc.doc && workspaceYDoc.localSynced && scope?.kind === 'user',
   );
@@ -27,7 +28,9 @@ export function useWorkspaceYDocGateway(
       yDoc.transact(() => {
         outcome = { value: mutate(yDoc) };
       }, WorkspaceYDocOrigin.LocalEdit);
+
       if (!outcome) throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
+
       return outcome.value;
     },
     [yDoc],

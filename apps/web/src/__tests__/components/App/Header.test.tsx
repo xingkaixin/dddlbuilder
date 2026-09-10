@@ -116,6 +116,7 @@ vi.mock('@/components/ui/tooltip', () => ({
 
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = vi.fn(() => signedOutIdentity);
+
   const buildActions = () => ({
     signInWithEmail: signInWithEmailMock,
     signUpWithEmail: signUpWithEmailMock,
@@ -136,6 +137,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
   let dialog: ReturnType<typeof buildDialog> | undefined;
   const useAuthActions = vi.fn(() => (actions ??= buildActions()));
   const useAuthDialog = vi.fn(() => (dialog ??= buildDialog()));
+
   return { useAuthIdentity, useAuthActions, useAuthDialog };
 });
 

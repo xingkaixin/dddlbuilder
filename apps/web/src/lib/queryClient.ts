@@ -7,6 +7,7 @@ export function shouldRetryQuery(failureCount: number, error: unknown) {
   if (typeof error !== 'object' || error === null || !('status' in error)) return true;
 
   const status = error.status;
+
   return typeof status !== 'number' || status >= 500;
 }
 

@@ -20,6 +20,7 @@ export const AIStreamEventSchema = Schema.Union([
     requestId: Schema.optional(Schema.String),
   }),
 ]);
+
 export type AIStreamEvent = typeof AIStreamEventSchema.Type;
 
 const jsonEvent = Schema.fromJsonString(AIStreamEventSchema);
@@ -28,6 +29,7 @@ const encode = Schema.encodeSync(jsonEvent);
 
 export const decodeAIStreamEvent = (line: string): AIStreamEvent | undefined => {
   const result = decode(line);
+
   return Result.isSuccess(result) ? result.success : undefined;
 };
 export const encodeAIStreamEvent = (event: AIStreamEvent): string => `${encode(event)}\n`;

@@ -122,7 +122,9 @@ function editPreview(
   edit: (document: PersistedState) => PersistedState,
 ): WorkspaceImportState {
   const result = state.parsedResult;
+
   if (!result) return state;
+
   const document = withDefaultEditorSession({
     ...result,
     schemaName: result.schemaName ?? '',
@@ -141,6 +143,7 @@ function editPreview(
     })),
   });
   const next = edit(document);
+
   return {
     ...state,
     parsedResult: {
@@ -183,6 +186,7 @@ export function importDialogReducer(
       return { ...state, validationResult: action.result };
     case 'workspace_validated':
       if (state.mode !== 'workspace') return state;
+
       return {
         ...state,
         step: 'preview',
@@ -192,6 +196,7 @@ export function importDialogReducer(
       };
     case 'saved_validated':
       if (state.mode !== 'saved') return state;
+
       return {
         ...state,
         step: 'select',
@@ -204,9 +209,11 @@ export function importDialogReducer(
       if (state.mode === 'workspace' && state.step === 'preview') {
         return { ...state, step: 'confirm' };
       }
+
       if (state.mode === 'saved' && state.step === 'select') {
         return { ...state, step: 'save' };
       }
+
       return state;
     case 'back':
       if (state.mode === 'workspace') {
@@ -216,10 +223,12 @@ export function importDialogReducer(
         if (state.step === 'save') return { ...state, step: 'select' };
         if (state.step === 'select') return { ...state, step: 'validate' };
       }
+
       return state;
     case 'update_preview_field': {
       if (state.mode !== 'workspace' || !state.parsedResult?.fields[action.index]) return state;
       const key = { name: 'fieldName', type: 'fieldType', nullable: 'nullable' } as const;
+
       return editPreview(state, (document) =>
         updateDocumentFields(
           document,
@@ -229,32 +238,41 @@ export function importDialogReducer(
         ),
       );
     }
+
     case 'move_preview_field': {
       if (state.mode !== 'workspace' || !state.parsedResult?.fields[action.index]) return state;
       const targetIndex = action.direction === 'up' ? action.index - 1 : action.index + 1;
       const fields = state.parsedResult.fields.slice();
+
       if (!fields[targetIndex]) return state;
       [fields[action.index], fields[targetIndex]] = [fields[targetIndex], fields[action.index]];
+
       return { ...state, parsedResult: { ...state.parsedResult, fields } };
     }
+
     case 'delete_preview_field':
       if (state.mode !== 'workspace' || !state.parsedResult?.fields[action.index]) return state;
+
       return editPreview(state, (document) =>
         removeFieldsFromDocument(document, (_, index) => index === action.index),
       );
     case 'toggle_table': {
       if (state.mode !== 'saved') return state;
       const currentTable = state.parsedTables[action.index];
+
       if (!currentTable) return state;
       const parsedTables = state.parsedTables.slice();
       parsedTables[action.index] = {
         ...currentTable,
         selected: !currentTable.selected,
       };
+
       return { ...state, parsedTables };
     }
+
     case 'select_all_tables':
       if (state.mode !== 'saved') return state;
+
       return {
         ...state,
         parsedTables: state.parsedTables.map((table) => ({
@@ -264,9 +282,11 @@ export function importDialogReducer(
       };
     case 'set_folder':
       if (state.mode !== 'saved') return state;
+
       return { ...state, selectedFolderId: action.folderId };
     case 'set_conflict_strategy':
       if (state.mode !== 'saved') return state;
+
       return { ...state, conflictStrategy: action.strategy };
     case 'import_failed':
       return { ...state, operation: { kind: 'failed', error: action.error } };

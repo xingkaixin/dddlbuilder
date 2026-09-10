@@ -10,6 +10,7 @@ test.describe('单元格深度交互验证 @fields', () => {
   test('常量和 SQL 表达式使用不同的默认值语义', async ({ page }) => {
     await page.locator('#table-name').fill('default_values');
     const row = page.getByTestId('data-table').locator('tbody tr').first();
+
     for (const [column, value] of [
       [2, 'label'],
       [4, 'varchar(50)'],
@@ -19,6 +20,7 @@ test.describe('单元格深度交互验证 @fields', () => {
       await cell.locator('input').fill(value);
       await page.keyboard.press('Enter');
     }
+
     const sql = page.locator('[role="tabpanel"]:visible pre');
     await expect(sql).toContainText(/label\s+VARCHAR\(50\)/);
     const kind = row.locator('td:nth-child(6)').getByRole('combobox');

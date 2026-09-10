@@ -72,14 +72,19 @@ export function useRenameDeleteActions({
   const handleConfirmRename = useCallback(async () => {
     if (!renameTarget) return;
     const result = await renameTable(renameTarget, renameName);
+
     if (!result.ok) {
       if (result.reason === 'duplicate') {
         renameDialog.setError(t('savedTables.toast.nameExists'));
+
         return;
       }
+
       showToast(result.message ?? t('savedTables.toast.renameFailed'));
+
       return;
     }
+
     const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
     showToast(t('savedTables.toast.tableRenamed', { name: displayName }));
     renameSavedTableDraft?.(renameTarget, result.normalizedName, displayName);
@@ -115,6 +120,7 @@ export function useRenameDeleteActions({
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     const result = await deleteTable(deleteTarget);
+
     if (!result.ok) {
       showToast(result.message ?? t('savedTables.toast.deleteFailed'));
     } else {
@@ -122,6 +128,7 @@ export function useRenameDeleteActions({
       showToast(t('savedTables.toast.tableTrashed', { name: deleteTarget.name }));
       onTabRemove?.(deleteTarget);
     }
+
     deleteDialog.closeDialog();
   }, [deleteTarget, deleteTable, showToast, removeSavedTableDraft, deleteDialog, onTabRemove, t]);
 

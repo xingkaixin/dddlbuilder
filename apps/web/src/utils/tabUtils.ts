@@ -32,8 +32,11 @@ export function getAvailableTabs({ objectType, dbType }: BuilderTabContext): Bui
   if (objectType === 'view') return [...VIEW_TABS];
 
   const tabs: BuilderTab[] = [...TABLE_TABS];
+
   if (dbType === 'postgresql-citus') tabs.push('sharding');
+
   if (supportsMysqlPartition(dbType)) tabs.push('partition');
+
   if (dbType === 'hive') tabs.push('hive-partition');
 
   if (dbType === 'hive') {

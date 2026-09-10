@@ -20,10 +20,12 @@ describe('imported foreign key field correspondence', () => {
       ],
     });
     expect(state?.foreignKeys).toHaveLength(1);
+
     if (!state?.foreignKeys) throw new Error('Expected imported foreign key');
     expect(state.foreignKeys[0].fields).toEqual(['tenant_id', '', 'user_id']);
     expect(state.foreignKeys[0].refFields).toEqual(['id', 'tenant_id', '']);
     expect(getForeignKeyIssue(state.foreignKeys[0], state.dbType)?.kind).toBe('fields');
+
     const sql = buildDDL({
       dbType: state.dbType,
       tableName: state.tableName,

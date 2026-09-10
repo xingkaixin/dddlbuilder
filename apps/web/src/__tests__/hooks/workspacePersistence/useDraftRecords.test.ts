@@ -37,6 +37,7 @@ const renderDraftRecords = (
     scope: { kind: 'anonymous' },
   };
   const enqueuePersistence = overrides.enqueuePersistence ?? vi.fn(async () => undefined);
+
   return renderHook(() =>
     useDraftRecords({
       disabled: false,
@@ -87,6 +88,7 @@ describe('useDraftRecords', () => {
 
   it('keeps a trashed draft visible until permanent deletion succeeds', async () => {
     let finishDeletion!: () => void;
+
     const enqueuePersistence = vi.fn(
       (_key: string, _operation: string, run: () => Promise<unknown>) =>
         new Promise<void>((resolve) => {
@@ -146,14 +148,17 @@ describe('draft persistence retry', () => {
       write
         .mockRejectedValueOnce(new Error('storage unavailable'))
         .mockResolvedValueOnce(undefined);
+
       const { result } = renderHook(() => {
         const queue = usePersistenceQueue();
+
         const drafts = useDraftRecords({
           disabled: false,
           yDoc: null,
           enqueuePersistence: queue.enqueue,
           storage: { kind: 'indexeddb', scope: { kind: 'anonymous' } },
         });
+
         return { queue, drafts };
       });
       act(() =>

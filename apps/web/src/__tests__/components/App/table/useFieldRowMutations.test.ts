@@ -18,6 +18,7 @@ const createRow = (overrides: Partial<FieldRow> = {}): FieldRow => ({
 describe('useFieldRowMutations', () => {
   it('应该将 nullable 布尔值映射为 是/否', () => {
     let rows: FieldRow[] = [createRow()];
+
     const setRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => {
       rows = typeof next === 'function' ? next(rows) : next;
     };
@@ -54,6 +55,7 @@ describe('useFieldRowMutations', () => {
 
   it('应该处理 defaultKind 联动逻辑', () => {
     let rows: FieldRow[] = [createRow()];
+
     const setRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => {
       rows = typeof next === 'function' ? next(rows) : next;
     };
@@ -86,6 +88,7 @@ describe('useFieldRowMutations', () => {
 
   it('应该通过行更新提交字段名变更', () => {
     let rows: FieldRow[] = [createRow({ fieldName: 'user_id' })];
+
     const setRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => {
       rows = typeof next === 'function' ? next(rows) : next;
     };

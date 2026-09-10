@@ -46,8 +46,10 @@ describe('PartitionPanel editing', () => {
 
   it('allows clearing the count while editing and normalizes on blur', () => {
     const changed = vi.fn();
+
     function Harness() {
       const [count, setCount] = useState(4);
+
       return (
         <PartitionPanel
           {...callbacks}
@@ -60,6 +62,7 @@ describe('PartitionPanel editing', () => {
         />
       );
     }
+
     render(<Harness />);
     const input = screen.getByRole('spinbutton');
     fireEvent.change(input, { target: { value: '' } });

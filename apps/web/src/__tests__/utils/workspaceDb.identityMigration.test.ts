@@ -56,22 +56,27 @@ async function createOldDatabase(
     request.onupgradeneeded = () => {
       request.result.createObjectStore(STORE_NAME, { keyPath: 'normalizedName' });
       request.result.createObjectStore('workspace_entity_meta', { keyPath: 'id' });
+
       for (const name of [VERSION_STORE_NAME, REVIEW_STORE_NAME]) {
         const store = request.result.createObjectStore(name, { keyPath: 'id' });
         store.createIndex('tableNormalizedName', 'tableNormalizedName');
+
         if (version >= 15) store.createIndex('tableKey', 'tableKey');
       }
     };
+
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction([STORE_NAME, VERSION_STORE_NAME, REVIEW_STORE_NAME], 'readwrite');
     tables.forEach((record) => tx.objectStore(STORE_NAME).put(record));
+
     for (const name of [VERSION_STORE_NAME, REVIEW_STORE_NAME]) {
       const storeRecords = name === REVIEW_STORE_NAME ? reviews : records;
       storeRecords.forEach((record) => tx.objectStore(name).put(record));
     }
+
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -80,6 +85,7 @@ async function createOldDatabase(
 
 async function readRawHistory(storeName: string) {
   const db = await openDb();
+
   try {
     return await new Promise<ReturnType<typeof history>[]>((resolve, reject) => {
       const request = db.transaction(storeName, 'readonly').objectStore(storeName).getAll();
@@ -129,6 +135,7 @@ describe('legacy saved table identity migration', () => {
       ],
     );
     const saved = await getSavedTable('users', scope);
+
     if (!saved) throw new Error('Missing saved table');
     const target = { scope, tableId, normalizedName: 'users' };
     expect(saved.tableId).toBe(tableId);

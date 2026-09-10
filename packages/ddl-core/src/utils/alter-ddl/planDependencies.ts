@@ -11,6 +11,7 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
   const consumed = new Set<IndexDiff>();
   const removedIndexes = diff.indexes.filter((change) => change.type === 'remove');
   const removedNames = new Set(removedIndexes.map((change) => key(change.index.name)));
+
   const fieldRenames = new Map(
     diff.fields.flatMap((field) =>
       field.type === 'rename' ? [[key(field.oldFieldName), key(field.newFieldName)] as const] : [],
@@ -20,6 +21,7 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
   if (family === 'postgresql') {
     for (const removal of removedIndexes) {
       const oldIndex = removal.index;
+
       const addition = diff.indexes.find(
         (change) =>
           change.type === 'add' &&
@@ -30,15 +32,18 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
           change.index.fields.length === oldIndex.fields.length &&
           oldIndex.fields.every((field, position) => {
             const next = change.index.fields[position];
+
             return (
               (fieldRenames.get(key(field.name)) ?? key(field.name)) === key(next.name) &&
               field.direction === next.direction
             );
           }),
       );
+
       if (!addition) continue;
       consumed.add(removal);
       consumed.add(addition);
+
       if (key(oldIndex.name) !== key(addition.index.name)) {
         indexRenames.push({ oldIndex, newIndex: addition.index });
       }
@@ -46,6 +51,7 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
   }
 
   const indexes = diff.indexes.filter((change) => !consumed.has(change));
+
   const removedFields = new Set(
     diff.fields.filter((field) => field.type === 'remove').map((field) => key(field.fieldName)),
   );
@@ -63,6 +69,7 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
   );
   const oldTable = getSchemaAndTable(tableName);
   const foreignKeys = (diff.foreignKeys ?? []).filter((change) => !change.foreignKey.logical);
+
   const targetIndexes = [
     ...(diff.unchangedIndexes ?? []),
     ...diff.indexes.filter((change) => change.type === 'add').map((change) => change.index),
@@ -77,18 +84,22 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
 
   for (const foreignKey of diff.unchangedForeignKeys ?? []) {
     if (foreignKey.logical) continue;
+
     const selfReference =
       key(foreignKey.refTable) === key(oldTable.table) &&
       key(foreignKey.refSchema ?? '') === key(oldTable.schema);
     const fields = [...foreignKey.fields, ...(selfReference ? foreignKey.refFields : [])];
+
     if (fields.some((field) => removedFields.has(key(field)))) {
       return {
         error: `unchanged foreign key ${foreignKey.name} still references a removed column`,
       };
     }
+
     const replacesReferencedKey =
       selfReference &&
       droppedKeys.some(({ index }) => matchesReferencedKey(index, foreignKey.refFields));
+
     if (
       replacesReferencedKey &&
       !targetIndexes.some(
@@ -102,9 +113,11 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
         error: `cannot verify a supported unique referenced key for unchanged foreign key ${foreignKey.name}`,
       };
     }
+
     const replacesLocalIndex =
       family === 'mysql' &&
       droppedKeys.some(({ index }) => matchesPrefix(index, foreignKey.fields));
+
     if (
       !replacesReferencedKey &&
       !replacesLocalIndex &&

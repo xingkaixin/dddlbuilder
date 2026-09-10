@@ -33,6 +33,7 @@ test('first cloud sync is not presented as an empty workspace', async ({ browser
   const context = await browser.newContext({ locale: 'zh-CN' });
   await mockSignedInWorkspace(context, server, workspaceId);
   let release = () => {};
+
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
@@ -41,6 +42,7 @@ test('first cloud sync is not presented as an empty workspace', async ({ browser
     await route.fallback();
   });
   const page = await context.newPage();
+
   try {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: '尚未完成首次同步' })).toBeVisible();
@@ -67,10 +69,12 @@ test('switching accounts after local startup never carries over the previous edi
   await mockSignedInWorkspace(context, server, workspaceId);
   const page = await context.newPage();
   let release = () => {};
+
   try {
     await page.goto('/');
     await openDraftByName(page, 'account_a_private');
     await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
@@ -122,6 +126,7 @@ test('a previously synchronized empty workspace remains empty while offline', as
   const context = await browser.newContext({ locale: 'zh-CN' });
   await mockSignedInWorkspace(context, server, workspaceId);
   const page = await context.newPage();
+
   try {
     await page.goto('/');
     await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
@@ -142,6 +147,7 @@ test('a previously synchronized empty workspace remains empty while offline', as
             request.onerror = () => reject(request.error);
           });
           db.close();
+
           return loaded;
         }, workspaceId),
       )
@@ -157,12 +163,14 @@ test('a previously synchronized empty workspace remains empty while offline', as
     server.doc.destroy();
   }
 });
+
 const DEFAULT_DRAFT_ID = 'default';
 
 const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
   const encoder = encoding.createEncoder();
   encoding.writeVarUint(encoder, MESSAGE_SYNC);
   write(encoder);
+
   return Buffer.from(encoding.toUint8Array(encoder));
 };
 
@@ -175,8 +183,10 @@ class MockWorkspaceYjsServer {
   constructor() {
     this.doc.on('update', (update, origin) => {
       const message = encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update));
+
       for (const socket of this.sockets) {
         const clientId = this.socketClients.get(socket);
+
         if (socket !== origin && (!clientId || !this.pausedClients.has(clientId))) {
           socket.send(message);
         }
@@ -196,18 +206,22 @@ class MockWorkspaceYjsServer {
         const decoder = decoding.createDecoder(new Uint8Array(message));
         let messageType = decoding.readVarUint(decoder);
         let requestId: number | undefined;
+
         if (messageType === WORKSPACE_SYNC_MESSAGE.syncWithAck) {
           requestId = decoding.readVarUint(decoder);
           messageType = decoding.readVarUint(decoder);
         }
+
         if (messageType !== MESSAGE_SYNC) return;
 
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MESSAGE_SYNC);
         syncProtocol.readSyncMessage(decoder, encoder, this.doc, socket);
+
         if (encoding.length(encoder) > 1) {
           socket.send(Buffer.from(encoding.toUint8Array(encoder)));
         }
+
         if (requestId !== undefined) {
           const acknowledgement = encoding.createEncoder();
           encoding.writeVarUint(acknowledgement, WORKSPACE_SYNC_MESSAGE.persisted);
@@ -281,6 +295,7 @@ const mockSignedInWorkspace = async (
   await context.route('**/api/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+
     if (url.pathname === '/api/me') {
       await route.fulfill({
         json: {
@@ -294,24 +309,32 @@ const mockSignedInWorkspace = async (
           meta: { requestId: 'e2e' },
         },
       });
+
       return;
     }
+
     if (url.pathname === '/api/credits/balance') {
       await route.fulfill({ json: { balance: 10000, version: 1, userId: 'user-1' } });
+
       return;
     }
+
     if (url.pathname === '/api/workspaces') {
       await route.fulfill({
         json: {
           workspaceId,
         },
       });
+
       return;
     }
+
     if (url.pathname === `/api/workspaces/${workspaceId}/yjs` && request.method() === 'HEAD') {
       await route.fulfill({ status: 204 });
+
       return;
     }
+
     await route.fallback();
   });
   await context.routeWebSocket(`**/api/workspaces/${workspaceId}/yjs`, server.route(clientId));
@@ -331,6 +354,7 @@ test('sign out preserves local changes until cloud persistence is confirmed', as
     await route.fulfill({ json: { success: true } });
   });
   const page = await context.newPage();
+
   try {
     await page.goto('/');
     await openDraftByName(page, 'cloud_before_signout');
@@ -388,6 +412,7 @@ const tableNameInput = (page: Page) => page.locator('#table-name');
 
 const readDefaultDraftState = (doc: Y.Doc) => {
   const draft = doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID);
+
   return readTableDocState(draft);
 };
 
@@ -396,6 +421,7 @@ const readTableDocState = (tableDoc: Y.Map<unknown> | undefined) => {
   const scalar = tableDoc?.get('scalar');
   const fields = tableDoc?.get('fields');
   const fieldOrder = tableDoc?.get('fieldOrder');
+
   if (!(fields instanceof Y.Map) || !(fieldOrder instanceof Y.Array)) {
     return snapshot;
   }
@@ -418,8 +444,10 @@ const readTableDocState = (tableDoc: Y.Map<unknown> | undefined) => {
       .toArray()
       .map((fieldId, index) => {
         const field = fields.get(String(fieldId));
+
         if (!(field instanceof Y.Map)) return null;
         const fallback = snapshot?.rows[index];
+
         return {
           order: typeof field.get('order') === 'number' ? Number(field.get('order')) : index + 1,
           fieldName:
@@ -458,6 +486,7 @@ const readTableDocState = (tableDoc: Y.Map<unknown> | undefined) => {
 
 const readMetadata = (tableDoc: Y.Map<unknown> | undefined) => {
   const metadata = tableDoc?.get('metadata');
+
   return metadata instanceof Y.Map ? metadata : null;
 };
 
@@ -468,6 +497,7 @@ const savedTableDoc = (doc: Y.Doc, normalizedName: string) =>
 
 const readSavedTableState = (doc: Y.Doc, normalizedName: string) => {
   const tableDoc = savedTableDoc(doc, normalizedName);
+
   return readTableDocState(tableDoc);
 };
 
@@ -475,12 +505,14 @@ const readSavedTableFolderId = (doc: Y.Doc, normalizedName: string) => {
   const tableDoc = savedTableDoc(doc, normalizedName);
   const metadata = readMetadata(tableDoc);
   const folderId = metadata?.get('folderId');
+
   return typeof folderId === 'string' ? folderId : undefined;
 };
 
 const readSavedTableTrashedAt = (doc: Y.Doc, normalizedName: string) => {
   const tableDoc = savedTableDoc(doc, normalizedName);
   const trashedAt = readMetadata(tableDoc)?.get('trashedAt');
+
   return typeof trashedAt === 'number' ? trashedAt : undefined;
 };
 
@@ -490,12 +522,14 @@ const findFolderIdByName = (doc: Y.Doc, name: string) => {
       return id;
     }
   }
+
   return undefined;
 };
 
 const openDraftByName = async (page: Page, name: string) => {
   try {
     await expect(tableNameInput(page)).toHaveValue(name, { timeout: 3000 });
+
     return;
   } catch {
     await page
@@ -508,6 +542,7 @@ const openDraftByName = async (page: Page, name: string) => {
 
 const openSavedTables = async (page: Page) => {
   const dialog = page.getByRole('dialog', { name: /工作区/i });
+
   if (await dialog.isVisible().catch(() => false)) return;
   await page.getByRole('button', { name: '工作区' }).click();
   await expect(dialog).toBeVisible();
@@ -520,9 +555,11 @@ const saveCurrentTable = async (page: Page, name: string) => {
   await page.getByRole('button', { name: /保存当前表/i }).click();
   await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
   const nameInput = page.getByLabel('保存名称');
+
   if (await nameInput.isEnabled()) {
     await nameInput.fill(name);
   }
+
   await page.getByRole('button', { name: /^保存$/ }).click();
   await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
 };
@@ -554,6 +591,7 @@ const dragToTarget = async (page: Page, source: Locator, target: Locator) => {
       await expect(target).toBeVisible();
       const sourceBox = await source.boundingBox();
       const targetBox = await target.boundingBox();
+
       if (!sourceBox || !targetBox) {
         throw new Error('Drag source or target missing');
       }
@@ -564,6 +602,7 @@ const dragToTarget = async (page: Page, source: Locator, target: Locator) => {
         steps: 12,
       });
       await page.mouse.up();
+
       return;
     } catch (error) {
       lastError = error;
@@ -581,17 +620,21 @@ const ensureFolderExpanded = async (page: Page, folderName: string) => {
     const expandButton = getFolderRowByName(page, folderName)
       .getByRole('button', { name: new RegExp(`展开\\s*${folderName}`, 'i') })
       .first();
+
     if (!(await expandButton.isVisible().catch(() => false))) {
       return;
     }
+
     try {
       await expandButton.click({ force: true, timeout: 2000 });
       await page.waitForTimeout(150);
+
       return;
     } catch (error) {
       if (attempt === 2) {
         throw error;
       }
+
       await page.waitForTimeout(120);
     }
   }
@@ -644,6 +687,7 @@ for (const action of ['dismiss', 'confirm'] as const) {
     await page.reload();
     await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
     await expect(dialog).toBeHidden();
+
     if (action === 'dismiss') {
       expect(server.doc.getMap('savedTables').size).toBe(0);
       expect(server.doc.getMap('drafts').size).toBe(0);
@@ -653,6 +697,7 @@ for (const action of ['dismiss', 'confirm'] as const) {
       await openSavedTables(page);
       await expect(getSavedTableRow(page, 'anonymous_orders')).toBeVisible();
     }
+
     await context.close();
     server.doc.destroy();
   });
@@ -662,6 +707,7 @@ test('same-name saved tables keep independent tabs, drafts and lifecycle', async
   const server = new MockWorkspaceYjsServer();
   const workspaceId = `ws-same-name-${Date.now()}`;
   seedDefaultDraft(server.doc, 'initial', 'id');
+
   for (const id of ['first', 'second']) {
     const table = new Y.Map<unknown>();
     const metadata = new Y.Map<unknown>();
@@ -674,9 +720,11 @@ test('same-name saved tables keep independent tabs, drafts and lifecycle', async
     table.set('stateSnapshot', createState(id, `${id}_id`));
     server.doc.getMap<Y.Map<unknown>>('savedTables').set(id, table);
   }
+
   const context = await browser.newContext({ locale: 'zh-CN' });
   await mockSignedInWorkspace(context, server, workspaceId);
   const page = await context.newPage();
+
   const row = (id: string) =>
     page.getByRole('dialog', { name: /工作区/i }).locator(`[data-table-id="${id}"]`);
   const select = async (id: string) => {
@@ -739,6 +787,7 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
   seedDefaultDraft(server.doc, 'ai_conflict', 'id');
   const contextA = await browser.newContext({ locale: 'zh-CN' });
   const contextB = await browser.newContext({ locale: 'zh-CN' });
+
   try {
     await mockSignedInWorkspace(contextA, server, workspaceId);
     await mockSignedInWorkspace(contextB, server, workspaceId);
@@ -774,6 +823,7 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
     await dialog.locator('#ai-patch-input').fill('将字段类型改成 INT');
     await dialog.getByRole('button', { name: '发送', exact: true }).click();
     await dialog.getByRole('button', { name: '切换变更选择' }).click();
+
     const commentCell = pageB
       .getByTestId('data-table')
       .locator('tbody tr')
@@ -876,6 +926,7 @@ test('remote draft removal cancels index advice when switching to a same-name dr
   await mockSignedInWorkspace(contextA, server, workspaceId, 'deleting-client');
   await mockSignedInWorkspace(contextB, server, workspaceId, 'editing-client');
   let finishResponse = () => {};
+
   const responseReady = new Promise<void>((resolve) => {
     finishResponse = resolve;
   });
@@ -903,6 +954,7 @@ test('remote draft removal cancels index advice when switching to a same-name dr
   });
   const pageA = await contextA.newPage();
   const pageB = await contextB.newPage();
+
   const remainingDraft = () =>
     listWorkspaceDrafts(server.doc).find(({ draftId }) => draftId !== DEFAULT_DRAFT_ID)?.record
       .state;
@@ -1013,6 +1065,7 @@ test('workspace yjs sync converges saved table lifecycle and folder moves across
 
   await createFolder(pageA, parentFolder);
   await createFolder(pageA, childFolder);
+
   const childHandle = getFolderRowByName(pageA, childFolder).getByRole('button', {
     name: /拖拽移动文件夹/i,
   });
@@ -1022,6 +1075,7 @@ test('workspace yjs sync converges saved table lifecycle and folder moves across
       const parentId = findFolderIdByName(server.doc, parentFolder);
       const childId = findFolderIdByName(server.doc, childFolder);
       const child = childId ? server.doc.getMap<Y.Map<unknown>>('folders').get(childId) : undefined;
+
       return parentId && child?.get('parentId') === parentId;
     })
     .toBe(true);
@@ -1037,6 +1091,7 @@ test('workspace yjs sync converges saved table lifecycle and folder moves across
   await expect
     .poll(() => {
       const parentId = findFolderIdByName(server.doc, parentFolder);
+
       return readSavedTableFolderId(server.doc, tableName) === parentId;
     })
     .toBe(true);
@@ -1063,6 +1118,7 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
   seedDefaultDraft(server.doc, 'cloud_seed', 'id');
   const contextA = await browser.newContext({ locale: 'zh-CN' });
   const contextB = await browser.newContext({ locale: 'zh-CN' });
+
   try {
     await mockSignedInWorkspace(contextA, server, workspaceId, 'online-client');
     await mockSignedInWorkspace(contextB, server, workspaceId, 'offline-client');
@@ -1098,6 +1154,7 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
       .poll(() => readSavedTableState(server.doc, tableName)?.tableComment)
       .toBe('remote saved comment');
     const saved = getWorkspaceSavedTable(server.doc, tableName);
+
     if (!saved) throw new Error('Expected saved table');
     upsertWorkspaceSavedTable(server.doc, {
       ...saved,
@@ -1119,6 +1176,7 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
     await contextB.setOffline(false);
     await pageB.evaluate(() => window.dispatchEvent(new Event('online')));
     await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+
     const assertDraft = async () => {
       await expect(pageB.locator('#table-comment')).toHaveValue('unsaved local comment');
       await expect(
@@ -1296,6 +1354,7 @@ test('workspace yjs sync merges offline and online concurrent schema edits', asy
   await expect
     .poll(() => {
       const state = readDefaultDraftState(server.doc);
+
       return `${state?.tableName}:${state?.rows[0]?.fieldName}`;
     })
     .toBe('online_table:offline_id');
@@ -1310,6 +1369,7 @@ test('ER relationship deletion preserves synced edits on the selected copy', asy
   const server = new MockWorkspaceYjsServer();
   const workspaceId = `ws-er-copy-${Date.now()}`;
   seedDefaultDraft(server.doc, 'initial', 'id');
+
   for (const id of ['original', 'copy', 'parent']) {
     const table = new Y.Map<unknown>();
     const metadata = new Y.Map<unknown>();
@@ -1336,9 +1396,11 @@ test('ER relationship deletion preserves synced edits on the selected copy', asy
     });
     server.doc.getMap<Y.Map<unknown>>('savedTables').set(id, table);
   }
+
   const context = await browser.newContext({ locale: 'zh-CN' });
   await mockSignedInWorkspace(context, server, workspaceId);
   const page = await context.newPage();
+
   try {
     await page.goto('/');
     await openDraftByName(page, 'initial');
@@ -1348,10 +1410,12 @@ test('ER relationship deletion preserves synced edits on the selected copy', asy
     await openTableAction(page, 'ER 关系图');
     const dialog = page.getByRole('dialog', { name: 'ER 关系图' });
     await expect(dialog.locator('.react-flow__edge')).toHaveCount(2);
+
     const currentCopy = getWorkspaceSavedTable(server.doc, {
       normalizedName: 'copy',
       tableId: 'copy',
     });
+
     if (!currentCopy) throw new Error('Copy not found');
     upsertWorkspaceSavedTable(server.doc, {
       ...currentCopy,
@@ -1373,15 +1437,20 @@ test('ER relationship deletion preserves synced edits on the selected copy', asy
     });
     await expect(page.locator('#table-comment')).toHaveValue('remote comment');
     await dialog.locator(`button[data-edge-id='["copy","shared-fk"]']`).click();
+
     const foreignKeyCount = (id: string) => {
       const table = server.doc.getMap<Y.Map<unknown>>('savedTables').get(id);
+
       if (!table) throw new Error('Saved table was not found');
       const foreignKeys = table.get('foreignKeys');
+
       if (foreignKeys instanceof Y.Map) return foreignKeys.size;
+
       return (table.get('stateSnapshot') as { foreignKeys: unknown[] }).foreignKeys.length;
     };
     await expect.poll(() => foreignKeyCount('copy')).toBe(0);
     expect(foreignKeyCount('original')).toBe(1);
+
     const updatedCopy = getWorkspaceSavedTable(server.doc, {
       normalizedName: 'copy',
       tableId: 'copy',

@@ -33,6 +33,7 @@ const severityBadgeKey = {
 
 export const SchemaLintPanel = memo<SchemaLintPanelProps>(({ issues }) => {
   const { t } = useTranslation();
+
   const sortedIssues = issues
     .slice()
     .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
@@ -62,6 +63,7 @@ export const SchemaLintPanel = memo<SchemaLintPanelProps>(({ issues }) => {
             const Icon = severityIcon[issue.severity];
             const translationParams = { target: issue.target, ...issue.params };
             const ruleKey = `schemaLint.rules.${issue.ruleId}`;
+
             return (
               <li
                 key={issue.id}

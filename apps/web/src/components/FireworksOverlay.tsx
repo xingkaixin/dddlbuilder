@@ -29,6 +29,7 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
     const updatePreference = () => {
       setPrefersReducedMotion(mediaQuery.matches);
     };
@@ -43,9 +44,11 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
 
   useEffect(() => {
     const canvas = canvasRef.current;
+
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
+
     if (!ctx) return;
 
     let width = 0;
@@ -63,6 +66,7 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
         callback();
       }, delay);
       timeoutIds.push(timeoutId);
+
       return timeoutId;
     };
 
@@ -93,10 +97,12 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
 
       const launchCount = prefersReducedMotion ? 2 : randomInt(3, 4);
       const launchGap = prefersReducedMotion ? random(220, 360) : random(70, 130);
+
       for (let i = 0; i < launchCount; i += 1) {
         scheduleTimeout(() => {
           const startX = random(width * 0.1, width * 0.9);
           const targetX = startX + random(-100, 100);
+
           const targetY = prefersReducedMotion
             ? random(height * 0.18, height * 0.36)
             : random(height * 0.1, height * 0.4);
@@ -118,6 +124,7 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
 
     const burstAtPosition = (x: number, y: number, particleCount: number) => {
       const palette = randomFromArray(COLOR_PALETTES);
+
       for (let i = 0; i < particleCount; i += 1) {
         const angle = random(0, Math.PI * 2);
         const speed = random(2.5, 9.5);
@@ -131,6 +138,7 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
           ),
         );
       }
+
       setFireworkCount((current) => current + 1);
     };
 
@@ -225,6 +233,7 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
     const handleTouchStart = (event: TouchEvent) => {
       event.preventDefault();
       const touch = event.touches[0];
+
       if (!touch) return;
       const rect = canvas.getBoundingClientRect();
       const x = touch.clientX - rect.left;
@@ -253,9 +262,11 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
     return () => {
       destroyed = true;
       window.cancelAnimationFrame(animationId);
+
       for (const timeoutId of timeoutIds) {
         window.clearTimeout(timeoutId);
       }
+
       canvas.removeEventListener('click', handleCanvasClick);
       canvas.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('resize', resize);

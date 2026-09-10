@@ -19,7 +19,9 @@ export type WorkspaceSavedTableRecord = Omit<
   WorkspaceSnapshot['savedTables'][number],
   'createdAt' | 'tableId'
 > & { tableId: string; createdAt: number };
+
 export type WorkspaceSavedDraftRecord = WorkspaceSnapshot['savedDrafts'][number];
+
 export type WorkspaceSavedTableMetadataUpdate = Pick<
   WorkspaceSavedTableRecord,
   'folderId' | 'trashedAt' | 'updatedAt'
@@ -27,32 +29,42 @@ export type WorkspaceSavedTableMetadataUpdate = Pick<
 
 const savedTableName = (key: string, tableDoc: Y.Map<unknown>) => {
   const name = tableMetadata(tableDoc).normalizedName;
+
   return typeof name === 'string' ? name : key;
 };
 
 const savedTableId = (key: string, tableDoc: Y.Map<unknown>) => {
   const id = tableMetadata(tableDoc).tableId;
+
   return typeof id === 'string' ? id : `legacy:${key}`;
 };
 
 const availableRecordKey = (collection: Y.Map<Y.Map<unknown>>, preferred: string) => {
   let key = preferred;
+
   for (let suffix = 1; collection.has(key); suffix += 1) key = `${preferred}:${suffix}`;
+
   return key;
 };
 
 const findSavedTableEntry = (doc: Y.Doc, target: SavedTableTarget) => {
   const { normalizedName, tableId } = savedTableReference(target);
   const tables = getWorkspaceRoot(doc).savedTables;
+
   const matches = (key: string, value: Y.Map<unknown>) =>
     tableId ? savedTableId(key, value) === tableId : savedTableName(key, value) === normalizedName;
+
   if (tableId) {
     const direct = tables.get(tableId);
+
     if (direct && matches(tableId, direct)) return [tableId, direct] as const;
   }
+
   const entries = Array.from(tables.entries()).filter(([key, value]) => matches(key, value));
+
   if (entries.length > 1)
     throw new Error('Multiple saved tables share this name; select a table by ID');
+
   return entries[0];
 };
 
@@ -60,6 +72,7 @@ const readSavedTableMetadata = (key: string, tableDoc: Y.Map<unknown>) => {
   const metadata = tableMetadata(tableDoc);
   const normalizedName = savedTableName(key, tableDoc);
   const updatedAt = readWorkspaceTimestamp(metadata.updatedAt);
+
   return {
     tableId: savedTableId(key, tableDoc),
     normalizedName,
@@ -86,9 +99,11 @@ export const listWorkspaceSavedTableMetadata = (
 ) =>
   Array.from(getWorkspaceRoot(doc).savedTables.entries()).flatMap(([key, tableDoc]) => {
     const metadata = readSavedTableMetadata(key, tableDoc);
+
     if ((metadata.trashedAt != null) !== trashed) return [];
     if (entityIds && !entityIds.has(metadata.tableId) && !entityIds.has(metadata.normalizedName))
       return [];
+
     return [
       {
         ...metadata,
@@ -116,8 +131,10 @@ const writeWorkspaceSavedTable = (
   options?: ApplySchemaDocumentStateOptions,
 ) => {
   const { savedTables } = getWorkspaceRoot(doc);
+
   const key =
     findSavedTableEntry(doc, record)?.[0] ?? availableRecordKey(savedTables, record.tableId);
+
   if (recreate) savedTables.set(key, new Y.Map<unknown>());
   upsertTableRecord(savedTables, key, record.state, savedTableMetadata(record), options);
 };
@@ -139,6 +156,7 @@ export const recreateWorkspaceSavedTable = (
 
 export const deleteWorkspaceSavedTable = (doc: Y.Doc, target: SavedTableTarget) => {
   const entry = findSavedTableEntry(doc, target);
+
   if (entry) getWorkspaceRoot(doc).savedTables.delete(entry[0]);
 };
 
@@ -147,6 +165,7 @@ export const getWorkspaceSavedTable = (
   target: SavedTableTarget,
 ): WorkspaceSavedTableRecord | null => {
   const entry = findSavedTableEntry(doc, target);
+
   return entry ? readSavedTableRecord(...entry) : null;
 };
 
@@ -156,8 +175,10 @@ export const updateWorkspaceSavedTableMetadata = (
   update: WorkspaceSavedTableMetadataUpdate,
 ): WorkspaceSavedTableRecord | null => {
   const entry = findSavedTableEntry(doc, target);
+
   if (!entry) return null;
   writeJsonMapPatch(ensureMap(entry[1], 'metadata'), update);
+
   return readSavedTableRecord(...entry);
 };
 
@@ -179,21 +200,29 @@ const findSavedDraftEntry = (doc: Y.Doc, target: SavedTableTarget) => {
   const parent = findSavedTableEntry(doc, target);
   const tableId = reference.tableId ?? (parent ? savedTableId(...parent) : undefined);
   const directKey = parent?.[0] ?? normalizedName;
+
   const matches = (key: string, value: Y.Map<unknown>) => {
     const metadata = tableMetadata(value);
+
     if (typeof metadata.tableId === 'string') {
       if (tableId) return metadata.tableId === tableId;
+
       return (
         savedTableName(key, value) === normalizedName &&
         !findSavedTableEntry(doc, { normalizedName: '', tableId: metadata.tableId })
       );
     }
+
     const legacyParent = getWorkspaceRoot(doc).savedTables.get(key);
+
     if (legacyParent && tableId) return savedTableId(key, legacyParent) === tableId;
+
     return savedTableName(key, legacyParent ?? value) === normalizedName;
   };
   const direct = savedDrafts.get(directKey);
+
   if (direct && matches(directKey, direct)) return [directKey, direct] as const;
+
   return Array.from(savedDrafts.entries()).find(([key, value]) => matches(key, value));
 };
 
@@ -205,6 +234,7 @@ const readSavedDraftRecord = (
   const metadata = tableMetadata(tableDoc);
   const normalizedName = parent ? savedTableName(key, parent) : savedTableName(key, tableDoc);
   const tableName = parent ? tableMetadata(parent).name : metadata.tableName;
+
   return {
     ...(typeof metadata.tableId === 'string'
       ? { tableId: metadata.tableId }
@@ -227,6 +257,7 @@ export const upsertWorkspaceSavedDraft = (
   const parent = findSavedTableEntry(doc, record);
   const tableId = record.tableId ?? (parent ? savedTableId(...parent) : undefined);
   const { savedDrafts } = getWorkspaceRoot(doc);
+
   const key =
     findSavedDraftEntry(doc, record)?.[0] ??
     availableRecordKey(savedDrafts, tableId ?? record.normalizedName);
@@ -250,6 +281,7 @@ export const upsertWorkspaceSavedDraft = (
 
 export const deleteWorkspaceSavedDraft = (doc: Y.Doc, target: SavedTableTarget) => {
   const entry = findSavedDraftEntry(doc, target);
+
   if (entry) getWorkspaceRoot(doc).savedDrafts.delete(entry[0]);
 };
 
@@ -259,17 +291,21 @@ export const getWorkspaceSavedDraft = (
 ): WorkspaceSavedDraftRecord | null => {
   const entry = findSavedDraftEntry(doc, target);
   const parent = findSavedTableEntry(doc, target);
+
   return entry ? readSavedDraftRecord(...entry, parent?.[1]) : null;
 };
 
 export const listWorkspaceSavedDrafts = (doc: Y.Doc): WorkspaceSavedDraftRecord[] => {
   const { savedTables, savedDrafts } = getWorkspaceRoot(doc);
+
   const parentsById = new Map(
     Array.from(savedTables.entries(), ([key, value]) => [savedTableId(key, value), value]),
   );
+
   return Array.from(savedDrafts.entries(), ([key, value]) => {
     const tableId = tableMetadata(value).tableId;
     const parent = typeof tableId === 'string' ? parentsById.get(tableId) : savedTables.get(key);
+
     return readSavedDraftRecord(key, value, parent);
   });
 };
@@ -283,6 +319,7 @@ export const renameWorkspaceSavedDraft = (
   const entry =
     findSavedDraftEntry(doc, previousName) ??
     findSavedDraftEntry(doc, { ...savedTableReference(previousName), normalizedName });
+
   if (!entry) return;
   const parent = findSavedTableEntry(doc, { ...savedTableReference(previousName), normalizedName });
   writeJsonMapPatch(ensureMap(entry[1], 'metadata'), {
@@ -299,6 +336,7 @@ export const renameWorkspaceSavedTable = (
 ) => {
   doc.transact(() => {
     const entry = findSavedTableEntry(doc, record);
+
     if (!entry) throw new Error('Saved table not found');
     writeJsonMapPatch(ensureMap(entry[1], 'metadata'), {
       normalizedName: record.normalizedName,
@@ -321,6 +359,7 @@ export const readWorkspaceSavedRecordIdentity = (
   value: Y.Map<unknown>,
 ) => {
   const metadata = tableMetadata(value);
+
   const parent =
     collection === 'savedDrafts'
       ? typeof metadata.tableId === 'string'
@@ -330,6 +369,7 @@ export const readWorkspaceSavedRecordIdentity = (
   const namedDoc = parent ?? value;
   const normalizedName = savedTableName(key, namedDoc);
   const name = tableMetadata(namedDoc).name;
+
   return {
     tableId: savedTableId(key, namedDoc),
     normalizedName,

@@ -37,7 +37,9 @@ describe('reviewHistory', () => {
 
   const savePersistedReview = async (...args: Parameters<typeof saveReview>) => {
     const record = await saveReview(...args);
+
     if (!record) throw new Error('Expected review to be persisted');
+
     return record;
   };
 
@@ -57,6 +59,7 @@ describe('reviewHistory', () => {
 
   it('migrates only the matching workspace draft and keeps history through renames', async () => {
     const savedTarget = target('display_name', 'stable-id');
+
     const draft = {
       ...savedTarget,
       tableId: undefined,
@@ -68,6 +71,7 @@ describe('reviewHistory', () => {
       scope: { kind: 'user' as const, userId: 'user', workspaceId: 'workspace' },
     };
     const record = await savePersistedReview(draft, 'schema.sql_name', 'ddl', 'mysql', mockReview);
+
     const otherRecord = await savePersistedReview(
       other,
       'schema.sql_name',
@@ -93,6 +97,7 @@ describe('reviewHistory', () => {
 
   it('can read a draft review directly by ID after saving', async () => {
     const savedTarget = target('direct_draft', 'direct-id');
+
     const draftTarget = {
       ...savedTarget,
       tableId: undefined,
@@ -108,6 +113,7 @@ describe('reviewHistory', () => {
 
   it('带 draftId 的迁移不认领同名 legacy 评审', async () => {
     const savedTarget = target('shared_name', 'bound-table');
+
     const draftTarget = {
       ...savedTarget,
       tableId: undefined,
@@ -115,6 +121,7 @@ describe('reviewHistory', () => {
     };
     const legacyTarget = { ...savedTarget, tableId: undefined };
     const draft = await savePersistedReview(draftTarget, 'draft', 'draft-ddl', 'mysql', mockReview);
+
     const legacy = await savePersistedReview(
       legacyTarget,
       'legacy',
@@ -236,6 +243,7 @@ describe('reviewHistory', () => {
 
   it('按工作区隔离删除标记', async () => {
     const anonymous = target('shared_deleted', 'marker-shared-id');
+
     const user = {
       ...anonymous,
       scope: { kind: 'user' as const, userId: 'user', workspaceId: 'workspace' },
@@ -251,6 +259,7 @@ describe('reviewHistory', () => {
 
   it('删除标记后不把草稿评审迁入已删除表', async () => {
     const savedTarget = target('blocked_migration', 'blocked-migration-id');
+
     const draftTarget = {
       ...savedTarget,
       tableId: undefined,
@@ -272,6 +281,7 @@ describe('reviewHistory', () => {
 
   it('deleting 撤销时保留迁移后的草稿评审', async () => {
     const savedTarget = target('cancelled_migration', 'cancelled-migration-id');
+
     const draftTarget = {
       ...savedTarget,
       tableId: undefined,
@@ -291,6 +301,7 @@ describe('reviewHistory', () => {
 
   it('绑定后的旧草稿迟到结果受 stable 删除标记拦截', async () => {
     const savedTarget = target('renamed_table', 'late-bound-table');
+
     const draftTarget = {
       ...savedTarget,
       tableId: undefined,
@@ -310,6 +321,7 @@ describe('reviewHistory', () => {
 
   it('删除 saved table 不影响同名独立草稿', async () => {
     const savedTarget = target('users', 'saved-users');
+
     const savedDraft = {
       ...savedTarget,
       tableId: undefined,
@@ -325,6 +337,7 @@ describe('reviewHistory', () => {
       draftId: savedDraft.draftId,
       normalizedName: savedDraft.normalizedName,
     });
+
     const independent = await savePersistedReview(
       independentDraft,
       'draft users',
@@ -346,6 +359,7 @@ describe('reviewHistory', () => {
   it('isolates same-name reviews by workspace', async () => {
     const normalizedName = 'shared_review_table';
     const anonymousTarget = target(normalizedName, 'shared-id');
+
     const userTarget = {
       scope: {
         kind: 'user' as const,
@@ -368,6 +382,7 @@ describe('reviewHistory', () => {
   it('does not read or delete a review owned by another workspace', async () => {
     const normalizedName = 'protected_review_table';
     const owner = target(normalizedName, 'owner-id');
+
     const otherWorkspace = {
       scope: {
         kind: 'user' as const,
@@ -387,6 +402,7 @@ describe('reviewHistory', () => {
   it('cannot claim unscoped legacy reviews during a read', async () => {
     const normalizedName = 'legacy_review_table';
     const owner = target(normalizedName, 'legacy-owner');
+
     const otherWorkspace = {
       scope: {
         kind: 'user' as const,
@@ -434,6 +450,7 @@ describe('reviewHistory', () => {
         result: mockReview,
         createdAt: 1,
       });
+
       return () => undefined;
     });
     expect(await listReviews(savedTarget)).toHaveLength(1);
@@ -485,6 +502,7 @@ describe('reviewHistory', () => {
         setTimeout(() => {
           if (mockRequest.onerror) mockRequest.onerror();
         }, 10);
+
         return mockRequest;
       },
     };

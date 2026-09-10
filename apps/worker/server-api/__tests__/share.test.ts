@@ -30,6 +30,7 @@ type MockKV = {
 
 const createMockKV = (): MockKV => {
   const store = new Map<string, string>();
+
   return {
     get: vi.fn(async (key: string) => store.get(key) ?? null),
     put: vi.fn(async (key: string, value: string, _opts?: { expirationTtl?: number }) => {
@@ -51,6 +52,7 @@ describe('share api', () => {
   beforeEach(() => {
     mockKV = createMockKV();
     requestLogError = vi.fn();
+
     const requestLogger = {
       set: vi.fn(),
       audit: vi.fn(),
@@ -83,6 +85,7 @@ describe('share api', () => {
     });
 
     expect(response.status).toBe(200);
+
     const payload = (await response.json()) as {
       id: string;
       expiresInSeconds: number;
@@ -107,6 +110,7 @@ describe('share api', () => {
     });
 
     expect(response.status).toBe(200);
+
     const payload = (await response.json()) as {
       id: string;
       state: typeof state;

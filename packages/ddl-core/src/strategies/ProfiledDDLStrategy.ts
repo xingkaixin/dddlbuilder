@@ -59,6 +59,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
 
     if (supportsMysqlPartition(this.databaseType) && config.mysqlPartitionConfig?.enabled) {
       const partitionClause = buildMysqlPartitionClause(config.mysqlPartitionConfig);
+
       if (partitionClause) {
         return {
           ...configured,
@@ -83,11 +84,13 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     const columnLines = this.renderColumnDefinitions(columns, sqlFormatMode);
     const tableOptions = buildTableOptionsClause(this.databaseType, tableMiscConfig);
     const inlineIndexes = getDatabaseFamily(this.databaseType) === 'mysql';
+
     if (inlineIndexes) {
       columnLines.push(...indexes.map((index) => `  ${this.renderMysqlIndex(index)}`));
     }
 
     let tableDDL: string;
+
     switch (this.profile.commentChannel) {
       case 'inline':
         tableDDL = this.assembleInlineTable(tableName, tableComment, columnLines, tableOptions);
@@ -111,17 +114,22 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
         );
         break;
     }
+
     const indexDDLs = inlineIndexes
       ? []
       : indexes.map((index) => this.generateIndexDDL(tableName, index));
+
     return indexDDLs.length ? `${tableDDL}\n\n${indexDDLs.join('\n')}` : tableDDL;
   }
 
   private renderMysqlIndex(index: IndexDefinition): string {
     const fields = this.formatIndexFieldList(index);
+
     if (index.kind === 'primary') return `PRIMARY KEY (${fields})`;
     const name = this.formatFieldName(index.name);
+
     if (index.kind === 'unique_constraint') return `CONSTRAINT ${name} UNIQUE (${fields})`;
+
     return `${index.kind !== 'index' ? 'UNIQUE ' : ''}INDEX ${name} (${fields})`;
   }
 
@@ -158,6 +166,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     tableOptions: string,
   ): string {
     const qualifiedTableName = this.formatTableName(tableName);
+
     const statements: string[] = [
       `CREATE TABLE ${qualifiedTableName} (\n${columnLines.join(',\n')}\n)${tableOptions};`,
     ];
@@ -182,6 +191,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
   ): string {
     const { schema, table } = getSchemaAndTable(tableName);
     const qualified = this.formatTableName(tableName);
+
     const statements: string[] = [
       `CREATE TABLE ${qualified} (\n${columnLines.join(',\n')}\n)${tableOptions};`,
     ];
@@ -191,6 +201,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     }
 
     statements.push(...this.generateColumnCommentsDDL(tableName, fields));
+
     return statements.join('\n');
   }
 }

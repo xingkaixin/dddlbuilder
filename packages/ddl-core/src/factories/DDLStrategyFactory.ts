@@ -13,9 +13,11 @@ const strategies = new Map<DatabaseType, DDLStrategy>(
 export class DDLStrategyFactory {
   static create(databaseType: DatabaseType): DDLStrategy {
     const strategy = strategies.get(databaseType);
+
     if (!strategy) {
       throw new Error(`Unsupported database type: ${databaseType}`);
     }
+
     return strategy;
   }
 

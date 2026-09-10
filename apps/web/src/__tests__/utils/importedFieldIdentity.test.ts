@@ -26,6 +26,7 @@ describe('preserveImportedFieldIds', () => {
 
   it('字段重排或类型变更保留身份，新增字段使用新身份', async () => {
     const existing = await parseState('CREATE TABLE users (id INT, email VARCHAR(100));');
+
     const imported = await parseState(
       'CREATE TABLE users (email VARCHAR(200), id INT, active INT);',
     );

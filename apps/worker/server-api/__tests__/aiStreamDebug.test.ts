@@ -4,6 +4,7 @@ import type { WorkerRequestLogger } from '../lib/context.js';
 
 const createRequestLogger = () => {
   const set = vi.fn();
+
   return {
     log: { set } as unknown as WorkerRequestLogger,
     set,
@@ -18,6 +19,7 @@ const readStreamDebugPayloads = (set: ReturnType<typeof vi.fn>) =>
 describe('createOpenAIStreamDebugLogger', () => {
   it('关闭时不应输出日志', () => {
     const { log, set } = createRequestLogger();
+
     const logger = createOpenAIStreamDebugLogger({
       enabled: false,
       requestId: 'req-1',
@@ -38,6 +40,7 @@ describe('createOpenAIStreamDebugLogger', () => {
 
   it('启用时应输出结构化事件但不记录模型内容', () => {
     const { log, set } = createRequestLogger();
+
     const logger = createOpenAIStreamDebugLogger({
       enabled: true,
       requestId: 'req-2',
@@ -78,6 +81,7 @@ describe('createOpenAIStreamDebugLogger', () => {
 
   it('连接后出错时应标记为 during_stream', () => {
     const { log, set } = createRequestLogger();
+
     const logger = createOpenAIStreamDebugLogger({
       enabled: true,
       requestId: 'req-3',

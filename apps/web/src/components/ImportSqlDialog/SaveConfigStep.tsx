@@ -64,12 +64,15 @@ function flattenFolders(
   depth = 0,
 ): Array<{ id: string; name: string; depth: number }> {
   const result: Array<{ id: string; name: string; depth: number }> = [];
+
   for (const node of nodes) {
     result.push({ id: node.id, name: node.name, depth });
+
     if (node.children && node.children.length > 0) {
       result.push(...flattenFolders(node.children, depth + 1));
     }
   }
+
   return result;
 }
 

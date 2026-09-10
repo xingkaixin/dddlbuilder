@@ -30,6 +30,7 @@ describe('normalizeAiEnumValue', () => {
     );
     expect(first.fields[0].id).toBe('contact');
     expect(first.fields[1].id).toBeTruthy();
+
     const second = normalizeGeneratedTableSchema(
       schema([first.fields[0], { ...first.fields[1], fieldName: 'address' }]),
       'mysql',
@@ -52,6 +53,7 @@ describe('normalizeAiEnumValue', () => {
     expect(() => normalizeGeneratedTableSchema(schema([field('email')]), 'mysql', base)).toThrow(
       'explicit identity',
     );
+
     const replacement = normalizeGeneratedTableSchema(
       schema([field('email', null)]),
       'mysql',

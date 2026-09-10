@@ -30,6 +30,7 @@ describe('shared AI contracts', () => {
 
   it('defaults absent history but rejects malformed conversation entries', () => {
     const decode = Schema.decodeUnknownSync(AIGenerateTableRequestSchema);
+
     for (const conversationHistory of [undefined, null, []]) {
       expect(
         decode({ dbType: 'mysql', description: ' users ', conversationHistory }),
@@ -41,6 +42,7 @@ describe('shared AI contracts', () => {
         templates: [],
       });
     }
+
     for (const conversationHistory of [
       {},
       [{ role: 'system', content: 'hello' }],

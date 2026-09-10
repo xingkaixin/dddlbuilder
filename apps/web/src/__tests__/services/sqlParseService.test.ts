@@ -89,6 +89,7 @@ describe('requestSqlParse', () => {
 
 describe('SQL 响应契约', () => {
   afterEach(() => vi.restoreAllMocks());
+
   const result = {
     tableName: 'users',
     tableComment: '',

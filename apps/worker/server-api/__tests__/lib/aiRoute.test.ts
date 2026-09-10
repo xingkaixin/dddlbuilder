@@ -27,6 +27,7 @@ const loadShell = async (
   finishReason = 'stop',
 ) => {
   const reserveAIUsage = vi.fn().mockResolvedValue(RESERVATION);
+
   const recordAIUsageAttempt = vi
     .fn()
     .mockImplementation(async () => recordAIUsageAttempt.mock.calls.length);
@@ -46,6 +47,7 @@ const loadShell = async (
     );
   const finalizeAIUsageSettlement = vi.fn().mockResolvedValue(true);
   const openAIConstructor = vi.fn();
+
   const createCompletion = vi.fn().mockResolvedValue(
     streamResponse ?? {
       choices: [{ message: { content: completionContent }, finish_reason: finishReason }],
@@ -73,6 +75,7 @@ const loadShell = async (
   }));
   vi.doMock('../../lib/logging.js', async () => {
     const actual = await vi.importActual<Record<string, unknown>>('../../lib/logging.js');
+
     return {
       ...actual,
       getRequestLogger: () => requestLogger,
@@ -87,6 +90,7 @@ const loadShell = async (
   }));
   vi.doMock('../../openaiControl.js', async () => {
     const actual = await vi.importActual<Record<string, unknown>>('../../openaiControl.js');
+
     return {
       ...actual,
       enforceOpenAIRateLimit:
@@ -112,6 +116,7 @@ const loadShell = async (
 
   const { withAIGovernance, rejectAIRequest } = await import('../../lib/aiRoute.js');
   const { enforceOpenAIRateLimit } = await import('../../openaiControl.js');
+
   return {
     withAIGovernance,
     rejectAIRequest,
@@ -170,6 +175,7 @@ describe('withAIGovernance', () => {
 
   it('rejects anonymous requests before parsing or consuming AI quota', async () => {
     const { DomainError } = await import('../../lib/http.js');
+
     const shell = await loadShell({
       authenticateRequest: vi
         .fn()
@@ -202,6 +208,7 @@ describe('withAIGovernance', () => {
       yield { choices: [{ delta: { content } }] };
       yield { choices: [{ delta: {}, finish_reason: reason }] };
     }
+
     const shell = await loadShell({}, '{}', upstream());
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
@@ -218,6 +225,7 @@ describe('withAIGovernance', () => {
       ),
     );
     const response = await post(app, { sql: 'select 1' }, waitUntil);
+
     const events = (await response.text())
       .trim()
       .split('\n')
@@ -241,11 +249,13 @@ describe('withAIGovernance', () => {
 
   it.each([false, true])('完整流在读完最终 usage 后结算一次，JSON=%s', async (jsonResponse) => {
     const content = jsonResponse ? '{"ok":true}' : 'A complete explanation';
+
     async function* upstream() {
       yield { choices: [{ delta: { content: content.slice(0, 5) } }] };
       yield { choices: [{ delta: { content: content.slice(5) }, finish_reason: 'stop' }] };
       yield { choices: [], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
     }
+
     const shell = await loadShell({}, '{}', upstream());
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
@@ -262,6 +272,7 @@ describe('withAIGovernance', () => {
       ),
     );
     const response = await post(app, { sql: 'select 1' }, waitUntil);
+
     const events = (await response.text())
       .trim()
       .split('\n')
@@ -306,6 +317,7 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           yield* session.completeJson({ scope: 'test-json', temperature: 0 });
+
           return c.json({ ok: true });
         }),
       ),
@@ -334,6 +346,7 @@ describe('withAIGovernance', () => {
         yield { choices: [{ delta: { content: '{}' }, finish_reason: 'stop' }] };
         yield { choices: [], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
       }
+
       const shell = await loadShell({}, '{}', streamed ? upstream() : undefined);
       const waitUntil = vi.fn();
       const app = new Hono<ApiEnv>();
@@ -359,6 +372,7 @@ describe('withAIGovernance', () => {
         ),
       );
       const response = await post(app, {}, waitUntil);
+
       if (streamed) {
         const events = (await response.text())
           .trim()
@@ -368,6 +382,7 @@ describe('withAIGovernance', () => {
       } else {
         expect(response.status).toBe(502);
       }
+
       await Promise.all(waitUntil.mock.calls.map(([task]) => task));
       expect(shell.prepareAIUsageSettlement).toHaveBeenCalledTimes(1);
       expect(shell.prepareAIUsageSettlement).toHaveBeenCalledWith(
@@ -388,22 +403,27 @@ describe('withAIGovernance', () => {
 
   it('keeps the request span open through stream consumption and settlement', async () => {
     let release!: () => void;
+
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
     const spans: Array<{ name: string; end: ReturnType<typeof vi.fn> }> = [];
+
     const tracing = {
       startActiveSpan<T>(name: string, callback: (span: Span) => T): T {
         const span = { name, end: vi.fn(), setAttribute: vi.fn(), recordException: vi.fn() };
         spans.push(span);
+
         return callback(span as unknown as Span);
       },
     } as Tracing;
+
     async function* upstream() {
       yield { choices: [{ delta: { content: 'hello' } }] };
       await gate;
       yield { choices: [{ delta: {}, finish_reason: 'stop' }] };
     }
+
     const shell = await loadShell({}, '{}', upstream());
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
@@ -429,15 +449,18 @@ describe('withAIGovernance', () => {
 
   it('protects the stream lifetime before upstream usage arrives and after cancellation', async () => {
     let resume!: () => void;
+
     const gate = new Promise<void>((resolve) => {
       resume = resolve;
     });
+
     async function* upstream() {
       yield { choices: [{ delta: { content: 'partial' } }] };
       await gate;
       yield { choices: [{ delta: {}, finish_reason: 'stop' }] };
       yield { choices: [], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
     }
+
     const shell = await loadShell({}, '{}', upstream());
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
@@ -453,6 +476,7 @@ describe('withAIGovernance', () => {
       ),
     );
     const response = await post(app, {}, waitUntil);
+
     if (!response.body) throw new Error('Missing stream response body');
     const reader = response.body.getReader();
     await reader.read();
@@ -487,13 +511,16 @@ describe('withAIGovernance', () => {
 
   it('取消与成功结算重叠时沿用已抢占的成功终态且只审计一次', async () => {
     let releaseSettlement!: () => void;
+
     const settlementGate = new Promise<void>((resolve) => {
       releaseSettlement = resolve;
     });
+
     async function* upstream() {
       yield { choices: [{ delta: { content: 'done' }, finish_reason: 'stop' }] };
       yield { choices: [], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
     }
+
     const prepareSettlement = vi.fn(
       async (
         _env: unknown,
@@ -502,6 +529,7 @@ describe('withAIGovernance', () => {
         settlement: { chargedTokens: number; providerBudgetTokens: number },
       ) => {
         await settlementGate;
+
         return {
           chargedTokens: settlement.chargedTokens,
           providerBudgetTokens: settlement.providerBudgetTokens,
@@ -530,6 +558,7 @@ describe('withAIGovernance', () => {
 
     const response = await post(app, {}, waitUntil);
     const reader = response.body?.getReader();
+
     if (!reader) throw new Error('Missing stream response body');
     await reader.read();
     await vi.waitFor(() => expect(prepareSettlement).toHaveBeenCalledOnce());
@@ -555,6 +584,7 @@ describe('withAIGovernance', () => {
       if (hasOutput) yield { choices: [{ delta: { content: 'partial' } }] };
       throw new Error('upstream disconnected');
     }
+
     const shell = await loadShell({}, '{}', upstream());
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
@@ -571,6 +601,7 @@ describe('withAIGovernance', () => {
     );
 
     const response = await post(app, { sql: 'select 1' }, waitUntil);
+
     const events = (await response.text())
       .trim()
       .split('\n')
@@ -625,6 +656,7 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           yield* session.completeJson({ scope: 'sdk-options', temperature: 0 });
+
           return c.json({ ok: true });
         }),
       ),
@@ -644,6 +676,7 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           yield* session.completeJson({ scope: 'test-json', temperature: 0 });
+
           return c.json({ ok: true });
         }),
       ),
@@ -666,6 +699,7 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           yield* session.completeJson({ scope: 'test-retry', temperature: 0 });
+
           return c.json({ ok: true });
         }),
       ),
@@ -702,6 +736,7 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           yield* session.completeJson({ scope: 'test-settlement', temperature: 0 });
+
           return c.json({ ok: true });
         }),
       ),
@@ -743,6 +778,7 @@ describe('withAIGovernance', () => {
             'request',
             'streamCompletion',
           ]);
+
           return c.json({ ok: true });
         }),
       ),
@@ -792,6 +828,7 @@ describe('withAIGovernance', () => {
             scope: 'test-json',
             temperature: 0,
           });
+
           return c.json({ ok: true });
         }),
       ),
@@ -839,6 +876,7 @@ describe('withAIGovernance', () => {
   it('额度不足时返回 402 且不调用 run', async () => {
     const run = vi.fn();
     const { DomainError } = await import('../../lib/http.js');
+
     const shell = await loadShell({
       reserveAIUsage: vi
         .fn()

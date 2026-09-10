@@ -26,6 +26,7 @@ const createBootstrapMock = async (options?: {
   }));
 
   const mod = await import('@/hooks/workspacePersistence/bootstrap');
+
   return {
     getWorkspaceBootstrap: mod.getWorkspaceBootstrap,
     readWorkspaceBootstrap,
@@ -120,6 +121,7 @@ describe('workspacePersistence/bootstrap', () => {
 
   it('并发调用应复用同一个 Promise', async () => {
     let resolveRead: (value: MockBootstrap) => void = () => undefined;
+
     const pendingRead = new Promise<MockBootstrap>((resolve) => {
       resolveRead = resolve;
     });
@@ -173,6 +175,7 @@ describe('workspacePersistence/bootstrap', () => {
     };
     let resolveAnonymous: (value: MockBootstrap) => void = () => undefined;
     let resolveUser: (value: MockBootstrap) => void = () => undefined;
+
     const anonymousRead = new Promise<MockBootstrap>((resolve) => {
       resolveAnonymous = resolve;
     });

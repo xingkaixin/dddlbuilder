@@ -69,8 +69,10 @@ export function useSchemaApplyActions({
   const scheduleReviewAction = useCallback((action: () => void, delay: number) => {
     const state = currentStateRef.current;
     const review = reviewResultRef.current;
+
     const timer = setTimeout(() => {
       timers.current.delete(timer);
+
       if (currentStateRef.current !== state || reviewResultRef.current !== review) return;
       action();
     }, delay);
@@ -89,7 +91,9 @@ export function useSchemaApplyActions({
   const markSuggestionApplied = useCallback(
     (suggestion: StructuredSuggestion) => {
       const review = reviewResultRef.current;
+
       if (!review) return;
+
       const suggestions = review.suggestions.map((item) =>
         typeof item !== 'string' && item.id === suggestion.id ? { ...item, applied: true } : item,
       );
@@ -106,10 +110,12 @@ export function useSchemaApplyActions({
       const currentSuggestion = reviewResultRef.current?.suggestions.find(
         (item) => typeof item !== 'string' && item.id === suggestion.id,
       );
+
       if (!currentSuggestion || typeof currentSuggestion === 'string' || currentSuggestion.applied)
         return;
 
       const activeTab = suggestionTab(suggestion);
+
       if (activeTab) setActiveTab(activeTab);
 
       switch (suggestion.type) {
@@ -134,15 +140,20 @@ export function useSchemaApplyActions({
           triggerFieldTableHighlight(rowIndex);
           break;
         }
+
         case 'modify_field': {
           const { fieldName, changes } = suggestion.fieldModification;
+
           const rowIndex = currentStateRef.current.rows.findIndex(
             (row) => row.fieldName === fieldName,
           );
+
           if (rowIndex < 0) {
             showToast(`未找到字段 "${fieldName}"，无法应用修改`);
+
             return;
           }
+
           replaceLatestState((state) => ({
             ...state,
             rows: state.rows.map((row, index) =>
@@ -152,14 +163,18 @@ export function useSchemaApplyActions({
           triggerFieldTableHighlight(rowIndex);
           break;
         }
+
         case 'remove_field': {
           const rowIndex = currentStateRef.current.rows.findIndex(
             (row) => row.fieldName === suggestion.fieldName,
           );
+
           if (rowIndex < 0) {
             showToast(`未找到字段 "${suggestion.fieldName}"，无法删除`);
+
             return;
           }
+
           triggerFieldTableHighlight(rowIndex);
           scheduleReviewAction(() => {
             replaceLatestState((state) =>
@@ -167,10 +182,13 @@ export function useSchemaApplyActions({
             );
             markSuggestionApplied(suggestion);
           }, 500);
+
           return;
         }
+
         case 'add_index': {
           const indexId = createEntityId();
+
           const nextState: PersistedState = {
             ...currentStateRef.current,
             indexes: sanitizeIndexesForPersist([
@@ -183,25 +201,33 @@ export function useSchemaApplyActions({
               },
             ]),
           };
+
           try {
             validateDocumentFields(nextState);
           } catch (error) {
             showToast(`无法应用建议：${error instanceof Error ? error.message : String(error)}`);
+
             return;
           }
+
           replaceLatestState(() => nextState);
           markSuggestionApplied(suggestion);
           scheduleReviewAction(() => triggerIndexAnimation(indexId, 'add'), 50);
+
           return;
         }
+
         case 'remove_index': {
           const targetIndex = currentStateRef.current.indexes.find(
             (index) => index.name === suggestion.indexName,
           );
+
           if (!targetIndex) {
             showToast(`未找到索引 "${suggestion.indexName}"，无法删除`);
+
             return;
           }
+
           triggerIndexAnimation(targetIndex.id, 'remove');
           scheduleReviewAction(() => {
             replaceLatestState((state) => ({
@@ -210,11 +236,14 @@ export function useSchemaApplyActions({
             }));
             markSuggestionApplied(suggestion);
           }, 500);
+
           return;
         }
+
         case 'performance_warning':
         case 'general':
           showToast('该类型建议不支持自动应用，请手动调整');
+
           return;
       }
 

@@ -28,14 +28,17 @@ export class PrismaGenerator implements ORMGenerator {
       indexes = [],
       foreignKeys = [],
     } = input;
+
     if (!tableName.trim()) {
       return '-- 请填写表名';
     }
+
     if (fields.length === 0) {
       return '-- 请补充字段信息';
     }
 
     const propertyNames = buildORMPropertyNames('prisma', input);
+
     if (!propertyNames.ok) return propertyNames.diagnostic;
     const names = propertyNames.names;
     const lines: string[] = [];
@@ -55,6 +58,7 @@ export class PrismaGenerator implements ORMGenerator {
     if (tableComment.trim()) {
       lines.push(formatLineComment(tableComment, '/// '));
     }
+
     lines.push(`model ${modelName} {`);
 
     for (const field of fields) {
@@ -69,6 +73,7 @@ export class PrismaGenerator implements ORMGenerator {
       if (isPk && primaryFields.size === 1) {
         decorations.push('@id');
       }
+
       if (defaultValue.kind === 'auto_increment') {
         decorations.push('@default(autoincrement())');
       } else if (defaultValue.kind === 'uuid') {
@@ -86,6 +91,7 @@ export class PrismaGenerator implements ORMGenerator {
       } else if (defaultValue.kind === 'expression') {
         decorations.push(`@default(dbgenerated(${JSON.stringify(defaultValue.sqlExpression)}))`);
       }
+
       if (fieldName !== field.name) {
         decorations.push(`@map(${JSON.stringify(field.name)})`);
       }
@@ -107,12 +113,14 @@ export class PrismaGenerator implements ORMGenerator {
     const compositeUniques = indexes.filter(
       (i) => i.kind !== 'index' && i.fields.length > 1 && i.kind !== 'primary',
     );
+
     for (const idx of compositeUniques) {
       const fieldNames = idx.fields.map((f) => names.field(f.name)).join(', ');
       lines.push(`  @@unique([${fieldNames}])`);
     }
 
     const regularIndexes = indexes.filter((i) => i.kind === 'index');
+
     const singleUniques = indexes.filter(
       (i) => i.kind !== 'index' && i.fields.length === 1 && i.kind !== 'primary',
     );
@@ -132,6 +140,7 @@ export class PrismaGenerator implements ORMGenerator {
       const refFields = fk.refFields.map((f) => names.reference(fk, f)).join(', ');
       const relationName = names.relation(fk);
       const relationType = toPascalCase(fk.refTable);
+
       const isNullable = fk.fields.some(
         (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,
       );
@@ -150,10 +159,13 @@ export class PrismaGenerator implements ORMGenerator {
     if (modelName !== tableName.trim()) {
       lines.push(`  @@map(${JSON.stringify(tableName.trim())})`);
     }
+
     if (schemaName && supportsSchema) {
       lines.push(`  @@schema(${JSON.stringify(schemaName)})`);
     }
+
     lines.push('}');
+
     return lines.join('\n');
   }
 }

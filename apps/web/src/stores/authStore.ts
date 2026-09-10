@@ -13,6 +13,7 @@ export const createAuthSlice = (set: EditorSetState, get: EditorGetState): AuthS
     })),
   addAuthObject: (authObj) => {
     const trimmed = authObj.trim();
+
     if (!trimmed || get().authObjects.includes(trimmed)) {
       return;
     }

@@ -72,6 +72,7 @@ const createRequest = (path: string, init: RequestInit = {}) => {
   const headers = new Headers(init.headers);
   headers.set('x-ddlbuilder-workspace-id', 'ws-1');
   headers.set('x-ddlbuilder-user-id', 'user-1');
+
   return new Request(`http://localhost${path}`, {
     ...init,
     headers,
@@ -93,6 +94,7 @@ const createWebSocket = (
   deserializeAttachment: ReturnType<typeof vi.fn>;
 } => {
   let storedAttachment = attachment;
+
   return {
     readyState: 1,
     send: vi.fn(),
@@ -129,6 +131,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const object = new WorkspaceYDocDurableObject(state, createEnv());
 
     expect((await object.fetch(createRequest('/state'))).status).toBe(200);
+
     const mismatch = await object.fetch(
       new Request('http://localhost/state', {
         headers: {
@@ -200,6 +203,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
     const doc = new Y.Doc();
+
     if (schemaVersion !== undefined) doc.getMap('meta').set('schemaVersion', schemaVersion);
     store.set('snapshot', Y.encodeStateAsUpdate(doc));
     const object = new WorkspaceYDocDurableObject(state, createEnv());
@@ -218,6 +222,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     store.set('snapshot', Y.encodeStateAsUpdate(doc));
     const object = new WorkspaceYDocDurableObject(state, createEnv());
     await object.fetch(createRequest('/state'));
+
     const socket = createWebSocket({
       schemaVersion: 1,
       workspaceId: 'ws-2',
@@ -270,6 +275,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const response = await object.fetch(createRequest('/state'));
     const restored = new Y.Doc();
     Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
+
     const expectedSnapshot = {
       globalDraft: null,
       drafts: [],
@@ -310,6 +316,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     store.set('snapshot', Y.encodeStateAsUpdate(current));
     const source = new Y.Doc();
     Y.applyUpdate(source, Y.encodeStateAsUpdate(current));
+
     if (schemaVersion === undefined) source.getMap('meta').delete('schemaVersion');
     else source.getMap('meta').set('schemaVersion', schemaVersion);
     const socket = createWebSocket();
@@ -362,14 +369,17 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const object = new WorkspaceYDocDurableObject(state, createEnv());
     const ws = createWebSocket();
     await object.fetch(new Request('http://localhost/state'));
+
     const messages = Array.from({ length: 8 }, (_, i) => {
       doc.getMap('fields').set(String(i), String(i));
+
       return trackedUpdate(Y.encodeStateAsUpdate(doc), i);
     });
     await Promise.all(messages.map((message) => object.webSocketMessage(ws, message)));
     expect(state.storage.transaction).toHaveBeenCalledTimes(1);
     expect(state.storage.getAlarm).toHaveBeenCalledTimes(1);
     const restored = new Y.Doc();
+
     const response = await new WorkspaceYDocDurableObject(state, createEnv()).fetch(
       new Request('http://localhost/state'),
     );
@@ -383,6 +393,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
     let release!: () => void;
+
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
@@ -398,6 +409,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     doc.getMap('meta').set('schemaVersion', 1);
     store.set('snapshot', Y.encodeStateAsUpdate(doc));
     doc.getMap('fields').set('field', 'persisted value');
+
     const processing = durableObject.webSocketMessage(
       ws,
       trackedUpdate(Y.encodeStateAsUpdate(doc), 42),
@@ -445,6 +457,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   it('reuses the cached authorization for repeated messages within the TTL window', async () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
+
     const prepare = vi.fn((_sql: string) => ({
       bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
     }));
@@ -468,9 +481,11 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
 
   it.each(['read', 'snapshot'])('retries initialization after a failed %s', async (failure) => {
     const getWorkspaceSnapshotForWorkspace = vi.fn().mockResolvedValue(createSnapshot('users'));
+
     if (failure === 'read') {
       getWorkspaceSnapshotForWorkspace.mockRejectedValueOnce(new Error('temporary failure'));
     }
+
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
       getWorkspaceSnapshotForWorkspace,
@@ -478,11 +493,13 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
     const { state, store } = createDurableObjectState();
+
     if (failure === 'snapshot') {
       vi.mocked(state.storage.put).mockImplementationOnce(async () => {
         throw new Error('temporary failure');
       });
     }
+
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     const request = () => createRequest('/api/workspaces/ws-1/yjs/state');
@@ -493,12 +510,14 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       durableObject.fetch(request()),
       durableObject.fetch(request()),
     ]);
+
     for (const response of responses) {
       const restoredDoc = new Y.Doc();
       Y.applyUpdate(restoredDoc, new Uint8Array(await response.arrayBuffer()));
       expect(exportWorkspaceYDocToSnapshot(restoredDoc).drafts[0]?.state.tableName).toBe('users');
       restoredDoc.destroy();
     }
+
     expect(store.has('snapshot')).toBe(true);
     expect(getWorkspaceSnapshotForWorkspace).toHaveBeenCalledTimes(2);
   });
@@ -567,6 +586,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { state } = createDurableObjectState();
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     const peer = new Y.Doc();
+
     const syncPeer = async () => {
       const response = await durableObject.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
       Y.applyUpdate(peer, new Uint8Array(await response.arrayBuffer()));
@@ -613,6 +633,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       const coldObject = new WorkspaceYDocDurableObject(state, createEnv());
       const response = await coldObject.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
       const restored = new Y.Doc();
+
       try {
         Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
         expect(exportWorkspaceYDocToSnapshot(restored)).toEqual(
@@ -640,6 +661,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       getWorkspaceSnapshotForWorkspace,
     }));
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+
     const { exportWorkspaceYDocToSnapshot, isWorkspaceYDocInitialized } =
       await import('@ddlbuilder/workspace-core');
     const { state } = createDurableObjectState();
@@ -653,6 +675,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const coldObject = new WorkspaceYDocDurableObject(state, createEnv());
     const response = await coldObject.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
     const restored = new Y.Doc();
+
     try {
       Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
       expect(isWorkspaceYDocInitialized(restored)).toBe(true);
@@ -683,8 +706,10 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       if (value instanceof Uint8Array && value.byteLength > storageValueLimit) {
         throw new Error('SQLITE_TOOBIG');
       }
+
       store.set(key, value);
     });
+
     const snapshot: WorkspaceSnapshot = {
       globalDraft: null,
       drafts: [],
@@ -721,6 +746,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     expect(response.status).toBe(200);
     const cold = new WorkspaceYDocDurableObject(state, createEnv());
     const restored = new Y.Doc();
+
     try {
       const response = await cold.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
       const bytes = new Uint8Array(await response.arrayBuffer());
@@ -809,11 +835,13 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
           folders: [],
         }),
       }));
+
       const { WorkspaceYDocDurableObject } =
         await import('../../lib/workspaceYDocDurableObject.js');
       const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
       const { state } = createDurableObjectState();
       const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+
       const snapshot = (comment: string, updatedAt: number): WorkspaceMigrationSnapshot => ({
         globalDraft: null,
         activeSession: null,
@@ -849,6 +877,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         );
       const payloads = [snapshot('version A', 100), snapshot('version B', 200)];
       const responses = await Promise.all(payloads.map(migrate));
+
       const results = await Promise.all(
         responses.map((response) => response.json<WorkspaceMigrationResult>()),
       );
@@ -865,6 +894,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       const coldObject = new WorkspaceYDocDurableObject(state, createEnv());
       const response = await coldObject.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
       const restored = new Y.Doc();
+
       try {
         Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
         const final = exportWorkspaceYDocToSnapshot(restored);
@@ -873,6 +903,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
           'version B',
         ]);
         expect(final.savedDrafts).toHaveLength(2);
+
         for (const table of final.savedTables) {
           expect(final.savedDrafts.find((draft) => draft.tableId === table.tableId)).toMatchObject({
             baseSignature: table.state.tableComment,
@@ -898,6 +929,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
           folders: [],
         }),
       }));
+
       const { WorkspaceYDocDurableObject } =
         await import('../../lib/workspaceYDocDurableObject.js');
       const { state, store } = createDurableObjectState();
@@ -907,6 +939,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         if (key.startsWith('update:')) {
           throw new Error('storage unavailable');
         }
+
         store.set(key, value);
       });
       const error = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -948,6 +981,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         failNextUpdate = false;
         throw new Error('storage temporarily unavailable');
       }
+
       store.set(key, value);
     });
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -1112,9 +1146,11 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     sourceDoc.getMap('meta').set('schemaVersion', 1);
 
     const fields = sourceDoc.getMap('fields');
+
     for (let index = 0; index < 50; index += 1) {
       fields.set(`field-${index}`, `value-${index}`);
     }
+
     const mergedUpdate = Y.mergeUpdates(updates);
 
     await durableObject.webSocketMessage(
@@ -1226,6 +1262,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { state } = createDurableObjectState();
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     const clientDoc = new Y.Doc();
+
     const socket = createWebSocket({
       schemaVersion: 1,
       socketId: 'socket-1',
@@ -1246,9 +1283,11 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
 
     const sent = socket.send.mock.calls[0]?.[0] as Uint8Array | undefined;
     expect(sent).toBeDefined();
+
     if (!sent) {
       throw new Error('Expected sync response');
     }
+
     const decoder = decoding.createDecoder(sent);
     expect(readWorkspaceYDocMessageHeader(decoder)).toEqual({ kind: 'sync' });
     encodeWorkspaceYDocSyncMessage((encoder) => {
@@ -1282,6 +1321,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
     const sharedStore = new Map<string, unknown>();
+
     const firstObject = new WorkspaceYDocDurableObject(
       createDurableObjectState(sharedStore).state,
       createEnv(),
@@ -1295,6 +1335,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
 
     await firstObject.alarm();
     await firstObject.alarm();
+
     const secondObject = new WorkspaceYDocDurableObject(
       createDurableObjectState(sharedStore).state,
       createEnv(),
@@ -1414,6 +1455,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       }),
     }));
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+
     const durableObject = new WorkspaceYDocDurableObject(
       createDurableObjectState().state,
       createEnv(),
@@ -1455,11 +1497,14 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
     let authQueries = 0;
+
     const prepare = vi.fn(() => {
       if (String(prepare.mock.calls.length)) {
         // 每次调用前累加，用于区分鉴权查询
       }
+
       authQueries += 1;
+
       return {
         bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
       };

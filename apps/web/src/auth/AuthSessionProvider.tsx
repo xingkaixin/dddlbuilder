@@ -79,12 +79,14 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   const [signingOut, setSigningOut] = useState(false);
   const storedIdentity = useSyncExternalStore(subscribeWorkspaceIdentity, readWorkspaceIdentity);
   const localWorkspace = useMemo(() => parseWorkspaceIdentity(storedIdentity), [storedIdentity]);
+
   const currentUserQuery = useQuery({
     ...currentUserOptions(),
     enabled: configured,
   });
   const currentUser = currentUserQuery.data?.signedIn ? currentUserQuery.data.user : null;
   const userId = currentUser?.userId ?? null;
+
   const creditBalanceQuery = useQuery({
     ...creditBalanceOptions(userId ?? ''),
     enabled: Boolean(userId),
@@ -98,6 +100,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     (userId === localWorkspace?.userId ? localWorkspace.workspaceId : null);
   const scopeUserId = userId ?? localWorkspace?.userId ?? null;
   const scopeWorkspaceId = userId ? workspaceId : (localWorkspace?.workspaceId ?? null);
+
   const workspaceScope = useMemo<UserWorkspaceScope | null>(
     () =>
       scopeUserId && scopeWorkspaceId
@@ -119,6 +122,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key !== WORKSPACE_IDENTITY_KEY && event.key !== null) return;
+
       if (!event.newValue) {
         void queryClient.cancelQueries({ queryKey: authQueryKeys.me });
         queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
@@ -127,9 +131,11 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       }
     };
     window.addEventListener('storage', onStorage);
+
     return () => window.removeEventListener('storage', onStorage);
   }, [queryClient]);
   const refetchCurrentUser = currentUserQuery.refetch;
+
   const identity = useMemo<AuthIdentityState>(() => {
     if (!configured) {
       return {
@@ -143,11 +149,13 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         emailVerified: false,
       };
     }
+
     const status = currentUser
       ? 'signed_in'
       : currentUserQuery.isPending
         ? 'loading'
         : 'signed_out';
+
     return {
       status,
       configured: true,
@@ -176,10 +184,13 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   const refreshSession = useCallback(async () => {
     if (!configured) return;
     const result = await refetchCurrentUser();
+
     if (result.error) {
       console.error('[auth] failed to refresh session', result.error);
+
       return;
     }
+
     if (result.data?.signedIn) {
       await queryClient.invalidateQueries({
         queryKey: workspaceQueryKeys.current(result.data.user.userId),
@@ -205,10 +216,13 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   }, [currentWorkspaceQuery.error]);
 
   const accountActions = useAuthAccountActions(client, configured, refreshSession);
+
   const signOut = useCallback(async () => {
     if (signingOut) return;
+
     if (!client || !configured) {
       setAuthDialogOpen(false);
+
       return;
     }
 
@@ -221,6 +235,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           }
         : null;
     setSigningOut(true);
+
     try {
       await executeWorkspaceSignOut({
         scope,
@@ -228,6 +243,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         queryClient,
         remoteSignOut: async () => {
           const result = await client.signOut();
+
           if (result.error) {
             throw new Error(translateAuthError(result.error, 'header.auth.signOutFailed'));
           }
@@ -257,6 +273,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
+
     if (query.get('error')) {
       toast.error(i18n.t('header.auth.verifyEmailFailed'));
     }
@@ -287,24 +304,32 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
 export const useAuthIdentity = () => {
   const value = useContext(AuthIdentityContext);
+
   if (!value) throw new Error('useAuthIdentity must be used within AuthSessionProvider');
+
   return value;
 };
 
 export const useAuthActions = () => {
   const value = useContext(AuthActionsContext);
+
   if (!value) throw new Error('useAuthActions must be used within AuthSessionProvider');
+
   return value;
 };
 
 export const useAuthCredits = () => {
   const value = useContext(AuthCreditsContext);
+
   if (!value) throw new Error('useAuthCredits must be used within AuthSessionProvider');
+
   return value;
 };
 
 export const useAuthDialog = () => {
   const value = useContext(AuthDialogContext);
+
   if (!value) throw new Error('useAuthDialog must be used within AuthSessionProvider');
+
   return value;
 };

@@ -75,8 +75,10 @@ describe('store selector subscription scope', () => {
 
   it('DataTable 相关 selector 对无关状态更新不重渲染', () => {
     let renderCount = 0;
+
     const { result } = renderHook(() => {
       renderCount += 1;
+
       return useDataTableSelectorProbe();
     });
 
@@ -98,8 +100,10 @@ describe('store selector subscription scope', () => {
 
   it('IndexPanel 相关 selector 对无关状态更新不重渲染', () => {
     let renderCount = 0;
+
     const { result } = renderHook(() => {
       renderCount += 1;
+
       return useIndexPanelSelectorProbe();
     });
 
@@ -123,8 +127,10 @@ describe('store selector subscription scope', () => {
 
   it('App 编辑器 selector 不订阅纯弹窗可见状态', () => {
     let renderCount = 0;
+
     const { result } = renderHook(() => {
       renderCount += 1;
+
       return useAppSelectors();
     });
     const initialRenderCount = renderCount;

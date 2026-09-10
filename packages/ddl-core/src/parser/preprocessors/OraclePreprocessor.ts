@@ -25,26 +25,32 @@ const COLUMN_COMMENT_PATTERN = new RegExp(
 export function preprocessOracle(sql: string): PreprocessResult {
   const metadataByTable = new Map<string, PreprocessResult['tableMetadata'][number]>();
   const unescapeComment = (value: string) => value.replace(/''/g, "'");
+
   const getTableMetadata = (tableName: string) => {
     const existing = metadataByTable.get(tableName);
+
     if (existing) return existing;
+
     const metadata: PreprocessResult['tableMetadata'][number] = {
       tableName,
       tableComment: '',
       columnComments: {},
     };
     metadataByTable.set(tableName, metadata);
+
     return metadata;
   };
 
   // Extract and remove COMMENT statements
   sql = sql.replace(TABLE_COMMENT_PATTERN, (_m, tableName, comment) => {
     getTableMetadata(tableName).tableComment = unescapeComment(comment);
+
     return '';
   });
 
   sql = sql.replace(COLUMN_COMMENT_PATTERN, (_m, tableName, column, comment) => {
     getTableMetadata(tableName).columnComments[column] = unescapeComment(comment);
+
     return '';
   });
 
@@ -65,12 +71,16 @@ export function preprocessOracle(sql: string): PreprocessResult {
 
   const identifierMappings = new Map<string, string>();
   let mappingIndex = 0;
+
   const parserSql = mapDoubleQuotedSqlIdentifiers(normalizedSql, (identifier) => {
     let placeholder = '';
+
     do {
       placeholder = `__ddlbuilder_oracle_identifier_${mappingIndex++}__`;
     } while (normalizedSql.includes(placeholder));
+
     identifierMappings.set(placeholder, identifier);
+
     return `\`${placeholder}\``;
   });
 

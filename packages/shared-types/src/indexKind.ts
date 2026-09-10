@@ -15,5 +15,6 @@ export const indexKindOf = (value: {
   if (isIndexKind(value.kind)) return value.kind;
   if (value.isPrimary === true) return 'primary';
   if (value.unique !== true) return 'index';
+
   return value.isUniqueConstraint === true ? 'unique_constraint' : 'unique_index';
 };

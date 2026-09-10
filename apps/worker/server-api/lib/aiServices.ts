@@ -70,6 +70,7 @@ export class AIProvider extends Context.Service<AIProvider, ReturnType<typeof ma
     Effect.gen(function* () {
       const { apiKey, baseURL, config } = yield* AIConfiguration;
       let client: OpenAI | undefined;
+
       return makeProvider(
         () =>
           (client ??= new OpenAI({

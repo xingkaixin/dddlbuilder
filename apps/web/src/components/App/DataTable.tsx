@@ -78,6 +78,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
 
   const commitActiveInputOutsideCell = useCallback((cellElement: HTMLTableCellElement) => {
     const activeElement = document.activeElement;
+
     if (activeElement instanceof HTMLInputElement && !cellElement.contains(activeElement)) {
       activeElement.blur();
     }
@@ -127,9 +128,11 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
             onPointerDown={(event) => {
               if (event.button !== 0 || !cell.column.columnDef.meta?.editable) return;
               if (!isCellContentEvent(event)) return;
+
               const isTextEditableCell =
                 cell.column.columnDef.meta?.editable === 'text' &&
                 !event.currentTarget.querySelector('[data-editable-cell-trigger][tabindex="-1"]');
+
               if (isTextEditableCell) {
                 commitActiveInputOutsideCell(event.currentTarget);
                 event.preventDefault();
@@ -138,9 +141,12 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
                 setTimeout(() => {
                   focusEditableCell(row.index, cell.column.id);
                 }, 0);
+
                 return;
               }
+
               handleCellActivate(row.index, cell.column.id);
+
               if (event.target !== event.currentTarget) return;
               focusFirstInteractiveInCell(event.currentTarget);
               setTimeout(() => {
@@ -230,6 +236,7 @@ export const DataTable = memo<DataTableProps>(
         setRows((prev) => {
           const next = [...prev];
           next[rowIndex] = { ...next[rowIndex], fieldType, enumMeta };
+
           return next;
         });
       },
@@ -240,9 +247,13 @@ export const DataTable = memo<DataTableProps>(
       return rows.map((row) => {
         const warnings: string[] = [];
         const name = toStringSafe(row?.fieldName).trim();
+
         if (!name) return warnings;
+
         if (duplicateNameSet.has(name)) warnings.push(t('dataTable.duplicateName'));
+
         if (isReservedKeyword(dbType, name)) warnings.push(t('dataTable.reservedKeyword'));
+
         return warnings;
       });
     }, [rows, duplicateNameSet, dbType, t]);
@@ -284,6 +295,7 @@ export const DataTable = memo<DataTableProps>(
     });
 
     const editableColumnKeys = useMemo(() => getEditableColumnKeys(columns), [columns]);
+
     const { handlePaste } = useDataTableClipboard({
       rows,
       setRows,
@@ -303,9 +315,11 @@ export const DataTable = memo<DataTableProps>(
       ({ moved }: { moved: boolean }) => {
         if (!moved) return;
         setDragFeedback(t('dataTable.dragReordered'));
+
         if (dragFeedbackTimerRef.current) {
           clearTimeout(dragFeedbackTimerRef.current);
         }
+
         dragFeedbackTimerRef.current = setTimeout(() => {
           setDragFeedback(null);
         }, 1600);
@@ -405,8 +419,10 @@ export const DataTable = memo<DataTableProps>(
                     <tr key={headerGroup.id} className="border-b border-border/50">
                       {headerGroup.headers.map((header, colIndex) => {
                         const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
+
                         const isLastFrozen =
                           freezeEnabled && colIndex === effectiveFreezeColumns - 1;
+
                         return (
                           <th
                             key={header.id}

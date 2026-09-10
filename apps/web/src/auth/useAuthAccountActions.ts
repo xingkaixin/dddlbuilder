@@ -34,12 +34,14 @@ export const useAuthAccountActions = (
       if (!client || !configured) {
         throw new Error(i18n.t('services.authConfigMissing'));
       }
+
       return client;
     };
 
     return {
       signInWithEmail: async (email, password) => {
         const result = await requireClient().signIn.email({ email, password });
+
         if (result.error) {
           throw new ApiError(
             translateAuthError(result.error, 'header.auth.signInFailed'),
@@ -47,6 +49,7 @@ export const useAuthAccountActions = (
             result.error.code,
           );
         }
+
         await refreshSession();
       },
       signUpWithEmail: async (input) => {
@@ -58,20 +61,26 @@ export const useAuthAccountActions = (
           },
           { headers: { 'x-turnstile-token': input.turnstileToken } },
         );
+
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));
         }
+
         if (result.data.token) {
           await refreshSession();
+
           return 'signed_in';
         }
+
         return 'verification_required';
       },
       updateUserName: async (name) => {
         const result = await requireClient().updateUser({ name });
+
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'settings.usernameFailed'));
         }
+
         await refreshSession();
       },
       changePassword: async (currentPassword, newPassword) => {
@@ -80,6 +89,7 @@ export const useAuthAccountActions = (
           newPassword,
           revokeOtherSessions: false,
         });
+
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'settings.passwordFailed'));
         }
@@ -89,27 +99,32 @@ export const useAuthAccountActions = (
           email,
           redirectTo: `${window.location.origin}/?auth_action=reset-password`,
         });
+
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));
         }
       },
       resetPassword: async (token, newPassword) => {
         const result = await requireClient().resetPassword({ token, newPassword });
+
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));
         }
       },
       sendVerificationEmail: async (email) => {
         const result = await requireClient().sendVerificationEmail({ email });
+
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'header.auth.sendCodeFailed'));
         }
       },
       verifyEmail: async (email, otp) => {
         const result = await requireClient().emailOtp.verifyEmail({ email, otp });
+
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'header.auth.verifyCodeFailed'));
         }
+
         await refreshSession();
       },
     };

@@ -39,12 +39,14 @@ export function useTemplateActions({
       setRows((prevRows) => {
         // 找到最后一个非空字段行的索引
         let lastFilledIndex = -1;
+
         for (let i = prevRows.length - 1; i >= 0; i--) {
           if (prevRows[i].fieldName.trim() !== '') {
             lastFilledIndex = i;
             break;
           }
         }
+
         const insertAt = lastFilledIndex + 1;
 
         const before = prevRows.slice(0, insertAt);
@@ -68,11 +70,13 @@ export function useTemplateActions({
   const handleCreateTemplateFromFields = useCallback(
     async (name: string, fields: Array<Partial<FieldRow>>, description?: string) => {
       const result = await createTemplateFromFields(name, fields, description);
+
       if (result.ok) {
         showToast(i18n.t('templateManager.toast.created', { name }));
       } else {
         showToast(result.message ?? i18n.t('templateManager.toast.createFromFieldsFailed'));
       }
+
       return result;
     },
     [createTemplateFromFields, showToast],
@@ -80,8 +84,10 @@ export function useTemplateActions({
 
   const handleSaveAsTemplate = useCallback(() => {
     const validRows = rows.filter((row) => row.fieldName.trim());
+
     if (validRows.length === 0) {
       showToast(i18n.t('templateManager.toast.noValidFieldsForSave'));
+
       return;
     }
 

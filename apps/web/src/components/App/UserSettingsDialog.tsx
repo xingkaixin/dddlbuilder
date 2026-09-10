@@ -35,16 +35,20 @@ interface UserSettingsDialogProps {
 }
 
 type SettingsTab = 'account' | 'workspace' | 'credits';
+
 const LEDGER_PAGE_SIZE = 20;
 
 const toLedgerBoundary = (value: string, endOfDay = false) => {
   const date = new Date(`${value}T00:00:00`);
+
   if (Number.isNaN(date.getTime())) {
     return null;
   }
+
   if (endOfDay) {
     date.setDate(date.getDate() + 1);
   }
+
   return date.toISOString();
 };
 
@@ -60,12 +64,14 @@ const formatLedgerTime = (value: number) => {
 
 const formatCompactCredits = (value: number | null | undefined, locale: AppLocale) => {
   const amount = Number(value ?? 0);
+
   if (!Number.isFinite(amount)) {
     return '0';
   }
 
   const sign = amount < 0 ? '-' : '';
   const absolute = Math.abs(amount);
+
   const units =
     locale === 'zh-CN'
       ? [
@@ -80,12 +86,14 @@ const formatCompactCredits = (value: number | null | undefined, locale: AppLocal
         ];
 
   const unit = units.find((item) => absolute >= item.value);
+
   if (!unit) {
     return `${amount}`;
   }
 
   const scaled = absolute / unit.value;
   const decimals = locale === 'zh-CN' && scaled < 10 ? 1 : 2;
+
   return locale === 'zh-CN'
     ? `${sign}${scaled.toFixed(decimals)} ${unit.label}`
     : `${sign}${scaled.toFixed(decimals)}${unit.label}`;
@@ -95,6 +103,7 @@ const settingsTabContentClass = 'mt-0 h-full overflow-y-auto pr-1';
 
 const parseMetadata = (value?: string | null) => {
   if (!value) return null;
+
   try {
     return JSON.parse(value) as Record<string, unknown>;
   } catch {
@@ -107,15 +116,19 @@ const resolveLedgerTypeLabel = (
   item: CreditLedgerItem,
 ) => {
   const metadata = parseMetadata(item.metadataJson);
+
   if (item.kind === 'refund' && item.source !== 'manual_adjustment') {
     if (metadata?.reason === 'request_failed') {
       return t('settings.kind.aiFailedRefund');
     }
+
     return t('settings.kind.aiSettlementRefund');
   }
+
   if (item.kind === 'consume' && item.source !== 'manual_adjustment') {
     return t('settings.kind.aiReservedConsume');
   }
+
   return t(`settings.kind.${item.kind}`);
 };
 
@@ -133,10 +146,13 @@ function AccountNameForm({
 
   const handleSubmit = async () => {
     const trimmedName = name.trim();
+
     if (!trimmedName) {
       error(t('settings.usernameRequired'));
+
       return;
     }
+
     try {
       setSaving(true);
       await updateUserName(trimmedName);
@@ -186,9 +202,11 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const [rechargeOpen, setRechargeOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('account');
   const compactCreditBalance = formatCompactCredits(authSession.creditBalance, locale);
+
   const ledgerFilters = useMemo(() => {
     const startAt = ledgerStartDate ? toLedgerBoundary(ledgerStartDate) : null;
     const endAt = ledgerEndDate ? toLedgerBoundary(ledgerEndDate, true) : null;
+
     return {
       limit: LEDGER_PAGE_SIZE,
       offset: (ledgerPage - 1) * LEDGER_PAGE_SIZE,
@@ -205,6 +223,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const ledgerItems = ledgerQuery.data?.items ?? [];
   const ledgerTotal = ledgerQuery.data?.total ?? 0;
   const loadingLedger = ledgerQuery.isFetching;
+
   const ledgerError = ledgerQuery.isError
     ? ledgerQuery.error instanceof Error
       ? ledgerQuery.error.message
@@ -219,10 +238,13 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const handleChangePassword = async () => {
     if (!currentPassword.trim() || !newPassword.trim()) {
       error(t('settings.passwordRequired'));
+
       return;
     }
+
     if (newPassword !== confirmPassword) {
       error(t('settings.passwordMismatch'));
+
       return;
     }
 

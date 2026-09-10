@@ -31,6 +31,7 @@ interface SchemaTimelinePlayerProps {
   target: TableVersionTarget | null;
   tableName: string | null;
 }
+
 const EMPTY_VERSIONS: TableVersion[] = [];
 const chronological = (versions: TableVersion[]) => [...versions].reverse();
 
@@ -52,6 +53,7 @@ const SPEED_INTERVAL_MS: Record<Speed, number> = {
 
 function formatDateTime(timestamp: number, locale: string): string {
   const date = new Date(timestamp);
+
   return date.toLocaleString(locale, {
     month: 'short',
     day: 'numeric',
@@ -62,21 +64,25 @@ function formatDateTime(timestamp: number, locale: string): string {
 
 function normalizeFieldRows(rows: FieldRow[] | undefined): FieldRow[] {
   if (!rows) return [];
+
   return rows.filter((r) => r.fieldName?.trim());
 }
 
 function getRowChangeStatus(fieldName: string, diff: TableDiff | null): RowChangeStatus {
   if (!diff) return 'unchanged';
   const fieldDiff = diff.fields.find((f) => f.fieldName === fieldName);
+
   if (!fieldDiff) return 'unchanged';
   if (fieldDiff.type === 'add') return 'added';
   if (fieldDiff.type === 'modify') return 'modified';
   if (fieldDiff.type === 'rename') return 'renamed';
+
   return 'unchanged';
 }
 
 function getFieldDiff(fieldName: string, diff: TableDiff | null): FieldDiff | undefined {
   if (!diff) return undefined;
+
   return diff.fields.find((f) => f.fieldName === fieldName);
 }
 
@@ -85,12 +91,14 @@ function formatFieldChanges(
   t: (key: string) => string,
 ): string {
   if (!changes || changes.length === 0) return '';
+
   const labels: Record<FieldChangeType, string> = {
     type: t('diffDialog.type'),
     nullable: t('diffDialog.nullable'),
     default: t('dataTable.headers.defaultKind'),
     comment: t('diffDialog.commentChanged'),
   };
+
   return changes.map((c) => labels[c] || c).join(', ');
 }
 
@@ -108,14 +116,23 @@ function buildChangeSummary(
   const removedIndexes = diff.indexes.filter((i) => i.type === 'remove').length;
 
   if (addedFields > 0) parts.push(t('timelinePlayer.fieldAdded', { count: addedFields }));
+
   if (removedFields > 0) parts.push(t('timelinePlayer.fieldRemoved', { count: removedFields }));
+
   if (modifiedFields > 0) parts.push(t('timelinePlayer.fieldModified', { count: modifiedFields }));
+
   if (renamedFields > 0) parts.push(t('timelinePlayer.fieldModified', { count: renamedFields }));
+
   if (addedIndexes > 0) parts.push(t('timelinePlayer.indexAdded', { count: addedIndexes }));
+
   if (removedIndexes > 0) parts.push(t('timelinePlayer.indexRemoved', { count: removedIndexes }));
+
   if (diff.tableNameChanged) parts.push(t('timelinePlayer.tableNameChanged'));
+
   if (diff.tableCommentChanged) parts.push(t('timelinePlayer.tableCommentChanged'));
+
   if (diff.miscConfigChanged) parts.push(t('timelinePlayer.miscChanged'));
+
   for (const change of diff.manualChanges ?? [])
     parts.push(t(`diffDialog.manualChanges.${change}`));
 
@@ -126,6 +143,7 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
   ({ open, onOpenChange, target, tableName }) => {
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
+
     const { data: versions = EMPTY_VERSIONS, isPending: loading } = useQuery({
       ...tableVersionsOptions(target),
       enabled: open && Boolean(target),
@@ -139,9 +157,11 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
     const frameDiffs = useMemo<(TableDiff | null)[]>(() => {
       if (versions.length === 0) return [];
       const diffs: (TableDiff | null)[] = [null]; // first frame has no diff
+
       for (let i = 1; i < versions.length; i++) {
         diffs.push(diffPersistedState(versions[i - 1].state, versions[i].state));
       }
+
       return diffs;
     }, [versions]);
 
@@ -149,15 +169,19 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
     useEffect(() => {
       if (!isPlaying || versions.length <= 1) return;
       const intervalMs = SPEED_INTERVAL_MS[speed];
+
       const timer = setInterval(() => {
         setCurrentFrame((prev) => {
           if (prev >= versions.length - 1) {
             setIsPlaying(false);
+
             return prev;
           }
+
           return prev + 1;
         });
       }, intervalMs);
+
       return () => clearInterval(timer);
     }, [isPlaying, speed, versions.length]);
 
@@ -197,6 +221,7 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
 
     const currentVersion = versions[currentFrame];
     const currentDiff = frameDiffs[currentFrame];
+
     const currentFields = useMemo(
       () => normalizeFieldRows(currentVersion?.state.rows),
       [currentVersion],
@@ -206,17 +231,21 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
     const tableMetaChanges = useMemo(() => {
       if (!currentDiff) return [];
       const changes: string[] = [];
+
       if (currentDiff.tableNameChanged && currentDiff.oldTableName && currentDiff.newTableName) {
         changes.push(
           `${t('diffDialog.tableName')}: ${currentDiff.oldTableName} → ${currentDiff.newTableName}`,
         );
       }
+
       if (currentDiff.tableCommentChanged) {
         changes.push(t('timelinePlayer.tableCommentChanged'));
       }
+
       if (currentDiff.miscConfigChanged) {
         changes.push(t('timelinePlayer.miscChanged'));
       }
+
       return changes;
     }, [currentDiff, t]);
 
@@ -250,6 +279,7 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                   {versions.map((v, idx) => {
                     const isActive = idx === currentFrame;
                     const hasChanges = frameDiffs[idx] ? hasTableChanges(frameDiffs[idx]) : false;
+
                     return (
                       <button
                         key={v.id}
@@ -356,6 +386,7 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                     {currentFields.map((row, idx) => {
                       const status = getRowChangeStatus(row.fieldName || '', currentDiff);
                       const fieldDiff = getFieldDiff(row.fieldName || '', currentDiff);
+
                       const changedField =
                         fieldDiff?.type === 'modify' || fieldDiff?.type === 'rename'
                           ? fieldDiff

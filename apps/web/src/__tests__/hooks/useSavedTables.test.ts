@@ -18,6 +18,7 @@ import type * as WorkspaceYDocAdapter from '@/services/workspaceYDocAdapter';
 
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
   const { wrapper } = createQueryClientWrapper();
+
   return testingLibraryRenderHook(render, { wrapper });
 };
 
@@ -119,6 +120,7 @@ describe('useSavedTables', () => {
   it('keeps the saved table successful and retries only failed review migration', async () => {
     const scope = { kind: 'anonymous' } as const;
     const draftId = 'review-draft';
+
     const review = await saveReview(
       { scope, draftId, normalizedName: 'users' },
       'users',
@@ -146,9 +148,11 @@ describe('useSavedTables', () => {
     const target = { scope, tableId: record?.tableId, normalizedName: 'users' };
     expect(await listReviews(target)).toEqual([]);
     const action = warning.mock.calls[0]?.[1]?.action;
+
     if (!action || typeof action !== 'object' || !('onClick' in action)) {
       throw new Error('Expected a migration retry action');
     }
+
     act(() => action.onClick({} as React.MouseEvent<HTMLButtonElement>));
     await waitFor(async () => {
       expect((await listReviews(target)).map((entry) => entry.id)).toEqual([review?.id]);
@@ -181,6 +185,7 @@ describe('useSavedTables', () => {
   it('保存名称不同于 SQL 表名时仍迁移评审历史，并支持立即重命名', async () => {
     const scope = { kind: 'anonymous' } as const;
     const draftId = 'public-users-draft';
+
     const review = await saveReview(
       { scope, draftId, normalizedName: 'public.users' },
       'public.users',
@@ -188,6 +193,7 @@ describe('useSavedTables', () => {
       'mysql',
       { score: 8, summary: 'ok', suggestions: [] },
     );
+
     if (!review) throw new Error('Expected review to be persisted');
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -252,6 +258,7 @@ describe('useSavedTables', () => {
     });
     const saved = result.current.savedTables[0];
     expect(saved).toBeDefined();
+
     if (!saved) throw new Error('未创建保存表');
 
     await act(async () => {
@@ -297,7 +304,9 @@ describe('useSavedTables', () => {
       await flushPromises();
     });
     const saved = result.current.savedTables[0];
+
     if (!saved) throw new Error('未创建保存表');
+
     const target = {
       scope: { kind: 'anonymous' } as const,
       tableId: saved.tableId,
@@ -437,6 +446,7 @@ describe('useSavedTables', () => {
 
     await act(async () => {
       await flushPromises();
+
       const imported = await result.current.importTables({
         items: [{ name: 'Imported', state: createState('imported') }],
         conflictStrategy: 'skip',
@@ -543,6 +553,7 @@ describe('useSavedTables', () => {
     await act(async () => {
       const alpha = result.current.savedTables.find((table) => table.name === 'Alpha');
       expect(alpha).toBeDefined();
+
       if (!alpha) return;
       clock.mockReturnValue(300);
       await result.current.overwriteTable(alpha.normalizedName, createState('alpha-updated'));
@@ -571,6 +582,7 @@ describe('useSavedTables', () => {
     };
     mockYDocAdapter.subscribeWorkspaceYDoc.mockImplementation((_doc, notify) => {
       notifyYDocChanged = notify;
+
       return vi.fn();
     });
     mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReturnValue([

@@ -11,12 +11,17 @@ import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 vi.mock('@/services/aiGenerateTableService', () => ({ requestGenerateTable: vi.fn() }));
 
 vi.mock('@/components/App/containers/GlobalDialogs', () => ({ GlobalDialogs: () => null }));
+
 vi.mock('@/webmcp/WebMcpChangeDialog', () => ({ WebMcpChangeDialog: () => null }));
+
 vi.mock('@/auth/AuthDialogs', () => ({ AuthDialogs: () => null }));
+
 vi.mock('@/components/App/WorkspaceMigrationDialog', () => ({
   WorkspaceMigrationDialog: () => null,
 }));
+
 vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ resolvedLocale: 'zh-CN' }) }));
+
 vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthIdentity = () => ({
     status: 'signed_in',
@@ -30,6 +35,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     refreshCredits: vi.fn(),
   });
   const useAuthDialog = () => ({ openAuthDialog: vi.fn() });
+
   return { useAuthIdentity, useAuthCredits, useAuthDialog };
 });
 
@@ -55,6 +61,7 @@ function Harness({
   const [open, setOpen] = useState(true);
   const [currentState, setCurrentState] = useState(initialState);
   const [targetKey, setTargetKey] = useState('tab-a');
+
   const model = {
     saveObjectType: 'table',
     globalDialogs: { saveDialog: {} },
@@ -76,11 +83,13 @@ function Harness({
         const nextState = applyAISchemaChanges(currentState, candidateState, changes);
         applyChanges(changes, candidateState, expectedState, nextState);
         setCurrentState(nextState);
+
         return nextState;
       },
       onFocusChange: vi.fn(),
     },
   } as unknown as AppDialogLayerModel;
+
   return (
     <>
       <button onClick={() => setOpen(true)}>Reopen</button>
@@ -118,6 +127,7 @@ describe('AI patch dialog session', () => {
     let signal: AbortSignal | undefined;
     vi.mocked(requestGenerateTable).mockImplementation((_payload, options) => {
       signal = options?.signal;
+
       return new Promise((_resolve, reject) => {
         signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
       });
@@ -236,6 +246,7 @@ describe('AI patch dialog session', () => {
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '重命名字段' } });
     fireEvent.click(screen.getByRole('button', { name: '发送' }));
+
     const renameTitle = await screen.findByRole('button', {
       name: '字段 old_name 改名为 new_name',
     });
@@ -306,6 +317,7 @@ describe('AI patch dialog session', () => {
     let signal: AbortSignal | undefined;
     vi.mocked(requestGenerateTable).mockImplementation((_payload, options) => {
       signal = options?.signal;
+
       return new Promise((resolve) => {
         resolveRequest = resolve;
       });

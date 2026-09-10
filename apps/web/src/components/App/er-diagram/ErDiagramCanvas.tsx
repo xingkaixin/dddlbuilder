@@ -51,6 +51,7 @@ function buildNodesFromTables(
     const cols = Math.ceil(Math.sqrt(tables.length));
     const col = index % cols;
     const row = Math.floor(index / cols);
+
     return {
       id: buildSavedTableNodeId(record),
       type: 'table',
@@ -69,6 +70,7 @@ function buildEdgesFromTables(
 ): Edge[] {
   const edges: Edge[] = [];
   const recordsByReference = new Map<string, SavedTableRecord[]>();
+
   for (const record of tables) {
     const referenceId = buildTableReferenceId(record.state);
     const records = recordsByReference.get(referenceId) ?? [];
@@ -79,16 +81,19 @@ function buildEdgesFromTables(
   for (const table of tables) {
     const sourceId = buildSavedTableNodeId(table);
     const sourceReferenceId = buildTableReferenceId(table.state);
+
     for (const fk of table.state.foreignKeys || []) {
       const targetReferenceId = `${fk.refSchema ? `${fk.refSchema}.` : ''}${fk.refTable}`;
       const targetRecords = recordsByReference.get(targetReferenceId) ?? [];
       const onlyTargetRecord = targetRecords.length === 1 ? targetRecords[0] : undefined;
+
       const targetId =
         targetReferenceId === sourceReferenceId
           ? sourceId
           : onlyTargetRecord
             ? buildSavedTableNodeId(onlyTargetRecord)
             : null;
+
       if (!targetId) continue;
 
       if (!fk.fields.length || !fk.refFields.length) continue;
@@ -108,6 +113,7 @@ function buildEdgesFromTables(
       });
     }
   }
+
   return edges;
 }
 
@@ -148,8 +154,10 @@ function CanvasInner({
         ...current,
         foreignKeys: current.foreignKeys?.filter((fk) => fk.id !== fkId) || [],
       }));
+
       if (!result.ok) {
         showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
+
         return;
       }
 
@@ -175,11 +183,14 @@ function CanvasInner({
   useEffect(() => {
     setNodes((prev: Node[]) => {
       const prevPositions = new Map(prev.map((n: Node) => [n.id, n.position]));
+
       return initialNodes.map((n: Node) => {
         const pos = prevPositions.get(n.id);
+
         if (pos) {
           return { ...n, position: pos };
         }
+
         return n;
       });
     });
@@ -192,6 +203,7 @@ function CanvasInner({
   useEffect(() => {
     if (!loading && tables.length > 0) {
       const timer = setTimeout(() => fitView({ padding: 0.2 }), 100);
+
       return () => clearTimeout(timer);
     }
   }, [loading, tables.length, fitView]);
@@ -213,6 +225,7 @@ function CanvasInner({
       const targetRecord = tables.find(
         (table) => buildSavedTableNodeId(table) === connection.target,
       );
+
       if (!sourceRecord || !targetRecord) return;
 
       setPendingRelationship({
@@ -234,17 +247,23 @@ function CanvasInner({
           pendingRelationship.sourceRecord,
           (source, readTable) => {
             const target = readTable(pendingRelationship.targetRecord);
+
             if (!target || target.trashedAt)
               throw new Error(t('erDiagram.relationship.saveFailed'));
             const planned = planTableRelationship({ source, target: target.state }, intent);
+
             if (!planned.ok) throw new Error(t(`erDiagram.relationship.errors.${planned.error}`));
+
             return planned.plan.sourceState;
           },
         );
+
         if (!result.ok) {
           showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
+
           return;
         }
+
         await onRefresh();
         setPendingRelationship(null);
         showToast(t('erDiagram.relationship.success'));
@@ -258,9 +277,11 @@ function CanvasInner({
   const handleAutoLayout = useCallback(() => {
     setNodes((prev: Node[]) => {
       const cols = Math.ceil(Math.sqrt(prev.length));
+
       return prev.map((node: Node, index: number) => {
         const col = index % cols;
         const row = Math.floor(index / cols);
+
         return {
           ...node,
           position: { x: col * GRID_GAP_X + 50, y: row * GRID_GAP_Y + 50 },

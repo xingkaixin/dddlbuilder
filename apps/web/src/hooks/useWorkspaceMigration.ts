@@ -20,6 +20,7 @@ export const useWorkspaceMigration = (authState: {
 }) => {
   const { doc, localSynced, synced } = useWorkspaceYDoc();
   const queryClient = useQueryClient();
+
   const [dialogState, setDialogState] = useState<{
     fingerprint: string | null;
     open: boolean;
@@ -34,6 +35,7 @@ export const useWorkspaceMigration = (authState: {
   );
   const userId = authState.userId ?? '';
   const workspaceId = authState.workspaceId ?? '';
+
   const proposalQuery = useQuery({
     ...workspaceMigrationProposalOptions(userId, workspaceId, doc),
     enabled: ready,
@@ -49,6 +51,7 @@ export const useWorkspaceMigration = (authState: {
   });
   const pending = proposalQuery.data ?? null;
   const fingerprint = pending?.payload.localFingerprint ?? null;
+
   const open =
     ready && (dialogState.fingerprint === fingerprint ? dialogState.open : Boolean(pending));
 
@@ -65,6 +68,7 @@ export const useWorkspaceMigration = (authState: {
     if (pending && authState.userId) {
       dismissWorkspaceMigration(authState.userId, pending.payload.localFingerprint);
     }
+
     setDialogState({ fingerprint, open: false });
   }, [authState.userId, fingerprint, pending]);
 
@@ -79,6 +83,7 @@ export const useWorkspaceMigration = (authState: {
       null,
     );
     setDialogState({ fingerprint, open: false });
+
     return result;
   }, [
     authState.userId,

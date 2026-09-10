@@ -53,9 +53,11 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
 
     const handleAddTable = useCallback(() => {
       const name = window.prompt(t('erDiagram.addTablePrompt') || '请输入表名');
+
       if (!name?.trim()) return;
 
       const trimmed = name.trim();
+
       const state: PersistedState = {
         schemaName: '',
         tableName: trimmed,

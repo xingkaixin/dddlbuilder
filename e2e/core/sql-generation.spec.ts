@@ -102,9 +102,11 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
 
     await page.evaluate(() => {
       (window as any).__copyTriggered = false;
+
       const writeText = async () => {
         (window as any).__copyTriggered = true;
       };
+
       try {
         Object.defineProperty(navigator, 'clipboard', {
           value: { writeText },

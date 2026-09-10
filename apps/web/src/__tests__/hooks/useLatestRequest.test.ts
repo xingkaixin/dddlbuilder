@@ -6,6 +6,7 @@ describe('useLatestRequest', () => {
   it('aborts the active request on unmount and ignores its result', async () => {
     const activeRequest: { signal?: AbortSignal } = {};
     let completeRequest!: (value: string) => void;
+
     const task = new Promise<string>((resolve) => {
       completeRequest = resolve;
     });
@@ -15,6 +16,7 @@ describe('useLatestRequest', () => {
     act(() => {
       request = result.current.run(({ signal }) => {
         activeRequest.signal = signal;
+
         return task;
       });
     });

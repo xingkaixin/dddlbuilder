@@ -6,6 +6,7 @@ import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
   const { wrapper } = createQueryClientWrapper();
+
   return testingLibraryRenderHook(render, { wrapper });
 };
 
@@ -15,6 +16,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     configured: true,
     userId: null,
   }));
+
   return { useAuthIdentity };
 });
 

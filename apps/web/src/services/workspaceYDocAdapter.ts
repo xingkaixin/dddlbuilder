@@ -82,6 +82,7 @@ export type { WorkspaceYDocChange, WorkspaceYDocCollection };
 export type WorkspaceYDocDraftRecord = Omit<SchemaWorkspaceYDocDraftRecord, 'state'> & {
   state: PersistedState;
 };
+
 type WorkspaceYDocDraftWriteRecord = Omit<SchemaWorkspaceYDocDraftRecord, 'state'> & {
   state: SchemaDocumentState;
 };
@@ -97,6 +98,7 @@ export const getDraftRecordFromYDoc = (
   draftId: string,
 ): WorkspaceYDocDraftRecord | null => {
   const record = getSchemaDraftRecordFromYDoc(doc, draftId);
+
   return record ? { ...record, state: withDefaultEditorSession(record.state) } : null;
 };
 
@@ -156,6 +158,7 @@ export const getSavedTableFromYDoc = (
   normalizedName: SavedTableTarget,
 ): SavedTableRecord | null => {
   const record = getWorkspaceSavedTable(doc, normalizedName);
+
   return record ? toSavedTableRecord(record) : null;
 };
 
@@ -165,6 +168,7 @@ export const updateSavedTableMetadataInYDoc = (
   update: WorkspaceSavedTableMetadataUpdate,
 ): SavedTableRecord | null => {
   const record = updateWorkspaceSavedTableMetadata(doc, target, update);
+
   return record ? toSavedTableRecord(record) : null;
 };
 
@@ -198,8 +202,10 @@ export const getSavedDraftFromYDoc = (
   normalizedName: SavedTableTarget,
 ): SavedTableDraftRecord | null => {
   const record = getWorkspaceSavedDraft(doc, normalizedName);
+
   if (!record) return null;
   const { normalizedName: _normalizedName, ...savedDraft } = record;
+
   return { ...savedDraft, state: withDefaultEditorSession(savedDraft.state) };
 };
 
@@ -234,11 +240,14 @@ export const getWorkspaceSnapshotFromYDoc = (
 ): { source: WorkspaceSelection; state: PersistedState } | null => {
   if (source.kind === 'draft') {
     const state = getStateForWorkspaceSource(doc, source);
+
     return state ? { source, state: withEditorSession(state, editorSession) } : null;
   }
 
   const record = getSavedTableFromYDoc(doc, source);
+
   if (!record) return null;
   const snapshot = resolveSavedTableSnapshot(record, getSavedDraftFromYDoc(doc, source));
+
   return { ...snapshot, state: withEditorSession(snapshot.state, editorSession) };
 };

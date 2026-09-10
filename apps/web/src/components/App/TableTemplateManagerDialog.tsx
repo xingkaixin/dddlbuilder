@@ -54,7 +54,9 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
 
     const filteredTemplates = useMemo(() => {
       const term = searchTerm.trim().toLowerCase();
+
       if (!term) return templates;
+
       return templates.filter(
         (template) =>
           template.name.toLowerCase().includes(term) ||
@@ -71,8 +73,10 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
     const handleRename = useCallback(async () => {
       if (!editingTemplate) return;
       const nextName = editName.trim();
+
       if (!nextName) return;
       const result = await onRenameTemplate(editingTemplate.id, nextName);
+
       if (result.ok) {
         showToast(t('tableTemplate.toast.renamed', { name: nextName }));
         setEditingTemplate(null);
@@ -234,4 +238,5 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
     );
   },
 );
+
 TableTemplateManagerDialog.displayName = 'TableTemplateManagerDialog';

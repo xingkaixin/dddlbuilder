@@ -26,6 +26,7 @@ type EditorDomains = ReturnType<typeof useEditorDomains>;
 
 function getDocumentSourceIdentity(source: WorkspaceSelection) {
   if (source.kind === 'draft') return ['draft', source.draftId];
+
   return source.tableId
     ? ['saved_table', 'id', source.tableId]
     : ['saved_table', 'name', source.normalizedName];
@@ -79,6 +80,7 @@ export function useSchemaController({
   countTableVersions,
 }: UseSchemaControllerParams) {
   const { editor, ui, auth, sharding, partition, tableOptions } = domains;
+
   const {
     schemaName,
     tableName,
@@ -103,6 +105,7 @@ export function useSchemaController({
   const { mysqlPartitionConfig } = partition;
   const { tableMiscConfig } = tableOptions;
   const { showToast } = useToast();
+
   const qualifiedTableName = useMemo(
     () => buildQualifiedTableName(schemaName, tableName),
     [schemaName, tableName],

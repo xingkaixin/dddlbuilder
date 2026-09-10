@@ -13,6 +13,7 @@ export const normalizeWorkspaceSnapshot = (
   snapshot: WorkspaceSnapshot,
 ): CanonicalWorkspaceSnapshot => {
   const defaultDrafts = snapshot.drafts.filter((draft) => draft.draftId === DEFAULT_DRAFT_ID);
+
   let defaultDraft = defaultDrafts.reduce<(typeof defaultDrafts)[number] | undefined>(
     (latest, draft) => (!latest || draft.updatedAt > latest.updatedAt ? draft : latest),
     undefined,
@@ -47,10 +48,12 @@ export const normalizeWorkspaceMigrationSnapshot = (
 ): CanonicalWorkspaceSnapshot => {
   const normalized = normalizeWorkspaceSnapshot(snapshot);
   const session = snapshot.activeSession;
+
   if (!session?.activeState || session.activeSource.kind !== 'draft') return normalized;
 
   const draftId = session.activeSource.draftId;
   const existing = normalized.drafts.find((draft) => draft.draftId === draftId);
+
   if (!shouldAcceptSnapshotRecord(session.updatedAt, existing?.updatedAt)) return normalized;
 
   const draft = {
@@ -59,6 +62,7 @@ export const normalizeWorkspaceMigrationSnapshot = (
     state: toSchemaDocumentState(session.activeState),
     updatedAt: session.updatedAt,
   };
+
   return {
     ...normalized,
     drafts: existing

@@ -62,5 +62,6 @@ export const expandDatabaseFamilies = <T>(
 export const escapeSqlString = (value: string, databaseType: DatabaseType): string => {
   const family = getDatabaseFamily(databaseType);
   const escaped = family === 'mysql' || family === 'hive' ? value.replaceAll('\\', '\\\\') : value;
+
   return escaped.replaceAll("'", "''");
 };

@@ -30,6 +30,7 @@ function findEndRecord(view: DataView): number {
   for (let offset = firstOffset; offset >= lastOffset; offset -= 1) {
     if (view.getUint32(offset, true) !== END_OF_CENTRAL_DIRECTORY) continue;
     const commentLength = view.getUint16(offset + 20, true);
+
     if (offset + END_RECORD_BYTES + commentLength === view.byteLength) return offset;
   }
 
@@ -45,6 +46,7 @@ function assertPlainExtraFields(view: DataView, offset: number, length: number):
     const fieldId = view.getUint16(cursor, true);
     const fieldLength = view.getUint16(cursor + 2, true);
     cursor += 4;
+
     if (cursor + fieldLength > end || fieldId === ZIP64_EXTRA_FIELD) rejectArchive();
     cursor += fieldLength;
   }
@@ -67,6 +69,7 @@ function assertLocalFileHeader(
   const localCompressionMethod = view.getUint16(offset + 8, true);
   const localCompressedSize = view.getUint32(offset + 18, true);
   const localUncompressedSize = view.getUint32(offset + 22, true);
+
   if (
     flags !== centralFlags ||
     localCompressionMethod !== compressionMethod ||
@@ -80,8 +83,10 @@ function assertLocalFileHeader(
   const extraLength = view.getUint16(offset + 28, true);
   const extraOffset = offset + 30 + fileNameLength;
   const dataOffset = extraOffset + extraLength;
+
   if (dataOffset + compressedSize > centralDirectoryOffset) rejectArchive();
   assertPlainExtraFields(view, extraOffset, extraLength);
+
   return dataOffset;
 }
 
@@ -92,10 +97,12 @@ function assertActualUncompressedSize(
 ): number {
   if (entry.compressionMethod === 0) {
     if (entry.compressedSize !== entry.uncompressedSize) rejectArchive();
+
     return entry.uncompressedSize;
   }
 
   let entryBytes = 0;
+
   const inflate = new Inflate((chunk) => {
     if (
       chunk.byteLength > EXCEL_ARCHIVE_LIMITS.maxEntryBytes - entryBytes ||
@@ -104,6 +111,7 @@ function assertActualUncompressedSize(
     ) {
       rejectArchive();
     }
+
     entryBytes += chunk.byteLength;
   });
   const endOffset = entry.compressedOffset + entry.compressedSize;
@@ -126,12 +134,15 @@ function assertActualUncompressedSize(
   }
 
   if (entryBytes !== entry.uncompressedSize) rejectArchive();
+
   return entryBytes;
 }
 
 export function assertSafeExcelArchive(data: ArrayBuffer): void {
   const view = new DataView(data);
+
   if (view.byteLength < 4 || view.getUint16(0, true) !== 0x4b50) return;
+
   if (view.getUint32(0, true) !== LOCAL_FILE_HEADER) rejectArchive();
 
   const endOffset = findEndRecord(view);
@@ -158,6 +169,7 @@ export function assertSafeExcelArchive(data: ArrayBuffer): void {
   let cursor = centralDirectoryOffset;
   let totalUncompressedBytes = 0;
   const entries: ArchiveEntry[] = [];
+
   for (let index = 0; index < totalEntries; index += 1) {
     if (cursor + 46 > endOffset || view.getUint32(cursor, true) !== CENTRAL_DIRECTORY_HEADER) {
       rejectArchive();
@@ -190,9 +202,11 @@ export function assertSafeExcelArchive(data: ArrayBuffer): void {
     }
 
     totalUncompressedBytes += uncompressedSize;
+
     if (totalUncompressedBytes > EXCEL_ARCHIVE_LIMITS.maxUncompressedBytes) rejectArchive();
 
     assertPlainExtraFields(view, extraOffset, extraLength);
+
     const compressedOffset = assertLocalFileHeader(
       view,
       localHeaderOffset,
@@ -215,9 +229,11 @@ export function assertSafeExcelArchive(data: ArrayBuffer): void {
   if (cursor !== endOffset) rejectArchive();
 
   entries.sort((left, right) => left.localHeaderOffset - right.localHeaderOffset);
+
   for (let index = 1; index < entries.length; index += 1) {
     const previous = entries[index - 1];
     const current = entries[index];
+
     if (current.localHeaderOffset < previous.compressedOffset + previous.compressedSize) {
       rejectArchive();
     }
@@ -225,6 +241,7 @@ export function assertSafeExcelArchive(data: ArrayBuffer): void {
 
   const bytes = new Uint8Array(data);
   totalUncompressedBytes = 0;
+
   for (const entry of entries) {
     totalUncompressedBytes += assertActualUncompressedSize(bytes, entry, totalUncompressedBytes);
   }

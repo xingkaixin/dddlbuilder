@@ -21,6 +21,7 @@ async function readApiError(response: Response): Promise<ApiError> {
   const payload = decodeApiError(data);
   const message = payload.error ?? i18n.t('services.requestFailed', { status: response.status });
   const code = payload.code;
+
   return new ApiError(message, response.status, code);
 }
 
@@ -38,6 +39,7 @@ export async function requestSqlParse(payload: SqlParseRequestPayload): Promise<
   }
 
   const data = decodeSqlParseResponse(await response.json());
+
   if (data._tag === 'None') {
     throw new Error(i18n.t('services.parseResultInvalid'));
   }
@@ -61,6 +63,7 @@ export async function requestMultiSqlParse(
   }
 
   const data = decodeMultiSqlParseResponse(await response.json());
+
   if (data._tag === 'None') {
     throw new Error(i18n.t('services.parseResultInvalid'));
   }

@@ -36,11 +36,13 @@ function hexToRgba(hex: string, alpha: number) {
   const r = Number.parseInt(hex.slice(1, 3), 16);
   const g = Number.parseInt(hex.slice(3, 5), 16);
   const b = Number.parseInt(hex.slice(5, 7), 16);
+
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
 export function createStars(width: number, height: number): Star[] {
   const count = Math.max(30, Math.floor((width * height) / 8000));
+
   return Array.from({ length: count }, (_, id) => ({
     id,
     left: `${random(0, 100)}%`,
@@ -90,6 +92,7 @@ export class Particle {
 
   update() {
     this.trail.push({ x: this.x, y: this.y, alpha: this.alpha });
+
     if (this.trail.length > this.maxTrail) {
       this.trail.shift();
     }
@@ -122,6 +125,7 @@ export class Particle {
     }
 
     let displayAlpha = this.alpha;
+
     if (this.type === 'sparkle' && this.sparkleTimer % 4 < 2) {
       displayAlpha *= 0.4;
     }
@@ -195,6 +199,7 @@ export class Firework {
 
   update(particles: Particle[]) {
     this.trail.push({ x: this.x, y: this.y });
+
     if (this.trail.length > this.maxTrail) {
       this.trail.shift();
     }
@@ -204,6 +209,7 @@ export class Firework {
     this.y += this.velocity.y;
 
     const distance = Math.hypot(this.targetX - this.x, this.targetY - this.y);
+
     if (distance < 30 || this.velocity.y >= 0) {
       this.arrived = true;
       this.explode(particles);
@@ -302,6 +308,7 @@ export class Firework {
     for (let i = 0; i < count; i += 1) {
       const angle = random(-Math.PI * 0.8, -Math.PI * 0.2);
       const speed = random(2, 12);
+
       const particle = new Particle(
         this.x,
         this.y,
@@ -317,6 +324,7 @@ export class Firework {
 
   private ringExplosion(count: number, particles: Particle[]) {
     const rings = 3;
+
     for (let ringIndex = 0; ringIndex < rings; ringIndex += 1) {
       const ringCount = Math.floor(count / rings);
       const speed = 4 + ringIndex * 3;
@@ -361,6 +369,7 @@ export class Firework {
     for (let i = 0; i < count; i += 1) {
       const t = (i / count) * Math.PI * 2;
       const heartX = 16 * Math.sin(t) ** 3;
+
       const heartY = -(
         13 * Math.cos(t) -
         5 * Math.cos(2 * t) -

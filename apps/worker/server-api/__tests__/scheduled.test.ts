@@ -36,6 +36,7 @@ describe('scheduled recovery', () => {
   it('将完整恢复任务交给 waitUntil', async () => {
     const env = {} as ApiEnv['Bindings'];
     const waitUntil = vi.fn<(promise: Promise<unknown>) => void>();
+
     const ctx = {
       waitUntil,
       passThroughOnException: vi.fn(),

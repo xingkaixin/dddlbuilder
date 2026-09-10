@@ -18,7 +18,9 @@ const scope = { kind: 'user', userId: 'metadata-user', workspaceId: 'metadata-wo
 vi.mock('@/hooks/workspacePersistence/useWorkspaceAuthority', () => ({
   useWorkspaceAuthority: () => {
     const doc = workspace.doc;
+
     if (!doc) throw new Error('Workspace not initialized');
+
     return {
       scope,
       yDoc: doc,
@@ -70,6 +72,7 @@ describe('saved table metadata writes', () => {
 
   it('rename preserves remote folder and trash changes received while awaiting persistence', async () => {
     const doc = workspace.doc;
+
     if (!doc) throw new Error('Workspace not initialized');
     const peer = new Y.Doc();
     Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
@@ -110,6 +113,7 @@ describe('saved table metadata writes', () => {
     '%s preserves remote schema and rename received while waiting for IndexedDB',
     async (operation) => {
       const doc = workspace.doc;
+
       if (!doc) throw new Error('Workspace not initialized');
       const peer = new Y.Doc();
       Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
@@ -170,6 +174,7 @@ describe('saved table metadata writes', () => {
     '%s does not recreate a deleted table or modify its same-name replacement',
     async (operation) => {
       const doc = workspace.doc;
+
       if (!doc) throw new Error('Workspace not initialized');
       const replacement = { ...record, tableId: 'replacement-id' };
       const { wrapper, queryClient } = createQueryClientWrapper();

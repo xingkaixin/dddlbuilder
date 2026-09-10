@@ -42,6 +42,7 @@ describe('foreign key field correspondence', () => {
     (overrides) => {
       const fk = { ...foreignKey, ...overrides };
       expect(getForeignKeyIssue(fk, 'postgresql')?.kind).toBe('fields');
+
       const sql = buildDDL({
         dbType: 'postgresql',
         tableName: 'orders',

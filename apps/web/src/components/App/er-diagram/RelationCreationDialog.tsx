@@ -43,6 +43,7 @@ type RelationCreationDialogProps = {
 function fieldOptions(draft: TableRelationshipDraft, side: 'source' | 'target') {
   const keyFields = side === 'target' ? referencedKeyFields(draft.target) : null;
   const state = side === 'source' ? draft.source : draft.target;
+
   return state.rows
     .filter((row) => row.fieldName.trim())
     .map((row) => ({
@@ -86,6 +87,7 @@ export function RelationCreationDialog({
   onConfirm,
 }: RelationCreationDialogProps) {
   const { t } = useTranslation();
+
   const [intent, setIntent] = useState<TableRelationshipIntent>(() =>
     defaultRelationshipIntent(draft, sourceField, targetField),
   );
@@ -102,13 +104,16 @@ export function RelationCreationDialog({
 
   const selectCardinality = (cardinality: RelationshipCardinality) => {
     updateIntent('cardinality', cardinality);
+
     if (cardinality === 'one-to-one') updateIntent('createIndex', true);
   };
 
   const selectOptionality = (optionality: RelationshipOptionality) => {
     updateIntent('optionality', optionality);
+
     if (optionality === 'required') {
       if (intent.onDelete === 'SET NULL') updateIntent('onDelete', undefined);
+
       if (intent.onUpdate === 'SET NULL') updateIntent('onUpdate', undefined);
     }
   };
@@ -116,6 +121,7 @@ export function RelationCreationDialog({
   const handleConfirm = async () => {
     if (!result?.ok || isSaving) return;
     setIsSaving(true);
+
     try {
       await onConfirm(intent);
     } finally {
@@ -325,6 +331,7 @@ export function RelationCreationDialog({
                 {(['onDelete', 'onUpdate'] as const).map((actionType) => {
                   const actions = getForeignKeyActions(draft.source.dbType, actionType);
                   const selectedAction = intent[actionType];
+
                   return (
                     <div key={actionType} className="space-y-1.5">
                       <div className="text-sm font-medium">

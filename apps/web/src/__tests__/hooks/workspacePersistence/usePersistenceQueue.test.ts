@@ -5,6 +5,7 @@ import { usePersistenceQueue } from '@/hooks/workspacePersistence/usePersistence
 describe('usePersistenceQueue', () => {
   it('失败后保留任务并允许重试', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
     const task = vi
       .fn<() => Promise<void>>()
       .mockRejectedValueOnce(new Error('quota'))
@@ -38,6 +39,7 @@ describe('usePersistenceQueue', () => {
 
   it('同一实体的操作按提交顺序执行', async () => {
     let finishFirst!: () => void;
+
     const first = vi.fn(
       () =>
         new Promise<void>((resolve) => {

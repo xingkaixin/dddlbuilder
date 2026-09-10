@@ -44,6 +44,7 @@ export function useWorkspacePresentation({
   );
   const tablePresentations = useMemo(() => {
     const presentations = new Map<string, { title: string; isDirty: boolean }>();
+
     for (const tab of presentedTabs) {
       if (tab.source.kind === 'saved_table') {
         presentations.set(savedTableKey(tab.source), {
@@ -52,6 +53,7 @@ export function useWorkspacePresentation({
         });
       }
     }
+
     return presentations;
   }, [presentedTabs]);
 

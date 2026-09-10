@@ -28,6 +28,7 @@ export function useTableTemplates() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const templatesQuery = useQuery(tableTemplateListOptions());
+
   const invalidateTemplates = useCallback(
     () => queryClient.invalidateQueries({ queryKey: templateQueryKeys.tableRoot }),
     [queryClient],
@@ -87,6 +88,7 @@ export function useTableTemplates() {
     ): Promise<OperationResult & { template?: TableTemplate }> => {
       try {
         const template = await createMutation.mutateAsync({ name, blueprint, description });
+
         return { ok: true, template };
       } catch (error) {
         return failure(error, t('tableTemplate.toast.createFailed'));
@@ -102,6 +104,7 @@ export function useTableTemplates() {
     ): Promise<OperationResult> => {
       try {
         const template = await updateMutation.mutateAsync({ id, updates });
+
         return template
           ? { ok: true }
           : { ok: false, reason: 'not_found', message: t('tableTemplate.toast.notFound') };
@@ -121,6 +124,7 @@ export function useTableTemplates() {
     async (id: string): Promise<OperationResult> => {
       try {
         await removeMutation.mutateAsync(id);
+
         return { ok: true };
       } catch (error) {
         return failure(error, t('tableTemplate.toast.deleteFailed'));
@@ -136,6 +140,7 @@ export function useTableTemplates() {
     ): Promise<OperationResult & { template?: TableTemplate }> => {
       try {
         const template = await duplicateMutation.mutateAsync({ id, newName });
+
         return template
           ? { ok: true, template }
           : { ok: false, reason: 'not_found', message: t('tableTemplate.toast.notFound') };

@@ -44,6 +44,7 @@ export async function requestGenerateTable(
   const previousSchema =
     payload.options?.mode === 'patch' ? undefined : payload.options?.previousSchema;
   const existingConfig = previousSchema ? undefined : payload.options?.existingConfig;
+
   const response = await fetch(AI_GENERATE_API_ENDPOINT, {
     method: 'POST',
     headers: buildAuthenticatedJsonHeaders(),

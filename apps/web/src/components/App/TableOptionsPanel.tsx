@@ -76,6 +76,7 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
     const supportsOracleStorage = supportsOracleStorageOption(dbType);
     const isHive = dbType === 'hive';
     const { t } = useTranslation();
+
     const hasAnyOption =
       supportsEngine ||
       supportsCharset ||
@@ -95,6 +96,7 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
       if (!hasAnyOption) {
         return t('tableOptionsPanel.noOptionsShort');
       }
+
       return t('tableOptionsPanel.infoEnabled');
     }, [hasAnyOption, t]);
 
@@ -248,11 +250,15 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                     value={config.fillfactor ?? ''}
                     onChange={(event) => {
                       const raw = event.target.value;
+
                       if (raw === '') {
                         onFillfactorChange?.(undefined);
+
                         return;
                       }
+
                       const num = Number(raw);
+
                       if (!Number.isNaN(num)) {
                         onFillfactorChange?.(num);
                       }
@@ -278,11 +284,15 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                       value={config.pctfree ?? ''}
                       onChange={(event) => {
                         const raw = event.target.value;
+
                         if (raw === '') {
                           onPctfreeChange?.(undefined);
+
                           return;
                         }
+
                         const num = Number(raw);
+
                         if (!Number.isNaN(num)) {
                           onPctfreeChange?.(num);
                         }
@@ -303,11 +313,15 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                       value={config.initrans ?? ''}
                       onChange={(event) => {
                         const raw = event.target.value;
+
                         if (raw === '') {
                           onInitransChange?.(undefined);
+
                           return;
                         }
+
                         const num = Number(raw);
+
                         if (!Number.isNaN(num)) {
                           onInitransChange?.(num);
                         }

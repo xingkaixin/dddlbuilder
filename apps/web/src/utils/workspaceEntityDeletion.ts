@@ -62,6 +62,7 @@ export const isWorkspaceEntityDeletionMarker = (
 ): value is WorkspaceEntityDeletionMarker => {
   if (!value || typeof value !== 'object') return false;
   const marker = value as Partial<WorkspaceEntityDeletionMarker>;
+
   return (
     typeof marker.id === 'string' &&
     marker.id.startsWith(MARKER_PREFIX) &&
@@ -96,6 +97,7 @@ export async function runWorkspaceEntityHistoryWrite(
   write: (store: IDBObjectStore) => void,
 ): Promise<boolean> {
   const db = await openDb();
+
   return runIndexedDbTransaction(
     db,
     [WORKSPACE_ENTITY_META_STORE_NAME, storeName],
@@ -105,6 +107,7 @@ export async function runWorkspaceEntityHistoryWrite(
       let persisted = false;
       readWorkspaceEntityDeletionMarker(metaStore, target, fail, (marker) => {
         if (marker) return;
+
         try {
           write(tx.objectStore(storeName));
           persisted = true;
@@ -112,6 +115,7 @@ export async function runWorkspaceEntityHistoryWrite(
           fail(error);
         }
       });
+
       return () => persisted;
     },
   );
@@ -134,18 +138,23 @@ export async function beginWorkspaceEntityDeletion(
     readWorkspaceEntityDeletionMarker(store, target, fail, (marker) => {
       if (marker?.status === 'deleting') {
         fail(new Error('表正在永久删除'));
+
         return;
       }
+
       store.put(createWorkspaceEntityDeletionMarker(target, 'deleting', operationId));
     });
+
     return () => operationId;
   });
+
   try {
     commit?.();
   } catch (error) {
     await cancelWorkspaceEntityDeletion(target, operationId);
     throw error;
   }
+
   return operationId;
 }
 
@@ -162,12 +171,16 @@ export async function ensureWorkspaceEntityDeletion(
       if (existing) {
         selectedOperationId = existing.operationId;
         created = false;
+
         return;
       }
+
       store.put(createWorkspaceEntityDeletionMarker(target, 'deleting', operationId));
     });
+
     return () => selectedOperationId;
   });
+
   return { operationId: selectedOperationId, created };
 }
 
@@ -183,6 +196,7 @@ export async function cancelWorkspaceEntityDeletion(
         store.delete(marker.id);
       }
     });
+
     return () => undefined;
   });
 }
@@ -193,12 +207,14 @@ export const runWorkspaceEntityWrites = async (
   write: (transaction: IDBTransaction, fail: (error: unknown) => void) => void,
 ): Promise<void> => {
   if (writes.length === 0) return;
+
   const uniqueWrites = [
     ...new Map(
       writes.map((entry) => [getWorkspaceEntityDeletionMarkerId(entry.target), entry] as const),
     ).values(),
   ];
   const db = await openDb();
+
   const stores = [
     ...new Set([
       WORKSPACE_ENTITY_META_STORE_NAME,
@@ -207,14 +223,18 @@ export const runWorkspaceEntityWrites = async (
   ];
   await runIndexedDbTransaction(db, stores, 'readwrite', (tx, fail) => {
     const metaStore = tx.objectStore(WORKSPACE_ENTITY_META_STORE_NAME);
+
     const markers: Array<{
       marker?: WorkspaceEntityDeletionMarker;
       mode: WorkspaceEntityWrite['mode'];
     }> = [];
     let remaining = uniqueWrites.length;
+
     const finishReads = () => {
       remaining -= 1;
+
       if (remaining !== 0) return;
+
       if (
         markers.some(
           ({ marker, mode }) =>
@@ -222,10 +242,13 @@ export const runWorkspaceEntityWrites = async (
         )
       ) {
         fail(new Error('表正在永久删除'));
+
         return;
       }
+
       try {
         write(tx, fail);
+
         for (const { marker, mode } of markers) {
           if (mode === 'activate' && marker?.status === 'deleted') metaStore.delete(marker.id);
         }
@@ -245,6 +268,7 @@ export const runWorkspaceEntityWrites = async (
         finishReads();
       };
     }
+
     return () => undefined;
   });
 };
@@ -255,5 +279,6 @@ export const commitWorkspaceEntityWrites = async <T>(
 ): Promise<T> => {
   // Y.Doc mutations cannot roll back with IndexedDB; finish the marker transaction first.
   await runWorkspaceEntityWrites(writes, [], () => {});
+
   return commit();
 };

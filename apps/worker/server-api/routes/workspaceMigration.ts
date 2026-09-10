@@ -20,16 +20,19 @@ export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
       c,
       REQUEST_BODY_MAX_BYTES,
     );
+
     if (!parsedBody.ok) return parsedBody.response;
     const body = parsedBody.data ?? {};
 
     const request = Schema.decodeUnknownOption(WorkspaceMigrationRequestSchema)(body);
+
     if (request._tag === 'None') {
       return errorResponse(c, 400, 'Invalid migration mode', 'INVALID_JSON');
     }
 
     const { mode } = request.value;
     const payload = decodeWorkspaceMigrationPayload(request.value.payload);
+
     if (!payload) {
       return errorResponse(c, 400, 'Invalid migration payload', 'INVALID_JSON');
     }
@@ -38,6 +41,7 @@ export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
       mode === 'analyze'
         ? await analyzeWorkspaceMigration(c.env, user.userId, payload)
         : await commitWorkspaceMigration(c.env, user.userId, payload);
+
     return c.json(Schema.decodeUnknownSync(WorkspaceMigrationResponseSchema)(withMeta(c, result)));
   });
 }

@@ -18,5 +18,6 @@ export const setupMemoryLocalStorage = () => {
   vi.mocked(localStorage.clear).mockImplementation(() => {
     store.clear();
   });
+
   return store;
 };

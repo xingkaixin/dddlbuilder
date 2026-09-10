@@ -9,6 +9,7 @@ interface ConfirmStepProps {
 
 export function ConfirmStep({ parsedResult, selectedDbType }: ConfirmStepProps) {
   const { t } = useTranslation();
+
   return (
     <div className="space-y-4">
       <div className="rounded-md bg-muted p-4 text-sm">

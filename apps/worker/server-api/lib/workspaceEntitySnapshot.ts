@@ -124,8 +124,10 @@ const applyPayloadToSnapshot = (
         state,
         updatedAt,
       };
+
       return true;
     }
+
     return false;
   }
 
@@ -139,8 +141,10 @@ const applyPayloadToSnapshot = (
         ...(typeof payload.folderId === 'string' ? { folderId: payload.folderId } : {}),
         ...(typeof payload.trashedAt === 'number' ? { trashedAt: payload.trashedAt } : {}),
       });
+
       return true;
     }
+
     return false;
   }
 
@@ -157,8 +161,10 @@ const applyPayloadToSnapshot = (
         ...(typeof payload.folderId === 'string' ? { folderId: payload.folderId } : {}),
         ...(typeof payload.trashedAt === 'number' ? { trashedAt: payload.trashedAt } : {}),
       });
+
       return true;
     }
+
     return false;
   }
 
@@ -172,8 +178,10 @@ const applyPayloadToSnapshot = (
         createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : updatedAt,
         updatedAt,
       });
+
       return true;
     }
+
     return false;
   }
 
@@ -187,8 +195,10 @@ const applyPayloadToSnapshot = (
       updatedAt,
       ...decodeSavedDraftBase(payload),
     });
+
     return true;
   }
+
   return false;
 };
 
@@ -210,11 +220,13 @@ const decodeEntityPayload = (
 ) => {
   try {
     const payload: unknown = JSON.parse(payloadJson);
+
     if (isRecord(payload)) return payload;
     reportDecodeFailure(entityType, entityId, 'invalid_payload');
   } catch {
     reportDecodeFailure(entityType, entityId, 'invalid_json');
   }
+
   return null;
 };
 
@@ -226,13 +238,16 @@ export const storedEntitiesToWorkspaceSnapshot = (
   for (const row of rows) {
     if (row.payloadJson == null) continue;
     const payload = decodeEntityPayload(row.entityType, row.entityId, row.payloadJson);
+
     if (!payload) continue;
+
     const applied = applyPayloadToSnapshot(snapshot, {
       entityType: row.entityType,
       entityId: row.entityId,
       payload,
       updatedAt: row.updatedAt,
     });
+
     if (!applied) reportDecodeFailure(row.entityType, row.entityId, 'invalid_payload');
   }
 
@@ -251,17 +266,22 @@ export const legacyRowsToWorkspaceSnapshot = (
 
   for (const row of rows) {
     const entityType = row.kind === 'global_draft' ? 'draft' : row.kind;
+
     const entityId =
       row.kind === 'global_draft' ? LEGACY_GLOBAL_DRAFT_ENTITY_ID : row.normalizedName;
+
     if (!entityId) continue;
     const payload = decodeEntityPayload(entityType, entityId, row.payloadJson);
+
     if (!payload) continue;
+
     const applied = applyPayloadToSnapshot(snapshot, {
       entityType,
       entityId,
       payload,
       updatedAt: row.sourceUpdatedAt,
     });
+
     if (!applied) reportDecodeFailure(entityType, entityId, 'invalid_payload');
   }
 

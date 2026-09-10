@@ -59,6 +59,7 @@ const MAX_SYNC_MESSAGE_BYTES = 16 * 1024 * 1024;
 
 const isSocketAttachment = (value: unknown): value is WorkspaceYDocSocketAttachment => {
   const record = value as Partial<WorkspaceYDocSocketAttachment> | null;
+
   return Boolean(record && record.schemaVersion === 1 && typeof record.sessionId === 'string');
 };
 
@@ -98,26 +99,32 @@ export class WorkspaceYDocDurableObject {
       userId: request.headers.get('x-ddlbuilder-user-id') ?? undefined,
     };
     let doc: Y.Doc;
+
     try {
       doc = await this.loadDoc(identity);
     } catch (error) {
       if (error instanceof WorkspaceYDocIdentityMismatchError) {
         return new Response('Workspace identity mismatch', { status: 409 });
       }
+
       throw error;
     }
 
     if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
       const sessionId = request.headers.get('x-ddlbuilder-session-id');
+
       if (!sessionId) return new Response('Missing session id', { status: 401 });
+
       try {
         const sessionIds = await this.authorizedSessionIds();
+
         if (!sessionIds.has(sessionId)) {
           return new Response('Workspace access denied', { status: 403 });
         }
       } catch {
         return new Response('Workspace authorization unavailable', { status: 503 });
       }
+
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
       const attachment = this.createSocketAttachment(sessionId);
@@ -134,6 +141,7 @@ export class WorkspaceYDocDurableObject {
         updateBytes: this.updateBytes,
         compactCount: this.compactCount,
       });
+
       return new Response(null, {
         status: 101,
         webSocket: client,
@@ -141,10 +149,12 @@ export class WorkspaceYDocDurableObject {
     }
 
     const url = new URL(request.url);
+
     if (request.method === 'GET' && url.pathname.endsWith('/state')) {
       const update = Y.encodeStateAsUpdate(doc);
       const body = new Uint8Array(update.byteLength);
       body.set(update);
+
       return new Response(body.buffer, {
         headers: {
           'content-type': 'application/octet-stream',
@@ -161,6 +171,7 @@ export class WorkspaceYDocDurableObject {
       }, this);
       await this.awaitPersisted();
       await this.compact();
+
       return Response.json({
         ok: true,
         stateVectorBytes: Y.encodeStateVector(doc).byteLength,
@@ -173,11 +184,13 @@ export class WorkspaceYDocDurableObject {
       const result = applyWorkspaceMigrationSnapshot(doc, identity.userId, snapshot);
       await this.awaitPersisted();
       await this.compact();
+
       return Response.json(result);
     }
 
     if (request.method === 'POST' && url.pathname.endsWith('/compact')) {
       await this.compact();
+
       return Response.json({ ok: true });
     }
 
@@ -187,8 +200,10 @@ export class WorkspaceYDocDurableObject {
   async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
     if (typeof message === 'string') {
       ws.close(1003, 'Binary workspace updates required');
+
       return;
     }
+
     if (message.byteLength > MAX_SYNC_MESSAGE_BYTES) {
       logWorkspaceYDocHealth('rejected_update', {
         workspaceId: this.workspaceId,
@@ -196,24 +211,32 @@ export class WorkspaceYDocDurableObject {
         reason: 'message_too_large',
       });
       ws.close(1009, 'Workspace update too large');
+
       return;
     }
+
     let doc: Y.Doc;
+
     try {
       doc = await this.loadDoc(this.readSocketIdentity(ws));
     } catch (error) {
       if (error instanceof WorkspaceYDocIdentityMismatchError) {
         ws.close(1008, 'Workspace access denied');
+
         return;
       }
+
       throw error;
     }
+
     if ((await this.authorizeSockets([ws])).length === 0) return;
     const decoder = decoding.createDecoder(new Uint8Array(message));
     let requestId: number | undefined;
     let response: Uint8Array;
+
     try {
       const header = readWorkspaceYDocMessageHeader(decoder);
+
       if (header.kind !== 'sync') return;
       requestId = header.requestId;
       this.assertValidSyncMessage(decoder, doc);
@@ -228,17 +251,21 @@ export class WorkspaceYDocDurableObject {
         errorMessage: error instanceof Error ? error.message : String(error),
       });
       ws.close(1008, 'Invalid workspace update');
+
       return;
     }
+
     try {
       await this.awaitPersisted();
     } catch (error) {
       ws.close(1011, 'Workspace persistence failed');
       throw error;
     }
+
     if (response.byteLength > 1) {
       ws.send(response);
     }
+
     if (requestId !== undefined) {
       ws.send(encodeWorkspaceYDocAcknowledgement(requestId));
     }
@@ -268,6 +295,7 @@ export class WorkspaceYDocDurableObject {
   async alarm(alarmInfo?: AlarmInvocationInfo) {
     this.alarmScheduled = false;
     await this.loadDoc();
+
     if (!this.hasPendingCheckpoint()) return;
 
     try {
@@ -276,6 +304,7 @@ export class WorkspaceYDocDurableObject {
       if (!alarmInfo?.isRetry || alarmInfo.retryCount < LAST_AUTOMATIC_ALARM_RETRY) {
         throw error;
       }
+
       await this.ensureAlarm();
     }
   }
@@ -284,10 +313,13 @@ export class WorkspaceYDocDurableObject {
     if (this.loadPromise) {
       const doc = await this.loadPromise;
       this.bindIdentity(identity);
+
       return doc;
     }
+
     if (this.doc) {
       this.bindIdentity(identity);
+
       return this.doc;
     }
 
@@ -295,6 +327,7 @@ export class WorkspaceYDocDurableObject {
     this.loadPromise = (async () => {
       const startedAt = Date.now();
       const { meta, snapshot, updates } = await readWorkspaceYDocStorage(this.state.storage);
+
       if (meta) {
         this.bindIdentity(meta);
         this.nextSeq = meta.nextSeq;
@@ -305,6 +338,7 @@ export class WorkspaceYDocDurableObject {
         this.compactCount = meta.compactCount ?? 0;
         this.checkpointFailedAt = meta.checkpointFailedAt;
       }
+
       this.bindIdentity(identity);
 
       if (snapshot) {
@@ -312,6 +346,7 @@ export class WorkspaceYDocDurableObject {
       }
 
       let storedUpdateBytes = 0;
+
       for (const update of updates.values()) {
         storedUpdateBytes += update.byteLength;
         Y.applyUpdate(doc, update, this);
@@ -319,10 +354,12 @@ export class WorkspaceYDocDurableObject {
 
       const hasStoredDocument = snapshot !== null || updates.size > 0;
       let restoredFromD1 = false;
+
       if (hasStoredDocument) {
         assertWorkspaceYDocStructure(doc);
       } else {
         restoredFromD1 = await this.restoreFromD1(doc);
+
         if (!restoredFromD1) {
           ensureWorkspaceYDocMeta(doc);
           await compactWorkspaceYDocStorage(
@@ -331,6 +368,7 @@ export class WorkspaceYDocDurableObject {
             this.storedMeta(),
           );
         }
+
         assertWorkspaceYDocStructure(doc);
       }
 
@@ -348,6 +386,7 @@ export class WorkspaceYDocDurableObject {
         connectedSockets: this.connectedSocketCount(),
         restoredFromD1,
       });
+
       return doc;
     })()
       .catch((error: unknown) => {
@@ -355,9 +394,11 @@ export class WorkspaceYDocDurableObject {
         this.validationDoc?.destroy();
         this.validationDoc = null;
         doc.destroy();
+
         if (!(error instanceof WorkspaceYDocIdentityMismatchError)) {
           console.error('[workspace-yjs-do] load failed', error);
         }
+
         throw error;
       })
       .finally(() => {
@@ -404,11 +445,14 @@ export class WorkspaceYDocDurableObject {
   private async drainPendingUpdates() {
     while (this.pendingUpdates.length > 0) {
       const pending = this.pendingUpdates.slice();
+
       try {
         await appendWorkspaceYDocUpdates(this.state.storage, pending, this.storedMeta());
+
         if (this.updateCount >= COMPACT_UPDATE_COUNT || this.updateBytes >= COMPACT_UPDATE_BYTES) {
           this.scheduleCompact();
         }
+
         await this.ensureAlarm();
         this.pendingUpdates.splice(0, pending.length);
       } catch (error) {
@@ -442,37 +486,48 @@ export class WorkspaceYDocDurableObject {
     const sessionId = request.headers.get('x-ddlbuilder-session-id');
     const userId = request.headers.get('x-ddlbuilder-user-id');
     this.authCache = null;
+
     for (const socket of this.state.getWebSockets()) {
       const attachment = socket.deserializeAttachment?.();
+
       if (!isSocketAttachment(attachment)) continue;
+
       if (sessionId && attachment.sessionId !== sessionId) continue;
+
       if (userId && attachment.userId !== userId) continue;
       socket.close(1008, 'Session revoked');
     }
+
     return Response.json({ ok: true });
   }
 
   private async authorizedSessionIds(): Promise<Set<string>> {
     const key = `${this.workspaceId ?? ''}:${this.userId ?? ''}`;
     const now = Date.now();
+
     if (this.authCache && this.authCache.key === key && this.authCache.expiresAt > now) {
       return this.authCache.sessionIds;
     }
+
     const { sessionIds } = await readSessionAccess(
       this.env,
       this.userId ?? '',
       this.workspaceId ?? '',
     );
     this.authCache = { key, sessionIds, expiresAt: now + AUTH_CACHE_TTL_MS };
+
     return sessionIds;
   }
 
   private async authorizeSockets(sockets: WebSocket[]): Promise<WebSocket[]> {
     if (sockets.length === 0) return [];
+
     try {
       const sessionIds = await this.authorizedSessionIds();
+
       return sockets.filter((socket) => {
         const attachment = socket.deserializeAttachment?.();
+
         if (
           isSocketAttachment(attachment) &&
           attachment.workspaceId === this.workspaceId &&
@@ -481,6 +536,7 @@ export class WorkspaceYDocDurableObject {
         )
           return true;
         socket.close(1008, 'Workspace access denied');
+
         return false;
       });
     } catch (error) {
@@ -491,7 +547,9 @@ export class WorkspaceYDocDurableObject {
 
   private assertValidSyncMessage(decoder: decoding.Decoder, doc: Y.Doc) {
     const syncMessageType = decoding.peekVarUint(decoder);
+
     if (syncMessageType === syncProtocol.messageYjsSyncStep1) return;
+
     if (
       syncMessageType !== syncProtocol.messageYjsSyncStep2 &&
       syncMessageType !== syncProtocol.messageYjsUpdate
@@ -501,7 +559,9 @@ export class WorkspaceYDocDurableObject {
 
     if (!this.validationDoc) this.resetValidationDoc(doc);
     const candidate = this.validationDoc;
+
     if (!candidate) throw new Error('Workspace validation document is unavailable');
+
     try {
       encodeWorkspaceYDocSyncMessage((encoder) => {
         syncProtocol.readSyncMessage(decoding.clone(decoder), encoder, candidate, null, (error) => {
@@ -529,6 +589,7 @@ export class WorkspaceYDocDurableObject {
     const sockets = this.state
       .getWebSockets()
       .filter((socket) => socket !== origin && socket.readyState === WebSocket.OPEN);
+
     for (const socket of await this.authorizeSockets(sockets)) {
       socket.send(message);
     }
@@ -539,6 +600,7 @@ export class WorkspaceYDocDurableObject {
       .catch(() => undefined)
       .then(() => this.compactSnapshot(options));
     this.compactQueue = compact;
+
     return compact;
   }
 
@@ -547,6 +609,7 @@ export class WorkspaceYDocDurableObject {
     const startedAt = Date.now();
     const snapshot = Y.encodeStateAsUpdate(this.doc);
     const meta = this.storedMeta();
+
     const compactedUpdateCount = await compactWorkspaceYDocStorage(this.state.storage, snapshot, {
       ...meta,
       updateCount: 0,
@@ -559,6 +622,7 @@ export class WorkspaceYDocDurableObject {
     this.lastCompactedSeq = meta.nextSeq;
     this.compactCount += 1;
     let checkpointError: unknown;
+
     if (options.checkpoint !== false) {
       try {
         await this.checkpointD1();
@@ -566,6 +630,7 @@ export class WorkspaceYDocDurableObject {
         checkpointError = error;
       }
     }
+
     await this.writeMeta();
     logWorkspaceYDocHealth('compact', {
       workspaceId: this.workspaceId,
@@ -578,6 +643,7 @@ export class WorkspaceYDocDurableObject {
       lastCompactedSeq: this.lastCompactedSeq,
       lastCheckpointSeq: this.lastCheckpointSeq,
     });
+
     if (checkpointError !== undefined) {
       throw checkpointError;
     }
@@ -585,11 +651,13 @@ export class WorkspaceYDocDurableObject {
 
   private async restoreFromD1(doc: Y.Doc) {
     if (!this.workspaceId || !this.userId) return false;
+
     const snapshot = await getWorkspaceSnapshotForWorkspace(
       this.env,
       this.userId,
       this.workspaceId,
     );
+
     if (
       !snapshot.globalDraft &&
       snapshot.drafts.length === 0 &&
@@ -610,6 +678,7 @@ export class WorkspaceYDocDurableObject {
       Y.encodeStateAsUpdate(doc),
       this.storedMeta(),
     );
+
     return true;
   }
 
@@ -617,6 +686,7 @@ export class WorkspaceYDocDurableObject {
     if (!this.doc || !this.workspaceId || !this.userId) return;
     const checkpointSeq = this.nextSeq;
     const snapshot = exportWorkspaceYDocToSnapshot(this.doc);
+
     try {
       await checkpointWorkspaceSnapshotEntities(this.env, this.userId, this.workspaceId, snapshot);
       this.lastCheckpointSeq = checkpointSeq;
@@ -651,9 +721,11 @@ export class WorkspaceYDocDurableObject {
   private async ensureAlarm() {
     if (this.alarmScheduled) return;
     const existing = await this.state.storage.getAlarm();
+
     if (existing == null) {
       await this.state.storage.setAlarm(Date.now() + ALARM_DELAY_MS);
     }
+
     this.alarmScheduled = true;
   }
 
@@ -667,6 +739,7 @@ export class WorkspaceYDocDurableObject {
 
   private connectedSocketCount() {
     const openState = typeof WebSocket === 'undefined' ? 1 : WebSocket.OPEN;
+
     return this.state.getWebSockets().filter((socket) => socket.readyState === openState).length;
   }
 
@@ -681,7 +754,9 @@ export class WorkspaceYDocDurableObject {
 
   private readSocketIdentity(ws: WebSocket): WorkspaceYDocIdentity {
     const attachment = ws.deserializeAttachment?.();
+
     if (!isSocketAttachment(attachment)) return {};
+
     return { workspaceId: attachment.workspaceId, userId: attachment.userId };
   }
 
@@ -690,15 +765,18 @@ export class WorkspaceYDocDurableObject {
       if (this.workspaceId && this.workspaceId !== identity.workspaceId) {
         throw new WorkspaceYDocIdentityMismatchError();
       }
+
       if (!this.workspaceId) {
         this.workspaceId = identity.workspaceId;
         this.authCache = null;
       }
     }
+
     if (identity.userId) {
       if (this.userId && this.userId !== identity.userId) {
         throw new WorkspaceYDocIdentityMismatchError();
       }
+
       if (!this.userId) {
         this.userId = identity.userId;
         this.authCache = null;

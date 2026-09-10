@@ -8,6 +8,7 @@ const openPartitionPanel = async (page: any) => {
   await expect(panel).toBeVisible();
   const toggle = panel.getByRole('switch');
   await toggle.click();
+
   return panel;
 };
 

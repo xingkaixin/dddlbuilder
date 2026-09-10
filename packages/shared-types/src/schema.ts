@@ -33,7 +33,9 @@ export type ForeignKeyDefinition = {
 };
 
 export type SqlFormatMode = 'compact' | 'aligned';
+
 export type SchemaObjectType = 'table' | 'view';
+
 export type RoutineTemplateKind =
   | 'procedure'
   | 'function'

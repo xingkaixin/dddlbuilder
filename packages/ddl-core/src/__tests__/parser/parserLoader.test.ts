@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const importParserLoader = async () => {
   const { loadParserConstructor, __setParserModuleLoaderForTests } =
     await import('../../parser/parserLoader.js');
+
   return {
     loadParserConstructor,
     __setParserModuleLoaderForTests,
@@ -73,6 +74,7 @@ describe('parserLoader', () => {
 
   it('应缓存加载结果并复用同一构造器', async () => {
     let loadCount = 0;
+
     class CachedParser {
       astify() {
         return {};
@@ -82,6 +84,7 @@ describe('parserLoader', () => {
     const { loadParserConstructor, __setParserModuleLoaderForTests } = await importParserLoader();
     __setParserModuleLoaderForTests(async () => {
       loadCount += 1;
+
       return {
         Parser: CachedParser,
       };

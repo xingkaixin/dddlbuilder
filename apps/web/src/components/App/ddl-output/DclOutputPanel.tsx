@@ -12,6 +12,7 @@ export function DclOutputPanel({
   onCopy: () => Promise<boolean>;
 }) {
   const { t } = useTranslation();
+
   return (
     <div className="relative flex flex-col">
       <OutputHeading

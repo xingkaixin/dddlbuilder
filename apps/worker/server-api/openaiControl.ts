@@ -62,6 +62,7 @@ const toUtf8Bytes = (input: string) => new TextEncoder().encode(input).length;
 const estimateValueBytes = (value: unknown): number => {
   if (value == null) return 0;
   if (typeof value === 'string') return toUtf8Bytes(value);
+
   if (
     typeof value === 'number' ||
     typeof value === 'boolean' ||
@@ -70,8 +71,10 @@ const estimateValueBytes = (value: unknown): number => {
   ) {
     return toUtf8Bytes(String(value));
   }
+
   try {
     const serialized = JSON.stringify(value);
+
     return serialized ? toUtf8Bytes(serialized) : 0;
   } catch {
     return 0;
@@ -81,6 +84,7 @@ const estimateValueBytes = (value: unknown): number => {
 export const estimateRequestTokens = (payload: unknown, maxOutputTokens = 0): number => {
   const estimatedInputTokens = Math.max(1, estimateValueBytes(payload));
   const outputTokens = Math.max(0, Math.floor(maxOutputTokens));
+
   return Math.min(Number.MAX_SAFE_INTEGER, estimatedInputTokens + outputTokens);
 };
 
@@ -89,6 +93,7 @@ export const getOpenAIGovernanceSnapshot = (
   config: OpenAIConfig,
 ): GovernanceSnapshot => {
   const rule = config.rateLimitRules[routeKey];
+
   return {
     rateLimitEnabled: config.rateLimitEnabled,
     rateLimitStore: 'd1',
@@ -112,6 +117,7 @@ const reserveCounterCapacity = async (
   expiresAt: number,
 ): Promise<number | null> => {
   const safeAmount = Math.max(1, Math.floor(amount));
+
   const row = await env.USER_DB.prepare(
     `
       INSERT INTO ai_governance_counters (
@@ -143,6 +149,7 @@ const reserveCounterCapacity = async (
   )
     .bind(scope, subject, windowId, safeAmount, expiresAt, safeAmount, limit, limit)
     .first<{ value: number }>();
+
   return row ? Number(row.value) : null;
 };
 
@@ -171,6 +178,7 @@ export async function enforceOpenAIRateLimit(
   const rule = config.rateLimitRules[routeKey];
   const now = Date.now();
   const windowBucket = Math.floor(now / rule.windowMs);
+
   const count = await reserveCounterCapacity(
     c.env,
     `rate:${routeKey}`,
@@ -314,6 +322,7 @@ export const readUsageFromStreamChunk = (chunk: unknown): OpenAIUsageSnapshot | 
   }
 
   const usage = (chunk as { usage?: unknown }).usage;
+
   if (!usage || typeof usage !== 'object') {
     return null;
   }

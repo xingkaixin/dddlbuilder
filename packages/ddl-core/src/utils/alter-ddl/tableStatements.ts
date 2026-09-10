@@ -18,11 +18,14 @@ export function generateTableSchemaChange(
   tableName = formatSqlTableName(tableName, dbType);
   newSchema = formatSqlIdentifier(newSchema, dbType);
   const family = getDatabaseFamily(dbType);
+
   if (family === 'postgresql') return `ALTER TABLE ${tableName} SET SCHEMA ${newSchema};`;
   if (family === 'sqlserver') return `ALTER SCHEMA ${newSchema} TRANSFER ${tableName};`;
+
   if (family === 'mysql') {
     return `RENAME TABLE ${tableName} TO ${buildQualifiedTableName(newSchema, getSchemaAndTable(tableName).table, dbType)};`;
   }
+
   return null;
 }
 
@@ -32,16 +35,22 @@ export function generateRenameTable(
   dbType: DatabaseType,
 ): string {
   if (!oldTableName || !newTableName || oldTableName === newTableName) return '';
+
   if (dbType === 'sqlserver') {
     const newName = unquoteSqlIdentifier(getSchemaAndTable(newTableName).table);
+
     return `EXEC sp_rename '${escapeSingleQuotes(oldTableName)}', '${escapeSingleQuotes(newName)}';`;
   }
+
   oldTableName = formatSqlTableName(oldTableName, dbType);
   newTableName = formatSqlTableName(newTableName, dbType);
+
   if (getDatabaseFamily(dbType) === 'mysql') {
     return `ALTER TABLE ${oldTableName} RENAME TO ${newTableName};`;
   }
+
   const newName = getSchemaAndTable(newTableName).table;
+
   return `ALTER TABLE ${oldTableName} RENAME TO ${newName};`;
 }
 

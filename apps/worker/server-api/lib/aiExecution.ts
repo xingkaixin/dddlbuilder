@@ -11,14 +11,19 @@ export const withAIExecution = <A, E, R>(
       if (controller.signal.aborted) {
         return yield* new AIProviderError({ cause: controller.signal.reason });
       }
+
       const aborted = Effect.callback<never, AIProviderError>((resume) => {
         const onAbort = () =>
           resume(Effect.fail(new AIProviderError({ cause: controller.signal.reason })));
+
         if (controller.signal.aborted) {
           onAbort();
+
           return;
         }
+
         controller.signal.addEventListener('abort', onAbort, { once: true });
+
         return Effect.sync(() => controller.signal.removeEventListener('abort', onAbort));
       });
       yield* Effect.forkScoped(
@@ -30,6 +35,7 @@ export const withAIExecution = <A, E, R>(
           ),
         ),
       );
+
       return yield* Effect.raceFirst(operation, aborted);
     }),
   );

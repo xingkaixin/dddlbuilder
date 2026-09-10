@@ -16,6 +16,7 @@ import {
   writeFolderRecord,
 } from './workspaceYDoc';
 import { getWorkspaceSavedTable, readWorkspaceSavedRecordIdentity } from './workspaceSavedRecords';
+
 export {
   upsertWorkspaceSavedTable,
   recreateWorkspaceSavedTable,
@@ -36,7 +37,9 @@ export {
 } from './workspaceSavedRecords';
 
 export type WorkspaceDraftRecord = Omit<WorkspaceSnapshot['drafts'][number], 'draftId'>;
+
 export type { WorkspaceYDocCollection } from './workspaceYDoc';
+
 export type WorkspaceYDocChange = {
   collection: WorkspaceYDocCollection;
   entityIds: ReadonlySet<string>;
@@ -76,6 +79,7 @@ export const deleteWorkspaceDraft = (doc: Y.Doc, draftId: string) => {
 export const listWorkspaceDraftRecords = (doc: Y.Doc) =>
   Array.from(getWorkspaceRoot(doc).drafts.keys()).flatMap((draftId) => {
     const record = getDraftRecordFromYDoc(doc, draftId);
+
     return record ? [{ draftId, record }] : [];
   });
 
@@ -101,9 +105,12 @@ export const getWorkspaceSourceState = (
 ): SchemaDocumentState | null => {
   if (source.kind === 'draft') {
     const record = getDraftRecordFromYDoc(doc, source.draftId);
+
     return record && record.trashedAt == null ? record.state : null;
   }
+
   const record = getWorkspaceSavedTable(doc, source);
+
   return record && record.trashedAt == null ? record.state : null;
 };
 
@@ -113,43 +120,58 @@ export const subscribeWorkspaceYDoc = (
   collections: readonly WorkspaceYDocCollection[] = WORKSPACE_YDOC_COLLECTIONS,
 ) => {
   const roots = getWorkspaceRoot(doc);
+
   const subscriptions = collections.map((collection) => {
     const root = roots[collection];
+
     const readIdentity = (key: string) => {
       const value = root.get(key);
+
       if (!value) return null;
+
       if (collection !== 'savedTables' && collection !== 'savedDrafts') {
         return { normalizedName: key, tableName: key, tableId: undefined };
       }
+
       return readWorkspaceSavedRecordIdentity(doc, collection, key, value);
     };
     const identities = new Map(Array.from(root.keys(), (key) => [key, readIdentity(key)]));
+
     const handleChange = (
       events: Y.YEvent<Y.AbstractType<unknown>>[],
       transaction: Y.Transaction,
     ) => {
       const changedKeys = new Set<string>();
+
       for (const event of events) {
         const key = event.path[0];
+
         if (typeof key === 'string') changedKeys.add(key);
         else if (event instanceof Y.YMapEvent) {
           for (const changedKey of event.changes.keys.keys()) changedKeys.add(changedKey);
         }
       }
+
       const entityIds = new Set<string>();
       const renamedTables: NonNullable<WorkspaceYDocChange['renamedTables']> = [];
+
       for (const key of changedKeys) {
         const previous = identities.get(key);
         const next = readIdentity(key);
+
         if (previous) {
           entityIds.add(previous.normalizedName);
+
           if (previous.tableId) entityIds.add(previous.tableId);
         }
+
         if (next) {
           entityIds.add(next.normalizedName);
+
           if (next.tableId) entityIds.add(next.tableId);
           identities.set(key, next);
         } else identities.delete(key);
+
         if (
           collection === 'savedTables' &&
           previous &&
@@ -159,6 +181,7 @@ export const subscribeWorkspaceYDoc = (
           renamedTables.push({ previousName: previous.normalizedName, ...next });
         }
       }
+
       notify({
         collection,
         entityIds,
@@ -167,8 +190,10 @@ export const subscribeWorkspaceYDoc = (
       });
     };
     root.observeDeep(handleChange);
+
     return { root, handleChange };
   });
+
   return () => {
     for (const { root, handleChange } of subscriptions) root.unobserveDeep(handleChange);
   };

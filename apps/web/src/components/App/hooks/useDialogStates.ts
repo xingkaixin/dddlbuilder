@@ -51,9 +51,11 @@ export function useDialogStates(deps: {
   const renameName = renameDialog.data.name;
   const renameError = renameDialog.error;
   const deleteTarget = deleteDialog.data.target;
+
   const handleSaveNameChange = useCallback(
     (value: string) => {
       saveDialog.updateData((previous) => ({ ...previous, name: value }));
+
       if (saveDialog.error) saveDialog.clearError();
     },
     [saveDialog],
@@ -61,6 +63,7 @@ export function useDialogStates(deps: {
   const handleRenameNameChange = useCallback(
     (value: string) => {
       renameDialog.updateData((previous) => ({ ...previous, name: value }));
+
       if (renameDialog.error) renameDialog.clearError();
     },
     [renameDialog],

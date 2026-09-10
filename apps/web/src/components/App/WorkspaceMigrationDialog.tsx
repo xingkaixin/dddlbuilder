@@ -21,6 +21,7 @@ export function WorkspaceMigrationDialog() {
   const handleRunWorkspaceMigration = async () => {
     try {
       const result = await workspaceMigration.runMigration();
+
       if (!result) return;
       success(
         t('header.workspaceMigration.completed', {
@@ -40,8 +41,10 @@ export function WorkspaceMigrationDialog() {
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
           workspaceMigration.dismiss();
+
           return;
         }
+
         workspaceMigration.setOpen(nextOpen);
       }}
     >
