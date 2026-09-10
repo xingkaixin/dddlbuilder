@@ -14,6 +14,7 @@ import {
   ensureArray,
   ensureMap,
   hasMapOrArray,
+  isRecord,
   type JsonRecord,
   readJsonMap,
   readMap,
@@ -35,12 +36,13 @@ import {
   encodeIndexFieldReferences,
   encodeMysqlPartitionFieldReferences,
   encodeTableMiscFieldReferences,
-  type StoredCitusShardingConfig,
   type StoredForeignKeyDefinition,
+  type StoredCitusShardingConfig,
   type StoredIndexDefinition,
   type StoredMysqlPartitionConfig,
   type StoredTableMiscConfig,
 } from './workspaceFieldReferences';
+import { decodeEnumMeta, decodePersistedState } from './persistedStateCodec';
 
 const TABLE_SCALAR_KEYS = [
   'objectType',
@@ -103,15 +105,13 @@ const hasRemovedStateKey = (previous: SchemaDocumentState, next: SchemaDocumentS
   return (next.rows ?? []).some((row) => hasRemovedKey(previousRows.get(row.id), row, FIELD_KEYS));
 };
 
+/* oxlint-disable anti-slop/no-runtime-typeof -- These helpers decode raw Y.Doc snapshots and legacy field values. */
 const readStateSnapshot = (tableDoc: Y.Map<unknown>): SchemaDocumentState | null => {
   const snapshot = tableDoc.get('stateSnapshot');
 
-  if (!snapshot || typeof snapshot !== 'object') return null;
-  const state = snapshot as Partial<SchemaDocumentState>;
+  const state = decodePersistedState(snapshot);
 
-  if (!Array.isArray(state.rows)) return null;
-
-  return toSchemaDocumentState(state as SchemaDocumentState);
+  return state ? toSchemaDocumentState(state) : null;
 };
 
 const hasEditorSessionState = (tableDoc: Y.Map<unknown>) => {
@@ -135,10 +135,72 @@ const hasFineGrainedTableDoc = (tableDoc: Y.Map<unknown>) =>
   hasIndexDoc(tableDoc) ||
   hasForeignKeyDoc(tableDoc);
 
-const getFields = (tableDoc: Y.Map<unknown>) =>
-  readMap(tableDoc, 'fields') as Y.Map<Y.Map<unknown>> | null;
+const getFields = (tableDoc: Y.Map<unknown>) => readMap(tableDoc, 'fields');
 
 const getFieldOrder = (tableDoc: Y.Map<unknown>) => readStringArray(tableDoc, 'fieldOrder');
+
+/* oxlint-disable anti-slop/no-unknown-parameters -- These helpers decode raw scalar map values at the Y.Doc persistence boundary. */
+const decodeStoredFieldIds = (value: unknown): Array<string | null> | undefined => {
+  if (!Array.isArray(value)) return undefined;
+
+  return value.map((item) => (item === null || typeof item === 'string' ? item : null));
+};
+
+const decodeStoredCitusConfig = (
+  value: unknown,
+  config: SchemaDocumentState['citusShardingConfig'],
+): StoredCitusShardingConfig | undefined => {
+  if (!config || !isRecord(value)) return undefined;
+
+  const distributionColumnFieldId =
+    typeof value.distributionColumnFieldId === 'string'
+      ? value.distributionColumnFieldId
+      : undefined;
+
+  return {
+    ...config,
+    ...(distributionColumnFieldId ? { distributionColumnFieldId } : {}),
+  };
+};
+
+const decodeStoredMysqlPartitionConfig = (
+  value: unknown,
+  config: SchemaDocumentState['mysqlPartitionConfig'],
+): StoredMysqlPartitionConfig | undefined => {
+  if (!config || !isRecord(value)) return undefined;
+
+  const columnFieldIds = decodeStoredFieldIds(value.columnFieldIds);
+
+  return {
+    ...config,
+    ...(columnFieldIds ? { columnFieldIds } : {}),
+  };
+};
+
+const decodeStoredTableMiscConfig = (
+  value: unknown,
+  config: SchemaDocumentState['tableMiscConfig'],
+): StoredTableMiscConfig | undefined => {
+  if (!config || !isRecord(value)) return undefined;
+
+  const partitions = isRecord(value.partitions) ? value.partitions : undefined;
+
+  const clustering =
+    partitions && isRecord(partitions.clustering) ? partitions.clustering : undefined;
+  const columnFieldIds = decodeStoredFieldIds(clustering?.columnFieldIds);
+
+  if (!columnFieldIds || !config.partitions?.clustering) return config;
+
+  return {
+    ...config,
+    partitions: {
+      ...config.partitions,
+      clustering: { ...config.partitions.clustering, columnFieldIds },
+    },
+  };
+};
+
+/* oxlint-enable anti-slop/no-unknown-parameters */
 
 // fieldId 即行身份：Y.Map 的键本身就是稳定 id，旧文档的 `field_N_hash` 键也照此沿用。
 const readFieldRow = (
@@ -147,9 +209,11 @@ const readFieldRow = (
   fallbackRow?: FieldRow,
 ): FieldRow => {
   const row = readJsonMap(fieldMap);
-  const fallback = (fallbackRow ?? {}) as unknown as JsonRecord;
-  const candidates = (key: string) => (row[key] === null ? [] : [row[key], fallback[key]]);
-  const text = (key: string) => candidates(key).find((value) => typeof value === 'string');
+
+  const candidates = (key: keyof FieldRow) =>
+    row[key] === null ? [] : [row[key], fallbackRow?.[key]];
+
+  const text = (key: keyof FieldRow) => candidates(key).find((value) => typeof value === 'string');
 
   // nullable 迁移前存中文字符串、迁移后存布尔，两种都算合法值，其余类型继续回落
   const nullable = candidates('nullable').find(
@@ -158,7 +222,8 @@ const readFieldRow = (
   const defaultKind = text('defaultKind');
   const defaultValue = text('defaultValue');
   const onUpdate = text('onUpdate');
-  const enumMeta = candidates('enumMeta').find((value) => Array.isArray(value));
+
+  const enumMeta = candidates('enumMeta').find((value): value is unknown[] => Array.isArray(value));
 
   return {
     id: fieldId,
@@ -170,7 +235,7 @@ const readFieldRow = (
     ...(defaultKind === undefined ? {} : { defaultKind: normalizeFieldDefaultKind(defaultKind) }),
     ...(defaultValue === undefined ? {} : { defaultValue }),
     ...(onUpdate === undefined ? {} : { onUpdate: normalizeFieldOnUpdate(onUpdate) }),
-    ...(enumMeta === undefined ? {} : { enumMeta: enumMeta as FieldRow['enumMeta'] }),
+    ...(enumMeta === undefined ? {} : { enumMeta: decodeEnumMeta(enumMeta) }),
   };
 };
 
@@ -352,17 +417,20 @@ const readTableRows = (tableDoc: Y.Map<unknown>, stateSnapshot: SchemaDocumentSt
   const snapshotRowsById = new Map((stateSnapshot?.rows ?? []).map((row) => [row.id, row]));
   const fields = getFields(tableDoc);
 
-  return !hasFieldDoc(tableDoc)
-    ? (stateSnapshot?.rows ?? [])
-    : fields
-      ? getFieldOrder(tableDoc)
-          .map((fieldId) => {
-            const fieldMap = fields.get(fieldId);
+  if (!hasFieldDoc(tableDoc)) return stateSnapshot?.rows ?? [];
+  if (!fields) return [];
 
-            return fieldMap ? readFieldRow(fieldId, fieldMap, snapshotRowsById.get(fieldId)) : null;
-          })
-          .filter((row): row is FieldRow => row != null)
-      : [];
+  const rows: FieldRow[] = [];
+
+  for (const fieldId of getFieldOrder(tableDoc)) {
+    const fieldMap = fields.get(fieldId);
+
+    if (fieldMap instanceof Y.Map) {
+      rows.push(readFieldRow(fieldId, fieldMap, snapshotRowsById.get(fieldId)));
+    }
+  }
+
+  return rows;
 };
 
 export const tableDocToSchemaSummary = (tableDoc: Y.Map<unknown>) => {
@@ -378,41 +446,48 @@ export const tableDocToSchemaSummary = (tableDoc: Y.Map<unknown>) => {
   };
 };
 
+/* oxlint-enable anti-slop/no-runtime-typeof */
+
 export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaDocumentState => {
   const stateSnapshot = readStateSnapshot(tableDoc);
+  const scalar = readMap(tableDoc, 'scalar');
 
-  const state = {
+  const rawState = {
     ...stateSnapshot,
     ...Object.fromEntries(
-      TABLE_SCALAR_KEYS.map((key) => [key, readMap(tableDoc, 'scalar')?.get(key)]).filter(
-        ([, value]) => value !== undefined,
-      ),
+      TABLE_SCALAR_KEYS.flatMap((key) => {
+        const value = scalar?.get(key);
+
+        return value === undefined ? [] : [[key, value]];
+      }),
     ),
-  } as Partial<SchemaDocumentState>;
+  };
+  const state = decodePersistedState(rawState);
   const rows = readTableRows(tableDoc, stateSnapshot);
 
   const indexes = decodeIndexFieldReferences(
     hasIndexDoc(tableDoc)
       ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')
-      : (state.indexes ?? []),
+      : (state?.indexes ?? []),
     rows,
   );
   const foreignKeys = decodeForeignKeyFieldReferences(
     hasForeignKeyDoc(tableDoc)
       ? readOrderedMap<StoredForeignKeyDefinition>(tableDoc, 'foreignKeys', 'foreignKeyOrder')
-      : (state.foreignKeys ?? []),
+      : (state?.foreignKeys ?? []),
     rows,
   );
   const citusShardingConfig = decodeCitusFieldReference(
-    state.citusShardingConfig as StoredCitusShardingConfig | undefined,
+    decodeStoredCitusConfig(rawState.citusShardingConfig, state?.citusShardingConfig),
     rows,
   );
+
   const mysqlPartitionConfig = decodeMysqlPartitionFieldReferences(
-    state.mysqlPartitionConfig as StoredMysqlPartitionConfig | undefined,
+    decodeStoredMysqlPartitionConfig(rawState.mysqlPartitionConfig, state?.mysqlPartitionConfig),
     rows,
   );
   const tableMiscConfig = decodeTableMiscFieldReferences(
-    state.tableMiscConfig as StoredTableMiscConfig | undefined,
+    decodeStoredTableMiscConfig(rawState.tableMiscConfig, state?.tableMiscConfig),
     rows,
   );
 

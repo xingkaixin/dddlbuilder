@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type -- These fixtures intentionally model unparsed external snapshot records. */
+
 import { describe, expect, it } from 'vitest';
 import { decodePersistedState, decodeWorkspaceSnapshot } from '../persistedStateCodec';
 
@@ -677,6 +679,7 @@ describe('decodeWorkspaceSnapshot', () => {
     },
   ] as const)('拒绝 $collection 中重复的逻辑实体', ({ collection, duplicate }) => {
     const snapshot = completeSnapshot();
+    // SAFETY: duplicate() intentionally violates the snapshot fixture union to test rejection.
     snapshot[collection].push(duplicate() as never);
 
     expect(decodeWorkspaceSnapshot(snapshot)).toBeNull();
@@ -782,6 +785,7 @@ describe('decodeWorkspaceSnapshot', () => {
     if (globalDraft !== undefined) snapshot.globalDraft = globalDraft;
 
     if (item !== undefined) {
+      // SAFETY: this parametrized test restricts path to the drafts collection before mutation.
       (snapshot[path as 'drafts'] as unknown[]).splice(0, 1, item);
     }
 

@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- Saved-record metadata is read from raw Y.Doc maps and normalized here. */
+
 import * as Y from 'yjs';
 import { decodeSavedDraftBase } from './persistedStateCodec';
 import {

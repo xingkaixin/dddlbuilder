@@ -1,3 +1,6 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- This module decodes the raw migration payload before domain use. */
+/* oxlint-disable anti-slop/no-unknown-parameters -- Migration input is an external persisted payload. */
+
 import type {
   WorkspaceMigrationPayload,
   WorkspaceMigrationSnapshot,

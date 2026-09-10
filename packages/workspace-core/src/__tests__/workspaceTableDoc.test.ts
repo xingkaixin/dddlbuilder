@@ -50,6 +50,7 @@ it.each([false, true])(
 
 // 复刻客户端 buildPersistedState 的形状：空集合以 undefined 表示，而不是省略键
 const createClientState = (overrides: Partial<PersistedState> = {}): PersistedState =>
+  // SAFETY: the serialized fixture below has the complete client state shape.
   JSON.parse(
     JSON.stringify({
       objectType: 'table',
@@ -132,6 +133,8 @@ describe('workspace table doc', () => {
       viewCreateOrReplace: undefined,
       foreignKeys: [],
     });
+    // SAFETY: this is an intentionally legacy row shape used to test normalization.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The fixture deliberately crosses from legacy raw data to the current row type.
     legacy.rows = [
       { fieldName: 'id', fieldType: 'bigint', nullable: false },
     ] as unknown as PersistedState['rows'];
@@ -182,6 +185,7 @@ describe('workspace table doc', () => {
     const clientState = createClientState();
 
     for (const tableDoc of [createTableDoc(clientState), createLegacyTableDoc(clientState)]) {
+      // SAFETY: createTableDoc and createLegacyTableDoc always return table docs attached to Y.Doc.
       const doc = tableDoc.doc as Y.Doc;
       const before = Y.encodeStateAsUpdate(doc);
       tableDocToSchemaDocumentState(tableDoc);
@@ -211,6 +215,8 @@ describe('workspace table doc', () => {
   });
 
   it('normalizes legacy snapshot rows on both branches that bypass readFieldRow', () => {
+    // SAFETY: these rows intentionally contain legacy enum strings to test compatibility normalization.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The fixture deliberately crosses from legacy raw data to the current row type.
     const legacyRows = [
       {
         id: 'field-id',
@@ -294,8 +300,52 @@ describe('workspace table doc', () => {
       indexes: [],
       authInput: '',
       authObjects: [],
-      citusShardingConfig: { enabled: true },
     });
+  });
+
+  it('keeps absent scalar configs and clears explicit null overlays on a frozen snapshot', () => {
+    const clientState = createClientState({
+      citusShardingConfig: { mode: 'distributed', distributionColumn: 'id' },
+      mysqlPartitionConfig: { enabled: true, type: 'RANGE', columns: ['id'] },
+      tableMiscConfig: { enabled: true, engine: 'InnoDB' },
+    });
+    const tableDoc = createLegacyTableDoc(clientState);
+    const scalar = new Y.Map<unknown>();
+    tableDoc.set('scalar', scalar);
+
+    expect(tableDocToSchemaDocumentState(tableDoc)).toMatchObject({
+      citusShardingConfig: clientState.citusShardingConfig,
+      mysqlPartitionConfig: clientState.mysqlPartitionConfig,
+      tableMiscConfig: clientState.tableMiscConfig,
+    });
+
+    scalar.set('citusShardingConfig', null);
+    scalar.set('mysqlPartitionConfig', null);
+    scalar.set('tableMiscConfig', null);
+    const decoded = tableDocToSchemaDocumentState(tableDoc);
+
+    expect(decoded).not.toHaveProperty('citusShardingConfig');
+    expect(decoded).not.toHaveProperty('mysqlPartitionConfig');
+    expect(decoded).not.toHaveProperty('tableMiscConfig');
+    expect(tableDoc.get('stateSnapshot')).toEqual(clientState);
+  });
+
+  it('decodes malformed scalar config values before exposing them as state', () => {
+    const doc = new Y.Doc();
+    const tableDoc = new Y.Map<unknown>();
+    const scalar = new Y.Map<unknown>();
+    scalar.set('mysqlPartitionConfig', {
+      enabled: true,
+      type: 'RANGE',
+      columns: 'broken',
+    });
+    tableDoc.set('scalar', scalar);
+    doc.getMap('drafts').set('draft-1', tableDoc);
+
+    const config = tableDocToSchemaDocumentState(tableDoc).mysqlPartitionConfig;
+
+    expect(config).toEqual({ enabled: true, type: 'RANGE', columns: [] });
+    expect(Array.isArray(config?.columns)).toBe(true);
   });
 
   it('round-trips a table doc through the workspace snapshot', () => {
@@ -306,7 +356,9 @@ describe('workspace table doc', () => {
     const restored = new Y.Doc();
     importWorkspaceSnapshotToYDoc(restored, exportWorkspaceYDocToSnapshot(doc));
 
+    // SAFETY: both docs were created by the workspace codec with draft-1 table maps.
     const source = getWorkspaceRoot(doc).drafts.get('draft-1') as Y.Map<unknown>;
+    // SAFETY: both docs were created by the workspace codec with draft-1 table maps.
     const target = getWorkspaceRoot(restored).drafts.get('draft-1') as Y.Map<unknown>;
     expect(tableDocToSchemaDocumentState(target)).toEqual(tableDocToSchemaDocumentState(source));
     expect(exportWorkspaceYDocToSnapshot(restored)).toEqual(exportWorkspaceYDocToSnapshot(doc));
@@ -324,6 +376,7 @@ describe('workspace table doc writes', () => {
   it('emits no update when the same state is applied twice', () => {
     const clientState = createClientState();
     const tableDoc = createTableDoc(clientState);
+    // SAFETY: createTableDoc attaches its table map to a Y.Doc.
     const updates = collectUpdates(tableDoc.doc as Y.Doc);
 
     applySchemaDocumentStateToTableDoc(tableDoc, createClientState());
@@ -379,6 +432,7 @@ describe('workspace table doc writes', () => {
   it('does not store or emit updates for editor session changes', () => {
     const clientState = createClientState();
     const tableDoc = createTableDoc(clientState);
+    // SAFETY: createTableDoc attaches its table map to a Y.Doc.
     const updates = collectUpdates(tableDoc.doc as Y.Doc);
 
     const nextState = createClientState({
@@ -426,6 +480,7 @@ describe('workspace table doc writes', () => {
 
     applySchemaDocumentStateToTableDoc(tableDoc, nextState, { compactSnapshotBase: true });
 
+    // SAFETY: applySchemaDocumentStateToTableDoc writes stateSnapshot from the PersistedState fixture.
     expect((tableDoc.get('stateSnapshot') as PersistedState).tableName).toBe(clientState.tableName);
     expect(tableDocToSchemaDocumentState(tableDoc)).toEqual(collaborativeState(nextState));
   });
@@ -433,6 +488,7 @@ describe('workspace table doc writes', () => {
   it('reuses field identities when rows are reordered and removed', () => {
     const clientState = createClientState();
     const tableDoc = createTableDoc(clientState);
+    // SAFETY: createTableDoc initializes fieldOrder as a Y.Array<string>.
     const fieldIds = (tableDoc.get('fieldOrder') as Y.Array<string>).toArray();
 
     applySchemaDocumentStateToTableDoc(
@@ -440,7 +496,9 @@ describe('workspace table doc writes', () => {
       createClientState({ rows: [clientState.rows[1]] }),
     );
 
+    // SAFETY: applySchemaDocumentStateToTableDoc preserves the initialized Y.Array/Y.Map containers.
     expect((tableDoc.get('fieldOrder') as Y.Array<string>).toArray()).toEqual([fieldIds[1]]);
+    // SAFETY: applySchemaDocumentStateToTableDoc preserves the initialized Y.Map container.
     expect(Array.from((tableDoc.get('fields') as Y.Map<unknown>).keys())).toEqual([fieldIds[1]]);
     expect(tableDocToSchemaDocumentState(tableDoc).rows).toEqual([clientState.rows[1]]);
   });

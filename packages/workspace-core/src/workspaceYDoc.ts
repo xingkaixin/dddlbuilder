@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- Y.Doc metadata is a raw persistence representation normalized by this adapter. */
+
 import * as Y from 'yjs';
 import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { TableFolderSnapshot } from '@ddlbuilder/shared-types/workspace';
@@ -187,7 +189,11 @@ export const getDraftRecordFromYDoc = (
 };
 
 export const writeFolderRecord = (doc: Y.Doc, folder: TableFolderSnapshot) => {
-  writeJsonMap(ensureMap(getWorkspaceRoot(doc).folders, folder.id), folder as JsonRecord);
+  // SAFETY: TableFolderSnapshot is a JSON-compatible record accepted by the raw Y.Map writer.
+  writeJsonMap(
+    ensureMap(getWorkspaceRoot(doc).folders, folder.id),
+    Object.fromEntries(Object.entries(folder)),
+  );
 };
 
 export const readFolderRecords = (doc: Y.Doc): TableFolderSnapshot[] =>

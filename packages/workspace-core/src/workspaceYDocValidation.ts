@@ -1,3 +1,7 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- This module validates raw Y.Doc values at the persistence boundary. */
+/* oxlint-disable anti-slop/no-unknown-parameters -- Validation helpers receive raw Y.Doc values before decoding. */
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type -- Y.Doc entries are open records until their per-field validators run. */
+
 import * as Y from 'yjs';
 import { isDatabaseType, isIndexKind } from '@ddlbuilder/shared-types';
 import { tableDocToSchemaDocumentState } from './workspaceTableDoc';
@@ -249,6 +253,7 @@ export const assertTableDocDecodable = (tableDoc: Y.Map<unknown>, path: string) 
     path,
     assertForeignKey,
   );
+  // SAFETY: assertScalarReferences validates stateSnapshot as an object before this decoder runs.
   const snapshot = tableDoc.get('stateSnapshot') as Record<string, unknown>;
 
   if (!hasIndexes) {

@@ -16,6 +16,7 @@ const row = (id: string, fieldName: string, overrides: Partial<FieldRow> = {}): 
 });
 
 const state = (rows: FieldRow[]): PersistedState =>
+  // SAFETY: this fixture supplies every required PersistedState field below.
   ({
     objectType: 'table',
     schemaName: '',
@@ -40,6 +41,7 @@ const forkPeers = (initial: PersistedState) => {
 
   const docB = new Y.Doc();
   Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
+  // SAFETY: docA was populated by write(), so the replicated draft entry is a Y.Map.
   const tableB = docB.getMap<Y.Map<unknown>>('drafts').get('draft-1') as Y.Map<unknown>;
 
   const converge = () => {

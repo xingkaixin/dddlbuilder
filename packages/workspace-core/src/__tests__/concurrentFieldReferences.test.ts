@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type -- This test edits raw legacy Y.Map records before migration. */
+
 import { afterEach, describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
@@ -148,14 +150,19 @@ describe('local field references', () => {
     const scalar = readMap(tableDoc, 'scalar');
 
     if (!scalar) throw new Error('Missing scalar map');
+    // SAFETY: these records were written by referencedState and are edited as raw legacy payloads.
     const mysql = scalar.get('mysqlPartitionConfig') as Record<string, unknown>;
+    // SAFETY: these records were written by referencedState and are edited as raw legacy payloads.
     const misc = scalar.get('tableMiscConfig') as Record<string, unknown>;
 
+    // SAFETY: referencedState writes citusShardingConfig as an object before this legacy-field removal.
     const { distributionColumnFieldId: _distributionId, ...legacyCitus } = scalar.get(
       'citusShardingConfig',
     ) as Record<string, unknown>;
     const { columnFieldIds: _mysqlIds, ...legacyMysql } = mysql;
+    // SAFETY: referencedState writes partitions as an object before this legacy-field removal.
     const partitions = misc.partitions as Record<string, unknown>;
+    // SAFETY: referencedState writes clustering as an object before this legacy-field removal.
     const clustering = partitions.clustering as Record<string, unknown>;
     const { columnFieldIds: _clusterIds, ...legacyClustering } = clustering;
     scalar.set('citusShardingConfig', legacyCitus);

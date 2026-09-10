@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unknown-parameters -- Content hashing intentionally accepts the complete stableStringify value domain. */
+
 import { stableStringify } from './stableStringify';
 
 export const buildWorkspaceContentHash = async (payload: unknown) => {

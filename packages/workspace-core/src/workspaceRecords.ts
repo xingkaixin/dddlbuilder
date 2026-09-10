@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- Folder and draft metadata are normalized from raw Y.Doc records. */
+
 import * as Y from 'yjs';
 import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type {

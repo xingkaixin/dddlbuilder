@@ -1,3 +1,7 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- This module decodes unknown persisted snapshots at the storage boundary. */
+/* oxlint-disable anti-slop/no-unknown-parameters -- Decoder helpers intentionally accept raw persisted values before validation. */
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type -- Raw snapshot records remain open until field-specific decoding establishes contracts. */
+
 import { indexKindOf } from '@ddlbuilder/shared-types';
 import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 import { isRecord } from './yMapJson';
@@ -128,7 +132,7 @@ export const decodeIndexDefinitions = (value: unknown): IndexDefinition[] => {
   });
 };
 
-const decodeEnumMeta = (value: unknown[]): EnumValueMeta[] =>
+export const decodeEnumMeta = (value: unknown[]): EnumValueMeta[] =>
   value.flatMap((item) => {
     if (!isRecord(item) || typeof item.value !== 'string') return [];
 
@@ -157,7 +161,8 @@ const decodeRows = (value: unknown): FieldRow[] => {
 
     return {
       id: decodeUniqueEntityId(
-        ensureFieldId(row as Partial<FieldRow>, index),
+        // SAFETY: ensureFieldId only reads the optional id; all other row fields are decoded below.
+        ensureFieldId({ id: typeof row.id === 'string' ? row.id : undefined }, index),
         `legacy-field-${index}`,
         usedIds,
       ),
@@ -199,6 +204,7 @@ const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined =
         throw new Error('Invalid logical relationship');
       }
 
+      // SAFETY: the preceding membership checks establish both finite literal unions.
       logical = {
         cardinality: item.logical.cardinality as 'many-to-one' | 'one-to-one',
         optionality: item.logical.optionality as 'required' | 'optional',
@@ -206,9 +212,11 @@ const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined =
       };
     }
 
+    // SAFETY: membership in FOREIGN_KEY_ACTIONS establishes the action union.
     const onDelete = FOREIGN_KEY_ACTIONS.has(item.onDelete as ForeignKeyAction)
       ? (item.onDelete as ForeignKeyAction)
       : undefined;
+    // SAFETY: membership in FOREIGN_KEY_ACTIONS establishes the action union.
     const onUpdate = FOREIGN_KEY_ACTIONS.has(item.onUpdate as ForeignKeyAction)
       ? (item.onUpdate as ForeignKeyAction)
       : undefined;
@@ -243,6 +251,7 @@ const decodeCitusConfig = (value: unknown): CitusShardingConfig | undefined => {
 };
 
 export const decodeMysqlPartitionConfig = (value: unknown): MysqlPartitionConfig | undefined => {
+  // SAFETY: MYSQL_PARTITION_TYPES membership establishes the supported partition type.
   if (!isRecord(value) || !MYSQL_PARTITION_TYPES.has(value.type as MysqlPartitionType)) {
     return undefined;
   }
@@ -266,6 +275,7 @@ export const decodeMysqlPartitionConfig = (value: unknown): MysqlPartitionConfig
 
   return {
     enabled: value.enabled === true,
+    // SAFETY: the guard above established value.type is a MysqlPartitionType.
     type: value.type as MysqlPartitionType,
     columns: toStringArray(value.columns),
     ...(typeof value.expression === 'string' ? { expression: value.expression } : {}),

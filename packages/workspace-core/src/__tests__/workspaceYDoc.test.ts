@@ -436,6 +436,7 @@ describe('workspace YDoc roots', () => {
     const indexTable = getWorkspaceRoot(missingIndexFields).drafts.get('draft');
 
     if (!indexTable) throw new Error('Missing test table');
+    // SAFETY: writeTableDoc creates indexes as an ordered Y.Map of Y.Map entries.
     const index = (indexTable.get('indexes') as Y.Map<Y.Map<unknown>>).get('index-id');
     index?.delete('fields');
 
@@ -454,6 +455,7 @@ describe('workspace YDoc roots', () => {
     const fieldTable = getWorkspaceRoot(invalidFieldType).drafts.get('draft');
 
     if (!fieldTable) throw new Error('Missing test table');
+    // SAFETY: writeTableDoc creates fields as an ordered Y.Map of Y.Map entries.
     const field = (fieldTable.get('fields') as Y.Map<Y.Map<unknown>>).get('field-id');
     field?.set('fieldName', 42);
 
@@ -552,6 +554,7 @@ describe('workspace YDoc roots', () => {
     const tableDoc = getWorkspaceRoot(doc).drafts.get('draft');
 
     if (!tableDoc) throw new Error('Missing test table');
+    // SAFETY: the table fixture writes fieldOrder through ensureArray as Y.Array<string>.
     const order = tableDoc.get('fieldOrder') as Y.Array<string>;
     order.delete(0, order.length);
     order.push(['field-a', 'field-d', 'field-c', 'field-c', 'field-b']);
@@ -575,6 +578,8 @@ describe('workspace YDoc roots', () => {
     expect(() => assertWorkspaceYDocStructure(legacy)).not.toThrow();
 
     const malformed = new Y.Doc();
+    // SAFETY: this intentionally invalid value tests rejection of a non-Y.Map draft entry.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The malformed fixture must cross the Y.Map boundary deliberately.
     getWorkspaceRoot(malformed).drafts.set('broken', 'not-a-map' as unknown as Y.Map<unknown>);
 
     expect(() => initializeOrMigrateWorkspaceYDoc(malformed)).toThrow(

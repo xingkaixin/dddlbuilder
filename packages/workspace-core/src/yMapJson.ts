@@ -1,3 +1,7 @@
+/* oxlint-disable anti-slop/no-unknown-parameters -- Y.Map values are raw persistence values until their owner decodes them. */
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type -- This module is the raw JSON/Y.Map interoperability boundary. */
+/* oxlint-disable anti-slop/no-known-value-widening -- Open records are the explicit representation returned by raw Y.Map reads. */
+
 import * as Y from 'yjs';
 import { stableStringify } from './stableStringify';
 
@@ -43,6 +47,7 @@ export const readOrderedMap = <T>(parent: Y.Map<any>, mapKey: string, orderKey: 
     .map((id) => {
       const itemMap = map.get(id);
 
+      // SAFETY: workspaceTableDoc reads the index/foreign-key records written by writeOrderedMap; incoming synced records pass assertTableDocDecodable.
       return itemMap instanceof Y.Map ? (readJsonMap(itemMap) as T) : null;
     })
     .filter((item): item is T => item != null);
@@ -61,7 +66,11 @@ export const ensureMap = (parent: Y.Map<any>, key: string): Y.Map<any> => {
 export const ensureArray = (parent: Y.Map<any>, key: string): Y.Array<string> => {
   const existing = parent.get(key);
 
-  if (existing instanceof Y.Array) return existing as Y.Array<string>;
+  if (existing instanceof Y.Array) {
+    // SAFETY: workspace order keys are written by syncStringArray and checked as string arrays by assertTableDocDecodable on sync.
+    return existing as Y.Array<string>;
+  }
+
   const next = new Y.Array<string>();
   parent.set(key, next);
 
@@ -171,6 +180,7 @@ export const writeOrderedMap = <T extends { id: string }>(
   }
 
   for (const value of values) {
+    // SAFETY: ordered records are serialized as open JSON records at this raw map boundary.
     writeJsonMap(ensureMap(map, value.id), value as JsonRecord);
   }
 

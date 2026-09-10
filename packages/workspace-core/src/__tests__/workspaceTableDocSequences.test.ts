@@ -26,6 +26,7 @@ const createRow = (index: number, overrides: Partial<FieldRow> = {}): FieldRow =
 
 // 复刻客户端 buildPersistedState 的形状：空集合以 undefined 表示，而不是省略键
 const createClientState = (overrides: Partial<PersistedState> = {}): PersistedState =>
+  // SAFETY: the serialized fixture below has the complete client state shape.
   JSON.parse(
     JSON.stringify({
       objectType: 'table',
@@ -196,9 +197,9 @@ const replaceRow = (state: PersistedState, index: number, row: FieldRow) =>
   );
 
 const OPTIONAL_SCALAR_VALUES = {
-  citusShardingConfig: { enabled: true, distributionColumn: 'id' },
+  citusShardingConfig: { mode: 'distributed', distributionColumn: 'id' },
   mysqlPartitionConfig: { enabled: true, type: 'RANGE', columns: ['id'] },
-  tableMiscConfig: { engine: 'InnoDB' },
+  tableMiscConfig: { enabled: true, engine: 'InnoDB' },
 } as const;
 
 let rowCounter = 0;
@@ -218,6 +219,7 @@ const MUTATIONS: readonly ((state: PersistedState, random: Random) => PersistedS
   (state, random) => ({ ...state, tableName: pick(TABLE_NAMES, random) }),
   (state, random) => {
     const key = pick(
+      // SAFETY: pick receives keys from the OPTIONAL_SCALAR_VALUES object itself.
       Object.keys(OPTIONAL_SCALAR_VALUES) as (keyof typeof OPTIONAL_SCALAR_VALUES)[],
       random,
     );

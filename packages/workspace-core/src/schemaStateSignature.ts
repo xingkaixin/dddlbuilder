@@ -1,3 +1,8 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- Signature normalization recursively inspects raw JSON-like values. */
+/* oxlint-disable anti-slop/no-unknown-parameters -- Recursive normalization accepts raw JSON-like values by contract. */
+/* oxlint-disable anti-slop/no-unknown-returns -- Recursive sorting preserves the raw JSON-like value domain until serialization. */
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type -- Signature normalization intentionally traverses open JSON records. */
+
 import type {
   CitusShardingConfig,
   MysqlPartitionConfig,
@@ -72,6 +77,7 @@ export const normalizeSchemaStateForSignature = (state: SchemaDocumentState) => 
   const normalized = {
     ...toSchemaDocumentState(state),
     rows: state.rows.map((row) => {
+      // SAFETY: persisted rows may carry only this legacy optional field in addition to row.
       const { order: _legacyOrder, ...content } = row as typeof row & { order?: unknown };
 
       return content;

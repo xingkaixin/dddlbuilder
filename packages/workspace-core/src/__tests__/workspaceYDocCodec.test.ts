@@ -219,6 +219,7 @@ describe('workspace YDoc codec', () => {
     importWorkspaceSnapshotToYDoc(doc, createSnapshot());
     const draft = doc.getMap<Y.Map<unknown>>('drafts').get('draft-1');
     expect(draft).toBeInstanceOf(Y.Map);
+    // SAFETY: toBeInstanceOf above establishes draft as a Y.Map with fieldOrder written by the codec.
     const firstOrder = ((draft as Y.Map<unknown>).get('fieldOrder') as Y.Array<string>).toArray();
     const updated = createSnapshot();
     updated.drafts[0] = {
@@ -236,6 +237,7 @@ describe('workspace YDoc codec', () => {
 
     const nextDraft = doc.getMap<Y.Map<unknown>>('drafts').get('draft-1');
     expect(nextDraft).toBeInstanceOf(Y.Map);
+    // SAFETY: toBeInstanceOf above establishes nextDraft as a codec-produced table Y.Map.
     expect(((nextDraft as Y.Map<unknown>).get('fieldOrder') as Y.Array<string>).toArray()).toEqual([
       firstOrder[1],
       firstOrder[0],
