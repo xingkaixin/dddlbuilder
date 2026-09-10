@@ -1,4 +1,4 @@
-export const TYPE_ALIASES: Record<string, string> = {
+export const TYPE_ALIASES = {
   bigint: 'bigint',
   bit: 'bit',
   bool: 'boolean',
@@ -54,4 +54,5 @@ export const TYPE_ALIASES: Record<string, string> = {
   nvarchar2: 'nvarchar',
 };
 
-export const canonicalizeBaseType = (baseType: string) => TYPE_ALIASES[baseType] ?? baseType;
+export const canonicalizeBaseType = (baseType: string) =>
+  Object.entries(TYPE_ALIASES).find(([alias]) => alias === baseType)?.[1] ?? baseType;

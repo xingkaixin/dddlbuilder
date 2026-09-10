@@ -17,10 +17,10 @@
     "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix src/ && oxfmt --config ../../.oxfmtrc.json --write src/",
     "format": "oxfmt --config ../../.oxfmtrc.json --write src/"
   },
-  "devDependencies": {
-    "@ddlbuilder/tsconfig": "workspace:*"
-  },
   "dependencies": {
     "effect": "4.0.0-rc.112"
+  },
+  "devDependencies": {
+    "@ddlbuilder/tsconfig": "workspace:*"
   }
 }

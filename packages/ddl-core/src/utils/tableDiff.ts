@@ -162,7 +162,7 @@ function normalizeFieldRow(row: FieldRow): DiffField | null {
   if (!name) return null;
 
   return {
-    id: typeof row.id === 'string' && row.id.trim() ? row.id.trim() : null,
+    id: row.id?.trim() || null,
     field: {
       name,
       type: row.fieldType?.trim() || '',

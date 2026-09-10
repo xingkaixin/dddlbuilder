@@ -7,6 +7,10 @@ import {
   normalizeFieldOnUpdate,
 } from './fieldRow.js';
 
+// This module is the boundary decoder for provider JSON. Its helpers inspect unknown fields before
+// constructing the typed DDL review result, so the representation checks are intentional here.
+// oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
+
 export const DDL_REVIEW_SUGGESTION_TYPES = [
   'add_field',
   'modify_field',
@@ -298,3 +302,5 @@ export const normalizeDDLReviewResult = (
   payload: unknown,
   fallbackSummary: string,
 ): DDLReviewResult => Schema.decodeUnknownSync(ddlReviewProviderSchema(fallbackSummary))(payload);
+
+// oxlint-enable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof

@@ -77,7 +77,7 @@ describe('sql-parser normalizers', () => {
 
   describe('buildIndexFields', () => {
     it('should build index fields and directions correctly', () => {
-      expect(buildIndexFields(undefined as unknown as any[])).toEqual([]);
+      expect(buildIndexFields(undefined)).toEqual([]);
 
       const fields = buildIndexFields([
         { column: 'id' },

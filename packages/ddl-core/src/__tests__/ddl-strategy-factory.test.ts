@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory.js';
 import { ProfiledDDLStrategy } from '../strategies/ProfiledDDLStrategy.js';
 import { HiveStrategy } from '../strategies/HiveStrategy.js';
-import { DATABASE_TYPES, type DatabaseType } from '@ddlbuilder/shared-types';
+import { DATABASE_TYPES } from '@ddlbuilder/shared-types';
 
 describe('DDLStrategyFactory', () => {
   it('应该根据数据库类型返回对应策略', () => {
@@ -16,7 +16,8 @@ describe('DDLStrategyFactory', () => {
   });
 
   it('不支持的数据库类型应抛出异常', () => {
-    expect(() => DDLStrategyFactory.create('invalid' as DatabaseType)).toThrowError(
+    // @ts-expect-error This fixture intentionally exercises an unsupported runtime database value.
+    expect(() => DDLStrategyFactory.create('invalid')).toThrowError(
       'Unsupported database type: invalid',
     );
   });

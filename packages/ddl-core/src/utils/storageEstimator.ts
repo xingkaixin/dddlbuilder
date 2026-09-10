@@ -189,11 +189,11 @@ const HiveTextfileProfile: StorageProfile = {
   },
 };
 
-const HiveProfiles: Record<string, StorageProfile> = {
-  ORC: HiveOrcProfile,
-  PARQUET: HiveParquetProfile,
-  TEXTFILE: HiveTextfileProfile,
-};
+const HiveProfiles = new Map([
+  ['ORC', HiveOrcProfile],
+  ['PARQUET', HiveParquetProfile],
+  ['TEXTFILE', HiveTextfileProfile],
+]);
 
 const Profiles = {
   mysql: mysqlLikeProfile('MySQL (InnoDB)', 'mysql'),
@@ -220,7 +220,7 @@ export function estimateStorage(
 ): StorageResult {
   const profile =
     dbType === 'hive' && storageFormat
-      ? HiveProfiles[storageFormat.toUpperCase()] || HiveOrcProfile
+      ? (HiveProfiles.get(storageFormat.toUpperCase()) ?? HiveOrcProfile)
       : Profiles[dbType];
   const { overhead, data } = profile.calculateRowSize(fields);
 
@@ -356,7 +356,7 @@ function computeRedundancyBytesPerRow(
   dbType: DatabaseType,
   rawDataPerRow: number,
   indexPerRow: number,
-): { bytesPerRow: number; rate: number } {
+) {
   if (dbType === 'hive') {
     return { bytesPerRow: 0, rate: 0 };
   }

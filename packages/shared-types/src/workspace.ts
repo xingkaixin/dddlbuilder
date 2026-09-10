@@ -3,6 +3,7 @@ import type { PersistedState, SchemaDocumentState } from './schema.js';
 export type SavedTableTarget = string | { normalizedName: string; tableId?: string };
 
 export const savedTableReference = (target: SavedTableTarget) =>
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this union branch selects the persisted target representation.
   typeof target === 'string'
     ? { normalizedName: target }
     : {

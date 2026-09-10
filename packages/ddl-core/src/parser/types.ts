@@ -8,6 +8,7 @@ export type ParsedResult = {
 
 export type ParserInstance = {
   astify: (sql: string, opt: { database: string }) => AstStatement | AstStatement[];
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- node-sql-parser accepts its undocumented AST expression payload here.
   exprToSQL: (expression: unknown, opt: { database: string }) => string;
 };
 

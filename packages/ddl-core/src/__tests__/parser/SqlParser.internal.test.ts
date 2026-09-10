@@ -79,6 +79,7 @@ describe('SqlParser internals', () => {
   it('parseAsync 应保留 astify 内部异常', async () => {
     const internalError = new Error('internal failure');
 
+    // SAFETY: this partial parser fixture only overrides astify to surface its thrown internal error.
     const parser = new SqlParser({
       astify: vi.fn(() => {
         throw internalError;
@@ -95,6 +96,7 @@ describe('SqlParser internals', () => {
       { statement: 'bad sql', error: expect.stringMatching(/expected/i) },
     ]);
 
+    // SAFETY: this partial parser fixture only overrides astify to expose an AST getter failure.
     const internalParser = new SqlParser({
       astify: vi.fn(() => ({
         type: 'create',
@@ -114,6 +116,7 @@ describe('SqlParser internals', () => {
   });
 
   it('parse 应在 sqlserver 下回填 GRANT 用户', () => {
+    // SAFETY: this partial parser fixture only overrides astify because GRANT preprocessing returns before parsing.
     const parser = new SqlParser({
       astify: vi.fn().mockReturnValue([]),
     } as any);
@@ -151,6 +154,7 @@ describe('SqlParser internals', () => {
       ],
     };
 
+    // SAFETY: this test intentionally invokes the private comment merger to verify its isolated mutation behavior.
     (parser as any).mergeComments(
       result,
       '新表注释',
@@ -166,6 +170,7 @@ describe('SqlParser internals', () => {
   });
 
   it('parse 应处理 mysql 预处理后的注释合并路径', () => {
+    // SAFETY: this partial parser fixture only overrides astify to exercise preprocessing comment merging.
     const parser = new SqlParser({
       astify: vi.fn().mockReturnValue([]),
     } as any);

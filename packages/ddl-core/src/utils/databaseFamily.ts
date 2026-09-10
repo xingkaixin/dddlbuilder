@@ -28,8 +28,7 @@ const DATABASE_CAPABILITIES = {
 } as const satisfies Record<DatabaseType, DatabaseCapabilities>;
 
 export const getDatabaseFamily = (databaseType: DatabaseType): DatabaseFamily | undefined =>
-  (DATABASE_CAPABILITIES as Partial<Record<DatabaseType, DatabaseCapabilities>>)[databaseType]
-    ?.family;
+  DATABASE_CAPABILITIES[databaseType]?.family;
 
 export const getSqlParserDialect = (databaseType: DatabaseType): SqlParserDialect =>
   DATABASE_CAPABILITIES[databaseType].parserDialect;
@@ -52,6 +51,7 @@ export const quoteIdentifier = (identifier: string, databaseType: DatabaseType):
 export const expandDatabaseFamilies = <T>(
   values: Record<DatabaseFamily, T>,
 ): Record<DatabaseType, T> =>
+  // SAFETY: Object.entries iterates every key in the exhaustive DATABASE_CAPABILITIES table.
   Object.fromEntries(
     Object.entries(DATABASE_CAPABILITIES).map(([databaseType, capabilities]) => [
       databaseType,

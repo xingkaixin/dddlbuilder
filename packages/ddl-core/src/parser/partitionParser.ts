@@ -133,10 +133,7 @@ function unwrapIdentifier(token: string): string {
   return trimmed.replace(/^`([^`]+)`$/, '$1').replace(/^"([^"]+)"$/, '$1');
 }
 
-function resolvePartitionKey(partitionKey: string): {
-  columns: string[];
-  expression?: string;
-} {
+function resolvePartitionKey(partitionKey: string) {
   const keyText = partitionKey.trim();
 
   if (!keyText) {

@@ -157,7 +157,8 @@ describe('tableFeatures', () => {
     expect(
       buildMysqlPartitionClause({
         enabled: true,
-        type: 'UNKNOWN' as never,
+        // @ts-expect-error This fixture intentionally exercises an unknown parser partition type.
+        type: 'UNKNOWN',
         columns: ['id'],
         partitions: [],
       }),

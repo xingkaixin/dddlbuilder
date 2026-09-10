@@ -39,8 +39,12 @@ type ParserSyntaxError = Error & {
   };
 };
 
+// These helpers traverse node-sql-parser's undocumented error and expression AST values at the
+// parser boundary; downstream handlers receive normalized domain structures.
+// oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns, anti-slop/no-runtime-typeof, anti-slop/no-unsafe-dictionary-type
 const isParserSyntaxError = (error: unknown): error is ParserSyntaxError => {
   if (!(error instanceof Error) || error.name !== 'SyntaxError') return false;
+  // SAFETY: parser syntax errors are Error objects; the following checks validate every optional parser field read below.
   const candidate = error as Partial<ParserSyntaxError>;
 
   return (
@@ -76,7 +80,10 @@ const restoreIdentifierMappings = (value: unknown, mappings: ReadonlyMap<string,
     if (typeof item === 'string') {
       const restored = mappings.get(item);
 
-      if (restored !== undefined) (value as Record<string, unknown>)[key] = restored;
+      if (restored !== undefined) {
+        // SAFETY: value is the object branch established by the guard above; key comes from its own entries.
+        (value as Record<string, unknown>)[key] = restored;
+      }
     } else {
       restoreIdentifierMappings(item, mappings);
     }
@@ -92,6 +99,7 @@ const protectExpressionIdentifiers = (
   }
 
   if (!value || typeof value !== 'object') return value;
+  // SAFETY: the object guard above establishes the dictionary shape used for recursive AST traversal.
   const source = value as Record<string, unknown>;
 
   const protectedValue = Object.fromEntries(
@@ -139,6 +147,7 @@ const createExpressionSerializer = (
     return sql;
   };
 };
+// oxlint-enable anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns, anti-slop/no-runtime-typeof, anti-slop/no-unsafe-dictionary-type
 
 const tableKey = (table: string, schema: string, dbType: DatabaseType) =>
   JSON.stringify([normalizeIdentifier(schema, dbType), normalizeIdentifier(table, dbType)]);
@@ -237,16 +246,7 @@ export class SqlParser {
     }));
   }
 
-  private preprocessSql(
-    sql: string,
-    dbType: DatabaseType,
-  ): {
-    sqlToParse: string;
-    tableMetadata: Map<string, PreprocessedTableMetadata>;
-    grants: ScopedGrant[];
-    partitionConfigs: Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>;
-    identifierMappings: ReadonlyMap<string, string>;
-  } {
+  private preprocessSql(sql: string, dbType: DatabaseType) {
     const databaseFamily = getDatabaseFamily(dbType);
 
     const normalizedSql =

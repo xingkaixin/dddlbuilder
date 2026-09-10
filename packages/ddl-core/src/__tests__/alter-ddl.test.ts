@@ -6,7 +6,6 @@ import type {
   DatabaseType,
   IndexDefinition,
   ForeignKeyDefinition,
-  PersistedState,
 } from '@ddlbuilder/shared-types';
 import { diffPersistedState, hasTableChanges } from '../utils/tableDiff';
 import { buildDDL } from '../utils/ddlGenerators';
@@ -296,13 +295,16 @@ describe('generateAlterDDL', () => {
   ] as const)(
     'moves schemas before renaming or changing fields (%s)',
     (dbType, forwardMove, reverseMove) => {
-      const before = {
+      const before = withDefaultEditorSession({
         dbType,
         schemaName: 'public',
         tableName: 'orders',
+        tableComment: '',
         rows: [],
         indexes: [],
-      } as unknown as PersistedState;
+        authInput: '',
+        authObjects: [],
+      });
       const after = {
         ...before,
         schemaName: 'archive',
@@ -348,13 +350,16 @@ describe('generateAlterDDL', () => {
   it.each([false, true])(
     'keeps the schema through forward and reverse changes (rename=%s)',
     (rename) => {
-      const before = {
+      const before = withDefaultEditorSession({
         dbType: 'postgresql' as const,
         schemaName: 'audit',
         tableName: 'orders',
+        tableComment: '',
         rows: [],
         indexes: [],
-      } as unknown as PersistedState;
+        authInput: '',
+        authObjects: [],
+      });
       const after = {
         ...before,
         tableName: rename ? 'archived_orders' : 'orders',

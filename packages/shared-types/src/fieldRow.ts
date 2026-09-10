@@ -45,6 +45,7 @@ export type NormalizedField = {
 };
 
 // 归一化的两类输入：历史持久化数据里的中文枚举值，以及模型可能吐出的各种同义写法。
+// oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof -- enum normalizers decode legacy and model boundary values.
 const toToken = (value: unknown): string => {
   if (typeof value === 'string') return value.trim().toLowerCase().replace(/\s+/g, '_');
 
@@ -98,6 +99,7 @@ export const normalizeFieldDefaultKind = (value: unknown): FieldDefaultKind =>
 
 export const normalizeFieldOnUpdate = (value: unknown): FieldOnUpdate =>
   ON_UPDATE_ALIASES.get(toToken(value)) ?? 'none';
+// oxlint-enable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 
 type FieldEnumValues = {
   nullable: boolean;
@@ -107,6 +109,7 @@ type FieldEnumValues = {
 
 /** 历史持久化数据用中文枚举值，读取时统一转成当前 token；缺失的可选字段保持缺失。 */
 export const normalizeFieldEnums = <T extends FieldEnumValues>(field: T): T =>
+  // SAFETY: the spread preserves every T property; normalized values remain in each declared enum domain.
   ({
     ...field,
     nullable: normalizeFieldNullable(field.nullable),
@@ -122,6 +125,7 @@ export const normalizePersistedRows = <T extends { rows?: FieldRow[] }>(state: T
   return {
     ...state,
     rows: state.rows.map((row, index) => {
+      // SAFETY: persisted rows may carry the removed legacy order marker; all remaining fields are FieldRow data.
       const { order: _legacyOrder, ...content } = row as FieldRow & { order?: unknown };
 
       return {
@@ -139,4 +143,5 @@ export const normalizePersistedRows = <T extends { rows?: FieldRow[] }>(state: T
 const legacyFieldId = (index: number) => `legacy-field-${index}`;
 
 export const ensureFieldId = (field: Partial<FieldRow>, index: number): string =>
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this checks a legacy persisted id before fallback.
   typeof field.id === 'string' && field.id.length > 0 ? field.id : legacyFieldId(index);

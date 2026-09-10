@@ -59,7 +59,7 @@ const stripTrailingConstraints = (type: string): string => {
 };
 
 // 辅助函数：处理UNSIGNED后缀
-const parseUnsigned = (type: string): { clean: string; isUnsigned: boolean } => {
+const parseUnsigned = (type: string) => {
   const isUnsigned = type.toLowerCase().endsWith('unsigned');
   const clean = isUnsigned ? type.replace(/\s+unsigned$/gi, '').trim() : type;
 

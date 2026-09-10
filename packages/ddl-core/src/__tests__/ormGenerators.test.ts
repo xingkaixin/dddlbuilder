@@ -152,7 +152,8 @@ describe('ORMGeneratorFactory', () => {
   });
 
   it('throws for unsupported target', () => {
-    expect(() => ORMGeneratorFactory.create('invalid' as any)).toThrow('Unsupported ORM target');
+    // @ts-expect-error This fixture intentionally exercises an unsupported runtime target value.
+    expect(() => ORMGeneratorFactory.create('invalid')).toThrow('Unsupported ORM target');
   });
 
   it('creates every supported generator', () => {

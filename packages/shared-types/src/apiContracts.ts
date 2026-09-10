@@ -168,6 +168,7 @@ const errorText = Schema.String.pipe(
 const apiError = Schema.decodeUnknownOption(
   Schema.Struct({ error: errorText, code: errorText, requestId: errorText }),
 );
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- this decoder is the API error boundary.
 export const decodeApiError = (input: unknown) =>
   Option.getOrElse(apiError(input), () => ({
     error: undefined,

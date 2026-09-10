@@ -38,6 +38,15 @@ const temporalTypes = new Set([
 ]);
 const widthTypes = new Set(['tinyint', 'smallint', 'mediumint', 'int', 'integer', 'bigint', 'bit']);
 
+type TypeORMColumnOptions = {
+  type: string;
+  unsigned?: boolean;
+  length?: string | number;
+  precision?: number;
+  width?: number;
+  scale?: number;
+};
+
 export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseType) {
   const original = parseFieldType(field.type);
 
@@ -59,7 +68,7 @@ export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseTyp
       : parsed.baseType === 'bigserial'
         ? 'bigint'
         : parsed.baseType;
-  const options: Record<string, string | number | boolean> = { type };
+  const options: TypeORMColumnOptions = { type };
 
   if (parsed.unsigned) options.unsigned = true;
 
@@ -84,7 +93,10 @@ export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseTyp
       options.length = 'MAX';
     } else {
       if (!Number.isSafeInteger(value) || value < 0) return null;
-      options[parameterName] = value;
+
+      if (parameterName === 'length') options.length = value;
+      else if (parameterName === 'precision') options.precision = value;
+      else options.width = value;
     }
 
     if (args.length === 2) {

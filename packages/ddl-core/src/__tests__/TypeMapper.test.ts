@@ -319,7 +319,8 @@ describe('TypeMapper', () => {
     });
 
     it('should return empty array for unsupported database', () => {
-      const mapper = TypeMapper.create('unsupported' as any);
+      // @ts-expect-error This fixture intentionally exercises an unsupported runtime database value.
+      const mapper = TypeMapper.create('unsupported');
       const types = mapper.getSupportedTypes();
 
       expect(types).toEqual([]);

@@ -29,13 +29,29 @@ import {
 import { unquoteSqlIdentifier } from '../utils/sqlIdentifiers.js';
 import { SqlParseError } from './SqlParseError.js';
 
-const MYSQL_ENGINE_NAME_MAP: Record<string, string> = {
-  innodb: 'InnoDB',
-  myisam: 'MyISAM',
-  memory: 'MEMORY',
-  archive: 'ARCHIVE',
-  csv: 'CSV',
+// This module is the node-sql-parser AST adapter. Runtime field inspection stays here until
+// values are converted into the shared domain result types.
+// oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
+const MYSQL_ENGINE_NAME_MAP = new Map([
+  ['innodb', 'InnoDB'],
+  ['myisam', 'MyISAM'],
+  ['memory', 'MEMORY'],
+  ['archive', 'ARCHIVE'],
+  ['csv', 'CSV'],
+]);
+
+type ForeignKeyActions = {
+  onDelete?: ForeignKeyAction;
+  onUpdate?: ForeignKeyAction;
 };
+
+const FOREIGN_KEY_ACTIONS = [
+  'CASCADE',
+  'SET NULL',
+  'SET DEFAULT',
+  'RESTRICT',
+  'NO ACTION',
+] as const;
 
 const UNSUPPORTED_COLUMN_ATTRIBUTES = [
   ['generated', 'GENERATED 生成列'],
@@ -57,11 +73,8 @@ function pushIndex(result: ParsedResult, name: string, fields: IndexField[], kin
   });
 }
 
-function parseOnAction(actionList: OnActionNode[]): {
-  onDelete?: ForeignKeyAction;
-  onUpdate?: ForeignKeyAction;
-} {
-  const result: { onDelete?: ForeignKeyAction; onUpdate?: ForeignKeyAction } = {};
+function parseOnAction(actionList: OnActionNode[]): ForeignKeyActions {
+  const result: ForeignKeyActions = {};
 
   if (!Array.isArray(actionList)) return result;
 
@@ -72,10 +85,14 @@ function parseOnAction(actionList: OnActionNode[]): {
     const rawValue = typeof nestedValue === 'string' ? nestedValue : action.value;
     const actionValue = typeof rawValue === 'string' ? rawValue.toUpperCase() : '';
 
+    const normalizedAction = FOREIGN_KEY_ACTIONS.find((candidate) => candidate === actionValue);
+
+    if (!normalizedAction) continue;
+
     if (actionType === 'on delete') {
-      result.onDelete = actionValue as ForeignKeyAction;
+      result.onDelete = normalizedAction;
     } else if (actionType === 'on update') {
-      result.onUpdate = actionValue as ForeignKeyAction;
+      result.onUpdate = normalizedAction;
     }
   }
 
@@ -146,13 +163,10 @@ function normalizeTableOptionValue(value: unknown): string {
     return normalizeLiteral(value);
   }
 
-  if (
-    typeof value === 'object' &&
-    value &&
-    'value' in value &&
-    typeof (value as Record<string, unknown>).value === 'string'
-  ) {
-    return normalizeLiteral((value as Record<string, string>).value);
+  const nestedValue = readField(value, 'value');
+
+  if (typeof nestedValue === 'string') {
+    return normalizeLiteral(nestedValue);
   }
 
   return '';
@@ -163,7 +177,7 @@ function normalizeEngineName(engine: string): string {
 
   if (!normalized) return '';
 
-  return MYSQL_ENGINE_NAME_MAP[normalized.toLowerCase()] ?? normalized;
+  return MYSQL_ENGINE_NAME_MAP.get(normalized.toLowerCase()) ?? normalized;
 }
 
 function mapColumnToField(
@@ -376,7 +390,7 @@ export function parseCreateTable(
         const fields = buildIndexFields(def.definition || []);
         pushIndex(
           result,
-          // 匿名 KEY 的 index 为 null，沿用既有行为直接透传
+          // SAFETY: parser AST uses a string index for named indexes and null for anonymous KEY; this preserves the existing passthrough.
           def.index as string,
           fields,
           def.index_type === 'unique' || def.keyword === 'unique' ? 'unique_index' : 'index',
@@ -458,3 +472,4 @@ export function parseAlterTable(
     }
   });
 }
+// oxlint-enable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof

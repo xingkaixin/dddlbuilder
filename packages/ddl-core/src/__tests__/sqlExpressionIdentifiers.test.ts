@@ -8,6 +8,7 @@ describe('SQL expression field references', () => {
   it.each([
     ['YEAR(created_at)', 'year', 'fiscal_year', 'YEAR(created_at)', false],
     ['YEAR /* year */ (created_at)', 'year', 'fiscal_year', 'YEAR /* year */ (created_at)', false],
+    ['foo /* comment */ (bar)', 'foo', 'renamed', 'foo /* comment */ (bar)', false],
     [
       'EXTRACT(YEAR FROM created_at)',
       'year',
@@ -31,6 +32,7 @@ describe('SQL expression field references', () => {
       true,
     ],
     ['"created_at"', 'created_at', 'created_on', '"created_at"', false],
+    ['`created_at` as alias', 'created_at', 'created_on', '`created_on` as alias', true],
     [
       "'it\\'s year' + 'year''s value'",
       'year',

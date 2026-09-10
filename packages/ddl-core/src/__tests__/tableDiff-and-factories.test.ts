@@ -97,7 +97,7 @@ describe('diffPersistedState', () => {
         defaultKind: '当前时间',
         onUpdate: '当前时间',
       },
-    ] as unknown as FieldRow[];
+    ];
     const currentRows = [
       createRow({ nullable: false, defaultKind: 'auto_increment', onUpdate: 'none' }),
       createRow({
@@ -110,6 +110,7 @@ describe('diffPersistedState', () => {
     ];
 
     const diff = diffPersistedState(
+      // @ts-expect-error This fixture intentionally models legacy persisted enum strings.
       createPersistedState({ rows: legacyRows }),
       createPersistedState({ rows: currentRows }),
     );

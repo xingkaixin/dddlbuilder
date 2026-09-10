@@ -114,6 +114,9 @@ export type AlterTableStmt = AstStatement & {
   expr?: AlterExprNode[] | null;
 };
 
+// node-sql-parser does not publish a stable TypeScript AST contract; these helpers validate and
+// read its dynamic nodes before parser-specific handlers consume them.
+// oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
@@ -123,6 +126,7 @@ export const readField = (node: unknown, key: string): unknown =>
 
 /** AST 叶子值可能是标量或节点对象，这里保留既有实现的 String() 兜底语义 */
 export const stringifyAstValue = (value: unknown): string => String(value);
+// oxlint-enable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns
 
 export const isCreateTableStmt = (stmt: AstStatement): stmt is CreateTableStmt =>
   stmt.type === 'create' && stmt.keyword === 'table';

@@ -4,4 +4,5 @@ type CryptoRuntime = typeof globalThis & {
   };
 };
 
+// SAFETY: browser and Worker runtimes provide globalThis.crypto.randomUUID.
 export const createEntityId = (): string => (globalThis as CryptoRuntime).crypto.randomUUID();

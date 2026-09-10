@@ -9,6 +9,8 @@ export interface DatabaseTypeMapping {
   [canonicalType: string]: TypeMappingRule;
 }
 
+// SQL type names are open parser tokens; this map intentionally owns the dynamic lookup contract.
+// oxlint-disable-next-line anti-slop/no-known-value-widening -- each dialect accepts arbitrary canonical type-name keys.
 const FAMILY_TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
   mysql: {
     varchar: { mapping: 'varchar', defaultArgs: ['255'] },
@@ -197,39 +199,37 @@ const FAMILY_TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     json: { mapping: 'json' },
     jsonb: { mapping: 'json' },
   },
-};
-
-// Hive 数据仓库类型映射
-FAMILY_TYPE_MAPPINGS.hive = {
-  string: { mapping: 'STRING' },
-  varchar: { transform: () => 'STRING' },
-  nvarchar: { transform: () => 'STRING' },
-  char: { transform: () => 'STRING' },
-  nchar: { transform: () => 'STRING' },
-  text: { transform: () => 'STRING' },
-  mediumtext: { transform: () => 'STRING' },
-  longtext: { transform: () => 'STRING' },
-  int: { mapping: 'INT' },
-  tinyint: { mapping: 'TINYINT' },
-  smallint: { mapping: 'SMALLINT' },
-  bigint: { mapping: 'BIGINT' },
-  decimal: { mapping: 'DECIMAL', defaultArgs: ['10', '3'] },
-  float: { mapping: 'FLOAT' },
-  double: { mapping: 'DOUBLE' },
-  real: { mapping: 'DOUBLE' },
-  date: { mapping: 'DATE' },
-  datetime: { mapping: 'TIMESTAMP' },
-  datetime2: { mapping: 'TIMESTAMP' },
-  timestamp: { mapping: 'TIMESTAMP' },
-  time: { transform: () => 'STRING' },
-  boolean: { mapping: 'BOOLEAN' },
-  bit: { mapping: 'BOOLEAN' },
-  json: { transform: () => 'STRING' },
-  jsonb: { transform: () => 'STRING' },
-  blob: { mapping: 'BINARY' },
-  varbinary: { mapping: 'BINARY' },
-  uuid: { transform: () => 'STRING' },
-  serial: { mapping: 'INT' },
+  hive: {
+    string: { mapping: 'STRING' },
+    varchar: { transform: () => 'STRING' },
+    nvarchar: { transform: () => 'STRING' },
+    char: { transform: () => 'STRING' },
+    nchar: { transform: () => 'STRING' },
+    text: { transform: () => 'STRING' },
+    mediumtext: { transform: () => 'STRING' },
+    longtext: { transform: () => 'STRING' },
+    int: { mapping: 'INT' },
+    tinyint: { mapping: 'TINYINT' },
+    smallint: { mapping: 'SMALLINT' },
+    bigint: { mapping: 'BIGINT' },
+    decimal: { mapping: 'DECIMAL', defaultArgs: ['10', '3'] },
+    float: { mapping: 'FLOAT' },
+    double: { mapping: 'DOUBLE' },
+    real: { mapping: 'DOUBLE' },
+    date: { mapping: 'DATE' },
+    datetime: { mapping: 'TIMESTAMP' },
+    datetime2: { mapping: 'TIMESTAMP' },
+    timestamp: { mapping: 'TIMESTAMP' },
+    time: { transform: () => 'STRING' },
+    boolean: { mapping: 'BOOLEAN' },
+    bit: { mapping: 'BOOLEAN' },
+    json: { transform: () => 'STRING' },
+    jsonb: { transform: () => 'STRING' },
+    blob: { mapping: 'BINARY' },
+    varbinary: { mapping: 'BINARY' },
+    uuid: { transform: () => 'STRING' },
+    serial: { mapping: 'INT' },
+  },
 };
 
 export const TYPE_MAPPINGS = expandDatabaseFamilies({

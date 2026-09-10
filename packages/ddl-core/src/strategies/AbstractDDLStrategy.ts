@@ -103,9 +103,14 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
    * 生成列注释DDL的通用实现（用于支持列注释的数据库）
    */
   protected generateColumnCommentsDDL(tableName: string, fields: NormalizedField[]): string[] {
-    return fields
-      .filter((field) => field.comment)
-      .map((field) => buildColumnComment(tableName, field, this.getDatabaseType()));
+    const comments: string[] = [];
+
+    for (const field of fields) {
+      if (field.comment)
+        comments.push(buildColumnComment(tableName, field, this.getDatabaseType()));
+    }
+
+    return comments;
   }
 
   protected renderColumnDefinitions(

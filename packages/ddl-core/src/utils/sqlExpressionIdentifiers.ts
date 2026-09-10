@@ -36,37 +36,61 @@ function expressionIdentifiers(source: string, dbType: DatabaseType) {
   );
   const tokens = [...source.matchAll(pattern)].filter((token) => !token.groups?.comment);
 
-  return tokens
-    .filter((token, index) => {
-      const { word, quoted } = token.groups ?? {};
+  const identifiers: Array<{
+    start: number;
+    end: number;
+    quoted: boolean;
+    name: string;
+  }> = [];
 
-      if (!word && !quoted) return false;
-      const next = tokens[index + 1];
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index];
+    const { word, quoted } = token.groups ?? {};
 
-      if (next?.[0] === '(' || next?.[0] === '.') return false;
-      if (quoted) return true;
-      if (RESERVED_KEYWORDS[dbType].has(word.toLowerCase())) return false;
-      if (next?.groups?.literal && token.index + token[0].length === next.index) return false;
-      const previous = tokens[index - 1]?.[0].toLowerCase();
+    if (!word && !quoted) continue;
 
-      if (previous === ':' || previous === 'as' || previous === 'collate') return false;
+    const next = tokens[index + 1];
 
-      // EXTRACT 的第一个参数是时间单位，不是列引用。
-      return !(
-        previous === '(' &&
-        tokens[index - 2]?.[0].toLowerCase() === 'extract' &&
-        next?.[0].toLowerCase() === 'from'
-      );
-    })
-    .map((token) => ({
+    if (next?.[0] === '(' || next?.[0] === '.') continue;
+
+    if (quoted) {
+      identifiers.push({
+        start: token.index,
+        end: token.index + token[0].length,
+        quoted: true,
+        name: getSqlIdentifierKey(token[0], dbType),
+      });
+
+      continue;
+    }
+
+    if (RESERVED_KEYWORDS[dbType].has(word.toLowerCase())) continue;
+
+    if (next?.groups?.literal && token.index + token[0].length === next.index) continue;
+    const previous = tokens[index - 1]?.[0].toLowerCase();
+
+    if (previous === ':' || previous === 'as' || previous === 'collate') continue;
+
+    // EXTRACT 的第一个参数是时间单位，不是列引用。
+    if (
+      previous === '(' &&
+      tokens[index - 2]?.[0].toLowerCase() === 'extract' &&
+      next?.[0].toLowerCase() === 'from'
+    )
+      continue;
+
+    identifiers.push({
       start: token.index,
       end: token.index + token[0].length,
-      quoted: !!token.groups?.quoted,
+      quoted: false,
       name: getSqlIdentifierKey(
-        family === 'postgresql' && token.groups?.word ? token[0].toLowerCase() : token[0],
+        family === 'postgresql' && word ? token[0].toLowerCase() : token[0],
         dbType,
       ),
-    }));
+    });
+  }
+
+  return identifiers;
 }
 
 export function sqlExpressionReferencesField(

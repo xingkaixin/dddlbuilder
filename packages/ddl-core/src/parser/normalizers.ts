@@ -7,6 +7,9 @@ import {
 } from './astTypes.js';
 import { SqlParseError } from './SqlParseError.js';
 
+// These helpers consume node-sql-parser's undocumented AST values and normalize them before
+// domain handlers use them; the parser is the only owner of this dynamic representation.
+// oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 export function normalizeColumnName(column: unknown): string {
   if (column === undefined || column === null) return '';
   if (typeof column === 'string') return column;
@@ -132,3 +135,4 @@ export function buildIndexFields(columns: ColumnListNode[] | undefined): IndexFi
     })
     .filter((field): field is IndexField => field !== null);
 }
+// oxlint-enable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof

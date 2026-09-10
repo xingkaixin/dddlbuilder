@@ -136,7 +136,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
   private renderColumn(
     field: NormalizedField,
     typeMapper: ReturnType<AbstractDDLStrategy['createTypeMapper']>,
-  ): { name: string; body: string; comment?: string } {
+  ) {
     return {
       name: this.formatFieldName(field.name),
       ...buildDialectColumn(field, this.databaseType, typeMapper),

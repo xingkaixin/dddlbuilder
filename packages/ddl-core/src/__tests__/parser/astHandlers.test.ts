@@ -4,6 +4,7 @@ import type { ParsedResult } from '../../parser/types.js';
 import { parseAlterTable, parseCreateIndex, parseCreateTable } from '../../parser/astHandlers.js';
 
 const parser = new Parser();
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- this test forwards the parser's undocumented AST expression to exprToSQL.
 const serializeExpression = (value: unknown) => parser.exprToSQL(value, { database: 'mysql' });
 
 function createResult(): ParsedResult {
