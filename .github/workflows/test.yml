@@ -111,6 +111,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run build
+        env:
+          VITE_TURNSTILE_SITE_KEY: '1x00000000000000000000AA'
         run: pnpm run build
 
       - name: Upload build artifact
