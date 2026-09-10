@@ -29,6 +29,7 @@ const AUTH_RATE_LIMITS = {
   '/auth/sign-in/email': { scope: 'auth:signin', limit: 10, windowMs: 15 * 60_000 },
   '/auth/request-password-reset': { scope: 'auth:reset', limit: 3, windowMs: 60 * 60_000 },
   '/auth/send-verification-email': { scope: 'auth:verify', limit: 3, windowMs: 60 * 60_000 },
+  '/auth/email-otp/verify-email': { scope: 'auth:verify-otp', limit: 10, windowMs: 15 * 60_000 },
 } as const;
 const SAFE_AUTH_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const TURNSTILE_ALWAYS_PASS_TEST_SECRET = '1x0000000000000000000000000000000AA';

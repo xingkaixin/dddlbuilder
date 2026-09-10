@@ -187,7 +187,7 @@ describe('createBetterAuth', () => {
   });
 
   it.each([
-    ['emailVerification', 'sendVerificationEmail'],
+    ['otp', 'sendVerificationOTP'],
     ['emailAndPassword', 'sendResetPassword'],
   ])('%s propagates a provider error returned without rejecting', async (section, method) => {
     const { createBetterAuth } = await import('../../lib/betterAuth.js');
@@ -198,15 +198,17 @@ describe('createBetterAuth', () => {
       error: { name: 'rate_limit_exceeded', message: 'Too many requests', statusCode: 429 },
     });
 
-    const outcome = await config[section]
-      [method]({
-        user: { email: 'user@example.com', name: 'Test User' },
-        url: 'https://example.com/verify?token=secret',
-      })
-      .then(
-        () => ({ status: 'resolved' }),
-        (error: Error) => ({ status: 'rejected', message: error.message }),
-      );
+    const sender = section === 'otp' ? config.plugins[0].options : config[section];
+    const outcome = await sender[method]({
+      email: 'user@example.com',
+      otp: '123456',
+      type: 'email-verification',
+      user: { email: 'user@example.com', name: 'Test User' },
+      url: 'https://example.com/verify?token=secret',
+    }).then(
+      () => ({ status: 'resolved' }),
+      (error: Error) => ({ status: 'rejected', message: error.message }),
+    );
     console.info('authentication email provider rejection', { section, outcome });
 
     expect(outcome).toEqual({
@@ -234,48 +236,7 @@ describe('createBetterAuth', () => {
     );
   });
 
-  it('sendVerificationEmail sends email via Resend with correct content', async () => {
-    const { createBetterAuth } = await import('../../lib/betterAuth.js');
-    const env = createEnv();
-
-    createBetterAuth(env);
-    const config = betterAuthMock.mock.calls[0][0];
-
-    const user = { email: 'user@example.com', name: 'Test User' };
-    const url = 'https://example.com/verify?token=xyz';
-    await config.emailVerification.sendVerificationEmail({ user, url });
-
-    expect(resendSendMock).toHaveBeenCalledTimes(1);
-    const sent = resendSendMock.mock.calls[0][0];
-    expect(sent.to).toBe('user@example.com');
-    expect(sent.from).toBe('DDLBuilder <noreply@example.com>');
-    expect(sent.subject).toBe('验证你的筑表师账号');
-    expect(sent.html).toContain('Test User');
-    expect(sent.html).toContain('https://example.com/verify?token=xyz');
-    expect(sent.text).toBe(
-      'Test User，请打开这个链接完成邮箱验证：https://example.com/verify?token=xyz',
-    );
-  });
-
-  it('sendVerificationEmail falls back to email when name is empty', async () => {
-    const { createBetterAuth } = await import('../../lib/betterAuth.js');
-    const env = createEnv();
-
-    createBetterAuth(env);
-    const config = betterAuthMock.mock.calls[0][0];
-
-    const user = { email: 'user@example.com', name: '' };
-    const url = 'https://example.com/verify?token=xyz';
-    await config.emailVerification.sendVerificationEmail({ user, url });
-
-    const sent = resendSendMock.mock.calls[0][0];
-    expect(sent.html).toContain('user@example.com');
-    expect(sent.text).toBe(
-      'user@example.com，请打开这个链接完成邮箱验证：https://example.com/verify?token=xyz',
-    );
-  });
-
-  it('normalizes relative verification URLs into absolute HTTPS URLs', async () => {
+  it('normalizes relative password reset URLs into absolute HTTPS URLs', async () => {
     const { createBetterAuth } = await import('../../lib/betterAuth.js');
     const env = createEnv({
       BETTER_AUTH_URL: 'https://ddl.xingkaixin.me/api/auth',
@@ -286,14 +247,14 @@ describe('createBetterAuth', () => {
 
     const user = { email: 'user@example.com', name: 'Test User' };
     const url = '/api/auth/verify-email?token=xyz';
-    await config.emailVerification.sendVerificationEmail({ user, url });
+    await config.emailAndPassword.sendResetPassword({ user, url });
 
     const sent = resendSendMock.mock.calls[0][0];
     expect(sent.html).toContain('https://ddl.xingkaixin.me/api/auth/verify-email?token=xyz');
     expect(sent.text).toContain('https://ddl.xingkaixin.me/api/auth/verify-email?token=xyz');
   });
 
-  it('normalizes scheme-less verification URLs into absolute HTTPS URLs', async () => {
+  it('normalizes scheme-less password reset URLs into absolute HTTPS URLs', async () => {
     const { createBetterAuth } = await import('../../lib/betterAuth.js');
     const env = createEnv({
       BETTER_AUTH_URL: 'https://ddl.xingkaixin.me/api/auth',
@@ -304,7 +265,7 @@ describe('createBetterAuth', () => {
 
     const user = { email: 'user@example.com', name: 'Test User' };
     const url = 'ddl.xingkaixin.me/api/auth/verify-email?token=xyz';
-    await config.emailVerification.sendVerificationEmail({ user, url });
+    await config.emailAndPassword.sendResetPassword({ user, url });
 
     const sent = resendSendMock.mock.calls[0][0];
     expect(sent.html).toContain('https://ddl.xingkaixin.me/api/auth/verify-email?token=xyz');
@@ -320,7 +281,7 @@ describe('createBetterAuth', () => {
 
     const user = { email: 'user@example.com', name: '<script>alert("xss")</script>' };
     const url = 'https://example.com/verify?token=<>&"\'';
-    await config.emailVerification.sendVerificationEmail({ user, url });
+    await config.emailAndPassword.sendResetPassword({ user, url });
 
     const sent = resendSendMock.mock.calls[0][0];
     expect(sent.html).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
@@ -337,7 +298,7 @@ describe('createBetterAuth', () => {
 
     const user = { email: 'user@example.com', name: 'User' };
     const url = 'https://example.com/verify';
-    await config.emailVerification.sendVerificationEmail({ user, url });
+    await config.emailAndPassword.sendResetPassword({ user, url });
 
     const sent = resendSendMock.mock.calls[0][0];
     expect(sent.html).toContain('筑表师');

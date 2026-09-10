@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth';
+import { emailOTP } from 'better-auth/plugins/email-otp';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { drizzle } from 'drizzle-orm/d1';
 import { Resend } from 'resend';
@@ -109,31 +110,21 @@ const renderEmailLayout = (bodyContent: string) => `
   </div>
 `;
 
-const renderVerificationEmail = (url: string, name: string) => {
-  const escapedName = escapeHtml(name);
-  const escapedUrl = escapeHtml(url);
+const renderVerificationEmail = (otp: string) => {
   return {
     subject: '验证你的筑表师账号',
     html: renderEmailLayout(`
-      <p style="margin:0 0 16px;color:#3D3529;font-size:15px;line-height:1.6;">
-        ${escapedName}，你好：
-      </p>
       <p style="margin:0 0 24px;color:#5C564E;font-size:15px;line-height:1.6;">
-        感谢你注册筑表师！请点击下面的按钮完成邮箱验证。
+        请在筑表师中输入以下六位验证码，完成邮箱验证。
       </p>
-      <p style="margin:0 0 24px;">
-        <a href="${escapedUrl}" style="display:inline-block;padding:12px 24px;border-radius:8px;background-color:#E07A5F;color:#ffffff;text-decoration:none;font-size:14px;font-weight:500;">
-          验证邮箱
-        </a>
+      <p style="margin:0 0 24px;text-align:center;font-family:monospace;font-size:32px;font-weight:600;letter-spacing:8px;color:#3D3529;">
+        ${escapeHtml(otp)}
       </p>
-      <p style="margin:0 0 8px;color:#9C9488;font-size:13px;line-height:1.5;">
-        如果按钮无法点击，请复制以下链接到浏览器：
-      </p>
-      <p style="margin:0;word-break:break-all;">
-        <a href="${escapedUrl}" style="color:#E07A5F;text-decoration:none;font-size:13px;">${escapedUrl}</a>
+      <p style="margin:0;color:#9C9488;font-size:13px;line-height:1.5;">
+        验证码 10 分钟内有效，请勿分享给他人。如果你没有发起此请求，请忽略此邮件。
       </p>
     `),
-    text: `${name}，请打开这个链接完成邮箱验证：${url}`,
+    text: `你的筑表师邮箱验证码是：${otp}。请在网站中输入，10 分钟内有效。请勿分享给他人。如果你没有发起此请求，请忽略此邮件。`,
   };
 };
 
@@ -179,6 +170,29 @@ const buildBetterAuth = (env: ApiEnv['Bindings']) => {
 
   return betterAuth({
     rateLimit: { enabled: false },
+    disabledPaths: [
+      // The native send-verification-email endpoint retains verified-account checks.
+      '/email-otp/send-verification-otp',
+      '/sign-in/email-otp',
+      '/email-otp/check-verification-otp',
+      '/email-otp/request-password-reset',
+      '/email-otp/reset-password',
+      '/forget-password/email-otp',
+      '/email-otp/request-email-change',
+      '/email-otp/change-email',
+    ],
+    plugins: [
+      emailOTP({
+        overrideDefaultEmailVerification: true,
+        otpLength: 6,
+        expiresIn: 600,
+        allowedAttempts: 3,
+        storeOTP: 'hashed',
+        sendVerificationOTP: async ({ email, otp }) => {
+          await sendEmail(env, { to: email, ...renderVerificationEmail(otp) });
+        },
+      }),
+    ],
     secret: config.betterAuthSecret,
     baseURL: authBaseUrl.origin,
     trustedOrigins: [...trustedOrigins],
@@ -203,14 +217,6 @@ const buildBetterAuth = (env: ApiEnv['Bindings']) => {
       sendOnSignUp: config.authRequireEmailVerification,
       sendOnSignIn: false,
       autoSignInAfterVerification: true,
-      sendVerificationEmail: async ({ user, url }) => {
-        const normalizedUrl = normalizeAuthActionUrl(url, authBaseUrl);
-        const content = renderVerificationEmail(normalizedUrl, user.name || user.email);
-        await sendEmail(env, {
-          to: user.email,
-          ...content,
-        });
-      },
     },
     databaseHooks: {
       user: {
