@@ -23,20 +23,21 @@ The repository retains 22 of the 24 rules, including the native
   functions may inspect runtime types. Other parsing and interoperability boundaries
   require a specific local justification.
 - `prefer-effect-match` and `no-service-constructor-imports` apply to Worker source
-  and shared contracts, the packages that adopt Effect. UI and DDL code do not gain
-  an Effect dependency solely to satisfy these style rules.
+  and shared contracts. Web uses Effect predicates for existing shared Schema
+  results; these two style rules remain outside UI and DDL code.
 - Other rules remain enabled across owned application and test source. Exceptions
   must explain a concrete boundary or invariant at the smallest useful scope. Test
   files, SDKs, parsers, and existing violations are not blanket exceptions.
 - Remove unnecessary assertions first. A necessary assertion states its actual
   `SAFETY:` invariant; a partial fixture must explain which contract it exercises.
   Completion-only callbacks may intentionally hide unused results as `unknown`.
+  Unused disable directives are errors so obsolete exceptions do not accumulate.
 
 ## Local rule changes
 
 - `require-readable-spacing` keeps import, declaration, and control-flow boundaries
-  while allowing cohesive exports, declarations, guards, and immediately consumed
-  bindings. Its regression tests specify the exact syntactic grouping policy.
+  while allowing cohesive exports, declarations, consecutive single-line terminal
+  guards without an `else`, and immediately consumed bindings. Its regression tests specify the exact syntactic grouping policy.
 - `no-known-value-widening` does not treat an unresolved generic return type as
   evidence of a known call result.
 - `require-safety-comment-for-type-assertion` reports one missing justification per

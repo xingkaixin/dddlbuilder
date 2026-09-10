@@ -151,5 +151,5 @@
     ".temp/**",
     "tools/oxlint/anti-slop/**"
   ],
-  "options": {}
+  "options": { "reportUnusedDisableDirectives": "error" }
 }
