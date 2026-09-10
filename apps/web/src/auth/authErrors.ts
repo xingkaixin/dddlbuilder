@@ -7,6 +7,9 @@ export type AuthError = {
 
 const authErrorTranslationKeys: Record<string, string> = {
   EMAIL_NOT_VERIFIED: 'header.auth.emailNotVerified',
+  INVALID_OTP: 'header.auth.invalidOtp',
+  OTP_EXPIRED: 'header.auth.otpExpired',
+  TOO_MANY_ATTEMPTS: 'header.auth.otpAttemptsExceeded',
   INVALID_EMAIL: 'header.auth.invalidCredentials',
   INVALID_PASSWORD: 'header.auth.invalidCredentials',
   INVALID_EMAIL_OR_PASSWORD: 'header.auth.invalidCredentials',

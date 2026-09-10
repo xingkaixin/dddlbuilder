@@ -55,6 +55,7 @@ describe('betterAuthClient', () => {
 
       expect(createAuthClientMock).toHaveBeenCalledTimes(1);
       expect(createAuthClientMock).toHaveBeenCalledWith({
+        plugins: [expect.objectContaining({ id: 'email-otp' })],
         baseURL: 'https://auth.example.com',
         fetchOptions: {
           credentials: 'include',
@@ -76,6 +77,7 @@ describe('betterAuthClient', () => {
 
       expect(createAuthClientMock).toHaveBeenCalledTimes(1);
       expect(createAuthClientMock).toHaveBeenCalledWith({
+        plugins: [expect.objectContaining({ id: 'email-otp' })],
         baseURL: 'https://app.example.com',
         fetchOptions: {
           credentials: 'include',

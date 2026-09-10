@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthActions, useAuthDialog } from '@/auth/AuthSessionProvider';
 import { TurnstileWidget } from '@/auth/TurnstileWidget';
+import { EmailVerificationForm } from '@/auth/EmailVerificationForm';
+import { ApiError } from '@/services/apiError';
 import { useAuthCallbackCommand } from '@/auth/useAuthCallbackCommand';
 import { useToast } from '@/hooks/useToast';
 
@@ -38,6 +40,7 @@ export function AuthDialogs() {
   const [resetToken, setResetToken] = useState<string | null>(initialResetToken);
   const [verifyEmailDialogOpen, setVerifyEmailDialogOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [verification, setVerification] = useState<{ email: string; sentAt: number } | null>(null);
 
   useEffect(() => {
     const command = consumeAuthCallbackCommand();
@@ -65,6 +68,11 @@ export function AuthDialogs() {
     if (authMode === 'reset_password') return t('header.auth.dialogDescriptionResetPassword');
     return t('header.auth.dialogDescriptionSignIn');
   }, [authMode, t]);
+
+  const showEmailVerification = (email: string) => {
+    setPassword('');
+    setVerification({ email, sentAt: Date.now() });
+  };
 
   const handleSubmitAuth = async () => {
     const trimmedEmail = email.trim();
@@ -99,16 +107,21 @@ export function AuthDialogs() {
           error(t('header.auth.turnstileRequired'));
           return;
         }
-        await authSession.signUpWithEmail({
+        const result = await authSession.signUpWithEmail({
           name: name.trim(),
           email: trimmedEmail,
           password,
           turnstileToken,
         });
         setTurnstileToken(null);
-        success(t('header.auth.verifyEmailSent', { email: trimmedEmail }));
         setAuthMode('sign_in');
         setPassword('');
+        if (result === 'signed_in') {
+          success(t('header.auth.signedIn'));
+          authSession.closeAuthDialog();
+        } else {
+          showEmailVerification(trimmedEmail);
+        }
         return;
       }
 
@@ -136,6 +149,10 @@ export function AuthDialogs() {
       setAuthMode('sign_in');
       authSession.closeAuthDialog();
     } catch (err) {
+      if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
+        await handleResendVerification();
+        return;
+      }
       error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
     } finally {
       setIsSubmittingAuth(false);
@@ -152,7 +169,7 @@ export function AuthDialogs() {
     try {
       setIsSubmittingAuth(true);
       await authSession.sendVerificationEmail(trimmedEmail);
-      success(t('header.auth.verifyEmailSent', { email: trimmedEmail }));
+      showEmailVerification(trimmedEmail);
     } catch (err) {
       error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
     } finally {
@@ -176,138 +193,156 @@ export function AuthDialogs() {
         onOpenChange={(open) => (open ? authSession.openAuthDialog() : closeAuthDialog())}
       >
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('header.auth.dialogTitle')}</DialogTitle>
-            <DialogDescription>{authDialogDescription}</DialogDescription>
-          </DialogHeader>
-          {authMode === 'sign_up' ? (
-            <div className="space-y-2">
-              <label htmlFor="auth-name" className="text-sm font-medium text-foreground">
-                {t('header.auth.nameLabel')}
-              </label>
-              <Input
-                id="auth-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={t('header.auth.namePlaceholder')}
-                autoComplete="name"
-              />
-            </div>
-          ) : null}
-          <div className="space-y-2">
-            <label htmlFor="auth-email" className="text-sm font-medium text-foreground">
-              {t('header.auth.emailLabel')}
-            </label>
-            <Input
-              id="auth-email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder={t('header.auth.emailPlaceholder')}
-              autoComplete="email"
+          {verification ? (
+            <EmailVerificationForm
+              email={verification.email}
+              sentAt={verification.sentAt}
+              onSent={() => setVerification({ ...verification, sentAt: Date.now() })}
+              onVerified={() => {
+                success(t('header.auth.otpVerified'));
+                setVerification(null);
+                authSession.closeAuthDialog();
+              }}
+              onBack={() => setVerification(null)}
             />
-          </div>
-          {authMode === 'sign_in' || authMode === 'sign_up' ? (
-            <div className="space-y-2">
-              <label htmlFor="auth-password" className="text-sm font-medium text-foreground">
-                {t('header.auth.passwordLabel')}
-              </label>
-              <Input
-                id="auth-password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={t('header.auth.passwordPlaceholder')}
-                autoComplete={authMode === 'sign_in' ? 'current-password' : 'new-password'}
-              />
-            </div>
-          ) : null}
-          {authMode === 'reset_password' ? (
-            <div className="space-y-2">
-              <label htmlFor="reset-password" className="text-sm font-medium text-foreground">
-                {t('header.auth.newPasswordLabel')}
-              </label>
-              <Input
-                id="reset-password"
-                type="password"
-                value={resetPassword}
-                onChange={(event) => setResetPassword(event.target.value)}
-                placeholder={t('header.auth.passwordPlaceholder')}
-                autoComplete="new-password"
-              />
-            </div>
-          ) : null}
-          {authMode === 'sign_up' ? (
-            TURNSTILE_SITE_KEY ? (
-              <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={setTurnstileToken} />
-            ) : (
-              <p className="text-sm text-destructive">{t('header.auth.turnstileNotConfigured')}</p>
-            )
-          ) : null}
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            {authMode !== 'reset_password' ? (
-              <button
-                type="button"
-                className="underline-offset-4 hover:underline"
-                onClick={() => {
-                  setTurnstileToken(null);
-                  setAuthMode(authMode === 'sign_up' ? 'sign_in' : 'sign_up');
-                }}
-              >
-                {authMode === 'sign_up'
-                  ? t('header.auth.switchToSignIn')
-                  : t('header.auth.switchToSignUp')}
-              </button>
-            ) : null}
-            {authMode === 'sign_in' ? (
-              <button
-                type="button"
-                className="underline-offset-4 hover:underline"
-                onClick={() => setAuthMode('forgot_password')}
-              >
-                {t('header.auth.switchToForgotPassword')}
-              </button>
-            ) : null}
-            {authMode === 'forgot_password' ? (
-              <button
-                type="button"
-                className="underline-offset-4 hover:underline"
-                onClick={() => setAuthMode('sign_in')}
-              >
-                {t('header.auth.switchBackToSignIn')}
-              </button>
-            ) : null}
-          </div>
-          <DialogFooter>
-            {authMode === 'sign_in' ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleResendVerification}
-                disabled={isSubmittingAuth}
-              >
-                <MailCheck className="h-4 w-4" aria-hidden />
-                {t('header.auth.resendVerification')}
-              </Button>
-            ) : null}
-            <Button type="button" variant="outline" onClick={closeAuthDialog}>
-              {t('header.auth.cancel')}
-            </Button>
-            <Button type="button" onClick={handleSubmitAuth} disabled={isSubmittingAuth}>
-              {isSubmittingAuth ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <LogIn className="h-4 w-4" aria-hidden />
-              )}
-              {authMode === 'sign_up'
-                ? t('header.auth.createAccount')
-                : authMode === 'forgot_password'
-                  ? t('header.auth.sendResetPassword')
-                  : authMode === 'reset_password'
-                    ? t('header.auth.resetPassword')
-                    : t('header.auth.signIn')}
-            </Button>
-          </DialogFooter>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>{t('header.auth.dialogTitle')}</DialogTitle>
+                <DialogDescription>{authDialogDescription}</DialogDescription>
+              </DialogHeader>
+              {authMode === 'sign_up' ? (
+                <div className="space-y-2">
+                  <label htmlFor="auth-name" className="text-sm font-medium text-foreground">
+                    {t('header.auth.nameLabel')}
+                  </label>
+                  <Input
+                    id="auth-name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder={t('header.auth.namePlaceholder')}
+                    autoComplete="name"
+                  />
+                </div>
+              ) : null}
+              <div className="space-y-2">
+                <label htmlFor="auth-email" className="text-sm font-medium text-foreground">
+                  {t('header.auth.emailLabel')}
+                </label>
+                <Input
+                  id="auth-email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder={t('header.auth.emailPlaceholder')}
+                  autoComplete="email"
+                />
+              </div>
+              {authMode === 'sign_in' || authMode === 'sign_up' ? (
+                <div className="space-y-2">
+                  <label htmlFor="auth-password" className="text-sm font-medium text-foreground">
+                    {t('header.auth.passwordLabel')}
+                  </label>
+                  <Input
+                    id="auth-password"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder={t('header.auth.passwordPlaceholder')}
+                    autoComplete={authMode === 'sign_in' ? 'current-password' : 'new-password'}
+                  />
+                </div>
+              ) : null}
+              {authMode === 'reset_password' ? (
+                <div className="space-y-2">
+                  <label htmlFor="reset-password" className="text-sm font-medium text-foreground">
+                    {t('header.auth.newPasswordLabel')}
+                  </label>
+                  <Input
+                    id="reset-password"
+                    type="password"
+                    value={resetPassword}
+                    onChange={(event) => setResetPassword(event.target.value)}
+                    placeholder={t('header.auth.passwordPlaceholder')}
+                    autoComplete="new-password"
+                  />
+                </div>
+              ) : null}
+              {authMode === 'sign_up' ? (
+                TURNSTILE_SITE_KEY ? (
+                  <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={setTurnstileToken} />
+                ) : (
+                  <p className="text-sm text-destructive">
+                    {t('header.auth.turnstileNotConfigured')}
+                  </p>
+                )
+              ) : null}
+              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                {authMode !== 'reset_password' ? (
+                  <button
+                    type="button"
+                    className="underline-offset-4 hover:underline"
+                    onClick={() => {
+                      setTurnstileToken(null);
+                      setAuthMode(authMode === 'sign_up' ? 'sign_in' : 'sign_up');
+                    }}
+                  >
+                    {authMode === 'sign_up'
+                      ? t('header.auth.switchToSignIn')
+                      : t('header.auth.switchToSignUp')}
+                  </button>
+                ) : null}
+                {authMode === 'sign_in' ? (
+                  <button
+                    type="button"
+                    className="underline-offset-4 hover:underline"
+                    onClick={() => setAuthMode('forgot_password')}
+                  >
+                    {t('header.auth.switchToForgotPassword')}
+                  </button>
+                ) : null}
+                {authMode === 'forgot_password' ? (
+                  <button
+                    type="button"
+                    className="underline-offset-4 hover:underline"
+                    onClick={() => setAuthMode('sign_in')}
+                  >
+                    {t('header.auth.switchBackToSignIn')}
+                  </button>
+                ) : null}
+              </div>
+              <DialogFooter>
+                {authMode === 'sign_in' ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleResendVerification}
+                    disabled={isSubmittingAuth}
+                  >
+                    <MailCheck className="h-4 w-4" aria-hidden />
+                    {t('header.auth.sendVerificationCode')}
+                  </Button>
+                ) : null}
+                <Button type="button" variant="outline" onClick={closeAuthDialog}>
+                  {t('header.auth.cancel')}
+                </Button>
+                <Button type="button" onClick={handleSubmitAuth} disabled={isSubmittingAuth}>
+                  {isSubmittingAuth ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <LogIn className="h-4 w-4" aria-hidden />
+                  )}
+                  {authMode === 'sign_up'
+                    ? t('header.auth.createAccount')
+                    : authMode === 'forgot_password'
+                      ? t('header.auth.sendResetPassword')
+                      : authMode === 'reset_password'
+                        ? t('header.auth.resetPassword')
+                        : t('header.auth.signIn')}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
       <Dialog open={verifyEmailDialogOpen} onOpenChange={setVerifyEmailDialogOpen}>

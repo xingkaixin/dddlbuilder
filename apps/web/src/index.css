@@ -1,6 +1,21 @@
 @import 'tailwindcss';
 @config "../tailwind.config.js";
 
+@theme {
+  --animate-caret-blink: caret-blink 1.25s ease-out infinite;
+  @keyframes caret-blink {
+    0%,
+    70%,
+    100% {
+      opacity: 1;
+    }
+    20%,
+    50% {
+      opacity: 0;
+    }
+  }
+}
+
 /* transitions-dev — copy this :root block into your project once.
    Every transition snippet reads from these semantic names. */
 :root {

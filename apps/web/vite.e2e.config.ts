@@ -36,6 +36,9 @@ const e2ePagePlugin = (): Plugin => ({
 export default mergeConfig(
   baseConfig,
   defineConfig({
+    define: {
+      'import.meta.env.VITE_TURNSTILE_SITE_KEY': JSON.stringify('1x00000000000000000000AA'),
+    },
     plugins: [e2ePagePlugin()],
     preview: {
       headers: {

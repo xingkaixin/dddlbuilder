@@ -50,7 +50,7 @@ Opening a shared link displays an alert stating "Share link does not exist or ha
 - Workspace reports "Sync Failed" or presents conflict alerts.
 
 ### Troubleshooting Steps
-1. **Email Verification**: Check your inbox (including spam folders) for the activation link and click it to activate your account.
+1. **Email Verification Code**: Enter the six-digit code from your email to verify your address and sign in automatically. Codes expire after 10 minutes. If the email is missing, check your spam folder or resend after the countdown ends. Use the latest code after resending.
 2. **Rate Limiting Guard**: If prompted with "Too many requests", wait 1–2 minutes before retrying to clear temporary security rate limits.
 3. **Trigger Manual Sync**: Go to "Settings > Workspace Sync", click "Sync Now", and review conflict details if multi-device edits diverged.
 
