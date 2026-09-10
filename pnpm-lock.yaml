@@ -123,6 +123,9 @@ importers:
       '@ddlbuilder/tsconfig':
         specifier: workspace:*
         version: link:packages/tsconfig
+      '@oxlint/plugins':
+        specifier: 1.81.0
+        version: 1.81.0
       '@playwright/test':
         specifier: ^1.62.1
         version: 1.62.1
@@ -234,6 +237,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      effect:
+        specifier: 4.0.0-rc.112
+        version: 4.0.0-rc.112
       fflate:
         specifier: 0.8.3
         version: 0.8.3
@@ -2006,6 +2012,10 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@oxlint/plugins@1.81.0':
+    resolution: {integrity: sha512-HhD8kd3r6XpelZkhxhRty/po8V6yK1VV63Eq4kSsOS2IoHUywG3DV2EX+z/ZHw46aLI74Y6aA604NRiAqLKW9w==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@playwright/test@1.62.1':
     resolution: {integrity: sha512-DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ==}
@@ -5571,6 +5581,8 @@ snapshots:
 
   '@oxlint/binding-win32-x64-msvc@1.81.0':
     optional: true
+
+  '@oxlint/plugins@1.81.0': {}
 
   '@playwright/test@1.62.1':
     dependencies:

@@ -21,6 +21,11 @@
       "outputs": ["coverage/**"]
     },
     "lint": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/.oxlintrc.json",
+        "$TURBO_ROOT$/tools/oxlint/anti-slop/**"
+      ],
       "cache": true
     },
     "lint:fix": {

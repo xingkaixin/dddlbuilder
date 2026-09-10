@@ -29,7 +29,7 @@
     "lint:fix": "turbo run lint:fix && oxlint --type-aware --tsconfig tsconfig.oxlint.json --fix scripts e2e server.ts apps/web/vite*.config.ts vitest.config.ts playwright*.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json && oxfmt --write scripts e2e server.ts apps/web/vite*.config.ts vitest.config.ts playwright*.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
     "format": "turbo run format && oxfmt --write scripts e2e server.ts apps/web/vite*.config.ts vitest.config.ts playwright*.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
     "preview": "pnpm run --dir apps/web preview",
-    "test": "turbo run test",
+    "test": "pnpm run test:lint && turbo run test",
     "test:web": "pnpm --filter @ddlbuilder/web test",
     "test:worker": "pnpm --filter @ddlbuilder/worker test",
     "test:ddl-core": "pnpm --filter @ddlbuilder/ddl-core test",
@@ -40,7 +40,8 @@
     "typecheck": "turbo run typecheck && tsc --noEmit -p tsconfig.node.json && pnpm run typecheck:tests",
     "typecheck:tests": "tsc --noEmit -p apps/web/tsconfig.test.json && tsc --noEmit -p apps/worker/tsconfig.test.json && tsc --noEmit -p packages/ddl-core/tsconfig.test.json && tsc --noEmit -p packages/workspace-core/tsconfig.test.json",
     "test:runtime": "pnpm exec tsx scripts/verify-d1-runtime.ts",
-    "test:e2e:runtime": "playwright test --config playwright.runtime.config.ts"
+    "test:e2e:runtime": "playwright test --config playwright.runtime.config.ts",
+    "test:lint": "node --test --import tsx tools/oxlint/anti-slop/rules/*.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*",
+    "@oxlint/plugins": "1.81.0",
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.4.1",
     "@vitest/coverage-v8": "^5.0.0",
