@@ -209,6 +209,8 @@ describe('requestGenerateTable', () => {
 
   it('should parse final generated schema and stream updates', async () => {
     const updates: string[] = [];
+    // SAFETY: This test double implements the Response fields consumed by the streaming/error branch.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The minimal Response fixture models only fields consumed by this boundary test.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
@@ -270,6 +272,8 @@ describe('requestGenerateTable', () => {
   });
 
   it('should throw non-ok response error', async () => {
+    // SAFETY: This test double implements the Response fields consumed by the streaming/error branch.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The minimal Response fixture models only fields consumed by this boundary test.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: false,
       status: 500,

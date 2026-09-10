@@ -15,16 +15,22 @@ import { runIndexedDbRequest } from './indexedDbTransaction';
 
 export type { FieldTemplate, TemplateField };
 
-export const toTemplateFields = (rows: Array<Partial<FieldRow>>): TemplateField[] =>
-  rows
-    .filter((row) => row.fieldName?.trim())
-    .map(({ id: _id, ...field }) => ({
+export const toTemplateFields = (rows: Array<Partial<FieldRow>>): TemplateField[] => {
+  const fields: TemplateField[] = [];
+
+  for (const { id: _id, ...field } of rows) {
+    if (!field.fieldName?.trim()) continue;
+    fields.push({
       ...structuredClone(field),
-      fieldName: field.fieldName?.trim() || '',
+      fieldName: field.fieldName.trim(),
       fieldType: field.fieldType?.trim() || '',
       fieldComment: field.fieldComment?.trim(),
       nullable: normalizeFieldNullable(field.nullable),
-    }));
+    });
+  }
+
+  return fields;
+};
 
 export const instantiateTemplateFields = (fields: TemplateField[]): FieldRow[] =>
   fields.map((field) => ({

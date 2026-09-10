@@ -58,6 +58,8 @@ describe('tableVersions', () => {
       normalizedName: 'legacy',
     };
     const state = createMockState({
+      // SAFETY: this fixture intentionally uses the legacy index fields decoded by createVersion.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- legacy snapshots lack the current `kind` field.
       indexes: [
         {
           id: 'uq',
@@ -326,6 +328,8 @@ describe('tableVersions', () => {
         close: vi.fn(),
       };
 
+      // SAFETY: the fake database implements the transaction and close methods used by runWithStore.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture intentionally omits unrelated IndexedDB members.
       vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
 
       // 1. request.onerror fallback
@@ -368,6 +372,8 @@ describe('tableVersions', () => {
         transaction: () => mockTx,
         close: vi.fn(),
       };
+      // SAFETY: the fake database implements the transaction and close methods used by runWithStore.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture intentionally omits unrelated IndexedDB members.
       vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
 
       mockTx = {

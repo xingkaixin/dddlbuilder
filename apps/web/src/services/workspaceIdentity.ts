@@ -3,6 +3,18 @@ import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 export const WORKSPACE_IDENTITY_KEY = 'ddlbuilder:workspace-identity:v1';
 const IDENTITY_CHANGED = 'ddlbuilder:workspace-identity-changed';
 
+const isWorkspaceIdentityRecord = (
+  value: unknown,
+): value is { userId: string; workspaceId: string } =>
+  typeof value === 'object' &&
+  value !== null &&
+  'userId' in value &&
+  typeof value.userId === 'string' &&
+  value.userId.trim().length > 0 &&
+  'workspaceId' in value &&
+  typeof value.workspaceId === 'string' &&
+  value.workspaceId.trim().length > 0;
+
 export const readWorkspaceIdentity = (): string | null => {
   try {
     return localStorage.getItem(WORKSPACE_IDENTITY_KEY);
@@ -17,17 +29,7 @@ export const parseWorkspaceIdentity = (value: string | null): UserWorkspaceScope
   try {
     const parsed: unknown = JSON.parse(value);
 
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      !('userId' in parsed) ||
-      typeof parsed.userId !== 'string' ||
-      !parsed.userId.trim() ||
-      !('workspaceId' in parsed) ||
-      typeof parsed.workspaceId !== 'string' ||
-      !parsed.workspaceId.trim()
-    )
-      return null;
+    if (!isWorkspaceIdentityRecord(parsed)) return null;
 
     return { kind: 'user', userId: parsed.userId, workspaceId: parsed.workspaceId };
   } catch {

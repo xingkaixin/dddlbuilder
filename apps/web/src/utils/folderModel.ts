@@ -67,9 +67,12 @@ export const buildFolderDeletionPlan = <
   const folderIds = [folderId, ...getFolderDescendantIds(folders, folderId)];
   const affected = new Set(folderIds);
 
-  const itemsToTrash = items
-    .filter((item) => item.folderId && affected.has(item.folderId) && item.trashedAt == null)
-    .map((item) => ({ ...item, trashedAt: now, updatedAt: now }));
+  const itemsToTrash: Item[] = [];
+
+  for (const item of items) {
+    if (!item.folderId || !affected.has(item.folderId) || item.trashedAt != null) continue;
+    itemsToTrash.push({ ...item, trashedAt: now, updatedAt: now });
+  }
 
   return { folderIds, itemsToTrash };
 };

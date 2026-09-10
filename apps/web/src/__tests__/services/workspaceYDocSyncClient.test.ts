@@ -102,6 +102,7 @@ const firstSocket = () => {
   const socket = MockWebSocket.instances[0];
   expect(socket).toBeDefined();
 
+  // SAFETY: the preceding assertion verifies that the first registered instance exists.
   return socket as MockWebSocket;
 };
 
@@ -109,6 +110,7 @@ const sentMessage = (socket: MockWebSocket, index: number) => {
   const message = socket.sent[index];
   expect(message).toBeInstanceOf(ArrayBuffer);
 
+  // SAFETY: the preceding assertion verifies that the sent payload is an ArrayBuffer.
   return message as ArrayBuffer;
 };
 
@@ -207,7 +209,18 @@ describe('WorkspaceYDocSyncClient', () => {
 
     const updateMessage = sentMessage(socket, 1);
     const individualUpdateBytes = updates.reduce((total, update) => total + update.byteLength, 0);
-    const metric = JSON.parse(String(info.mock.calls[0]?.[0])) as Record<string, unknown>;
+
+    type BatchMetric = {
+      event: string;
+      workspaceId: string;
+      updateCount: number;
+      messageBytes: number;
+      durationMs: number;
+      updateBytes: number;
+    };
+
+    // SAFETY: this test controls the logger payload and asserts every field of the batch metric below.
+    const metric = JSON.parse(String(info.mock.calls[0]?.[0])) as BatchMetric;
 
     expect(metric).toMatchObject({
       event: 'workspace_yjs_client_batch',
@@ -329,7 +342,7 @@ describe('WorkspaceYDocSyncClient', () => {
       socket.open();
       syncWithServer(socket, new Y.Doc());
       doc.getMap('fields').set('unsynced', 'keep me');
-      const pending = client.flushAndWaitForSync().catch((error: unknown) => error);
+      const pending = client.flushAndWaitForSync().catch((error) => error);
 
       if (failure === 'timeout') vi.advanceTimersByTime(WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
       else if (failure === 'offline') window.dispatchEvent(new Event('offline'));
@@ -507,6 +520,7 @@ describe('WorkspaceYDocSyncClient', () => {
 
     window.dispatchEvent(new Event('online'));
     await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    // SAFETY: the preceding waitFor verifies that the reconnect instance exists.
     const activeSocket = MockWebSocket.instances[1] as MockWebSocket;
     activeSocket.open();
     expect(statuses.at(-1)).toMatchObject({ state: 'connected' });

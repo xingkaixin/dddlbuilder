@@ -118,6 +118,8 @@ describe('normalizeAiEnumValue', () => {
   });
 
   it('normalizeGeneratedTableSchema 应处理 fields 数组与非数组输入', () => {
+    // SAFETY: This fixture intentionally models malformed wire fields to exercise the normalizer boundary.
+    // oxlint-disable anti-slop/no-chained-type-assertions -- This fixture must cross the typed API with malformed wire values.
     const normalized = normalizeGeneratedTableSchema(
       {
         tableName: 'users',
@@ -135,9 +137,10 @@ describe('normalizeAiEnumValue', () => {
           },
         ],
         designDecisions: [{ title: '主键策略', rationale: '使用自增主键' }, { title: '无效项' }],
-      } as any,
+      } as unknown as GeneratedTableSchema,
       'mysql',
     );
+    // oxlint-enable anti-slop/no-chained-type-assertions
 
     expect(normalized.fields[0]).toMatchObject({
       nullable: false,
@@ -146,15 +149,18 @@ describe('normalizeAiEnumValue', () => {
     });
     expect(normalized.designDecisions).toEqual([{ title: '主键策略', rationale: '使用自增主键' }]);
 
+    // SAFETY: This fixture intentionally models a non-array fields payload to exercise the normalizer boundary.
+    // oxlint-disable anti-slop/no-chained-type-assertions -- This fixture must cross the typed API with a malformed wire value.
     const noFields = normalizeGeneratedTableSchema(
       {
         tableName: 'users',
         tableComment: '',
         dbType: 'mysql',
         fields: 'not-array',
-      } as any,
+      } as unknown as GeneratedTableSchema,
       'mysql',
     );
+    // oxlint-enable anti-slop/no-chained-type-assertions
 
     expect(noFields.fields).toEqual([]);
   });

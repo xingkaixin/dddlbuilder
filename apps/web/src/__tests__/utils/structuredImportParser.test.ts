@@ -178,8 +178,10 @@ describe('structuredImportParser', () => {
   });
 
   it('rejects excessively nested JSON Schema compositions', () => {
+    // oxlint-disable-next-line anti-slop/no-known-value-widening, anti-slop/no-unsafe-dictionary-type -- This fixture intentionally builds arbitrary nested JSON Schema nodes.
     let property: Record<string, unknown> = { type: 'integer' };
 
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- Each iteration widens the fixture to the next nested schema node.
     for (let depth = 0; depth <= 32; depth += 1) property = { allOf: [property] };
 
     expect(() =>

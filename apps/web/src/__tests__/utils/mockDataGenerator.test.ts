@@ -148,7 +148,7 @@ describe('generateMockData', () => {
     const parsed = JSON.parse(result.json);
 
     for (const row of parsed) {
-      expect(typeof row.is_active).toBe('number');
+      expect(row.is_active).toBeTypeOf('number');
       expect([0, 1]).toContain(row.is_active);
     }
   });
@@ -159,7 +159,7 @@ describe('generateMockData', () => {
     const parsed = JSON.parse(result.json);
 
     for (const row of parsed) {
-      expect(typeof row.is_deleted).toBe('number');
+      expect(row.is_deleted).toBeTypeOf('number');
       expect([0, 1]).toContain(row.is_deleted);
     }
   });
@@ -184,7 +184,7 @@ describe('generateMockData', () => {
     const fields = [createField({ name: 'metadata', type: 'json', defaultKind: 'none' })];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 1 });
     const parsed = JSON.parse(result.json);
-    expect(typeof parsed[0].metadata).toBe('string');
+    expect(parsed[0].metadata).toBeTypeOf('string');
     const jsonValue = JSON.parse(parsed[0].metadata);
     expect(jsonValue).toHaveProperty('id');
     expect(jsonValue).toHaveProperty('value');
@@ -229,7 +229,7 @@ describe('generateMockData', () => {
     const parsed = JSON.parse(result.json);
 
     for (const row of parsed) {
-      expect(typeof row.u_name).toBe('string');
+      expect(row.u_name).toBeTypeOf('string');
       expect(row.u_name.length).toBeGreaterThan(0);
     }
   });
@@ -240,7 +240,7 @@ describe('generateMockData', () => {
     const parsed = JSON.parse(result.json);
 
     for (const row of parsed) {
-      expect(typeof row.price).toBe('number');
+      expect(row.price).toBeTypeOf('number');
       const decimalStr = String(row.price);
       const decimalPlaces = decimalStr.includes('.') ? decimalStr.split('.')[1].length : 0;
       expect(decimalPlaces).toBeLessThanOrEqual(2);
@@ -253,7 +253,7 @@ describe('generateMockData', () => {
     const parsed = JSON.parse(result.json);
 
     for (const row of parsed) {
-      expect(typeof row.score).toBe('number');
+      expect(row.score).toBeTypeOf('number');
     }
   });
 

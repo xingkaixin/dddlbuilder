@@ -274,6 +274,8 @@ type SemanticHint =
   | 'year'
   | null;
 
+type MockDataValue = string | number | boolean | null | undefined;
+
 const SEMANTIC_PATTERNS: Array<{ pattern: RegExp; hint: SemanticHint }> = [
   { pattern: /name|姓名|名称|名字|真实名/i, hint: 'chinese_name' },
   { pattern: /phone|mobile|tel|电话|手机|联系方式/i, hint: 'phone' },
@@ -363,7 +365,7 @@ function generateSemanticValue(field: NormalizedField): string | number | undefi
   return undefined;
 }
 
-const INTEGER_BITS: Record<string, number> = {
+const INTEGER_BITS = {
   tinyint: 8,
   smallint: 16,
   mediumint: 24,
@@ -372,7 +374,7 @@ const INTEGER_BITS: Record<string, number> = {
   smallserial: 16,
   serial: 32,
   bigserial: 64,
-};
+} satisfies Record<string, number>;
 
 function generateDecimalValue(args: string[], preferred: number): number {
   const precision = Number(args[0] ?? 10);
@@ -396,7 +398,7 @@ function generateValueForField(
   field: NormalizedField,
   rowIndex: number,
   dbType: DatabaseType,
-): unknown {
+): MockDataValue {
   if (field.nullable && field.defaultKind === 'none' && Math.random() < 0.1) return null;
 
   const parsed = parseFieldType(field.type);
@@ -442,7 +444,8 @@ function generateValueForField(
     return randInt(0, 2 ** bits - 1);
   }
 
-  const bits = INTEGER_BITS[baseType];
+  // SAFETY: unknown parsed base types produce undefined and use the generic fallback below.
+  const bits = INTEGER_BITS[baseType as keyof typeof INTEGER_BITS];
 
   if (bits) {
     const unsigned = parsed.unsigned || (family === 'sqlserver' && baseType === 'tinyint');
@@ -475,14 +478,16 @@ function generateValueForField(
 
 // ── 导出格式 ──────────────────────────────────────────────────────────────────
 
-function toStr(value: unknown): string {
+// Values reaching export formatting are the finite scalar generator domain.
+// oxlint-disable anti-slop/no-runtime-typeof
+function toStr(value: MockDataValue): string {
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
 
   return JSON.stringify(value) ?? '';
 }
 
-function formatSqlValue(value: unknown): string {
+function formatSqlValue(value: MockDataValue): string {
   if (value === null || value === undefined) return 'NULL';
   if (typeof value === 'number') return String(value);
   if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
@@ -490,8 +495,9 @@ function formatSqlValue(value: unknown): string {
 
   return `'${str.replace(/'/g, "''")}'`;
 }
+// oxlint-enable anti-slop/no-runtime-typeof
 
-function formatCsvValue(value: unknown): string {
+function formatCsvValue(value: MockDataValue): string {
   if (value === null || value === undefined) return '';
   const str = toStr(value);
 
@@ -531,8 +537,8 @@ export function generateMockData(
   }
 
   // 生成 rowCount 行数据
-  const rows: Record<string, unknown>[] = Array.from({ length: rowCount }, (_, i) => {
-    const row: Record<string, unknown> = {};
+  const rows: Array<Record<string, MockDataValue>> = Array.from({ length: rowCount }, (_, i) => {
+    const row: Record<string, MockDataValue> = {};
 
     for (const field of validFields) {
       row[field.name] = generateValueForField(field, i, dbType);

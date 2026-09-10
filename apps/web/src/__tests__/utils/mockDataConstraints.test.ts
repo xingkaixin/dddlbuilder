@@ -19,7 +19,10 @@ const field = (
 
 const generate = (column: NormalizedField, dbType: DatabaseType = 'mysql') => {
   const result = generateMockData('sample', '', [column], dbType, { rowCount: 3 });
-  const rows = JSON.parse(result.json) as Record<string, unknown>[];
+
+  type GeneratedScalar = string | number | boolean | null;
+
+  const rows: Record<string, GeneratedScalar>[] = JSON.parse(result.json);
 
   return {
     ...result,
@@ -55,7 +58,8 @@ describe('Mock data field constraints', () => {
     ['x', 'char', 1],
   ])('bounds %s values by %s', (name, type, length) => {
     for (const value of generate(field(name, type)).values) {
-      expect(typeof value).toBe('string');
+      expect(value).toBeTypeOf('string');
+      // SAFETY: The generator contract for char/varchar fields produces string values; the assertion is only for Array.from's input type.
       expect(Array.from(value as string).length).toBeLessThanOrEqual(length);
     }
   });
@@ -78,6 +82,7 @@ describe('Mock data field constraints', () => {
   ])('generates finite values within %s without overflowing arithmetic', (type, exclusiveLimit) => {
     for (const value of generate(field('price', type)).values) {
       expect(Number.isFinite(value)).toBe(true);
+      // SAFETY: The generator contract for numeric fields produces finite numbers, asserted immediately above.
       expect(Math.abs(value as number)).toBeLessThan(exclusiveLimit);
     }
   });
@@ -130,19 +135,22 @@ describe('Mock data field constraints', () => {
 
   it('enforces string limits on generated defaults as well as semantic values', () => {
     for (const value of generate(field('id', 'varchar(8)', { defaultKind: 'uuid' })).values) {
+      // SAFETY: The uuid default generator returns its fixed-width string representation.
       expect(Array.from(value as string)).toHaveLength(8);
     }
   });
 
   it('uses date and structured types instead of conflicting name hints', () => {
     expect(generate(field('year', 'date')).values[0]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // SAFETY: The JSON field generator serializes structured content as a JSON string.
     expect(() => JSON.parse(generate(field('content', 'json')).values[0] as string)).not.toThrow();
     expect(generate(field('username', 'uuid')).values[0]).toMatch(/^[\da-f-]{36}$/);
   });
 
   it('renders PostgreSQL boolean values as boolean SQL literals', () => {
     const output = generate(field('status', 'boolean'), 'postgresql');
-    expect(output.values.every((value: unknown) => typeof value === 'boolean')).toBe(true);
+
+    for (const value of output.values) expect(value).toBeTypeOf('boolean');
     expect(output.insertSql).toMatch(/\((?:TRUE|FALSE)\)/);
   });
 });

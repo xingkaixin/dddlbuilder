@@ -17,10 +17,9 @@ describe('requestSqlParse', () => {
       authObjects: [],
     };
 
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ result: parsedResult }),
-    } as unknown as Response);
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({ result: parsedResult }));
 
     const result = await requestSqlParse({
       sql: 'CREATE TABLE users(id INT);',
@@ -42,11 +41,9 @@ describe('requestSqlParse', () => {
     '%s 应保留业务错误的安全标识与文案',
     async (parse) => {
       const message = '暂不支持导入 生成列，无法完整保留该定义。';
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: vi.fn().mockResolvedValue({ error: message, code: 'SQL_PARSE_FAILED' }),
-      } as unknown as Response);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        Response.json({ error: message, code: 'SQL_PARSE_FAILED' }, { status: 400 }),
+      );
 
       const request = parse({ sql: 'invalid', dbType: 'mysql' });
 
@@ -62,11 +59,7 @@ describe('requestSqlParse', () => {
   it.each([requestSqlParse, requestMultiSqlParse])(
     '%s 应将无有效错误体的 HTTP 失败保留为 ApiError',
     async (parse) => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-        ok: false,
-        status: 500,
-        json: vi.fn().mockResolvedValue(null),
-      } as unknown as Response);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json(null, { status: 500 }));
 
       const request = parse({ sql: 'invalid', dbType: 'mysql' });
 
@@ -76,10 +69,7 @@ describe('requestSqlParse', () => {
   );
 
   it('响应结构不包含 result 时应抛出格式错误', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ foo: 'bar' }),
-    } as unknown as Response);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ foo: 'bar' }));
 
     await expect(
       requestSqlParse({ sql: 'CREATE TABLE t(id INT);', dbType: 'mysql' }),

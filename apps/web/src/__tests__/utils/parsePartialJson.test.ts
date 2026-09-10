@@ -8,8 +8,10 @@ describe('parsePartialJson', () => {
   });
 
   it('should return null for null or undefined input', () => {
-    expect(parsePartialJson(null as unknown as string)).toBe(null);
-    expect(parsePartialJson(undefined as unknown as string)).toBe(null);
+    // SAFETY: These calls intentionally exercise the runtime guard with values outside the declared API.
+    expect(parsePartialJson(null as never)).toBe(null);
+    // SAFETY: This call intentionally exercises the runtime guard with a value outside the declared API.
+    expect(parsePartialJson(undefined as never)).toBe(null);
   });
 
   it('should parse complete json and normalize fields', () => {

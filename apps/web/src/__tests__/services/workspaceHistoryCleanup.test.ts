@@ -40,6 +40,30 @@ const createRecord = (tableId: string, normalizedName: string): SavedTableRecord
   updatedAt: 1,
 });
 
+type TransactionFixture = {
+  abort: () => void;
+  objectStore: (storeName: string) => {
+    get?: () => Partial<IDBRequest>;
+    put?: () => void;
+    index?: () => { getAll: () => Partial<IDBRequest> };
+    delete?: () => void;
+  };
+  onerror: null;
+  onabort: null;
+  oncomplete: null;
+};
+
+type IndexedDbFixture = {
+  transaction: (...args: readonly never[]) => TransactionFixture;
+  close: () => void;
+};
+
+const asIndexedDb = (value: IndexedDbFixture): IDBDatabase => {
+  // SAFETY: The fixture implements every IndexedDB member exercised by the cleanup transaction.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The browser interface is intentionally reduced to the tested transaction surface.
+  return value as unknown as IDBDatabase;
+};
+
 describe('workspaceHistoryCleanup', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
@@ -113,21 +137,21 @@ describe('workspaceHistoryCleanup', () => {
       onabort: null,
       oncomplete: null,
     };
-    const database = {
+    const database = asIndexedDb({
       transaction: vi.fn(() => transaction),
       close: vi.fn(),
-    };
-    const openDb = vi
-      .spyOn(workspaceDb, 'openDb')
-      .mockResolvedValueOnce(database as unknown as IDBDatabase);
+    });
+    const openDb = vi.spyOn(workspaceDb, 'openDb').mockResolvedValueOnce(database);
 
     const finalization = finalizeWorkspaceEntityDeletion(target, operationId);
     await Promise.resolve();
     Object.assign(metaRequest, {
       result: createWorkspaceEntityDeletionMarker(target, 'deleting', operationId),
     });
+    // SAFETY: The request fixture is invoked only through the IDBRequest callback contract.
     metaRequest.onsuccess?.call(metaRequest as IDBRequest, new Event('success'));
     Object.assign(reviewRequest, { error: new Error('review cleanup failed') });
+    // SAFETY: The request fixture is invoked only through the IDBRequest callback contract.
     reviewRequest.onerror?.call(reviewRequest as IDBRequest, new Event('error'));
 
     await expect(finalization).rejects.toThrow('review cleanup failed');

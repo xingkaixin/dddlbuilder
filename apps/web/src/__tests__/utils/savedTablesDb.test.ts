@@ -17,6 +17,13 @@ import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
+type OpenRequest = {
+  error: DOMException | null;
+  onsuccess: (() => void) | null;
+  onerror: (() => void) | null;
+  onupgradeneeded: ((event: IDBVersionChangeEvent) => void) | null;
+};
+
 const anonymousScope = getAnonymousWorkspaceScope();
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
@@ -36,6 +43,8 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
 describe('savedTablesDb', () => {
   it('decodes index kinds from legacy saved tables', async () => {
     const state = createState({
+      // SAFETY: This fixture models a legacy index shape accepted by the decoder before kind normalization.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Legacy data is intentionally outside the current index type.
       indexes: [
         {
           id: 'pk',
@@ -228,14 +237,7 @@ describe('savedTablesDb', () => {
   });
 
   it('should fallback to default open error when request.error is null', async () => {
-    const request: {
-      result?: unknown;
-      error: unknown;
-      onsuccess: null | (() => void);
-      onerror: null | (() => void);
-      onupgradeneeded: null | ((event: IDBVersionChangeEvent) => void);
-      transaction?: unknown;
-    } = {
+    const request: OpenRequest = {
       error: null,
       onsuccess: null,
       onerror: null,
@@ -247,7 +249,8 @@ describe('savedTablesDb', () => {
         open: vi.fn(() => {
           queueMicrotask(() => request.onerror?.());
 
-          return request;
+          // SAFETY: This fake exposes the callback and error members consumed by openDb.
+          return request as IDBOpenDBRequest;
         }),
       },
       configurable: true,

@@ -3,6 +3,8 @@ import { isAiStreamDebugEnabled } from '@/config/featureFlags';
 const STORAGE_KEY = 'ddlbuilder:ai-stream-debug';
 const LOG_PREFIX = '[AIStreamDebug]';
 
+// Debug payloads intentionally preserve provider-specific fields for local inspection.
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type
 export type AiStreamDebugPayload = Record<string, unknown>;
 
 type AiStreamDebugOptions = {

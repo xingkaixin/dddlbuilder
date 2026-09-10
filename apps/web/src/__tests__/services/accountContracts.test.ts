@@ -11,6 +11,7 @@ import {
 
 afterEach(() => vi.restoreAllMocks());
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Response fixtures intentionally pass malformed external payloads.
 const reply = (data: unknown, status = 200) =>
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json(data, { status }));
 

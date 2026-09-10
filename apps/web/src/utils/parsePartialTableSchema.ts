@@ -5,6 +5,9 @@ import {
   type PartialTableSchema,
 } from '@ddlbuilder/shared-types/ai-generate';
 
+// This module incrementally decodes provider JSON that may be incomplete at every update.
+// oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
+
 /**
  * Parse partial JSON for GeneratedTableSchema structure.
  * Extracts fields as they stream in, similar to parsePartialJson for ReviewResult.
@@ -211,6 +214,7 @@ function normalizeTableSchema(result: unknown): PartialTableSchema | null {
     return null;
   }
 
+  // SAFETY: normalizeTableSchema only reads optional fields from the parsed JSON object before schema predicates validate arrays.
   const obj = result as Record<string, unknown>;
   const normalized: PartialTableSchema = {};
 

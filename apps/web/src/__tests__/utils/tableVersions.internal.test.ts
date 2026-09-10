@@ -3,12 +3,17 @@ import { describe, expect, it, vi } from 'vitest';
 type Behavior = 'get_request_error_null' | 'get_tx_error_null' | 'idle';
 
 const mocks = vi.hoisted(() => ({
+  // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
   behavior: 'idle' as Behavior,
   openDb: vi.fn(async () => {
     const createRequest = () => ({
+      // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
       result: undefined as any,
+      // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
       error: null as any,
+      // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
       onsuccess: null as null | (() => void),
+      // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
       onerror: null as null | (() => void),
     });
 
@@ -25,9 +30,13 @@ const mocks = vi.hoisted(() => ({
     };
 
     const createTransaction = () => ({
+      // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
       error: null as any,
+      // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
       onerror: null as null | (() => void),
+      // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
       onabort: null as null | (() => void),
+      // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
       oncomplete: null as null | (() => void),
       objectStore: () => ({
         get: () => {
@@ -39,6 +48,7 @@ const mocks = vi.hoisted(() => ({
             queueMicrotask(() => tx.onerror?.());
           }
 
+          // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
           return req as any;
         },
         index: () => ({
@@ -47,6 +57,7 @@ const mocks = vi.hoisted(() => ({
             req.result = [];
             completeRequest(req);
 
+            // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
             return req as any;
           },
           count: () => {
@@ -54,6 +65,7 @@ const mocks = vi.hoisted(() => ({
             req.result = 0;
             completeRequest(req);
 
+            // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
             return req as any;
           },
         }),
@@ -62,13 +74,17 @@ const mocks = vi.hoisted(() => ({
 
     const tx = createTransaction();
 
+    // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
     return {
+      // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
       transaction: () => tx as any,
       close: vi.fn(),
+      // SAFETY: This IndexedDB double provides the minimal event-shaped values exercised by the branch.
     } as any;
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- IndexedDB 模块替换提供可控请求和事务错误，覆盖内部错误回退分支。
 vi.mock('@/utils/workspaceDb', () => ({
   VERSION_STORE_NAME: 'table_versions',
   openDb: mocks.openDb,

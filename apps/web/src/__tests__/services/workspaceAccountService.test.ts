@@ -72,10 +72,12 @@ describe('workspaceAccountService', () => {
     markWorkspaceCleanupPending(scope);
 
     const blocked = vi.spyOn(indexedDB, 'deleteDatabase').mockImplementationOnce(() => {
+      // SAFETY: the fake request exposes only the nullable callback needed by the blocked branch.
       const request = { onblocked: null as (() => void) | null };
       queueMicrotask(() => request.onblocked?.());
 
-      return request as unknown as IDBOpenDBRequest;
+      // SAFETY: the fake request implements the onblocked callback consumed by clearLocalWorkspaceData.
+      return request as IDBOpenDBRequest;
     });
     await expect(clearLocalWorkspaceData(scope)).rejects.toThrow('Close other workspace tabs');
     expect(readWorkspaceCaches()).toEqual([{ ...scope, status: 'pending_cleanup' }]);
@@ -286,6 +288,7 @@ describe('workspaceAccountService', () => {
   });
 
   it('clears only the selected local workspace partition', async () => {
+    // SAFETY: the fake request only needs the onsuccess callback used by the deletion wrapper.
     const deletion = { onsuccess: null as (() => void) | null };
 
     const deleteDatabase = vi.fn(() => {

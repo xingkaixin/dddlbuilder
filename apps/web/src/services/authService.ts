@@ -1,5 +1,6 @@
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
 import { decodeMeResponse, type MeApiResponse } from '@ddlbuilder/shared-types/api';
+import * as Option from 'effect/Option';
 import { ApiError } from '@/services/apiError';
 
 export async function fetchCurrentUser(signal?: AbortSignal): Promise<MeApiResponse> {
@@ -16,7 +17,7 @@ export async function fetchCurrentUser(signal?: AbortSignal): Promise<MeApiRespo
 
   const decoded = decodeMeResponse(payload);
 
-  if (decoded._tag === 'None') throw new Error('Invalid user response');
+  if (Option.isNone(decoded)) throw new Error('Invalid user response');
 
   return decoded.value;
 }

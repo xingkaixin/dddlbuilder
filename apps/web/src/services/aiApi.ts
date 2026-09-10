@@ -1,9 +1,9 @@
 import i18n from '@/i18n';
-import type { ApiErrorCode } from '@ddlbuilder/shared-types/api';
+import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
 
 type ApiErrorPayload = {
   error?: string;
-  code?: ApiErrorCode;
+  code?: string;
 };
 
 export const buildAuthenticatedJsonHeaders = () => ({
@@ -29,8 +29,10 @@ export const getAIErrorMessage = (payload: ApiErrorPayload | null): string | nul
     return i18n.t('services.aiServiceUnavailable');
   }
 
-  if (typeof payload?.error === 'string' && payload.error.trim()) {
-    return payload.error;
+  const error = payload?.error;
+
+  if (error?.trim()) {
+    return error;
   }
 
   return null;
@@ -40,7 +42,7 @@ export const readAIErrorMessage = async (
   response: Response,
   fallbackKey: 'generationFailed' | 'reviewFailed' | 'explainFailed',
 ) => {
-  const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null;
+  const payload: ApiErrorPayload = decodeApiError(await response.json().catch(() => null));
 
   return (
     getAIErrorMessage(payload) ??

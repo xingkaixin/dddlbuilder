@@ -4,6 +4,7 @@ import {
   type CreditLedgerItem as WireCreditLedgerItem,
 } from '@ddlbuilder/shared-types/api';
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
+import * as Option from 'effect/Option';
 import { ApiError } from '@/services/apiError';
 
 export type CreditLedgerItem = Omit<WireCreditLedgerItem, 'createdAt'> & { createdAt: number };
@@ -37,7 +38,7 @@ export async function fetchCreditBalance(signal?: AbortSignal): Promise<number> 
 
   const decoded = decodeCreditBalanceResponse(payload);
 
-  if (decoded._tag === 'None') throw new Error('Invalid credit balance response');
+  if (Option.isNone(decoded)) throw new Error('Invalid credit balance response');
 
   return decoded.value.balance;
 }
@@ -68,7 +69,7 @@ export async function fetchCreditLedger(
 
   const decoded = decodeCreditLedgerResponse(payload);
 
-  if (decoded._tag === 'None') throw new Error('Invalid credit ledger response');
+  if (Option.isNone(decoded)) throw new Error('Invalid credit ledger response');
 
   return {
     items: decoded.value.items.map((item) => ({ ...item, createdAt: Date.parse(item.createdAt) })),

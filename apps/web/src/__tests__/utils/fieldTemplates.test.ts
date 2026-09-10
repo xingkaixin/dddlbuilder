@@ -107,7 +107,9 @@ describe('fieldTemplates', () => {
 
   it('should normalize nullable through the shared normalizer', async () => {
     // 迁移前存的是中文枚举值，套用旧模板时要能正确读回
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- This helper models legacy persisted enum values.
     const legacyField = (fieldName: string, nullable: unknown) =>
+      // SAFETY: The fixture intentionally keeps the legacy nullable token for the decoder under test.
       ({ fieldName, fieldType: 'varchar(20)', nullable }) as Partial<FieldRow>;
 
     const template = await createTemplateFromFields('Nullable Fallback', [
@@ -177,13 +179,16 @@ describe('fieldTemplates', () => {
       },
       close,
     };
-    const request: {
+
+    type TestIndexedDbRequest = {
       result: unknown;
       error: unknown;
       onsuccess: null | (() => void);
       onerror: null | (() => void);
       onupgradeneeded: null | (() => void);
-    } = {
+    };
+
+    const request: TestIndexedDbRequest = {
       result: brokenDb,
       error: null,
       onsuccess: null,

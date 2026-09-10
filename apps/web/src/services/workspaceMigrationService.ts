@@ -4,6 +4,7 @@ import {
 } from '@ddlbuilder/shared-types/api-contracts';
 import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
+import * as Option from 'effect/Option';
 import type {
   WorkspaceMigrationPayload,
   WorkspaceMigrationSnapshot,
@@ -90,7 +91,7 @@ const requestWorkspaceMigration = async (
   if (!response.ok) throw new Error(decodeApiError(data).error ?? '迁移失败');
   const decoded = decodeWorkspaceMigrationResponse(data);
 
-  if (decoded._tag === 'None') throw new Error('迁移响应无效');
+  if (Option.isNone(decoded)) throw new Error('迁移响应无效');
 
   return decoded.value;
 };

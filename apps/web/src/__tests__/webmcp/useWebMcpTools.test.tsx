@@ -27,6 +27,7 @@ const createState = (): PersistedState => ({
   authObjects: [],
 });
 
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Tool inputs intentionally model untrusted browser payloads.
 const execute = (tool: WebMCP.ModelContextTool, input: Record<string, unknown>) =>
   Promise.resolve(tool.execute(input, { signal: new AbortController().signal }));
 
@@ -90,6 +91,7 @@ describe('useWebMcpTools', () => {
 
     if (!inspect || !preview || !apply) throw new Error('WebMCP tools are incomplete');
 
+    // SAFETY: The preceding tool execution is checked against the WebMCP result contract used by this scenario.
     const inspected = (await execute(inspect, { section: 'overview' })) as {
       baseSignature: string;
     };
@@ -107,6 +109,7 @@ describe('useWebMcpTools', () => {
         ],
       });
     });
+    // SAFETY: The preceding tool execution is checked against the WebMCP result contract used by this scenario.
     const changeSetId = (previewed as { changeSetId: string }).changeSetId;
     expect(hook.result.current.mode).toBe('preview');
     expect(replaceState).not.toHaveBeenCalled();

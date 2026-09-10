@@ -3,6 +3,7 @@ import { openDb } from '@/utils/workspaceDb';
 import { updateSavedTables } from '@/utils/savedTablesDb';
 
 function mockOpen() {
+  // SAFETY: The fake event slots are the only lifecycle properties consumed by openDb.
   const transaction = {
     error: new Error('写入失败'),
     onerror: null as (() => void) | null,
@@ -13,11 +14,13 @@ function mockOpen() {
       put: vi.fn(),
     }),
   };
+  // SAFETY: This fake database provides only the lifecycle members exercised by openDb.
   const db = {
     close: vi.fn(),
     onversionchange: null as (() => void) | null,
     transaction: () => transaction,
   };
+  // SAFETY: This fake request provides only the callbacks exercised by openDb.
   const request = {
     result: db,
     onsuccess: null as (() => void) | null,
@@ -35,7 +38,7 @@ describe('workspace database lifecycle', () => {
     const { db, request } = mockOpen();
     let settled = false;
 
-    const result = openDb().catch((error: unknown) => {
+    const result = openDb().catch((error) => {
       settled = true;
 
       return error;
@@ -61,6 +64,7 @@ describe('workspace database lifecycle', () => {
     const { db, request, transaction } = mockOpen();
 
     const result = updateSavedTables(
+      // SAFETY: The failure-path fixture never reads state before the mocked transaction rejects.
       [{ normalizedName: 'demo', name: 'Demo', state: {} as never, createdAt: 1, updatedAt: 1 }],
       { kind: 'anonymous' },
     );

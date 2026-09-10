@@ -517,6 +517,8 @@ describe('reviewHistory', () => {
       transaction: () => mockTx,
     };
 
+    // SAFETY: The fake database exposes only the transaction methods exercised by this fallback test.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The minimal IndexedDB fixture is narrowed to the database contract used by this fallback test.
     vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
 
     await expect(saveReview(target('ns'), 'tb', 'ddl', 'mysql', mockReview)).rejects.toThrow(

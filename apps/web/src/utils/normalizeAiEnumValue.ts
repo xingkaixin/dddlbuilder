@@ -24,9 +24,8 @@ function normalizeGeneratedFields(
 ): GeneratedField[] {
   const existingFields = baseFields.filter((field) => field.fieldName.trim());
 
-  const baseIds = new Set(
-    existingFields.map((field) => field.id).filter((id): id is string => !!id),
-  );
+  const baseIds = new Set(existingFields.flatMap((field) => (field.id ? [field.id] : [])));
+
   const idsByName = new Map(
     existingFields.map((field) => [getSqlIdentifierKey(field.fieldName, dbType), field.id]),
   );
@@ -34,7 +33,7 @@ function normalizeGeneratedFields(
   let hasUnidentifiedAddition = false;
 
   const normalized = fields.map((field) => {
-    if (field.id != null && (typeof field.id !== 'string' || !baseIds.has(field.id))) {
+    if (field.id != null && !baseIds.has(field.id)) {
       throw new Error('Unknown AI field identity');
     }
 
@@ -79,6 +78,8 @@ export function normalizeGeneratedTableSchema(
     fields: Array.isArray(schema.fields)
       ? normalizeGeneratedFields(schema.fields, baseFields, dbType)
       : [],
+    // AI output is normalized at this boundary; retain only complete decision records.
+    // oxlint-disable anti-slop/no-runtime-typeof
     designDecisions: Array.isArray(schema.designDecisions)
       ? schema.designDecisions.filter(
           (decision) =>
@@ -87,5 +88,6 @@ export function normalizeGeneratedTableSchema(
             typeof decision.rationale === 'string',
         )
       : undefined,
+    // oxlint-enable anti-slop/no-runtime-typeof
   };
 }

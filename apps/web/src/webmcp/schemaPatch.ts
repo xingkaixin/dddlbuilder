@@ -24,6 +24,8 @@ import {
   replaceIndexDefinition,
 } from '@/stores/indexDefinitionMutations';
 
+// WebMCP patch JSON is validated by the parser helpers before mutation functions receive it.
+// oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters
 type JsonRecord = Record<string, unknown>;
 
 export type SchemaPatchOperation =
@@ -64,7 +66,10 @@ export type SchemaPatchOperation =
 const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const readString = (record: JsonRecord, key: string, required = false) => {
+function readString(record: JsonRecord, key: string, required: true): string;
+function readString(record: JsonRecord, key: string, required?: false): string | undefined;
+function readString(record: JsonRecord, key: string, required: boolean): string | undefined;
+function readString(record: JsonRecord, key: string, required = false): string | undefined {
   const value = record[key];
 
   if (value === undefined && !required) return undefined;
@@ -74,7 +79,7 @@ const readString = (record: JsonRecord, key: string, required = false) => {
   }
 
   return value.trim();
-};
+}
 
 const readBoolean = (record: JsonRecord, key: string, fallback: boolean) => {
   const value = record[key];
@@ -111,17 +116,17 @@ const parseField = (value: unknown, partial: boolean): Partial<Omit<FieldRow, 'i
   };
 };
 
-const parseIndexFields = (value: unknown) => {
+const parseIndexFields = (value: unknown): IndexDefinition['fields'] => {
   if (!Array.isArray(value) || value.length === 0) throw new Error('Invalid index fields');
 
   return value.map((item) => {
     if (!isRecord(item)) throw new Error('Invalid index field');
-    const name = readString(item, 'name', true) as string;
+    const name = readString(item, 'name', true);
     const direction = item.direction ?? 'ASC';
 
     if (direction !== 'ASC' && direction !== 'DESC') throw new Error('Invalid index direction');
 
-    return { name, direction: direction as 'ASC' | 'DESC' };
+    return { name, direction: direction === 'DESC' ? 'DESC' : 'ASC' };
   });
 };
 
@@ -203,16 +208,16 @@ export function parseSchemaPatchOperations(value: unknown): SchemaPatchOperation
         return {
           id,
           kind,
-          fieldId: readString(item, 'fieldId', true) as string,
+          fieldId: readString(item, 'fieldId', true),
           changes: parseField(item.changes, true),
         };
       case 'field.remove':
-        return { id, kind, fieldId: readString(item, 'fieldId', true) as string };
+        return { id, kind, fieldId: readString(item, 'fieldId', true) };
       case 'field.reorder':
         return {
           id,
           kind,
-          fieldId: readString(item, 'fieldId', true) as string,
+          fieldId: readString(item, 'fieldId', true),
           ...(readString(item, 'afterFieldId')
             ? { afterFieldId: readString(item, 'afterFieldId') }
             : {}),
@@ -232,16 +237,17 @@ export function parseSchemaPatchOperations(value: unknown): SchemaPatchOperation
         return {
           id,
           kind,
-          indexId: readString(item, 'indexId', true) as string,
+          indexId: readString(item, 'indexId', true),
           changes: parseIndex(item.changes, true),
         };
       case 'index.remove':
-        return { id, kind, indexId: readString(item, 'indexId', true) as string };
+        return { id, kind, indexId: readString(item, 'indexId', true) };
       default:
         throw new Error(`Unsupported operation kind: ${kind}`);
     }
   });
 }
+// oxlint-enable anti-slop/no-unsafe-dictionary-type, anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters
 
 export function applySchemaPatchOperations(
   baseState: PersistedState,

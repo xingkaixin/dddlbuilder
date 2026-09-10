@@ -2,6 +2,8 @@ type IndexedDbRequestOptions = {
   closeDatabase?: boolean;
 };
 
+// IndexedDB invokes these callbacks with platform errors that are intentionally preserved.
+// oxlint-disable anti-slop/no-unknown-parameters
 export const runIndexedDbTransaction = <T>(
   db: IDBDatabase,
   storeNames: string | string[],
@@ -14,6 +16,7 @@ export const runIndexedDbTransaction = <T>(
     let transaction: IDBTransaction | undefined;
 
     const close = () => {
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- IDBDatabase implementations may omit close in test/browser adapters.
       if (closeDatabase && typeof db.close === 'function') db.close();
     };
     const fail = (error: unknown) => {
@@ -34,9 +37,26 @@ export const runIndexedDbTransaction = <T>(
       const tx = db.transaction(storeNames, mode);
       transaction = tx;
       tx.onerror = (event?: Event) => {
-        const requestError = (event?.target as IDBRequest | null)?.error;
-        event?.preventDefault();
-        fail(requestError ?? tx.error ?? new Error('IndexedDB 事务失败'));
+        const target = event?.target ?? null;
+        const requestError = target && 'error' in target ? target.error : null;
+
+        if (requestError) {
+          event?.preventDefault();
+          fail(requestError);
+
+          return;
+        }
+
+        if (tx.error) {
+          event?.preventDefault();
+          fail(tx.error);
+
+          return;
+        }
+
+        if (event) return;
+
+        fail(new Error('IndexedDB 事务失败'));
       };
 
       tx.onabort = () => fail(tx.error ?? new Error('IndexedDB 事务被中止'));
@@ -58,6 +78,7 @@ export const runIndexedDbTransaction = <T>(
       fail(error);
     }
   });
+// oxlint-enable anti-slop/no-unknown-parameters
 
 export const runIndexedDbRequest = <T>(
   db: IDBDatabase,

@@ -61,6 +61,7 @@ export const isWorkspaceEntityDeletionMarker = (
   value: unknown,
 ): value is WorkspaceEntityDeletionMarker => {
   if (!value || typeof value !== 'object') return false;
+  // SAFETY: all marker fields are checked below before the value is returned as the domain type.
   const marker = value as Partial<WorkspaceEntityDeletionMarker>;
 
   return (
@@ -75,12 +76,16 @@ export const isWorkspaceEntityDeletionMarker = (
   );
 };
 
+// IndexedDB callbacks forward the platform's unknown failure value unchanged.
+// oxlint-disable-next-line anti-slop/no-unknown-parameters
 const failRequest = (request: IDBRequest, fail: (error: unknown) => void) =>
   fail(request.error ?? new Error('IndexedDB 请求失败'));
 
 export const readWorkspaceEntityDeletionMarker = (
   store: IDBObjectStore,
   target: WorkspaceEntityTarget,
+  // IndexedDB callbacks forward the platform's unknown failure value unchanged.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters
   fail: (error: unknown) => void,
   done: (marker?: WorkspaceEntityDeletionMarker) => void,
 ) => {
@@ -204,6 +209,8 @@ export async function cancelWorkspaceEntityDeletion(
 export const runWorkspaceEntityWrites = async (
   writes: WorkspaceEntityWrite[],
   storeNames: string | string[],
+  // IndexedDB callbacks forward the platform's unknown failure value unchanged.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters
   write: (transaction: IDBTransaction, fail: (error: unknown) => void) => void,
 ): Promise<void> => {
   if (writes.length === 0) return;

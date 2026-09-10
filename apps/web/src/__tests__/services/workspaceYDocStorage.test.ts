@@ -9,6 +9,17 @@ import {
   prepareWorkspaceSignOut,
 } from '@/services/workspaceYDocStorage';
 
+type DeleteDatabaseRequest = {
+  onsuccess: (() => void) | null;
+};
+
+type MigrationTransaction = {
+  objectStore: () => { add: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn> };
+  oncomplete: (() => void) | null;
+  onabort: (() => void) | null;
+  abort: ReturnType<typeof vi.fn>;
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -24,7 +35,7 @@ describe('workspace offline storage lifecycle', () => {
       dispose: otherDispose,
       prepareSignOut: vi.fn(),
     });
-    const request = { onsuccess: null as (() => void) | null };
+    const request: DeleteDatabaseRequest = { onsuccess: null };
     const deleteDatabase = vi.fn(() => request);
     vi.stubGlobal('indexedDB', { deleteDatabase });
     let completed = false;
@@ -95,10 +106,10 @@ describe('workspace offline storage lifecycle', () => {
     async (event) => {
       const store = { add: vi.fn(), put: vi.fn() };
 
-      const tx = {
+      const tx: MigrationTransaction = {
         objectStore: vi.fn(() => store),
-        oncomplete: null as (() => void) | null,
-        onabort: null as (() => void) | null,
+        oncomplete: null,
+        onabort: null,
         abort: vi.fn(),
       };
       const db = { transaction: vi.fn(() => tx), close: vi.fn() };
@@ -106,6 +117,8 @@ describe('workspace offline storage lifecycle', () => {
       doc.getMap('drafts').set('sample', 'content');
       let completed = false;
 
+      // SAFETY: This fixture implements the IndexeddbPersistence.db surface consumed by commitLegacyWorkspaceYDoc.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The test double intentionally omits the SDK's unrelated persistence fields.
       const result = commitLegacyWorkspaceYDoc({ db } as unknown as IndexeddbPersistence, doc).then(
         () => {
           completed = true;

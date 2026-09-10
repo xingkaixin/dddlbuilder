@@ -20,6 +20,8 @@ describe('requestDDLReview', () => {
   });
 
   it('should parse stream result and normalize score', async () => {
+    // SAFETY: this stream fixture implements the response fields consumed by requestDDLReview.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
@@ -38,6 +40,8 @@ describe('requestDDLReview', () => {
   });
 
   it('should throw business error when response is non-ok', async () => {
+    // SAFETY: this error fixture implements the response status and JSON body consumed by requestDDLReview.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: false,
       status: 500,
@@ -53,6 +57,8 @@ describe('requestDDLReview', () => {
   });
 
   it('should handle non-ok response with invalid JSON body via catch block', async () => {
+    // SAFETY: this malformed-body fixture implements the response status and rejected JSON reader.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: false,
       status: 502,
@@ -68,6 +74,8 @@ describe('requestDDLReview', () => {
   });
 
   it('should throw error when missing response body', async () => {
+    // SAFETY: this missing-body fixture implements the response fields checked before stream reading.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
@@ -84,6 +92,8 @@ describe('requestDDLReview', () => {
   });
 
   it('should throw parse error when stream contains no JSON object', async () => {
+    // SAFETY: this invalid-stream fixture implements the response fields consumed by the JSON parser path.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
@@ -100,6 +110,8 @@ describe('requestDDLReview', () => {
   });
 
   it('should normalize invalid summary and non-array suggestions', async () => {
+    // SAFETY: this normalization fixture implements the response stream consumed by requestDDLReview.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
@@ -123,6 +135,8 @@ describe('requestDDLReview', () => {
     const parseSpy = vi
       .spyOn(JSON, 'parse')
       .mockImplementation((text) => (text === '{}' ? null : parse(text)));
+    // SAFETY: this null-payload fixture implements the response stream consumed by requestDDLReview.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
@@ -143,6 +157,8 @@ describe('requestDDLReview', () => {
   });
 
   it('downgrades malformed actionable suggestions at the service boundary', async () => {
+    // SAFETY: this malformed-suggestion fixture implements the response stream consumed by requestDDLReview.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,

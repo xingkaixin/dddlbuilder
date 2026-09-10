@@ -6,6 +6,7 @@ import {
 } from '@ddlbuilder/shared-types/api-contracts';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { decodePersistedState } from '@ddlbuilder/workspace-core';
+import * as Option from 'effect/Option';
 import i18n from '@/i18n';
 import { ApiError } from '@/services/apiError';
 
@@ -48,7 +49,7 @@ export async function createShare(state: PersistedState): Promise<CreateShareRes
 
   const data = decodeCreateShareResponse(await response.json());
 
-  if (data._tag === 'None') {
+  if (Option.isNone(data)) {
     throw new Error(i18n.t('services.shareResponseInvalid'));
   }
 
@@ -64,7 +65,7 @@ export async function getShareState(shareId: string): Promise<PersistedState> {
 
   const data = decodeGetShareResponse(await response.json());
 
-  if (data._tag === 'None') {
+  if (Option.isNone(data)) {
     throw new Error(i18n.t('services.shareDataInvalid'));
   }
 

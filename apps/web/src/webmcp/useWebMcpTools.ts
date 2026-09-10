@@ -14,7 +14,7 @@ import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
 import { lintSchema, type SchemaLintIssue } from '@/utils/schemaLint';
 import { normalizeSchemaStateForSignature } from '@/utils/persistedStateSignature';
 import { applySchemaPatchOperations, parseSchemaPatchOperations } from './schemaPatch';
-import { createWebMcpTools, WebMcpToolError } from './tools';
+import { createWebMcpTools, WebMcpToolError, type ToolInput } from './tools';
 import {
   summarizeChangeSet,
   type WebMcpApplyRequest,
@@ -48,7 +48,9 @@ type ConfirmationResolver = {
 const MAX_PAGE_SIZE = 50;
 const MAX_OUTPUT_CHARS = 1200;
 
-const requireString = (input: Record<string, unknown>, key: string) => {
+// WebMCP input is decoded at this boundary before it enters document operations.
+// oxlint-disable anti-slop/no-runtime-typeof
+const requireString = (input: ToolInput, key: string) => {
   const value = input[key];
 
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -57,9 +59,10 @@ const requireString = (input: Record<string, unknown>, key: string) => {
 
   return value.trim();
 };
+// oxlint-enable anti-slop/no-runtime-typeof
 
 const readInteger = (
-  input: Record<string, unknown>,
+  input: ToolInput,
   key: string,
   fallback: number,
   minimum: number,
@@ -69,11 +72,18 @@ const readInteger = (
 
   if (value === undefined) return fallback;
 
-  if (!Number.isInteger(value) || (value as number) < minimum || (value as number) > maximum) {
+  if (!Number.isInteger(value)) {
     throw new WebMcpToolError('INVALID_INPUT', `${key} is outside the supported range`);
   }
 
-  return value as number;
+  // SAFETY: Number.isInteger returns true only for numeric integer values.
+  const integer = value as number;
+
+  if (integer < minimum || integer > maximum) {
+    throw new WebMcpToolError('INVALID_INPUT', `${key} is outside the supported range`);
+  }
+
+  return integer;
 };
 
 const buildSignature = (state: PersistedState) =>
@@ -240,9 +250,11 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     [settleConfirmation],
   );
 
-  const inspectSchema = useCallback(async (toolInput: Record<string, unknown>) => {
+  const inspectSchema = useCallback(async (toolInput: ToolInput) => {
     const snapshot = snapshotRef.current;
     assertReady(snapshot);
+    // WebMCP input is an external JSON object; an omitted section defaults to overview.
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof
     const section = typeof toolInput.section === 'string' ? toolInput.section : 'overview';
     const offset = readInteger(toolInput, 'offset', 0, 0, Number.MAX_SAFE_INTEGER);
     const limit = readInteger(toolInput, 'limit', 20, 1, MAX_PAGE_SIZE);
@@ -314,7 +326,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     throw new WebMcpToolError('INVALID_INPUT', `Unsupported section: ${section}`);
   }, []);
 
-  const readOutput = useCallback((toolInput: Record<string, unknown>) => {
+  const readOutput = useCallback((toolInput: ToolInput) => {
     const snapshot = snapshotRef.current;
     assertReady(snapshot);
     const kind = requireString(toolInput, 'kind');
@@ -384,7 +396,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         };
       },
       readOutput,
-      previewPatch: async (toolInput: Record<string, unknown>) => {
+      previewPatch: async (toolInput: ToolInput) => {
         const snapshot = snapshotRef.current;
         assertMutable(snapshot);
         const baseSignature = requireString(toolInput, 'baseSignature');
@@ -404,7 +416,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
 
         return stageCandidate('schema_patch', baseSignature, candidate, operations);
       },
-      previewSqlImport: async (toolInput: Record<string, unknown>) => {
+      previewSqlImport: async (toolInput: ToolInput) => {
         const snapshot = snapshotRef.current;
         assertMutable(snapshot);
         const baseSignature = requireString(toolInput, 'baseSignature');
@@ -426,7 +438,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
 
         return stageCandidate('sql_import', baseSignature, candidate);
       },
-      applyPatch: async (toolInput: Record<string, unknown>, signal: AbortSignal) => {
+      applyPatch: async (toolInput: ToolInput, signal: AbortSignal) => {
         const snapshot = snapshotRef.current;
         assertMutable(snapshot);
         const id = requireString(toolInput, 'changeSetId');
@@ -443,6 +455,8 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         }
 
         const operationIds = rawOperationIds?.map((value) => {
+          // This is the operationIds JSON field validation at the WebMCP boundary.
+          // oxlint-disable-next-line anti-slop/no-runtime-typeof
           if (typeof value !== 'string') {
             throw new WebMcpToolError('INVALID_INPUT', 'operationIds must contain strings');
           }

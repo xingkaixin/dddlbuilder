@@ -415,8 +415,9 @@ describe('workspaceYDocAdapter', () => {
 
     upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
     const tableDoc = doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID);
-    expect(tableDoc).toBeInstanceOf(Y.Map);
-    (tableDoc as Y.Map<unknown>).set('stateSnapshot', createState({ tableName: 'stale' }));
+
+    if (!(tableDoc instanceof Y.Map)) throw new Error('Expected draft table map');
+    tableDoc.set('stateSnapshot', createState({ tableName: 'stale' }));
 
     expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state.tableName).toBe('fine_grained');
   });

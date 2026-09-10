@@ -15,6 +15,7 @@ import {
 import { clearWorkspaceHistory } from './workspaceHistoryCleanup';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types';
 import type { CurrentWorkspaceResponseWithMeta } from '@ddlbuilder/shared-types/api';
+import * as Option from 'effect/Option';
 import { deleteSavedTable, listSavedTables, listTrashedSavedTables } from '@/utils/savedTablesDb';
 import { clearFolders } from '@/utils/tableFolders';
 import {
@@ -44,7 +45,7 @@ export const fetchCurrentWorkspace = async (
 
   const decoded = decodeCurrentWorkspaceResponse(payload);
 
-  if (decoded._tag === 'None') throw new Error('工作区响应为空');
+  if (Option.isNone(decoded)) throw new Error('工作区响应为空');
 
   return decoded.value;
 };

@@ -18,14 +18,7 @@ const createState = (): PersistedState => ({
   authObjects: [],
 });
 
-type MockResponseOptions = {
-  ok: boolean;
-  status: number;
-  json: () => Promise<unknown>;
-};
-
-const mockResponse = ({ ok, status, json }: MockResponseOptions) =>
-  ({ ok, status, json }) as Response;
+const mockResponse = <T>(body: T, status = 200) => Response.json(body, { status });
 
 describe('shareService', () => {
   beforeEach(() => {
@@ -43,13 +36,9 @@ describe('shareService', () => {
 
     fetchMock.mockResolvedValue(
       mockResponse({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          id: 'share_1',
-          url: 'https://example.com/share/share_1',
-          expiresInSeconds: 3600,
-        }),
+        id: 'share_1',
+        url: 'https://example.com/share/share_1',
+        expiresInSeconds: 3600,
       }),
     );
 
@@ -72,13 +61,7 @@ describe('shareService', () => {
   });
 
   it('createShare 在响应字段非法时应抛出业务错误', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockResponse({
-        ok: true,
-        status: 200,
-        json: async () => ({ id: 'share_1', url: 'https://example.com' }),
-      }),
-    );
+    vi.mocked(fetch).mockResolvedValue(mockResponse({ id: 'share_1', url: 'https://example.com' }));
 
     await expect(createShare(createState())).rejects.toThrow(
       i18n.t('services.shareResponseInvalid'),
@@ -87,14 +70,7 @@ describe('shareService', () => {
 
   it('createShare 在 HTTP 错误时应抛出 ShareApiError 并透传 code/status', async () => {
     vi.mocked(fetch).mockResolvedValue(
-      mockResponse({
-        ok: false,
-        status: 429,
-        json: async () => ({
-          error: 'rate limited',
-          code: 'RATE_LIMIT_EXCEEDED',
-        }),
-      }),
+      mockResponse({ error: 'rate limited', code: 'RATE_LIMIT_EXCEEDED' }, 429),
     );
 
     await expect(createShare(createState())).rejects.toEqual(
@@ -108,13 +84,7 @@ describe('shareService', () => {
   });
 
   it('createShare 在错误响应缺失 payload 时应回退到 requestFailed 文案', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockResponse({
-        ok: false,
-        status: 500,
-        json: async () => null,
-      }),
-    );
+    vi.mocked(fetch).mockResolvedValue(mockResponse(null, 500));
 
     await expect(createShare(createState())).rejects.toMatchObject({
       status: 500,
@@ -124,15 +94,7 @@ describe('shareService', () => {
   });
 
   it('createShare 在错误响应 JSON 解析失败时也应回退到 requestFailed 文案', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockResponse({
-        ok: false,
-        status: 503,
-        json: async () => {
-          throw new Error('invalid json');
-        },
-      }),
-    );
+    vi.mocked(fetch).mockResolvedValue(new Response('invalid json', { status: 503 }));
 
     await expect(createShare(createState())).rejects.toMatchObject({
       status: 503,
@@ -146,13 +108,7 @@ describe('shareService', () => {
     const state = createState();
     const fetchMock = vi.mocked(fetch);
 
-    fetchMock.mockResolvedValue(
-      mockResponse({
-        ok: true,
-        status: 200,
-        json: async () => ({ id: 's1', state }),
-      }),
-    );
+    fetchMock.mockResolvedValue(mockResponse({ id: 's1', state }));
 
     const result = await getShareState(shareId);
 
@@ -185,15 +141,9 @@ describe('shareService', () => {
           onUpdate: '当前时间',
         },
       ],
-    } as unknown as PersistedState;
+    };
 
-    vi.mocked(fetch).mockResolvedValue(
-      mockResponse({
-        ok: true,
-        status: 200,
-        json: async () => ({ id: 's1', state: legacyState }),
-      }),
-    );
+    vi.mocked(fetch).mockResolvedValue(mockResponse({ id: 's1', state: legacyState }));
 
     const result = await getShareState('s1');
 
@@ -250,24 +200,14 @@ describe('shareService', () => {
   });
 
   it('getShareState 在 state 非对象时应抛出业务错误', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockResponse({
-        ok: true,
-        status: 200,
-        json: async () => ({ id: 's1', state: null }),
-      }),
-    );
+    vi.mocked(fetch).mockResolvedValue(mockResponse({ id: 's1', state: null }));
 
     await expect(getShareState('s1')).rejects.toThrow(i18n.t('services.shareDataInvalid'));
   });
 
   it('getShareState 在 HTTP 错误时应抛出 ShareApiError', async () => {
     vi.mocked(fetch).mockResolvedValue(
-      mockResponse({
-        ok: false,
-        status: 404,
-        json: async () => ({ error: 'not found', code: 'SHARE_NOT_FOUND' }),
-      }),
+      mockResponse({ error: 'not found', code: 'SHARE_NOT_FOUND' }, 404),
     );
 
     await expect(getShareState('missing')).rejects.toMatchObject({

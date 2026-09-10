@@ -24,6 +24,8 @@ interface RequestDDLReviewOptions {
   onStreamingText?: (text: string) => void;
 }
 
+// The review response is normalized by the shared decoder before service use.
+// oxlint-disable-next-line anti-slop/no-unknown-parameters
 function normalizeReviewPayload(payload: unknown): ReviewServiceResult {
   return normalizeDDLReviewResult(payload, i18n.t('services.reviewDone'));
 }

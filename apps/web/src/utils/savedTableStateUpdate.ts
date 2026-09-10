@@ -19,6 +19,7 @@ export function applySavedTableStateUpdate(
 
   return {
     ...record,
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this is the declared value/updater union.
     state: typeof update === 'function' ? update(record.state, readTable) : update,
     updatedAt: Date.now(),
   };

@@ -17,9 +17,12 @@ import {
   normalizeFieldOnUpdate,
 } from '@ddlbuilder/shared-types';
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- This helper intentionally forwards malformed fixtures to test the runtime boundary.
 const sanitizeRuntimeIndexes = (value: unknown) =>
+  // SAFETY: The helper deliberately passes malformed runtime data to verify the sanitizer boundary.
   sanitizeIndexesForPersist(value as IndexDefinition[]);
-const unknownDatabaseType = 'unknown_db' as unknown as DatabaseType;
+// SAFETY: The invalid token is intentionally passed through the typed API to verify its fallback behavior.
+const unknownDatabaseType: DatabaseType = 'unknown_db' as DatabaseType;
 
 describe('Utils', () => {
   describe('cn function', () => {

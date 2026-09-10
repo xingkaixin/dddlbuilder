@@ -10,13 +10,15 @@ interface SavedTableSnapshotRecord {
   state: PersistedState;
 }
 
+type SavedTableSnapshotResolution = {
+  source: Extract<WorkspaceSelection, { kind: 'saved_table' }>;
+  state: PersistedState;
+};
+
 export const resolveSavedTableSnapshot = (
   record: SavedTableSnapshotRecord,
   draft: SavedTableDraftRecord | null,
-): {
-  source: Extract<WorkspaceSelection, { kind: 'saved_table' }>;
-  state: PersistedState;
-} => {
+): SavedTableSnapshotResolution => {
   const baseSignature = buildSchemaStateSignature(record.state);
   let state = draft?.state ?? record.state;
 
@@ -36,5 +38,5 @@ export const resolveSavedTableSnapshot = (
       baseSignature,
     },
     state,
-  };
+  } satisfies SavedTableSnapshotResolution;
 };

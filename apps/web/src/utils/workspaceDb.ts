@@ -65,6 +65,7 @@ const migrateLegacyTableHistory = (transaction: IDBTransaction) => {
         const cursor = cursorRequest.result;
 
         if (!cursor) return;
+        // SAFETY: VERSION_STORE_NAME and REVIEW_STORE_NAME store TableVersion records by schema.
         const record = cursor.value as TableVersion;
         const previousId = record.tableId ?? `legacy:${record.tableNormalizedName}`;
         const previousKey = record.tableKey ?? `${LEGACY_SCOPE}::${previousId}`;
@@ -201,6 +202,7 @@ export const openDb = (): Promise<IDBDatabase> =>
             const cursor = cursorRequest.result;
 
             if (!cursor) return;
+            // SAFETY: this cursor reads the legacy saved-table object store whose records are SavedTableRecord.
             const value = cursor.value as SavedTableRecord;
 
             if (!value.scope && !value.normalizedName.includes('::')) {
@@ -230,9 +232,10 @@ export const openDb = (): Promise<IDBDatabase> =>
             const cursor = cursorRequest.result;
 
             if (!cursor) return;
+            // SAFETY: the global-draft store uses id as its keyPath and migration records carry string IDs.
             const value = cursor.value as { id: string };
 
-            if (typeof value.id === 'string' && value.id.endsWith('::global')) {
+            if (value.id.endsWith('::global')) {
               store.put({ ...value, id: `${value.id.slice(0, -'::global'.length)}::default` });
               store.delete(value.id);
             }

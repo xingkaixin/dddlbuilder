@@ -9,7 +9,7 @@ export type FieldTypeRisk = {
 };
 
 // Map base type names to semantic categories
-const TYPE_CATEGORY: Record<string, string> = {
+const TYPE_CATEGORY = {
   // String
   varchar: 'string',
   varchar2: 'string',
@@ -56,16 +56,16 @@ const TYPE_CATEGORY: Record<string, string> = {
   jsonb: 'json',
   // UUID
   uuid: 'uuid',
-};
+} satisfies Record<string, string>;
 
 // Storage width in bytes for integer narrowing detection
-const INTEGER_BYTES: Record<string, number> = {
+const INTEGER_BYTES = {
   tinyint: 1,
   smallint: 2,
   int: 4,
   integer: 4,
   bigint: 8,
-};
+} satisfies Record<string, number>;
 
 /**
  * Returns a FieldTypeRisk if changing from oldType to newType is dangerous
@@ -96,8 +96,10 @@ export function detectFieldTypeRisk(oldType: string, newType: string): FieldType
     return null;
   }
 
-  const oldCategory = TYPE_CATEGORY[oldBase];
-  const newCategory = TYPE_CATEGORY[newBase];
+  // SAFETY: the key assertion is guarded by the literal-key lookup semantics; unknown bases yield undefined.
+  const oldCategory = TYPE_CATEGORY[oldBase as keyof typeof TYPE_CATEGORY];
+  // SAFETY: the same finite category map lookup treats an unknown base as undefined.
+  const newCategory = TYPE_CATEGORY[newBase as keyof typeof TYPE_CATEGORY];
 
   // Cross-category change always carries data conversion risk
   if (oldCategory && newCategory && oldCategory !== newCategory) {
@@ -106,8 +108,10 @@ export function detectFieldTypeRisk(oldType: string, newType: string): FieldType
 
   // Same integer category but narrower storage
   if (oldCategory === 'integer') {
-    const oldBytes = INTEGER_BYTES[oldBase] ?? 0;
-    const newBytes = INTEGER_BYTES[newBase] ?? 0;
+    // SAFETY: unknown parsed base names are intentionally treated as zero-width entries.
+    const oldBytes = INTEGER_BYTES[oldBase as keyof typeof INTEGER_BYTES] ?? 0;
+    // SAFETY: unknown parsed base names are intentionally treated as zero-width entries.
+    const newBytes = INTEGER_BYTES[newBase as keyof typeof INTEGER_BYTES] ?? 0;
 
     if (newBytes > 0 && newBytes < oldBytes) {
       return { kind: 'length_shrink', fromType: oldType, toType: newType };

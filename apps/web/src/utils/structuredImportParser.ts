@@ -12,11 +12,16 @@ import {
   toMebibytes,
 } from '@/utils/importLimits';
 
+// This module owns the XLSX/CSV/JSON import boundary and normalizes undocumented provider shapes
+// before returning ParsedResult values.
+// oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unsafe-dictionary-type
+
 export type StructuredImportSource = Exclude<ImportSourceType, 'sql'>;
 
 const MAX_SCHEMA_RESOLUTION_STEPS = 32;
 
 type JsonSchemaLike = {
+  [key: string]: unknown;
   title?: string;
   type?: string | string[];
   format?: string;
@@ -29,6 +34,46 @@ type JsonSchemaLike = {
   allOf?: JsonSchemaLike[];
   anyOf?: JsonSchemaLike[];
   oneOf?: JsonSchemaLike[];
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isJsonSchemaLike = (value: unknown): value is JsonSchemaLike => {
+  if (!isRecord(value)) return false;
+  if (value.title !== undefined && typeof value.title !== 'string') return false;
+  if (
+    value.type !== undefined &&
+    typeof value.type !== 'string' &&
+    (!Array.isArray(value.type) || !value.type.every((item) => typeof item === 'string'))
+  )
+    return false;
+  if (value.format !== undefined && typeof value.format !== 'string') return false;
+  if (value.description !== undefined && typeof value.description !== 'string') return false;
+  if (
+    value.required !== undefined &&
+    (!Array.isArray(value.required) || !value.required.every((item) => typeof item === 'string'))
+  )
+    return false;
+  if (value.enum !== undefined && !Array.isArray(value.enum)) return false;
+  if (value.$ref !== undefined && typeof value.$ref !== 'string') return false;
+
+  if (value.properties !== undefined) {
+    if (!isRecord(value.properties)) return false;
+    if (!Object.values(value.properties).every(isJsonSchemaLike)) return false;
+  }
+
+  if (value.items !== undefined && !isJsonSchemaLike(value.items)) return false;
+
+  for (const key of ['allOf', 'anyOf', 'oneOf'] as const) {
+    const members = value[key];
+
+    if (members !== undefined && (!Array.isArray(members) || !members.every(isJsonSchemaLike))) {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 const EMPTY_TABLE: Omit<ParsedResult, 'tableName' | 'tableComment' | 'fields'> = {
@@ -184,18 +229,25 @@ function tableFromRows(rows: string[][], fallbackTableName: string): ParsedResul
   const typeIndex = findHeaderIndex(headers, ['字段类型', 'fieldtype', 'type'], 1);
   const commentIndex = findHeaderIndex(headers, ['字段注释', 'fieldcomment', 'comment'], 2);
 
-  const fields = rows
-    .slice(1)
-    .map((row, index) => ({
-      name: sanitizeIdentifier(row[nameIndex], `field_${index + 1}`),
+  const fields: NormalizedField[] = [];
+
+  for (let index = 1; index < rows.length; index += 1) {
+    const row = rows[index];
+
+    if (!row) continue;
+
+    const field = {
+      name: sanitizeIdentifier(row[nameIndex], `field_${index}`),
       type: normalizeType(row[typeIndex]),
       comment: row[commentIndex]?.trim() ?? '',
       nullable: true,
       defaultKind: 'none' as const,
       defaultValue: '',
       onUpdate: 'none' as const,
-    }))
-    .filter((field) => field.name);
+    };
+
+    if (field.name) fields.push(field);
+  }
 
   return {
     ...EMPTY_TABLE,
@@ -219,14 +271,20 @@ function normalizeHeader(value: string): string {
 }
 
 function parseJsonSchemaImport(content: string): ParsedResult[] {
-  const root = JSON.parse(content) as Record<string, unknown>;
+  const parsed: unknown = JSON.parse(content);
+
+  if (!isJsonSchemaLike(parsed)) {
+    throw new Error('Invalid JSON schema import');
+  }
+
+  const root = parsed;
   const schemas = collectSchemas(root);
   const entries = Object.entries(schemas);
 
   const tableSchemas: Array<[string, JsonSchemaLike]> =
     entries.length > 0
       ? entries
-      : [[typeof root.title === 'string' ? root.title : 'imported_table', root as JsonSchemaLike]];
+      : [[typeof root.title === 'string' ? root.title : 'imported_table', root]];
 
   if (tableSchemas.length > STRUCTURED_IMPORT_LIMITS.maxTables) {
     throwStructuredImportLimitError();
@@ -243,15 +301,23 @@ function parseJsonSchemaImport(content: string): ParsedResult[] {
   return resolvedSchemas.map(({ name, schema }) => schemaToTable(name, schema, root));
 }
 
-function collectSchemas(root: Record<string, unknown>): Record<string, JsonSchemaLike> {
-  const components = root.components as { schemas?: Record<string, JsonSchemaLike> } | undefined;
-  const swaggerDefinitions = root.definitions as Record<string, JsonSchemaLike> | undefined;
+function collectSchemas(root: JsonSchemaLike): Record<string, JsonSchemaLike> {
+  // Web JSON schema maps are filtered to validated nodes before callers consume them.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters
+  const readSchemaMap = (value: unknown): Record<string, JsonSchemaLike> | undefined => {
+    if (!isRecord(value)) return undefined;
 
-  const schemaDefinitions = (root.$defs ?? root.definitions) as
-    | Record<string, JsonSchemaLike>
-    | undefined;
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([name, schema]) =>
+        isJsonSchemaLike(schema) ? [[name, schema]] : [],
+      ),
+    );
+  };
+  const components = isRecord(root.components) ? readSchemaMap(root.components.schemas) : undefined;
+  const swaggerDefinitions = readSchemaMap(root.definitions);
+  const schemaDefinitions = readSchemaMap(root.$defs ?? root.definitions);
 
-  return components?.schemas ?? swaggerDefinitions ?? schemaDefinitions ?? {};
+  return components ?? swaggerDefinitions ?? schemaDefinitions ?? {};
 }
 
 function schemaToTable(
@@ -330,10 +396,11 @@ function resolveRef(ref: string, root: Record<string, unknown>): JsonSchemaLike 
     const key = part.replace(/~1/g, '/').replace(/~0/g, '~');
 
     if (!Object.prototype.hasOwnProperty.call(current, key)) return null;
+    // SAFETY: current is checked as a non-null object at the top of this loop before indexed access.
     current = (current as Record<string, unknown>)[key];
   }
 
-  return current && typeof current === 'object' ? (current as JsonSchemaLike) : null;
+  return isJsonSchemaLike(current) ? current : null;
 }
 
 function assertStructuredImportLimits(fieldCounts: readonly number[]): void {

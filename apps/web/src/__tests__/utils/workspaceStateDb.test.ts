@@ -382,7 +382,7 @@ describe('workspaceStateDb', () => {
       JSON.stringify({ state: createState('legacy_keep'), updatedAt: 1 }),
     );
 
-    const originalIndexedDB = (globalThis as any).indexedDB;
+    const originalIndexedDB = globalThis.indexedDB;
     Object.defineProperty(globalThis, 'indexedDB', {
       value: undefined,
       configurable: true,

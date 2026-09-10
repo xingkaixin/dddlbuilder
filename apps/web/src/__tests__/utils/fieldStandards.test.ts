@@ -67,6 +67,8 @@ it('rejects malformed or duplicate imports before writing any standards', async 
       {
         ...standard,
         id: 'invalid',
+        // SAFETY: this fixture intentionally injects a legacy string into a boolean field.
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- malformed legacy input is intentionally forced through the decoder boundary.
         field: { ...standard.field, nullable: 'no' as unknown as boolean },
       },
     ]),

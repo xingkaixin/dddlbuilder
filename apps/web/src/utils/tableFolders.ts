@@ -185,6 +185,8 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
     let pendingReads = requests.length;
     let settled = false;
 
+    // IndexedDB callback failures are intentionally forwarded without changing their error shape.
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters
     const fail = (error: unknown, message: string) => {
       if (settled) return;
       settled = true;
@@ -200,9 +202,11 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
       const folders = folderRequest.result
         .map((folder) => decodeScopedFolder(folder, scope))
         .filter((folder): folder is TableFolder => folder != null);
+      // SAFETY: tableRequest reads the saved-table object store, whose values are SavedTableRecord.
       const tables = (tableRequest.result as SavedTableRecord[]).filter((record) =>
         decodeWorkspaceScopedKey(record.normalizedName, record.scope, scope),
       );
+      // SAFETY: draftRequest reads the global-draft object store with scoped draft records.
       const drafts = (draftRequest.result as Array<WorkspaceDraftRecord & { id: string }>).filter(
         (record) => decodeWorkspaceScopedKey(record.id, record.scope, scope),
       );

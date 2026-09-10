@@ -22,7 +22,7 @@ const decodeTableTemplate = (template: TableTemplate): TableTemplate => ({
 
 const generateId = (): string => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
-const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+const clone = <T>(value: T): T => structuredClone(value);
 
 const runWithTableTemplateStore = async <T>(
   mode: IDBTransactionMode,

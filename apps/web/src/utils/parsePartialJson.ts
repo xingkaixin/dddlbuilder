@@ -8,6 +8,8 @@
  * fields as they stream in, even if the JSON isn't complete yet.
  */
 
+// This module incrementally decodes provider JSON that may be incomplete at every update.
+// oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 export interface PartialReviewResult {
   score?: number;
   summary?: string;
@@ -218,6 +220,7 @@ function normalizeResult(result: unknown): PartialReviewResult | null {
     return null;
   }
 
+  // SAFETY: normalizeResult only reads optional primitive fields from the parsed JSON object.
   const obj = result as Record<string, unknown>;
   const normalized: PartialReviewResult = {};
 

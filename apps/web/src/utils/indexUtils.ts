@@ -31,9 +31,11 @@ export const fillMissingIndexNames = (
   );
 };
 
-export const sanitizeIndexesForPersist = (indexes: IndexDefinition[]): IndexDefinition[] =>
-  indexes
-    .map((index) => ({
+export const sanitizeIndexesForPersist = (indexes: IndexDefinition[]): IndexDefinition[] => {
+  const sanitized: IndexDefinition[] = [];
+
+  for (const index of indexes) {
+    const normalized = {
       id: index.id,
       name: toStringSafe(index.name).trim(),
       fields: index.fields.map((field) => ({
@@ -42,5 +44,10 @@ export const sanitizeIndexesForPersist = (indexes: IndexDefinition[]): IndexDefi
           field.direction === 'ASC' || field.direction === 'DESC' ? field.direction : 'ASC',
       })),
       kind: index.kind,
-    }))
-    .filter((index) => index.name && index.fields.length > 0);
+    } satisfies IndexDefinition;
+
+    if (normalized.name && normalized.fields.length > 0) sanitized.push(normalized);
+  }
+
+  return sanitized;
+};

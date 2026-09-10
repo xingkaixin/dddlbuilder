@@ -5,6 +5,7 @@ import {
 } from '@ddlbuilder/shared-types/api-contracts';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { MultiParsedResult, ParsedResult } from '@ddlbuilder/ddl-core/parser';
+import * as Option from 'effect/Option';
 import i18n from '@/i18n';
 import { ApiError } from '@/services/apiError';
 
@@ -40,7 +41,7 @@ export async function requestSqlParse(payload: SqlParseRequestPayload): Promise<
 
   const data = decodeSqlParseResponse(await response.json());
 
-  if (data._tag === 'None') {
+  if (Option.isNone(data)) {
     throw new Error(i18n.t('services.parseResultInvalid'));
   }
 
@@ -64,7 +65,7 @@ export async function requestMultiSqlParse(
 
   const data = decodeMultiSqlParseResponse(await response.json());
 
-  if (data._tag === 'None') {
+  if (Option.isNone(data)) {
     throw new Error(i18n.t('services.parseResultInvalid'));
   }
 

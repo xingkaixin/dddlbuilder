@@ -37,16 +37,24 @@ type WorkspaceTableSnapshot = {
 const HISTORY_STORES = [VERSION_STORE_NAME, REVIEW_STORE_NAME] as const;
 const CLEANUP_STORES = [WORKSPACE_ENTITY_META_STORE_NAME, ...HISTORY_STORES] as const;
 
+// IndexedDB errors are forwarded unchanged to the transaction boundary.
+// oxlint-disable-next-line anti-slop/no-unknown-parameters
 const failRequest = (request: IDBRequest, fail: (error: unknown) => void) =>
   fail(request.error ?? new Error('IndexedDB 请求失败'));
 
+// History records come from an older IndexedDB store and are decoded field by field.
+// oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 const historyNormalizedName = (value: unknown) => {
   if (!value || typeof value !== 'object') return '';
+  // SAFETY: the preceding object check limits this read to an object; the property is validated below.
   const normalizedName = (value as { tableNormalizedName?: unknown }).tableNormalizedName;
 
   return typeof normalizedName === 'string' ? normalizedName : '';
 };
+// oxlint-enable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 
+// History keys and values come from legacy IndexedDB records; this helper owns their narrow decode.
+// oxlint-disable anti-slop/no-unknown-parameters
 const historyTargetFromKey = (
   scope: WorkspaceScope,
   storeName: (typeof HISTORY_STORES)[number],
@@ -66,12 +74,14 @@ const historyTargetFromKey = (
       : historyNormalizedName(value),
   };
 };
+// oxlint-enable anti-slop/no-unknown-parameters
 
 const isCurrentTable = (
   snapshot: WorkspaceTableSnapshot,
   target: Pick<WorkspaceEntityTarget, 'tableId'>,
 ) => snapshot.tableIds.has(target.tableId);
 
+// oxlint-disable anti-slop/no-unknown-parameters
 const deleteRecordsByTableKey = (
   transaction: IDBTransaction,
   storeName: (typeof HISTORY_STORES)[number],
@@ -88,7 +98,9 @@ const deleteRecordsByTableKey = (
     };
   }
 };
+// oxlint-enable anti-slop/no-unknown-parameters
 
+// oxlint-disable anti-slop/no-unknown-parameters
 const deleteTableHistoryInTransaction = (
   transaction: IDBTransaction,
   target: SavedTableHistoryTarget,
@@ -97,6 +109,7 @@ const deleteTableHistoryInTransaction = (
   deleteRecordsByTableKey(transaction, VERSION_STORE_NAME, [getTableVersionKey(target)], fail);
   deleteRecordsByTableKey(transaction, REVIEW_STORE_NAME, [getReviewTableKey(target)], fail);
 };
+// oxlint-enable anti-slop/no-unknown-parameters
 
 const readWorkspaceDeletionTargets = async (
   scope: WorkspaceScope,
@@ -142,6 +155,7 @@ const readWorkspaceDeletionTargets = async (
 
         if (!cursor) return;
 
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- IndexedDB keys are runtime union values.
         if (typeof cursor.key === 'string') {
           const target = historyTargetFromKey(
             scope,
@@ -376,9 +390,10 @@ export const watchWorkspaceHistory = (doc: Y.Doc, scope: WorkspaceScope) => {
 
   const scheduleReconciliation = () => {
     if (stopped) return;
-    reconciliation = reconciliation
-      .then(reconcile)
-      .catch((error: unknown) => console.error('[workspace] history cleanup failed', error));
+    reconciliation = reconciliation.then(reconcile).catch(
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- promise rejection is an external cleanup boundary.
+      (error: unknown) => console.error('[workspace] history cleanup failed', error),
+    );
   };
 
   scheduleReconciliation();

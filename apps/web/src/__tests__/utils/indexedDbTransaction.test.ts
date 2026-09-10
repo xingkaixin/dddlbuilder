@@ -24,6 +24,7 @@ const createHarness = <T>(result: T) => {
     onsuccess: null,
     onerror: null,
   };
+  // SAFETY: The transaction tests only pass this object through objectStore; no store methods are invoked.
   const store = {} as IDBObjectStore;
 
   const transaction: TransactionHandlers = {
@@ -36,6 +37,8 @@ const createHarness = <T>(result: T) => {
   };
   const close = vi.fn();
 
+  // SAFETY: This test double implements the transaction and close members consumed by the helper.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The harness intentionally omits unrelated IDBDatabase fields.
   const db = {
     transaction: vi.fn(() => transaction),
     close,
@@ -87,6 +90,8 @@ describe('runIndexedDbRequest', () => {
       harness.db,
       'records',
       'readwrite',
+      // SAFETY: The harness invokes only IDBRequest callbacks and reads result/error through this test double.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The harness intentionally omits unrelated IDBRequest fields.
       () => harness.request as unknown as IDBRequest<string>,
     ).then((value) => {
       resolved = true;
@@ -110,6 +115,8 @@ describe('runIndexedDbRequest', () => {
       harness.db,
       'records',
       'readwrite',
+      // SAFETY: The harness invokes only IDBRequest callbacks and reads result/error through this test double.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The harness intentionally omits unrelated IDBRequest fields.
       () => harness.request as unknown as IDBRequest<string>,
     );
 

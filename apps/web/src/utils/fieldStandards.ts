@@ -47,6 +47,7 @@ export function fieldStandardDifferences(
     enumMeta: standard.field.enumMeta ?? [],
   };
 
+  // SAFETY: expected is assembled solely from StandardField members above.
   return (Object.keys(expected) as (keyof StandardField)[]).filter((key) => {
     if (key === 'fieldType' && !/["']/.test(actual.fieldType + expected.fieldType))
       return (
@@ -58,6 +59,8 @@ export function fieldStandardDifferences(
   });
 }
 
+// Imported field-standard files are decoded here before entering IndexedDB or the editor model.
+// oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -80,18 +83,26 @@ export function decodeFieldStandards(value: unknown): FieldStandard[] {
         throw new Error('Invalid standard metadata');
     }
 
-    if (!(item.id as string).trim() || !(item.name as string).trim() || ids.has(item.id as string))
+    // SAFETY: the metadata loop above validates every required metadata field as a bounded string.
+    const metadata = item as { id: string; name: string; description: string; unit: string };
+
+    if (!metadata.id.trim() || !metadata.name.trim() || ids.has(metadata.id))
       throw new Error('Invalid standard identity');
-    ids.add(item.id as string);
+    ids.add(metadata.id);
 
     for (const key of ['fieldName', 'fieldType', 'fieldComment'] as const) {
       if (typeof field[key] !== 'string' || field[key].length > 10000)
         throw new Error('Invalid standard field');
     }
 
+    const fieldName = field.fieldName;
+    const fieldType = field.fieldType;
+
     if (
-      !(field.fieldName as string).trim() ||
-      !(field.fieldType as string).trim() ||
+      typeof fieldName !== 'string' ||
+      !fieldName.trim() ||
+      typeof fieldType !== 'string' ||
+      !fieldType.trim() ||
       typeof field.nullable !== 'boolean'
     )
       throw new Error('Incomplete standard field');
@@ -123,22 +134,32 @@ export function decodeFieldStandards(value: unknown): FieldStandard[] {
     )
       throw new Error('Invalid enumeration');
 
+    // SAFETY: all required and optional field members have been validated immediately above.
+    const standardField = field as {
+      fieldName: string;
+      fieldType: string;
+      fieldComment: string;
+      nullable: boolean;
+      defaultKind?: FieldRow['defaultKind'];
+      defaultValue?: string;
+      onUpdate?: FieldRow['onUpdate'];
+      enumMeta?: FieldRow['enumMeta'];
+    };
+
     return {
-      id: item.id as string,
-      name: (item.name as string).trim(),
-      description: item.description as string,
-      unit: item.unit as string,
+      id: metadata.id,
+      name: metadata.name.trim(),
+      description: metadata.description,
+      unit: metadata.unit,
       field: {
-        fieldName: (field.fieldName as string).trim(),
-        fieldType: (field.fieldType as string).trim(),
-        fieldComment: field.fieldComment as string,
-        nullable: field.nullable,
-        defaultKind: (field.defaultKind ?? 'none') as FieldRow['defaultKind'],
-        defaultValue: (field.defaultValue ?? '') as string,
-        onUpdate: (field.onUpdate ?? 'none') as FieldRow['onUpdate'],
-        ...(field.enumMeta
-          ? { enumMeta: structuredClone(field.enumMeta) as FieldRow['enumMeta'] }
-          : {}),
+        fieldName: standardField.fieldName.trim(),
+        fieldType: standardField.fieldType.trim(),
+        fieldComment: standardField.fieldComment,
+        nullable: standardField.nullable,
+        defaultKind: standardField.defaultKind ?? 'none',
+        defaultValue: standardField.defaultValue ?? '',
+        onUpdate: standardField.onUpdate ?? 'none',
+        ...(standardField.enumMeta ? { enumMeta: structuredClone(standardField.enumMeta) } : {}),
       },
     };
   });

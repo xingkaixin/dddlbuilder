@@ -17,6 +17,7 @@ const createDependencies = (
   ...overrides,
 });
 
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Tool inputs intentionally model untrusted browser payloads.
 const execute = (tool: WebMCP.ModelContextTool, input: Record<string, unknown> = {}) =>
   tool.execute(input, { signal: new AbortController().signal });
 

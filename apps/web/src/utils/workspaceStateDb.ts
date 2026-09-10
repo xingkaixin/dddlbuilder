@@ -22,6 +22,7 @@ import {
 } from './workspaceScope';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
+import { isWorkspaceSource } from '@/hooks/workspacePersistence/normalize';
 
 export { DEFAULT_DRAFT_ID };
 const WORKSPACE_SESSION_ROW_ID = 'active';
@@ -72,14 +73,15 @@ const decodeScopedEntity = <T extends { id?: string; normalizedName?: string; sc
   entity: T,
   scope: WorkspaceScope,
 ): T | null => {
-  const rawKey = typeof entity.id === 'string' ? entity.id : entity.normalizedName;
+  const hasId = entity.id !== undefined;
+  const rawKey = hasId ? entity.id : entity.normalizedName;
 
   if (!rawKey) return null;
   const decoded = decodeWorkspaceScopedKey(rawKey, entity.scope, scope);
 
   if (!decoded) return null;
 
-  return typeof entity.id === 'string'
+  return hasId
     ? { ...entity, id: decoded.key, scope: decoded.scope }
     : { ...entity, normalizedName: decoded.key, scope: decoded.scope };
 };
@@ -131,20 +133,25 @@ const toDraftRecord = (entity: WorkspaceDraftEntity): WorkspaceDraftRecord | nul
     : null;
 };
 
+// Legacy localStorage records are decoded through this temporary key/value view.
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const parseStorageJson = <T>(key: string): T | null => {
+// localStorage JSON remains unknown until each legacy record decoder validates its shape.
+// oxlint-disable anti-slop/no-unknown-returns, anti-slop/no-known-value-widening
+const parseStorageJson = (key: string): unknown => {
   try {
     const raw = localStorage.getItem(key);
 
     if (!raw) return null;
 
-    return JSON.parse(raw) as T;
+    return JSON.parse(raw);
   } catch {
     return null;
   }
 };
+// oxlint-enable anti-slop/no-unknown-returns, anti-slop/no-known-value-widening
 
 const removeStorage = (key: string) => {
   try {
@@ -423,8 +430,10 @@ export const clearWorkspaceSession = async (scope: WorkspaceScope): Promise<void
   );
 };
 
+// This decoder keeps compatibility with pre-IndexedDB localStorage record shapes.
+// oxlint-disable anti-slop/no-runtime-typeof
 const readLegacyGlobalDraftRecord = (): WorkspaceDraftRecord | null => {
-  const parsed = parseStorageJson<unknown>(GLOBAL_DRAFT_STORAGE_KEY);
+  const parsed = parseStorageJson(GLOBAL_DRAFT_STORAGE_KEY);
 
   if (isRecord(parsed) && parsed.state && typeof parsed.updatedAt === 'number') {
     const state = decodePersistedState(parsed.state);
@@ -446,7 +455,7 @@ const readLegacyGlobalDraftRecord = (): WorkspaceDraftRecord | null => {
     };
   }
 
-  const legacy = parseStorageJson<unknown>(STORAGE_KEY);
+  const legacy = parseStorageJson(STORAGE_KEY);
   const legacyState = decodePersistedState(legacy);
 
   if (!legacyState) return null;
@@ -457,8 +466,8 @@ const readLegacyGlobalDraftRecord = (): WorkspaceDraftRecord | null => {
   };
 };
 
-const readLegacySavedDraftMap = (): Record<string, SavedTableDraftRecord> => {
-  const parsed = parseStorageJson<unknown>(SAVED_TABLE_DRAFTS_STORAGE_KEY);
+const readLegacySavedDraftMap = () => {
+  const parsed = parseStorageJson(SAVED_TABLE_DRAFTS_STORAGE_KEY);
 
   if (!isRecord(parsed)) return {};
 
@@ -486,17 +495,18 @@ const readLegacySavedDraftMap = (): Record<string, SavedTableDraftRecord> => {
 };
 
 const readLegacyWorkspaceSession = (): LegacyWorkspaceSessionRecord | null => {
-  const parsed = parseStorageJson<unknown>(WORKSPACE_SESSION_STORAGE_KEY);
+  const parsed = parseStorageJson(WORKSPACE_SESSION_STORAGE_KEY);
 
-  if (!isRecord(parsed) || !parsed.activeSource) return null;
+  if (!isRecord(parsed) || !isWorkspaceSource(parsed.activeSource)) return null;
   const activeState = decodePersistedState(parsed.activeState);
 
   return {
-    activeSource: parsed.activeSource as WorkspaceSource,
+    activeSource: parsed.activeSource,
     ...(activeState ? { activeState } : {}),
     updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now(),
   };
 };
+// oxlint-enable anti-slop/no-runtime-typeof
 
 let migrationPromise: Promise<void> | null = null;
 

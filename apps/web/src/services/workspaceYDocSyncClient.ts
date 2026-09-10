@@ -255,6 +255,8 @@ export class WorkspaceYDocSyncClient {
     }
   }
 
+  // Y.Doc origins are opaque provider tokens; only the known remote token is consumed here.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters
   private readonly handleDocUpdate = (update: Uint8Array, origin: unknown) => {
     if (origin === WorkspaceYDocOrigin.RemoteSync) return;
     this.queueUpdate(update);
@@ -491,6 +493,8 @@ export class WorkspaceYDocSyncClient {
     }
   }
 
+  // WebSocket message payloads cross the browser boundary and are narrowed below.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters
   private async handleMessage(socket: WebSocket, data: unknown) {
     const bytes =
       data instanceof ArrayBuffer
