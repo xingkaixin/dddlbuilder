@@ -5,6 +5,35 @@ import { fileURLToPath } from 'node:url';
 
 export type D1Mode = 'local' | 'remote';
 
+type D1JsonValue = null | boolean | number | string | D1JsonObject | D1JsonValue[];
+
+type D1JsonObject = { [key: string]: D1JsonValue };
+
+type NamedRow = { name: string };
+
+type SchemaRow = { type: string; name: string };
+
+const isRecord = (value: D1JsonValue): value is D1JsonObject =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const isStringValue = (value: D1JsonValue): value is string => typeof value === 'string';
+
+const decodeNamedRow = (value: D1JsonValue): NamedRow => {
+  if (!isRecord(value) || !isStringValue(value.name)) {
+    throw new Error('D1 JSON row is missing a string name');
+  }
+
+  return { name: value.name };
+};
+
+const decodeSchemaRow = (value: D1JsonValue): SchemaRow => {
+  if (!isRecord(value) || !isStringValue(value.type) || !isStringValue(value.name)) {
+    throw new Error('D1 JSON row is missing string type/name');
+  }
+
+  return { type: value.type, name: value.name };
+};
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export const D1_BINDING = 'USER_DB';
@@ -118,7 +147,10 @@ export const runD1Execute = (
   }
 };
 
-const runD1ExecuteJson = <T>(mode: D1Mode, input: { file?: string; command?: string }): T => {
+const runD1ExecuteJson = (
+  mode: D1Mode,
+  input: { file?: string; command?: string },
+): D1JsonValue => {
   const result = spawnSync('pnpm', buildD1ExecuteArgs(mode, { ...input, json: true }), {
     cwd: repoRoot,
     encoding: 'utf8',
@@ -129,13 +161,21 @@ const runD1ExecuteJson = <T>(mode: D1Mode, input: { file?: string; command?: str
     process.exit(result.status ?? 1);
   }
 
-  return JSON.parse(result.stdout) as T;
+  return JSON.parse(result.stdout);
 };
 
-const queryD1Rows = <T>(mode: D1Mode, command: string): T[] => {
-  const payload = runD1ExecuteJson<Array<{ results?: T[] }>>(mode, { command });
+const queryD1Rows = <T>(mode: D1Mode, command: string, decode: (value: D1JsonValue) => T): T[] => {
+  const payload = runD1ExecuteJson(mode, { command });
 
-  return payload[0]?.results ?? [];
+  if (!Array.isArray(payload)) throw new Error('D1 JSON output must be an array');
+
+  const first = payload[0];
+
+  if (!isRecord(first) || !Array.isArray(first.results)) {
+    throw new Error('D1 JSON output is missing a results array');
+  }
+
+  return first.results.map(decode);
 };
 
 const ensureMigrationLedger = (mode: D1Mode): void => {
@@ -150,16 +190,17 @@ const ensureMigrationLedger = (mode: D1Mode): void => {
 };
 
 const listAppliedMigrations = (mode: D1Mode): Set<string> => {
-  const rows = queryD1Rows<{ name: string }>(
+  const rows = queryD1Rows(
     mode,
     'SELECT name FROM __ddlbuilder_migrations ORDER BY name',
+    decodeNamedRow,
   );
 
   return new Set(rows.map((row) => row.name));
 };
 
 const hasExistingAppSchema = (mode: D1Mode): boolean => {
-  const rows = queryD1Rows<{ name: string }>(
+  const rows = queryD1Rows(
     mode,
     `
       SELECT name
@@ -167,6 +208,7 @@ const hasExistingAppSchema = (mode: D1Mode): boolean => {
       WHERE type = 'table' AND name IN ('users', 'workspace_snapshots')
       LIMIT 1
     `,
+    decodeNamedRow,
   );
 
   return rows.length > 0;
@@ -203,7 +245,7 @@ export const baselineExistingMigrations = (mode: D1Mode, throughName: string): v
 
 export const resetDatabase = (mode: D1Mode): void => {
   // 反创建序返回：子表的 FK 父表总是创建得更早，倒序 drop 即合法依赖序
-  const rows = queryD1Rows<{ type: string; name: string }>(
+  const rows = queryD1Rows(
     mode,
     `
       SELECT type, name
@@ -211,6 +253,7 @@ export const resetDatabase = (mode: D1Mode): void => {
       WHERE type IN ('table', 'trigger') AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'
       ORDER BY rowid DESC
     `,
+    decodeSchemaRow,
   );
   const dropStatement = ({ type, name }: { type: string; name: string }) =>
     `DROP ${type.toUpperCase()} IF EXISTS "${name}"`;
@@ -252,9 +295,10 @@ export const verifyRequiredD1Tables = (
   mode: D1Mode,
   requiredTables: readonly string[] = REQUIRED_RUNTIME_TABLES,
 ): void => {
-  const rows = queryD1Rows<{ name: string }>(
+  const rows = queryD1Rows(
     mode,
     "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
+    decodeNamedRow,
   );
   const actualTables = new Set(rows.map((row) => row.name));
   const missingTables = requiredTables.filter((table) => !actualTables.has(table));

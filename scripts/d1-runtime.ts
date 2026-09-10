@@ -55,6 +55,7 @@ const runWrangler = (
 
 export const queryLocalD1 = <T>(options: D1RuntimeOptions, command: string): T[] => {
   const output = runWrangler(options, { command, json: true });
+  // SAFETY: Wrangler was invoked with --json, whose documented local output is an array of query results.
   const payload = JSON.parse(output) as D1QueryResult<T>;
 
   return payload[0]?.results ?? [];

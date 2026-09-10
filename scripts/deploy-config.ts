@@ -125,6 +125,7 @@ const parseTomlStringArray = (input: string) => {
     const token = input.slice(start, index + 1);
 
     try {
+      // SAFETY: The token was delimited by the TOML quote scanner, so JSON.parse returns the quoted string value.
       values.push(quote === '"' ? (JSON.parse(token) as string) : token.slice(1, -1));
     } catch {
       return null;
