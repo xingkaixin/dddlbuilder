@@ -5,7 +5,7 @@ import { readEnvBool } from './env.js';
 export type CspMode = 'off' | 'report-only' | 'enforce' | 'both';
 
 const DEFAULT_CSP_POLICY =
-  "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.cn https://cdn-font.hyperos.mi.com; font-src 'self' data: https://fonts.gstatic.cn https://cdn-font.hyperos.mi.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'";
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.cn https://cdn-font.hyperos.mi.com; font-src 'self' data: https://fonts.gstatic.cn https://cdn-font.hyperos.mi.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'";
 
 const normalizeMode = (raw: string | undefined): CspMode => {
   const value = raw?.trim().toLowerCase();

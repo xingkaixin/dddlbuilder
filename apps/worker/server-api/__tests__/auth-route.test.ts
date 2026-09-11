@@ -28,7 +28,6 @@ const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Binding
   RESEND_API_KEY: 're_test_key',
   RESEND_FROM_EMAIL: 'noreply@example.com',
   RESEND_FROM_NAME: 'DDLBuilder',
-  TURNSTILE_SECRET_KEY: 'turnstile-secret',
   SIGNUP_BONUS_CREDITS: '100000',
   ...overrides,
 });
@@ -66,13 +65,14 @@ describe('/api/auth/*', () => {
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ turnstileToken: 'token' }),
+          body: JSON.stringify({ email: 'test@example.com', password: 'password', name: 'Test' }),
         }),
         createEnv(),
       );
 
       expect(response.status).toBe(429);
       expect(response.headers.get('retry-after')).toBe('300');
+      expect(betterAuthMocks.handler).not.toHaveBeenCalled();
     });
 
     it('returns 400 when JSON body is invalid', async () => {
@@ -101,7 +101,7 @@ describe('/api/auth/*', () => {
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ turnstileToken: 'token', padding: 'x'.repeat(128) }),
+          body: JSON.stringify({ padding: 'x'.repeat(128) }),
         }),
         createEnv({ AUTH_BODY_MAX_BYTES: '64' }),
       );
@@ -111,250 +111,24 @@ describe('/api/auth/*', () => {
       expect(betterAuthMocks.handler).not.toHaveBeenCalled();
     });
 
-    it('returns 400 when token is missing', async () => {
+    it('accepts signup without human verification and preserves the registration fields', async () => {
+      betterAuthMocks.handler.mockImplementation(async (request: Request) =>
+        Response.json({ body: await request.json() }),
+      );
       const { default: app } = await import('../../api/index');
+      const body = { email: 'test@example.com', password: 'password', name: 'Test' };
 
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({}),
-        }),
-        createEnv(),
-      );
-
-      expect(response.status).toBe(400);
-      expect(await response.json()).toMatchObject({
-        error: 'Turnstile token is required',
-        code: 'TURNSTILE_REQUIRED',
-      });
-    });
-
-    it('returns 400 when token is empty string', async () => {
-      const { default: app } = await import('../../api/index');
-
-      const response = await app.fetch(
-        createRequest('/api/auth/sign-up/email', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ turnstileToken: '   ' }),
-        }),
-        createEnv(),
-      );
-
-      expect(response.status).toBe(400);
-      expect(await response.json()).toMatchObject({
-        error: 'Turnstile token is required',
-        code: 'TURNSTILE_REQUIRED',
-      });
-    });
-
-    it('returns 400 when token is not a string', async () => {
-      const { default: app } = await import('../../api/index');
-
-      const response = await app.fetch(
-        createRequest('/api/auth/sign-up/email', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ turnstileToken: 12345 }),
-        }),
-        createEnv(),
-      );
-
-      expect(response.status).toBe(400);
-      expect(await response.json()).toMatchObject({
-        error: 'Turnstile token is required',
-        code: 'TURNSTILE_REQUIRED',
-      });
-    });
-
-    it('returns 400 when token is null', async () => {
-      const { default: app } = await import('../../api/index');
-
-      const response = await app.fetch(
-        createRequest('/api/auth/sign-up/email', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ turnstileToken: null }),
-        }),
-        createEnv(),
-      );
-
-      expect(response.status).toBe(400);
-      expect(await response.json()).toMatchObject({
-        error: 'Turnstile token is required',
-        code: 'TURNSTILE_REQUIRED',
-      });
-    });
-
-    it('returns 503 when turnstile service returns non-ok', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: false,
-          status: 500,
-        }),
-      );
-
-      const { default: app } = await import('../../api/index');
-
-      const response = await app.fetch(
-        createRequest('/api/auth/sign-up/email', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ turnstileToken: 'valid-token' }),
-        }),
-        createEnv(),
-      );
-
-      expect(response.status).toBe(503);
-      expect(await response.json()).toMatchObject({
-        error: 'Turnstile service unavailable',
-        code: 'SERVICE_UNAVAILABLE',
-      });
-
-      vi.unstubAllGlobals();
-    });
-
-    it('returns 403 when turnstile verification fails', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            success: false,
-            'error-codes': ['timeout-or-duplicate'],
-          }),
-        }),
-      );
-
-      const { default: app } = await import('../../api/index');
-
-      const response = await app.fetch(
-        createRequest('/api/auth/sign-up/email', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ turnstileToken: 'valid-token' }),
-        }),
-        createEnv(),
-      );
-
-      expect(response.status).toBe(403);
-      expect(await response.json()).toMatchObject({
-        error: 'Turnstile verification failed',
-        code: 'TURNSTILE_FAILED',
-      });
-
-      vi.unstubAllGlobals();
-    });
-
-    it('returns success when turnstile verification passes', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            success: true,
-            action: 'signup',
-          }),
-        }),
-      );
-
-      const { default: app } = await import('../../api/index');
-
-      const response = await app.fetch(
-        createRequest('/api/auth/sign-up/email', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ turnstileToken: 'valid-token' }),
+          body: JSON.stringify(body),
         }),
         createEnv(),
       );
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toMatchObject({ created: true });
-
-      vi.unstubAllGlobals();
-    });
-
-    it('accepts the official always-pass Turnstile test secret without an action', async () => {
-      const fetchMock = vi.fn();
-      vi.stubGlobal('fetch', fetchMock);
-
-      const { default: app } = await import('../../api/index');
-
-      const response = await app.fetch(
-        createRequest('/api/auth/sign-up/email', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ turnstileToken: 'dummy-token' }),
-        }),
-        createEnv({
-          TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA',
-        }),
-      );
-
-      expect(response.status).toBe(200);
-      expect(fetchMock).not.toHaveBeenCalled();
-      vi.unstubAllGlobals();
-    });
-
-    it('rejects a token issued for a different Turnstile action', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            success: true,
-            action: 'login',
-          }),
-        }),
-      );
-      const { default: app } = await import('../../api/index');
-
-      const response = await app.fetch(
-        createRequest('/api/auth/sign-up/email', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ turnstileToken: 'valid-token' }),
-        }),
-        createEnv(),
-      );
-
-      expect(response.status).toBe(403);
-      expect(await response.json()).toMatchObject({ code: 'TURNSTILE_FAILED' });
-      vi.unstubAllGlobals();
-    });
-
-    it('includes remoteip when cf-connecting-ip header is present', async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ success: true, action: 'signup' }),
-      });
-      vi.stubGlobal('fetch', fetchMock);
-
-      const { default: app } = await import('../../api/index');
-      await app.fetch(
-        createRequest('/api/auth/sign-up/email', {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'cf-connecting-ip': '192.168.1.1',
-          },
-          body: JSON.stringify({ turnstileToken: 'valid-token' }),
-        }),
-        createEnv(),
-      );
-
-      expect(fetchMock).toHaveBeenCalledWith(
-        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.stringContaining('remoteip'),
-        }),
-      );
-
-      vi.unstubAllGlobals();
+      expect(await response.json()).toEqual({ body });
     });
   });
 

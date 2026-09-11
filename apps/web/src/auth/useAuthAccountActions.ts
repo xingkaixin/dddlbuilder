@@ -8,7 +8,6 @@ export type SignUpInput = {
   name: string;
   email: string;
   password: string;
-  turnstileToken: string;
 };
 
 export type AuthAccountActions = {
@@ -53,14 +52,7 @@ export const useAuthAccountActions = (
         await refreshSession();
       },
       signUpWithEmail: async (input) => {
-        const result = await requireClient().signUp.email(
-          {
-            email: input.email,
-            password: input.password,
-            name: input.name,
-          },
-          { headers: { 'x-turnstile-token': input.turnstileToken } },
-        );
+        const result = await requireClient().signUp.email(input);
 
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));

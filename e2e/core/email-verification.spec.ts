@@ -8,18 +8,6 @@ test.describe('邮箱验证码', () => {
   test.beforeEach(async ({ page }) => {
     signedIn = false;
     codesSent = 0;
-    await page.addInitScript(() => {
-      Object.assign(window, {
-        turnstile: {
-          render: (_container: HTMLElement, options: { callback: (token: string) => void }) => {
-            options.callback('test-token');
-
-            return 'test-widget';
-          },
-          remove: () => {},
-        },
-      });
-    });
     await page.route('**/api/me', (route) =>
       route.fulfill({
         json: signedIn
@@ -38,7 +26,6 @@ test.describe('邮箱验证码', () => {
     );
     await page.route('**/api/auth/sign-up/email', (route) => {
       expect(route.request().postDataJSON()).toMatchObject({ email });
-      expect(route.request().headers()['x-turnstile-token']).toBe('test-token');
       codesSent++;
 
       return route.fulfill({ json: { token: null, user: { email } } });

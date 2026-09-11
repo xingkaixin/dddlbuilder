@@ -54,7 +54,6 @@ export type UserSystemConfig = {
   resendApiKey: string;
   resendFromEmail: string;
   resendFromName: string;
-  turnstileSecretKey: string;
   signupBonusCredits: number;
 };
 
@@ -72,7 +71,6 @@ export const getUserSystemConfig = (env: ApiEnv['Bindings']): UserSystemConfig =
     resendApiKey: requireEnv(env.RESEND_API_KEY, 'RESEND_API_KEY'),
     resendFromEmail: requireEnv(env.RESEND_FROM_EMAIL, 'RESEND_FROM_EMAIL'),
     resendFromName: env.RESEND_FROM_NAME?.trim() || 'DDLBuilder',
-    turnstileSecretKey: requireEnv(env.TURNSTILE_SECRET_KEY, 'TURNSTILE_SECRET_KEY'),
     signupBonusCredits: requirePositiveInt(env.SIGNUP_BONUS_CREDITS, 'SIGNUP_BONUS_CREDITS'),
   };
 };

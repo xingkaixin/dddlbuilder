@@ -42,7 +42,6 @@ const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
   RESEND_API_KEY: 're_test_key',
   RESEND_FROM_EMAIL: 'noreply@example.com',
   RESEND_FROM_NAME: 'DDLBuilder',
-  TURNSTILE_SECRET_KEY: 'turnstile-secret',
   SIGNUP_BONUS_CREDITS: '100000',
 });
 

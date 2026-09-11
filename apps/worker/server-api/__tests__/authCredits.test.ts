@@ -45,7 +45,6 @@ describe('authentication credit initialization', () => {
       BETTER_AUTH_URL: 'http://localhost:3000',
       RESEND_API_KEY: 'test-key',
       RESEND_FROM_EMAIL: 'noreply@example.com',
-      TURNSTILE_SECRET_KEY: 'test-key',
       SIGNUP_BONUS_CREDITS: '100000',
     } as ApiEnv['Bindings'];
   });

@@ -73,7 +73,9 @@ pnpm deploy:cf
 - `pnpm db:migrate:remote` / `pnpm db:inspect:remote`：显式连接 remote D1 执行迁移或检查。
 - `pnpm dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
 - `pnpm dev` 运行时，`/docs` 会自动代理到 docs dev server；如果只运行 `pnpm dev:app`，需要再单独运行 `pnpm dev:docs` 才能通过 `http://localhost:3000/docs/` 查看文档。
-- `pnpm dev` 或 `pnpm dev:app` 运行时，前端的 `/api/*` 请求会代理到 `http://127.0.0.1:8787`。如果没有启动 `pnpm dev:worker`，D1 / KV / Better Auth / Turnstile 都不会生效。
+- `pnpm dev` 或 `pnpm dev:app` 运行时，前端的 `/api/*` 请求会代理到 `http://127.0.0.1:8787`。如果没有启动 `pnpm dev:worker`，D1 / KV / Better Auth 都不会生效。
+
+注册后通过邮件中的六位验证码激活账号，默认要求邮箱验证。注册接口保留 IP 限流，无需配置人机验证码。
 
 ### 部署 secrets
 
@@ -93,7 +95,6 @@ pnpm deploy:cf
 ```bash
 OPENAI_API_KEY=xxx
 BETTER_AUTH_SECRET=xxx
-TURNSTILE_SECRET_KEY=xxx
 ADMIN_CONSOLE_PASSWORD=xxx
 ADMIN_SESSION_SECRET=xxx
 ```
@@ -122,7 +123,6 @@ WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 - `RESEND_API_KEY`：Resend API key
 - `RESEND_FROM_EMAIL`：认证邮件发件地址
 - `RESEND_FROM_NAME`：认证邮件发件名
-- `TURNSTILE_SECRET_KEY`：Turnstile 服务端校验密钥
 - `SIGNUP_BONUS_CREDITS`：注册赠送额度
 - `ADMIN_CONSOLE_PASSWORD`：管理员控制台登录密码；配置后还必须配置独立的 `ADMIN_SESSION_SECRET`
 - `ADMIN_SESSION_SECRET`：管理员 session cookie 签名密钥，至少为 32 UTF-8 bytes，不能与管理员密码相同

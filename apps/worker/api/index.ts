@@ -67,7 +67,7 @@ api.use(
       return allowed.includes(origin) ? origin : null;
     },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Turnstile-Token'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
     credentials: true,
     exposeHeaders: [
       'X-Request-Id',

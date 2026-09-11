@@ -65,8 +65,6 @@ export const jaJPCommon = {
       nameRequired: '名前は必須です',
       emailRequired: 'メールアドレスは必須です',
       passwordRequired: 'パスワードが必要です',
-      turnstileRequired: 'まず検証チャレンジを完了してください',
-      turnstileNotConfigured: '検証が構成されていません。サインアップは利用できません',
       createAccount: 'アカウントを作成する',
       resendVerification: 'コードを再送信',
       sendVerificationCode: 'メールを認証',

@@ -44,7 +44,6 @@ describe('better-auth session revocation integration', () => {
       BETTER_AUTH_URL: 'http://localhost:3000',
       RESEND_API_KEY: 'test',
       RESEND_FROM_EMAIL: 'noreply@example.com',
-      TURNSTILE_SECRET_KEY: 'test',
       SIGNUP_BONUS_CREDITS: '1000',
       WORKSPACE_YDOC: { idFromName: (id: string) => id, get: () => ({ fetch }) },
     } as unknown as ApiEnv['Bindings'];
@@ -96,7 +95,6 @@ describe('better-auth session revocation integration', () => {
       BETTER_AUTH_URL: 'http://localhost:3000',
       RESEND_API_KEY: 'test',
       RESEND_FROM_EMAIL: 'noreply@example.com',
-      TURNSTILE_SECRET_KEY: 'test',
       SIGNUP_BONUS_CREDITS: '1000',
       WORKSPACE_YDOC: { idFromName: (id: string) => id, get: () => ({ fetch }) },
     } as unknown as ApiEnv['Bindings'];

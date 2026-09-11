@@ -51,7 +51,6 @@ describe('email OTP verification', () => {
       BETTER_AUTH_URL: 'http://localhost:3000',
       RESEND_API_KEY: 'test',
       RESEND_FROM_EMAIL: 'noreply@example.com',
-      TURNSTILE_SECRET_KEY: 'test',
       SIGNUP_BONUS_CREDITS: '1000',
     } as ApiEnv['Bindings'];
   });

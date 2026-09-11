@@ -19,7 +19,6 @@ const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Binding
   RESEND_API_KEY: 're_test_key',
   RESEND_FROM_EMAIL: 'noreply@example.com',
   RESEND_FROM_NAME: 'DDLBuilder',
-  TURNSTILE_SECRET_KEY: 'turnstile-secret',
   SIGNUP_BONUS_CREDITS: '100000',
   ...overrides,
 });

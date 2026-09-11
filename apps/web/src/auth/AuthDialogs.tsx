@@ -12,13 +12,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthActions, useAuthDialog } from '@/auth/AuthSessionProvider';
-import { TurnstileWidget } from '@/auth/TurnstileWidget';
 import { EmailVerificationForm } from '@/auth/EmailVerificationForm';
 import { ApiError } from '@/services/apiError';
 import { useAuthCallbackCommand } from '@/auth/useAuthCallbackCommand';
 import { useToast } from '@/hooks/useToast';
-
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() ?? '';
 
 type AuthMode = 'sign_in' | 'sign_up' | 'forgot_password' | 'reset_password';
 
@@ -40,7 +37,6 @@ export function AuthDialogs() {
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(initialResetToken);
   const [verifyEmailDialogOpen, setVerifyEmailDialogOpen] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [verification, setVerification] = useState<{ email: string; sentAt: number } | null>(null);
 
   useEffect(() => {
@@ -118,19 +114,11 @@ export function AuthDialogs() {
           return;
         }
 
-        if (!turnstileToken) {
-          error(t('header.auth.turnstileRequired'));
-
-          return;
-        }
-
         const result = await authSession.signUpWithEmail({
           name: name.trim(),
           email: trimmedEmail,
           password,
-          turnstileToken,
         });
-        setTurnstileToken(null);
         setAuthMode('sign_in');
         setPassword('');
 
@@ -295,24 +283,12 @@ export function AuthDialogs() {
                   />
                 </div>
               ) : null}
-              {authMode === 'sign_up' ? (
-                TURNSTILE_SITE_KEY ? (
-                  <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={setTurnstileToken} />
-                ) : (
-                  <p className="text-sm text-destructive">
-                    {t('header.auth.turnstileNotConfigured')}
-                  </p>
-                )
-              ) : null}
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 {authMode !== 'reset_password' ? (
                   <button
                     type="button"
                     className="underline-offset-4 hover:underline"
-                    onClick={() => {
-                      setTurnstileToken(null);
-                      setAuthMode(authMode === 'sign_up' ? 'sign_in' : 'sign_up');
-                    }}
+                    onClick={() => setAuthMode(authMode === 'sign_up' ? 'sign_in' : 'sign_up')}
                   >
                     {authMode === 'sign_up'
                       ? t('header.auth.switchToSignIn')

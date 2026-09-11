@@ -114,7 +114,6 @@ test.describe('Cloudflare runtime bindings', () => {
         name: 'Socket Integration',
         email,
         password,
-        turnstileToken: 'XXXX.DUMMY.TOKEN.XXXX',
       },
     });
     expect(signup.ok(), await signup.text()).toBe(true);
@@ -181,7 +180,7 @@ test.describe('Cloudflare runtime bindings', () => {
       expect(closed).toBe(1008);
 
       const signin = await context.request.post('/api/auth/sign-in/email', {
-        data: { email, password, turnstileToken: 'XXXX.DUMMY.TOKEN.XXXX' },
+        data: { email, password },
       });
       expect(signin.ok(), await signin.text()).toBe(true);
       const current = await context.request.get(`/api/workspaces/${workspaceId}/yjs/state`);
@@ -207,7 +206,6 @@ test.describe('Cloudflare runtime bindings', () => {
         name: 'Runtime Integration',
         email,
         password: 'Runtime-integration-123!',
-        turnstileToken: 'XXXX.DUMMY.TOKEN.XXXX',
       },
     });
     expect(signup.ok(), await signup.text()).toBe(true);
