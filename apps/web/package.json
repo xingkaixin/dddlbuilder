@@ -67,7 +67,7 @@
     "tailwindcss": "4.3.3",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~7.0.2",
-    "vite": "^8.2.2",
+    "vite": "^8.3.0",
     "vitest": "^5.0.0",
     "webmcp-types": "^0.1.7"
   }
