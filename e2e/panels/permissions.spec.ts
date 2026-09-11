@@ -30,20 +30,9 @@ test.describe('权限管理验证 @panels', () => {
     await authInput.fill('admin_role');
     await page.keyboard.press('Enter');
 
-    // 检查 DDL 生成面板中是否包含 DCL (或者检查 DCL 输出区域)
-    // 根据 useSqlGeneration.ts，生成的 DCL 在 generatedDcl 中
-    // 在 UI 中，DDLOutput 可能有切换 DDL/DCL 的 Tab
-    const dclTab = page.getByRole('tab', { name: /授权 DCL/i });
-
-    if (await dclTab.isVisible()) {
-      await dclTab.click();
-      const dclOutput = page.locator('[role="tabpanel"]:visible pre');
-      await expect(dclOutput).toContainText(/GRANT SELECT ON perm_test TO admin_role/i);
-    } else {
-      // 如果没有特定 Tab，可能就在同一个面板下
-      const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
-      await expect(sqlOutput).toContainText(/GRANT SELECT ON perm_test TO admin_role/i);
-    }
+    await page.getByRole('tab', { name: /授权 DCL/i }).click();
+    const dclOutput = page.getByRole('tabpanel', { name: /授权 DCL/i }).locator('pre');
+    await expect(dclOutput).toContainText(/GRANT SELECT ON perm_test TO admin_role/i);
   });
 
   test('场景：复制 DCL', async ({ page }) => {
