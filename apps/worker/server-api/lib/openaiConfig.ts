@@ -36,12 +36,12 @@ const readEnvInt = (value: string | undefined, fallback: number): number => {
 };
 
 const integer = (name: string, fallback: number, maximum = Number.MAX_SAFE_INTEGER) =>
-  Config.string(name).pipe(
+  Config.String(name).pipe(
     Config.withDefault(''),
     Config.map((value) => Math.min(readEnvInt(value, fallback), maximum)),
   );
 const boolean = (name: string, fallback: boolean) =>
-  Config.string(name).pipe(
+  Config.String(name).pipe(
     Config.withDefault(''),
     Config.map((value) => readEnvBool(value, fallback)),
   );

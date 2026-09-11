@@ -28,6 +28,33 @@ describe('auth schema migration parity', () => {
   it('defaults local account issuers to an empty string', () => {
     expect(betterAuthSchema.account.issuer.default).toBe('');
   });
+
+  it('scopes account identity to the provider when issuer is omitted', () => {
+    const { sqlite } = createSqliteD1Database();
+
+    try {
+      sqlite.exec(
+        "INSERT INTO user (id,name,email,created_at,updated_at) VALUES ('u','User','u@example.com',1,1)",
+      );
+
+      const insertAccount = sqlite.prepare(
+        'INSERT INTO account (id,account_id,provider_id,user_id,created_at,updated_at) VALUES (?,?,?, ?,1,1)',
+      );
+
+      insertAccount.run('a', 'shared-subject', 'provider-a', 'u');
+      insertAccount.run('b', 'shared-subject', 'provider-b', 'u');
+      sqlite.prepare('UPDATE account SET issuer = ? WHERE id = ?').run('legacy-issuer', 'a');
+
+      expect(() => insertAccount.run('duplicate', 'shared-subject', 'provider-a', 'u')).toThrow(
+        /UNIQUE constraint failed/,
+      );
+      expect(sqlite.prepare('SELECT COUNT(*) AS count FROM account').get()).toMatchObject({
+        count: 2,
+      });
+    } finally {
+      sqlite.close();
+    }
+  });
 });
 
 describe('better-auth session revocation integration', () => {

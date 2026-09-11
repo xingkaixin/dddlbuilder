@@ -56,7 +56,7 @@ export const authAccount = sqliteTable(
   },
   (table) => [
     index('idx_account_user_id').on(table.userId),
-    uniqueIndex('idx_account_issuer_account').on(table.issuer, table.accountId),
+    uniqueIndex('idx_account_provider_account').on(table.providerId, table.accountId),
   ],
 );
 

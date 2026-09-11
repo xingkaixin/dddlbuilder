@@ -122,7 +122,7 @@ export const makeAITracer = (platform: {
       }
     },
     context(primitive, fiber) {
-      const restore = fiber.currentSpan ? contexts.get(fiber.currentSpan) : undefined;
+      const restore = fiber.cache.span ? contexts.get(fiber.cache.span) : undefined;
       const evaluate = () => primitive['~effect/Effect/evaluate'](fiber);
 
       return restore ? restore(evaluate) : evaluate();
