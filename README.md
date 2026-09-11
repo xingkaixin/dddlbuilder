@@ -83,12 +83,12 @@ pnpm deploy:cf
 
 项目现在的部署方式是：
 
-1. 复制 `apps/worker/wrangler.deploy.example.toml` 为 `apps/worker/wrangler.deploy.toml`，填写生产资源 ID 和公开配置
+1. 复制 `apps/worker/wrangler.deploy.example.toml` 为 `apps/worker/wrangler.deploy.toml`，填写生产资源 ID、`routes` 自定义域名和公开配置；生产模板关闭 `workers.dev` 与版本预览地址
 2. 复制 `.deploy.secrets.example` 为 `.deploy.secrets`
 3. 在 `.deploy.secrets` 中填写生产 secrets
 4. 执行 `pnpm deploy:cf`
 
-`pnpm deploy:cf` 会在构建后记录 D1 Time Travel 恢复点、执行 remote pending migrations、验证运行时必需表，再调用 `wrangler deploy --config apps/worker/wrangler.deploy.toml`。如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
+`pnpm deploy:cf` 会在构建后先检查 Wrangler 配置，遇到错误或警告就停止；然后记录 D1 Time Travel 恢复点、执行 remote pending migrations、验证运行时必需表，再调用 `wrangler deploy --config apps/worker/wrangler.deploy.toml`。如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
 
 `.deploy.secrets` 使用标准 `.env` 格式，例如：
 

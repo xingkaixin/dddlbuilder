@@ -1,6 +1,41 @@
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 const TRIGGERS_SECTION = /(?:^|\n)\s*\[triggers\]\s*(?:#.*)?\n([\s\S]*?)(?=\n\s*\[|$)/;
 const CRONS_ASSIGNMENT = /(?:^|\n)\s*crons\s*=\s*\[/;
 const AI_USAGE_RECOVERY_CRON = '*/10 * * * *';
+
+export const assertWorkerConfigValid = (configPath: string) => {
+  const directory = mkdtempSync(join(tmpdir(), 'ddlbuilder-worker-config-'));
+
+  try {
+    const result = spawnSync(
+      'pnpm',
+      [
+        'exec',
+        'wrangler',
+        'types',
+        join(directory, 'env.d.ts'),
+        '--config',
+        configPath,
+        '--include-runtime',
+        'false',
+      ],
+      { encoding: 'utf8', env: { ...process.env, WRANGLER_LOG: 'warn' } },
+    );
+    const diagnostics = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
+
+    if (result.status !== 0 || diagnostics) {
+      throw new Error(`Invalid Worker configuration: ${configPath}\n${diagnostics}`, {
+        cause: result.error,
+      });
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+};
 
 const stripTomlComments = (input: string) => {
   let result = '';

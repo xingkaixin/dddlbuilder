@@ -1,4 +1,7 @@
 name = "ddlbuilder"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "example.com", custom_domain = true }]
 compatibility_date = "2026-03-17"
 compatibility_flags = ["nodejs_compat"]
 main = "dist/server.js"
@@ -57,13 +60,13 @@ VITE_ENABLE_CNY_FIREWORKS = "false"
 
 [observability]
 enabled = true
+redact_query_string = true
 
 [observability.logs]
 enabled = true
 head_sampling_rate = 1.0
 persist = true
 invocation_logs = true
-redact_query_string = true
 
 [observability.traces]
 enabled = true

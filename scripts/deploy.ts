@@ -8,7 +8,7 @@ import {
   runPendingMigrations,
   verifyRequiredD1Tables,
 } from './d1-utils';
-import { assertAIUsageCronConfigured } from './deploy-config';
+import { assertAIUsageCronConfigured, assertWorkerConfigValid } from './deploy-config';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const configPath = path.join(repoRoot, 'apps', 'worker', 'wrangler.deploy.toml');
@@ -16,6 +16,8 @@ const secretsFile = process.env.WRANGLER_SECRETS_FILE ?? path.join(repoRoot, '.d
 const hasSecretsFile = existsSync(secretsFile);
 
 assertAIUsageCronConfigured(readFileSync(configPath, 'utf8'), configPath);
+
+assertWorkerConfigValid(configPath);
 
 const runWrangler = (args: string[], captureOutput = false) => {
   const result = spawnSync('pnpm', ['exec', 'wrangler', ...args], {
