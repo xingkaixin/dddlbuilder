@@ -198,7 +198,7 @@ test.describe('Cloudflare runtime bindings', () => {
     }
   });
 
-  test('persists auth, workspace, share and Durable Object state', async ({ context }) => {
+  test('persists auth, workspace, share and Durable Object state', async ({ context, page }) => {
     const email = `runtime-${crypto.randomUUID()}@ddlbuilder.test`;
 
     const signup = await context.request.post('/api/auth/sign-up/email', {
@@ -229,6 +229,21 @@ test.describe('Cloudflare runtime bindings', () => {
     const currentWorkspace = (await workspacesResponse.json()) as { workspaceId: string };
     const { workspaceId } = currentWorkspace;
     expect(workspaceId).toMatch(/^ws_/);
+
+    await page.goto('/api/health');
+
+    const closed = await page.evaluate(
+      (id) =>
+        new Promise((resolve, reject) => {
+          const socket = new WebSocket(`ws://${location.host}/api/workspaces/${id}/yjs`);
+          socket.onopen = () => socket.close(1000, 'done');
+          socket.onerror = () => reject(new Error('Workspace socket failed to open'));
+          socket.onclose = ({ code, reason, wasClean }) => resolve({ code, reason, wasClean });
+        }),
+      workspaceId,
+    );
+
+    expect(closed).toEqual({ code: 1000, reason: 'done', wasClean: true });
 
     const state = createState(`runtime_${Date.now()}`);
     const importedAt = Date.now();

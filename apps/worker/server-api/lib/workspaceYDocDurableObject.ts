@@ -275,8 +275,9 @@ export class WorkspaceYDocDurableObject {
     }
   }
 
-  async webSocketClose(ws: WebSocket, code: number, _reason: string, wasClean: boolean) {
+  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
     const identity = this.readSocketIdentity(ws);
+    ws.close(code, reason);
     logWorkspaceYDocHealth('close', {
       workspaceId: this.workspaceId ?? identity.workspaceId,
       connectedSockets: this.connectedSocketCount(),
