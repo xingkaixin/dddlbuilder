@@ -21,8 +21,12 @@ export default defineConfig({
         'scripts/generate-favicon.ts',
         'scripts/generate-logos.ts',
         'scripts/prepare-e2e-runtime.ts',
+        // CI builds the assets; runtime E2E tests verify CSP on the served pages.
+        'scripts/prepare-static-assets.ts',
         'scripts/verify-d1-runtime.ts',
         'scripts/verify-server-bundle.ts',
+        // CI runs this entry point in "Validate Cloudflare configuration".
+        'scripts/verify-worker-config.ts',
       ],
       thresholds: {
         branches: 80,
