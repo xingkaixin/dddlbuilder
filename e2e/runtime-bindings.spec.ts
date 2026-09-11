@@ -24,6 +24,37 @@ const createState = (tableName: string) => ({
 });
 
 test.describe('Cloudflare runtime bindings', () => {
+  for (const path of [
+    '/',
+    '/docs/zh/basic/getting-started',
+    '/docs/en/basic/getting-started',
+    '/docs/ja/basic/getting-started',
+  ]) {
+    test(`serves ${path} with an enforced CSP`, async ({ page }) => {
+      await page.route(/^https:\/\//, (route) => route.fulfill({ body: '' }));
+      await page.addInitScript(() => {
+        document.addEventListener('securitypolicyviolation', (event) => {
+          document.documentElement.dataset.cspViolation = `${event.violatedDirective}: ${event.blockedURI}`;
+        });
+      });
+      const response = await page.goto(path);
+      expect(response?.ok()).toBe(true);
+      const policy = response?.headers()['content-security-policy'];
+      expect(policy).toContain("frame-ancestors 'none'");
+      expect(policy).toContain("'sha256-");
+      expect(policy).not.toContain("'unsafe-eval'");
+
+      if (path === '/') {
+        await expect(page.locator('#root')).not.toBeEmpty();
+      } else {
+        await expect(page.locator('.VPDoc h1')).toBeVisible();
+        await page.getByRole('switch').click();
+      }
+
+      expect(await page.locator('html').getAttribute('data-csp-violation')).toBeNull();
+    });
+  }
+
   test('connects Effect spans to the native Worker trace', async ({ request }) => {
     const requestId = `trace-${crypto.randomUUID()}`;
 

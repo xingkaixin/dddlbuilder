@@ -4,8 +4,8 @@ import { readEnvBool } from './env.js';
 
 export type CspMode = 'off' | 'report-only' | 'enforce' | 'both';
 
-const DEFAULT_CSP_POLICY =
-  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn-font.hyperos.mi.com; font-src 'self' data: https://cdn-font.hyperos.mi.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'";
+export const DEFAULT_CSP_POLICY =
+  "default-src 'self'; script-src 'self' https://umami.xingkaixin.me https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdn-font.hyperos.mi.com https://fonts.googleapis.cn; font-src 'self' data: https://cdn-font.hyperos.mi.com https://fonts.gstatic.cn; img-src 'self' data: blob: https:; connect-src 'self' https://umami.xingkaixin.me https://cloudflareinsights.com; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'";
 
 const normalizeMode = (raw: string | undefined): CspMode => {
   const value = raw?.trim().toLowerCase();

@@ -142,7 +142,7 @@ WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 - `CSP_MODE`：CSP 灰度模式（`off` / `report-only` / `enforce` / `both`）
 - `CSP_POLICY`：自定义 CSP 策略文本（可选，不配置则使用内置默认策略）
 
-说明：`CSP_*` 配置在本地 Node 服务端与 API 运行时生效；`vercel.json` 中仍保留静态 CSP 兜底策略。
+说明：`CSP_*` 配置在本地 Node 服务端与 API 运行时生效。Cloudflare 静态页面的 CSP 由 `scripts/prepare-static-assets.ts` 在构建后写入 `_headers`，复用内置策略并加入构建产物中内联脚本的 SHA-256 哈希。修改脚本或策略后必须重新构建，静态页面不读取运行时的 `CSP_*` 变量。
 
 - `VITE_ENABLE_CNY_FIREWORKS`：是否启用春节烟花入口与节日动效（默认 `false`，设为 `true` 后恢复 Header 入口和烟花 overlay）
 - `VITE_ENABLE_AI_STREAM_DEBUG`：是否启用前端 AI streaming 调试日志（构建时变量，默认 `false`）

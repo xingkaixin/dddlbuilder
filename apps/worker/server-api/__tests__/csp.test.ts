@@ -83,7 +83,7 @@ describe('csp headers', () => {
 
     const response = await app.fetch(new Request('http://localhost/'), env);
     const policy = response.headers.get('content-security-policy');
-    expect(policy).toContain("script-src 'self';");
+    expect(policy).toContain("script-src 'self' https://umami.xingkaixin.me");
     expect(policy).not.toContain("'unsafe-eval'");
     expect(policy).not.toContain("script-src 'self' 'unsafe-inline'");
   });
