@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import './index.css';
+import './assets/fonts/roboto-mono/fonts.css';
 import App from './App.tsx';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { appQueryClient } from './lib/queryClient';
@@ -26,6 +27,18 @@ if (!rootElement) {
 }
 
 const isAdmin = isAdminPath();
+
+// Keep remote font CSS non-blocking until it has loaded.
+const fontStylesheet = document.querySelector<HTMLLinkElement>('#misans-font');
+
+if (fontStylesheet) {
+  const enableFont = () => {
+    fontStylesheet.media = 'all';
+  };
+
+  if (fontStylesheet.sheet) enableFont();
+  else fontStylesheet.addEventListener('load', enableFont, { once: true });
+}
 
 createRoot(rootElement).render(
   <StrictMode>

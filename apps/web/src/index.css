@@ -81,9 +81,6 @@
   --icon-swap-ease: ease-in-out;
 }
 
-/* MiSans VF - 小米可变字体 (CDN) */
-/* 中文字体使用 MiSans，拉丁字符使用 Roboto Mono */
-
 @layer base {
   :root {
     --font-sans: 'MiSans VF', 'PingFang SC', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
