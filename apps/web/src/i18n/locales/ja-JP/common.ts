@@ -1777,6 +1777,7 @@ export const jaJPCommon = {
     },
   },
   erDiagram: {
+    loading: '関係図を読み込み中…',
     title: 'ER図',
     noTables: '保存されたテーブルはまだありません',
     tableLoaded: '選択したテーブルがロードされました',

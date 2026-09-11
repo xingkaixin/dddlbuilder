@@ -1765,6 +1765,7 @@ export const enUSCommon = {
     },
   },
   erDiagram: {
+    loading: 'Loading diagram…',
     title: 'ER Diagram',
     noTables: 'No saved tables yet',
     tableLoaded: 'Selected table loaded',

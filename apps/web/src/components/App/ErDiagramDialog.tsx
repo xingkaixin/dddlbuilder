@@ -1,5 +1,5 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { memo, useCallback, useEffect, useState } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useState } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SaveTableResult } from '@/hooks/useSavedTables';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/useToast';
 import { createEmptyRow } from '@/utils/helpers';
-import ErDiagramCanvas from './er-diagram/ErDiagramCanvas';
+
+const ErDiagramCanvas = lazy(() => import('./er-diagram/ErDiagramCanvas'));
 
 interface ErDiagramDialogProps {
   open: boolean;
@@ -90,14 +91,25 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
             <DialogTitle>{t('erDiagram.title')}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 relative">
-            <ErDiagramCanvas
-              tables={tables}
-              loading={loading}
-              onSelectTable={handleSelectTable}
-              onRefresh={refresh}
-              onAddTable={handleAddTable}
-              onUpdateTable={overwriteTable}
-            />
+            <Suspense
+              fallback={
+                <div
+                  role="status"
+                  className="flex h-full items-center justify-center text-muted-foreground"
+                >
+                  {t('erDiagram.loading')}
+                </div>
+              }
+            >
+              <ErDiagramCanvas
+                tables={tables}
+                loading={loading}
+                onSelectTable={handleSelectTable}
+                onRefresh={refresh}
+                onAddTable={handleAddTable}
+                onUpdateTable={overwriteTable}
+              />
+            </Suspense>
           </div>
         </DialogContent>
       </Dialog>

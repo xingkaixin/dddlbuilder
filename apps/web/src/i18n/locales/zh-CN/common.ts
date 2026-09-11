@@ -1708,6 +1708,7 @@ export const zhCNCommon = {
   },
   erDiagram: {
     title: 'ER 关系图',
+    loading: '正在加载关系图…',
     noTables: '暂无已保存的表',
     tableLoaded: '已加载选中的表',
     addTablePrompt: '请输入新表名',

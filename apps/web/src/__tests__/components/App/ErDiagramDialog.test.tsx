@@ -54,6 +54,6 @@ describe('ErDiagramDialog', () => {
     );
 
     await waitFor(() => expect(loadTables).toHaveBeenCalledTimes(1));
-    expect(screen.getByTestId('er-table-count')).toHaveTextContent('1');
+    expect(await screen.findByTestId('er-table-count')).toHaveTextContent('1');
   });
 });

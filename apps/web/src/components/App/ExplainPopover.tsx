@@ -1,13 +1,14 @@
 import type React from 'react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Lightbulb, Loader2, X, Check } from '@/components/icons';
-import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
 import { useTranslation } from 'react-i18next';
 import { useAuthIdentity } from '@/auth/AuthSessionProvider';
+
+const ReactMarkdown = lazy(() => import('react-markdown'));
 
 interface ExplainPopoverProps {
   children: React.ReactNode;
@@ -206,7 +207,9 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
                   </div>
                 ) : (
                   <div className="text-foreground/90 markdown-content">
-                    <ReactMarkdown>{explanation || ''}</ReactMarkdown>
+                    <Suspense fallback={<Skeleton className="h-4 w-full" />}>
+                      <ReactMarkdown>{explanation || ''}</ReactMarkdown>
+                    </Suspense>
                   </div>
                 )}
               </div>

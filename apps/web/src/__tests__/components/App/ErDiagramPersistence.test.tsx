@@ -146,6 +146,7 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
 
   it('creates a logical relationship without changing columns or indexes', async () => {
     render(<App />);
+    await act(() => vi.dynamicImportSettled());
     await waitFor(() => expect(capture.connect).toBeTypeOf('function'));
     act(() =>
       capture.connect?.({
@@ -172,6 +173,7 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
   it('删除关系保留打开图之后收到的字段和注释', async () => {
     await write({ ...source, state: { ...source.state, foreignKeys: [foreignKey] } });
     render(<App />);
+    await act(() => vi.dynamicImportSettled());
     await waitFor(() => expect(capture.edges).toHaveLength(1));
     await act(async () => {
       const current = await read();
@@ -207,6 +209,7 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
     '建立关系使用最新源表和目标表 (targetDeleted=%s)',
     async (targetDeleted) => {
       render(<App />);
+      await act(() => vi.dynamicImportSettled());
       await waitFor(() => expect(capture.connect).toBeTypeOf('function'));
       act(() =>
         capture.connect?.({
