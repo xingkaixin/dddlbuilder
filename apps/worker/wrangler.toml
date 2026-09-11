@@ -6,6 +6,7 @@ main = "dist/server.js"
 
 # 前端静态资源
 [assets]
+binding = "ASSETS"
 directory = "../web/dist/client"
 html_handling = "auto-trailing-slash"
 not_found_handling = "single-page-application"

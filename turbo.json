@@ -12,6 +12,10 @@
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
+    "@ddlbuilder/worker#typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": ["worker-configuration.d.ts"]
+    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": []
@@ -29,6 +33,9 @@
       "cache": true
     },
     "lint:fix": {
+      "cache": false
+    },
+    "@ddlbuilder/worker#lint": {
       "cache": false
     },
     "format": {

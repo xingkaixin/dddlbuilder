@@ -1,4 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
+// oxlint-disable-next-line typescript/triple-slash-reference -- Wrangler emits global declarations without module exports.
+/// <reference path="../../worker-configuration.d.ts" />
 
 import type { ApiErrorCode } from '@ddlbuilder/shared-types/api';
 import type { AuditableLogger } from 'evlog';
@@ -27,11 +29,9 @@ export type ApiEnv = {
     currentUserId?: string;
     log?: WorkerRequestLogger;
   };
-  Bindings: {
-    ASSETS: { fetch: typeof fetch };
-    SHARE_KV: KVNamespace;
-    USER_DB: D1Database;
-    WORKSPACE_YDOC?: DurableObjectNamespace;
+  Bindings: Pick<WorkerBindings, 'SHARE_KV' | 'USER_DB'> & {
+    ASSETS: Pick<WorkerBindings['ASSETS'], 'fetch'>;
+    WORKSPACE_YDOC?: WorkerBindings['WORKSPACE_YDOC'];
     EVLOG_REQUEST_LOG?: WorkerRequestLogger;
     // Environment variables
     ENVIRONMENT?: string;

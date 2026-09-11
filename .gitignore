@@ -33,6 +33,7 @@ dist-ssr
 .wrangler-home
 wrangler.local.toml
 wrangler.deploy.toml
+apps/worker/worker-configuration.d.ts
 
 playwright-report
 test-results

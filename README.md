@@ -90,6 +90,8 @@ pnpm deploy:cf
 
 `pnpm deploy:cf` 会在构建后先检查 Wrangler 配置，遇到错误或警告就停止；然后记录 D1 Time Travel 恢复点、执行 remote pending migrations、验证运行时必需表，再调用 `wrangler deploy --config apps/worker/wrangler.deploy.toml`。如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
 
+Worker 的类型检查与 lint 会先通过 `wrangler types` 生成绑定类型。生成文件不提交到 Git；修改绑定后，也可运行 `pnpm --filter @ddlbuilder/worker typegen` 手动更新。
+
 `.deploy.secrets` 使用标准 `.env` 格式，例如：
 
 ```bash

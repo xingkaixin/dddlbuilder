@@ -5,13 +5,14 @@
   "scripts": {
     "build": "vite build --config vite.config.ts",
     "dev": "pnpm --dir ../.. run dev:worker",
-    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "typecheck": "pnpm typegen && tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json api/ server-api/ && oxfmt --config ../../.oxfmtrc.json --check api/ server-api/",
+    "lint": "pnpm typegen && oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json api/ server-api/ && oxfmt --config ../../.oxfmtrc.json --check api/ server-api/",
     "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix api/ server-api/ && oxfmt --config ../../.oxfmtrc.json --write api/ server-api/",
-    "format": "oxfmt --config ../../.oxfmtrc.json --write api/ server-api/"
+    "format": "oxfmt --config ../../.oxfmtrc.json --write api/ server-api/",
+    "typegen": "WRANGLER_LOG=warn wrangler types worker-configuration.d.ts --config wrangler.toml --env-interface WorkerBindings --include-runtime false"
   },
   "dependencies": {
     "@ddlbuilder/ddl-core": "workspace:*",
