@@ -18,7 +18,7 @@
     "format": "oxfmt --config ../../.oxfmtrc.json --write src/"
   },
   "dependencies": {
-    "effect": "4.0.0-rc.113"
+    "effect": "4.0.0-rc.115"
   },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*"

@@ -19,15 +19,15 @@
     "@ddlbuilder/shared-types": "workspace:*",
     "@ddlbuilder/user-db": "workspace:*",
     "@ddlbuilder/workspace-core": "workspace:*",
-    "@effect/sql-d1": "4.0.0-rc.113",
+    "@effect/sql-d1": "4.0.0-rc.115",
     "better-auth": "^1.7.4",
     "drizzle-orm": "^0.45.2",
-    "effect": "4.0.0-rc.113",
+    "effect": "4.0.0-rc.115",
     "evlog": "2.29.0",
     "hono": "^4.13.7",
     "lib0": "^0.2.117",
     "openai": "^7.15.0",
-    "resend": "^6.27.0",
+    "resend": "^6.28.0",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.32"
   },
@@ -38,6 +38,6 @@
     "typescript": "~7.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.0",
-    "wrangler": "^4.131.0"
+    "wrangler": "^4.131.1"
   }
 }
