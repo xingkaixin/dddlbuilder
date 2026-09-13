@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.24.0] - 2026-09-13
+### Added
+- **Logical table relationships**: Create logical relationships in the ER diagram with cardinality, optionality, and business descriptions. Dashed lines distinguish them from physical foreign keys. Relationships are preserved in saved tables, version history, shares, and workspace sync without changing constraints, indexes, or DDL and ORM output.
+- **Field standards and business dictionary**: Define reusable field specifications with business names, definitions, and units. Link existing fields, apply standards after reviewing differences, and check saved tables for deviations. The standards library is stored in the current browser and supports JSON import and export; other devices need the same library to resolve shared field references.
+- **Six-digit email verification codes**: Verify email addresses directly in the authentication dialog using a six-digit code, with paste support, error feedback, and a resend countdown. Registration no longer requires Turnstile verification.
+
+### Improved
+- **Initial loading and repeat visits**: Load ER diagram and Markdown components on demand, load fonts without blocking rendering, and cache fingerprinted assets for a year to reduce initial downloads and repeated requests.
+- **Tab and menu hover feedback**: Add smoothly moving highlights across tabs, menus, and grouped toolbar actions to make the current hover target easier to follow.
+- **Large-workspace editing**: Update only changed workspace records instead of rebuilding every table and draft after each edit, reducing repeated processing in workspaces with many tables.
+
+### Fixed
+- **Workspace recovery and save feedback**: Keep the loading state visible while retrying workspace startup and prevent disposed documents from remaining available for editing. If review-history migration fails after a table is saved, report the migration failure separately instead of reporting a failed save.
+- **AI result validation**: Validate completed table schemas and DDL review results before reporting success. Invalid output is rejected while actual upstream usage is retained for settlement.
+- **Credit balances and reservation recovery**: Report malformed credit responses as errors instead of displaying a zero balance. A failed recovery of one expired AI credit reservation no longer prevents subsequent reservations from being processed.
+- **SQL import and shared-data validation**: Validate SQL parsing, share, and workspace responses before use so malformed data is reported as an error instead of entering the editor.
+
 ## [0.23.0] - 2026-09-07
 ### Added
 - **Workspace multi-view and split preview**: Introduces dedicated "Design" and "Output" workspace views for focused schema modeling or code inspection. A "Split" preview toggle in the workspace bar allows side-by-side comparison with resizable pane heights and preserved controls on compact screens.
