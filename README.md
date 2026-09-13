@@ -34,7 +34,7 @@
 - 已保存表回收站：支持软删除、单条恢复与批量清空，减少误删风险
 - 登录后工作区实时同步：草稿、已保存表、文件夹和回收站会随账号自动同步，设置页提供立即同步、手动上传和下载恢复工具
 - 一键清空与便捷操作按钮
-- 一键复制 SQL，白底代码主题，便于文档或评审拷贝
+- 一键复制 SQL，代码高亮随明暗主题切换，便于阅读与评审
 - 帮助文档入口，按语言跳转对应文档并查看更新说明
 
 ## 开发与构建
@@ -226,7 +226,7 @@ pnpm db:reset:local
 
 - React 19、TypeScript 7、Vite 8
 - UI 与交互：TanStack Table、Base UI、Hugeicons、Tailwind CSS
-- 代码高亮：react-syntax-highlighter（白底主题）
+- SQL 代码高亮：Shiki（支持明暗主题）
 
 ---
 

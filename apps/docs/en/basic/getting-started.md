@@ -44,6 +44,16 @@ If you already have SQL scripts or data files, click **Import SQL** or **Import 
 
 ---
 
+## Registration and Email Verification (Optional)
+
+Local modeling does not require an account. To sync an account workspace, open registration in the upper-right corner and enter your email and password.
+
+1. After registration, enter or paste the six-digit code from the email into the authentication dialog.
+2. The code is valid for 10 minutes. Successful verification signs you in automatically.
+3. If the email has not arrived, check your spam folder. You can resend after the 60-second countdown; use the latest code.
+
+Registration does not require a CAPTCHA. Existing accounts with unverified email addresses can also complete verification in the authentication dialog. See [Common Errors](/en/faq/common-errors) for troubleshooting.
+
 ## Verification Checklist
 
 - [ ] The output panel shows a complete, syntactically valid `CREATE TABLE` statement.

@@ -14,7 +14,8 @@
 | **SQL 评审与解释** | 专家级 DDL 质量打分、风险隐患排查、优化建议及 SQL 语义解析 | [评审与解释 SQL](/zh/advanced/review-and-explain) |
 | **分布式与海量数据** | MySQL/TiDB 多维度分区策略与 PostgreSQL Citus 分布式分片 | [分区与分片配置](/zh/advanced/partition-and-sharding) |
 | **版本对比与回滚** | 可视化结构 Diff 比对、正向 ALTER 脚本与原子回滚 DDL 生成 | [变更对比与回滚](/zh/advanced/diff-and-rollback) |
-| **关系建模与 ER 图** | 可视化连线交互、关系基数向导、级联动作与整体数据拓扑 | [外键配置与 ER 图](/zh/advanced/foreign-key-and-er) |
+| **关系建模与 ER 图** | 物理外键与逻辑关系建模，记录基数、可选性和业务说明 | [外键配置与 ER 图](/zh/advanced/foreign-key-and-er) |
+| **字段标准与业务词典** | 定义标准字段、关联业务概念、检查已保存表的偏差并导入导出标准库 | [字段标准库与业务词典](/zh/advanced/field-standards) |
 | **工程代码对接** | 一键导出 Prisma、TypeORM、SQLAlchemy、GORM、JPA 框架模型 | [ORM 模型生成](/zh/advanced/orm-generation) |
 | **高级数据库对象** | 视图 DDL（`CREATE VIEW`）与存储过程、函数、触发器代码骨架 | [视图与 Routine 配置](/zh/advanced/view-and-routine) |
 | **Schema 规范审查** | 内置 Lint 引擎自动扫描字段命名、高危类型与无效冗余索引 | [Schema 规范检查](/zh/advanced/schema-lint) |

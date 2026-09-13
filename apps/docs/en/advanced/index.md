@@ -14,7 +14,8 @@ Welcome to the DDLBuilder Advanced Guide. This section is designed for engineeri
 | **SQL Review & Explanation** | Architectural quality audits, risk detection, actionable tips, and SQL explanations | [Review and Explain SQL](/en/advanced/review-and-explain) |
 | **Partitioning & Sharding** | Multi-strategy MySQL/TiDB partitioning and PostgreSQL Citus distributed tables | [Partitioning and Sharding](/en/advanced/partition-and-sharding) |
 | **Diff & Rollback** | Visual schema diffing, forward ALTER migration scripts, and rollback DDL | [Change Diff and Rollback](/en/advanced/diff-and-rollback) |
-| **Relational Modeling & ER** | Visual canvas connections, cardinality wizards, cascade rules, and schema topology | [Foreign Key Configuration and ER Diagram](/en/advanced/foreign-key-and-er) |
+| **Relational Modeling & ER** | Model physical foreign keys and logical relationships with cardinality, optionality, and business descriptions | [Foreign Key Configuration and ER Diagram](/en/advanced/foreign-key-and-er) |
+| **Field Standards & Business Dictionary** | Define standard fields, link business concepts, check saved tables for deviations, and import or export the library | [Field Standards and Business Dictionary](/en/advanced/field-standards) |
 | **ORM Generation** | One-click code generation for Prisma, TypeORM, SQLAlchemy, GORM, and JPA | [ORM Model Generation](/en/advanced/orm-generation) |
 | **Advanced Database Objects** | `CREATE VIEW` statements and skeleton code for procedures, functions, and triggers | [View and Routine Configuration](/en/advanced/view-and-routine) |
 | **Schema Governance & Linting** | Built-in linter detecting naming violations, type hazards, and redundant indexes | [Schema Lint](/en/advanced/schema-lint) |

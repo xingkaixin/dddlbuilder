@@ -14,7 +14,8 @@ DDLBuilder 上級ガイドへようこそ。このセクションでは、大規
 | **SQL レビューと解説** | アーキテクチャ品質スコアリング、潜在リスク診断、SQL 構文解説 | [SQL のレビューと説明](/ja/advanced/review-and-explain) |
 | **パーティションと分散設計** | MySQL/TiDB パーティション戦略および PostgreSQL Citus 分散テーブル設計 | [パーティションとシャーディング](/ja/advanced/partition-and-sharding) |
 | **スキーマ差分とロールバック** | 変更差分のビジュアル比較、正向 ALTER スクリプトおよび安全なロールバック DDL | [差分とロールバック](/ja/advanced/diff-and-rollback) |
-| **リレーション設計と ER 図** | 直感的な接続モデリング、カーディナリティウィザード、関係トポロジー表示 | [外部キーと ER 図](/ja/advanced/foreign-key-and-er) |
+| **リレーション設計と ER 図** | 物理外部キーと論理リレーションを設計し、カーディナリティ、必須・任意、業務説明を記録 | [外部キーと ER 図](/ja/advanced/foreign-key-and-er) |
+| **フィールド標準と業務辞書** | 標準フィールドと業務概念の関連付け、保存済みテーブルの差異チェック、標準ライブラリの入出力 | [フィールド標準と業務辞書](/ja/advanced/field-standards) |
 | **ORM コード生成** | Prisma、TypeORM、SQLAlchemy、GORM、JPA 向けコードのワンクリック生成 | [ORM モデル生成](/ja/advanced/orm-generation) |
 | **高度な DB オブジェクト** | ビュー DDL（`CREATE VIEW`）およびプロシージャ・関数・トリガーの骨格生成 | [ビューと Routine の設定](/ja/advanced/view-and-routine) |
 | **Schema Lint 規約監査** | 命名規則、危険なデータ型、冗長インデックスを自動検出する Lint エンジン | [Schema Lint](/ja/advanced/schema-lint) |
