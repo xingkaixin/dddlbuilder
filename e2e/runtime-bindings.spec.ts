@@ -26,6 +26,7 @@ const createState = (tableName: string) => ({
 test.describe('Cloudflare runtime bindings', () => {
   test('enforces strict SQL snapshots without changing ordinary imports', async ({ request }) => {
     const sql = 'CREATE TABLE users(id INT PRIMARY KEY); SELECT 1;';
+
     const strict = await request.post('/api/parse-multi-sql', {
       data: { sql, dbType: 'mysql', strict: true },
     });
