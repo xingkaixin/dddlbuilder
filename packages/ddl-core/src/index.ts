@@ -115,3 +115,10 @@ export {
   type SeedTableData,
   type RelationalSeedResult,
 } from './utils/relationalSeed.js';
+
+export { refreshSchemaSnapshot } from './utils/schemaRefresh.js';
+export {
+  assessMysqlToPostgres,
+  type MigrationAssessmentItem,
+  type MigrationAssessmentLevel,
+} from './utils/migrationAssessment.js';

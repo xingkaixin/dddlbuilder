@@ -1,3 +1,5 @@
+import type { SeedRule } from '@ddlbuilder/shared-types/api';
+import { compileSeedScenario } from './seedScenario.js';
 import type { ForeignKeyDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import {
   buildQualifiedTableName,
@@ -80,6 +82,7 @@ export function generateRelationalSeed(
   inputs: SeedTableInput[],
   seed: string,
   includeLogical = false,
+  rules: readonly SeedRule[] = [],
 ): RelationalSeedResult {
   if (!inputs.length) throw new Error('Select at least one table.');
   const dbType = inputs[0].table.dbType;
@@ -90,6 +93,9 @@ export function generateRelationalSeed(
   )
     throw new Error('Select tables from one dialect: MySQL or PostgreSQL.');
   const tables = indexSnapshot(inputs.map((input) => input.table));
+
+  if (rules.some((rule) => !tables.has(rule.tableKey)))
+    throw new Error('A scenario table is missing from the selection.');
   const byKey = new Map(inputs.map((input) => [snapshotTableKey(input.table), input]));
 
   if (inputs.reduce((sum, input) => sum + input.rowCount * input.table.rows.length, 0) > 250000)
@@ -268,6 +274,7 @@ export function generateRelationalSeed(
       ...constraints.flat(),
       ...links.flatMap((link) => link.localFields),
     ]);
+    const applyScenario = compileSeedScenario(table, rules, seed, includeLogical);
     const seen = constraints.map(() => new Set<string>());
     const rows: SeedRow[] = [];
 
@@ -298,6 +305,8 @@ export function generateRelationalSeed(
             row[field] = parent[link.refFields[position]];
           });
         }
+
+        applyScenario(row, ordinal);
 
         const signatures = constraints.map((group) =>
           uniqueKey(
