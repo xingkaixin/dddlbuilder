@@ -109,3 +109,9 @@ export {
   type SnapshotFieldRename,
 } from './utils/schemaComparison.js';
 export { snapshotTableKey, snapshotTableLabel } from './utils/schemaSnapshot.js';
+export {
+  generateRelationalSeed,
+  type SeedTableInput,
+  type SeedTableData,
+  type RelationalSeedResult,
+} from './utils/relationalSeed.js';
