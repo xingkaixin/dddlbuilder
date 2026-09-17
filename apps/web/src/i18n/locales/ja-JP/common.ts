@@ -1,8 +1,15 @@
+import { snapshot, scenario, assessment } from './schemaExpansion';
+import { publication } from './publication';
 import { schemaTools } from './schemaTools';
 
 export const jaJPCommon = {
+  snapshot,
+  scenario,
+  assessment,
+  publication,
   schemaTools,
   common: {
+    delete: '削除',
     retry: '再試行',
     noData: 'データなし',
     cancel: 'キャンセル',

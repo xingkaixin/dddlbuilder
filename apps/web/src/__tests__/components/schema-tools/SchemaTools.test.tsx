@@ -1,21 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@/__tests__/utils/test-utils';
-import { SqlParser } from '@ddlbuilder/ddl-core/parser';
-import { requestMultiSqlParse } from '@/services/sqlParseService';
-import { downloadFile } from '@/utils/mockDataGenerator';
-import { listSavedTables } from '@/utils/savedTablesDb';
-import { listFieldStandards } from '@/utils/fieldStandards';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, cleanup, screen, waitFor, within } from '@/__tests__/utils/test-utils';
 import { SchemaToolsButton } from '@/components/schema-tools/SchemaToolsButton';
 import { DictionaryTool } from '@/components/schema-tools/DictionaryTool';
 import { SchemaCompareTool } from '@/components/schema-tools/SchemaCompareTool';
 import { RelationalSeedTool } from '@/components/schema-tools/RelationalSeedTool';
 import { parseSqlSnapshot } from '@/components/schema-tools/sqlSnapshot';
 
-vi.mock('@/hooks/useWorkspaceScope', () => ({ useWorkspaceScope: () => ({ kind: 'anonymous' }) }));
-vi.mock('@/utils/savedTablesDb', () => ({ listSavedTables: vi.fn() }));
-vi.mock('@/utils/fieldStandards', () => ({ listFieldStandards: vi.fn() }));
-vi.mock('@/services/sqlParseService', () => ({ requestMultiSqlParse: vi.fn() }));
-vi.mock('@/utils/mockDataGenerator', () => ({ downloadFile: vi.fn() }));
+import { setupSchemaTools, renderTool as render } from '@/__tests__/utils/schemaTools';
+import { addSavedTable, updateSavedTable } from '@/utils/savedTablesDb';
+import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
+
+let harness: ReturnType<typeof setupSchemaTools>;
 
 const sql = `CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(30) COMMENT '用户名');
 CREATE TABLE orders (id INT PRIMARY KEY, user_id INT NOT NULL,
@@ -29,12 +24,13 @@ async function enterSql(value = sql) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  vi.mocked(listSavedTables).mockResolvedValue([]);
-  vi.mocked(listFieldStandards).mockResolvedValue([]);
-  vi.mocked(requestMultiSqlParse).mockImplementation(({ sql, dbType, strict }) =>
-    new SqlParser().parseMultiAsync(sql, dbType, strict),
-  );
+  harness = setupSchemaTools();
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('database tool workflows', () => {
@@ -55,18 +51,19 @@ describe('database tool workflows', () => {
     expect(screen.getByRole('heading', { name: 'users' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'orders' })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('文档标题'), { target: { value: '交接文档' } });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '导出 Markdown' })).toBeEnabled(),
+    );
     fireEvent.click(screen.getByRole('button', { name: '导出 Markdown' }));
-    expect(downloadFile).toHaveBeenLastCalledWith(
-      expect.stringContaining('orders'),
-      'database-dictionary.md',
-      expect.any(String),
-    );
+    expect(await harness.lastDownload()).toMatchObject({
+      text: expect.stringContaining('orders'),
+      name: 'database-dictionary.md',
+    });
     fireEvent.click(screen.getByRole('button', { name: '导出离线 HTML' }));
-    expect(downloadFile).toHaveBeenLastCalledWith(
-      expect.stringContaining('交接文档'),
-      'database-dictionary.html',
-      expect.any(String),
-    );
+    expect(await harness.lastDownload()).toMatchObject({
+      text: expect.stringContaining('交接文档'),
+      name: 'database-dictionary.html',
+    });
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'orders' } });
     fireEvent.click(screen.getByRole('link', { name: 'users (id)' }));
     expect(screen.getByRole('heading', { name: 'users' })).toBeInTheDocument();
@@ -80,19 +77,24 @@ describe('database tool workflows', () => {
 
   it('refreshes selected saved tables and prevents exports after SQL changes', async () => {
     const tables = await parseSqlSnapshot(sql, 'mysql');
-    vi.mocked(listSavedTables).mockResolvedValue(
-      tables.map((state) => ({
-        state,
-        name: state.tableName,
-        normalizedName: state.tableName,
-        createdAt: 1,
-        updatedAt: 1,
-      })),
-    );
+
+    const records = tables.map((state) => ({
+      state,
+      name: state.tableName,
+      normalizedName: state.tableName,
+      createdAt: 1,
+      updatedAt: 1,
+    }));
+
+    for (const record of records) await addSavedTable(record, getAnonymousWorkspaceScope());
     render(<DictionaryTool />);
     fireEvent.click(await screen.findByRole('checkbox', { name: /^users/ }));
+    await updateSavedTable(
+      { ...records[0], state: { ...records[0].state, tableComment: '更新的说明' } },
+      getAnonymousWorkspaceScope(),
+    );
     fireEvent.click(screen.getByRole('button', { name: '重新读取' }));
-    await waitFor(() => expect(listSavedTables).toHaveBeenCalledTimes(2));
+    await screen.findAllByText('更新的说明');
     expect(screen.getByRole('heading', { name: 'users' })).toBeInTheDocument();
     await enterSql();
     fireEvent.change(screen.getByLabelText('表结构 SQL'), { target: { value: 'SELECT 1;' } });
@@ -102,7 +104,9 @@ describe('database tool workflows', () => {
   });
 
   it('blocks dictionary exports when standards cannot be loaded and supports retry', async () => {
-    vi.mocked(listFieldStandards).mockRejectedValueOnce(new Error('unavailable'));
+    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      throw new Error('unavailable');
+    });
     render(<DictionaryTool />);
     await screen.findByRole('alert');
     expect(screen.getByRole('button', { name: '导出 Markdown' })).toBeDisabled();
@@ -123,17 +127,15 @@ describe('database tool workflows', () => {
       target: { value: 'display_name' },
     });
     fireEvent.click(screen.getByRole('button', { name: '导出迁移 SQL' }));
-    expect(downloadFile).toHaveBeenLastCalledWith(
-      expect.stringContaining('RENAME COLUMN'),
-      'schema-migration.sql',
-      expect.any(String),
-    );
+    expect(await harness.lastDownload()).toMatchObject({
+      text: expect.stringContaining('RENAME COLUMN'),
+      name: 'schema-migration.sql',
+    });
     fireEvent.click(screen.getByRole('button', { name: '导出对比报告' }));
-    expect(downloadFile).toHaveBeenLastCalledWith(
-      expect.stringContaining('重命名'),
-      'schema-comparison.md',
-      expect.any(String),
-    );
+    expect(await harness.lastDownload()).toMatchObject({
+      text: expect.stringContaining('重命名'),
+      name: 'schema-comparison.md',
+    });
     fireEvent.change(screen.getByLabelText('数据库'), { target: { value: 'postgresql' } });
     expect(screen.getByRole('button', { name: '导出迁移 SQL' })).toBeDisabled();
     fireEvent.change(screen.getByLabelText('目标结构'), { target: { value: 'SELECT 1;' } });
@@ -149,16 +151,15 @@ describe('database tool workflows', () => {
     fireEvent.click(screen.getByRole('button', { name: '生成测试数据' }));
     expect(screen.getByRole('status')).toHaveTextContent('15 行');
     fireEvent.click(screen.getByRole('button', { name: '导出 INSERT SQL' }));
-    const first = vi.mocked(downloadFile).mock.calls.at(-1)?.[0];
+    const first = await harness.lastDownload();
     fireEvent.click(screen.getByRole('button', { name: '生成测试数据' }));
     fireEvent.click(screen.getByRole('button', { name: '导出 INSERT SQL' }));
-    expect(vi.mocked(downloadFile).mock.calls.at(-1)?.[0]).toBe(first);
+    expect(await harness.lastDownload()).toEqual(first);
     fireEvent.click(screen.getByRole('button', { name: '导出 JSON' }));
-    expect(downloadFile).toHaveBeenLastCalledWith(
-      expect.stringContaining('orders'),
-      'relational-test-data.json',
-      expect.any(String),
-    );
+    expect(await harness.lastDownload()).toMatchObject({
+      text: expect.stringContaining('orders'),
+      name: 'relational-test-data.json',
+    });
     fireEvent.click(screen.getByRole('checkbox', { name: /^users/ }));
     fireEvent.click(screen.getByRole('button', { name: '生成测试数据' }));
     expect(screen.getByRole('alert')).toHaveTextContent('include referenced table');

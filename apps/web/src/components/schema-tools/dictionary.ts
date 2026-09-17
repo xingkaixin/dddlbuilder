@@ -1,6 +1,6 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { getSqlIdentifierKey } from '@ddlbuilder/ddl-core';
-import type { FieldStandard } from '@/utils/fieldStandards';
+import type { StandardSummary } from '@ddlbuilder/shared-types/api';
 import type { TFunction } from 'i18next';
 
 export interface DictionarySection {
@@ -38,7 +38,7 @@ function identity(table: PersistedState, name = table.tableName, schema = table.
 
 export function buildDictionary(
   tables: PersistedState[],
-  standards: FieldStandard[],
+  standards: readonly StandardSummary[],
   title: string,
   language: string,
   t: TFunction,

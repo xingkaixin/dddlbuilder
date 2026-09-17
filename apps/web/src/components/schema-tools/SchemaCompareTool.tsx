@@ -1,3 +1,5 @@
+import { PublishPanel } from '@/components/publications/PublishPanel';
+import { Input } from '@/components/ui/input';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -21,6 +23,7 @@ export function SchemaCompareTool() {
   const [renames, setRenames] = useState<SnapshotFieldRename[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [reason, setReason] = useState('');
 
   const original = useMemo(
     () => (snapshots ? compareSchemaSnapshots(snapshots.before, snapshots.after) : null),
@@ -134,6 +137,28 @@ export function SchemaCompareTool() {
         >
           {error}
         </p>
+      )}
+      {comparison && snapshots && (
+        <section className="space-y-3">
+          <label className="block space-y-2 text-sm">
+            <span>{t('publication.reason')}</span>
+            <Input
+              value={reason}
+              maxLength={4000}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </label>
+          <PublishPanel
+            title={t('publication.proposal')}
+            content={{
+              kind: 'proposal',
+              before: snapshots.before,
+              after: snapshots.after,
+              renames,
+              reason,
+            }}
+          />
+        </section>
       )}
       {comparison && (
         <>

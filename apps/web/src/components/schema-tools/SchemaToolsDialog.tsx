@@ -1,3 +1,4 @@
+import { PublishPanel } from '@/components/publications/PublishPanel';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -30,10 +31,11 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
           <DialogDescription>{t('schemaTools.description')}</DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="dictionary" className="flex min-h-0 flex-1 flex-col">
-          <TabsList className="mb-4 w-fit shrink-0">
+          <TabsList className="mb-4 h-auto w-fit max-w-full shrink-0 flex-wrap">
             <TabsTrigger value="dictionary">{t('schemaTools.dictionary.title')}</TabsTrigger>
             <TabsTrigger value="compare">{t('schemaTools.compare.title')}</TabsTrigger>
             <TabsTrigger value="seed">{t('schemaTools.seed.title')}</TabsTrigger>
+            <TabsTrigger value="publications">{t('publication.manage')}</TabsTrigger>
           </TabsList>
           <TabsContent value="dictionary" className="min-h-0 flex-1 overflow-auto">
             <DictionaryTool />
@@ -43,6 +45,9 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
           </TabsContent>
           <TabsContent value="seed" className="min-h-0 flex-1 overflow-auto">
             <RelationalSeedTool />
+          </TabsContent>
+          <TabsContent value="publications" className="min-h-0 flex-1 overflow-auto">
+            <PublishPanel content={null} title="" />
           </TabsContent>
         </Tabs>
       </DialogContent>

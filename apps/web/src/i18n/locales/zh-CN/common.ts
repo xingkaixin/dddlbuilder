@@ -1,8 +1,15 @@
+import { snapshot, scenario, assessment } from './schemaExpansion';
+import { publication } from './publication';
 import { schemaTools } from './schemaTools';
 
 export const zhCNCommon = {
+  snapshot,
+  scenario,
+  assessment,
+  publication,
   schemaTools,
   common: {
+    delete: '删除',
     retry: '重试',
     noData: '暂无数据',
     cancel: '取消',

@@ -1,3 +1,5 @@
+import type { StandardSummary } from '@ddlbuilder/shared-types/api';
+import { SnapshotFileInput } from './SnapshotFileInput';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -12,9 +14,11 @@ import { parseSqlSnapshot } from './sqlSnapshot';
 export function TableSource({
   value,
   onChange,
+  onStandardsChange,
 }: {
   value: PersistedState[];
   onChange: (tables: PersistedState[]) => void;
+  onStandardsChange?: (standards: StandardSummary[]) => void;
 }) {
   const { t } = useTranslation();
   const scope = useWorkspaceScope();
@@ -52,12 +56,15 @@ export function TableSource({
           disabled={busy}
           onChange={(event) => {
             setSource(event.target.value);
+            setParsed([]);
+            onStandardsChange?.([]);
             setError('');
             onChange([]);
           }}
         >
           <option value="saved">{t('schemaTools.saved')}</option>
           <option value="sql">SQL</option>
+          <option value="snapshot">{t('snapshot.file')}</option>
         </select>
       </label>
       {source === 'saved' ? (
@@ -94,6 +101,15 @@ export function TableSource({
             </p>
           )}
         </>
+      ) : source === 'snapshot' ? (
+        <SnapshotFileInput
+          label={t('snapshot.file')}
+          onChange={(snapshot) => {
+            onStandardsChange?.(snapshot.standards);
+            setParsed(snapshot.tables);
+            onChange(snapshot.tables);
+          }}
+        />
       ) : (
         <>
           <label className="block space-y-2 text-sm">

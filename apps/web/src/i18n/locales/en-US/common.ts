@@ -1,8 +1,15 @@
+import { snapshot, scenario, assessment } from './schemaExpansion';
+import { publication } from './publication';
 import { schemaTools } from './schemaTools';
 
 export const enUSCommon = {
+  snapshot,
+  scenario,
+  assessment,
+  publication,
   schemaTools,
   common: {
+    delete: 'Delete',
     retry: 'Retry',
     noData: 'No data',
     cancel: 'Cancel',
