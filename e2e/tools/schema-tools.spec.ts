@@ -141,37 +141,38 @@ test('结构快照可刷新并带出变化报告 @tools', async ({ page }, testI
 test('业务测试场景保存后可导入并重复生成 @tools', async ({ page }) => {
   const dialog = await openTools(page);
   await dialog.getByRole('tab', { name: '关联测试数据', exact: true }).click();
-  await dialog.getByLabel('数据来源', { exact: true }).selectOption('sql');
-  await dialog.getByLabel('表结构 SQL', { exact: true }).fill(sql);
-  await dialog.getByRole('button', { name: '解析 SQL', exact: true }).click();
-  await dialog.getByText('业务测试场景', { exact: true }).click();
-  await dialog.getByLabel('场景名称', { exact: true }).fill('订单金额');
-  await dialog
+  const seed = dialog.getByRole('tabpanel', { name: '关联测试数据', exact: true });
+  await seed.getByLabel('数据来源', { exact: true }).selectOption('sql');
+  await seed.getByLabel('表结构 SQL', { exact: true }).fill(sql);
+  await seed.getByRole('button', { name: '解析 SQL', exact: true }).click();
+  await seed.getByText('业务测试场景', { exact: true }).click();
+  await seed.getByLabel('场景名称', { exact: true }).fill('订单金额');
+  await seed
     .getByRole('combobox', { name: '规则所属表', exact: true })
     .selectOption({ label: 'orders' });
-  await dialog.getByRole('combobox', { name: '规则字段', exact: true }).selectOption('amount');
-  await dialog.getByRole('combobox', { name: '生成方式', exact: true }).selectOption('range');
-  await dialog.getByLabel('最小值', { exact: true }).fill('12.34');
-  await dialog.getByLabel('最大值', { exact: true }).fill('12.34');
-  await dialog.getByRole('button', { name: '添加或替换字段规则', exact: true }).click();
-  await dialog.getByRole('button', { name: '保存场景', exact: true }).click();
-  await expect(dialog.getByText('场景已保存到当前浏览器。', { exact: true })).toBeVisible();
-  await dialog.getByRole('button', { name: '生成测试数据', exact: true }).click();
+  await seed.getByRole('combobox', { name: '规则字段', exact: true }).selectOption('amount');
+  await seed.getByRole('combobox', { name: '生成方式', exact: true }).selectOption('range');
+  await seed.getByLabel('最小值', { exact: true }).fill('12.34');
+  await seed.getByLabel('最大值', { exact: true }).fill('12.34');
+  await seed.getByRole('button', { name: '添加或替换字段规则', exact: true }).click();
+  await seed.getByRole('button', { name: '保存场景', exact: true }).click();
+  await expect(seed.getByText('场景已保存到当前浏览器。', { exact: true })).toBeVisible();
+  await seed.getByRole('button', { name: '生成测试数据', exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
-  await dialog.getByRole('button', { name: '导出 JSON', exact: true }).click();
+  await seed.getByRole('button', { name: '导出 JSON', exact: true }).click();
   const content = await readFile(await (await downloadPromise).path(), 'utf8');
   expect(content).toContain('12.34');
   const scenarioPromise = page.waitForEvent('download');
-  await dialog.getByRole('button', { name: '导出场景 JSON', exact: true }).click();
+  await seed.getByRole('button', { name: '导出场景 JSON', exact: true }).click();
   const scenario = await readFile(await (await scenarioPromise).path(), 'utf8');
-  await dialog.getByLabel('导入场景 JSON', { exact: true }).setInputFiles({
+  await seed.getByLabel('导入场景 JSON', { exact: true }).setInputFiles({
     name: 'scenario.json',
     mimeType: 'application/json',
     buffer: Buffer.from(scenario),
   });
-  await expect(dialog.getByRole('button', { name: '导出 JSON', exact: true })).toBeDisabled();
-  await dialog.getByRole('button', { name: '生成测试数据', exact: true }).click();
+  await expect(seed.getByRole('button', { name: '导出 JSON', exact: true })).toBeDisabled();
+  await seed.getByRole('button', { name: '生成测试数据', exact: true }).click();
   const repeated = page.waitForEvent('download');
-  await dialog.getByRole('button', { name: '导出 JSON', exact: true }).click();
+  await seed.getByRole('button', { name: '导出 JSON', exact: true }).click();
   expect(await readFile(await (await repeated).path(), 'utf8')).toBe(content);
 });

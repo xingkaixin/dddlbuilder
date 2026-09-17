@@ -401,7 +401,7 @@ const editFirstFieldName = async (page: Page, fieldName: string) => {
   const input = cell.locator('input');
   await expect(input).toBeVisible();
   await input.fill(fieldName);
-  await input.press('Enter');
+  await tableNameInput(page).click();
   await expect(cell).toHaveText(fieldName);
 };
 
@@ -831,7 +831,7 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
       .nth(2);
     await commentCell.dblclick();
     await commentCell.locator('input').fill('另一端的注释');
-    await commentCell.locator('input').press('Enter');
+    await tableNameInput(pageB).click();
     await pageB
       .getByTestId('data-table')
       .locator('tbody tr')
@@ -839,7 +839,7 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
       .locator('td')
       .nth(4)
       .getByRole('checkbox')
-      .click();
+      .check();
     await expect(pageA.getByTestId('data-table')).toContainText('另一端的注释');
     await expect
       .poll(() => readDefaultDraftState(server.doc)?.rows[0])
