@@ -1,3 +1,5 @@
+import { MigrationAssessmentTool } from './MigrationAssessmentTool';
+import { SnapshotRefreshTool } from './SnapshotRefreshTool';
 import { PublishPanel } from '@/components/publications/PublishPanel';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,6 +38,8 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
             <TabsTrigger value="compare">{t('schemaTools.compare.title')}</TabsTrigger>
             <TabsTrigger value="seed">{t('schemaTools.seed.title')}</TabsTrigger>
             <TabsTrigger value="publications">{t('publication.manage')}</TabsTrigger>
+            <TabsTrigger value="refresh">{t('snapshot.refresh')}</TabsTrigger>
+            <TabsTrigger value="assessment">{t('assessment.title')}</TabsTrigger>
           </TabsList>
           <TabsContent value="dictionary" className="min-h-0 flex-1 overflow-auto">
             <DictionaryTool />
@@ -48,6 +52,12 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
           </TabsContent>
           <TabsContent value="publications" className="min-h-0 flex-1 overflow-auto">
             <PublishPanel content={null} title="" />
+          </TabsContent>
+          <TabsContent value="refresh" className="min-h-0 flex-1 overflow-auto">
+            <SnapshotRefreshTool />
+          </TabsContent>
+          <TabsContent value="assessment" className="min-h-0 flex-1 overflow-auto">
+            <MigrationAssessmentTool />
           </TabsContent>
         </Tabs>
       </DialogContent>

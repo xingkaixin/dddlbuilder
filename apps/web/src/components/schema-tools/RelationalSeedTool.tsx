@@ -1,3 +1,5 @@
+import { SeedScenarioPanel } from './SeedScenarioPanel';
+import type { SeedRule } from '@ddlbuilder/shared-types/api';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -17,6 +19,8 @@ export function RelationalSeedTool() {
   const [tables, setTables] = useState<PersistedState[]>([]);
   const [counts, setCounts] = useState(new Map<string, number>());
   const [seed, setSeed] = useState('ddlbuilder');
+  const [scenarioName, setScenarioName] = useState('');
+  const [rules, setRules] = useState<readonly SeedRule[]>([]);
   const [includeLogical, setIncludeLogical] = useState(false);
   const [result, setResult] = useState<RelationalSeedResult | null>(null);
   const [error, setError] = useState('');
@@ -93,6 +97,28 @@ export function RelationalSeedTool() {
         <p className="text-xs text-muted-foreground">
           {t('schemaTools.seed.limit', { count: total })}
         </p>
+        <SeedScenarioPanel
+          tables={tables}
+          value={{
+            version: 1,
+            name: scenarioName,
+            seed,
+            includeLogical,
+            rows: tables.map((table) => ({
+              tableKey: snapshotTableKey(table),
+              count: counts.get(snapshotTableKey(table)) ?? 10,
+            })),
+            rules,
+          }}
+          onChange={(scenario) => {
+            setScenarioName(scenario.name);
+            setSeed(scenario.seed);
+            setIncludeLogical(scenario.includeLogical);
+            setCounts(new Map(scenario.rows.map((row) => [row.tableKey, row.count])));
+            setRules(scenario.rules);
+            clear();
+          }}
+        />
         <div className="flex flex-wrap gap-2">
           <Button
             disabled={!tables.length || total > 10000}
@@ -108,6 +134,7 @@ export function RelationalSeedTool() {
                     })),
                     seed,
                     includeLogical,
+                    rules,
                   ),
                 );
               } catch (cause) {
