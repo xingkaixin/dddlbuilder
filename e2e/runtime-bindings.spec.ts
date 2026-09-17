@@ -24,6 +24,21 @@ const createState = (tableName: string) => ({
 });
 
 test.describe('Cloudflare runtime bindings', () => {
+  test('enforces strict SQL snapshots without changing ordinary imports', async ({ request }) => {
+    const sql = 'CREATE TABLE users(id INT PRIMARY KEY); SELECT 1;';
+    const strict = await request.post('/api/parse-multi-sql', {
+      data: { sql, dbType: 'mysql', strict: true },
+    });
+    expect(strict.ok(), await strict.text()).toBe(true);
+    expect(await strict.json()).toMatchObject({
+      results: [{ tableName: 'users' }],
+      failed: [{ error: expect.any(String) }],
+    });
+    const ordinary = await request.post('/api/parse-multi-sql', { data: { sql, dbType: 'mysql' } });
+    expect(ordinary.ok(), await ordinary.text()).toBe(true);
+    expect(await ordinary.json()).toMatchObject({ results: [{ tableName: 'users' }], failed: [] });
+  });
+
   for (const path of [
     '/',
     '/docs/zh/basic/getting-started',
