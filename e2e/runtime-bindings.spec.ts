@@ -462,27 +462,24 @@ test('persists publications, freezes proposals and enforces access after revocat
       standards: [{ id: 'identity', name: '用户编号', description: '稳定业务标识', unit: '' }],
     },
   };
-  // Early body rejection can break reused dev-proxy connections: cloudflare/workers-sdk#15203.
+  // Exercise header guards without an unread body in Wrangler's proxy (workers-sdk#15203).
+  // publications-route.test.ts covers the same guards with request bodies.
   const crossOrigin = await context.request.post('/api/publications', {
-    headers: { Origin: 'https://untrusted.example', Connection: 'close' },
-    data: input,
+    headers: { Origin: 'https://untrusted.example', 'content-type': 'application/json' },
   });
   expect(crossOrigin.status()).toBe(403);
 
   const wrongType = await context.request.post('/api/publications', {
-    headers: { 'content-type': 'text/plain', Connection: 'close' },
-    data: JSON.stringify(input),
+    headers: { 'content-type': 'text/plain' },
   });
   expect(wrongType.status()).toBe(415);
 
   const malformed = await context.request.post('/api/publications', {
-    headers: { Connection: 'close' },
     data: { ...input, content: { ...input.content, tables: [{}] } },
   });
   expect(malformed.status()).toBe(400);
 
   const unauthenticated = await request.post('/api/publications', {
-    headers: { Connection: 'close' },
     data: input,
   });
 
