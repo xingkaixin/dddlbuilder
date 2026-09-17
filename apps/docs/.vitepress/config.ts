@@ -129,7 +129,7 @@ const zhSidebar = [
     text: '高级技巧',
     items: [
       { text: '导入与解析 SQL', link: '/zh/advanced/import-and-parse' },
-      { text: '数据字典、结构对比与测试数据', link: '/zh/advanced/database-tools' },
+      { text: '数据库交付工具', link: '/zh/advanced/database-tools' },
       { text: 'WebMCP Agent 协作', link: '/zh/advanced/webmcp' },
       { text: 'AI 辅助建表流程', link: '/zh/advanced/ai-workflow' },
       { text: '评审与解释 SQL', link: '/zh/advanced/review-and-explain' },

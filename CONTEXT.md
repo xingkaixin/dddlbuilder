@@ -60,6 +60,32 @@ _Avoid_: Synchronized copy
 A soft-deleted Draft or Saved Table retained in the workspace document until it is restored or permanently deleted. The deletion timestamp is synchronized across devices.
 _Avoid_: Local-only deleted entity
 
+## Schema Delivery
+
+**Schema Snapshot**:
+A selected set of table definitions and business annotations captured for comparison, handover or refresh.
+_Avoid_: Workspace Document
+
+**Project Document**:
+Published database documentation whose address remains stable across deliberate updates by its author.
+_Avoid_: Temporary share
+
+**Change Proposal**:
+A fixed pair of before-and-after Schema Snapshots with a reason and explicit rename decisions, discussed as one change.
+_Avoid_: Approval, live draft
+
+**Proposal Comment**:
+A reader's discussion item bound to a Change Proposal, with a resolution state controlled by the proposal author.
+_Avoid_: Migration approval
+
+**Seed Scenario**:
+A named set of table row counts, a seed and declarative field rules for repeatable related test data.
+_Avoid_: Executable formula
+
+**Migration Compatibility Report**:
+An assessment of candidate structure mappings and unresolved differences between database dialects.
+_Avoid_: Executable migration
+
 ## AI Usage and Credits
 
 **Credit Account**:

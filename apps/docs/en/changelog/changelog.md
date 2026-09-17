@@ -4,6 +4,15 @@ outline: [2, 2]
 
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Persistent project documents**: Share multi-table dictionaries and standard summaries at a stable URL, with republishing, private access, revocation and revision checks.
+- **Schema snapshots and refresh**: Import and export portable structures, retain matched business annotations, logical enums and standard references, and review changes before downloading the result.
+- **Fixed change proposals**: Preserve the reason and before/after structures, with authenticated comments and owner-controlled resolution.
+- **Business test scenarios**: Configure weighted values, NULL probabilities, numeric/date ranges and date offsets; save and transfer scenarios between browsers.
+- **Migration compatibility reports**: Assess MySQL → PostgreSQL type and behavior differences and export an itemized report without generating executable cross-database scripts.
+
 ## [0.24.0] - 2026-09-13
 ### Added
 - **Logical table relationships**: Create logical relationships in the ER diagram with cardinality, optionality, and business descriptions. Dashed lines distinguish them from physical foreign keys. Relationships are preserved in saved tables, version history, shares, and workspace sync without changing constraints, indexes, or DDL and ORM output.

@@ -4,9 +4,10 @@ Use **Database tools** in the header to document an existing database, compare t
 
 ## Prepare inputs
 
-The dictionary and test-data tools accept two sources:
+The dictionary and test-data tools accept three sources:
 
 - **Saved tables**: use saved versions from the current workspace. Save edits first, then reload and select the tables.
+- **Schema snapshot JSON**: load a file exported by the dictionary, including field identities and standard summaries.
 - **SQL**: choose a database, paste SQL or upload a `.sql` / `.txt` file, then parse it. Each input accepts up to 50000 characters.
 
 SQL is sent to the existing parsing service. Parsed tables are temporary and do not modify the workspace. Closing the tools or changing accounts clears temporary input. Keep your downloaded files separately.
@@ -59,3 +60,76 @@ Scope and limits:
 - Use an empty test database with a matching schema. Existing data is not checked, and PostgreSQL sequences are not advanced. MySQL strings assume the default backslash escape mode.
 
 For single-table generation, see [Mock Data and Logical Enums](/en/advanced/mock-data-and-enum). To compare the current table with its saved version, see [Change Diff and Rollback](/en/advanced/diff-and-rollback).
+
+## Publish project documentation
+
+After signing in, enter a publication title and visibility in **Publish and manage** below the dictionary, then create the publication. **Private** is the default. **Anyone with the link** allows reading without an account. The reader includes a revision, update time, search and relationship navigation. Referenced standard names, descriptions and units are stored with the publication.
+
+To update the same URL, select the latest tables, choose the existing document and republish the current structure. Its revision increases. Use the separate title/access action when only those settings change. An outdated revision cannot overwrite another device's changes; reload using the action beside the error, review, then retry.
+
+**Publications** lists existing documents and proposals with open, copy, access and delete actions. Switching to private denies subsequent external reads. Already opened or downloaded copies cannot be recalled. Deleting a proposal also deletes its comments.
+
+Limits: 100 publications per account; 512 KiB, 200 tables and 10000 fields per publication. Oversized content is rejected without a partial save. Publications are independent of workspace edits and change only when explicitly published.
+
+## Portable snapshots and refresh
+
+Use **Export schema snapshot** in the dictionary to download JSON. Select **Schema snapshot JSON** as an input to reuse field identities, descriptions, relationships and standard summaries. Files are limited to 2 MiB. Unknown versions, duplicate tables and definitions that would lose supplied properties are rejected.
+
+Refresh supports one MySQL or PostgreSQL dialect at a time:
+
+1. Upload the baseline snapshot in **Refresh schema**.
+2. Choose saved tables, SQL or another snapshot for the current structure. **Select the complete refresh scope**: omitted old tables count as removals.
+3. Review table, field, index and relationship changes. Name changes are removals and additions; renames are not inferred.
+4. Download the comparison report and refreshed snapshot, or republish an existing project document.
+
+Matched fields keep their identities, business descriptions, logical enums and standard references. Types, defaults, nullability and physical constraints come from the new structure. Existing logical relationships are retained only while both ends exist; omitted relationships are reported. Refresh does not write to the workspace. Keep the output file as the next baseline.
+
+### Extract a structure locally
+
+Install a client matching the source database. Run either command locally after replacing the address, user and database. Use the password prompt or a local credential file. DDLBuilder does not receive database connection credentials.
+
+```sh
+mysqldump --host=127.0.0.1 --user=reader --password \
+  --no-data --skip-add-drop-table --no-tablespaces \
+  --set-gtid-purged=OFF app_database > mysql-structure.sql
+```
+
+```sh
+pg_dump --host=127.0.0.1 --username=reader --dbname=app_database \
+  --schema-only --no-owner --no-privileges --format=plain \
+  --file=postgres-structure.sql
+```
+
+These produce raw schema dumps, **not files guaranteed to import directly into DDLBuilder**. Check client errors and keep the original. Prepare the tables, indexes and named constraints within the supported input scope above before using strict parsing. Session settings, grants, sequences and triggers need separate handling. Do not remove unsupported constraints and present the result as complete. After every statement parses successfully, export a DDLBuilder snapshot as the baseline.
+
+Include required parent tables when selecting a subset and check dependencies across schemas. See the [mysqldump reference](https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html) and [pg_dump reference](https://www.postgresql.org/docs/current/app-pgdump.html) for client options.
+
+## Fixed change proposals
+
+After comparing structures and confirming field renames, enter a reason and create a publication while signed in. A proposal freezes its before/after structures and rename mapping. Structural revisions require a new proposal; only its title and visibility can change.
+
+Link readers can browse anonymously. Signed-in readers can enter an object location such as `orders.amount` and comment. Each proposal allows 200 comments, each up to 4000 characters. The owner can resolve or reopen comments. Comments render as text and refer to the fixed proposal version. Resolution does not authorize executing SQL.
+
+Readers can download the report. Generator blockers disable SQL downloads. Revoking link access prevents external reading and commenting.
+
+## Save business test scenarios
+
+Expand **Business test scenarios** under related test data and select a table, field and rule:
+
+| Rule | Inputs and limits |
+| --- | --- |
+| NULL percentage | 0–100 probability per row; a small sample may differ. Primary keys and NOT NULL fields require 0 |
+| Weighted values | One `value=weight` per line, such as `PAID=80` and `PENDING=20`; positive weights, approximate sample proportions |
+| Numeric range | Inclusive integer or exact decimal bounds; values must fit the field precision, with a span of at most MAX_SAFE_INTEGER smallest units |
+| Date range | Inclusive YYYY-MM-DD bounds, generated in whole days |
+| Date offset | Another date field in the same table plus integer days; circular dependencies are rejected |
+
+Apply the rule, then generate. Physical foreign keys and enabled logical relationship fields derive values from parents and cannot be overridden. Insufficient unique values, incompatible types or missing fields prevent export.
+
+Save a named scenario in the current browser, up to 50 scenarios. Overwriting a name requires confirmation. Loading restores rules, seed, row counts and the logical relationship option; select the corresponding tables yourself. JSON import/export transfers scenarios between browsers, with a 512 KiB import limit. Configuration changes require regeneration. Arbitrary code and SQL formulas are not supported.
+
+## MySQL → PostgreSQL compatibility report
+
+Open **Migration compatibility** and select MySQL tables. Each item shows the original definition, target candidate and next step, classified as mapped, manual review or outside scope. Export the result as Markdown.
+
+Checks cover unsigned ranges, identity columns, decimals, text comparisons, dates/time zones, JSON, enums, defaults, ON UPDATE, indexes, foreign keys and storage options. View queries and unknown types are marked separately. This report does not inspect actual data, application queries or runtime behavior, and does not generate executable cross-database migration scripts.
