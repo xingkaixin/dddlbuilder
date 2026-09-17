@@ -1,4 +1,7 @@
+import { schemaTools } from './schemaTools';
+
 export const jaJPCommon = {
+  schemaTools,
   common: {
     retry: '再試行',
     noData: 'データなし',

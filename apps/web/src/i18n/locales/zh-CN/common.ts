@@ -1,4 +1,7 @@
+import { schemaTools } from './schemaTools';
+
 export const zhCNCommon = {
+  schemaTools,
   common: {
     retry: '重试',
     noData: '暂无数据',

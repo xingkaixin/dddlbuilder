@@ -40,6 +40,7 @@ import {
 import { useTheme } from 'next-themes';
 import { useThemeTransition } from './hooks/useThemeTransition';
 import { WorkspaceYDocStatus } from './WorkspaceYDocStatus';
+import { SchemaToolsButton } from '@/components/schema-tools/SchemaToolsButton';
 
 const FEEDBACK_URL = 'https://my.feishu.cn/share/base/form/shrcnqGnCdcvgRomQ5syagGW2He';
 
@@ -255,6 +256,7 @@ export const Header = memo<HeaderProps>(
                 </div>
                 <div className="hidden h-5 w-px shrink-0 bg-border sm:block" />
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <SchemaToolsButton />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button

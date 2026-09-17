@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
+import { SchemaToolsButton } from '@/components/schema-tools/SchemaToolsButton';
 
 interface WorkspaceEmptyStateProps {
   hasContent: boolean;
@@ -77,6 +78,7 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
             </button>
             {importButton}
             {templateButton}
+            <SchemaToolsButton />
           </div>
 
           {hasRecentItems && (

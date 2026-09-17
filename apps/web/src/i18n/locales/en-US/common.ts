@@ -1,4 +1,7 @@
+import { schemaTools } from './schemaTools';
+
 export const enUSCommon = {
+  schemaTools,
   common: {
     retry: 'Retry',
     noData: 'No data',
