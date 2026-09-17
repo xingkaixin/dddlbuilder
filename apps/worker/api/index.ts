@@ -1,3 +1,4 @@
+import { registerPublicationRoutes } from '../server-api/routes/publications.js';
 import * as D1Client from '@effect/sql-d1/D1Client';
 import * as Effect from 'effect/Effect';
 import * as Tracer from 'effect/Tracer';
@@ -112,6 +113,8 @@ registerGenerateCommentsRoute(api);
 registerIndexAdvisorRoute(api);
 
 registerShareRoutes(api);
+
+registerPublicationRoutes(api);
 
 registerAuthRoutes(api);
 
