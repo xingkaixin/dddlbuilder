@@ -97,3 +97,4 @@
 - pnpm lint、pnpm typecheck、pnpm build、D1 Workerd 运行时校验、生产依赖审计及 Cloudflare 配置检查通过。临时 MySQL 实例已关闭并清理。
 - 生产构建下执行完整 pnpm run test:e2e：129 条页面测试、10 条 Workerd 运行时测试最终通过。首次全量运行中 5 条既有用例需要重试；随后修正标签页定位范围，并让同步测试点击其他字段结束编辑、显式设置复选框状态，保留同步结果断言。关闭自动重试后，5 条用例单独复验全部通过。
 - 最终构建、测试代码 lint/格式/类型检查通过。交付以推送后最终 main 提交的 GitHub Actions 结果为准。
+- 首轮 CI（35241462866）的六项前置检查通过，页面测试 129 条最终通过；发布接口运行时测试因 Wrangler ProxyWorker 连接中断收到 500。上游有同类报告 [workers-sdk#15203](https://github.com/cloudflare/workers-sdk/issues/15203)。异常请求显式使用 `Connection: close`，保留全部错误码与业务流程断言，不修改生产 API 或部署配置。修正后在两轮独立运行时中执行完整 10 条测试，20 次执行全部通过且未启用重试；测试代码 lint、格式与类型检查通过。

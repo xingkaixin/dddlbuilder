@@ -462,23 +462,30 @@ test('persists publications, freezes proposals and enforces access after revocat
       standards: [{ id: 'identity', name: '用户编号', description: '稳定业务标识', unit: '' }],
     },
   };
+  // Early body rejection can break reused dev-proxy connections: cloudflare/workers-sdk#15203.
   const crossOrigin = await context.request.post('/api/publications', {
-    headers: { Origin: 'https://untrusted.example' },
+    headers: { Origin: 'https://untrusted.example', Connection: 'close' },
     data: input,
   });
   expect(crossOrigin.status()).toBe(403);
 
   const wrongType = await context.request.post('/api/publications', {
-    headers: { 'content-type': 'text/plain' },
+    headers: { 'content-type': 'text/plain', Connection: 'close' },
     data: JSON.stringify(input),
   });
   expect(wrongType.status()).toBe(415);
 
   const malformed = await context.request.post('/api/publications', {
+    headers: { Connection: 'close' },
     data: { ...input, content: { ...input.content, tables: [{}] } },
   });
   expect(malformed.status()).toBe(400);
-  const unauthenticated = await request.post('/api/publications', { data: input });
+
+  const unauthenticated = await request.post('/api/publications', {
+    headers: { Connection: 'close' },
+    data: input,
+  });
+
   expect(unauthenticated.status()).toBe(401);
   const created = await context.request.post('/api/publications', { data: input });
   expect(created.status(), await created.text()).toBe(201);
