@@ -8,6 +8,7 @@
 
 | 专题模块 | 核心能力与解决问题 | 推荐阅读 |
 |---|---|---|
+| **数据库交付工具** | 多表数据字典、两份 SQL 结构对比与关联测试数据 | [数据库工具](/zh/advanced/database-tools) |
 | **数据导入与解析** | 逆向解析既有 SQL、从 CSV/Excel/JSON Schema 一键导入结构 | [导入与解析 SQL](/zh/advanced/import-and-parse) |
 | **智能 Agent 协作** | 通过 WebMCP 协议赋能浏览器 AI Agent 自动读取、检查与修改表 | [WebMCP Agent 协作](/zh/advanced/webmcp) |
 | **AI 辅助全流程** | 对话式建表、小步审查改表清单、AI 索引顾问与智能业务注释 | [AI 辅助建表流程](/zh/advanced/ai-workflow) |

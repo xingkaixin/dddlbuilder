@@ -129,6 +129,7 @@ const zhSidebar = [
     text: '高级技巧',
     items: [
       { text: '导入与解析 SQL', link: '/zh/advanced/import-and-parse' },
+      { text: '数据字典、结构对比与测试数据', link: '/zh/advanced/database-tools' },
       { text: 'WebMCP Agent 协作', link: '/zh/advanced/webmcp' },
       { text: 'AI 辅助建表流程', link: '/zh/advanced/ai-workflow' },
       { text: '评审与解释 SQL', link: '/zh/advanced/review-and-explain' },
@@ -179,6 +180,7 @@ const enSidebar = [
     text: 'Advanced Guide',
     items: [
       { text: 'Import and Parse SQL', link: '/en/advanced/import-and-parse' },
+      { text: 'Database Tools', link: '/en/advanced/database-tools' },
       { text: 'WebMCP Agent Workflow', link: '/en/advanced/webmcp' },
       {
         text: 'AI-Assisted Table Design Workflow',
@@ -259,6 +261,7 @@ const jaSidebar = [
     text: '上級ガイド',
     items: [
       { text: 'SQL のインポートと解析', link: '/ja/advanced/import-and-parse' },
+      { text: 'データベースツール', link: '/ja/advanced/database-tools' },
       { text: 'WebMCP Agent ワークフロー', link: '/ja/advanced/webmcp' },
       { text: 'AI 支援テーブル設計', link: '/ja/advanced/ai-workflow' },
       { text: 'SQL のレビューと説明', link: '/ja/advanced/review-and-explain' },

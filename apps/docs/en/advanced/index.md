@@ -8,6 +8,7 @@ Welcome to the DDLBuilder Advanced Guide. This section is designed for engineeri
 
 | Topic | Core Capabilities & Key Benefits | Guide Link |
 |---|---|---|
+| **Database delivery tools** | Multi-table dictionaries, SQL snapshot comparison, and related test rows | [Database Tools](/en/advanced/database-tools) |
 | **Import & Parsing** | Reverse-engineer existing SQL, CSV, Excel, or JSON Schema into editable structures | [Import and Parse SQL](/en/advanced/import-and-parse) |
 | **WebMCP Agent Integration** | Connect browser-based AI agents to safely inspect, lint, and patch active schemas | [WebMCP Agent Workflow](/en/advanced/webmcp) |
 | **AI-Assisted Modeling** | Conversational table generation, step-by-step patch reviews, and smart comments | [AI-Assisted Table Design Workflow](/en/advanced/ai-workflow) |

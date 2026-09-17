@@ -8,6 +8,7 @@ DDLBuilder 上級ガイドへようこそ。このセクションでは、大規
 
 | トピック | 主な機能と解決できる課題 | ガイドリンク |
 |---|---|---|
+| **データベースの引き継ぎ** | 複数テーブルの辞書、SQL 構造比較、関連テストデータ | [データベースツール](/ja/advanced/database-tools) |
 | **SQL・データインポート** | 既存 SQL の逆解析、CSV / Excel / JSON Schema からの構造自動取り込み | [SQL のインポートと解析](/ja/advanced/import-and-parse) |
 | **WebMCP Agent 連携** | WebMCP による AI Agent からの構造読み込み・検証・安全なパッチ適用 | [WebMCP Agent ワークフロー](/ja/advanced/webmcp) |
 | **AI フルアシスト設計** | 対話型テーブル生成、段階的な変更パッチレビュー、スマートコメント付与 | [AI 支援テーブル設計](/ja/advanced/ai-workflow) |
