@@ -43,6 +43,8 @@ export const API_ERROR_CODES = [
   'ADMIN_REQUIRED',
   'WORKSPACE_ACCESS_DENIED',
   'WORKSPACE_MIGRATION_INVALID',
+  'PUBLICATION_CONFLICT',
+  'PUBLICATION_LIMIT',
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
@@ -64,3 +66,6 @@ export type WorkspaceMigrationConflict = WorkspaceMigrationResult['conflicts'][n
 export type CurrentWorkspaceResponseWithMeta = typeof CurrentWorkspaceResponseSchema.Type;
 
 export type MeApiResponse = typeof MeResponseSchema.Type;
+
+export * from './publications.js';
+export * from './seedScenario.js';

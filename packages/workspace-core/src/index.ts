@@ -90,3 +90,10 @@ export {
   type WorkspaceSavedTableMetadataUpdate,
   type WorkspaceYDocChange,
 } from './workspaceRecords';
+
+export {
+  decodeDeliveryTables,
+  decodeDeliverySnapshot,
+  encodeDeliverySnapshot,
+  type DeliverySnapshot,
+} from './deliverySnapshot.js';
