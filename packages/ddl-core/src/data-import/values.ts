@@ -10,7 +10,8 @@ type ImportType =
   | { kind: 'decimal'; precision: number; scale: number; unsigned: boolean }
   | { kind: 'text'; length: number; bytes: number }
   | { kind: 'enum'; values: string[] }
-  | { kind: 'float' | 'boolean' | 'date' | 'uuid' | 'json' }
+  | { kind: 'float'; single: boolean }
+  | { kind: 'boolean' | 'date' | 'uuid' | 'json' }
   | { kind: 'datetime'; precision: number };
 
 export function parseImportType(type: string, dialect: DataImportDialect): ImportType | null {
@@ -101,7 +102,13 @@ export function parseImportType(type: string, dialect: DataImportDialect): Impor
   }
 
   if (['float', 'double', 'double precision', 'real'].includes(normalized))
-    return { kind: 'float' };
+    return (dialect === 'postgresql' && normalized === 'double') ||
+      (dialect === 'mysql' && normalized === 'real')
+      ? null
+      : {
+          kind: 'float',
+          single: normalized === 'real' || (dialect === 'mysql' && normalized === 'float'),
+        };
   if (['boolean', 'bool'].includes(normalized)) return { kind: 'boolean' };
   if (normalized === 'date') return { kind: 'date' };
   if (normalized === 'uuid' && dialect === 'postgresql') return { kind: 'uuid' };
@@ -112,7 +119,11 @@ export function parseImportType(type: string, dialect: DataImportDialect): Impor
     /^(timestamp|datetime)(?:\(([0-6])\))?(?: without time zone)?$/,
   );
 
-  if (datetime && !(dialect === 'postgresql' && datetime[1] === 'datetime'))
+  if (
+    datetime &&
+    !(dialect === 'postgresql' && datetime[1] === 'datetime') &&
+    !(dialect === 'mysql' && normalized.includes('without time zone'))
+  )
     return {
       kind: 'datetime',
       precision: Number(datetime[2] ?? (dialect === 'postgresql' ? 6 : 0)),
@@ -188,10 +199,17 @@ export function checkImportValue(
         : { value: normalized, numeric: true };
     }
 
-    case 'float':
-      return /^[+-]?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(value) && Number.isFinite(Number(value))
-        ? { value: String(Number(value)), numeric: true }
-        : 'range';
+    case 'float': {
+      if (!/^[+-]?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(value)) return 'value';
+      const parsed = Number(value);
+      const rounded = type.single ? Math.fround(parsed) : parsed;
+      const nonzero = /[1-9]/.test(value.split(/e/i)[0]);
+
+      if (!Number.isFinite(rounded) || (rounded === 0 && nonzero)) return 'range';
+
+      return { value: String(rounded), numeric: true };
+    }
+
     case 'text':
       return Array.from(value).length > type.length || utf8Length(value) > type.bytes
         ? 'length'
