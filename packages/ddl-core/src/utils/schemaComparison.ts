@@ -193,6 +193,18 @@ export function compareSchemaSnapshots(
       if (!affected.has(snapshotTableKey(table)) && !affected.has(targetKey)) continue;
       const target = next.get(targetKey);
 
+      if (
+        foreignKey.fields.some(
+          (name) =>
+            !table.rows.some(
+              (row) =>
+                getSqlIdentifierKey(row.fieldName, table.dbType) ===
+                getSqlIdentifierKey(name, table.dbType),
+            ),
+        )
+      )
+        blockers.push(`${snapshotTableLabel(table)}.${foreignKey.name}: source column is missing.`);
+
       if (previous.has(targetKey) && !target)
         blockers.push(`${snapshotTableLabel(table)}.${foreignKey.name}: target table was removed.`);
 
@@ -226,6 +238,11 @@ export function compareSchemaSnapshots(
   }
 
   const statements = [...drops, ...changes, ...additions].filter((sql) => sql.trim());
+  blockers.push(
+    ...additions.flatMap((sql) =>
+      sql.startsWith('-- Manual migration required:') ? [sql.slice(3)] : [],
+    ),
+  );
 
   return {
     tables,

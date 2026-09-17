@@ -140,6 +140,7 @@ export function DictionaryTool() {
                             key={index}
                             className="text-primary underline"
                             href={`#dictionary-${relation.targetId}`}
+                            onClick={() => setSearch('')}
                           >
                             {relation.values[2]}
                           </a>,

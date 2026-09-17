@@ -4,11 +4,33 @@ import {
   isCreateTableStmt,
   readField,
   type AstStatement,
+  type ColumnListNode,
+  type ForeignKeyNode,
 } from './astTypes.js';
 import { SqlParseError } from './SqlParseError.js';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import { quoteIdentifier } from '../utils/databaseFamily.js';
 import { unquoteSqlIdentifier } from '../utils/sqlIdentifiers.js';
+
+function validateIndexColumns(columns: ColumnListNode[] = []): void {
+  for (const column of columns) {
+    if (readField(column, 'type') !== 'column_ref')
+      throw SqlParseError.unsupported('expression index');
+
+    for (const key of ['suffix', 'collate', 'opclass', 'nulls']) {
+      if (readField(column, key)) throw SqlParseError.unsupported(`index column ${key}`);
+    }
+  }
+}
+
+function validateReference(definition: ForeignKeyNode): void {
+  const reference = definition.reference_definition;
+
+  if (!reference) return;
+
+  if (readField(reference, 'match')) throw SqlParseError.unsupported('foreign key MATCH');
+  validateIndexColumns(reference.definition);
+}
 
 export function validateSnapshotStatement(statement: AstStatement, dbType: DatabaseType): void {
   if (isCreateTableStmt(statement)) {
@@ -20,6 +42,7 @@ export function validateSnapshotStatement(statement: AstStatement, dbType: Datab
       'inherits',
       'on_commit',
       'temporary',
+      'unlogged',
     ]) {
       if (readField(statement, key)) throw SqlParseError.unsupported(`CREATE TABLE ${key}`);
     }
@@ -28,6 +51,19 @@ export function validateSnapshotStatement(statement: AstStatement, dbType: Datab
       throw SqlParseError.unsupported('CREATE TABLE without column definitions');
 
     for (const definition of statement.create_definitions) {
+      if (definition.resource === 'column' && readField(definition, 'reference_definition'))
+        throw SqlParseError.unsupported('inline REFERENCES; use a named table-level FOREIGN KEY');
+
+      if (definition.resource !== 'column') {
+        validateIndexColumns(definition.definition);
+
+        for (const key of ['index_options', 'using', 'index_using']) {
+          if (readField(definition, key)) throw SqlParseError.unsupported(`index ${key}`);
+        }
+
+        if (definition.resource === 'constraint') validateReference(definition);
+      }
+
       if (
         definition.resource === 'column' &&
         definition.unique &&
@@ -103,6 +139,8 @@ export function validateSnapshotStatement(statement: AstStatement, dbType: Datab
   }
 
   if (isCreateIndexStmt(statement)) {
+    validateIndexColumns(statement.index_columns ?? statement.columns ?? []);
+
     for (const key of ['where', 'include', 'with', 'using', 'index_using']) {
       const value = readField(statement, key);
 
@@ -118,6 +156,8 @@ export function validateSnapshotStatement(statement: AstStatement, dbType: Datab
 
     for (const expression of statement.expr) {
       const definition = expression.create_definitions ?? expression;
+      validateIndexColumns(definition.definition);
+      validateReference(definition);
 
       if (!definition.constraint && !readField(definition, 'index'))
         throw SqlParseError.unsupported(

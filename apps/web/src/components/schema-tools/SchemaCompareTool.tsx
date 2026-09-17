@@ -13,6 +13,7 @@ export function SchemaCompareTool() {
   const [dbType, setDbType] = useState<'mysql' | 'postgresql'>('mysql');
   const [beforeSql, setBeforeSql] = useState('');
   const [afterSql, setAfterSql] = useState('');
+
   const [snapshots, setSnapshots] = useState<{
     before: PersistedState[];
     after: PersistedState[];
@@ -20,6 +21,7 @@ export function SchemaCompareTool() {
   const [renames, setRenames] = useState<SnapshotFieldRename[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
   const original = useMemo(
     () => (snapshots ? compareSchemaSnapshots(snapshots.before, snapshots.after) : null),
     [snapshots],
@@ -40,6 +42,7 @@ export function SchemaCompareTool() {
       <label className="flex items-center gap-3 text-sm">
         <span>{t('schemaTools.database')}</span>
         <select
+          aria-label={t('schemaTools.database')}
           className="h-9 rounded-md border bg-background px-3"
           value={dbType}
           disabled={busy}

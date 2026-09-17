@@ -130,4 +130,22 @@ describe('strict SQL snapshots', () => {
     expect(result.failed).toEqual([]);
     expect(result.results[0].indexes[0].name).toBe('"users_pkey"');
   });
+
+  it('rejects inline references and index semantics the model cannot preserve', async () => {
+    const parser = new SqlParser();
+
+    const postgres = await parser.parseMultiAsync(
+      'CREATE TABLE child(id INT REFERENCES parent(id)); CREATE INDEX special ON parent(name text_pattern_ops);',
+      'postgresql',
+      true,
+    );
+    expect(postgres.failed).toHaveLength(2);
+
+    const mysql = await parser.parseMultiAsync(
+      'CREATE TABLE parent(name VARCHAR(50), KEY prefix_name(name(10)));',
+      'mysql',
+      true,
+    );
+    expect(mysql.failed).toHaveLength(1);
+  });
 });

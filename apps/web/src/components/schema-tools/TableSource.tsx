@@ -46,6 +46,7 @@ export function TableSource({
       <label className="block space-y-2 text-sm font-medium">
         <span>{t('schemaTools.source')}</span>
         <select
+          aria-label={t('schemaTools.source')}
           className="h-9 w-full rounded-md border bg-background px-3"
           value={source}
           disabled={busy}
@@ -98,6 +99,7 @@ export function TableSource({
           <label className="block space-y-2 text-sm">
             <span>{t('schemaTools.database')}</span>
             <select
+              aria-label={t('schemaTools.database')}
               value={dbType}
               disabled={busy}
               className="h-9 w-full rounded-md border bg-background px-3"
@@ -108,7 +110,7 @@ export function TableSource({
                 resetSql(sql);
               }}
             >
-              {DATABASE_OPTIONS.map((option) => (
+              {DATABASE_OPTIONS.filter((option) => option.value !== 'hive').map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
