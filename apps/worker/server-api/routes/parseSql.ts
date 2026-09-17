@@ -109,7 +109,7 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     const parser = new SqlParser();
 
     const response = Schema.decodeUnknownSync(MultiSqlParseResponseSchema)(
-      withMeta(c, await parser.parseMultiAsync(sql, dbType)),
+      withMeta(c, await parser.parseMultiAsync(sql, dbType, validation.strict)),
     );
     const { results, failed } = response;
 

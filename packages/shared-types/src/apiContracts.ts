@@ -19,6 +19,7 @@ const nonBlank = Schema.String.check(Schema.makeFilter((value) => value.trim().l
 const count = Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0));
 export const MAX_SQL_LENGTH = 50_000;
 export const SqlParseRequestSchema = Schema.Struct({
+  strict: Schema.optional(Schema.Boolean),
   sql: nonBlank.check(Schema.isMaxLength(MAX_SQL_LENGTH)),
   dbType: Schema.Literals(DATABASE_TYPES.filter((type) => type !== 'hive')),
 });

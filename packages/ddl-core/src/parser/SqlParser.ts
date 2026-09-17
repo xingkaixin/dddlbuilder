@@ -22,6 +22,7 @@ import type { ParsedResult, ParserInstance, MultiParsedResult } from './types.js
 import { getDatabaseFamily, getSqlParserDialect } from '../utils/databaseFamily.js';
 import { getSqlIdentifierKey } from '../utils/sqlIdentifiers.js';
 import { SqlParseError } from './SqlParseError.js';
+import { validateSnapshotStatement } from './snapshotValidation.js';
 
 export type { ParsedResult } from './types.js';
 
@@ -418,6 +419,7 @@ export class SqlParser {
     parser: ParserInstance,
     sql: string,
     dbType: DatabaseType,
+    strict = false,
   ): MultiParsedResult {
     const { tableMetadata, grants, partitionConfigs } = this.preprocessSql(sql, dbType);
     const opt = this.buildAstifyOpt(dbType);
@@ -429,7 +431,14 @@ export class SqlParser {
       backslashEscapes: getDatabaseFamily(dbType) !== 'postgresql',
     })) {
       try {
-        const { sqlToParse, identifierMappings } = this.preprocessSql(original, dbType);
+        const {
+          sqlToParse,
+          identifierMappings,
+          grants: statementGrants,
+        } = this.preprocessSql(original, dbType);
+
+        if (strict && statementGrants.length)
+          throw SqlParseError.unsupported('GRANT in a schema snapshot');
 
         if (!sqlToParse.trim()) continue;
         const ast = this.astify(parser, sqlToParse, opt);
@@ -438,6 +447,8 @@ export class SqlParser {
 
         if (!ast) continue;
         const parsed = Array.isArray(ast) ? ast : [ast];
+
+        if (strict) parsed.forEach((statement) => validateSnapshotStatement(statement, dbType));
         statements.push(...parsed);
 
         for (const stmt of parsed) {
@@ -465,6 +476,26 @@ export class SqlParser {
     }
 
     if (results.length > 0) {
+      if (strict) {
+        const resolveTable = createTableResolver(results, dbType);
+
+        for (const statement of statements) {
+          const reference = isCreateIndexStmt(statement)
+            ? statement.table
+            : isAlterTableStmt(statement)
+              ? Array.isArray(statement.table)
+                ? statement.table[0]
+                : statement.table
+              : undefined;
+
+          if (reference && !resolveTable(reference))
+            failed.push({
+              statement: reference.table,
+              error: `Missing or ambiguous CREATE TABLE for ${reference.table}`,
+            });
+        }
+      }
+
       this.completeTables(results, statements, tableMetadata, grants, partitionConfigs, dbType);
     }
 
@@ -502,9 +533,13 @@ export class SqlParser {
     return this.parseWithParser(parser, sql, dbType);
   }
 
-  async parseMultiAsync(sql: string, dbType: DatabaseType): Promise<MultiParsedResult> {
+  async parseMultiAsync(
+    sql: string,
+    dbType: DatabaseType,
+    strict = false,
+  ): Promise<MultiParsedResult> {
     const parser = await this.getParser();
 
-    return this.parseMultiWithParser(parser, sql, dbType);
+    return this.parseMultiWithParser(parser, sql, dbType, strict);
   }
 }

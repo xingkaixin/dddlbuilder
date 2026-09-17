@@ -102,3 +102,10 @@ export type {
 export { mapCanonicalToORMType, getORMTypeWithArgs } from './utils/ormTypeResolver.js';
 
 export { RESERVED_KEYWORDS } from './configs/reservedKeywords';
+export {
+  compareSchemaSnapshots,
+  type SchemaComparison,
+  type SchemaTableComparison,
+  type SnapshotFieldRename,
+} from './utils/schemaComparison.js';
+export { snapshotTableKey, snapshotTableLabel } from './utils/schemaSnapshot.js';

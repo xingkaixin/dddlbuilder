@@ -13,6 +13,7 @@ const SQL_PARSE_API_ENDPOINT = '/api/parse-sql';
 const SQL_PARSE_MULTI_API_ENDPOINT = '/api/parse-multi-sql';
 
 interface SqlParseRequestPayload {
+  strict?: boolean;
   sql: string;
   dbType: DatabaseType;
 }

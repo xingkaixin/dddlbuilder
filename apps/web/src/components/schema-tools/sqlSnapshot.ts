@@ -13,7 +13,7 @@ export async function parseSqlSnapshot(
   const limit = getImportCharacterLimit('sql') ?? 50_000;
 
   if (sql.length > limit) throw new Error(i18n.t('schemaTools.inputLimit', { limit }));
-  const parsed = await requestMultiSqlParse({ sql, dbType });
+  const parsed = await requestMultiSqlParse({ sql, dbType, strict: true });
 
   if (parsed.failed.length) {
     throw new Error(
