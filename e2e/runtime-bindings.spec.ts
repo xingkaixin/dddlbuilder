@@ -422,3 +422,178 @@ test.describe('Cloudflare runtime bindings', () => {
     }
   });
 });
+
+test('persists publications, freezes proposals and enforces access after revocation', async ({
+  context,
+  browser,
+  request,
+  baseURL,
+  page,
+}, testInfo) => {
+  const signup = await context.request.post('/api/auth/sign-up/email', {
+    data: {
+      name: 'Publication Owner',
+      email: `publication-${crypto.randomUUID()}@ddlbuilder.test`,
+      password: 'Runtime-integration-123!',
+    },
+  });
+  expect(signup.ok(), await signup.text()).toBe(true);
+
+  const table = {
+    ...createState('published_users'),
+    rows: [
+      {
+        id: 'id',
+        fieldName: 'id',
+        fieldType: 'int',
+        fieldComment: '业务主键',
+        nullable: false,
+        standardId: 'identity',
+      },
+    ],
+  };
+  const input = {
+    title: '项目数据库文档',
+    visibility: 'private',
+    revision: 0,
+    content: {
+      kind: 'document',
+      tables: [table],
+      standards: [{ id: 'identity', name: '用户编号', description: '稳定业务标识', unit: '' }],
+    },
+  };
+  const crossOrigin = await context.request.post('/api/publications', {
+    headers: { Origin: 'https://untrusted.example' },
+    data: input,
+  });
+  expect(crossOrigin.status()).toBe(403);
+
+  const wrongType = await context.request.post('/api/publications', {
+    headers: { 'content-type': 'text/plain' },
+    data: JSON.stringify(input),
+  });
+  expect(wrongType.status()).toBe(415);
+
+  const malformed = await context.request.post('/api/publications', {
+    data: { ...input, content: { ...input.content, tables: [{}] } },
+  });
+  expect(malformed.status()).toBe(400);
+  const unauthenticated = await request.post('/api/publications', { data: input });
+  expect(unauthenticated.status()).toBe(401);
+  const created = await context.request.post('/api/publications', { data: input });
+  expect(created.status(), await created.text()).toBe(201);
+  const publication: { id: string; revision: number } = await created.json();
+  const path = `/api/publications/${publication.id}`;
+  expect((await request.get(path)).status()).toBe(404);
+  const update = { ...input, visibility: 'link', revision: 1 };
+  expect((await context.request.put(path, { data: update })).ok()).toBe(true);
+  expect((await context.request.put(path, { data: update })).status()).toBe(409);
+  const readable = await request.get(path);
+  expect(readable.ok()).toBe(true);
+  expect(readable.headers()['cache-control']).toBe('no-store');
+  expect(readable.headers()['x-robots-tag']).toContain('noindex');
+  expect(await readable.json()).toMatchObject({
+    id: publication.id,
+    revision: 2,
+    isOwner: false,
+    content: { standards: input.content.standards },
+  });
+  await page.route(/^https:\/\//, (route) => route.fulfill({ body: '' }));
+  await page.goto(`/publications/${publication.id}`);
+  await expect(page.getByRole('heading', { name: '项目数据库文档', exact: true })).toBeVisible();
+  await expect(page.getByText(/稳定业务标识/)).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('publication-desktop.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.getByRole('heading', { name: 'published_users', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('publication-mobile-dark.png') });
+  await page.reload();
+  await expect(page.getByText(/稳定业务标识/)).toBeVisible();
+  const reader = await browser.newContext({ baseURL });
+
+  try {
+    const readerSignup = await reader.request.post('/api/auth/sign-up/email', {
+      data: {
+        name: 'Publication Reader',
+        email: `reader-${crypto.randomUUID()}@ddlbuilder.test`,
+        password: 'Runtime-integration-123!',
+      },
+    });
+    expect(readerSignup.ok(), await readerSignup.text()).toBe(true);
+    expect((await reader.request.put(path, { data: { ...update, revision: 2 } })).status()).toBe(
+      404,
+    );
+
+    const proposalInput = {
+      title: '增加用户表',
+      visibility: 'link',
+      revision: 0,
+      content: { kind: 'proposal', reason: '业务需求', before: [], after: [table], renames: [] },
+    };
+    const proposalResponse = await context.request.post('/api/publications', {
+      data: proposalInput,
+    });
+    expect(proposalResponse.ok(), await proposalResponse.text()).toBe(true);
+    const proposal: { id: string } = await proposalResponse.json();
+    const proposalPath = `/api/publications/${proposal.id}`;
+    expect(
+      (
+        await context.request.put(proposalPath, {
+          data: {
+            ...proposalInput,
+            revision: 1,
+            content: { ...proposalInput.content, reason: 'changed' },
+          },
+        })
+      ).status(),
+    ).toBe(400);
+
+    const commented = await reader.request.post(`${proposalPath}/comments`, {
+      data: { target: 'published_users.id', body: '<b>确认主键</b>' },
+    });
+    expect(commented.status(), await commented.text()).toBe(201);
+
+    const comments: { id: string; resolved: boolean }[] = await (
+      await request.get(`${proposalPath}/comments`)
+    ).json();
+    expect(comments).toHaveLength(1);
+    expect(
+      (
+        await reader.request.put(`${proposalPath}/comments/${comments[0].id}`, {
+          data: { resolved: true },
+        })
+      ).status(),
+    ).toBe(404);
+    await page.goto(`/publications/${proposal.id}`);
+    await expect(page.getByText('<b>确认主键</b>', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '标记已处理', exact: true }).click();
+    await expect(page.getByRole('button', { name: '重新打开', exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('button', { name: '重新打开', exact: true })).toBeVisible();
+    expect(
+      (
+        await context.request.put(proposalPath, {
+          data: { ...proposalInput, revision: 1, visibility: 'private' },
+        })
+      ).ok(),
+    ).toBe(true);
+    expect(
+      (
+        await reader.request.post(`${proposalPath}/comments`, {
+          data: { target: '', body: 'Denied' },
+        })
+      ).status(),
+    ).toBe(404);
+    expect((await request.get(`${proposalPath}/comments`)).status()).toBe(404);
+    expect((await context.request.delete(proposalPath, { data: {} })).ok()).toBe(true);
+    expect((await context.request.get(proposalPath)).status()).toBe(404);
+  } finally {
+    await reader.close();
+  }
+
+  expect((await context.request.put(path, { data: { ...input, revision: 2 } })).ok()).toBe(true);
+  expect((await request.get(path)).status()).toBe(404);
+  expect((await context.request.delete(path, { data: {} })).ok()).toBe(true);
+  expect((await context.request.get(path)).status()).toBe(404);
+});

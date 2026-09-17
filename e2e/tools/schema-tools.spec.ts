@@ -101,3 +101,77 @@ test('关联测试数据可重复导出，缺少父表时阻止生成 @tools', a
   await expect(dialog.getByRole('alert')).toContainText('include referenced table');
   await expect(dialog.getByRole('button', { name: '导出 INSERT SQL' })).toBeDisabled();
 });
+
+test('结构快照可刷新并带出变化报告 @tools', async ({ page }, testInfo) => {
+  const dialog = await openTools(page);
+  await dialog.getByLabel('数据来源', { exact: true }).selectOption('sql');
+  await dialog.getByLabel('表结构 SQL', { exact: true }).fill(sql);
+  await dialog.getByRole('button', { name: '解析 SQL', exact: true }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: '导出结构快照', exact: true }).click();
+  const path = testInfo.outputPath('baseline.json');
+  await (await downloadPromise).saveAs(path);
+  await dialog.getByRole('tab', { name: '结构刷新', exact: true }).click();
+  await dialog.getByLabel('原有结构快照文件', { exact: true }).setInputFiles(path);
+  await dialog.getByLabel('数据来源', { exact: true }).selectOption('sql');
+  await dialog
+    .getByLabel('表结构 SQL', { exact: true })
+    .fill('CREATE TABLE users (id BIGINT PRIMARY KEY, email VARCHAR(100));');
+  await dialog.getByRole('button', { name: '解析 SQL', exact: true }).click();
+  await expect(dialog.getByText('新增表：—；移除表：orders', { exact: true })).toBeVisible();
+  const refreshed = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: '下载刷新后的结构快照' }).click();
+  expect(await readFile(await (await refreshed).path(), 'utf8')).toContain('BIGINT');
+  await page.screenshot({ path: testInfo.outputPath('refresh-desktop.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(dialog.getByRole('tab', { name: '迁移兼容性' })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('refresh-mobile.png') });
+  await dialog.getByRole('tab', { name: '迁移兼容性' }).click();
+  const assessment = dialog.getByRole('tabpanel', { name: '迁移兼容性' });
+  await assessment.getByLabel('数据来源', { exact: true }).selectOption('sql');
+  await assessment
+    .getByLabel('表结构 SQL', { exact: true })
+    .fill('CREATE TABLE users (id BIGINT UNSIGNED, updated TIMESTAMP);');
+  await assessment.getByRole('button', { name: '解析 SQL', exact: true }).click();
+  const report = page.waitForEvent('download');
+  await assessment.getByRole('button', { name: '导出兼容性报告' }).click();
+  expect(await readFile(await (await report).path(), 'utf8')).toContain('numeric(20,0)');
+});
+
+test('业务测试场景保存后可导入并重复生成 @tools', async ({ page }) => {
+  const dialog = await openTools(page);
+  await dialog.getByRole('tab', { name: '关联测试数据', exact: true }).click();
+  await dialog.getByLabel('数据来源', { exact: true }).selectOption('sql');
+  await dialog.getByLabel('表结构 SQL', { exact: true }).fill(sql);
+  await dialog.getByRole('button', { name: '解析 SQL', exact: true }).click();
+  await dialog.getByText('业务测试场景', { exact: true }).click();
+  await dialog.getByLabel('场景名称', { exact: true }).fill('订单金额');
+  await dialog
+    .getByRole('combobox', { name: '规则所属表', exact: true })
+    .selectOption({ label: 'orders' });
+  await dialog.getByRole('combobox', { name: '规则字段', exact: true }).selectOption('amount');
+  await dialog.getByRole('combobox', { name: '生成方式', exact: true }).selectOption('range');
+  await dialog.getByLabel('最小值', { exact: true }).fill('12.34');
+  await dialog.getByLabel('最大值', { exact: true }).fill('12.34');
+  await dialog.getByRole('button', { name: '添加或替换字段规则', exact: true }).click();
+  await dialog.getByRole('button', { name: '保存场景', exact: true }).click();
+  await expect(dialog.getByText('场景已保存到当前浏览器。', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: '生成测试数据', exact: true }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: '导出 JSON', exact: true }).click();
+  const content = await readFile(await (await downloadPromise).path(), 'utf8');
+  expect(content).toContain('12.34');
+  const scenarioPromise = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: '导出场景 JSON', exact: true }).click();
+  const scenario = await readFile(await (await scenarioPromise).path(), 'utf8');
+  await dialog.getByLabel('导入场景 JSON', { exact: true }).setInputFiles({
+    name: 'scenario.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(scenario),
+  });
+  await expect(dialog.getByRole('button', { name: '导出 JSON', exact: true })).toBeDisabled();
+  await dialog.getByRole('button', { name: '生成测试数据', exact: true }).click();
+  const repeated = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: '导出 JSON', exact: true }).click();
+  expect(await readFile(await (await repeated).path(), 'utf8')).toBe(content);
+});
