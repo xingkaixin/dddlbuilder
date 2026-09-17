@@ -13,6 +13,7 @@ import { DictionaryTool } from './DictionaryTool';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SchemaCompareTool } from './SchemaCompareTool';
 import { RelationalSeedTool } from './RelationalSeedTool';
+import { BusinessDataImportTool } from '@/components/data-import/BusinessDataImportTool';
 
 export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
@@ -37,6 +38,7 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
             <TabsTrigger value="dictionary">{t('schemaTools.dictionary.title')}</TabsTrigger>
             <TabsTrigger value="compare">{t('schemaTools.compare.title')}</TabsTrigger>
             <TabsTrigger value="seed">{t('schemaTools.seed.title')}</TabsTrigger>
+            <TabsTrigger value="data-import">{t('dataImport.title')}</TabsTrigger>
             <TabsTrigger value="publications">{t('publication.manage')}</TabsTrigger>
             <TabsTrigger value="refresh">{t('snapshot.refresh')}</TabsTrigger>
             <TabsTrigger value="assessment">{t('assessment.title')}</TabsTrigger>
@@ -49,6 +51,9 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
           </TabsContent>
           <TabsContent value="seed" className="min-h-0 flex-1 overflow-auto">
             <RelationalSeedTool />
+          </TabsContent>
+          <TabsContent value="data-import" className="min-h-0 flex-1 overflow-auto">
+            <BusinessDataImportTool />
           </TabsContent>
           <TabsContent value="publications" className="min-h-0 flex-1 overflow-auto">
             <PublishPanel content={null} title="" />

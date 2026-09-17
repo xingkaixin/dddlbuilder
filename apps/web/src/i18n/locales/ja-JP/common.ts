@@ -1,8 +1,10 @@
 import { snapshot, scenario, assessment } from './schemaExpansion';
 import { publication } from './publication';
 import { schemaTools } from './schemaTools';
+import { dataImport } from './dataImport';
 
 export const jaJPCommon = {
+  dataImport,
   snapshot,
   scenario,
   assessment,
