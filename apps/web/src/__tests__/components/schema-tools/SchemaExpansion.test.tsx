@@ -153,6 +153,7 @@ describe('saved business scenarios', () => {
     fireEvent.click(screen.getByRole('button', { name: '读取已保存场景' }));
     fireEvent.change(screen.getByLabelText('选择已保存场景'), { target: { value: '正常订单' } });
     expect(screen.getByLabelText('场景名称')).toHaveValue('正常订单');
+    expect(screen.getByText('1.20 – 1.20')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '导出场景 JSON' }));
     expect(decodeSeedScenario(JSON.parse((await harness.lastDownload()).text)).rules).toHaveLength(
       1,

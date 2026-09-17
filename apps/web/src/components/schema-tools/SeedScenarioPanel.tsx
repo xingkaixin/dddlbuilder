@@ -11,6 +11,21 @@ import { downloadFile } from '@/utils/mockDataGenerator';
 
 const kinds = ['default', 'range', 'weighted', 'date', 'offset'] as const;
 
+function describeRule(rule: SeedRule): string {
+  switch (rule.kind) {
+    case 'range':
+      return `${rule.min} – ${rule.max}`;
+    case 'weighted':
+      return rule.values.map((entry) => `${entry.value} × ${entry.weight}`).join(' / ');
+    case 'date':
+      return `${rule.start} → ${rule.end}`;
+    case 'offset':
+      return `${rule.source} ${rule.days < 0 ? '' : '+'}${rule.days} d`;
+    case 'default':
+      return '';
+  }
+}
+
 export function SeedScenarioPanel({
   tables,
   value,
@@ -314,6 +329,9 @@ export function SeedScenarioPanel({
             {tables.find((entry) => snapshotTableKey(entry) === rule.tableKey)?.tableName ??
               t('scenario.missing')}{' '}
             · {rule.field} · {t(`scenario.${rule.kind}`)} · NULL {rule.nullPercent}%
+            <span className="block break-words text-xs text-muted-foreground">
+              {describeRule(rule)}
+            </span>
           </span>
           <Button
             variant="ghost"
