@@ -122,3 +122,10 @@ export {
   type MigrationAssessmentItem,
   type MigrationAssessmentLevel,
 } from './utils/migrationAssessment.js';
+export * from './data-import/types.js';
+export { inferDataImportColumns } from './data-import/inference.js';
+export {
+  existingDataImportTarget,
+  newDataImportTarget,
+  validateBusinessData,
+} from './data-import/validation.js';
