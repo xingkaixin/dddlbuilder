@@ -22,9 +22,12 @@ DDLBuilder uses a secure three-step **"Validate → Preview → Confirm"** workf
 5. Click "Confirm Import" to apply changes atomically to the workspace. If the source SQL contains namespace identifiers (e.g., `CREATE TABLE sales.orders`), the system splits `sales` into `Schema Name` and `orders` into `Table Name`.
 
 ### 2. Structured Data File Imports (CSV / Excel / JSON Schema)
+
+For actual order records or customer lists, use [Business Data Import](/en/advanced/business-data-import). CSV / Excel imports on this page read field-definition lists.
+
 1. Click **Import Data** in the top navigation and choose your file format:
-   - **CSV Files**: Uses the first row as column headers and infers data types from sample rows.
-   - **Excel Spreadsheets (.xlsx / .xls)**: Automatically extracts header rows and maps cell data types.
+   - **CSV Files**: Reads field-definition lists: headers identify field name, SQL type and comment; each following row describes a field.
+   - **Excel Spreadsheets (.xlsx / .xls)**: Reads field definitions from each worksheet, including names, explicit SQL types and comments.
    - **JSON Schema**: Extracts `properties` fields, types, formats, and descriptions.
 2. Upload your file, review inferred data types in the preview table, and manually adjust any column mappings if necessary.
 3. Confirm the import to populate your workspace with the extracted columns.
@@ -36,8 +39,8 @@ DDLBuilder uses a secure three-step **"Validate → Preview → Confirm"** workf
 | Source / Format | Supported Constructs & Specifications | Parser Behavior |
 |---|---|---|
 | **SQL Scripts** | `CREATE TABLE`, `CREATE INDEX`, `ALTER TABLE`, `GRANT` | Extracts constraints, defaults, comments, composite indexes, and grants |
-| **CSV Files** | UTF-8 encoded, comma-delimited, header row | Infers `INT`, `DECIMAL`, `VARCHAR`, `DATETIME` from sample data |
-| **Excel Files** | Standard `.xlsx` and `.xls` workbooks | Uses first row as field names; infers types from cell values |
+| **CSV Files** | UTF-8 encoded, comma-delimited, header row | Reads field names, explicit SQL types and comments |
+| **Excel Files** | Standard `.xlsx` and `.xls` workbooks | Reads field-definition lists from worksheets |
 | **JSON Schema** | Draft-07 / 2020-12 compliant schemas | Maps `properties` (`string`, `integer`, `boolean`, `number`) to database columns |
 
 ---
