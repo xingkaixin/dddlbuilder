@@ -1,3 +1,4 @@
+import { getSqlIdentifierKey, unquoteSqlIdentifier } from './sqlIdentifiers';
 import { resolveFieldComment } from './fieldComment';
 import type { PersistedState, NormalizedField } from '@ddlbuilder/shared-types';
 import type { BuildDDLInput } from './ddlGenerators';
@@ -6,8 +7,9 @@ import { getForeignKeyIssue } from './foreignKeys';
 import { snapshotFields } from './schemaSnapshot';
 import { SQLITE_TYPE_MAPPINGS } from './sqliteTypes';
 
-const quote = (value: string) => `"${value.replaceAll('"', '""')}"`;
-const key = (value: string) => value.toLowerCase();
+const sqlName = (value: string) => unquoteSqlIdentifier(value.trim());
+const quote = (value: string) => `"${sqlName(value).replaceAll('"', '""')}"`;
+const key = (value: string) => getSqlIdentifierKey(value, 'sqlite');
 const codeName = (prefix: string, name: string) =>
   `${prefix}_${name.replace(/[^a-zA-Z0-9]/g, (character) => `_${character.codePointAt(0)?.toString(16)}_`)}`;
 const comment = (value: string) =>
@@ -275,8 +277,8 @@ export function buildSqliteDrizzle(inputs: BuildDDLInput[]): string {
 
       const builder =
         type === 'blob'
-          ? `blob(${JSON.stringify(field.name)}, { mode: 'buffer' })`
-          : `${type}(${JSON.stringify(field.name)})`;
+          ? `blob(${JSON.stringify(sqlName(field.name))}, { mode: 'buffer' })`
+          : `${type}(${JSON.stringify(sqlName(field.name))})`;
 
       return `  ${property(field.name)}: ${builder}${auto === field ? '.primaryKey({ autoIncrement: true })' : ''}${!field.nullable || primaryFields.includes(key(field.name)) ? '.notNull()' : ''}${defaultValue ? `.default(sql.raw(${JSON.stringify(defaultValue)}))` : ''}`;
     });
@@ -291,15 +293,17 @@ export function buildSqliteDrizzle(inputs: BuildDDLInput[]): string {
 
       if (index.kind === 'primary' && !auto)
         constraints.push(
-          `primaryKey({ name: ${JSON.stringify(index.name)}, columns: [${columns.join(', ')}] })`,
+          `primaryKey({ name: ${JSON.stringify(sqlName(index.name))}, columns: [${columns.join(', ')}] })`,
         );
 
       if (index.kind === 'unique_constraint')
-        constraints.push(`unique(${JSON.stringify(index.name)}).on(${columns.join(', ')})`);
+        constraints.push(
+          `unique(${JSON.stringify(sqlName(index.name))}).on(${columns.join(', ')})`,
+        );
 
       if (index.kind === 'unique_index' || index.kind === 'index')
         constraints.push(
-          `${index.kind === 'unique_index' ? 'uniqueIndex' : 'index'}(${JSON.stringify(index.name)}).on(${ordered.join(', ')})`,
+          `${index.kind === 'unique_index' ? 'uniqueIndex' : 'index'}(${JSON.stringify(sqlName(index.name))}).on(${ordered.join(', ')})`,
         );
     }
 
@@ -312,7 +316,7 @@ export function buildSqliteDrizzle(inputs: BuildDDLInput[]): string {
         (field) => `${owner}.${fieldsByTable.get(target)?.get(key(field))}`,
       );
       constraints.push(
-        `foreignKey({ name: ${JSON.stringify(fk.name)}, columns: [${fk.fields.map((field) => `table.${property(field)}`).join(', ')}], foreignColumns: [${references.join(', ')}] })${fk.onDelete ? `.onDelete(${JSON.stringify(fk.onDelete.toLowerCase())})` : ''}${fk.onUpdate ? `.onUpdate(${JSON.stringify(fk.onUpdate.toLowerCase())})` : ''}`,
+        `foreignKey({ name: ${JSON.stringify(sqlName(fk.name))}, columns: [${fk.fields.map((field) => `table.${property(field)}`).join(', ')}], foreignColumns: [${references.join(', ')}] })${fk.onDelete ? `.onDelete(${JSON.stringify(fk.onDelete.toLowerCase())})` : ''}${fk.onUpdate ? `.onUpdate(${JSON.stringify(fk.onUpdate.toLowerCase())})` : ''}`,
       );
     }
 

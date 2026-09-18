@@ -22,6 +22,8 @@ export function getSqlIdentifierKey(name: string, dbType: DatabaseType): string 
 
   if (family === 'postgresql') return value;
 
+  if (family === 'sqlite') return value.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+
   if (family === 'oracle' || family === 'dm') {
     return value === source ? value.toUpperCase() : value;
   }

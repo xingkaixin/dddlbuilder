@@ -34,20 +34,30 @@ function QueryFields({
   tables,
   value,
   label,
+  allowCount = false,
   onChange,
 }: {
   tables: PersistedState[];
   value: QueryField;
   label: string;
+  allowCount?: boolean;
   onChange: (field: QueryField) => void;
 }) {
   const choices = tables.flatMap((table) =>
-    table.rows.map((row) => ({
-      table: snapshotTableKey(table),
-      field: row.fieldName,
-      label: `${snapshotTableLabel(table)}.${row.fieldName}`,
-    })),
+    table.rows.flatMap((row) =>
+      row.fieldName.trim()
+        ? [
+            {
+              table: snapshotTableKey(table),
+              field: row.fieldName,
+              label: `${snapshotTableLabel(table)}.${row.fieldName}`,
+            },
+          ]
+        : [],
+    ),
   );
+
+  if (allowCount) choices.unshift({ table: value.table, field: '*', label: 'COUNT(*)' });
 
   return (
     <select
@@ -60,7 +70,6 @@ function QueryFields({
         if (chosen) onChange({ table: chosen.table, field: chosen.field });
       }}
     >
-      <option value={fieldKey({ table: value.table, field: '*' })}>COUNT(*)</option>
       {choices.map((item) => (
         <option key={fieldKey(item)} value={fieldKey(item)}>
           {item.label}
@@ -101,7 +110,9 @@ export function QueryDesignerTool() {
 
   const firstField: QueryField = {
     table: design.root,
-    field: joinedTables[0]?.rows[0]?.fieldName ?? '*',
+    field:
+      joinedTables.find((table) => snapshotTableKey(table) === design.root)?.rows[0]?.fieldName ??
+      '*',
   };
   const candidates = relations.filter(
     (relation) => joined.has(relation.from) !== joined.has(relation.to),
@@ -209,6 +220,7 @@ export function QueryDesignerTool() {
                   <QueryFields
                     tables={joinedTables}
                     value={column}
+                    allowCount
                     label={t('modelTools.column', { index: index + 1 })}
                     onChange={(value) =>
                       setDesign({
@@ -369,11 +381,13 @@ export function QueryDesignerTool() {
             <fieldset className="space-y-2">
               <legend className="text-sm font-semibold">GROUP BY</legend>
               {joinedTables.flatMap((table) =>
-                table.rows.map((row) => {
+                table.rows.flatMap((row) => {
+                  if (!row.fieldName.trim()) return [];
+
                   const field = { table: snapshotTableKey(table), field: row.fieldName };
                   const checked = design.groupBy.some((item) => fieldKey(item) === fieldKey(field));
 
-                  return (
+                  return [
                     <label key={fieldKey(field)} className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
@@ -388,8 +402,8 @@ export function QueryDesignerTool() {
                         }
                       />
                       {snapshotTableLabel(table)}.{row.fieldName}
-                    </label>
-                  );
+                    </label>,
+                  ];
                 }),
               )}
             </fieldset>

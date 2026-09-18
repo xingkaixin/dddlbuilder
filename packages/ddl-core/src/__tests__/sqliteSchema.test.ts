@@ -124,10 +124,44 @@ describe('SQLite and D1 exports', () => {
   });
   it('preserves cyclic foreign keys without initialization errors', () => {
     const models = tables();
-    models[0].foreignKeys = [{ id: 'cycle', name: 'cycle', fields: ['id'], refTable: 'user_roles', refFields: ['id'] }];
+    models[0].foreignKeys = [
+      { id: 'cycle', name: 'cycle', fields: ['id'], refTable: 'user_roles', refFields: ['id'] },
+    ];
     const generated = evaluateSchema(buildSqliteProject(models).schema);
-    expect(sqliteCore.getTableConfig(generated[0]).foreignKeys[0].reference().foreignTable).toBe(generated[3]);
-    expect(sqliteCore.getTableConfig(generated[3]).foreignKeys[0].reference().foreignTable).toBe(generated[0]);
+    expect(sqliteCore.getTableConfig(generated[0]).foreignKeys[0].reference().foreignTable).toBe(
+      generated[3],
+    );
+    expect(sqliteCore.getTableConfig(generated[3]).foreignKeys[0].reference().foreignTable).toBe(
+      generated[0],
+    );
+  });
+  it('matches SQLite identifier quoting and ASCII-only case folding', () => {
+    const table = tables()[0];
+    table.rows[1].fieldName = '"username"';
+    table.rows.push(
+      { id: 'upper', fieldName: 'Å', fieldType: 'text', fieldComment: '', nullable: true },
+      { id: 'lower', fieldName: 'å', fieldType: 'text', fieldComment: '', nullable: true },
+    );
+    const project = buildSqliteProject([table]);
+    const db = new DatabaseSync(':memory:');
+
+    try {
+      db.exec(project.sql);
+      expect(
+        db
+          .prepare('PRAGMA table_info(users)')
+          .all()
+          .map((row) => row.name),
+      ).toEqual(['id', 'username', 'Å', 'å']);
+    } finally {
+      db.close();
+    }
+
+    expect(
+      sqliteCore
+        .getTableConfig(evaluateSchema(project.schema)[0])
+        .columns.map((column) => column.name),
+    ).toEqual(['id', 'username', 'Å', 'å']);
   });
   it('blocks partial or invalid projects and unsupported configurations', () => {
     const models = tables();

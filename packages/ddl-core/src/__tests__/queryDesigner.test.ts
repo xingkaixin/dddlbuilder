@@ -62,6 +62,18 @@ function query(tables: PersistedState[]): QueryDesign {
 }
 
 describe('query designer', () => {
+  it('accepts saved editor rows with empty placeholders', () => {
+    const tables = queryFixture();
+    tables[0].rows.push({
+      id: 'blank',
+      fieldName: '',
+      fieldType: '',
+      fieldComment: '',
+      nullable: true,
+    });
+    expect(buildSelectQuery(tables, query(tables)).sql).toContain('SELECT');
+  });
+
   it.each(['mysql', 'postgresql'] as const)(
     'generates a grouped parameterized %s join without interpolating data',
     (dialect) => {

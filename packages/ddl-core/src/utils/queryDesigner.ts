@@ -1,7 +1,7 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { quoteIdentifier } from './databaseFamily';
 import { indexSnapshot, snapshotTableKey, snapshotTableLabel } from './schemaSnapshot';
-import { getSqlIdentifierKey } from './sqlIdentifiers';
+import { getSqlIdentifierKey, unquoteSqlIdentifier } from './sqlIdentifiers';
 import { getCanonicalBaseType } from './databaseTypeMapping';
 
 export const QUERY_AGGREGATES = ['', 'COUNT', 'SUM', 'AVG', 'MIN', 'MAX'] as const;
@@ -64,9 +64,11 @@ function queryTables(tables: PersistedState[]) {
   const indexed = indexSnapshot(tables);
 
   for (const table of tables) {
-    const names = table.rows.map((row) => getSqlIdentifierKey(row.fieldName, dbType));
+    const names = table.rows.flatMap((row) =>
+      row.fieldName.trim() ? [getSqlIdentifierKey(row.fieldName, dbType)] : [],
+    );
 
-    if (names.some((name) => !name.trim()) || new Set(names).size !== names.length)
+    if (!names.length || new Set(names).size !== names.length)
       throw new Error(`Invalid or duplicate fields: ${snapshotTableLabel(table)}`);
   }
 
@@ -124,7 +126,7 @@ export function buildSelectQuery(tables: PersistedState[], design: QueryDesign) 
 
   if (!Number.isInteger(design.limit) || design.limit < 1 || design.limit > 10000)
     throw new Error('LIMIT must be an integer between 1 and 10000.');
-  const quote = (name: string) => quoteIdentifier(name, root.dbType);
+  const quote = (name: string) => quoteIdentifier(unquoteSqlIdentifier(name.trim()), root.dbType);
 
   const tableName = (table: PersistedState) =>
     [...(table.schemaName ? [table.schemaName] : []), table.tableName].map(quote).join('.');
