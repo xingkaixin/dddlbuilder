@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- **Visual query design**: Build MySQL/PostgreSQL SELECT statements from physical or logical relationships, with aggregates, grouping, ordering and separate bound-parameter downloads.
+- **Multi-table business modules**: Generate users/permissions, booking and inventory schemas with prefixes and ID strategies; save complete groups while rejecting name conflicts.
+- **SQLite / D1 and Drizzle**: Model SQLite tables and export complete initialization SQL and Drizzle schemas with keys and foreign keys. Existing databases are not modified automatically.
+- **Field impact analysis**: Inspect indexes, foreign keys, logical relationships, partitioning and distribution columns, and export a report with explicit scope.
 - **Persistent project documents**: Share multi-table dictionaries and standard summaries at a stable URL, with republishing, private access, revocation and revision checks.
 - **Schema snapshots and refresh**: Import and export portable structures, retain matched business annotations, logical enums and standard references, and review changes before downloading the result.
 - **Fixed change proposals**: Preserve the reason and before/after structures, with authenticated comments and owner-controlled resolution.

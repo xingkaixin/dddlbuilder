@@ -1,5 +1,7 @@
 # ORM Model Generation
 
+SQLite / D1 supports Drizzle output. Use the group export for cross-table foreign keys. See [Query Design and Modeling](/en/advanced/modeling-workflows) for type mapping and initialization limits.
+
 This guide details how to export schema designs directly into strongly typed model classes across industry-standard ORM frameworks.
 
 ## Overview

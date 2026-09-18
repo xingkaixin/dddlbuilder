@@ -47,7 +47,7 @@
 
 ORM 下拉增加 Drizzle (SQLite)，输出 drizzle-orm/sqlite-core 的 table、columns、主键、索引和外键。生成合法且稳定的 TypeScript 名称，字符串用 JSON 编码；原始 SQL 表/字段名保留。跨表引用需对应模型齐全，提供整组 schema.ts 导出；单表无法解析的关系报出原因，不能丢外键后给出貌似完整代码。不支持的类型或配置明确阻止输出。现有其他 ORM 对 SQLite 不作未经验证的承诺。
 
-“SQLite / D1 导出”从选中的 SQLite 表导出 0001_init.sql、schema.ts 和使用说明；不创建用户云资源，不接收 Cloudflare token，不自动执行迁移。初始化目标为新数据库；支持自引用和已选对象之间的关系，缺失引用报错。表/索引命名冲突按 SQLite 的全局命名规则检测。
+“SQLite / D1 导出”明确选择 SQLite 或 Cloudflare D1 交付目标；D1 检查每表 100 列和每条 SQL 100,000 字节的平台上限。从选中的 SQLite 表导出 0001_init.sql、schema.ts 和使用说明；不创建用户云资源，不接收 Cloudflare token，不自动执行迁移。初始化目标为新数据库；支持自引用和已选对象之间的关系，缺失引用报错。表/索引命名冲突按 SQLite 的全局命名规则检测。
 
 能力门禁：SQLite 不进入 SQL 解析的请求契约和数据库选项；DDL 对比仍可显示差异，但自动迁移/回滚明确返回手动迁移提示；隐藏授权和不适用存储配置；不生成 GRANT、COMMENT ON、CREATE OR REPLACE VIEW 或存储过程。视图仅支持 CREATE VIEW。既有 MySQL/PostgreSQL 工具维持原方言限制。SQLite 不扩展 AI 功能。
 
@@ -73,3 +73,11 @@ ORM 下拉增加 Drizzle (SQLite)，输出 drizzle-orm/sqlite-core 的 table、c
 
 - 起始提交 a282d7b5，main，工作区干净。
 - 四项按上述首版范围评估通过，未添加部署基础设施需求。
+
+- 已实现查询设计、三个业务模块、SQLite/D1 初始化与 Drizzle 输出、字段影响分析；UI 与用户文档提供中文、英文和日文。
+- 四项都复用现有浏览器、workspace 与 Worker 部署，无新增绑定、D1 迁移或生产依赖。Drizzle 仅作为核心包的测试依赖验证生成结果。
+- SQLite SQL 使用真实 SQLite 执行；Drizzle 输出通过真实元数据检查和 TypeScript 编译检查，覆盖复合键、循环/自引用、引号、默认值与标识符规则。
+- 验证：format、lint、typecheck、全量单元测试与覆盖率、生产构建、Workerd D1 运行时检查、Cloudflare 配置检查、生产依赖审计通过。最终覆盖率运行包含核心 1133、workspace 209、前端 1829、Worker 540、脚本 37 项测试。
+- 前端行覆盖率 73.50%，核心行覆盖率 94.60%；保持原覆盖率门槛。新增 5 项浏览器任务通过，并检查了桌面与 390px 窄屏截图。
+- D1 平台限制按官方文档增加目标级校验，SQLite 使用相同方言但不强加 D1 的列数和语句长度限制。边界测试覆盖 100/101 列及 UTF-8 字节长度。
+- 全量浏览器回归 134 项和运行时绑定 10 项通过。D1 限制补充后，重新构建并复验新增的 5 项浏览器任务，全部通过。

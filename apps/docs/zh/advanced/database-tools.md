@@ -133,3 +133,5 @@ pg_dump --host=127.0.0.1 --username=reader --dbname=app_database \
 进入「迁移兼容性」，选择 MySQL 表。结果按「可映射」「人工核查」「范围外」逐项显示原定义、候选目标和下一步，支持导出 Markdown。
 
 检查包含 unsigned 范围、自增、精确小数、字符比较、时间与时区、JSON、枚举、默认值、ON UPDATE、索引、外键和存储选项。视图查询和未知类型单独标记。报告不检查实际数据、应用查询和运行时行为，不提供自动迁移或可直接执行的跨库脚本。
+
+[查询设计与业务建模](/zh/advanced/modeling-workflows)

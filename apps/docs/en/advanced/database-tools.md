@@ -133,3 +133,5 @@ Save a named scenario in the current browser, up to 50 scenarios. Overwriting a 
 Open **Migration compatibility** and select MySQL tables. Each item shows the original definition, target candidate and next step, classified as mapped, manual review or outside scope. Export the result as Markdown.
 
 Checks cover unsigned ranges, identity columns, decimals, text comparisons, dates/time zones, JSON, enums, defaults, ON UPDATE, indexes, foreign keys and storage options. View queries and unknown types are marked separately. This report does not inspect actual data, application queries or runtime behavior, and does not generate executable cross-database migration scripts.
+
+[Query Design and Modeling](/en/advanced/modeling-workflows)

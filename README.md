@@ -4,7 +4,7 @@
 
 ## 功能特性
 
-- 支持数据库：MySQL、PostgreSQL、PostgreSQL Citus、SQL Server、Oracle、MariaDB、TiDB、达梦 (Dameng)、OceanBase (MySQL/Oracle 模式)、Kingbase、GBase、PolarDB、GaussDB、Hive
+- 支持数据库：MySQL、PostgreSQL、PostgreSQL Citus、SQL Server、Oracle、MariaDB、TiDB、达梦 (Dameng)、OceanBase (MySQL/Oracle 模式)、Kingbase、GBase、PolarDB、GaussDB、Hive、SQLite / Cloudflare D1（建模与初始化导出）
 - **多标签页工作区**：同一工作区支持多个标签页，每张表独立管理草稿与保存状态；标签支持脏状态提示与关闭确认
 - **MySQL 分区配置**：支持 MySQL、MariaDB、TiDB 的分区表配置
   - 分区类型：RANGE、RANGE COLUMNS、LIST、LIST COLUMNS、HASH、KEY
@@ -14,7 +14,7 @@
 - **字段标准库与业务词典**：定义业务名称、单位和标准字段属性，支持字段引用、偏差检查与 JSON 导入导出；标准库保存在当前浏览器，引用随表保存与同步
 - **逻辑关系建模**：在 ER 关系向导中记录业务关联、基数、可选性与说明，以虚线显示，不生成物理外键、索引或更改字段可空性
 - **外键管理与 ER 图**：可视化配置表间外键关联、级联规则与约束名；在 ER 图中拖动字段连接点后，可通过关系向导确认基数、可选性和必要索引
-- **ORM 模型代码生成**：除 DDL 外，支持生成 Prisma、TypeORM、SQLAlchemy、GORM、JPA 五种主流 ORM 模型代码
+- **ORM 模型代码生成**：除 DDL 外，支持生成 Prisma、TypeORM、SQLAlchemy、GORM、JPA，以及 SQLite 的 Drizzle 模型代码
 - 实时生成建表语句；支持表注释与列注释
 - 视图与 Routine DDL 生成：支持 CREATE VIEW 配置，以及存储过程、函数、触发器的骨架代码生成
 - 索引、主键与权限配置支持，可折叠面板管理
@@ -31,6 +31,7 @@
 - AI 辅助建模：支持 AI 建表、AI 修改当前表、AI 索引优化顾问、AI 智能注释、DDL 评审与 SQL 解释
 - AI 修改当前表：用自然语言描述改表方向，逐项确认字段、索引和表级变更后再应用
 - AI 索引优化顾问：粘贴典型查询 SQL 或慢查询片段，生成缺失索引、冗余索引、顺序优化和查询改写建议
+- **查询设计与业务建模**：按关系生成参数化 SELECT，整组创建 RBAC、预约和库存模块，导出 SQLite/D1 初始化项目与 Drizzle schema，分析字段依赖；[使用指南](apps/docs/zh/advanced/modeling-workflows.md)
 - **数据库工具**：支持多表数据字典导出（Markdown／离线 HTML）、MySQL／PostgreSQL 两份 SQL 结构对比与迁移 SQL、遵守外键和唯一键的可重复关联测试数据；新增固定链接项目文档、结构快照刷新、固定版本变更提案与评论、可保存业务测试场景，以及 MySQL → PostgreSQL 兼容性报告；[使用指南](apps/docs/zh/advanced/database-tools.md)
 - Mock 数据生成：按字段类型与约束自动生成测试数据，支持批量导出
 - 已保存表回收站：支持软删除、单条恢复与批量清空，减少误删风险

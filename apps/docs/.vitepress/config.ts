@@ -131,6 +131,7 @@ const zhSidebar = [
       { text: '导入与解析 SQL', link: '/zh/advanced/import-and-parse' },
       { text: '业务数据导入', link: '/zh/advanced/business-data-import' },
       { text: '数据库交付工具', link: '/zh/advanced/database-tools' },
+      { text: '查询设计与业务建模', link: '/zh/advanced/modeling-workflows' },
       { text: 'WebMCP Agent 协作', link: '/zh/advanced/webmcp' },
       { text: 'AI 辅助建表流程', link: '/zh/advanced/ai-workflow' },
       { text: '评审与解释 SQL', link: '/zh/advanced/review-and-explain' },
@@ -183,6 +184,7 @@ const enSidebar = [
       { text: 'Import and Parse SQL', link: '/en/advanced/import-and-parse' },
       { text: 'Business Data Import', link: '/en/advanced/business-data-import' },
       { text: 'Database Tools', link: '/en/advanced/database-tools' },
+      { text: 'Query Design and Modeling', link: '/en/advanced/modeling-workflows' },
       { text: 'WebMCP Agent Workflow', link: '/en/advanced/webmcp' },
       {
         text: 'AI-Assisted Table Design Workflow',
@@ -265,6 +267,7 @@ const jaSidebar = [
       { text: 'SQL のインポートと解析', link: '/ja/advanced/import-and-parse' },
       { text: '業務データのインポート', link: '/ja/advanced/business-data-import' },
       { text: 'データベースツール', link: '/ja/advanced/database-tools' },
+      { text: 'クエリ設計と業務モデリング', link: '/ja/advanced/modeling-workflows' },
       { text: 'WebMCP Agent ワークフロー', link: '/ja/advanced/webmcp' },
       { text: 'AI 支援テーブル設計', link: '/ja/advanced/ai-workflow' },
       { text: 'SQL のレビューと説明', link: '/ja/advanced/review-and-explain' },
