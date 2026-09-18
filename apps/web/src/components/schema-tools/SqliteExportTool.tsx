@@ -8,12 +8,13 @@ import { downloadFile } from '@/utils/mockDataGenerator';
 
 export function SqliteExportTool() {
   const { t } = useTranslation();
+  const [target, setTarget] = useState<'sqlite' | 'd1'>('d1');
   const [tables, setTables] = useState<PersistedState[]>([]);
   let result: ReturnType<typeof buildSqliteProject> | null = null;
   let error = '';
 
   try {
-    if (tables.length) result = buildSqliteProject(tables);
+    if (tables.length) result = buildSqliteProject(tables, target);
   } catch (cause) {
     error = cause instanceof Error ? cause.message : t('schemaTools.failed');
   }
@@ -23,6 +24,21 @@ export function SqliteExportTool() {
       <div className="space-y-4 md:border-r md:pr-5">
         <h2 className="font-semibold">{t('modelTools.sqlite')}</h2>
         <p className="text-sm text-muted-foreground">{t('modelTools.sqliteHint')}</p>
+        <label className="grid gap-2 text-sm">
+          {t('modelTools.sqliteTarget')}
+          <select
+            aria-label={t('modelTools.sqliteTarget')}
+            className="h-9 rounded border bg-background px-2"
+            value={target}
+            onChange={(event) => setTarget(event.target.value === 'sqlite' ? 'sqlite' : 'd1')}
+          >
+            <option value="d1">Cloudflare D1</option>
+            <option value="sqlite">SQLite</option>
+          </select>
+        </label>
+        {target === 'd1' && (
+          <p className="text-xs text-muted-foreground">{t('modelTools.d1Limits')}</p>
+        )}
         <TableSource value={tables} onChange={setTables} />
       </div>
       <div className="min-w-0 space-y-4">

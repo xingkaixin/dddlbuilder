@@ -163,6 +163,24 @@ describe('SQLite and D1 exports', () => {
         .columns.map((column) => column.name),
     ).toEqual(['id', 'username', 'Å', 'å']);
   });
+  it('checks D1 column and UTF-8 statement limits separately from SQLite', () => {
+    const base = tables()[0];
+
+    const rows = Array.from({ length: 101 }, (_, i) => ({
+      id: String(i),
+      fieldName: `f${i}`,
+      fieldType: 'text',
+      fieldComment: '',
+      nullable: true,
+    }));
+    const wide = { ...base, rows, indexes: [] };
+    expect(() => buildSqliteProject([wide], 'd1')).toThrow('100 columns');
+    expect(buildSqliteProject([wide], 'sqlite').sql).toContain('f100');
+    expect(buildSqliteProject([{ ...wide, rows: rows.slice(0, 100) }], 'd1').sql).toContain('f99');
+    expect(() => buildSqliteProject([{ ...base, tableComment: '宽'.repeat(34000) }], 'd1')).toThrow(
+      '100,000 bytes',
+    );
+  });
   it('blocks partial or invalid projects and unsupported configurations', () => {
     const models = tables();
     expect(() => buildSqliteProject([models[3]])).toThrow('referenced table');

@@ -151,6 +151,29 @@ describe('modeling tool workflows', () => {
     expect(screen.queryByRole('button', { name: '下载初始化 SQL' })).not.toBeInTheDocument();
   });
 
+  it('lets wide schemas target SQLite while blocking D1 exports', async () => {
+    render(<SqliteExportTool />);
+
+    const table: PersistedState = {
+      ...models()[0],
+      dbType: 'sqlite',
+      indexes: [],
+      rows: Array.from({ length: 101 }, (_, i) => ({
+        id: String(i),
+        fieldName: `f${i}`,
+        fieldType: 'text',
+        fieldComment: '',
+        nullable: true,
+      })),
+    };
+    await loadSnapshot([table]);
+    expect(screen.getByRole('alert')).toHaveTextContent('100 columns');
+    expect(screen.queryByRole('button', { name: '下载初始化 SQL' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('导出目标'), { target: { value: 'sqlite' } });
+    fireEvent.click(screen.getByRole('button', { name: '下载初始化 SQL' }));
+    expect(await harness.lastDownload()).toMatchObject({ text: expect.stringContaining('f100') });
+  });
+
   it('reports field dependencies and clears the result when the scope changes', async () => {
     render(<FieldImpactTool />);
     const tables = models();

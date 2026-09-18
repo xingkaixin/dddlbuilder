@@ -1,3 +1,4 @@
+import { utf8Length } from '../data-import/types';
 import { getSqlIdentifierKey, unquoteSqlIdentifier } from './sqlIdentifiers';
 import { resolveFieldComment } from './fieldComment';
 import type { PersistedState, NormalizedField } from '@ddlbuilder/shared-types';
@@ -156,8 +157,11 @@ function validateTable(input: BuildDDLInput) {
   return { name, fields, primaryFields, auto: auto[0] };
 }
 
-export function buildSqliteTable(input: BuildDDLInput): string {
+export function buildSqliteTable(input: BuildDDLInput, target: 'sqlite' | 'd1' = 'sqlite'): string {
   const { name, primaryFields, auto } = validateTable(input);
+
+  if (target === 'd1' && input.fields.length > 100)
+    throw new Error(`${name}: D1 supports at most 100 columns per table.`);
 
   const definitions = input.fields.map((field) => {
     const defaultValue = sqliteDefault(field);
@@ -201,11 +205,15 @@ export function buildSqliteTable(input: BuildDDLInput): string {
     }),
   ].flatMap((value) => (value ? [comment(value)] : []));
 
-  return [
-    ...comments,
-    `CREATE TABLE ${quote(name)} (\n${definitions.join(',\n')}\n);`,
+  const statements = [
+    [...comments, `CREATE TABLE ${quote(name)} (\n${definitions.join(',\n')}\n);`].join('\n'),
     ...indexes,
-  ].join('\n');
+  ];
+
+  if (target === 'd1' && statements.some((statement) => utf8Length(statement) > 100_000))
+    throw new Error(`${name}: D1 SQL statements must not exceed 100,000 bytes.`);
+
+  return statements.join('\n');
 }
 
 function validateProject(inputs: BuildDDLInput[]) {
@@ -326,7 +334,7 @@ export function buildSqliteDrizzle(inputs: BuildDDLInput[]): string {
   return `import { sql, asc, desc } from 'drizzle-orm';\nimport { sqliteTable, integer, text, real, blob, numeric, primaryKey, unique, index, uniqueIndex, foreignKey, type SQLiteTableExtraConfigValue } from 'drizzle-orm/sqlite-core';\n\n${blocks.join('\n\n')}\n`;
 }
 
-export function buildSqliteProject(tables: PersistedState[]) {
+export function buildSqliteProject(tables: PersistedState[], target: 'sqlite' | 'd1' = 'sqlite') {
   const inputs = tables.map((table) => {
     if (table.schemaName || table.objectType === 'view')
       throw new Error(
@@ -337,5 +345,8 @@ export function buildSqliteProject(tables: PersistedState[]) {
   });
   validateProject(inputs);
 
-  return { sql: inputs.map(buildSqliteTable).join('\n\n'), schema: buildSqliteDrizzle(inputs) };
+  return {
+    sql: inputs.map((input) => buildSqliteTable(input, target)).join('\n\n'),
+    schema: buildSqliteDrizzle(inputs),
+  };
 }

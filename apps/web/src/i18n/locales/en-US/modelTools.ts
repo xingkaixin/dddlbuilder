@@ -50,6 +50,8 @@ export const modelTools = {
     'One booking record per slot; reuse that record after cancellation. The application validates overlapping slots, times and concurrency.',
   inventoryAssumptions:
     'One stock record per product and warehouse. Update movements and balances in an application transaction; nonnegative stock is not enforced.',
+  sqliteTarget: 'Export target',
+  d1Limits: 'D1: at most 100 columns per table and 100,000 bytes per SQL statement.',
   sqlite: 'SQLite / D1 export',
   sqliteHint:
     'Choose SQLite / D1 in the editor, save tables, then select the complete related set.',

@@ -110,6 +110,24 @@ test('SQLite 初始化导出保留约束并阻止不完整选集 @tools', async 
   await dialog.getByRole('checkbox', { name: /^users/ }).uncheck();
   await expect(dialog.getByRole('alert')).toContainText('referenced table');
   await expect(dialog.getByRole('button', { name: '下载初始化 SQL' })).toHaveCount(0);
+
+  const wide = {
+    ...tables[0],
+    indexes: [],
+    rows: Array.from({ length: 101 }, (_, i) => ({
+      id: String(i),
+      fieldName: `f${i}`,
+      fieldType: 'text',
+      fieldComment: '',
+      nullable: true,
+    })),
+  };
+  await loadSnapshot(dialog, [wide]);
+  await expect(dialog.getByRole('alert')).toContainText('100 columns');
+  await dialog.getByLabel('导出目标', { exact: true }).selectOption('sqlite');
+  expect(
+    await downloadText(page, dialog.getByRole('button', { name: '下载初始化 SQL' })),
+  ).toContain('f100');
 });
 
 test('字段影响报告包含关系与分析范围 @tools', async ({ page }) => {

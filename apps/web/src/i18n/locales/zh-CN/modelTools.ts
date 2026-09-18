@@ -47,6 +47,8 @@ export const modelTools = {
     '一个时段最多一条预约记录；取消后如需重新预约，应更新该记录。时段重叠、起止时间和并发规则由应用检查。',
   inventoryAssumptions:
     '每个商品与仓库组合一条库存记录。流水与余额需要应用在事务内一起更新；不自动保证库存非负。',
+  sqliteTarget: '导出目标',
+  d1Limits: 'D1：每表最多 100 列，每条 SQL 最多 100,000 字节。',
   sqlite: 'SQLite / D1 导出',
   sqliteHint: '先在编辑器选择 SQLite / D1 并保存表，再选择完整的关联表集合。',
   sqliteScope:
