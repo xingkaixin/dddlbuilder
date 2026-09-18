@@ -5,7 +5,7 @@ import type {
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 
-export type ORMTarget = 'prisma' | 'typeorm' | 'sqlalchemy' | 'gorm' | 'jpa';
+export type ORMTarget = 'drizzle' | 'prisma' | 'typeorm' | 'sqlalchemy' | 'gorm' | 'jpa';
 
 export interface ORMReferencedModel {
   schemaName?: string;

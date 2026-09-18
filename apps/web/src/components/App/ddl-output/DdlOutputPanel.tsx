@@ -47,7 +47,7 @@ export function DdlOutputPanel({
 }: DdlOutputPanelProps) {
   const { t } = useTranslation();
   const { accessError } = useAIRequestAccess();
-  const canReview = Boolean(code && !code.startsWith('--'));
+  const canReview = dbType !== 'sqlite' && Boolean(code && !code.startsWith('--'));
 
   const formatControls = (
     <div className="inline-flex overflow-hidden rounded-md border border-border/70 bg-background shadow-xs">
@@ -86,7 +86,7 @@ export function DdlOutputPanel({
         dbType={dbType}
         actions={
           <>
-            {formatControls}
+            {dbType !== 'sqlite' && formatControls}
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">

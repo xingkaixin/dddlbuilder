@@ -21,7 +21,7 @@ export const MAX_SQL_LENGTH = 50_000;
 export const SqlParseRequestSchema = Schema.Struct({
   strict: Schema.optional(Schema.Boolean),
   sql: nonBlank.check(Schema.isMaxLength(MAX_SQL_LENGTH)),
-  dbType: Schema.Literals(DATABASE_TYPES.filter((type) => type !== 'hive')),
+  dbType: Schema.Literals(DATABASE_TYPES.filter((type) => type !== 'hive' && type !== 'sqlite')),
 });
 export const NormalizedFieldSchema = Schema.Struct({
   name: Schema.String,

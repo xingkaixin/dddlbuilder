@@ -43,7 +43,7 @@
 
 主编辑器增加 SQLite / D1 数据库选项，持久化 dbType=sqlite；D1 是交付目标而非第二套方言。使用独立 SQLite 生成模块拥有完整 CREATE，主键、唯一约束和外键在 CREATE 内；普通/唯一索引单独 CREATE INDEX。支持 INTEGER、TEXT、REAL、BLOB、NUMERIC 存储类型，以及明确映射的常用逻辑类型。显式说明 SQLite 类型亲和性不保证长度、小数精度与 JSON 校验。
 
-仅单列 INTEGER 主键允许自增；配置自增但缺失主键、复合主键自增等情况阻止可执行输出。非整数主键生成 NOT NULL，复合主键保留顺序。默认值支持常量、CURRENT_TIMESTAMP 和明确的表达式；不支持 ON UPDATE 自动更新时间或数据库 UUID 默认函数，不静默丢失配置。表/列注释作为 SQL 注释输出。主键、索引与外键字段引用必须存在、非空；跨 schema/attached database 暂不支持，避免把 PostgreSQL schema 当成 D1 命名空间。
+仅单列 INTEGER 主键允许自增；配置自增但缺失主键、复合主键自增等情况阻止可执行输出。非整数主键生成 NOT NULL，复合主键保留顺序。默认值支持常量和 CURRENT_TIMESTAMP；任意默认表达式暂不支持；不支持 ON UPDATE 自动更新时间或数据库 UUID 默认函数，不静默丢失配置。表/列注释作为 SQL 注释输出。主键、索引与外键字段引用必须存在、非空；跨 schema/attached database 暂不支持，避免把 PostgreSQL schema 当成 D1 命名空间。
 
 ORM 下拉增加 Drizzle (SQLite)，输出 drizzle-orm/sqlite-core 的 table、columns、主键、索引和外键。生成合法且稳定的 TypeScript 名称，字符串用 JSON 编码；原始 SQL 表/字段名保留。跨表引用需对应模型齐全，提供整组 schema.ts 导出；单表无法解析的关系报出原因，不能丢外键后给出貌似完整代码。不支持的类型或配置明确阻止输出。现有其他 ORM 对 SQLite 不作未经验证的承诺。
 

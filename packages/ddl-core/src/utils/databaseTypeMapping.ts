@@ -202,6 +202,8 @@ export const supportsUuidDefault = (canonical: string) => isCharacterType(canoni
 
 export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
   switch (getDatabaseFamily(db)) {
+    case 'sqlite':
+      return new Set(['int', 'integer', 'smallint', 'tinyint', 'bigint']).has(canonical);
     case 'mysql':
       return isIntegerType(canonical);
     case 'postgresql':
@@ -220,6 +222,8 @@ export const supportsDefaultCurrentTimestamp = (db: DatabaseType, fieldType: str
   const canonical = getCanonicalBaseType(getFieldTypeForDatabase(db, fieldType));
 
   switch (getDatabaseFamily(db)) {
+    case 'sqlite':
+      return canonical === 'text';
     case 'mysql':
       return new Set(['timestamp', 'datetime']).has(canonical);
     case 'postgresql':
@@ -239,6 +243,8 @@ export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, fieldType: st
 
   switch (getDatabaseFamily(db)) {
     // MySQL 5.6.5+、MariaDB 10.1.2+、TiDB、OceanBase MySQL 模式支持 DATETIME 的 ON UPDATE CURRENT_TIMESTAMP
+    case 'sqlite':
+      return canonical === 'text';
     case 'mysql':
       return new Set(['timestamp', 'datetime']).has(canonical);
     default:

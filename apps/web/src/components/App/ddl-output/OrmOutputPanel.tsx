@@ -1,3 +1,4 @@
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ORMTarget } from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
 import { ORM_TARGET_OPTIONS } from '@/hooks/useOrmGeneration';
@@ -7,16 +8,22 @@ import { CopyOutputButton, OutputCode, OutputHeading } from './OutputPrimitives'
 
 export function OrmOutputPanel({
   code,
+  dbType,
   target,
   onTargetChange,
   onCopy,
 }: {
   code: string;
+  dbType: DatabaseType;
   target: ORMTarget;
   onTargetChange: (target: ORMTarget) => void;
   onCopy: () => Promise<boolean>;
 }) {
   const { t } = useTranslation();
+
+  const options = ORM_TARGET_OPTIONS.filter((option) =>
+    dbType === 'sqlite' ? option.value === 'drizzle' : option.value !== 'drizzle',
+  );
 
   return (
     <div className="relative flex flex-col">
@@ -38,11 +45,11 @@ export function OrmOutputPanel({
             id="orm-target"
             value={target}
             onValueChange={(value) => {
-              const option = ORM_TARGET_OPTIONS.find((candidate) => candidate.value === value);
+              const option = options.find((candidate) => candidate.value === value);
 
               if (option) onTargetChange(option.value);
             }}
-            options={ORM_TARGET_OPTIONS}
+            options={options}
             triggerClassName="h-9 rounded-md px-3 py-2 text-sm"
             emptyMessage={t('searchableSelect.empty')}
           />

@@ -47,4 +47,13 @@ export const modelTools = {
     '一个时段最多一条预约记录；取消后如需重新预约，应更新该记录。时段重叠、起止时间和并发规则由应用检查。',
   inventoryAssumptions:
     '每个商品与仓库组合一条库存记录。流水与余额需要应用在事务内一起更新；不自动保证库存非负。',
+  sqlite: 'SQLite / D1 导出',
+  sqliteHint: '先在编辑器选择 SQLite / D1 并保存表，再选择完整的关联表集合。',
+  sqliteScope:
+    '仅用于新库初始化。SQLite 类型亲和性不保证长度、精确小数或 JSON 校验；日期和 JSON 以 TEXT 保存。不支持自动改表、SQL 导入、任意默认表达式、跨 Schema 和视图导出。',
+  initSql: '下载初始化 SQL',
+  drizzleSchema: '下载 Drizzle schema',
+  instructions: '下载使用说明',
+  sqliteReadme:
+    '# SQLite / D1 初始化\n\n在空数据库中执行 0001_init.sql。SQLite 连接需启用 PRAGMA foreign_keys = ON。\n\nD1：将文件放入自己项目的 migrations 目录，先在本地运行 `wrangler d1 migrations apply <数据库名> --local`。核对后由你决定是否对远程数据库执行。DDLBuilder 不接收凭据、不执行 SQL。\n\nDrizzle：将 schema.ts 放入项目，并安装 drizzle-orm。输出使用 SQLite 存储类型，字段名保留在列定义中；数值精度、日期及 JSON 业务校验需由应用处理。\n\nSQL 和 Drizzle schema 表达同一初始结构，选择一种迁移来源，避免重复创建表。已有库需要单独设计迁移。',
 };

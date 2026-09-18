@@ -1,3 +1,4 @@
+import { DrizzleGenerator } from '../generators/DrizzleGenerator';
 import type { ORMGenerator, ORMTarget } from '../interfaces/ORMGenerator.js';
 import {
   PrismaGenerator,
@@ -8,6 +9,8 @@ import {
 } from '../generators/index.js';
 
 const generators = new Map<ORMTarget, ORMGenerator>();
+
+generators.set('drizzle', new DrizzleGenerator());
 
 generators.set('prisma', new PrismaGenerator());
 

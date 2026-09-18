@@ -1,5 +1,6 @@
 export const DATABASE_TYPES = [
   'mysql',
+  'sqlite',
   'postgresql',
   'postgresql-citus',
   'sqlserver',

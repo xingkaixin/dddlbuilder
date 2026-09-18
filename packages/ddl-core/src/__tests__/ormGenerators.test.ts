@@ -148,7 +148,8 @@ describe('ORMGeneratorFactory', () => {
     expect(targets).toContain('sqlalchemy');
     expect(targets).toContain('gorm');
     expect(targets).toContain('jpa');
-    expect(targets).toHaveLength(5);
+    expect(targets).toContain('drizzle');
+    expect(targets).toHaveLength(6);
   });
 
   it('throws for unsupported target', () => {

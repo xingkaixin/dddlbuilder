@@ -17,6 +17,16 @@ export const buildORM = (target: ORMTarget, input: ORMModelInput): string => {
 
   const generator = ORMGeneratorFactory.create(target);
 
+  if (target === 'drizzle') {
+    try {
+      return generator.generateModel(input);
+    } catch (cause) {
+      return `// Drizzle export blocked: ${String(cause instanceof Error ? cause.message : cause).replaceAll(/\r?\n/g, ' ')}`;
+    }
+  }
+
+  if (input.dbType === 'sqlite') return '// Select Drizzle (SQLite) for SQLite / D1 models.';
+
   for (const field of fields) {
     try {
       mapCanonicalToORMType(target, field.type);

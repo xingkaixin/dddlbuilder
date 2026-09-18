@@ -1,3 +1,4 @@
+import { SQLITE_TYPE_MAPPINGS } from '../utils/sqliteTypes';
 import type { ParsedFieldType } from '@ddlbuilder/shared-types';
 import { expandDatabaseFamilies } from '../utils/databaseFamily.js';
 
@@ -233,6 +234,7 @@ const FAMILY_TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
 };
 
 export const TYPE_MAPPINGS = expandDatabaseFamilies({
+  sqlite: SQLITE_TYPE_MAPPINGS,
   mysql: FAMILY_TYPE_MAPPINGS.mysql,
   postgresql: FAMILY_TYPE_MAPPINGS.postgresql,
   sqlserver: FAMILY_TYPE_MAPPINGS.sqlserver,

@@ -96,7 +96,7 @@ export function ImportSqlDialog({
 
   const [dialogState, dispatch] = useReducer(
     importDialogReducer,
-    currentDbType,
+    currentDbType === 'sqlite' ? 'mysql' : currentDbType,
     createImportDialogState,
   );
   const { sourceType, sql, file, selectedDbType, validationResult, operation } = dialogState;
@@ -111,7 +111,7 @@ export function ImportSqlDialog({
 
   const resetDialog = useCallback(() => {
     cancelValidation();
-    dispatch({ type: 'reset', dbType: currentDbType });
+    dispatch({ type: 'reset', dbType: currentDbType === 'sqlite' ? 'mysql' : currentDbType });
   }, [cancelValidation, currentDbType]);
 
   const setOpen = useCallback(

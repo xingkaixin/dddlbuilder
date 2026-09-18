@@ -8,6 +8,7 @@ type DatabaseOptionMetadata = {
 };
 
 const DATABASE_OPTION_METADATA = {
+  sqlite: { label: 'SQLite / D1', icon: Database },
   mysql: { label: 'MySQL', icon: Database },
   postgresql: { label: 'PostgreSQL', icon: HardDrive },
   'postgresql-citus': { label: 'PostgreSQL (Citus)', icon: HardDrive },

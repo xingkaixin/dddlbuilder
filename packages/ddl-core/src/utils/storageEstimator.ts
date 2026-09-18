@@ -211,13 +211,15 @@ const Profiles = {
   polardb: mysqlLikeProfile('PolarDB', 'polardb'),
   gaussdb: postgresLikeProfile('GaussDB', 'gaussdb'),
   hive: HiveOrcProfile,
-} satisfies Record<DatabaseType, StorageProfile>;
+} satisfies Partial<Record<DatabaseType, StorageProfile>>;
 
 export function estimateStorage(
   dbType: DatabaseType,
   fields: NormalizedField[],
   storageFormat?: string,
 ): StorageResult {
+  if (dbType === 'sqlite') throw new Error('SQLite storage estimation is not supported.');
+
   const profile =
     dbType === 'hive' && storageFormat
       ? (HiveProfiles.get(storageFormat.toUpperCase()) ?? HiveOrcProfile)
@@ -293,7 +295,7 @@ const REDUNDANCY_FACTORS = {
   polardb: 0.15,
   gaussdb: 0.25,
   hive: 0.05,
-} satisfies Record<DatabaseType, number>;
+} satisfies Partial<Record<DatabaseType, number>>;
 
 // B-tree overhead factor: accounts for non-leaf nodes and fill-factor gaps
 const BTREE_OVERHEAD = 1.6;
@@ -360,6 +362,8 @@ function computeRedundancyBytesPerRow(
   if (dbType === 'hive') {
     return { bytesPerRow: 0, rate: 0 };
   }
+
+  if (dbType === 'sqlite') throw new Error('SQLite storage estimation is not supported.');
 
   const factor = REDUNDANCY_FACTORS[dbType];
   const bytesPerRow = Math.ceil((rawDataPerRow + indexPerRow) * factor);

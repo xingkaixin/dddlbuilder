@@ -11,6 +11,8 @@ export function buildRoutineTemplateDDL(dbType: DatabaseType, config: RoutineTem
   const tableName = cleanName(config.tableName);
   const routineName = cleanName(config.routineName);
 
+  if (dbType === 'sqlite') return '-- SQLite / D1 routine templates are not supported.';
+
   if (dbType === 'hive') {
     return '-- Hive 不支持通用存储过程、函数或触发器模板';
   }

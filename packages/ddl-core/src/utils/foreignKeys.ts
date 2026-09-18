@@ -23,6 +23,7 @@ const standardActions: readonly ForeignKeyAction[] = [
 ];
 const postgresActions: readonly ForeignKeyAction[] = [...standardActions, 'RESTRICT'];
 const actions: Record<DatabaseFamily, Record<ForeignKeyEvent, readonly ForeignKeyAction[]>> = {
+  sqlite: { onDelete: postgresActions, onUpdate: postgresActions },
   mysql: { onDelete: mysqlActions, onUpdate: mysqlActions },
   postgresql: { onDelete: postgresActions, onUpdate: postgresActions },
   sqlserver: { onDelete: standardActions, onUpdate: standardActions },

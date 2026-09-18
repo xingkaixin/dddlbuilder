@@ -48,7 +48,9 @@ const name = Schema.Trim.check(Schema.isNonEmpty());
 const requiredText = Schema.String.check(Schema.makeFilter((value) => value.trim().length > 0));
 const flag = defaulted(Schema.Boolean, () => false);
 const locale = defaulted(Schema.Literals(APP_LOCALES), () => 'zh-CN' as const);
-const database = Schema.Literals(DATABASE_TYPES);
+const database = Schema.Literals(DATABASE_TYPES).check(
+  Schema.makeFilter((dbType) => dbType !== 'sqlite'),
+);
 const direction = defaulted(Schema.Literals(['ASC', 'DESC']), () => 'ASC' as const);
 
 export const ConversationMessageSchema = Schema.Struct({

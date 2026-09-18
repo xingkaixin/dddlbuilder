@@ -4,6 +4,7 @@ import { buildORM } from '@ddlbuilder/ddl-core';
 import type { ORMModelInput, ORMTarget } from '@ddlbuilder/ddl-core';
 
 export const ORM_TARGET_OPTIONS: { value: ORMTarget; label: string }[] = [
+  { value: 'drizzle', label: 'Drizzle (SQLite)' },
   { value: 'prisma', label: 'Prisma' },
   { value: 'typeorm', label: 'TypeORM' },
   { value: 'sqlalchemy', label: 'SQLAlchemy' },
@@ -28,7 +29,10 @@ export function useOrmGeneration({
   foreignKeys,
   referencedModels,
 }: ORMModelInput): UseOrmGenerationReturn {
-  const [ormTarget, setOrmTarget] = useState<ORMTarget>('prisma');
+  const [selectedTarget, setOrmTarget] = useState<ORMTarget>('prisma');
+
+  const ormTarget =
+    dbType === 'sqlite' ? 'drizzle' : selectedTarget === 'drizzle' ? 'prisma' : selectedTarget;
 
   const generatedOrm = useMemo(
     () =>

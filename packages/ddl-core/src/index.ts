@@ -147,3 +147,4 @@ export {
   type BusinessModule,
   type ModuleIdStrategy,
 } from './utils/businessModules.js';
+export { buildSqliteTable, buildSqliteDrizzle, buildSqliteProject } from './utils/sqliteSchema.js';

@@ -29,6 +29,9 @@ interface BuilderTabContext {
 }
 
 export function getAvailableTabs({ objectType, dbType }: BuilderTabContext): BuilderTab[] {
+  if (dbType === 'sqlite')
+    return objectType === 'view' ? ['fields'] : ['fields', 'indexes', 'foreignKeys'];
+
   if (objectType === 'view') return [...VIEW_TABS];
 
   const tabs: BuilderTab[] = [...TABLE_TABS];

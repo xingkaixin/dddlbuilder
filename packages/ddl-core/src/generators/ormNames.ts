@@ -3,6 +3,7 @@ import type { ORMModelInput, ORMTarget } from '../interfaces/ORMGenerator.js';
 import { toCamelCase, toPascalCase } from './shared.js';
 
 const reservedProperties: Record<ORMTarget, Set<string>> = {
+  drizzle: new Set(['constructor', '__proto__']),
   typeorm: new Set(['constructor']),
   prisma: new Set(),
   gorm: new Set(['TableName']),

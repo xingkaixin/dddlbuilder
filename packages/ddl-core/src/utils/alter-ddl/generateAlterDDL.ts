@@ -61,6 +61,9 @@ export function generateAlterDDL(diff: TableDiff): string {
     return '';
   }
 
+  if (diff.newDbType === 'sqlite' || diff.oldDbType === 'sqlite')
+    return '-- Manual migration required: SQLite ALTER and rollback generation are not supported. Export initialization SQL only for a new database.';
+
   const dbType = diff.newDbType;
   const statements: string[] = [];
   let oldTableName = buildQualifiedTableName(diff.oldSchemaName, diff.oldTableName, dbType);

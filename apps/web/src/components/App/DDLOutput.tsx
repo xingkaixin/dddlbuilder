@@ -54,20 +54,24 @@ export const DDLOutput = memo<DDLOutputProps>((props) => {
 
   return (
     <div className="relative flex w-full min-w-0 flex-col bg-background">
-      <Tabs defaultValue="ddl" className="relative flex flex-col">
+      <Tabs key={props.dbType} defaultValue="ddl" className="relative flex flex-col">
         <div className="sticky top-0 z-10 border-b bg-background px-4 pt-3">
           <div className="flex items-center gap-2 text-muted-foreground">
             <TabsList className="h-9 min-w-0 max-w-full justify-start overflow-x-auto rounded-none bg-transparent p-0">
-              {tabs.map(({ value, label, icon: Icon }) => (
-                <TabsTrigger
-                  key={value}
-                  value={value}
-                  className="h-9 shrink-0 gap-1.5 rounded-none border-b-2 border-transparent px-3 text-xs after:hidden data-active:border-primary data-active:bg-transparent data-active:text-primary data-active:shadow-none"
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{label}</span>
-                </TabsTrigger>
-              ))}
+              {tabs.flatMap(({ value, label, icon: Icon }) =>
+                props.dbType === 'sqlite' && (value === 'dcl' || value === 'routine')
+                  ? []
+                  : [
+                      <TabsTrigger
+                        key={value}
+                        value={value}
+                        className="h-9 shrink-0 gap-1.5 rounded-none border-b-2 border-transparent px-3 text-xs after:hidden data-active:border-primary data-active:bg-transparent data-active:text-primary data-active:shadow-none"
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>{label}</span>
+                      </TabsTrigger>,
+                    ],
+              )}
             </TabsList>
             <div className="ml-auto flex shrink-0 items-center gap-1">
               {props.onMaximizePanel && (
@@ -129,6 +133,7 @@ export const DDLOutput = memo<DDLOutputProps>((props) => {
         </TabsContent>
         <TabsContent value="orm" className="mt-0">
           <OrmOutputPanel
+            dbType={props.dbType}
             code={props.generatedOrm}
             target={props.ormTarget}
             onTargetChange={props.onOrmTargetChange}

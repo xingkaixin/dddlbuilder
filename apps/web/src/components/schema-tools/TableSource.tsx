@@ -126,7 +126,9 @@ export function TableSource({
                 resetSql(sql);
               }}
             >
-              {DATABASE_OPTIONS.filter((option) => option.value !== 'hive').map((option) => (
+              {DATABASE_OPTIONS.filter(
+                (option) => option.value !== 'hive' && option.value !== 'sqlite',
+              ).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

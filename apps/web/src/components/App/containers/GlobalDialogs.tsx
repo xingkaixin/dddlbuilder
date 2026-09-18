@@ -226,7 +226,7 @@ export function GlobalDialogs({
         </DialogContent>
       </Dialog>
 
-      {storageEstimatorDialogProps.open && (
+      {storageEstimatorDialogProps.open && storageEstimatorDialogProps.dbType !== 'sqlite' && (
         <StorageEstimatorDialog {...storageEstimatorDialogProps} />
       )}
       {mockDataDialogProps.open && <MockDataDialog {...mockDataDialogProps} />}

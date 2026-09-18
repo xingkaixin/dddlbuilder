@@ -1,6 +1,7 @@
 import type { ORMTarget } from '../interfaces/ORMGenerator.js';
 
 export const ORM_TYPE_MAPPINGS: Record<ORMTarget, Record<string, string>> = {
+  drizzle: { int: 'integer', text: 'text', real: 'real', blob: 'blob', decimal: 'numeric' },
   prisma: {
     varchar: 'String',
     nvarchar: 'String',

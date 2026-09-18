@@ -28,6 +28,8 @@ export interface BuildDDLInput {
   foreignKeys?: ForeignKeyDefinition[];
 }
 
+import { buildSqliteTable } from './sqliteSchema';
+
 export const buildDDL = ({
   dbType,
   tableName,
@@ -46,6 +48,24 @@ export const buildDDL = ({
 
   if (fields.length === 0) {
     return '-- 请补充字段信息';
+  }
+
+  if (dbType === 'sqlite') {
+    try {
+      return buildSqliteTable({
+        dbType,
+        tableName,
+        tableComment,
+        fields,
+        indexes,
+        foreignKeys,
+        tableMiscConfig,
+        mysqlPartitionConfig,
+        citusShardingConfig,
+      });
+    } catch (cause) {
+      return `-- SQLite export blocked: ${String(cause instanceof Error ? cause.message : cause).replaceAll(/\r?\n/g, ' ')}`;
+    }
   }
 
   const strategy = DDLStrategyFactory.create(dbType);
@@ -102,11 +122,13 @@ export const buildViewDDL = (
   const strategy = DDLStrategyFactory.create(dbType);
 
   const keyword =
-    createOrReplace && dbType === 'sqlserver'
-      ? 'CREATE OR ALTER VIEW'
-      : createOrReplace
-        ? 'CREATE OR REPLACE VIEW'
-        : 'CREATE VIEW';
+    dbType === 'sqlite'
+      ? 'CREATE VIEW'
+      : createOrReplace && dbType === 'sqlserver'
+        ? 'CREATE OR ALTER VIEW'
+        : createOrReplace
+          ? 'CREATE OR REPLACE VIEW'
+          : 'CREATE VIEW';
 
   return `${keyword} ${strategy.formatTableName(cleanViewName)} AS\n${cleanDefinition};`;
 };
@@ -116,6 +138,8 @@ export const buildDCL = (
   authorizationObjects: string[],
   dbType: DatabaseType = 'mysql',
 ) => {
+  if (dbType === 'sqlite') return '-- SQLite / D1 does not support GRANT.';
+
   if (!tableName.trim() || authorizationObjects.length === 0) {
     return '';
   }

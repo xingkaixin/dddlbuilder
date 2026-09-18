@@ -111,12 +111,18 @@ export function useEditorSurfaceModel({
       dataTableProps: {
         isHighlighted: animations.isFieldTableHighlighted,
         highlightedRowIndex: animations.highlightedRowIndex,
-        onOpenStorageEstimator: navigationActions.handleOpenStorageEstimator,
-        onOpenMockDataGenerator: navigationActions.handleOpenMockDataGenerator,
-        onOpenAISchemaPatch,
-        onGenerateComments: aiCommentActions.handleGenerateComments,
+        onOpenStorageEstimator:
+          editor.dbType === 'sqlite' ? undefined : navigationActions.handleOpenStorageEstimator,
+        onOpenMockDataGenerator:
+          editor.dbType === 'sqlite' ? undefined : navigationActions.handleOpenMockDataGenerator,
+        onOpenAISchemaPatch: editor.dbType === 'sqlite' ? undefined : onOpenAISchemaPatch,
+        onGenerateComments:
+          editor.dbType === 'sqlite' ? undefined : aiCommentActions.handleGenerateComments,
         isGeneratingComments: aiCommentActions.isGeneratingComments,
-        onOpenAIIndexAdvisor: editor.dbType === 'hive' ? undefined : indexAdvisor.openDialog,
+        onOpenAIIndexAdvisor:
+          editor.dbType === 'hive' || editor.dbType === 'sqlite'
+            ? undefined
+            : indexAdvisor.openDialog,
         toolbarLeft: dataTableToolbarLeft,
       },
       viewDefinitionPanelProps: {

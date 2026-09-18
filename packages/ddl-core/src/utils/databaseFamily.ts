@@ -1,15 +1,23 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 
-export type DatabaseFamily = 'mysql' | 'postgresql' | 'sqlserver' | 'oracle' | 'dm' | 'hive';
+export type DatabaseFamily =
+  | 'mysql'
+  | 'postgresql'
+  | 'sqlserver'
+  | 'oracle'
+  | 'dm'
+  | 'hive'
+  | 'sqlite';
 
 export type SqlParserDialect = 'mysql' | 'mariadb' | 'postgresql' | 'transactsql' | 'hive';
 
 interface DatabaseCapabilities {
   family: DatabaseFamily;
-  parserDialect: SqlParserDialect;
+  parserDialect: SqlParserDialect | null;
 }
 
 const DATABASE_CAPABILITIES = {
+  sqlite: { family: 'sqlite', parserDialect: null },
   mysql: { family: 'mysql', parserDialect: 'mysql' },
   mariadb: { family: 'mysql', parserDialect: 'mariadb' },
   tidb: { family: 'mysql', parserDialect: 'mysql' },
@@ -30,8 +38,13 @@ const DATABASE_CAPABILITIES = {
 export const getDatabaseFamily = (databaseType: DatabaseType): DatabaseFamily | undefined =>
   DATABASE_CAPABILITIES[databaseType]?.family;
 
-export const getSqlParserDialect = (databaseType: DatabaseType): SqlParserDialect =>
-  DATABASE_CAPABILITIES[databaseType].parserDialect;
+export const getSqlParserDialect = (databaseType: DatabaseType): SqlParserDialect => {
+  const dialect = DATABASE_CAPABILITIES[databaseType].parserDialect;
+
+  if (!dialect) throw new Error('SQLite SQL import is not supported.');
+
+  return dialect;
+};
 
 export const supportsMysqlPartition = (databaseType: DatabaseType): boolean =>
   getDatabaseFamily(databaseType) === 'mysql';

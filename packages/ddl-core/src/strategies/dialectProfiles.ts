@@ -51,6 +51,14 @@ const postgresLike: DialectProfile = {
 };
 
 export const DIALECT_PROFILES: Record<DatabaseType, DialectProfile> = {
+  sqlite: {
+    identityClause: '',
+    uuidFunction: '',
+    nowFunction: constantNow('CURRENT_TIMESTAMP'),
+    clauseOrder: ['nullability', 'default'],
+    explicitNull: false,
+    commentChannel: 'inline',
+  },
   mysql: mysqlLike,
   mariadb: mysqlLike,
   tidb: mysqlLike,

@@ -50,4 +50,13 @@ export const modelTools = {
     '時枠ごとに予約記録は一つです。取消後は同じ記録を更新します。時間の重複や前後関係、同時実行はアプリで検証します。',
   inventoryAssumptions:
     '商品と倉庫の組み合わせごとに在庫記録を作ります。履歴と残高はアプリのトランザクションで更新します。在庫の非負制約はありません。',
+  sqlite: 'SQLite / D1 エクスポート',
+  sqliteHint: 'エディターで SQLite / D1 を選択して保存し、関連テーブル全体を選択してください。',
+  sqliteScope:
+    '新規 DB の初期化専用。型親和性は長さ、小数精度、JSON 検証を保証しません。日時と JSON は TEXT です。自動 ALTER、SQL インポート、任意の既定式、別スキーマ、ビューの出力は未対応です。',
+  initSql: '初期化 SQL をダウンロード',
+  drizzleSchema: 'Drizzle スキーマをダウンロード',
+  instructions: '利用手順をダウンロード',
+  sqliteReadme:
+    '# SQLite / D1 初期化\n\n空の DB で 0001_init.sql を実行します。SQLite 接続で PRAGMA foreign_keys = ON を有効にしてください。\n\nD1：migrations ディレクトリーに配置し、まず `wrangler d1 migrations apply <database-name> --local` で確認します。リモート実行は利用者が判断します。DDLBuilder は認証情報を受け取らず、SQL を実行しません。\n\nDrizzle：schema.ts を追加し drizzle-orm をインストールします。数値精度、日時、JSON はアプリで検証してください。\n\nSQL と Drizzle は同じ初期構造を表します。二重にテーブルを作らないよう移行元を一つ選びます。既存 DB は別途移行が必要です。',
 };

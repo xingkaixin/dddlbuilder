@@ -52,17 +52,22 @@ describe('SqlParser', () => {
     expect(result.indexes[0]).toMatchObject({ name: 'users_identity', kind: 'primary' });
   });
 
-  it.each(DATABASE_TYPES.filter((databaseType) => databaseType !== 'hive'))(
-    '能够使用 %s 的兼容方言解析基础建表语句',
-    async (databaseType) => {
-      const parser = new SqlParser();
+  it.each(
+    DATABASE_TYPES.filter((databaseType) => databaseType !== 'hive' && databaseType !== 'sqlite'),
+  )('能够使用 %s 的兼容方言解析基础建表语句', async (databaseType) => {
+    const parser = new SqlParser();
 
-      const result = await parser.parseAsync('CREATE TABLE users (id INT);', databaseType);
+    const result = await parser.parseAsync('CREATE TABLE users (id INT);', databaseType);
 
-      expect(result.tableName).toBe('users');
-      expect(result.fields[0]).toMatchObject({ name: 'id', type: 'INT' });
-    },
-  );
+    expect(result.tableName).toBe('users');
+    expect(result.fields[0]).toMatchObject({ name: 'id', type: 'INT' });
+  });
+
+  it('明确拒绝 SQLite SQL 导入', async () => {
+    await expect(
+      new SqlParser().parseAsync('CREATE TABLE users (id INTEGER);', 'sqlite'),
+    ).rejects.toThrow('SQLite SQL import is not supported');
+  });
 
   it('能够解析 MySQL 的表结构、索引与授权', async () => {
     const sql = `

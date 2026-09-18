@@ -50,4 +50,14 @@ export const modelTools = {
     'One booking record per slot; reuse that record after cancellation. The application validates overlapping slots, times and concurrency.',
   inventoryAssumptions:
     'One stock record per product and warehouse. Update movements and balances in an application transaction; nonnegative stock is not enforced.',
+  sqlite: 'SQLite / D1 export',
+  sqliteHint:
+    'Choose SQLite / D1 in the editor, save tables, then select the complete related set.',
+  sqliteScope:
+    'New databases only. SQLite affinity does not enforce length, exact decimals or JSON validity; dates and JSON use TEXT. Automatic ALTER, SQL import, arbitrary default expressions, cross-schema references and view export are unsupported.',
+  initSql: 'Download initialization SQL',
+  drizzleSchema: 'Download Drizzle schema',
+  instructions: 'Download instructions',
+  sqliteReadme:
+    '# SQLite / D1 initialization\n\nExecute 0001_init.sql in an empty database. Enable PRAGMA foreign_keys = ON for SQLite connections.\n\nD1: place the file in your project migrations directory. Run `wrangler d1 migrations apply <database-name> --local` first. Review before deciding to apply remotely. DDLBuilder receives no credentials and executes no SQL.\n\nDrizzle: add schema.ts to your project and install drizzle-orm. Application code must handle numeric precision, dates and JSON validation.\n\nSQL and the Drizzle schema describe the same initial structure. Choose one migration source to avoid creating tables twice. Existing databases need a separate migration plan.',
 };

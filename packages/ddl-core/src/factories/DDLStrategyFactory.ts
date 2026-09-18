@@ -1,10 +1,15 @@
+import { SQLiteStrategy } from '../strategies/SQLiteStrategy';
 import { DATABASE_TYPES, type DatabaseType } from '@ddlbuilder/shared-types';
 import type { DDLStrategy } from '../interfaces/DDLStrategy';
 import { ProfiledDDLStrategy } from '../strategies/ProfiledDDLStrategy';
 import { HiveStrategy } from '../strategies/HiveStrategy';
 
 const createStrategy = (databaseType: DatabaseType): DDLStrategy =>
-  databaseType === 'hive' ? new HiveStrategy() : new ProfiledDDLStrategy(databaseType);
+  databaseType === 'sqlite'
+    ? new SQLiteStrategy()
+    : databaseType === 'hive'
+      ? new HiveStrategy()
+      : new ProfiledDDLStrategy(databaseType);
 
 const strategies = new Map<DatabaseType, DDLStrategy>(
   DATABASE_TYPES.map((databaseType) => [databaseType, createStrategy(databaseType)]),

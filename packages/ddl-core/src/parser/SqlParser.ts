@@ -322,6 +322,11 @@ export class SqlParser {
   }
 
   private buildAstifyOpt(dbType: DatabaseType) {
+    if (dbType === 'sqlite')
+      throw new SqlParseError(
+        'SQLite SQL import is not supported. Use schema snapshots or the editor.',
+      );
+
     return {
       database: getSqlParserDialect(dbType),
     };
