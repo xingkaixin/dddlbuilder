@@ -148,6 +148,7 @@ describe('buildSavedTableBatchImportPlan', () => {
 
 it('rejects a module atomically on display-name, schema-identity or internal conflicts', () => {
   const existing = createRecord('display', 'Display', { state: createState('users') });
+
   const items = [
     { name: 'New', state: createState('new') },
     { name: 'Other', state: createState('users') },
