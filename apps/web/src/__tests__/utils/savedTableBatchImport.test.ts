@@ -145,3 +145,32 @@ describe('buildSavedTableBatchImportPlan', () => {
     expect(plan.records[0]).not.toHaveProperty('trashedAt');
   });
 });
+
+it('rejects a module atomically on display-name, schema-identity or internal conflicts', () => {
+  const existing = createRecord('display', 'Display', { state: createState('users') });
+  const items = [
+    { name: 'New', state: createState('new') },
+    { name: 'Other', state: createState('users') },
+  ];
+  expect(() =>
+    buildSavedTableBatchImportPlan({ items, conflictStrategy: 'reject' }, [existing], 100),
+  ).toThrow('already exists');
+  expect(() =>
+    buildSavedTableBatchImportPlan(
+      { items: [{ name: 'Display', state: createState('new') }], conflictStrategy: 'reject' },
+      [existing],
+      100,
+    ),
+  ).toThrow('already exists');
+  expect(() =>
+    buildSavedTableBatchImportPlan(
+      { items: [items[0], items[0]], conflictStrategy: 'reject' },
+      [],
+      100,
+    ),
+  ).toThrow('already exists');
+  expect(
+    buildSavedTableBatchImportPlan({ items, conflictStrategy: 'reject' }, [], 100).successCount,
+  ).toBe(2);
+  expect(existing.state.tableName).toBe('users');
+});

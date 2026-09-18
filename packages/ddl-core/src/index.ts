@@ -129,3 +129,21 @@ export {
   newDataImportTarget,
   validateBusinessData,
 } from './data-import/validation.js';
+export {
+  buildSelectQuery,
+  getQueryRelations,
+  QUERY_AGGREGATES,
+  QUERY_OPERATORS,
+  type QueryDesign,
+  type QueryField,
+  type QueryColumn,
+  type QueryFilter,
+  type QueryRelation,
+} from './utils/queryDesigner.js';
+export {
+  BUSINESS_MODULES,
+  instantiateBusinessModule,
+  businessModuleSql,
+  type BusinessModule,
+  type ModuleIdStrategy,
+} from './utils/businessModules.js';

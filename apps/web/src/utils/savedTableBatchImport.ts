@@ -1,3 +1,4 @@
+import { snapshotTableKey } from '@ddlbuilder/ddl-core';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { ensureSavedTableName, normalizeSavedTableName } from './savedTablesDb';
 import type { SavedTableRecord } from './workspaceStorageTypes';
@@ -11,7 +12,7 @@ export class AmbiguousTableOverwriteError extends Error {
   }
 }
 
-export type SavedTableConflictStrategy = 'skip' | 'overwrite' | 'rename';
+export type SavedTableConflictStrategy = 'skip' | 'overwrite' | 'rename' | 'reject';
 
 export interface SavedTableImportItem {
   name: string;
@@ -55,6 +56,26 @@ export const buildSavedTableBatchImportPlan = (
   existingRecords: SavedTableRecord[],
   now: number,
 ): SavedTableBatchImportPlan => {
+  if (request.conflictStrategy === 'reject') {
+    const names = new Set(existingRecords.map((record) => record.normalizedName));
+
+    const identities = new Set(
+      existingRecords.map((record) =>
+        JSON.stringify([record.state.dbType, snapshotTableKey(record.state)]),
+      ),
+    );
+
+    for (const item of request.items) {
+      const name = normalizeSavedTableName(item.name);
+      const identity = JSON.stringify([item.state.dbType, snapshotTableKey(item.state)]);
+
+      if (names.has(name) || identities.has(identity))
+        throw new Error(`Table already exists: ${item.state.tableName}`);
+      names.add(name);
+      identities.add(identity);
+    }
+  }
+
   const recordsByName = new Map<string, SavedTableRecord>();
   const ambiguousNames = new Set<string>();
 

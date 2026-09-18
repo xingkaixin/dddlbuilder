@@ -1,9 +1,11 @@
+import { modelTools } from './modelTools';
 import { snapshot, scenario, assessment } from './schemaExpansion';
 import { publication } from './publication';
 import { schemaTools } from './schemaTools';
 import { dataImport } from './dataImport';
 
 export const enUSCommon = {
+  modelTools,
   dataImport,
   snapshot,
   scenario,

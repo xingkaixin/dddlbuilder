@@ -1,3 +1,5 @@
+import { BusinessModuleTool } from './BusinessModuleTool';
+import { QueryDesignerTool } from './QueryDesignerTool';
 import { MigrationAssessmentTool } from './MigrationAssessmentTool';
 import { SnapshotRefreshTool } from './SnapshotRefreshTool';
 import { PublishPanel } from '@/components/publications/PublishPanel';
@@ -35,6 +37,8 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
         </DialogHeader>
         <Tabs defaultValue="dictionary" className="flex min-h-0 flex-1 flex-col">
           <TabsList className="mb-4 h-auto w-fit max-w-full shrink-0 flex-wrap">
+            <TabsTrigger value="modules">{t('modelTools.modules')}</TabsTrigger>
+            <TabsTrigger value="query">{t('modelTools.query')}</TabsTrigger>
             <TabsTrigger value="dictionary">{t('schemaTools.dictionary.title')}</TabsTrigger>
             <TabsTrigger value="compare">{t('schemaTools.compare.title')}</TabsTrigger>
             <TabsTrigger value="seed">{t('schemaTools.seed.title')}</TabsTrigger>
@@ -43,6 +47,12 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
             <TabsTrigger value="refresh">{t('snapshot.refresh')}</TabsTrigger>
             <TabsTrigger value="assessment">{t('assessment.title')}</TabsTrigger>
           </TabsList>
+          <TabsContent value="modules" className="min-h-0 flex-1 overflow-auto">
+            <BusinessModuleTool />
+          </TabsContent>
+          <TabsContent value="query" className="min-h-0 flex-1 overflow-auto">
+            <QueryDesignerTool />
+          </TabsContent>
           <TabsContent value="dictionary" className="min-h-0 flex-1 overflow-auto">
             <DictionaryTool />
           </TabsContent>
