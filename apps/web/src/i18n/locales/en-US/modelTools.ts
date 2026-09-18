@@ -60,4 +60,29 @@ export const modelTools = {
   instructions: 'Download instructions',
   sqliteReadme:
     '# SQLite / D1 initialization\n\nExecute 0001_init.sql in an empty database. Enable PRAGMA foreign_keys = ON for SQLite connections.\n\nD1: place the file in your project migrations directory. Run `wrangler d1 migrations apply <database-name> --local` first. Review before deciding to apply remotely. DDLBuilder receives no credentials and executes no SQL.\n\nDrizzle: add schema.ts to your project and install drizzle-orm. Application code must handle numeric precision, dates and JSON validation.\n\nSQL and the Drizzle schema describe the same initial structure. Choose one migration source to avoid creating tables twice. Existing databases need a separate migration plan.',
+  impact: 'Field impact',
+  impactHint:
+    'Choose the tables to inspect, then the field you plan to change. Composite keys and relationships remain grouped.',
+  impactTable: 'Target table',
+  impactField: 'Target field',
+  impactLimits:
+    'Only direct dependencies in selected models are inspected. View SQL, application code and missing objects are excluded. No findings does not imply a safe change. Tables are never modified.',
+  impactScope:
+    'Checked {{count}} tables; excluded {{views}} views; {{external}} relationships point outside the scope.',
+  impactDownload: 'Download impact report',
+  excludedView: 'Excluded view',
+  externalRelation: 'External relationship',
+  noImpact: 'No known direct dependencies found in the selected scope.',
+  incoming: 'Other fields reference this field',
+  outgoing: 'This field references other fields',
+  self: 'Self reference',
+  impactKinds: {
+    index: 'Primary key / index',
+    foreignKey: 'Database foreign key',
+    logicalRelation: 'Business relationship',
+    mysqlPartition: 'MySQL partition',
+    citusDistribution: 'Citus distribution column',
+    hivePartition: 'Hive partition column',
+    hiveClustering: 'Hive clustering column',
+  },
 };

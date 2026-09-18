@@ -148,3 +148,10 @@ export {
   type ModuleIdStrategy,
 } from './utils/businessModules.js';
 export { buildSqliteTable, buildSqliteDrizzle, buildSqliteProject } from './utils/sqliteSchema.js';
+
+export { analyzeFieldImpact, impactFieldNames } from './utils/fieldImpact';
+export type {
+  FieldImpactDependency,
+  FieldImpactKind,
+  FieldImpactReport,
+} from './utils/fieldImpact';

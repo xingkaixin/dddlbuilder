@@ -1,3 +1,4 @@
+import { FieldImpactTool } from './FieldImpactTool';
 import { SqliteExportTool } from './SqliteExportTool';
 import { BusinessModuleTool } from './BusinessModuleTool';
 import { QueryDesignerTool } from './QueryDesignerTool';
@@ -38,6 +39,7 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
         </DialogHeader>
         <Tabs defaultValue="dictionary" className="flex min-h-0 flex-1 flex-col">
           <TabsList className="mb-4 h-auto w-fit max-w-full shrink-0 flex-wrap">
+            <TabsTrigger value="impact">{t('modelTools.impact')}</TabsTrigger>
             <TabsTrigger value="sqlite">{t('modelTools.sqlite')}</TabsTrigger>
             <TabsTrigger value="modules">{t('modelTools.modules')}</TabsTrigger>
             <TabsTrigger value="query">{t('modelTools.query')}</TabsTrigger>
@@ -49,6 +51,9 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
             <TabsTrigger value="refresh">{t('snapshot.refresh')}</TabsTrigger>
             <TabsTrigger value="assessment">{t('assessment.title')}</TabsTrigger>
           </TabsList>
+          <TabsContent value="impact" className="min-h-0 flex-1 overflow-auto">
+            <FieldImpactTool />
+          </TabsContent>
           <TabsContent value="sqlite" className="min-h-0 flex-1 overflow-auto">
             <SqliteExportTool />
           </TabsContent>

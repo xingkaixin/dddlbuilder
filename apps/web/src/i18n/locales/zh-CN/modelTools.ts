@@ -56,4 +56,27 @@ export const modelTools = {
   instructions: '下载使用说明',
   sqliteReadme:
     '# SQLite / D1 初始化\n\n在空数据库中执行 0001_init.sql。SQLite 连接需启用 PRAGMA foreign_keys = ON。\n\nD1：将文件放入自己项目的 migrations 目录，先在本地运行 `wrangler d1 migrations apply <数据库名> --local`。核对后由你决定是否对远程数据库执行。DDLBuilder 不接收凭据、不执行 SQL。\n\nDrizzle：将 schema.ts 放入项目，并安装 drizzle-orm。输出使用 SQLite 存储类型，字段名保留在列定义中；数值精度、日期及 JSON 业务校验需由应用处理。\n\nSQL 和 Drizzle schema 表达同一初始结构，选择一种迁移来源，避免重复创建表。已有库需要单独设计迁移。',
+  impact: '影响分析',
+  impactHint: '选择要检查的表集合，再选择计划修改的字段。复合键和关系按完整字段组显示。',
+  impactTable: '目标表',
+  impactField: '目标字段',
+  impactLimits:
+    '仅分析已选模型中的直接依赖。不分析视图 SQL、应用代码或未导入对象；未发现依赖不代表修改安全。此工具不会修改表。',
+  impactScope: '已检查 {{count}} 张表；排除 {{views}} 个视图；{{external}} 条关系指向范围外对象。',
+  impactDownload: '下载影响报告',
+  excludedView: '未分析的视图',
+  externalRelation: '范围外关系',
+  noImpact: '本次检查范围内未发现已知直接依赖。',
+  incoming: '其他字段引用此字段',
+  outgoing: '此字段引用其他字段',
+  self: '自引用关系',
+  impactKinds: {
+    index: '主键 / 索引',
+    foreignKey: '数据库外键约束',
+    logicalRelation: '业务逻辑关系',
+    mysqlPartition: 'MySQL 分区',
+    citusDistribution: 'Citus 分布字段',
+    hivePartition: 'Hive 分区列',
+    hiveClustering: 'Hive 聚簇列',
+  },
 };

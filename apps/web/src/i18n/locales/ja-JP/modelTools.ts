@@ -59,4 +59,29 @@ export const modelTools = {
   instructions: '利用手順をダウンロード',
   sqliteReadme:
     '# SQLite / D1 初期化\n\n空の DB で 0001_init.sql を実行します。SQLite 接続で PRAGMA foreign_keys = ON を有効にしてください。\n\nD1：migrations ディレクトリーに配置し、まず `wrangler d1 migrations apply <database-name> --local` で確認します。リモート実行は利用者が判断します。DDLBuilder は認証情報を受け取らず、SQL を実行しません。\n\nDrizzle：schema.ts を追加し drizzle-orm をインストールします。数値精度、日時、JSON はアプリで検証してください。\n\nSQL と Drizzle は同じ初期構造を表します。二重にテーブルを作らないよう移行元を一つ選びます。既存 DB は別途移行が必要です。',
+  impact: '影響分析',
+  impactHint:
+    '調査するテーブルと変更予定のカラムを選択します。複合キーとリレーションはカラムの組として表示します。',
+  impactTable: '対象テーブル',
+  impactField: '対象カラム',
+  impactLimits:
+    '選択したモデルの直接依存のみを調査します。ビュー SQL、アプリケーションコード、未取得のオブジェクトは対象外です。依存がないという結果は変更の安全性を保証しません。テーブルは変更しません。',
+  impactScope:
+    '{{count}} テーブルを確認。{{views}} ビューを除外。{{external}} リレーションは対象範囲外を参照。',
+  impactDownload: '影響レポートをダウンロード',
+  excludedView: '対象外のビュー',
+  externalRelation: '範囲外のリレーション',
+  noImpact: '選択した範囲で既知の直接依存は見つかりませんでした。',
+  incoming: '他のカラムから参照',
+  outgoing: '他のカラムを参照',
+  self: '自己参照',
+  impactKinds: {
+    index: '主キー / インデックス',
+    foreignKey: 'データベースの外部キー',
+    logicalRelation: '業務上のリレーション',
+    mysqlPartition: 'MySQL パーティション',
+    citusDistribution: 'Citus 分散カラム',
+    hivePartition: 'Hive パーティション列',
+    hiveClustering: 'Hive クラスタ列',
+  },
 };
