@@ -5,8 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState, DatabaseType } from '@ddlbuilder/shared-types';
 import { Button } from '@/components/ui/button';
-import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
-import { listSavedTables } from '@/utils/savedTablesDb';
+import { useSavedTablePersistence } from '@/hooks/workspacePersistence/useSavedTablePersistence';
 import { DATABASE_OPTIONS } from '@/components/App/databaseOptions';
 import { SqlSnapshotInput } from './SqlSnapshotInput';
 import { parseSqlSnapshot } from './sqlSnapshot';
@@ -21,7 +20,7 @@ export function TableSource({
   onStandardsChange?: (standards: StandardSummary[]) => void;
 }) {
   const { t } = useTranslation();
-  const scope = useWorkspaceScope();
+  const { scope, storage, readAllTables } = useSavedTablePersistence();
   const [source, setSource] = useState('saved');
   const [sql, setSql] = useState('');
   const [dbType, setDbType] = useState<DatabaseType>('mysql');
@@ -30,10 +29,9 @@ export function TableSource({
   const [error, setError] = useState('');
 
   const saved = useQuery({
-    queryKey: ['schema-tools-tables', scope],
-    queryFn: async () =>
-      scope ? (await listSavedTables(scope)).map((record) => record.state) : [],
-    enabled: Boolean(scope),
+    queryKey: ['schema-tools-tables', scope, storage.kind],
+    queryFn: async () => (await readAllTables()).active.map((record) => record.state),
+    enabled: storage.kind !== 'loading',
     refetchOnWindowFocus: false,
   });
   const tables = source === 'saved' ? (saved.data ?? []) : parsed;
@@ -75,7 +73,7 @@ export function TableSource({
           <Button
             variant="outline"
             size="sm"
-            disabled={saved.isFetching || !scope}
+            disabled={saved.isFetching || storage.kind === 'loading'}
             onClick={async () => {
               const result = await saved.refetch();
 

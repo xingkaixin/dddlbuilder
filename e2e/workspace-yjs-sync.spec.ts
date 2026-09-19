@@ -30,6 +30,69 @@ const isString = (value: unknown): value is string => typeof value === 'string';
 const isNumber = (value: unknown): value is number => typeof value === 'number';
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
+test('database tools read saved tables from the synchronized workspace', async ({ browser }) => {
+  const server = new MockWorkspaceYjsServer();
+  const workspaceId = `ws-schema-tools-${Date.now()}`;
+  seedDefaultDraft(server.doc, 'draft_only', 'id');
+
+  const state: PersistedState = {
+    schemaName: '',
+    tableName: 'cloud_dictionary',
+    tableComment: 'Cloud table description',
+    dbType: 'mysql',
+    sqlFormatMode: 'compact',
+    addCount: 10,
+    rows: [
+      {
+        id: 'cloud-field',
+        fieldName: 'id',
+        fieldType: 'BIGINT',
+        fieldComment: '',
+        nullable: false,
+      },
+    ],
+    indexes: [],
+    authInput: '',
+    authObjects: [],
+  };
+
+  for (const trashed of [false, true]) {
+    const name = trashed ? 'trashed_table' : state.tableName;
+    upsertWorkspaceSavedTable(server.doc, {
+      tableId: name,
+      normalizedName: name,
+      name,
+      state: { ...state, tableName: name },
+      createdAt: 1,
+      updatedAt: 1,
+      ...(trashed ? { trashedAt: 1 } : {}),
+    });
+  }
+
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(context, server, workspaceId);
+  await context.route('**/api/publications', (route) => route.fulfill({ json: [] }));
+  const page = await context.newPage();
+
+  try {
+    await page.goto('/');
+    await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    await page.getByRole('button', { name: '数据库工具', exact: true }).first().click();
+    const dialog = page.getByRole('dialog', { name: '数据库工具', exact: true });
+    const savedTable = dialog.getByRole('checkbox', { name: /^cloud_dictionary/ });
+    await expect(savedTable).toBeVisible();
+    await savedTable.check();
+    await expect(dialog.getByRole('checkbox')).toHaveCount(1);
+    await expect(
+      dialog.getByRole('heading', { name: 'cloud_dictionary', exact: true }),
+    ).toBeVisible();
+    await expect(dialog.getByRole('button', { name: '导出 Markdown', exact: true })).toBeEnabled();
+  } finally {
+    await context.close();
+    server.doc.destroy();
+  }
+});
+
 test('first cloud sync is not presented as an empty workspace', async ({ browser }) => {
   const workspaceId = `ws-initial-sync-${Date.now()}`;
   const server = new MockWorkspaceYjsServer();

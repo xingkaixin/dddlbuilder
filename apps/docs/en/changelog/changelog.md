@@ -24,6 +24,7 @@ outline: [2, 2]
 - **Migration compatibility reports**: Assess MySQL → PostgreSQL type and behavior differences and export an itemized report without generating executable cross-database scripts.
 
 ### Fixed
+- **Saved tables in database tools**: Read saved tables from the current synchronized workspace so signed-in users can select their cloud tables for dictionaries, queries, exports and data validation.
 - **Query fields and SQLite names**: Ignore empty editor rows when designing queries and preserve quoted identifiers in query SQL, SQLite initialization SQL and Drizzle output.
 - **Imported numeric values**: Reject floating-point overflow, underflow to zero and unsupported dialect-specific type definitions before generating business data SQL.
 - **Saved test scenario details**: Show numeric ranges, enum weights, date ranges and date offsets in the rule list so restored settings can be checked.
