@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-09-19
+
+### Improved
+- **Database tools navigation**: Group the 11 tools into documentation and delivery, design and analysis, and data and versions. Use a sidebar on desktop and keep every tool accessible on narrow screens, with consistent headings and separate configuration and result areas.
+- **Data dictionary preview**: Show selected table and field counts, make table selection clearer, group HTML, Markdown and schema snapshot exports, and keep publishing settings in an expandable section.
+- **Database tools layout**: Unify forms, tables, code previews and empty states across light and dark themes. Each tool scrolls independently, with layouts adapted to narrow screens and keyboard navigation between tools.
+
 ## [0.25.0] - 2026-09-19
 
 ### Added
