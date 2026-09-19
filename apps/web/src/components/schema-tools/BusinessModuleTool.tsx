@@ -1,3 +1,4 @@
+import { ToolLayout } from './ToolLayout';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -39,9 +40,7 @@ export function BusinessModuleTool() {
   };
 
   return (
-    <div className="space-y-5">
-      <h2 className="font-semibold">{t('modelTools.modules')}</h2>
-      <p className="text-sm text-muted-foreground">{t('modelTools.modulesHint')}</p>
+    <ToolLayout title={t('modelTools.modules')} description={t('modelTools.modulesHint')}>
       <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-2 text-sm">
           {t('modelTools.module')}
@@ -184,6 +183,6 @@ export function BusinessModuleTool() {
       {generated.sql && (
         <pre className="max-h-80 overflow-auto rounded bg-muted p-4 text-xs">{generated.sql}</pre>
       )}
-    </div>
+    </ToolLayout>
   );
 }

@@ -1,4 +1,5 @@
 export const schemaTools = {
+  groups: { delivery: 'Documentation', design: 'Design & analysis', data: 'Data & versions' },
   title: 'Database tools',
   description: 'Deliver documentation, compare schemas and prepare test data.',
   loading: 'Loading…',

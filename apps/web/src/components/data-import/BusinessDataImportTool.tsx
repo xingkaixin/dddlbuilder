@@ -1,3 +1,4 @@
+import { ToolLayout } from '@/components/schema-tools/ToolLayout';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -127,13 +128,7 @@ export function BusinessDataImportTool() {
       : null;
 
   return (
-    <div className="min-w-0 space-y-6">
-      <div>
-        <h2 className="text-base font-semibold">{t('dataImport.title')}</h2>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-          {t('dataImport.description')}
-        </p>
-      </div>
+    <ToolLayout title={t('dataImport.title')} description={t('dataImport.description')}>
       <BusinessDataSourceInput
         source={source}
         separator={separator}
@@ -360,6 +355,6 @@ export function BusinessDataImportTool() {
         </p>
       )}
       {result && <DataImportResults result={result} />}
-    </div>
+    </ToolLayout>
   );
 }

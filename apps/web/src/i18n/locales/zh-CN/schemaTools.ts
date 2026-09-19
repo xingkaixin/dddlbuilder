@@ -1,4 +1,5 @@
 export const schemaTools = {
+  groups: { delivery: '文档与交付', design: '设计与分析', data: '数据与版本' },
   title: '数据库工具',
   description: '交付数据字典、比较结构与准备测试数据。',
   loading: '正在读取…',

@@ -1,3 +1,4 @@
+import { ToolLayout } from './ToolLayout';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { refreshSchemaSnapshot, compareSchemaSnapshots } from '@ddlbuilder/ddl-core';
@@ -42,9 +43,7 @@ export function SnapshotRefreshTool() {
   }, [baseline, incoming, t]);
 
   return (
-    <div className="space-y-5">
-      <h2 className="text-lg font-semibold">{t('snapshot.refresh')}</h2>
-      <p className="text-sm text-muted-foreground">{t('snapshot.hint')}</p>
+    <ToolLayout title={t('snapshot.refresh')} description={t('snapshot.hint')}>
       <div className="grid gap-6 md:grid-cols-2">
         <div>
           <SnapshotFileInput label={t('snapshot.baseline')} onChange={setBaseline} />
@@ -114,6 +113,6 @@ export function SnapshotRefreshTool() {
           />
         </>
       )}
-    </div>
+    </ToolLayout>
   );
 }

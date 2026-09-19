@@ -1,3 +1,4 @@
+import { ToolLayout } from './ToolLayout';
 import { PublishPanel } from '@/components/publications/PublishPanel';
 import { Input } from '@/components/ui/input';
 import { useMemo, useState } from 'react';
@@ -40,8 +41,7 @@ export function SchemaCompareTool() {
   };
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm text-muted-foreground">{t('schemaTools.compare.hint')}</p>
+    <ToolLayout title={t('schemaTools.compare.title')} description={t('schemaTools.compare.hint')}>
       <label className="flex items-center gap-3 text-sm">
         <span>{t('schemaTools.database')}</span>
         <select
@@ -312,6 +312,6 @@ export function SchemaCompareTool() {
           )}
         </>
       )}
-    </div>
+    </ToolLayout>
   );
 }

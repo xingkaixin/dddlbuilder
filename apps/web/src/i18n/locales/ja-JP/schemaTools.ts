@@ -1,4 +1,5 @@
 export const schemaTools = {
+  groups: { delivery: 'ドキュメントと出力', design: '設計と分析', data: 'データとバージョン' },
   title: 'データベースツール',
   description: 'データ辞書の作成、構造の比較、テストデータの準備。',
   loading: '読み込み中…',
