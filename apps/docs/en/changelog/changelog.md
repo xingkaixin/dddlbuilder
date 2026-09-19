@@ -6,16 +6,30 @@ outline: [2, 2]
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-09-19
+
 ### Added
+- **Data dictionary exports**: Export multi-table dictionaries as Markdown or offline HTML with search and relationship navigation, including field definitions, indexes, physical and logical relationships, and field standard summaries.
+- **SQL snapshot comparison**: Compare two MySQL or PostgreSQL schemas, confirm field renames, and download a difference report or migration SQL. Changes that require manual migration block SQL export.
+- **Relational test datasets**: Generate repeatable multi-table test data using a fixed seed, respecting primary keys, unique keys and physical foreign keys, with optional logical relationships. Export INSERT SQL or per-table JSON.
+- **Business data import**: Read CSV, TSV and Excel files in the browser, infer new tables or map columns to an existing MySQL/PostgreSQL table, validate all records and download SQL or an error report. Reusable import settings stay in the current browser; business records are not uploaded.
 - **Visual query design**: Build MySQL/PostgreSQL SELECT statements from physical or logical relationships, with aggregates, grouping, ordering and separate bound-parameter downloads.
 - **Multi-table business modules**: Generate users/permissions, booking and inventory schemas with prefixes and ID strategies; save complete groups while rejecting name conflicts.
-- **SQLite / D1 and Drizzle**: Model SQLite tables and export complete initialization SQL and Drizzle schemas with keys and foreign keys. Existing databases are not modified automatically.
+- **SQLite / D1 and Drizzle**: Model SQLite tables and export complete initialization SQL and Drizzle schemas with keys and foreign keys. D1 exports check column-count and SQL-size limits before download. Existing databases are not modified automatically.
 - **Field impact analysis**: Inspect indexes, foreign keys, logical relationships, partitioning and distribution columns, and export a report with explicit scope.
 - **Persistent project documents**: Share multi-table dictionaries and standard summaries at a stable URL, with republishing, private access, revocation and revision checks.
 - **Schema snapshots and refresh**: Import and export portable structures, retain matched business annotations, logical enums and standard references, and review changes before downloading the result.
 - **Fixed change proposals**: Preserve the reason and before/after structures, with authenticated comments and owner-controlled resolution.
 - **Business test scenarios**: Configure weighted values, NULL probabilities, numeric/date ranges and date offsets; save and transfer scenarios between browsers.
 - **Migration compatibility reports**: Assess MySQL → PostgreSQL type and behavior differences and export an itemized report without generating executable cross-database scripts.
+
+### Fixed
+- **Query fields and SQLite names**: Ignore empty editor rows when designing queries and preserve quoted identifiers in query SQL, SQLite initialization SQL and Drizzle output.
+- **Imported numeric values**: Reject floating-point overflow, underflow to zero and unsupported dialect-specific type definitions before generating business data SQL.
+- **Saved test scenario details**: Show numeric ranges, enum weights, date ranges and date offsets in the rule list so restored settings can be checked.
+
+### Deployment
+- **Document and review storage**: Apply `0022_schema_publications.sql` to the existing `USER_DB` before publishing. It adds tables for documents, fixed proposals and comments; `pnpm deploy:cf` applies the migration and verifies the tables automatically. No additional service or binding is required.
 
 ## [0.24.0] - 2026-09-13
 ### Added
