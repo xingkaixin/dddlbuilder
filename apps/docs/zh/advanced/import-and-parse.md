@@ -1,5 +1,7 @@
 # 导入与解析 SQL
 
+打开[筑表师的建模工作区](https://ddl.xingkaixin.me/)，再按下面的步骤导入。导入多张关联表后，可通过[外键配置与 ER 图](/zh/advanced/foreign-key-and-er)检查关系，再用[ORM 模型生成](/zh/advanced/orm-generation)导出代码。
+
 本指南介绍如何将现有的 SQL 脚本、批量 DDL 或结构化数据文件（CSV、Excel、JSON Schema）逆向解析为可编辑的表结构模型。
 
 ## 适用场景

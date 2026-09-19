@@ -300,6 +300,7 @@ const jaSidebar = [
 ];
 
 const zhNav = [
+  { text: '打开 DDLBuilder', link: `${siteUrl}/`, target: '_self' },
   { text: '基础指南', link: '/zh/basic/getting-started' },
   { text: '高级技巧', link: '/zh/advanced/' },
   { text: '常见问题', link: '/zh/faq/common-errors' },
@@ -307,6 +308,7 @@ const zhNav = [
 ];
 
 const enNav = [
+  { text: 'Open DDLBuilder', link: `${siteUrl}/`, target: '_self' },
   { text: 'Basic Guide', link: '/en/basic/getting-started' },
   { text: 'Advanced Guide', link: '/en/advanced/' },
   { text: 'FAQ', link: '/en/faq/common-errors' },
@@ -314,6 +316,7 @@ const enNav = [
 ];
 
 const jaNav = [
+  { text: 'DDLBuilder を開く', link: `${siteUrl}/`, target: '_self' },
   { text: '基本ガイド', link: '/ja/basic/getting-started' },
   { text: '上級ガイド', link: '/ja/advanced/' },
   { text: 'よくある質問', link: '/ja/faq/common-errors' },

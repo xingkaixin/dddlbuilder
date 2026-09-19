@@ -1,5 +1,7 @@
 # ORM 模型生成
 
+在[筑表师中生成 ORM 模型](https://ddl.xingkaixin.me/)。还没有表结构时，先按[快速开始](/zh/basic/getting-started)建表，或[导入已有 SQL](/zh/advanced/import-and-parse)。涉及跨表引用时，先核对[外键配置与 ER 图](/zh/advanced/foreign-key-and-er)。
+
 SQLite / D1 目前提供 Drizzle 输出，跨表外键请使用整组导出。类型映射与初始化限制见[查询设计与业务建模](/zh/advanced/modeling-workflows)。
 
 本指南介绍如何使用筑表师将表结构一键转换为主流 ORM 框架的模型代码，打通数据库设计到后端工程开发的最后一公里。

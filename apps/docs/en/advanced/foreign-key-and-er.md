@@ -1,5 +1,7 @@
 # Foreign Key Configuration and ER Diagram
 
+[Open DDLBuilder to model relationships](https://ddl.xingkaixin.me/). If you already have CREATE TABLE statements, [import your SQL](/en/advanced/import-and-parse) first. After modeling, continue with [ORM model generation](/en/advanced/orm-generation).
+
 This guide explains how to design relational constraints and visualize schema architecture using DDLBuilder's **Foreign Key Configuration Panel** and **Interactive ER Diagram Canvas**.
 
 ## Logical relationships without physical foreign keys

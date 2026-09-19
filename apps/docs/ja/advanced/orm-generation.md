@@ -1,5 +1,7 @@
 # ORM モデル生成
 
+[DDLBuilder で ORM モデルを生成](https://ddl.xingkaixin.me/)できます。テーブルがない場合は、[クイックスタート](/ja/basic/getting-started)または [既存 SQL のインポート](/ja/advanced/import-and-parse)から始めてください。他テーブルを参照する場合は、先に[外部キーと ER 図](/ja/advanced/foreign-key-and-er)を確認してください。
+
 SQLite / D1 は Drizzle 出力に対応します。他テーブルへの外部キーには一括エクスポートを使用してください。型対応と初期化の制限は[クエリ設計と業務モデリング](/ja/advanced/modeling-workflows)を参照してください。
 
 このガイドでは、DDLBuilder で設計したテーブル構造を主要な ORM フレームワークのモデル定義コードへワンクリックで変換・エクスポートする手順を解説します。

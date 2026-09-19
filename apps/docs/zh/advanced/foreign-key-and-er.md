@@ -1,5 +1,7 @@
 # 外键配置与 ER 图
 
+打开[筑表师进行关系建模](https://ddl.xingkaixin.me/)。已有建表语句时，先按[导入与解析 SQL](/zh/advanced/import-and-parse)载入表结构；建模完成后，可继续[生成 ORM 模型](/zh/advanced/orm-generation)。
+
 本指南介绍如何使用筑表师的**外键配置面板**与**交互式 ER 关系图**进行可视化关联建模，并定义安全的数据完整性约束。
 
 ## 逻辑关系（不创建物理外键）

@@ -1,5 +1,7 @@
 # SQL のインポートと解析
 
+[DDLBuilder のワークスペース](https://ddl.xingkaixin.me/)を開き、以下の手順でインポートします。関連するテーブルを取り込んだ後は、[外部キーと ER 図](/ja/advanced/foreign-key-and-er)で関係を確認し、[ORM モデルを生成](/ja/advanced/orm-generation)できます。
+
 このガイドでは、既存の SQL スクリプト、一括 DDL、または構造化データファイル（CSV、Excel、JSON Schema）を解析し、編集可能なテーブルモデルとして取り込む手順を解説します。
 
 ## 概要

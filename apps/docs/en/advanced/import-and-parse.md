@@ -1,5 +1,7 @@
 # Import and Parse SQL
 
+Open the [DDLBuilder workspace](https://ddl.xingkaixin.me/) and follow the import steps below. After importing related tables, check their [foreign keys and ER diagram](/en/advanced/foreign-key-and-er), then [generate ORM models](/en/advanced/orm-generation).
+
 This guide explains how to reverse-engineer existing SQL scripts, batch DDL statements, or structured data files (CSV, Excel, JSON Schema) into editable schema models.
 
 ## Overview

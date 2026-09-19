@@ -1,5 +1,7 @@
 # Quick Start
 
+[Start designing in DDLBuilder](https://ddl.xingkaixin.me/) and follow the steps below to create your first table. If you already have SQL, start with [SQL import and parsing](/en/advanced/import-and-parse).
+
 This guide helps first-time DDLBuilder users design their first database table in minutes and export production-ready SQL DDL, DCL, and ORM models.
 
 ## Overview

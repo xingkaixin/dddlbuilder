@@ -1,5 +1,7 @@
 # 外部キーと ER 図
 
+[DDLBuilder でリレーションを設計](https://ddl.xingkaixin.me/)できます。既存の CREATE TABLE 文がある場合は、先に [SQL をインポート](/ja/advanced/import-and-parse)してください。設計後は [ORM モデル生成](/ja/advanced/orm-generation)に進めます。
+
 このガイドでは、DDLBuilder の**「外部キー設定パネル」**および**「インタラクティブ ER 図キャンバス」**を用いた視覚的なリレーション設計と参照整合性制約の定義手順を解説します。
 
 ## 物理外部キーを作成しない論理リレーション

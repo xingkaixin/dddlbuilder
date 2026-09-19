@@ -1,5 +1,7 @@
 # クイックスタート
 
+[DDLBuilder で設計を開始](https://ddl.xingkaixin.me/)し、以下の手順で最初のテーブルを作成します。既存の SQL がある場合は、[SQL のインポートと解析](/ja/advanced/import-and-parse)から始めてください。
+
 このガイドでは、初めて DDLBuilder を利用するユーザー向けに、数分で最初のテーブル構造を設計し、高品質な建表 SQL や ORM コードを生成・取得する手順を解説します。
 
 ## 概要
