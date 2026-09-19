@@ -1,3 +1,7 @@
+---
+description: "Convert a MySQL table to a Prisma model with a complete input and output example. Explore supported ORM frameworks, type mappings, and usage limits."
+---
+
 # ORM Model Generation
 
 [Generate ORM models in DDLBuilder](https://ddl.xingkaixin.me/). Start with the [getting started guide](/en/basic/getting-started) or [import existing SQL](/en/advanced/import-and-parse) if you do not have a table yet. For cross-table references, check the [foreign keys and ER diagram](/en/advanced/foreign-key-and-er) first.
@@ -5,6 +9,32 @@
 SQLite / D1 supports Drizzle output. Use the group export for cross-table foreign keys. See [Query Design and Modeling](/en/advanced/modeling-workflows) for type mapping and initialization limits.
 
 This guide details how to export schema designs directly into strongly typed model classes across industry-standard ORM frameworks.
+
+## Example: convert a MySQL users table to a Prisma model
+
+This example generates a single-table model without cross-table relationships. Open [DDLBuilder](https://ddl.xingkaixin.me/), select MySQL, and [import this SQL](/en/advanced/import-and-parse):
+
+```sql
+CREATE TABLE users (
+  id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  PRIMARY KEY (id ASC)
+);
+```
+
+Select `users`, open the **ORM** tab on the right, and choose **Prisma**. The generated model is shown below; alignment spacing may differ.
+
+```prisma
+model Users {
+  id             Int        @id
+  name           String
+  @@map("users")
+}
+```
+
+The primary key on `id` maps to `@id`, `name` becomes a required `String`, and `@@map("users")` preserves the database table name. There is no auto-increment or default value in this example, so inserts must provide both `id` and `name`.
+
+This is a model fragment. Configure the MySQL datasource and client generator in your own Prisma project, validate the model, then generate the client or migrations according to your project's workflow. Model generation does not connect to or modify your database. For a users-and-orders relationship, continue with [foreign keys and ER diagrams](/en/advanced/foreign-key-and-er).
 
 ## Overview
 

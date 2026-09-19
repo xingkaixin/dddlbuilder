@@ -1,3 +1,7 @@
+---
+description: "将已有 SQL 导入筑表师，预览并确认字段、主键和索引；了解多表导入、重名处理与 CSV、Excel、JSON Schema 结构导入。"
+---
+
 # 导入与解析 SQL
 
 打开[筑表师的建模工作区](https://ddl.xingkaixin.me/)，再按下面的步骤导入。导入多张关联表后，可通过[外键配置与 ER 图](/zh/advanced/foreign-key-and-er)检查关系，再用[ORM 模型生成](/zh/advanced/orm-generation)导出代码。

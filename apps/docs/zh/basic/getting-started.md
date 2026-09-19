@@ -1,3 +1,7 @@
+---
+description: "使用筑表师配置字段、主键和索引，生成建表 DDL，并了解 SQL 导入、ORM 导出和工作区保存的基本步骤。"
+---
+
 # 快速开始
 
 在[筑表师中开始设计](https://ddl.xingkaixin.me/)，按下面的步骤完成第一张表。已有 SQL 时，可直接使用[导入与解析 SQL](/zh/advanced/import-and-parse)。

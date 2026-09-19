@@ -1,3 +1,7 @@
+---
+description: "Configure columns, primary keys, and indexes in DDLBuilder to generate DDL. Learn the basics of SQL import, ORM export, and saving tables."
+---
+
 # Quick Start
 
 [Start designing in DDLBuilder](https://ddl.xingkaixin.me/) and follow the steps below to create your first table. If you already have SQL, start with [SQL import and parsing](/en/advanced/import-and-parse).

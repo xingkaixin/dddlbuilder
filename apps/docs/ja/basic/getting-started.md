@@ -1,3 +1,7 @@
+---
+description: "DDLBuilder でカラム、主キー、インデックスを設定して DDL を生成します。SQL インポート、ORM 出力、テーブル保存の基本手順を紹介します。"
+---
+
 # クイックスタート
 
 [DDLBuilder で設計を開始](https://ddl.xingkaixin.me/)し、以下の手順で最初のテーブルを作成します。既存の SQL がある場合は、[SQL のインポートと解析](/ja/advanced/import-and-parse)から始めてください。

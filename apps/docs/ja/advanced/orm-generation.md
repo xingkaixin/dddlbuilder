@@ -1,3 +1,7 @@
+---
+description: "MySQL テーブルを Prisma モデルに変換する入力と出力の例を紹介します。対応 ORM、型マッピング、利用時の制限を確認できます。"
+---
+
 # ORM モデル生成
 
 [DDLBuilder で ORM モデルを生成](https://ddl.xingkaixin.me/)できます。テーブルがない場合は、[クイックスタート](/ja/basic/getting-started)または [既存 SQL のインポート](/ja/advanced/import-and-parse)から始めてください。他テーブルを参照する場合は、先に[外部キーと ER 図](/ja/advanced/foreign-key-and-er)を確認してください。
@@ -5,6 +9,32 @@
 SQLite / D1 は Drizzle 出力に対応します。他テーブルへの外部キーには一括エクスポートを使用してください。型対応と初期化の制限は[クエリ設計と業務モデリング](/ja/advanced/modeling-workflows)を参照してください。
 
 このガイドでは、DDLBuilder で設計したテーブル構造を主要な ORM フレームワークのモデル定義コードへワンクリックで変換・エクスポートする手順を解説します。
+
+## 例：MySQL のユーザーテーブルを Prisma モデルに変換する
+
+この例では、他テーブルとのリレーションを含まない単一テーブルのモデルを生成します。[DDLBuilder](https://ddl.xingkaixin.me/)で MySQL を選択し、[SQL のインポート手順](/ja/advanced/import-and-parse)に従って以下を取り込みます。
+
+```sql
+CREATE TABLE users (
+  id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  PRIMARY KEY (id ASC)
+);
+```
+
+`users` を選択し、右側の **ORM** タブで **Prisma** を選びます。生成結果は以下のとおりです。整列用の空白は異なる場合があります。
+
+```prisma
+model Users {
+  id             Int        @id
+  name           String
+  @@map("users")
+}
+```
+
+`id` の主キー制約は `@id` に、`name` は必須の `String` に変換されます。`@@map("users")` はデータベースのテーブル名を維持します。この例には自動採番やデフォルト値がないため、挿入時に `id` と `name` の両方を指定します。
+
+これはモデル定義の一部です。利用する Prisma プロジェクトで MySQL データソースとクライアント生成器を設定し、モデルを検証してから、プロジェクトの手順に従ってクライアントやマイグレーションを生成してください。モデル生成自体はデータベースへの接続や変更を行いません。ユーザーと注文の関連を設計する場合は、[外部キーと ER 図](/ja/advanced/foreign-key-and-er)を参照してください。
 
 ## 概要
 

@@ -1,8 +1,66 @@
+---
+description: "MySQL のユーザーと注文を例に、DDLBuilder で物理外部キーを設定し、ER 図と生成 SQL を確認します。論理リレーションと連鎖動作の違いも説明します。"
+---
+
 # 外部キーと ER 図
 
 [DDLBuilder でリレーションを設計](https://ddl.xingkaixin.me/)できます。既存の CREATE TABLE 文がある場合は、先に [SQL をインポート](/ja/advanced/import-and-parse)してください。設計後は [ORM モデル生成](/ja/advanced/orm-generation)に進めます。
 
 このガイドでは、DDLBuilder の**「外部キー設定パネル」**および**「インタラクティブ ER 図キャンバス」**を用いた視覚的なリレーション設計と参照整合性制約の定義手順を解説します。
+
+## 例：注文とユーザーの多対一リレーション
+
+この例では **MySQL の物理外部キー**を使用します。1 人のユーザーに複数の注文があり、各注文は必ず 1 人のユーザーを参照します。関連付ける両カラムは符号付きの `INT` です。
+
+### 2 つのテーブルを準備する
+
+以下の SQL をコピーし、[DDLBuilder](https://ddl.xingkaixin.me/)で MySQL を選択して **SQL インポート**を実行します。両テーブルがワークスペースに保存されていることを確認してください。詳しい手順は [SQL のインポートと解析](/ja/advanced/import-and-parse)を参照してください。
+
+```sql
+CREATE TABLE users (
+  id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  PRIMARY KEY (id ASC)
+);
+
+CREATE TABLE orders (
+  id INT NOT NULL,
+  user_id INT NOT NULL,
+  PRIMARY KEY (id ASC)
+);
+```
+
+### リレーションを作成して ER 図を確認する
+
+1. **ER 図**を開き、`orders.user_id` から `users.id` へドラッグします。
+2. 物理外部キー、**多対一（N:1）**、**必須（Required）**を選択します。削除時の動作を `RESTRICT`、更新時の動作を `CASCADE` に設定します。
+3. リレーション名を `fk_orders_user` に設定し、検索用インデックスの自動作成は選択しません。リレーションを作成し、`orders` を保存します。
+
+矢印は外部キーカラムから参照先の主キーを指します。
+
+```text
+orders.user_id (N) ───→ users.id (1)
+```
+
+ER 図では物理外部キーが実線で表示されます。`users.id` は主キーです。`orders.user_id` は `NOT NULL` ですが、一意制約はないため複数の注文が同じユーザーを参照できます。
+
+### 生成された SQL を確認する
+
+`orders` を選択すると、DDL に以下の内容が含まれます。書式設定によって空白や改行は異なる場合があります。
+
+```sql
+CREATE TABLE orders (
+  id INT NOT NULL,
+  user_id INT NOT NULL,
+  PRIMARY KEY (id ASC)
+);
+
+ALTER TABLE orders ADD CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE;
+```
+
+SQL を実行する場合は、先に `users` を作成し、その後で `orders` の作成文と外部キー定義を実行します。`RESTRICT` は注文から参照されているユーザーの削除を防ぎます。`CASCADE` はユーザーの主キー更新時に注文の参照値も更新します。MySQL では InnoDB など外部キーに対応したストレージエンジンを使用してください。
+
+業務上の関連だけを記録する場合は、論理リレーションを選択します。この場合、上記の `ALTER TABLE` による外部キー定義は生成されません。次に [ORM モデル生成](/ja/advanced/orm-generation)でテーブルがコードに変換される例を確認できます。
 
 ## 物理外部キーを作成しない論理リレーション
 

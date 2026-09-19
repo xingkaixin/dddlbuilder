@@ -1,8 +1,66 @@
+---
+description: "通过 MySQL 用户与订单示例，在筑表师中配置物理外键、查看 ER 图并核对生成的 SQL，了解逻辑关系与级联规则的区别。"
+---
+
 # 外键配置与 ER 图
 
 打开[筑表师进行关系建模](https://ddl.xingkaixin.me/)。已有建表语句时，先按[导入与解析 SQL](/zh/advanced/import-and-parse)载入表结构；建模完成后，可继续[生成 ORM 模型](/zh/advanced/orm-generation)。
 
 本指南介绍如何使用筑表师的**外键配置面板**与**交互式 ER 关系图**进行可视化关联建模，并定义安全的数据完整性约束。
+
+## 示例：用户与订单的多对一关系
+
+本例使用 **MySQL 物理外键**。一个用户可以有多笔订单，每笔订单必须引用一个用户；两侧关联字段均为有符号 `INT`。
+
+### 准备两张表
+
+复制以下 SQL，在[筑表师](https://ddl.xingkaixin.me/)中选择 MySQL，通过 **导入 SQL** 导入，并确认两张表均已保存到工作区。详细步骤见[导入与解析 SQL](/zh/advanced/import-and-parse)。
+
+```sql
+CREATE TABLE users (
+  id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  PRIMARY KEY (id ASC)
+);
+
+CREATE TABLE orders (
+  id INT NOT NULL,
+  user_id INT NOT NULL,
+  PRIMARY KEY (id ASC)
+);
+```
+
+### 创建关系并检查 ER 图
+
+1. 打开 **ER 关系图**，从 `orders.user_id` 拖向 `users.id`。
+2. 选择物理外键、**多对一（N:1）**、**必选（Required）**，删除规则设为 `RESTRICT`，更新规则设为 `CASCADE`。
+3. 将关系名称设为 `fk_orders_user`，不勾选自动创建查询索引。点击创建关系，保存 `orders`。
+
+关系方向如下，箭头从外键字段指向被引用的主键：
+
+```text
+orders.user_id (N) ───→ users.id (1)
+```
+
+ER 图应显示物理外键的实线。`users.id` 是主键，`orders.user_id` 为 `NOT NULL`，但不设置唯一约束，因此多个订单可以引用同一个用户。
+
+### 核对生成的 SQL
+
+选择 `orders` 后，建表 DDL 应包含以下内容（排版可能随格式设置变化）：
+
+```sql
+CREATE TABLE orders (
+  id INT NOT NULL,
+  user_id INT NOT NULL,
+  PRIMARY KEY (id ASC)
+);
+
+ALTER TABLE orders ADD CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE;
+```
+
+实际执行时先创建 `users`，再执行 `orders` 的建表和外键语句。`RESTRICT` 阻止删除仍被订单引用的用户；`CASCADE` 在用户主键更新时同步修改订单的引用值。MySQL 表需使用支持外键的存储引擎，例如 InnoDB。
+
+如果只需要记录业务关联，选择逻辑关系即可，但不会生成上述 `ALTER TABLE` 外键语句。接下来可以[生成 ORM 模型](/zh/advanced/orm-generation)，检查表结构如何映射为代码。
 
 ## 逻辑关系（不创建物理外键）
 

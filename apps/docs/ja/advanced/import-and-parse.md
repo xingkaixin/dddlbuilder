@@ -1,3 +1,7 @@
+---
+description: "既存 SQL を DDLBuilder に取り込み、カラムやインデックスを確認します。複数テーブルの名前衝突や CSV、Excel、JSON Schema の構造インポートも説明します。"
+---
+
 # SQL のインポートと解析
 
 [DDLBuilder のワークスペース](https://ddl.xingkaixin.me/)を開き、以下の手順でインポートします。関連するテーブルを取り込んだ後は、[外部キーと ER 図](/ja/advanced/foreign-key-and-er)で関係を確認し、[ORM モデルを生成](/ja/advanced/orm-generation)できます。

@@ -1,3 +1,7 @@
+---
+description: "将 MySQL 表结构转换为 Prisma 模型，查看完整输入输出示例，并了解筑表师支持的 ORM 框架、类型映射与使用限制。"
+---
+
 # ORM 模型生成
 
 在[筑表师中生成 ORM 模型](https://ddl.xingkaixin.me/)。还没有表结构时，先按[快速开始](/zh/basic/getting-started)建表，或[导入已有 SQL](/zh/advanced/import-and-parse)。涉及跨表引用时，先核对[外键配置与 ER 图](/zh/advanced/foreign-key-and-er)。
@@ -5,6 +9,32 @@
 SQLite / D1 目前提供 Drizzle 输出，跨表外键请使用整组导出。类型映射与初始化限制见[查询设计与业务建模](/zh/advanced/modeling-workflows)。
 
 本指南介绍如何使用筑表师将表结构一键转换为主流 ORM 框架的模型代码，打通数据库设计到后端工程开发的最后一公里。
+
+## 示例：将 MySQL 用户表转换为 Prisma 模型
+
+本例只生成一张表的模型，不包含跨表关系。打开[筑表师](https://ddl.xingkaixin.me/)，选择 MySQL，按[SQL 导入步骤](/zh/advanced/import-and-parse)导入以下结构：
+
+```sql
+CREATE TABLE users (
+  id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  PRIMARY KEY (id ASC)
+);
+```
+
+选中 `users`，切换右侧 **ORM** 标签，选择 **Prisma**。生成结果如下（对齐空格可能不同）：
+
+```prisma
+model Users {
+  id             Int        @id
+  name           String
+  @@map("users")
+}
+```
+
+`id` 的主键约束映射为 `@id`，`name` 映射为必填的 `String`，`@@map("users")` 保留数据库表名。本例没有自增或默认值，插入记录时需要提供 `id` 和 `name`。
+
+这是模型片段，使用前还需在自己的 Prisma 项目中配置 MySQL 数据源和客户端生成器，再校验模型并按项目流程生成客户端或迁移。生成模型不会连接或修改数据库。需要建模用户与订单的关联时，继续阅读[外键配置与 ER 图](/zh/advanced/foreign-key-and-er)。
 
 ## 适用场景
 
