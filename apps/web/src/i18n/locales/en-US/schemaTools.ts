@@ -75,6 +75,9 @@ export const schemaTools = {
     previewSql: 'Preview INSERT SQL (first 12000 characters)',
   },
   dictionary: {
+    preview: 'Document preview',
+    summary: '{{tables}} tables · {{fields}} fields',
+    emptyTitle: 'Start with your schema',
     title: 'Data dictionary',
     hint: 'Select tables to create searchable documentation and export it for offline use.',
     documentTitle: 'Document title',

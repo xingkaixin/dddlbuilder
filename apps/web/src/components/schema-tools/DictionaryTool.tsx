@@ -1,3 +1,4 @@
+import { Download, FileText, Share2 } from '@/components/icons';
 import { ToolLayout } from './ToolLayout';
 import type { StandardSummary } from '@ddlbuilder/shared-types/api';
 import { encodeDeliverySnapshot } from '@ddlbuilder/workspace-core';
@@ -59,11 +60,29 @@ export function DictionaryTool() {
         <Input
           value={title}
           placeholder={t('schemaTools.dictionary.defaultTitle')}
+          className="h-10 bg-background px-3 text-sm shadow-none"
           onChange={(event) => setTitle(event.target.value)}
         />
       </label>
       <div className="flex flex-wrap gap-2">
         <Button
+          size="sm"
+          className="gap-2 shadow-none"
+          disabled={!ready}
+          onClick={() =>
+            downloadFile(
+              dictionaryHtml(document),
+              'database-dictionary.html',
+              'text/html;charset=utf-8',
+            )
+          }
+        >
+          <Download className="size-3.5" aria-hidden="true" />
+          {t('schemaTools.dictionary.html')}
+        </Button>
+        <Button
+          size="sm"
+          className="gap-2 shadow-none"
           variant="outline"
           disabled={!ready}
           onClick={() =>
@@ -74,58 +93,78 @@ export function DictionaryTool() {
             )
           }
         >
+          <FileText className="size-3.5" aria-hidden="true" />
           {t('schemaTools.dictionary.markdown')}
         </Button>
         <Button
+          size="sm"
+          className="gap-2 shadow-none"
+          variant="outline"
           disabled={!ready}
           onClick={() =>
             downloadFile(
-              dictionaryHtml(document),
-              'database-dictionary.html',
-              'text/html;charset=utf-8',
+              encodeDeliverySnapshot({ tables, standards: selectedStandards }),
+              'schema-snapshot.json',
+              'application/json',
             )
           }
         >
-          {t('schemaTools.dictionary.html')}
+          <Download className="size-3.5" aria-hidden="true" />
+          {t('snapshot.export')}
         </Button>
       </div>
       {standards.isError && (
         <p role="alert" className="text-sm text-destructive">
           {t('schemaTools.loadFailed')}{' '}
-          <Button variant="ghost" onClick={() => void standards.refetch()}>
+          <Button variant="ghost" size="sm" onClick={() => void standards.refetch()}>
             {t('common.retry')}
           </Button>
         </p>
       )}
-      <Button
-        variant="outline"
-        disabled={!ready}
-        onClick={() =>
-          downloadFile(
-            encodeDeliverySnapshot({
-              tables,
-              standards: selectedStandards,
-            }),
-            'schema-snapshot.json',
-            'application/json',
-          )
-        }
+      <details className="group rounded-lg border px-3 py-2.5">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+          <Share2 className="size-3.5" aria-hidden="true" />
+          {t('publication.publish')}
+          <span className="ml-auto text-base leading-none group-open:hidden" aria-hidden="true">
+            +
+          </span>
+          <span
+            className="ml-auto hidden text-base leading-none group-open:inline"
+            aria-hidden="true"
+          >
+            −
+          </span>
+        </summary>
+        <div className="pt-3">
+          <PublishPanel
+            title={title}
+            content={
+              ready
+                ? {
+                    kind: 'document',
+                    tables,
+                    standards: selectedStandards,
+                  }
+                : null
+            }
+          />
+        </div>
+      </details>
+      <section
+        className="min-w-0 space-y-4 rounded-xl border bg-muted/25 p-3 sm:p-4"
+        aria-label={t('schemaTools.dictionary.preview')}
       >
-        {t('snapshot.export')}
-      </Button>
-      <PublishPanel
-        title={title}
-        content={
-          ready
-            ? {
-                kind: 'document',
-                tables,
-                standards: selectedStandards,
-              }
-            : null
-        }
-      />
-      <DictionaryReader document={document} />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">{t('schemaTools.dictionary.preview')}</h3>
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {t('schemaTools.dictionary.summary', {
+              tables: document.tables.length,
+              fields: document.tables.reduce((count, table) => count + table.fields.length, 0),
+            })}
+          </span>
+        </div>
+        <DictionaryReader document={document} />
+      </section>
     </ToolLayout>
   );
 }

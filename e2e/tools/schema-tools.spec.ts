@@ -24,6 +24,26 @@ async function openTools(page: Page) {
   return page.getByRole('dialog', { name: '数据库工具', exact: true });
 }
 
+test('窄屏切换工具从顶部开始，并支持键盘导航 @tools', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const dialog = await openTools(page);
+  await expect(dialog.getByRole('tab')).toHaveCount(11);
+  await dialog.getByText('从表结构开始', { exact: true }).scrollIntoViewIfNeeded();
+  await expect(dialog.getByRole('heading', { name: '数据字典', exact: true })).not.toBeInViewport();
+  await dialog.getByRole('tab', { name: '关联测试数据', exact: true }).click();
+  await expect(dialog.getByRole('heading', { name: '关联测试数据', exact: true })).toBeInViewport();
+  await dialog.getByRole('tab', { name: '关联测试数据', exact: true }).press('ArrowDown');
+  await expect(dialog.getByRole('tab', { name: '业务数据导入', exact: true })).toBeFocused();
+  await dialog.getByRole('tab', { name: '业务数据导入', exact: true }).press('Enter');
+  await expect(dialog.getByRole('heading', { name: '业务数据导入', exact: true })).toBeInViewport();
+
+  const width = await dialog.evaluate((element) => ({
+    content: element.scrollWidth,
+    viewport: element.clientWidth,
+  }));
+  expect(width.content).toBe(width.viewport);
+});
+
 test('数据字典可直接从 SQL 导出并离线搜索 @tools', async ({ page, context }, testInfo) => {
   const dialog = await openTools(page);
   await dialog.getByLabel('数据来源', { exact: true }).selectOption('sql');

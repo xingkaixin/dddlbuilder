@@ -72,6 +72,9 @@ export const schemaTools = {
     previewSql: '预览 INSERT SQL（前 12000 字符）',
   },
   dictionary: {
+    preview: '文档预览',
+    summary: '{{tables}} 张表 · {{fields}} 个字段',
+    emptyTitle: '从表结构开始',
     title: '数据字典',
     hint: '选择多张表，生成可搜索的阅读视图，并导出可离线交付的文档。',
     documentTitle: '文档标题',

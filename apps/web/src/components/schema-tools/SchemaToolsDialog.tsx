@@ -145,6 +145,7 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
           className="flex min-h-0 flex-1 flex-col lg:flex-row"
         >
           <TabsList
+            render={<div />}
             aria-label={t('schemaTools.title')}
             className="schema-tools-nav grid h-auto max-h-[200px] shrink-0 grid-cols-3 items-stretch justify-start gap-1 overflow-auto rounded-none border-b bg-muted/40 p-2 sm:grid-cols-4 lg:flex lg:max-h-none lg:w-[200px] lg:flex-col lg:gap-5 lg:border-b-0 lg:border-r lg:p-3"
           >
@@ -157,7 +158,7 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
                   <TabsTrigger
                     key={value}
                     value={value}
-                    className="min-h-9 justify-start gap-2 rounded-md px-2 py-2 text-left text-xs font-normal whitespace-normal transition-colors after:hidden data-active:bg-primary/10 data-active:text-primary data-active:shadow-none lg:w-full lg:px-3 lg:text-[13px]"
+                    className="min-h-9 justify-start gap-2 rounded-md px-2 py-2 text-left text-xs font-normal whitespace-normal transition-colors after:hidden hover:bg-muted data-active:bg-primary/10 data-active:text-primary data-active:shadow-none lg:w-full lg:px-3 lg:text-[13px]"
                   >
                     <Icon className="hidden size-4 shrink-0 sm:block" aria-hidden="true" />
                     <span>{t(label)}</span>
@@ -166,11 +167,15 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
               </div>
             ))}
           </TabsList>
-          <div className="schema-tools-content min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain">
+          <div className="schema-tools-content flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {toolGroups
               .flatMap((group) => group.tools)
               .map(({ value, component: Component }) => (
-                <TabsContent key={value} value={value} className="m-0 min-h-full p-4 sm:p-6">
+                <TabsContent
+                  key={value}
+                  value={value}
+                  className="m-0 min-h-0 flex-1 overflow-auto overscroll-contain p-4 sm:p-6"
+                >
                   <Component />
                 </TabsContent>
               ))}

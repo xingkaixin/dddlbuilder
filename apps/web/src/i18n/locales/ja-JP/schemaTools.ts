@@ -75,6 +75,9 @@ export const schemaTools = {
     previewSql: 'INSERT SQL を表示（先頭 12000 文字）',
   },
   dictionary: {
+    preview: 'ドキュメントプレビュー',
+    summary: '{{tables}} テーブル · {{fields}} フィールド',
+    emptyTitle: 'テーブル構造から始める',
     title: 'データ辞書',
     hint: 'テーブルを選択し、検索可能なドキュメントを作成してオフライン用にエクスポートします。',
     documentTitle: 'ドキュメント名',

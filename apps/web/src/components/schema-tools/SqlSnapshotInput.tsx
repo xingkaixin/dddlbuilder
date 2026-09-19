@@ -33,7 +33,7 @@ export function SqlSnapshotInput({
           setError('');
           onChange(event.target.value);
         }}
-        className="min-h-44 font-mono text-xs"
+        className="min-h-44 rounded-lg bg-background font-mono text-xs leading-relaxed shadow-none md:text-xs"
         placeholder="CREATE TABLE …"
         spellCheck={false}
       />

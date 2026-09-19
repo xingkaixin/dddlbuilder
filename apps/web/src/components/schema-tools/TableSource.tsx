@@ -1,3 +1,5 @@
+import { Database, RefreshCw, Table2 } from '@/components/icons';
+import { cn } from '@/lib/utils';
 import type { StandardSummary } from '@ddlbuilder/shared-types/api';
 import { SnapshotFileInput } from './SnapshotFileInput';
 import { useState } from 'react';
@@ -71,8 +73,9 @@ export function TableSource({
             {t('schemaTools.savedHint')}
           </p>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
+            className="h-8 gap-2 px-2 text-xs text-muted-foreground"
             disabled={saved.isFetching || storage.kind === 'loading'}
             onClick={async () => {
               const result = await saved.refetch();
@@ -90,6 +93,10 @@ export function TableSource({
                 );
             }}
           >
+            <RefreshCw
+              className={cn('size-3.5', saved.isFetching && 'motion-safe:animate-spin')}
+              aria-hidden="true"
+            />
             {t('schemaTools.reload')}
           </Button>
           {saved.isPending && <p role="status">{t('schemaTools.loading')}</p>}
@@ -174,27 +181,40 @@ export function TableSource({
         </p>
       )}
       {tables.length > 0 ? (
-        <fieldset className="space-y-2 border-t pt-4">
-          <legend className="text-sm font-medium">
+        <fieldset className="min-w-0 space-y-3 border-t pt-3">
+          <legend className="pr-2 text-xs font-semibold">
             {t('schemaTools.selection', { count: value.length })}
           </legend>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => onChange(tables)}>
+          <div className="flex flex-wrap gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground"
+              onClick={() => onChange(tables)}
+            >
               {t('schemaTools.all')}
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => onChange([])}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground"
+              onClick={() => onChange([])}
+            >
               {t('schemaTools.none')}
             </Button>
           </div>
-          <div className="max-h-72 space-y-1 overflow-auto">
+          <div className="max-h-80 space-y-1 overflow-auto">
             {tables.map((table, index) => (
               <label
                 key={index}
-                className="flex items-start gap-2 rounded px-2 py-2 text-sm hover:bg-muted"
+                className={cn(
+                  'flex cursor-pointer items-start gap-2.5 rounded-lg border border-transparent px-2.5 py-3 text-sm transition-colors hover:bg-muted',
+                  value.includes(table) && 'border-primary/15 bg-primary/5',
+                )}
               >
                 <input
                   type="checkbox"
-                  className="mt-1 accent-primary"
+                  className="mt-0.5 size-4 shrink-0 accent-primary"
                   checked={value.includes(table)}
                   onChange={(event) =>
                     onChange(
@@ -204,10 +224,18 @@ export function TableSource({
                     )
                   }
                 />
-                <span className="min-w-0 break-words">
+                <span className="min-w-0 flex-1 break-words font-mono text-xs font-medium leading-5">
+                  <Table2
+                    className="mr-1.5 inline size-3.5 align-text-bottom text-muted-foreground"
+                    aria-hidden="true"
+                  />
                   {[table.schemaName, table.tableName].filter(Boolean).join('.')}
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="mt-1 block font-sans text-xs font-normal leading-relaxed text-muted-foreground">
                     {table.tableComment || table.dbType}
+                    {' · '}
+                    {t('schemaTools.fieldCount', {
+                      count: table.rows.filter((row) => row.fieldName.trim()).length,
+                    })}
                   </span>
                 </span>
               </label>
@@ -217,7 +245,12 @@ export function TableSource({
       ) : (
         source === 'saved' &&
         saved.isSuccess && (
-          <p className="text-sm text-muted-foreground">{t('schemaTools.emptySaved')}</p>
+          <div className="rounded-lg border border-dashed px-3 py-5 text-center">
+            <Database className="mx-auto mb-2 size-5 text-muted-foreground" aria-hidden="true" />
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t('schemaTools.emptySaved')}
+            </p>
+          </div>
         )
       )}
     </section>
