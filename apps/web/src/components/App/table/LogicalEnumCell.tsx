@@ -121,7 +121,7 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={() => finishEditing(editValue)}
           onKeyDown={handleInputKeyDown}
-          className="h-7 w-full border-primary/50 bg-background px-2 py-1 text-xs focus:ring-1 focus:ring-primary/30"
+          className="h-7 w-full border-primary/50 bg-background px-2 py-1 text-xs any-pointer-coarse:text-base focus:ring-1 focus:ring-primary/30"
           placeholder={t('dataTable.placeholder.fieldType')}
         />
       );

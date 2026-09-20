@@ -75,3 +75,40 @@ test('窄屏字段工具可展开，模板和冻结仍可操作', async ({ page 
   await page.getByRole('button', { name: '添加行', exact: true }).click();
   await expect(rows).toHaveCount(before + 10);
 });
+
+test.describe('触屏字段编辑', () => {
+  test.use({ hasTouch: true });
+
+  test('内外屏编辑字号为 16px，失焦后字段内容和表格宽度保持不变', async ({ page }) => {
+    const table = page.getByTestId('data-table');
+    const firstRow = table.locator('tbody tr').first();
+
+    for (const width of [382, 951]) {
+      await page.setViewportSize({ width, height: 582 });
+      const tableWidth = await table.evaluate((element) => element.getBoundingClientRect().width);
+
+      for (const column of ['fieldName', 'fieldType']) {
+        const cell = firstRow.locator(`[data-column-id="${column}"]`);
+        const initialValue = (await cell.innerText()).trim();
+
+        if (column === 'fieldName') await cell.tap();
+        else await cell.dblclick();
+        const input = cell.getByRole('textbox');
+        await expect(input).toBeFocused();
+        await expect(input).toHaveCSS('font-size', '16px');
+        await expect(input).toHaveValue(initialValue);
+        await page.getByRole('button', { name: '生成结果', exact: true }).focus();
+        await expect(input).toBeHidden();
+        await expect(cell).toHaveText(initialValue);
+        expect(await table.evaluate((element) => element.getBoundingClientRect().width)).toBe(
+          tableWidth,
+        );
+      }
+
+      const lastCell = firstRow.locator('td').last();
+      await lastCell.scrollIntoViewIfNeeded();
+      await expect(lastCell).toBeInViewport();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    }
+  });
+});
