@@ -232,7 +232,19 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
       <Tabs value={tabsValue} onValueChange={handleTabValueChange} className="w-full">
-        <div className="flex flex-wrap items-center gap-2 border-b">
+        <select
+          aria-label={t('builderTabs.configuration')}
+          value={tabsValue}
+          onChange={(event) => handleTabValueChange(event.target.value)}
+          className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring @min-[640px]/editor:hidden"
+        >
+          {tabs.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <div className="hidden flex-wrap items-center gap-2 border-b @min-[640px]/editor:flex">
           <TabsList className="h-9 max-w-full justify-start overflow-x-auto rounded-none bg-transparent p-0">
             {primaryTabs.map(({ value, icon: Icon, label, badge }) => (
               <TabsTrigger

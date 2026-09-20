@@ -33,7 +33,7 @@ test('Oracle foreign keys only offer supported actions and produce valid clauses
   await setupHydratedState(page);
   await page.getByTestId('db-type-selector').click();
   await page.getByRole('option', { name: 'Oracle', exact: true }).click();
-  await page.getByText('外键配置', { exact: true }).click();
+  await page.getByRole('tab', { name: '外键配置', exact: true }).click();
   await page.getByRole('button', { name: '添加外键', exact: true }).click();
 
   const onDelete = page.getByLabel('删除时', { exact: true });

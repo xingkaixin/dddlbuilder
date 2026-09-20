@@ -298,6 +298,7 @@ export const jaJPCommon = {
     maximize: '生成結果を最大化',
   },
   tableConfig: {
+    editDetails: 'テーブル情報を編集',
     properties: 'プロパティ',
     more: 'その他',
     title: 'テーブル構成',
@@ -334,6 +335,7 @@ export const jaJPCommon = {
     indexStat: '{{count}} インデックス',
   },
   builderTabs: {
+    configuration: '設定を切り替え',
     advanced: '詳細設定',
     fields: 'フィールド',
     viewSql: 'SQL を表示する',
@@ -568,6 +570,7 @@ export const jaJPCommon = {
     listHint: 'LIST パーティション化の場合、パーティション間の値リストが重複してはなりません',
   },
   dataTable: {
+    fieldTools: 'フィールドツール',
     aiTools: 'AI ツール',
     dataTools: 'データツール',
     ariaLabel: 'フィールド構成表',

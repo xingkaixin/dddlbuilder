@@ -32,7 +32,7 @@ test.describe('索引管理验证 @panels', () => {
   });
 
   test('场景：添加普通索引', async ({ page }) => {
-    await page.getByText('索引配置').click();
+    await page.getByRole('tab', { name: '索引配置', exact: true }).click();
 
     await selectIndexField(page);
 
@@ -46,7 +46,7 @@ test.describe('索引管理验证 @panels', () => {
   });
 
   test('场景：添加唯一索引', async ({ page }) => {
-    await page.getByText('索引配置').click();
+    await page.getByRole('tab', { name: '索引配置', exact: true }).click();
 
     await page.getByRole('button', { name: /添加唯一索引/i }).click();
     await selectIndexField(page);
@@ -59,7 +59,7 @@ test.describe('索引管理验证 @panels', () => {
   });
 
   test('场景：添加主键索引', async ({ page }) => {
-    await page.getByText('索引配置').click();
+    await page.getByRole('tab', { name: '索引配置', exact: true }).click();
 
     await page.getByRole('button', { name: /添加主键/i }).click();
     await selectIndexField(page);
@@ -73,7 +73,7 @@ test.describe('索引管理验证 @panels', () => {
   });
 
   test('场景：删除索引', async ({ page }) => {
-    await page.getByText('索引配置').click();
+    await page.getByRole('tab', { name: '索引配置', exact: true }).click();
     await selectIndexField(page);
     await page.getByRole('button', { name: '保存索引', exact: true }).click();
 

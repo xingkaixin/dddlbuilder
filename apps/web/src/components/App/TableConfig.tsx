@@ -1,6 +1,8 @@
-import { memo } from 'react';
+import { memo, useId, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
+  ChevronDown,
   Eye,
   GitCompare,
   History,
@@ -78,128 +80,113 @@ export const TableConfig = memo<TableConfigProps>(
     loadedTableName,
   }) => {
     const { t } = useTranslation();
+    const [detailsOpen, setDetailsOpen] = useState(false);
+    const detailsId = useId();
     const selectedDbOption = DATABASE_OPTIONS.find((option) => option.value === dbType);
 
     return (
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0 flex-1 basis-60">
-          <div className="flex items-center gap-1">
-            {schemaName && (
-              <span className="max-w-32 truncate text-sm text-muted-foreground" title={schemaName}>
-                {schemaName} /
+      <div className="flex items-start gap-2 @min-[640px]/editor:items-center">
+        <div className="min-w-0 flex-1">
+          <Button
+            variant="ghost"
+            aria-label={t('tableConfig.editDetails')}
+            aria-expanded={detailsOpen}
+            aria-controls={detailsId}
+            onClick={() => setDetailsOpen((open) => !open)}
+            className="h-11 w-full justify-start gap-2 px-1 @min-[640px]/editor:hidden"
+          >
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block truncate text-sm font-semibold">
+                {tableName ||
+                  t(objectType === 'view' ? 'tableConfig.viewName' : 'tableConfig.tableName')}
               </span>
+              <span className="block truncate text-xs font-normal text-muted-foreground">
+                {selectedDbOption?.label}
+                {tableComment ? ` · ${tableComment}` : ''}
+              </span>
+            </span>
+            <ChevronDown className={cn('h-4 w-4 shrink-0', detailsOpen && 'rotate-180')} />
+          </Button>
+          <div
+            id={detailsId}
+            className={cn(
+              'max-h-[50dvh] flex-wrap items-center justify-between gap-x-4 gap-y-2 overflow-y-auto @min-[640px]/editor:flex @min-[640px]/editor:max-h-none @min-[640px]/editor:overflow-visible',
+              detailsOpen ? 'flex pt-2 @min-[640px]/editor:pt-0' : 'hidden',
             )}
-            <Input
-              id="table-name"
-              aria-label={t(
-                objectType === 'view' ? 'tableConfig.viewName' : 'tableConfig.tableName',
+          >
+            <div className="min-w-0 flex-1 basis-60">
+              <div className="flex items-center gap-1">
+                {schemaName && (
+                  <span
+                    className="max-w-32 truncate text-sm text-muted-foreground"
+                    title={schemaName}
+                  >
+                    {schemaName} /
+                  </span>
+                )}
+                <Input
+                  id="table-name"
+                  aria-label={t(
+                    objectType === 'view' ? 'tableConfig.viewName' : 'tableConfig.tableName',
+                  )}
+                  placeholder={t(
+                    objectType === 'view'
+                      ? 'tableConfig.viewNamePlaceholder'
+                      : 'tableConfig.tableNamePlaceholder',
+                  )}
+                  value={tableName}
+                  onChange={(event) => onTableNameChange(event.target.value)}
+                  className="h-8 min-w-0 border-transparent bg-transparent px-1 text-lg font-semibold shadow-none hover:border-input focus:border-input"
+                />
+              </div>
+              <Input
+                id="table-comment"
+                aria-label={t(
+                  objectType === 'view' ? 'tableConfig.viewComment' : 'tableConfig.tableComment',
+                )}
+                placeholder={t('tableConfig.tableCommentPlaceholder')}
+                value={tableComment}
+                onChange={(event) => onTableCommentChange(event.target.value)}
+                className="h-7 border-transparent bg-transparent px-1 text-xs text-muted-foreground shadow-none hover:border-input focus:border-input"
+              />
+              {(workspaceLabel || loadedTableName) && (
+                <span className="sr-only">{workspaceLabel || loadedTableName}</span>
               )}
-              placeholder={t(
-                objectType === 'view'
-                  ? 'tableConfig.viewNamePlaceholder'
-                  : 'tableConfig.tableNamePlaceholder',
-              )}
-              value={tableName}
-              onChange={(event) => onTableNameChange(event.target.value)}
-              className="h-8 min-w-0 border-transparent bg-transparent px-1 text-lg font-semibold shadow-none hover:border-input focus:border-input"
-            />
-          </div>
-          <Input
-            id="table-comment"
-            aria-label={t(
-              objectType === 'view' ? 'tableConfig.viewComment' : 'tableConfig.tableComment',
-            )}
-            placeholder={t('tableConfig.tableCommentPlaceholder')}
-            value={tableComment}
-            onChange={(event) => onTableCommentChange(event.target.value)}
-            className="h-7 border-transparent bg-transparent px-1 text-xs text-muted-foreground shadow-none hover:border-input focus:border-input"
-          />
-          {(workspaceLabel || loadedTableName) && (
-            <span className="sr-only">{workspaceLabel || loadedTableName}</span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2" data-testid="table-config-actions">
-          <div className="w-36">
-            <SearchableSelect
-              value={dbType}
-              onValueChange={(value) => {
-                const option = DATABASE_OPTIONS.find((candidate) => candidate.value === value);
-
-                if (option) onDbTypeChange(option.value);
-              }}
-              options={DATABASE_OPTIONS.map((opt) => ({
-                value: opt.value,
-                label: opt.label,
-              }))}
-              id="db-type-select"
-              data-testid="db-type-selector"
-              aria-label={t('tableConfig.dbType')}
-              triggerClassName="h-7 rounded-md px-2 text-xs"
-              emptyMessage={t('searchableSelect.empty')}
-              renderTrigger={() => {
-                if (!selectedDbOption) return t('tableConfig.dbTypePlaceholder');
-                const Icon = selectedDbOption.icon;
-
-                return (
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
-                    <span className="truncate font-medium">{selectedDbOption.label}</span>
-                  </div>
-                );
-              }}
-              renderItem={(option) => {
-                const dbOption = DATABASE_OPTIONS.find((opt) => opt.value === option.value);
-
-                if (!dbOption) return <span>{option.label}</span>;
-                const Icon = dbOption.icon;
-
-                return (
-                  <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 text-primary" />
-                    <span className="font-medium">{option.label}</span>
-                  </div>
-                );
-              }}
-            />
-          </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                {t('tableConfig.properties')}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="object-type-select">{t('tableConfig.objectType')}</Label>
+            </div>
+            <div className="flex flex-wrap items-center gap-2" data-testid="table-config-actions">
+              <div className="w-36">
                 <SearchableSelect
-                  value={objectType}
+                  value={dbType}
                   onValueChange={(value) => {
-                    if (value === 'table' || value === 'view') onObjectTypeChange(value);
+                    const option = DATABASE_OPTIONS.find((candidate) => candidate.value === value);
+
+                    if (option) onDbTypeChange(option.value);
                   }}
-                  options={[
-                    { value: 'table', label: t('tableConfig.objectTable') },
-                    { value: 'view', label: t('tableConfig.objectView') },
-                  ]}
-                  id="object-type-select"
+                  options={DATABASE_OPTIONS.map((opt) => ({
+                    value: opt.value,
+                    label: opt.label,
+                  }))}
+                  id="db-type-select"
+                  data-testid="db-type-selector"
+                  aria-label={t('tableConfig.dbType')}
+                  triggerClassName="h-7 rounded-md px-2 text-xs"
                   emptyMessage={t('searchableSelect.empty')}
-                  triggerClassName="h-8 text-sm"
                   renderTrigger={() => {
-                    const Icon = objectType === 'view' ? Eye : Table;
+                    if (!selectedDbOption) return t('tableConfig.dbTypePlaceholder');
+                    const Icon = selectedDbOption.icon;
 
                     return (
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-primary" />
-                        <span className="font-medium">
-                          {objectType === 'view'
-                            ? t('tableConfig.objectView')
-                            : t('tableConfig.objectTable')}
-                        </span>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                        <span className="truncate font-medium">{selectedDbOption.label}</span>
                       </div>
                     );
                   }}
                   renderItem={(option) => {
-                    const Icon = option.value === 'view' ? Eye : Table;
+                    const dbOption = DATABASE_OPTIONS.find((opt) => opt.value === option.value);
+
+                    if (!dbOption) return <span>{option.label}</span>;
+                    const Icon = dbOption.icon;
 
                     return (
                       <div className="flex items-center gap-2">
@@ -210,83 +197,135 @@ export const TableConfig = memo<TableConfigProps>(
                   }}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="schema-name">{t('tableConfig.schemaName')}</Label>
-                <Input
-                  id="schema-name"
-                  placeholder={t('tableConfig.schemaNamePlaceholder')}
-                  value={schemaName}
-                  onChange={(event) => onSchemaNameChange(event.target.value)}
-                />
-              </div>
-            </PopoverContent>
-          </Popover>
-          {showHistoryButton && onViewHistory && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={onViewHistory}
-            >
-              <History className="h-3.5 w-3.5" />
-              {t('savedTables.history')}
-            </Button>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
-                <MoreHorizontal className="h-4 w-4" />
-                {t('tableConfig.more')}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuGroup fluidHover>
-                {onOpenErDiagram && (
-                  <DropdownMenuItem onClick={onOpenErDiagram}>
-                    <Waypoints className="h-4 w-4" />
-                    {t('tableConfig.erDiagram')}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    {t('tableConfig.properties')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="object-type-select">{t('tableConfig.objectType')}</Label>
+                    <SearchableSelect
+                      value={objectType}
+                      onValueChange={(value) => {
+                        if (value === 'table' || value === 'view') onObjectTypeChange(value);
+                      }}
+                      options={[
+                        { value: 'table', label: t('tableConfig.objectTable') },
+                        { value: 'view', label: t('tableConfig.objectView') },
+                      ]}
+                      id="object-type-select"
+                      emptyMessage={t('searchableSelect.empty')}
+                      triggerClassName="h-8 text-sm"
+                      renderTrigger={() => {
+                        const Icon = objectType === 'view' ? Eye : Table;
+
+                        return (
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-primary" />
+                            <span className="font-medium">
+                              {objectType === 'view'
+                                ? t('tableConfig.objectView')
+                                : t('tableConfig.objectTable')}
+                            </span>
+                          </div>
+                        );
+                      }}
+                      renderItem={(option) => {
+                        const Icon = option.value === 'view' ? Eye : Table;
+
+                        return (
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-primary" />
+                            <span className="font-medium">{option.label}</span>
+                          </div>
+                        );
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="schema-name">{t('tableConfig.schemaName')}</Label>
+                    <Input
+                      id="schema-name"
+                      placeholder={t('tableConfig.schemaNamePlaceholder')}
+                      value={schemaName}
+                      onChange={(event) => onSchemaNameChange(event.target.value)}
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {showHistoryButton && onViewHistory && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  onClick={onViewHistory}
+                >
+                  <History className="h-3.5 w-3.5" />
+                  {t('savedTables.history')}
+                </Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
+                    <MoreHorizontal className="h-4 w-4" />
+                    {t('tableConfig.more')}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuGroup fluidHover>
+                    {onOpenErDiagram && (
+                      <DropdownMenuItem onClick={onOpenErDiagram}>
+                        <Waypoints className="h-4 w-4" />
+                        {t('tableConfig.erDiagram')}
+                      </DropdownMenuItem>
+                    )}
+                    {showDiffButton && onViewDiff && (
+                      <DropdownMenuItem onClick={onViewDiff}>
+                        <GitCompare className="h-4 w-4" />
+                        {t('tableConfig.viewDiff')}
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuGroup>
+                  <DropdownMenuItem onClick={onClearAll} className="text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                    {t('tableConfig.clearAll')}
                   </DropdownMenuItem>
-                )}
-                {showDiffButton && onViewDiff && (
-                  <DropdownMenuItem onClick={onViewDiff}>
-                    <GitCompare className="h-4 w-4" />
-                    {t('tableConfig.viewDiff')}
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuGroup>
-              <DropdownMenuItem onClick={onClearAll} className="text-destructive">
-                <Trash2 className="h-4 w-4" />
-                {t('tableConfig.clearAll')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {onSaveCurrent && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex">
-                  <Button
-                    size="sm"
-                    className="h-8 gap-1.5 text-xs"
-                    onClick={onSaveCurrent}
-                    disabled={saveDisabled}
-                  >
-                    <Save className="h-3.5 w-3.5" />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+        {onSaveCurrent && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  size="sm"
+                  className="h-11 w-11 shrink-0 gap-1.5 px-0 text-xs @min-[640px]/editor:h-8 @min-[640px]/editor:w-auto @min-[640px]/editor:px-4"
+                  onClick={onSaveCurrent}
+                  disabled={saveDisabled}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  <span className="sr-only @min-[640px]/editor:not-sr-only">
                     {t(
                       objectType === 'view'
                         ? 'tableConfig.saveCurrentView'
                         : 'tableConfig.saveCurrent',
                     )}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {saveDisabled
-                  ? (saveDisabledHint ?? t('dialogs.save.disabledTip'))
-                  : t('tableConfig.saveCurrent')}
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+                  </span>
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {saveDisabled
+                ? (saveDisabledHint ?? t('dialogs.save.disabledTip'))
+                : t('tableConfig.saveCurrent')}
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     );
   },

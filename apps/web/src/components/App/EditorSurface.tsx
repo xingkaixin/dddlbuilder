@@ -35,11 +35,11 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
 
   return (
     <section
-      className="flex min-h-0 flex-1 flex-col bg-background"
+      className="@container/editor flex min-h-0 flex-1 flex-col bg-background"
       data-testid="editor-surface"
       data-view={view}
     >
-      <div className="shrink-0 border-b px-4 py-3">
+      <div className="shrink-0 border-b px-4 py-1 @min-[640px]/editor:py-3">
         <div
           className={isShareView ? 'pointer-events-none select-none opacity-80' : undefined}
           inert={isShareView}

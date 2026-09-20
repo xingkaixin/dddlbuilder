@@ -256,7 +256,7 @@ export const Header = memo<HeaderProps>(
                 </div>
                 <div className="hidden h-5 w-px shrink-0 bg-border sm:block" />
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <SchemaToolsButton />
+                  <SchemaToolsButton compact />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button

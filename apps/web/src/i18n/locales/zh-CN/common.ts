@@ -283,6 +283,7 @@ export const zhCNCommon = {
     maximize: '最大化生成结果',
   },
   tableConfig: {
+    editDetails: '编辑表信息',
     properties: '表属性',
     more: '更多',
     title: '表配置',
@@ -319,6 +320,7 @@ export const zhCNCommon = {
     indexStat: '索引 {{count}}',
   },
   builderTabs: {
+    configuration: '切换配置',
     advanced: '高级设置',
     fields: '字段配置',
     viewSql: '视图 SQL',
@@ -542,6 +544,7 @@ export const zhCNCommon = {
     listHint: '对于 LIST 分区，每个分区的值列表不能重叠',
   },
   dataTable: {
+    fieldTools: '字段工具',
     aiTools: 'AI 工具',
     dataTools: '数据工具',
     ariaLabel: '字段配置表格',

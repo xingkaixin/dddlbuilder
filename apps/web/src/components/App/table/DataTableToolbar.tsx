@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { FieldStandardsButton } from '../field-standards/FieldStandardsButton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
@@ -65,17 +65,40 @@ export function DataTableToolbar({
   onAddRowsClick,
 }: DataTableToolbarProps) {
   const { t } = useTranslation();
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const toolsId = useId();
+  const freezeId = useId();
 
   return (
     <div className="relative border-b px-0 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          aria-expanded={toolsOpen}
+          aria-controls={`${toolsId} ${freezeId}`}
+          onClick={() => setToolsOpen((open) => !open)}
+          className="h-11 gap-1.5 px-2 text-xs @min-[640px]/editor:hidden"
+        >
+          {t('dataTable.fieldTools')}
+          <ChevronDown className={cn('h-3.5 w-3.5', toolsOpen && 'rotate-180')} />
+        </Button>
+        <div
+          id={toolsId}
+          className={cn(
+            'order-2 w-full flex-wrap items-center gap-2 @min-[640px]/editor:order-none @min-[640px]/editor:flex @min-[640px]/editor:w-auto',
+            toolsOpen ? 'flex' : 'hidden',
+          )}
+        >
           {toolbarLeft}
           <FieldStandardsButton />
           {(onOpenAISchemaPatch || onGenerateComments || onOpenAIIndexAdvisor) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 px-2 text-xs @min-[640px]/editor:h-7"
+                >
                   <WandSparkles className="h-3.5 w-3.5" />
                   {t('dataTable.aiTools')}
                   <ChevronDown className="h-3 w-3" />
@@ -123,7 +146,11 @@ export function DataTableToolbar({
           {(onOpenStorageEstimator || onOpenMockDataGenerator) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 px-2 text-xs @min-[640px]/editor:h-7"
+                >
                   <TableProperties className="h-3.5 w-3.5" />
                   {t('dataTable.dataTools')}
                   <ChevronDown className="h-3 w-3" />
@@ -149,8 +176,14 @@ export function DataTableToolbar({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-7 items-center rounded-md border  bg-background">
+        <div className="contents @min-[640px]/editor:flex @min-[640px]/editor:flex-wrap @min-[640px]/editor:items-center @min-[640px]/editor:gap-2">
+          <div
+            id={freezeId}
+            className={cn(
+              'order-3 h-11 items-center rounded-md border bg-background @min-[640px]/editor:order-none @min-[640px]/editor:flex @min-[640px]/editor:h-7',
+              toolsOpen ? 'flex' : 'hidden',
+            )}
+          >
             <div className="flex h-full items-center gap-2 border-r bg-muted/30 px-2 pl-2.5">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -180,7 +213,7 @@ export function DataTableToolbar({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                    className="h-9 w-7 @min-[640px]/editor:h-5 @min-[640px]/editor:w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
                     disabled={!freezeEnabled || effectiveFreezeColumns <= 1}
                     onClick={() => onFreezeColumnsChange(Math.max(1, effectiveFreezeColumns - 1))}
                   >
@@ -207,7 +240,7 @@ export function DataTableToolbar({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                    className="h-9 w-7 @min-[640px]/editor:h-5 @min-[640px]/editor:w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
                     disabled={!freezeEnabled || effectiveFreezeColumns >= COLUMN_HEADERS.length}
                     onClick={() =>
                       onFreezeColumnsChange(
@@ -233,7 +266,7 @@ export function DataTableToolbar({
             </div>
           </div>
 
-          <div className="flex h-7 items-center rounded-md border  bg-background">
+          <div className="flex h-11 items-center rounded-md border bg-background @min-[640px]/editor:h-7">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -256,7 +289,7 @@ export function DataTableToolbar({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="h-9 w-7 @min-[640px]/editor:h-5 @min-[640px]/editor:w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                     disabled={safeAddCount <= 1}
                     onClick={() => onAddCountChange(Math.max(1, safeAddCount - 1))}
                   >
@@ -278,7 +311,7 @@ export function DataTableToolbar({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="h-9 w-7 @min-[640px]/editor:h-5 @min-[640px]/editor:w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                     onClick={() => onAddCountChange(safeAddCount + 1)}
                   >
                     <Plus className="h-3 w-3" />

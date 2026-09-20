@@ -294,6 +294,7 @@ export const enUSCommon = {
     maximize: 'Maximize output',
   },
   tableConfig: {
+    editDetails: 'Edit table details',
     properties: 'Properties',
     more: 'More',
     title: 'Table Config',
@@ -330,6 +331,7 @@ export const enUSCommon = {
     indexStat: '{{count}} indexes',
   },
   builderTabs: {
+    configuration: 'Configuration',
     advanced: 'Advanced',
     fields: 'Fields',
     viewSql: 'View SQL',
@@ -563,6 +565,7 @@ export const enUSCommon = {
     listHint: 'For LIST partitioning, value lists across partitions must not overlap',
   },
   dataTable: {
+    fieldTools: 'Field tools',
     aiTools: 'AI tools',
     dataTools: 'Data tools',
     ariaLabel: 'Field configuration table',
