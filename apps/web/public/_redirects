@@ -1,0 +1,10 @@
+/zh /docs/zh/ 301
+/en /docs/en/ 301
+/ja /docs/ja/ 301
+/admin / 200
+/zh/* /docs/zh/:splat 301
+/en/* /docs/en/:splat 301
+/ja/* /docs/ja/:splat 301
+/admin/* / 200
+/share/* / 200
+/publications/* / 200

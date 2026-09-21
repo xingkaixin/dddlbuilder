@@ -42,6 +42,9 @@ test.describe('Cloudflare runtime bindings', () => {
 
   for (const path of [
     '/',
+    '/admin',
+    '/share/00000000-0000-4000-8000-000000000000',
+    '/publications/missing-publication',
     '/docs/zh/basic/getting-started',
     '/docs/en/basic/getting-started',
     '/docs/ja/basic/getting-started',
@@ -55,21 +58,62 @@ test.describe('Cloudflare runtime bindings', () => {
       });
       const response = await page.goto(path);
       expect(response?.ok()).toBe(true);
+      expect(new URL(page.url()).pathname).toBe(path);
       const policy = response?.headers()['content-security-policy'];
       expect(policy).toContain("frame-ancestors 'none'");
       expect(policy).toContain("'sha256-");
       expect(policy).not.toContain("'unsafe-eval'");
 
-      if (path === '/') {
-        await expect(page.locator('#root')).not.toBeEmpty();
-      } else {
+      if (path.startsWith('/docs/')) {
         await expect(page.locator('.VPDoc h1')).toBeVisible();
         await page.getByRole('switch').click();
+      } else {
+        await expect(page.locator('#root')).not.toBeEmpty();
       }
 
       expect(await page.locator('html').getAttribute('data-csp-violation')).toBeNull();
     });
   }
+
+  test('permanently redirects legacy docs while preserving query parameters', async ({
+    request,
+  }) => {
+    for (const path of [
+      '/zh',
+      '/en/',
+      '/ja/advanced/orm-generation',
+      '/zh/basic/index-auth-misc',
+    ]) {
+      const response = await request.get(`${path}?from=legacy`, { maxRedirects: 0 });
+      expect(response.status()).toBe(301);
+      const target = new URL(response.headers().location, response.url());
+      expect(target.pathname).toBe(`/docs${path === '/zh' ? '/zh/' : path}`);
+      expect(target.search).toBe('?from=legacy');
+      const document = await request.get(target.toString());
+      expect(document.status()).toBe(200);
+      expect(await document.text()).toContain(
+        `<link rel="canonical" href="https://ddl.xingkaixin.me${target.pathname}">`,
+      );
+    }
+  });
+
+  test('returns 404 for unknown pages in both navigation and fetch requests', async ({
+    request,
+  }) => {
+    for (const path of [
+      '/docs/ja/s/zh/',
+      '/docs/en/ex',
+      '/docs/zh/missing-page',
+      '/missing-page',
+      '/static/missing.js',
+    ]) {
+      for (const mode of ['navigate', 'cors']) {
+        const response = await request.get(path, { headers: { 'Sec-Fetch-Mode': mode } });
+        expect(response.status(), `${mode} ${path}`).toBe(404);
+        expect(await response.text()).not.toContain('<div id="root">');
+      }
+    }
+  });
 
   test('connects Effect spans to the native Worker trace', async ({ request }) => {
     const requestId = `trace-${crypto.randomUUID()}`;

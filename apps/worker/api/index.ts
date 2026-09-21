@@ -145,7 +145,7 @@ app.get('/docs', (c) => c.redirect('/docs/', 301));
 app.all('/docs/*', async (c) => {
   const currentUrl = new URL(c.req.url);
 
-  if (!isLocalDevRequest(currentUrl)) {
+  if (c.env.ENVIRONMENT !== 'development' || !isLocalDevRequest(currentUrl)) {
     return c.env.ASSETS.fetch(c.req.raw);
   }
 
@@ -154,20 +154,12 @@ app.all('/docs/*', async (c) => {
   return fetch(createProxyRequest(targetUrl, c.req.raw));
 });
 
-// SPA fallback: non-API routes return index.html for client-side routing
 app.get('*', async (c) => {
   if (c.req.path.startsWith('/api/')) {
     return c.notFound();
   }
 
-  const res = await c.env.ASSETS.fetch(c.req.raw);
-
-  if (res.ok) return res;
-  const indexRes = await c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
-
-  return new Response(indexRes.body, {
-    headers: { 'content-type': 'text/html; charset=utf-8' },
-  });
+  return c.env.ASSETS.fetch(c.req.raw);
 });
 
 const workerFetch = withWorkerRequestLogging((request, env, ctx) => app.fetch(request, env, ctx));

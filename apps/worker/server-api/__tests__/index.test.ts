@@ -55,7 +55,7 @@ describe('api security guards', () => {
   });
 
   it('应在 localhost 下代理 /docs/* 到 VitePress 开发服务', async () => {
-    const env = createEnv();
+    const env = createEnv({ ENVIRONMENT: 'development' });
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('<!doctype html><title>docs</title>', {
@@ -119,6 +119,18 @@ describe('api security guards', () => {
 
     expect(response.status).toBe(404);
     expect(assetsFetch).not.toHaveBeenCalled();
+  });
+
+  it.each(['/missing-page', '/docs/en/ex'])('应保留 %s 的静态资源 404', async (path) => {
+    const env = createEnv({
+      ENVIRONMENT: 'test',
+      ASSETS: { fetch: async () => new Response('Page not found', { status: 404 }) },
+    });
+
+    const response = await app.fetch(createRequest(path), env);
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe('Page not found');
   });
 
   it('应对超大请求体返回 413', async () => {
