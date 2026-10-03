@@ -229,12 +229,17 @@ export const zhCNCommon = {
     },
   },
   emptyState: {
+    guides: '使用指南',
+    ddlGuide: '生成建表 SQL',
+    erGuide: 'SQL 转 ER 图',
+    diffGuide: 'SQL 结构对比',
     initialSyncTitle: '尚未完成首次同步',
     initialSyncDescription:
       '此设备还没有获取云端工作区。请登录并保持联网，也可以先创建或导入内容，稍后自动合并。',
     noTabOpenTitle: '还没有打开任何表',
     completelyEmptyTitle: '还没有任何表或草稿',
-    description: '你可以创建新表、导入现有表结构，或者使用模板快速开始设计你的数据库结构。',
+    description:
+      '可视化设计 MySQL、PostgreSQL、SQLite 等表结构，生成建表 SQL。也可以导入已有 SQL，查看 ER 图或导出 ORM 模型。',
     createNewTable: '创建新表',
     importDDL: '导入 DDL',
     useTemplate: '使用模板',

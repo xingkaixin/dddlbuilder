@@ -237,13 +237,17 @@ export const enUSCommon = {
     },
   },
   emptyState: {
+    guides: 'Guides',
+    ddlGuide: 'Generate CREATE TABLE SQL',
+    erGuide: 'SQL to ER diagram',
+    diffGuide: 'Compare SQL schemas',
     initialSyncTitle: 'Initial sync is not complete',
     initialSyncDescription:
       'This device has not downloaded the cloud workspace yet. Sign in and stay connected, or create or import content now to merge it later.',
     noTabOpenTitle: 'No table opened yet',
     completelyEmptyTitle: 'No tables or drafts yet',
     description:
-      'Create a new table, import existing schema, or use a template to quickly start designing your database structure.',
+      'Design MySQL, PostgreSQL, SQLite and other schemas visually and generate CREATE TABLE SQL. Import existing SQL to view ER diagrams or export ORM models.',
     createNewTable: 'Create New Table',
     importDDL: 'Import DDL',
     useTemplate: 'Use Template',

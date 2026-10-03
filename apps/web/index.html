@@ -1,86 +1,94 @@
 <!doctype html>
 <html lang="zh-CN">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#E07A5F" />
-        <meta
-            name="description"
-            content="筑表师是数据库DDL建表语句生成工具，支持AI生成表结构、SQL导入解析、DDL导出、评审解释和差异回滚。"
-        />
-        <meta name="robots" content="index, follow" />
-        <link rel="canonical" href="https://ddl.xingkaixin.me/" />
-        <meta property="og:type" content="website" />
-        <meta property="og:locale" content="zh_CN" />
-        <meta property="og:site_name" content="筑表师" />
-        <meta property="og:title" content="筑表师 - 数据库建表工具 | DDLBuilder" />
-        <meta
-            property="og:description"
-            content="支持AI生成表结构、SQL导入解析、DDL导出、评审解释和差异回滚。"
-        />
-        <meta property="og:url" content="https://ddl.xingkaixin.me/" />
-        <meta property="og:image" content="https://ddl.xingkaixin.me/og-image.png" />
-        <meta property="og:image:secure_url" content="https://ddl.xingkaixin.me/og-image.png" />
-        <meta property="og:image:type" content="image/png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="筑表师 - 数据库建表工具，支持AI生成、SQL导入、评审解释和差异回滚" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="筑表师 - 数据库建表工具 | DDLBuilder" />
-        <meta
-            name="twitter:description"
-            content="支持AI生成表结构、SQL导入解析、DDL导出、评审解释和差异回滚。"
-        />
-        <meta name="twitter:image" content="https://ddl.xingkaixin.me/og-image.png" />
-        <meta
-            name="twitter:image:alt"
-            content="筑表师 - 数据库建表工具，支持AI生成、SQL导入、评审解释和差异回滚"
-        />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="preconnect" href="https://cdn-font.hyperos.mi.com" crossorigin />
-        <link
-            id="misans-font"
-            rel="stylesheet"
-            media="print"
-            href="https://cdn-font.hyperos.mi.com/font/css?family=MiSans_VF:VF:Chinese_Simplify,Latin&display=swap"
-        />
-        <script type="application/ld+json">
-            {
-                "@context": "https://schema.org",
-                "@type": "WebApplication",
-                "name": "筑表师",
-                "alternateName": "DDLBuilder",
-                "url": "https://ddl.xingkaixin.me/",
-                "applicationCategory": "DeveloperApplication",
-                "operatingSystem": "Web",
-                "description": "筑表师是数据库DDL建表语句生成工具，支持AI生成表结构、SQL导入解析、DDL导出、评审解释和差异回滚。",
-                "image": "https://ddl.xingkaixin.me/og-image.png",
-                "inLanguage": ["zh-CN", "en-US"]
-            }
-        </script>
-        <title>筑表师 - 数据库建表工具 | DDLBuilder</title>
-    </head>
-    <body>
-        <div id="root"></div>
-        <script type="module" src="/src/main.tsx"></script>
-        <!-- Umami Analytics -->
-        <script
-            defer
-            src="https://umami.xingkaixin.me/script.js"
-            data-website-id="2e57c1f0-7a46-4cd7-a542-87c39b4b373f"
-        ></script>
-        <!-- Cloudflare Web Analytics -->
-        <script
-            defer
-            src="https://static.cloudflareinsights.com/beacon.min.js"
-            data-cf-beacon='{"token": "3ea6ac2302344028a237bf9c8c7807bc"}'
-        ></script>
-        <!-- End Cloudflare Web Analytics -->
-    </body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#E07A5F" />
+    <meta
+      name="description"
+      content="筑表师 DDLBuilder 是在线数据库设计与 DDL 生成工具。可视化设计 MySQL、PostgreSQL、SQLite 等表结构，导入 SQL 查看 ER 图，导出 Prisma 等 ORM 模型，比较结构差异并生成迁移 SQL。"
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://ddl.xingkaixin.me/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:site_name" content="筑表师" />
+    <meta property="og:title" content="在线数据库设计与 DDL 生成工具 | 筑表师 DDLBuilder" />
+    <meta
+      property="og:description"
+      content="可视化设计 MySQL、PostgreSQL、SQLite 表结构，导入 SQL 查看 ER 图，导出 ORM 模型并比较结构差异。"
+    />
+    <meta property="og:url" content="https://ddl.xingkaixin.me/" />
+    <meta property="og:image" content="https://ddl.xingkaixin.me/og-image.png" />
+    <meta property="og:image:secure_url" content="https://ddl.xingkaixin.me/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="筑表师 - 数据库建表工具，支持AI生成、SQL导入、评审解释和差异回滚"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="在线数据库设计与 DDL 生成工具 | 筑表师 DDLBuilder" />
+    <meta
+      name="twitter:description"
+      content="可视化设计 MySQL、PostgreSQL、SQLite 表结构，导入 SQL 查看 ER 图，导出 ORM 模型并比较结构差异。"
+    />
+    <meta name="twitter:image" content="https://ddl.xingkaixin.me/og-image.png" />
+    <meta
+      name="twitter:image:alt"
+      content="筑表师 - 数据库建表工具，支持AI生成、SQL导入、评审解释和差异回滚"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://cdn-font.hyperos.mi.com" crossorigin />
+    <link
+      id="misans-font"
+      rel="stylesheet"
+      media="print"
+      href="https://cdn-font.hyperos.mi.com/font/css?family=MiSans_VF:VF:Chinese_Simplify,Latin&display=swap"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "筑表师",
+        "alternateName": "DDLBuilder",
+        "url": "https://ddl.xingkaixin.me/",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web",
+        "description": "在线数据库设计与 DDL 生成工具，支持 SQL 导入、ER 图、ORM 模型导出、结构对比与迁移 SQL。",
+        "image": "https://ddl.xingkaixin.me/og-image.png",
+        "inLanguage": ["zh-CN", "en-US", "ja-JP"]
+      }
+    </script>
+    <title>在线数据库设计与 DDL 生成工具 | 筑表师 DDLBuilder</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- Umami Analytics -->
+    <script src="/analytics.js" defer></script>
+    <script
+      defer
+      src="https://umami.xingkaixin.me/script.js"
+      data-website-id="2e57c1f0-7a46-4cd7-a542-87c39b4b373f"
+      data-domains="ddl.xingkaixin.me"
+      data-before-send="ddlBeforeSend"
+      data-exclude-hash="true"
+      data-performance="true"
+    ></script>
+    <!-- Cloudflare Web Analytics -->
+    <script
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"token": "3ea6ac2302344028a237bf9c8c7807bc"}'
+    ></script>
+    <!-- End Cloudflare Web Analytics -->
+  </body>
 </html>

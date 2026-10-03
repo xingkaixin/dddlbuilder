@@ -240,13 +240,17 @@ export const jaJPCommon = {
     },
   },
   emptyState: {
+    guides: '使い方',
+    ddlGuide: 'CREATE TABLE 文の生成',
+    erGuide: 'SQL から ER 図',
+    diffGuide: 'SQL の構造比較',
     initialSyncTitle: '初回同期が完了していません',
     initialSyncDescription:
       'この端末にはクラウドのワークスペースがまだ取得されていません。ログインして接続を維持するか、先に作成・インポートして後で統合できます。',
     noTabOpenTitle: 'まだテーブルが開いていません',
     completelyEmptyTitle: 'まだテーブルもドラフトもありません',
     description:
-      '新しいテーブルを作成するか、既存のスキーマをインポートするか、テンプレートを使用して、データベース構造の設計をすぐに開始できます。',
+      'MySQL、PostgreSQL、SQLite などのテーブルを設計し、CREATE TABLE 文を生成します。既存の SQL を取り込み、ER 図の表示や ORM モデルの出力もできます。',
     createNewTable: '新しいテーブルの作成',
     importDDL: 'DDLのインポート',
     useTemplate: 'テンプレートを使用する',

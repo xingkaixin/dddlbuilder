@@ -392,6 +392,20 @@ export default defineConfig({
     await writeFile(sitemapPath, formatSitemapLastmod(sitemap));
   },
   head: [
+    ['script', { defer: '', src: '/analytics.js' }],
+    [
+      'script',
+      {
+        defer: '',
+        src: 'https://umami.xingkaixin.me/script.js',
+        'data-website-id': '2e57c1f0-7a46-4cd7-a542-87c39b4b373f',
+        'data-domains': 'ddl.xingkaixin.me',
+        'data-before-send': 'ddlBeforeSend',
+        'data-exclude-hash': 'true',
+        'data-performance': 'true',
+      },
+    ],
+    ['script', { defer: '', src: '/docs/analytics.js' }],
     ['meta', { name: 'theme-color', content: '#E07A5F' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.cn' }],
     [

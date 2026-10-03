@@ -5,6 +5,8 @@ import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { SchemaToolsButton } from '@/components/schema-tools/SchemaToolsButton';
+import { useLocale } from '@/i18n/LocaleContext';
+import { getDocsUrl } from '@/utils/docsLink';
 
 interface WorkspaceEmptyStateProps {
   hasContent: boolean;
@@ -31,6 +33,8 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
     templateButton,
   }) => {
     const { t } = useTranslation();
+    const { locale } = useLocale();
+    const docsUrl = getDocsUrl(locale);
     const workspace = useWorkspaceYDoc();
     const awaitingCloud = Boolean(workspace.doc && !workspace.remoteLoaded && !hasContent);
     const hasRecentItems = recentDrafts.length > 0 || recentTables.length > 0;
@@ -139,6 +143,30 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
               </button>
             </div>
           </div>
+
+          <nav
+            aria-label={t('emptyState.guides')}
+            className="mt-6 flex max-w-md flex-wrap justify-center gap-x-4 gap-y-2 text-xs"
+          >
+            <a
+              className="py-1 text-primary underline underline-offset-4"
+              href={`${docsUrl}basic/getting-started`}
+            >
+              {t('emptyState.ddlGuide')}
+            </a>
+            <a
+              className="py-1 text-primary underline underline-offset-4"
+              href={`${docsUrl}advanced/foreign-key-and-er`}
+            >
+              {t('emptyState.erGuide')}
+            </a>
+            <a
+              className="py-1 text-primary underline underline-offset-4"
+              href={`${docsUrl}advanced/database-tools`}
+            >
+              {t('emptyState.diffGuide')}
+            </a>
+          </nav>
 
           {hasContent && (
             <div className="mt-6 flex max-w-sm gap-3 rounded-lg bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
