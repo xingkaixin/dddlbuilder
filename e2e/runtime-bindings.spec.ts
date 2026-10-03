@@ -506,7 +506,7 @@ test('persists publications, freezes proposals and enforces access after revocat
       standards: [{ id: 'identity', name: '用户编号', description: '稳定业务标识', unit: '' }],
     },
   };
-  // Exercise header guards without an unread body in Wrangler's proxy (workers-sdk#15203).
+  // Exercise early request guards without an unread body in Wrangler's proxy (workers-sdk#15203).
   // publications-route.test.ts covers the same guards with request bodies.
   const crossOrigin = await context.request.post('/api/publications', {
     headers: { Origin: 'https://untrusted.example', 'content-type': 'application/json' },
@@ -524,7 +524,7 @@ test('persists publications, freezes proposals and enforces access after revocat
   expect(malformed.status()).toBe(400);
 
   const unauthenticated = await request.post('/api/publications', {
-    data: input,
+    headers: { 'content-type': 'application/json' },
   });
 
   expect(unauthenticated.status()).toBe(401);
