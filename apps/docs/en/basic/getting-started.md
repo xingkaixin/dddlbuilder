@@ -1,12 +1,35 @@
 ---
-description: "Configure columns, primary keys, and indexes in DDLBuilder to generate DDL. Learn the basics of SQL import, ORM export, and saving tables."
+title: "Generate MySQL and PostgreSQL CREATE TABLE SQL"
+description: "Configure columns, primary keys and indexes visually in DDLBuilder. Generate CREATE TABLE SQL for MySQL and PostgreSQL, with a MySQL import example and output checks."
 ---
 
-# Quick Start
+# Generate MySQL and PostgreSQL CREATE TABLE SQL
 
 [Start designing in DDLBuilder](https://ddl.xingkaixin.me/) and follow the steps below to create your first table. If you already have SQL, start with [SQL import and parsing](/en/advanced/import-and-parse).
 
 This guide helps first-time DDLBuilder users design their first database table in minutes and export production-ready SQL DDL, DCL, and ORM models.
+
+## Example: generate a MySQL user table
+
+Create a user table with a primary key `id`, a required and unique `email`, and an optional `display_name`. Use this SQL as an import example.
+
+```sql
+CREATE TABLE user_account (
+  id INT NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  display_name VARCHAR(100),
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX uk_user_account_email ON user_account (email);
+```
+
+1. Open [DDLBuilder](https://ddl.xingkaixin.me/), select MySQL, choose **Import SQL**, and paste the example.
+2. Check the preview for three columns, the `id` primary key and the unique index on `email`, then import the table.
+3. Change the length of `display_name` to `150`. Check that the generated DDL contains `VARCHAR(150)`, then copy the SQL.
+
+Formatting, identifier quoting and index statement placement may differ in the output. Check column types, nullability, the primary key and the unique index. When switching databases, review type and default-value compatibility. The tool does not connect to a database or execute SQL.
+
+Continue with [SQL to ER diagrams](/en/advanced/foreign-key-and-er) for relationships or [SQL to ORM models](/en/advanced/orm-generation) for application code.
 
 ## Overview
 

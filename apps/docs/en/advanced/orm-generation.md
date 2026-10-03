@@ -1,8 +1,9 @@
 ---
-description: "Convert a MySQL table to a Prisma model with a complete input and output example. Explore supported ORM frameworks, type mappings, and usage limits."
+title: "SQL to Prisma, TypeORM and Other ORM Models"
+description: "Import MySQL table SQL and export Prisma, TypeORM, SQLAlchemy, GORM or JPA models. See input and output examples, type mappings and relationship limitations."
 ---
 
-# ORM Model Generation
+# SQL to Prisma, TypeORM and Other ORM Models
 
 [Generate ORM models in DDLBuilder](https://ddl.xingkaixin.me/). Start with the [getting started guide](/en/basic/getting-started) or [import existing SQL](/en/advanced/import-and-parse) if you do not have a table yet. For cross-table references, check the [foreign keys and ER diagram](/en/advanced/foreign-key-and-er) first.
 

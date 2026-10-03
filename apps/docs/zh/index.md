@@ -1,6 +1,27 @@
-# 筑表师文档
+---
+title: "在线数据库设计、SQL 转 ER 图与 DDL 生成指南"
+description: "用筑表师在线设计 MySQL、PostgreSQL、SQLite 表结构。按任务查找 SQL 转 ER 图、SQL 转 Prisma、数据字典导出、结构对比和 CSV 转 INSERT SQL 的操作指南。"
+---
 
-欢迎查阅**筑表师（DDLBuilder）**官方用户文档。本手册旨在帮助你全面了解产品核心能力，并在实际数据库设计与开发中高效上手。
+# 在线数据库设计、SQL 转 ER 图与 DDL 生成指南
+
+筑表师（DDLBuilder）是在线数据库设计与 DDL 生成工具。你可以配置字段和索引，导入已有 SQL 查看 ER 图，或导出 ORM 模型。下面按具体任务选择指南。
+
+[打开筑表师，开始设计数据库](https://ddl.xingkaixin.me/)
+
+## 按任务选择指南
+
+| 你要完成的任务 | 操作与产物 |
+| --- | --- |
+| [生成 MySQL、PostgreSQL 建表语句](/zh/basic/getting-started) | 配置字段、主键和索引，复制 CREATE TABLE SQL |
+| [SQL 转 ER 图](/zh/advanced/foreign-key-and-er) | 导入并保存表结构，建立外键或逻辑关系，查看关系图 |
+| [SQL 转 Prisma 等 ORM 模型](/zh/advanced/orm-generation) | 将表结构转换为 Prisma、TypeORM、SQLAlchemy、GORM 或 JPA 代码 |
+| [对比两份 SQL 表结构](/zh/advanced/database-tools#两份-sql-的结构对比) | 查看 MySQL 或 PostgreSQL 的结构差异，导出迁移 SQL |
+| [从 SQL 生成数据字典](/zh/advanced/database-tools#数据字典) | 导出 Markdown 或带搜索的离线 HTML 文档 |
+| [CSV、Excel 转 INSERT SQL](/zh/advanced/business-data-import) | 映射字段、校验记录并导出数据 SQL 与错误清单 |
+| [设计 SQL 查询与业务表](/zh/advanced/modeling-workflows) | 根据表关系生成 SELECT，创建业务模块和 SQLite/D1 初始化项目 |
+
+手动设计、SQL 导入与本地导出可以先从未登录状态开始。云同步和 AI 功能的账户要求见[快速开始](/zh/basic/getting-started)。工具生成 SQL，不连接你的数据库执行语句。
 
 ## 快速导航
 

@@ -1,4 +1,9 @@
-# Business data import
+---
+title: "Convert CSV and Excel to INSERT SQL"
+description: "Import CSV or Excel records, map columns or infer a table, validate values, and export INSERT SQL and error reports. Save mappings for later imports in DDLBuilder."
+---
+
+# Convert CSV and Excel to INSERT SQL
 
 For real order records, customer lists or similar CSV / Excel data, open **Database Tools → Business data import**. Generate a new table and INSERT SQL, or validate records against an existing table and generate INSERT SQL. No account is required.
 

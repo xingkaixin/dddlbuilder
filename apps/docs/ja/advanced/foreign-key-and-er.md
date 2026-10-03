@@ -1,8 +1,9 @@
 ---
-description: "MySQL のユーザーと注文を例に、DDLBuilder で物理外部キーを設定し、ER 図と生成 SQL を確認します。論理リレーションと連鎖動作の違いも説明します。"
+title: "SQL から ER 図を作成：MySQL 外部キーの設定"
+description: "MySQL の CREATE TABLE 文を取り込み、ユーザーと注文の ER 図を作成します。SQL の例を使い、物理外部キー、論理リレーション、連鎖動作の違いを確認できます。"
 ---
 
-# 外部キーと ER 図
+# SQL から ER 図を作成：MySQL 外部キーの設定
 
 [DDLBuilder でリレーションを設計](https://ddl.xingkaixin.me/)できます。既存の CREATE TABLE 文がある場合は、先に [SQL をインポート](/ja/advanced/import-and-parse)してください。設計後は [ORM モデル生成](/ja/advanced/orm-generation)に進めます。
 

@@ -1,8 +1,9 @@
 ---
-description: "通过 MySQL 用户与订单示例，在筑表师中配置物理外键、查看 ER 图并核对生成的 SQL，了解逻辑关系与级联规则的区别。"
+title: "SQL 转 ER 图：MySQL 外键与表关系建模"
+description: "导入 MySQL 建表 SQL，保存用户和订单表，在筑表师中创建外键并查看 ER 图。附完整 SQL 示例，说明物理外键、逻辑关系和级联规则的区别。"
 ---
 
-# 外键配置与 ER 图
+# SQL 转 ER 图：MySQL 外键与表关系建模
 
 打开[筑表师进行关系建模](https://ddl.xingkaixin.me/)。已有建表语句时，先按[导入与解析 SQL](/zh/advanced/import-and-parse)载入表结构；建模完成后，可继续[生成 ORM 模型](/zh/advanced/orm-generation)。
 

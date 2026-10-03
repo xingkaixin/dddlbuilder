@@ -1,6 +1,27 @@
-# DDLBuilder Documentation
+---
+title: "Database Design, SQL to ER Diagrams and DDL Guides"
+description: "Design MySQL, PostgreSQL and SQLite schemas with DDLBuilder. Find guides for SQL to ER diagrams, SQL to Prisma, schema comparison, data dictionaries and CSV to INSERT SQL."
+---
 
-Welcome to the official documentation for **DDLBuilder**. This guide will help you understand the core capabilities of the platform and efficiently design, review, and export database schemas.
+# Database Design, SQL to ER Diagrams and DDL Guides
+
+DDLBuilder is an online database schema designer and DDL generator. Configure columns and indexes, import existing SQL to view ER diagrams, or export ORM models. Choose a guide for the task you need to complete.
+
+[Open DDLBuilder and design a database](https://ddl.xingkaixin.me/)
+
+## Choose a guide by task
+
+| Task | Workflow and output |
+| --- | --- |
+| [Generate MySQL or PostgreSQL CREATE TABLE SQL](/en/basic/getting-started) | Configure columns, primary keys and indexes, then copy DDL |
+| [Convert SQL to an ER diagram](/en/advanced/foreign-key-and-er) | Import and save tables, add foreign keys or logical relationships, and inspect the diagram |
+| [Convert SQL to Prisma and other ORM models](/en/advanced/orm-generation) | Export Prisma, TypeORM, SQLAlchemy, GORM or JPA code |
+| [Compare two SQL schemas](/en/advanced/database-tools#compare-two-sql-snapshots) | Inspect MySQL or PostgreSQL schema changes and export migration SQL |
+| [Generate a data dictionary from SQL](/en/advanced/database-tools#data-dictionary) | Export Markdown or searchable offline HTML documentation |
+| [Convert CSV or Excel to INSERT SQL](/en/advanced/business-data-import) | Map fields, validate records and export SQL with an error report |
+| [Design SQL queries and business tables](/en/advanced/modeling-workflows) | Generate SELECT queries from relationships, business modules and SQLite/D1 starter projects |
+
+Start manual design, SQL import and local exports without signing in. See [getting started](/en/basic/getting-started) for cloud sync and AI account requirements. The tool generates SQL; it does not connect to your database to execute it.
 
 ## Quick Navigation
 

@@ -1,8 +1,9 @@
 ---
-description: "Import existing SQL into DDLBuilder, preview columns and indexes, and handle multiple tables or name conflicts. Also import CSV, Excel, and JSON Schema definitions."
+title: "Import CREATE TABLE SQL and Edit Database Schemas"
+description: "Import SQL into DDLBuilder, preview columns, keys and indexes, then edit and export DDL. Learn multi-table imports, conflict handling and CSV, Excel or JSON Schema imports."
 ---
 
-# Import and Parse SQL
+# Import CREATE TABLE SQL and Edit Database Schemas
 
 Open the [DDLBuilder workspace](https://ddl.xingkaixin.me/) and follow the import steps below. After importing related tables, check their [foreign keys and ER diagram](/en/advanced/foreign-key-and-er), then [generate ORM models](/en/advanced/orm-generation).
 

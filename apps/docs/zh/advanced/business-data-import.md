@@ -1,4 +1,9 @@
-# 业务数据导入
+---
+title: "CSV、Excel 转 INSERT SQL 与数据校验"
+description: "在筑表师中导入 CSV 或 Excel 业务数据，映射已有字段或推断新表，检查必填项和类型错误，再导出 INSERT SQL、错误清单与可复用映射配置。"
+---
+
+# CSV、Excel 转 INSERT SQL 与数据校验
 
 收到订单明细、客户名单等真实 CSV / Excel 数据时，打开 **数据库工具 → 业务数据导入**。可以生成新表及 INSERT SQL，也可以对照已有表检查数据并生成 INSERT SQL。无需登录。
 

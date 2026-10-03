@@ -1,12 +1,35 @@
 ---
-description: "使用筑表师配置字段、主键和索引，生成建表 DDL，并了解 SQL 导入、ORM 导出和工作区保存的基本步骤。"
+title: "在线生成 MySQL、PostgreSQL 建表语句"
+description: "使用筑表师可视化配置字段、主键和索引，生成 MySQL、PostgreSQL 等数据库的 CREATE TABLE 语句。附可导入的 MySQL 建表示例和输出检查步骤。"
 ---
 
-# 快速开始
+# 在线生成 MySQL、PostgreSQL 建表语句
 
 在[筑表师中开始设计](https://ddl.xingkaixin.me/)，按下面的步骤完成第一张表。已有 SQL 时，可直接使用[导入与解析 SQL](/zh/advanced/import-and-parse)。
 
 本指南帮助初次使用筑表师的用户在几分钟内完成第一张数据表的结构设计，并获取高质量的建表 SQL 与相关代码。
+
+## 示例：生成一张 MySQL 用户表
+
+目标是创建用户表：`id` 是主键，`email` 必填且唯一，`display_name` 可以为空。下面的 SQL 可以直接作为导入示例。
+
+```sql
+CREATE TABLE user_account (
+  id INT NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  display_name VARCHAR(100),
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX uk_user_account_email ON user_account (email);
+```
+
+1. 打开[筑表师](https://ddl.xingkaixin.me/)，选择 MySQL，点击「导入 SQL」并粘贴示例。
+2. 确认预览包含三个字段、`id` 主键和 `email` 唯一索引，再导入表结构。
+3. 将 `display_name` 长度改成 `150`，检查右侧建表 DDL 已更新为 `VARCHAR(150)`，然后复制 SQL。
+
+导出后的排版、标识符引号或索引语句位置可能不同。核对字段类型、可空性、主键和唯一索引的语义即可。切换目标数据库后仍需核对类型与默认值的兼容性；工具不会替你连接数据库执行 SQL。
+
+需要多表关系时继续[SQL 转 ER 图](/zh/advanced/foreign-key-and-er)，需要应用代码时继续[SQL 转 ORM 模型](/zh/advanced/orm-generation)。
 
 ## 适用场景
 

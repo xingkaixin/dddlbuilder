@@ -1,4 +1,9 @@
-# Data dictionaries, schema comparison, and relational test data
+---
+title: "SQL Schema Diff and Data Dictionary Export"
+description: "Compare two MySQL or PostgreSQL SQL schemas online and export migration SQL. Generate Markdown or offline HTML data dictionaries and related test data without a database connection."
+---
+
+# SQL Schema Diff and Data Dictionary Export
 
 Use **Database tools** in the header to document an existing database, compare two environments, or prepare related test rows. The entry is also available in an empty workspace. Signing in or creating a table first is not required.
 

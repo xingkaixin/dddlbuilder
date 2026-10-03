@@ -1,8 +1,9 @@
 ---
-description: "将 MySQL 表结构转换为 Prisma 模型，查看完整输入输出示例，并了解筑表师支持的 ORM 框架、类型映射与使用限制。"
+title: "SQL 转 Prisma、TypeORM 等 ORM 模型"
+description: "将 MySQL 建表 SQL 导入筑表师，导出 Prisma、TypeORM、SQLAlchemy、GORM 或 JPA 模型。通过输入输出示例了解类型映射、主键和关系处理限制。"
 ---
 
-# ORM 模型生成
+# SQL 转 Prisma、TypeORM 等 ORM 模型
 
 在[筑表师中生成 ORM 模型](https://ddl.xingkaixin.me/)。还没有表结构时，先按[快速开始](/zh/basic/getting-started)建表，或[导入已有 SQL](/zh/advanced/import-and-parse)。涉及跨表引用时，先核对[外键配置与 ER 图](/zh/advanced/foreign-key-and-er)。
 

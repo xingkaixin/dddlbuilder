@@ -1,6 +1,27 @@
-# DDLBuilder ドキュメント
+---
+title: "データベース設計・SQL から ER 図・DDL 生成ガイド"
+description: "DDLBuilder で MySQL、PostgreSQL、SQLite のテーブルを設計。SQL から ER 図や Prisma モデルへの変換、構造比較、データ辞書、CSV から INSERT SQL への変換手順を紹介します。"
+---
 
-**DDLBuilder（筑表師）**の公式ユーザーガイドへようこそ。このマニュアルでは、製品の主要機能と実際のデータベース設計・開発での効果的な活用方法について分かりやすく解説します。
+# データベース設計・SQL から ER 図・DDL 生成ガイド
+
+DDLBuilder はオンラインのデータベース設計・DDL 生成ツールです。カラムとインデックスを設定し、既存の SQL から ER 図を表示したり、ORM モデルを出力したりできます。目的に合ったガイドを選んでください。
+
+[DDLBuilder でデータベースの設計を始める](https://ddl.xingkaixin.me/)
+
+## 目的からガイドを選ぶ
+
+| 目的 | 操作と出力 |
+| --- | --- |
+| [MySQL・PostgreSQL の CREATE TABLE 文を生成](/ja/basic/getting-started) | カラム、主キー、インデックスを設定して DDL をコピー |
+| [SQL から ER 図を作成](/ja/advanced/foreign-key-and-er) | テーブルを取り込み・保存し、外部キーや論理リレーションを追加 |
+| [SQL から Prisma などの ORM モデルを生成](/ja/advanced/orm-generation) | Prisma、TypeORM、SQLAlchemy、GORM、JPA のコードを出力 |
+| [SQL のテーブル構造を比較](/ja/advanced/database-tools) | MySQL または PostgreSQL の差分を確認し、移行 SQL を出力 |
+| [SQL からデータ辞書を作成](/ja/advanced/database-tools) | Markdown や検索可能なオフライン HTML を出力 |
+| [CSV・Excel から INSERT SQL を生成](/ja/advanced/business-data-import) | カラムの対応付け、レコードの検証、SQL とエラー一覧の出力 |
+| [SQL クエリと業務テーブルを設計](/ja/advanced/modeling-workflows) | 関係から SELECT、業務モジュール、SQLite/D1 の初期化プロジェクトを生成 |
+
+手動設計、SQL の取り込み、ローカル出力はログインせずに始められます。同期や AI のアカウント要件は[入門ガイド](/ja/basic/getting-started)で確認してください。ツールは SQL を生成しますが、データベースに接続して実行することはありません。
 
 ## クイックナビゲーション
 

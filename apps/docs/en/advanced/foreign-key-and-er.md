@@ -1,8 +1,9 @@
 ---
-description: "Model a MySQL users-and-orders foreign key in DDLBuilder, inspect its ER diagram and generated SQL, and distinguish physical constraints from logical relationships."
+title: "SQL to ER Diagram: MySQL Foreign Key Guide"
+description: "Import MySQL CREATE TABLE SQL and model users and orders in an ER diagram. Follow a complete example and compare physical foreign keys, logical relationships and cascade rules."
 ---
 
-# Foreign Key Configuration and ER Diagram
+# SQL to ER Diagram: MySQL Foreign Key Guide
 
 [Open DDLBuilder to model relationships](https://ddl.xingkaixin.me/). If you already have CREATE TABLE statements, [import your SQL](/en/advanced/import-and-parse) first. After modeling, continue with [ORM model generation](/en/advanced/orm-generation).
 

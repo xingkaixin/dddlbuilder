@@ -1,4 +1,9 @@
-# Query design, business modules and field impact
+---
+title: "Visual SQL Query Design and Business Data Modeling"
+description: "Generate parameterized SELECT queries from table relationships, create RBAC, booking or inventory modules, export SQLite or D1 projects and Drizzle schemas, and inspect field dependencies."
+---
+
+# Visual SQL Query Design and Business Data Modeling
 
 Open **Database tools** in the header to design related queries, create a group of business tables or inspect field dependencies. These tools work with schemas and do not connect to or execute user databases.
 

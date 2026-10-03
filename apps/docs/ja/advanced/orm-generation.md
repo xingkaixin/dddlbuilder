@@ -1,8 +1,9 @@
 ---
-description: "MySQL テーブルを Prisma モデルに変換する入力と出力の例を紹介します。対応 ORM、型マッピング、利用時の制限を確認できます。"
+title: "SQL から Prisma・TypeORM などのモデルを生成"
+description: "MySQL のテーブル SQL を取り込み、Prisma、TypeORM、SQLAlchemy、GORM、JPA のモデルを出力します。入出力例で型の対応、主キーとリレーションの制限を確認できます。"
 ---
 
-# ORM モデル生成
+# SQL から Prisma・TypeORM などのモデルを生成
 
 [DDLBuilder で ORM モデルを生成](https://ddl.xingkaixin.me/)できます。テーブルがない場合は、[クイックスタート](/ja/basic/getting-started)または [既存 SQL のインポート](/ja/advanced/import-and-parse)から始めてください。他テーブルを参照する場合は、先に[外部キーと ER 図](/ja/advanced/foreign-key-and-er)を確認してください。
 

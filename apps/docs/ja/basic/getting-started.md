@@ -1,12 +1,35 @@
 ---
-description: "DDLBuilder でカラム、主キー、インデックスを設定して DDL を生成します。SQL インポート、ORM 出力、テーブル保存の基本手順を紹介します。"
+title: "MySQL・PostgreSQL の CREATE TABLE 文を生成"
+description: "DDLBuilder でカラム、主キー、インデックスを設定し、MySQL や PostgreSQL の CREATE TABLE 文を生成します。インポート可能な MySQL の例と出力の確認手順を紹介します。"
 ---
 
-# クイックスタート
+# MySQL・PostgreSQL の CREATE TABLE 文を生成
 
 [DDLBuilder で設計を開始](https://ddl.xingkaixin.me/)し、以下の手順で最初のテーブルを作成します。既存の SQL がある場合は、[SQL のインポートと解析](/ja/advanced/import-and-parse)から始めてください。
 
 このガイドでは、初めて DDLBuilder を利用するユーザー向けに、数分で最初のテーブル構造を設計し、高品質な建表 SQL や ORM コードを生成・取得する手順を解説します。
+
+## 例：MySQL のユーザーテーブルを生成
+
+`id` を主キー、`email` を必須かつ一意、`display_name` を NULL 許容として定義します。次の SQL をインポート例として使えます。
+
+```sql
+CREATE TABLE user_account (
+  id INT NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  display_name VARCHAR(100),
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX uk_user_account_email ON user_account (email);
+```
+
+1. [DDLBuilder](https://ddl.xingkaixin.me/) で MySQL を選び、「SQL インポート」に例を貼り付けます。
+2. プレビューの 3 カラム、`id` の主キー、`email` の一意インデックスを確認して取り込みます。
+3. `display_name` の長さを `150` に変更し、生成 DDL が `VARCHAR(150)` になったことを確認してコピーします。
+
+出力では整形、識別子の引用、インデックス文の位置が変わる場合があります。型、NULL 許容、主キー、一意インデックスの意味を確認してください。データベースを切り替える場合は型とデフォルト値の互換性も確認します。ツールはデータベースに接続せず、SQL を実行しません。
+
+関連テーブルは [SQL から ER 図](/ja/advanced/foreign-key-and-er)、アプリ用コードは [SQL から ORM モデル](/ja/advanced/orm-generation)を参照してください。
 
 ## 概要
 
