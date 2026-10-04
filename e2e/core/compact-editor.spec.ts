@@ -97,7 +97,7 @@ test.describe('触屏字段编辑', () => {
         await expect(input).toBeFocused();
         await expect(input).toHaveCSS('font-size', '16px');
         await expect(input).toHaveValue(initialValue);
-        await page.getByRole('button', { name: '生成结果', exact: true }).focus();
+        await page.getByRole('button', { name: '设计', exact: true }).tap();
         await expect(input).toBeHidden();
         await expect(cell).toHaveText(initialValue);
         expect(await table.evaluate((element) => element.getBoundingClientRect().width)).toBe(

@@ -2,6 +2,7 @@ import { selectWorkspaceView } from '../utils';
 import { openTableAction } from '../utils';
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { setupHydratedState, ensureBuilderVisible } from '../utils';
+import type { PersistedState } from '../../packages/shared-types/src/index';
 
 test.describe('核心 UI 交互功能测试 @core', () => {
   test.beforeEach(async ({ page }) => {
@@ -68,6 +69,34 @@ test.describe('核心 UI 交互功能测试 @core', () => {
 
     await page.locator('#table-name').fill('work_after_clear');
     await page.locator('#table-comment').fill('清空后继续编辑');
+    // IndexedDB writes are asynchronous; verify the draft is durable before reloading.
+    await expect
+      .poll(() =>
+        page.evaluate(async () => {
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open('ddlbuilder');
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+
+          try {
+            return await new Promise<PersistedState[]>((resolve, reject) => {
+              const request = db
+                .transaction('workspace_global_draft', 'readonly')
+                .objectStore('workspace_global_draft')
+                .getAll();
+              request.onsuccess = () =>
+                resolve(request.result.map((record: { state: PersistedState }) => record.state));
+              request.onerror = () => reject(request.error);
+            });
+          } finally {
+            db.close();
+          }
+        }),
+      )
+      .toContainEqual(
+        expect.objectContaining({ tableName: 'work_after_clear', tableComment: '清空后继续编辑' }),
+      );
     await page.reload();
     await page
       .getByTestId('workspace-content')

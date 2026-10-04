@@ -32,7 +32,7 @@ test.describe('数据库切换与方言验证 @core', () => {
     await expect(firstFieldNameCell).toHaveText('id');
   });
 
-  test('场景：切换到 PostgreSQL 应生成正确的语法', async ({ page }) => {
+  test('场景：切换到 PostgreSQL 应保留字段配置并生成正确的语法', async ({ page }) => {
     await page.locator('#table-name').fill('users');
     await page.locator('#table-comment').fill('用户表');
 
@@ -47,6 +47,12 @@ test.describe('数据库切换与方言验证 @core', () => {
     // 2. 切换到 PostgreSQL
     await page.locator('[data-testid="db-type-selector"]').click();
     await page.getByRole('option', { name: 'PostgreSQL', exact: true }).click();
+
+    await expect(page.locator('#table-name')).toHaveValue('users');
+    await expect(page.locator('#table-comment')).toHaveValue('用户表');
+    const field = page.locator('[data-testid="data-table"] tbody tr').first();
+    await expect(field.locator('td').nth(1)).toHaveText('id');
+    await expect(field.locator('td').nth(3)).toHaveText('varchar(255)');
 
     // 验证 PG 语法 (COMMENT ON TABLE)
     await expect(sqlOutputElement).toContainText(/COMMENT ON TABLE\s+users\s+IS\s+'用户表'/i);

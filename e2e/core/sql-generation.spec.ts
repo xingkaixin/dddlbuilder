@@ -76,7 +76,6 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(5) [data-slot="checkbox"]',
     );
     await firstNullableCheckbox.click();
-    await page.waitForTimeout(1000); // 等待状态更新和 SQL 重新生成
     await expect(sqlOutput).toContainText(/NOT NULL/i, { timeout: 5000 });
   });
 
