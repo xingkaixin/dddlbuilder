@@ -4,9 +4,44 @@ import {
   canonicalizeBaseType,
   getFieldTypeForDatabase,
   TYPE_ALIASES,
-} from '@ddlbuilder/ddl-core';
+} from '../index';
 
 describe('Type Mapping Functions', () => {
+  it.each([
+    ['dm', 'varchar', 'VARCHAR(255)'],
+    ['dm', 'text', 'CLOB'],
+    ['dm', 'int', 'INT'],
+    ['dm', 'decimal', 'NUMBER(10, 2)'],
+    ['dm', 'timestamptz', 'TIMESTAMP WITH TIME ZONE'],
+    ['dm', 'boolean', 'NUMBER(1)'],
+    ['dm', 'uuid', 'CHAR(36)'],
+    ['dm', 'serial', 'BIGINT IDENTITY(1,1)'],
+    ['dm', 'json', 'JSON'],
+    ['hive', 'string', 'STRING'],
+    ['hive', 'varchar(100)', 'STRING'],
+    ['hive', 'text', 'STRING'],
+    ['hive', 'int', 'INT'],
+    ['hive', 'decimal', 'DECIMAL(10, 3)'],
+    ['hive', 'datetime', 'TIMESTAMP'],
+    ['hive', 'time', 'STRING'],
+    ['hive', 'boolean', 'BOOLEAN'],
+    ['hive', 'json', 'STRING'],
+    ['hive', 'jsonb', 'STRING'],
+    ['hive', 'nvarchar', 'STRING'],
+    ['hive', 'nchar', 'STRING'],
+    ['hive', 'blob', 'BINARY'],
+    ['hive', 'uuid', 'STRING'],
+    ['hive', 'serial', 'INT'],
+    ['hive', 'mediumtext', 'STRING'],
+    ['hive', 'longtext', 'STRING'],
+    ['gbase', 'serial', 'BIGINT UNSIGNED AUTO_INCREMENT'],
+    ['polardb', 'serial', 'BIGINT UNSIGNED AUTO_INCREMENT'],
+    ['kingbase', 'json', 'JSONB'],
+    ['gaussdb', 'json', 'JSONB'],
+  ] as const)('maps %s %s to its SQL representation', (dbType, input, expected) => {
+    expect(getFieldTypeForDatabase(dbType, input)).toBe(expected);
+  });
+
   describe('parseFieldType', () => {
     it('should parse basic types', () => {
       expect(parseFieldType('varchar')).toEqual({

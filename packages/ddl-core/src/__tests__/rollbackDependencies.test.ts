@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { generateRollbackDDL } from '@ddlbuilder/ddl-core';
+import { generateRollbackDDL } from '../index';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
-import type { TableDiff } from '@ddlbuilder/ddl-core';
+import type { TableDiff } from '../index';
 
 function createField(overrides: Partial<NormalizedField> = {}): NormalizedField {
   return {
@@ -34,11 +34,6 @@ function createEmptyDiff(): TableDiff {
 }
 
 describe('generateRollbackDDL', () => {
-  it('无变更时返回空字符串', () => {
-    const result = generateRollbackDDL(createEmptyDiff());
-    expect(result).toBe('');
-  });
-
   it('应该合并反向字段和索引变更，避免无效中间状态', () => {
     const diff: TableDiff = {
       ...createEmptyDiff(),

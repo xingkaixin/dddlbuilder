@@ -52,6 +52,59 @@ const createRow = (overrides: Partial<FieldRow> = {}): FieldRow => {
 };
 
 describe('diffPersistedState', () => {
+  it.each([
+    [
+      { defaultKind: 'uuid', onUpdate: 'current_timestamp' },
+      { defaultKind: 'uuid', onUpdate: 'none' },
+    ],
+    [
+      { defaultKind: 'none', onUpdate: 'current_timestamp' },
+      { defaultKind: 'constant', onUpdate: 'none' },
+    ],
+  ] as const)('detects default or on-update changes from %j to %j', (before, after) => {
+    const diff = diffPersistedState(
+      createPersistedState({ rows: [createRow(before)] }),
+      createPersistedState({ rows: [createRow(after)] }),
+    );
+    expect(diff.fields[0].changes).toContain('default');
+  });
+
+  it.each([
+    [
+      'index',
+      [
+        { name: 'b', direction: 'ASC' },
+        { name: 'a', direction: 'ASC' },
+      ],
+    ],
+    [
+      'index',
+      [
+        { name: 'a', direction: 'DESC' },
+        { name: 'b', direction: 'ASC' },
+      ],
+    ],
+    ['primary', [{ name: 'a', direction: 'ASC' }]],
+  ] satisfies [IndexDefinition['kind'], IndexDefinition['fields']][])(
+    'rebuilds a %s when its ordered field definition changes to %j',
+    (kind, fields) => {
+      const index: IndexDefinition = {
+        id: 'index',
+        name: 'idx_fields',
+        kind,
+        fields: [
+          { name: 'a', direction: 'ASC' },
+          { name: 'b', direction: 'ASC' },
+        ],
+      };
+      const diff = diffPersistedState(
+        createPersistedState({ indexes: [index] }),
+        createPersistedState({ indexes: [{ ...index, fields }] }),
+      );
+      expect(diff.indexes.map((change) => change.type)).toEqual(['remove', 'add']);
+    },
+  );
+
   it('detects an enum label change as a column comment change', () => {
     const row = createRow({
       id: 'field-id',

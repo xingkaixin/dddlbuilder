@@ -997,6 +997,12 @@ describe('table statements', () => {
 });
 
 describe('generateTableCommentAlter', () => {
+  it('updates an existing SQL Server table comment', () => {
+    expect(generateTableCommentAlter('users', '表', 'sqlserver', '旧注释')).toContain(
+      'sp_updateextendedproperty',
+    );
+  });
+
   const cases: Array<{ db: DatabaseType; expected: string }> = [
     { db: 'mysql', expected: "ALTER TABLE t COMMENT = '注释';" },
     { db: 'mariadb', expected: "ALTER TABLE t COMMENT = '注释';" },
@@ -1397,10 +1403,10 @@ describe('buildDefaultClause', () => {
   it('formats constant default with quotes for string', () => {
     expect(
       buildDefaultClause(
-        createField({ defaultKind: 'constant', defaultValue: 'active', type: 'varchar' }),
+        createField({ defaultKind: 'constant', defaultValue: "O'Hara", type: 'varchar' }),
         'mysql',
       ),
-    ).toBe("DEFAULT 'active'");
+    ).toBe("DEFAULT 'O''Hara'");
   });
 
   it('formats constant default without quotes for numeric', () => {
@@ -1470,6 +1476,12 @@ describe('buildDefaultClause', () => {
 
   it('returns empty for unsupported default on type', () => {
     expect(buildDefaultClause(createField({ defaultKind: 'uuid', type: 'int' }), 'mysql')).toBe('');
+    expect(buildDefaultClause(createField({ defaultKind: 'uuid', type: 'json' }), 'mysql')).toBe(
+      '',
+    );
+    expect(
+      buildDefaultClause(createField({ defaultKind: 'current_timestamp', type: 'int' }), 'mysql'),
+    ).toBe('');
   });
 });
 
