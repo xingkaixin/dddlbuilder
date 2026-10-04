@@ -3,12 +3,60 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
+const nodeTests = [
+  'components/App/aiSchemaPatchTransition',
+  'components/App/dialogLayerModel',
+  'components/App/er-diagram/tableRelationship',
+  'components/App/saved-tables/dnd',
+  'components/ImportSqlDialog/importDialogState',
+  'features/field-processing',
+  'hooks/workspacePersistence/hydration',
+  'hooks/workspacePersistence/normalize',
+  'i18n/localeParity',
+  'services/savedTableSnapshot',
+  'services/schemaStateMerge',
+  'services/streamingText',
+  'stores/editorDocumentMutations',
+  'stores/editorDocumentValidation',
+  'stores/indexDefinitionMutations',
+  'utils/aiSchemaChanges',
+  'utils/convertParsedResultToPersistedState',
+  'utils/ddlReview',
+  'utils/excelArchiveGuard',
+  'utils/fieldRenameUtils',
+  'utils/fieldTypeRisk',
+  'utils/foreignKeyImport',
+  'utils/importedFieldIdentity',
+  'utils/mockDataConstraints',
+  'utils/normalizeAiEnumValue',
+  'utils/parsePartialJson',
+  'utils/parsePartialTableSchema',
+  'utils/persistedStateSignature',
+  'utils/schemaLint',
+  'utils/structuredImportParser',
+  'utils/tabUtils',
+  'webmcp/schemaPatch',
+].map((file) => `src/__tests__/${file}.test.ts`);
+
 export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/__tests__/setup.ts'],
+    projects: [
+      {
+        extends: true,
+        test: { name: 'web-node', environment: 'node', include: nodeTests },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'web-dom',
+          environment: 'jsdom',
+          exclude: nodeTests,
+          setupFiles: ['./src/__tests__/setup.ts'],
+        },
+      },
+    ],
     exclude: [
       'node_modules/**',
       '**/node_modules/**',
