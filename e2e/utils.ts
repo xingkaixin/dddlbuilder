@@ -34,13 +34,12 @@ export async function confirmFieldTypeChangeIfNeeded(page: Page): Promise<void> 
  */
 export async function ensureBuilderVisible(page: Page): Promise<void> {
   const tableNameInput = page.locator('#table-name');
+  const createTableButton = page.getByRole('button', { name: '创建新表', exact: true });
 
-  try {
-    await tableNameInput.waitFor({ state: 'visible', timeout: 3000 });
-  } catch {
-    await page.getByRole('button', { name: '创建新表' }).click();
-    await tableNameInput.waitFor({ state: 'visible', timeout: 10000 });
-  }
+  await tableNameInput.or(createTableButton).first().waitFor({ state: 'visible', timeout: 10000 });
+
+  if (!(await tableNameInput.isVisible())) await createTableButton.click();
+  await tableNameInput.waitFor({ state: 'visible', timeout: 10000 });
 
   await selectWorkspaceView(page, 'split');
 }

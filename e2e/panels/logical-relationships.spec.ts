@@ -38,7 +38,10 @@ test('Logical relationships persist without adding SQL constraints @panels', asy
   );
   await page.keyboard.press('Escape');
   await page.reload();
-  await page.getByRole('button', { name: 'Business links', exact: true }).first().click();
+  await page
+    .getByTestId('workspace-sidebar')
+    .getByRole('button', { name: /^Business links(?: \*)?$/ })
+    .click();
   await selectWorkspaceView(page, 'split');
   await page.getByRole('tab', { name: '外键配置', exact: true }).click();
   await expect(page.getByText('业务上的自关联', { exact: true })).toBeVisible();
