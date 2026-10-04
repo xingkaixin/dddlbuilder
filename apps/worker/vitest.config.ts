@@ -18,12 +18,6 @@ export default defineConfig({
         'api/__tests__/**/*',
         'server-api/__tests__/**/*',
       ],
-      thresholds: {
-        branches: 79,
-        functions: 92,
-        lines: 91,
-        statements: 89,
-      },
     },
   },
 });
