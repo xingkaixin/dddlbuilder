@@ -162,6 +162,48 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@cloudflare/config':
+      specifier: 0.23.0
+      version: 0.23.0
+    '@types/node':
+      specifier: ^26.5.1
+      version: 26.5.1
+    '@vitest/coverage-v8':
+      specifier: ^5.0.0
+      version: 5.0.0
+    better-auth:
+      specifier: ^1.7.4
+      version: 1.7.4
+    drizzle-orm:
+      specifier: ^0.45.2
+      version: 0.45.2
+    effect:
+      specifier: 4.0.0-rc.115
+      version: 4.0.0-rc.115
+    hono:
+      specifier: ^4.13.7
+      version: 4.13.7
+    lib0:
+      specifier: ^0.2.117
+      version: 0.2.117
+    typescript:
+      specifier: ~7.0.2
+      version: 7.0.2
+    vite:
+      specifier: ^8.3.0
+      version: 8.3.0
+    vitest:
+      specifier: ^5.0.0
+      version: 5.0.0
+    y-protocols:
+      specifier: ^1.0.7
+      version: 1.0.7
+    yjs:
+      specifier: ^13.6.32
+      version: 13.6.32
+
 overrides:
   mdast-util-to-hast: ^13.2.1
   '@esbuild-kit/core-utils>esbuild': ^0.28.2
@@ -174,11 +216,11 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1(hono@4.13.7)
       hono:
-        specifier: ^4.13.7
+        specifier: 'catalog:'
         version: 4.13.7
     devDependencies:
       '@cloudflare/config':
-        specifier: 0.23.0
+        specifier: 'catalog:'
         version: 0.23.0
       '@ddlbuilder/tsconfig':
         specifier: workspace:*
@@ -190,16 +232,16 @@ importers:
         specifier: ^1.63.0
         version: 1.63.0
       '@types/node':
-        specifier: ^26.5.1
+        specifier: 'catalog:'
         version: 26.5.1
       '@vitest/coverage-v8':
-        specifier: ^5.0.0
+        specifier: 'catalog:'
         version: 5.0.0(vitest@5.0.0)
       '@vitest/ui':
         specifier: ^5.0.0
         version: 5.0.0(vitest@5.0.0)
       lib0:
-        specifier: ^0.2.117
+        specifier: 'catalog:'
         version: 0.2.117
       oxfmt:
         specifier: ^0.67.0
@@ -223,19 +265,19 @@ importers:
         specifier: ^2.10.12
         version: 2.10.12
       typescript:
-        specifier: ~7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vitest:
-        specifier: ^5.0.0
+        specifier: 'catalog:'
         version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(@vitest/ui@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
       wrangler:
         specifier: ^4.147.0
         version: 4.147.0(@cloudflare/workers-types@5.20260911.1)(@types/node@26.5.1)
       y-protocols:
-        specifier: ^1.0.7
+        specifier: 'catalog:'
         version: 1.0.7(yjs@13.6.32)
       yjs:
-        specifier: ^13.6.32
+        specifier: 'catalog:'
         version: 13.6.32
 
   apps/docs:
@@ -289,7 +331,7 @@ importers:
         specifier: ^12.11.6
         version: 12.11.6(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       better-auth:
-        specifier: ^1.7.4
+        specifier: 'catalog:'
         version: 1.7.4(@cloudflare/workers-types@5.20260911.1)(drizzle-orm@0.45.2(@cloudflare/workers-types@5.20260911.1)(kysely@0.29.5))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@5.0.0)(vue@3.5.42(typescript@7.0.2))
       class-variance-authority:
         specifier: ^0.7.1
@@ -298,7 +340,7 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       effect:
-        specifier: 4.0.0-rc.115
+        specifier: 'catalog:'
         version: 4.0.0-rc.115
       fflate:
         specifier: 0.8.3
@@ -310,7 +352,7 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       lib0:
-        specifier: ^0.2.117
+        specifier: 'catalog:'
         version: 0.2.117
       next-themes:
         specifier: ^0.4.6
@@ -343,10 +385,10 @@ importers:
         specifier: ^9.0.12
         version: 9.0.12(yjs@13.6.32)
       y-protocols:
-        specifier: ^1.0.7
+        specifier: 'catalog:'
         version: 1.0.7(yjs@13.6.32)
       yjs:
-        specifier: ^13.6.32
+        specifier: 'catalog:'
         version: 13.6.32
       zustand:
         specifier: ^5.0.15
@@ -395,13 +437,13 @@ importers:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.3.3)
       typescript:
-        specifier: ~7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vite:
-        specifier: ^8.3.0
+        specifier: 'catalog:'
         version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
       vitest:
-        specifier: ^5.0.0
+        specifier: 'catalog:'
         version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(@vitest/ui@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
       webmcp-types:
         specifier: ^0.1.7
@@ -425,22 +467,22 @@ importers:
         specifier: 4.0.0-rc.115
         version: 4.0.0-rc.115(effect@4.0.0-rc.115)
       better-auth:
-        specifier: ^1.7.4
+        specifier: 'catalog:'
         version: 1.7.4(@cloudflare/workers-types@5.20260911.1)(drizzle-orm@0.45.2(@cloudflare/workers-types@5.20260911.1)(kysely@0.29.5))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@5.0.0)(vue@3.5.42(typescript@7.0.2))
       drizzle-orm:
-        specifier: ^0.45.2
+        specifier: 'catalog:'
         version: 0.45.2(@cloudflare/workers-types@5.20260911.1)(kysely@0.29.5)
       effect:
-        specifier: 4.0.0-rc.115
+        specifier: 'catalog:'
         version: 4.0.0-rc.115
       evlog:
         specifier: 2.29.0
         version: 2.29.0(hono@4.13.7)(react@19.3.0)(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
       hono:
-        specifier: ^4.13.7
+        specifier: 'catalog:'
         version: 4.13.7
       lib0:
-        specifier: ^0.2.117
+        specifier: 'catalog:'
         version: 0.2.117
       openai:
         specifier: ^7.15.0
@@ -449,14 +491,14 @@ importers:
         specifier: ^6.28.0
         version: 6.28.0
       y-protocols:
-        specifier: ^1.0.7
+        specifier: 'catalog:'
         version: 1.0.7(yjs@13.6.32)
       yjs:
-        specifier: ^13.6.32
+        specifier: 'catalog:'
         version: 13.6.32
     devDependencies:
       '@cloudflare/config':
-        specifier: 0.23.0
+        specifier: 'catalog:'
         version: 0.23.0
       '@cloudflare/vite-plugin':
         specifier: 2.0.0-beta.sha-52b0dc0e9
@@ -468,22 +510,22 @@ importers:
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/node':
-        specifier: ^26.5.1
+        specifier: 'catalog:'
         version: 26.5.1
       typescript:
-        specifier: ~7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       vite:
-        specifier: ^8.3.0
+        specifier: 'catalog:'
         version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
       vitest:
-        specifier: ^5.0.0
+        specifier: 'catalog:'
         version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(@vitest/ui@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
 
   packages/db:
     dependencies:
       drizzle-orm:
-        specifier: ^0.45.2
+        specifier: 'catalog:'
         version: 0.45.2(@cloudflare/workers-types@5.20260911.1)(kysely@0.29.5)
     devDependencies:
       '@ddlbuilder/tsconfig':
@@ -503,13 +545,13 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
       drizzle-orm:
-        specifier: ^0.45.2
+        specifier: 'catalog:'
         version: 0.45.2(@cloudflare/workers-types@5.20260911.1)(kysely@0.29.5)
 
   packages/shared-types:
     dependencies:
       effect:
-        specifier: 4.0.0-rc.115
+        specifier: 'catalog:'
         version: 4.0.0-rc.115
     devDependencies:
       '@ddlbuilder/tsconfig':
@@ -524,20 +566,20 @@ importers:
         specifier: workspace:*
         version: link:../shared-types
       lib0:
-        specifier: ^0.2.117
+        specifier: 'catalog:'
         version: 0.2.117
       yjs:
-        specifier: ^13.6.32
+        specifier: 'catalog:'
         version: 13.6.32
     devDependencies:
       '@ddlbuilder/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@vitest/coverage-v8':
-        specifier: ^5.0.0
+        specifier: 'catalog:'
         version: 5.0.0(vitest@5.0.0)
       vitest:
-        specifier: ^5.0.0
+        specifier: 'catalog:'
         version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(@vitest/ui@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
 
 packages:

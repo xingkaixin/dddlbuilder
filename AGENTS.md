@@ -28,6 +28,7 @@
 
 ## 开发
 - 添加依赖时，在目标 workspace 中运行 `pnpm add <package>`，或从仓库根目录运行 `pnpm --filter <workspace> add <package>`。添加到根 workspace 时使用 `pnpm add -w <package>`。不要手动编辑 `package.json`。
+- 多个 workspace 共用的外部依赖版本集中在 `pnpm-workspace.yaml` 的 `catalog` 中。复用已有条目时使用 `pnpm --filter <workspace> add <package>@catalog:`（开发依赖加 `-D`）；将依赖纳入 catalog 时使用 `pnpm add <package>@<版本范围> --save-catalog`。
 - Cloudflare Worker 中的异步副作用（如 Telegram 通知、审计上报、异步写入）如果需要在请求返回后继续执行，必须挂到 `waitUntil`；不要只写 `void someAsyncTask()`，否则本地正常、线上可能因 Worker 提前结束而丢失。
 - 格式化代码使用 `pnpm format`。
 

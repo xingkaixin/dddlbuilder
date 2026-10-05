@@ -45,17 +45,17 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",
-    "hono": "^4.13.7"
+    "hono": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/config": "0.23.0",
+    "@cloudflare/config": "catalog:",
     "@ddlbuilder/tsconfig": "workspace:*",
     "@oxlint/plugins": "1.82.0",
     "@playwright/test": "^1.63.0",
-    "@types/node": "^26.5.1",
-    "@vitest/coverage-v8": "^5.0.0",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "^5.0.0",
-    "lib0": "^0.2.117",
+    "lib0": "catalog:",
     "oxfmt": "^0.67.0",
     "oxlint": "^1.82.0",
     "oxlint-tsgolint": "^7.0.2001",
@@ -63,11 +63,11 @@
     "sharp": "^0.35.4",
     "tsx": "^4.23.13",
     "turbo": "^2.10.12",
-    "typescript": "~7.0.2",
-    "vitest": "^5.0.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
     "wrangler": "^4.147.0",
-    "y-protocols": "^1.0.7",
-    "yjs": "^13.6.32"
+    "y-protocols": "catalog:",
+    "yjs": "catalog:"
   },
   "packageManager": "pnpm@12.4.1"
 }

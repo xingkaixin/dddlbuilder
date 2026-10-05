@@ -19,25 +19,25 @@
     "@ddlbuilder/user-db": "workspace:*",
     "@ddlbuilder/workspace-core": "workspace:*",
     "@effect/sql-d1": "4.0.0-rc.115",
-    "better-auth": "^1.7.4",
-    "drizzle-orm": "^0.45.2",
-    "effect": "4.0.0-rc.115",
+    "better-auth": "catalog:",
+    "drizzle-orm": "catalog:",
+    "effect": "catalog:",
     "evlog": "2.29.0",
-    "hono": "^4.13.7",
-    "lib0": "^0.2.117",
+    "hono": "catalog:",
+    "lib0": "catalog:",
     "openai": "^7.15.0",
     "resend": "^6.28.0",
-    "y-protocols": "^1.0.7",
-    "yjs": "^13.6.32"
+    "y-protocols": "catalog:",
+    "yjs": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/config": "0.23.0",
+    "@cloudflare/config": "catalog:",
     "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
     "@cloudflare/workers-types": "^5.20260911.1",
     "@ddlbuilder/tsconfig": "workspace:*",
-    "@types/node": "^26.5.1",
-    "typescript": "~7.0.2",
-    "vite": "^8.3.0",
-    "vitest": "^5.0.0"
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }
