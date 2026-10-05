@@ -3,16 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build --config vite.config.ts",
+    "build": "vite build --config vite.bundle.config.ts",
     "dev": "pnpm --dir ../.. run dev:worker",
-    "typecheck": "pnpm typegen && tsc --noEmit -p tsconfig.typecheck.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "lint": "pnpm typegen && oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json api/ server-api/ && oxfmt --config ../../.oxfmtrc.json --check api/ server-api/",
-    "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix api/ server-api/ && oxfmt --config ../../.oxfmtrc.json --write api/ server-api/",
-    "format": "oxfmt --config ../../.oxfmtrc.json --write api/ server-api/",
-    "typegen": "WRANGLER_LOG=warn wrangler types worker-configuration.d.ts --config wrangler.toml --env-interface WorkerBindings --include-runtime false"
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json api/ server-api/ cloudflare.config.ts vite.config.ts vite.bundle.config.ts && oxfmt --config ../../.oxfmtrc.json --check api/ server-api/ cloudflare.config.ts vite.config.ts vite.bundle.config.ts",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix api/ server-api/ cloudflare.config.ts vite.config.ts vite.bundle.config.ts && oxfmt --config ../../.oxfmtrc.json --write api/ server-api/ cloudflare.config.ts vite.config.ts vite.bundle.config.ts",
+    "format": "oxfmt --config ../../.oxfmtrc.json --write api/ server-api/ cloudflare.config.ts vite.config.ts vite.bundle.config.ts"
   },
   "dependencies": {
     "@ddlbuilder/ddl-core": "workspace:*",
@@ -32,12 +31,13 @@
     "yjs": "^13.6.32"
   },
   "devDependencies": {
+    "@cloudflare/config": "0.23.0",
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
     "@cloudflare/workers-types": "^5.20260911.1",
     "@ddlbuilder/tsconfig": "workspace:*",
     "@types/node": "^26.5.1",
     "typescript": "~7.0.2",
     "vite": "^8.3.0",
-    "vitest": "^5.0.0",
-    "wrangler": "^4.131.1"
+    "vitest": "^5.0.0"
   }
 }

@@ -2,14 +2,14 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { D1_BINDING, listMigrationFiles } from './d1-utils';
+import { buildD1ExecuteArgs, listMigrationFiles, writeLocalD1Config } from './d1-utils';
 
 export { REQUIRED_RUNTIME_TABLES } from './d1-utils';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 type D1RuntimeOptions = {
-  configPath: string;
+  mode: 'development' | 'e2e';
   persistDir: string;
 };
 
@@ -21,24 +21,7 @@ const runWrangler = (
   options: D1RuntimeOptions,
   sqlInput: { file?: string; command?: string; json?: boolean },
 ) => {
-  const args = [
-    'exec',
-    'wrangler',
-    '--config',
-    options.configPath,
-    'd1',
-    'execute',
-    D1_BINDING,
-    '--local',
-    '--persist-to',
-    options.persistDir,
-  ];
-
-  if (sqlInput.file) args.push('--file', sqlInput.file);
-
-  if (sqlInput.command) args.push('--command', sqlInput.command);
-
-  if (sqlInput.json) args.push('--json');
+  const args = buildD1ExecuteArgs(writeLocalD1Config(options.mode), options.persistDir, sqlInput);
 
   const result = spawnSync('pnpm', args, {
     cwd: repoRoot,
@@ -92,6 +75,6 @@ export const verifyLocalD1Runtime = (
 };
 
 export const e2eD1RuntimeOptions = {
-  configPath: 'apps/worker/wrangler.e2e.toml',
+  mode: 'e2e',
   persistDir: path.join(repoRoot, '.wrangler', 'state', 'e2e'),
 } satisfies D1RuntimeOptions;

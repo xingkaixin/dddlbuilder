@@ -5,7 +5,7 @@ import { prepareLocalD1Runtime, REQUIRED_RUNTIME_TABLES, verifyLocalD1Runtime } 
 
 const persistDir = mkdtempSync(path.join(tmpdir(), 'ddlbuilder-d1-runtime-'));
 const options = {
-  configPath: 'apps/worker/wrangler.e2e.toml',
+  mode: 'e2e' as const,
   persistDir,
 };
 

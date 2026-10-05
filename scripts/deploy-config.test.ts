@@ -1,37 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { assertAIUsageCronConfigured } from './deploy-config.js';
+import { triggers } from '@cloudflare/config';
+import { getWorkerConfig } from '../apps/worker/cloudflare.config';
+import { assertAIUsageCronConfigured, readWorkerConfig } from './deploy-config';
 
 describe('deploy config', () => {
-  it('accepts the AI usage recovery cron', () => {
-    expect(() =>
-      assertAIUsageCronConfigured(
-        'name = "worker"\n\n[triggers]\ncrons = ["*/10 * * * *"]\n\n[vars]\nA = "1"\n',
-        'wrangler.toml',
-      ),
-    ).not.toThrow();
+  it('preserves the recovery cron and Durable Object namespace in production', () => {
+    const worker = readWorkerConfig('example');
+    expect(() => assertAIUsageCronConfigured(worker)).not.toThrow();
+    expect(worker.env.WORKSPACE_YDOC).toMatchObject({
+      worker: 'ddlbuilder',
+      exportName: 'WorkspaceYDocDurableObject',
+    });
+    expect(worker.exports.WorkspaceYDocDurableObject).toMatchObject({ storage: 'sqlite' });
+    expect(worker.workersDev).toBe(false);
+    expect(worker.previewUrls).toBe(false);
   });
 
-  it('accepts the AI usage recovery cron alongside other schedules', () => {
-    expect(() =>
-      assertAIUsageCronConfigured(
-        '[triggers]\ncrons = ["0 0 * * *", "*/10 * * * *", "0 0 1 1 *"]\n',
-        'wrangler.toml',
-      ),
-    ).not.toThrow();
-  });
+  it.each([{ schedules: [] }, { schedules: [triggers.scheduled({ schedule: '*/30 * * * *' })] }])(
+    'rejects a missing AI recovery cron',
+    ({ schedules }) => {
+      expect(() =>
+        assertAIUsageCronConfigured({
+          ...getWorkerConfig(),
+          triggers: schedules,
+        }),
+      ).toThrow('must include "*/10 * * * *"');
+    },
+  );
 
-  it.each([
-    'name = "worker"\n',
-    '[triggers]\ncrons = []\n',
-    '[triggers]\n# crons = ["*/10 * * * *"]\n',
-    '[triggers]\ncrons = [\n  # "*/10 * * * *"\n]\n',
-    '[triggers]\ncrons = ["   "]\n',
-    '[triggers]\ncrons = ["0 0 1 1 *"]\n',
-    '[triggers]\ncrons = ["0 0 * * *"]\n',
-    '[triggers]\ncrons = ["*/30 * * * *"]\n',
-  ])('rejects a missing AI recovery cron', (config) => {
-    expect(() => assertAIUsageCronConfigured(config, 'wrangler.toml')).toThrow(
-      'wrangler.toml must include "*/10 * * * *" in [triggers].crons for AI usage recovery',
-    );
+  it('rejects unknown deployment modes instead of using local bindings', () => {
+    expect(() => getWorkerConfig('prod')).toThrow('Unknown Cloudflare mode');
   });
 });

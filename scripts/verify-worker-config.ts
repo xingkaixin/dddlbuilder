@@ -1,9 +1,5 @@
-import { assertWorkerConfigValid } from './deploy-config.js';
+import { readWorkerConfig } from './deploy-config';
 
-for (const config of [
-  'apps/worker/wrangler.toml',
-  'apps/worker/wrangler.deploy.example.toml',
-  'apps/worker/wrangler.e2e.toml',
-]) {
-  assertWorkerConfigValid(config);
+for (const mode of ['development', 'example', 'e2e']) {
+  readWorkerConfig(mode);
 }

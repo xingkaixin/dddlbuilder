@@ -1,0 +1,11 @@
+{
+  "ENVIRONMENT": "test",
+  "CORS_ALLOWED_ORIGINS": "http://127.0.0.1:3000",
+  "BETTER_AUTH_SECRET": "test-better-auth-secret-for-e2e-only",
+  "BETTER_AUTH_URL": "http://127.0.0.1:3000",
+  "RESEND_API_KEY": "test-resend-api-key-for-e2e-only",
+  "RESEND_FROM_EMAIL": "test@example.com",
+  "RESEND_FROM_NAME": "DDLBuilder",
+  "AUTH_REQUIRE_EMAIL_VERIFICATION": "false",
+  "SIGNUP_BONUS_CREDITS": "10000"
+}

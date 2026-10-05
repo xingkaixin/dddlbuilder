@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readWorkerConfig } from './deploy-config';
 
 export type D1Mode = 'local' | 'remote';
 
@@ -38,18 +39,35 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 
 export const D1_BINDING = 'USER_DB';
 
-export const getWranglerConfigPath = (mode: D1Mode) =>
-  mode === 'remote' ? 'apps/worker/wrangler.deploy.toml' : 'apps/worker/wrangler.toml';
 export const migrationDir = path.join(repoRoot, 'packages', 'db', 'migrations');
 export const seedSqlPath = path.join(repoRoot, 'packages', 'db', 'seeds', 'user-system.local.sql');
 export const localPersistDir =
-  process.env.WRANGLER_PERSIST_DIR ?? path.join('.wrangler', 'state', 'dev');
+  process.env.CF_PERSIST_DIR ??
+  process.env.WRANGLER_PERSIST_DIR ??
+  path.join('.wrangler', 'state', 'dev');
 
 export const resolveD1Mode = (args: string[]): D1Mode =>
   args.includes('--remote') ? 'remote' : 'local';
 
-export const getD1Flag = (mode: D1Mode): '--local' | '--remote' =>
-  mode === 'remote' ? '--remote' : '--local';
+export const writeLocalD1Config = (mode: 'development' | 'e2e') => {
+  const worker = readWorkerConfig(mode);
+  const configPath = path.join(repoRoot, '.wrangler', `d1-${mode}.json`);
+  mkdirSync(path.dirname(configPath), { recursive: true });
+  writeFileSync(
+    configPath,
+    JSON.stringify({
+      d1_databases: [
+        {
+          binding: D1_BINDING,
+          database_id: worker.env.USER_DB.id,
+          database_name: worker.env.USER_DB.name,
+        },
+      ],
+    }),
+  );
+
+  return configPath;
+};
 
 export const listMigrationFiles = (dir = migrationDir): string[] =>
   readdirSync(dir)
@@ -95,65 +113,64 @@ const deriveRequiredRuntimeTables = (dir: string): string[] => {
 
 export const REQUIRED_RUNTIME_TABLES = deriveRequiredRuntimeTables(migrationDir);
 
+type D1Input = { file?: string; command?: string; json?: boolean };
+
 export const buildD1ExecuteArgs = (
-  mode: D1Mode,
-  input: { file?: string; command?: string; json?: boolean },
+  configPath: string,
+  persistDir: string,
+  input: D1Input,
 ): string[] => {
-  if (!input.file && !input.command) {
-    throw new Error('缺少 SQL 输入');
-  }
+  if (!input.file && !input.command) throw new Error('缺少 SQL 输入');
 
   const args = [
     'exec',
     'wrangler',
     '--config',
-    getWranglerConfigPath(mode),
+    configPath,
     'd1',
     'execute',
     D1_BINDING,
-    getD1Flag(mode),
+    '--local',
+    '--persist-to',
+    persistDir,
   ];
 
-  if (mode === 'local') {
-    args.push('--persist-to', localPersistDir);
-  }
+  if (input.file) args.push('--file', input.file);
 
-  if (input.file) {
-    args.push('--file', input.file);
-  }
+  if (input.command) args.push('--command', input.command);
 
-  if (input.command) {
-    args.push('--command', input.command);
-  }
-
-  if (input.json) {
-    args.push('--json');
-  }
+  if (input.json) args.push('--json');
 
   return args;
 };
 
-export const runD1Execute = (
-  mode: D1Mode,
-  input: { file?: string; command?: string; json?: boolean },
-): void => {
-  const result = spawnSync('pnpm', buildD1ExecuteArgs(mode, input), {
-    cwd: repoRoot,
-    stdio: 'inherit',
-  });
+export const buildD1QueryArgs = (databaseId: string, input: D1Input): string[] => {
+  if (!input.file && !input.command) throw new Error('缺少 SQL 输入');
 
-  if ((result.status ?? 1) !== 0) {
-    process.exit(result.status ?? 1);
-  }
+  if (input.file && input.command) throw new Error('SQL 文件和命令不能同时指定');
+
+  return [
+    'd1',
+    'query',
+    databaseId,
+    '--sql',
+    input.file ? readFileSync(input.file, 'utf8') : (input.command ?? ''),
+  ];
 };
 
-const runD1ExecuteJson = (
-  mode: D1Mode,
-  input: { file?: string; command?: string },
-): D1JsonValue => {
-  const result = spawnSync('pnpm', buildD1ExecuteArgs(mode, { ...input, json: true }), {
+const executeD1 = (mode: D1Mode, input: D1Input, captureOutput: boolean) => {
+  const command = mode === 'remote' ? 'cf' : 'pnpm';
+  const databaseId = mode === 'remote' ? readWorkerConfig('production').env.USER_DB.id : undefined;
+
+  if (mode === 'remote' && !databaseId) throw new Error('Production D1 database ID is required');
+
+  const args = databaseId
+    ? buildD1QueryArgs(databaseId, input)
+    : buildD1ExecuteArgs(writeLocalD1Config('development'), localPersistDir, input);
+  const result = spawnSync(command, args, {
     cwd: repoRoot,
     encoding: 'utf8',
+    stdio: captureOutput ? 'pipe' : 'inherit',
   });
 
   if ((result.status ?? 1) !== 0) {
@@ -161,8 +178,15 @@ const runD1ExecuteJson = (
     process.exit(result.status ?? 1);
   }
 
-  return JSON.parse(result.stdout);
+  return result.stdout;
 };
+
+export const runD1Execute = (mode: D1Mode, input: D1Input): void => {
+  executeD1(mode, input, false);
+};
+
+const runD1ExecuteJson = (mode: D1Mode, input: D1Input): D1JsonValue =>
+  JSON.parse(executeD1(mode, { ...input, json: true }, true));
 
 const queryD1Rows = <T>(mode: D1Mode, command: string, decode: (value: D1JsonValue) => T): T[] => {
   const payload = runD1ExecuteJson(mode, { command });

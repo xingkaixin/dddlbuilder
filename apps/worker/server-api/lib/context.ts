@@ -1,9 +1,11 @@
 /// <reference types="@cloudflare/workers-types" />
-// oxlint-disable-next-line typescript/triple-slash-reference -- Wrangler emits global declarations without module exports.
-/// <reference path="../../worker-configuration.d.ts" />
+import type { InferEnv } from '@cloudflare/config';
+import type { getWorkerConfig } from '../../cloudflare.config';
 
 import type { ApiErrorCode } from '@ddlbuilder/shared-types/api';
 import type { AuditableLogger } from 'evlog';
+
+type WorkerBindings = InferEnv<ReturnType<typeof getWorkerConfig>>;
 
 export type WorkerRequestLogFields = {
   path: string;

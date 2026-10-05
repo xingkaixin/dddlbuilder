@@ -63,3 +63,6 @@ skills-lock.json
 
 # temp
 .temp
+
+.cloudflare
+cloudflare.deploy.json

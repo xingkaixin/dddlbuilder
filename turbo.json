@@ -12,10 +12,6 @@
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
-    "@ddlbuilder/worker#typecheck": {
-      "dependsOn": ["^typecheck"],
-      "outputs": ["worker-configuration.d.ts"]
-    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": []

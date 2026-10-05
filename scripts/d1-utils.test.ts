@@ -3,9 +3,8 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildD1ExecuteArgs,
+  buildD1QueryArgs,
   baselineExistingMigrations,
-  getD1Flag,
-  getWranglerConfigPath,
   listMigrationFiles,
   migrationDir,
   resetDatabase,
@@ -40,21 +39,20 @@ describe('d1-utils', () => {
   });
   it('defaults to local mode', () => {
     expect(resolveD1Mode([])).toBe('local');
-    expect(getD1Flag('local')).toBe('--local');
   });
 
   it('switches to remote mode when requested', () => {
     expect(resolveD1Mode(['--remote'])).toBe('remote');
-    expect(getD1Flag('remote')).toBe('--remote');
-    expect(getWranglerConfigPath('remote')).toBe('apps/worker/wrangler.deploy.toml');
   });
 
   it('builds wrangler execute args from sql file', () => {
-    expect(buildD1ExecuteArgs('local', { file: '/tmp/test.sql' })).toEqual([
+    expect(
+      buildD1ExecuteArgs('local-d1.json', '.wrangler/state/dev', { file: '/tmp/test.sql' }),
+    ).toEqual([
       'exec',
       'wrangler',
       '--config',
-      'apps/worker/wrangler.toml',
+      'local-d1.json',
       'd1',
       'execute',
       'USER_DB',
@@ -73,11 +71,13 @@ describe('d1-utils', () => {
   });
 
   it('builds wrangler execute args from command only', () => {
-    expect(buildD1ExecuteArgs('local', { command: 'SELECT 1' })).toEqual([
+    expect(
+      buildD1ExecuteArgs('local-d1.json', '.wrangler/state/dev', { command: 'SELECT 1' }),
+    ).toEqual([
       'exec',
       'wrangler',
       '--config',
-      'apps/worker/wrangler.toml',
+      'local-d1.json',
       'd1',
       'execute',
       'USER_DB',
@@ -90,11 +90,16 @@ describe('d1-utils', () => {
   });
 
   it('builds wrangler execute args with json flag', () => {
-    expect(buildD1ExecuteArgs('local', { command: 'SELECT 1', json: true })).toEqual([
+    expect(
+      buildD1ExecuteArgs('local-d1.json', '.wrangler/state/dev', {
+        command: 'SELECT 1',
+        json: true,
+      }),
+    ).toEqual([
       'exec',
       'wrangler',
       '--config',
-      'apps/worker/wrangler.toml',
+      'local-d1.json',
       'd1',
       'execute',
       'USER_DB',
@@ -107,31 +112,33 @@ describe('d1-utils', () => {
     ]);
   });
 
-  it('builds wrangler execute args for remote mode without persist-to', () => {
-    expect(buildD1ExecuteArgs('remote', { file: '/tmp/test.sql' })).toEqual([
-      'exec',
-      'wrangler',
-      '--config',
-      'apps/worker/wrangler.deploy.toml',
+  it('builds a remote cf query without local runtime flags', () => {
+    expect(buildD1QueryArgs('production-db-id', { command: 'SELECT 1' })).toEqual([
       'd1',
-      'execute',
-      'USER_DB',
-      '--remote',
-      '--file',
-      '/tmp/test.sql',
+      'query',
+      'production-db-id',
+      '--sql',
+      'SELECT 1',
     ]);
   });
 
   it('throws error when neither file nor command is provided', () => {
-    expect(() => buildD1ExecuteArgs('local', {})).toThrow('缺少 SQL 输入');
+    expect(() => buildD1ExecuteArgs('local-d1.json', '.wrangler/state/dev', {})).toThrow(
+      '缺少 SQL 输入',
+    );
   });
 
   it('builds wrangler execute args with both file and command', () => {
-    expect(buildD1ExecuteArgs('local', { file: '/tmp/test.sql', command: 'SELECT 1' })).toEqual([
+    expect(
+      buildD1ExecuteArgs('local-d1.json', '.wrangler/state/dev', {
+        file: '/tmp/test.sql',
+        command: 'SELECT 1',
+      }),
+    ).toEqual([
       'exec',
       'wrangler',
       '--config',
-      'apps/worker/wrangler.toml',
+      'local-d1.json',
       'd1',
       'execute',
       'USER_DB',
@@ -140,21 +147,6 @@ describe('d1-utils', () => {
       '.wrangler/state/dev',
       '--file',
       '/tmp/test.sql',
-      '--command',
-      'SELECT 1',
-    ]);
-  });
-
-  it('builds wrangler execute args for remote mode with command', () => {
-    expect(buildD1ExecuteArgs('remote', { command: 'SELECT 1' })).toEqual([
-      'exec',
-      'wrangler',
-      '--config',
-      'apps/worker/wrangler.deploy.toml',
-      'd1',
-      'execute',
-      'USER_DB',
-      '--remote',
       '--command',
       'SELECT 1',
     ]);
@@ -413,7 +405,7 @@ describe('d1-utils', () => {
       }),
     );
 
-    expect(() => verifyRequiredD1Tables('remote', ['user', 'session'])).not.toThrow();
+    expect(() => verifyRequiredD1Tables('local', ['user', 'session'])).not.toThrow();
   });
 
   it('rejects a database with missing runtime tables', () => {
@@ -424,7 +416,7 @@ describe('d1-utils', () => {
       }),
     );
 
-    expect(() => verifyRequiredD1Tables('remote', ['user', 'session'])).toThrow(
+    expect(() => verifyRequiredD1Tables('local', ['user', 'session'])).toThrow(
       'D1 缺少运行时必需表：session',
     );
   });

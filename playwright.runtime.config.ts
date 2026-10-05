@@ -3,6 +3,7 @@ import { sharedPlaywrightConfig } from './playwright.shared';
 
 export default defineConfig(sharedPlaywrightConfig, {
   testMatch: 'runtime-bindings.spec.ts',
+  use: { extraHTTPHeaders: { Origin: 'http://127.0.0.1:3000' } },
   testIgnore: [],
   fullyParallel: false,
   workers: 1,

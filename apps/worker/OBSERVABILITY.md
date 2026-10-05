@@ -32,9 +32,9 @@ Trace 属性使用白名单，不包含 SQL、提示词、响应正文、密钥�
 
 ## 查询
 
-生产配置在 `wrangler.deploy.toml`：日志采样 100%，Trace 采样 5%。在 Cloudflare Traces 中查找 `ai.request`，按 `request.id`、`ai.route`、`ai.error_code` 和 `ai.accounting_finalized` 筛选。错误率和用量应从完整审计统计，不能把 5% 的 Trace 样本当成总量。
+生产采样配置在 `cloudflare.config.ts`：日志采样 100%，Trace 采样 5%。在 Cloudflare Traces 中查找 `ai.request`，按 `request.id`、`ai.route`、`ai.error_code` 和 `ai.accounting_finalized` 筛选。错误率和用量应从完整审计统计，不能把 5% 的 Trace 样本当成总量。
 
-本地 Wrangler 的 Local Explorer 提供只读查询接口：
+`cf dev` 启动的本地运行时 Local Explorer 提供只读查询接口：
 
 ```sh
 curl -s http://127.0.0.1:3000/cdn-cgi/local/explorer/api/local/observability/query \

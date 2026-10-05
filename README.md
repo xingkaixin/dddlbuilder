@@ -68,7 +68,7 @@ pnpm deploy:cf
 
 - `pnpm dev`：启动前端开发服务、Worker 运行时与文档开发服务，入口为 `http://localhost:3000`，修改页面代码会通过 Vite 自动热更新。
 - `pnpm dev:app`：仅启动前端开发服务（Vite）。
-- `pnpm dev:worker`：先应用本地 D1 pending migrations、构建 Worker 产物，再用 `wrangler dev` 在 `http://localhost:8787` 启动运行时调试服务。
+- `pnpm dev:worker`：先应用本地 D1 pending migrations、构建 Worker 产物，再用全局 `cf dev` 在 `http://localhost:8787` 启动运行时调试服务。
 - `pnpm db:migrate:local`：初始化或升级本地 D1 用户系统 schema。
 - `pnpm db:seed:local`：写入本地 D1 最小种子数据。
 - `pnpm db:reset:local`：清空并重建本地 D1 schema，再重新 seed。
@@ -82,18 +82,22 @@ pnpm deploy:cf
 
 ### 部署 secrets
 
-`wrangler.deploy.toml` 适合放 Worker 名称、KV / D1 绑定、静态资源等非敏感配置，不适合把 secret 明文直接写进去。
+`apps/worker/cloudflare.config.ts` 定义 Worker 绑定、静态资源、Durable Object 和定时任务。`cloudflare.deploy.json` 只保存生产资源 ID、域名和公开变量；secrets 单独保存。
+
+通过 mise 提供全局 `cf`（版本见 `mise.toml`），项目不安装 cf npm 依赖。开发机首次使用时执行 `cf login`；已有登录可直接复用。CI 由 mise 安装同一版本。
 
 项目现在的部署方式是：
 
-1. 复制 `apps/worker/wrangler.deploy.example.toml` 为 `apps/worker/wrangler.deploy.toml`，填写生产资源 ID、`routes` 自定义域名和公开配置；生产模板关闭 `workers.dev` 与版本预览地址
+1. 复制 `apps/worker/cloudflare.deploy.example.json` 为 `apps/worker/cloudflare.deploy.json`，填写生产 D1 / KV ID、`domain` 自定义域名和公开变量；生产配置关闭 `workers.dev` 与版本预览地址
 2. 复制 `.deploy.secrets.example` 为 `.deploy.secrets`
 3. 在 `.deploy.secrets` 中填写生产 secrets
 4. 执行 `pnpm deploy:cf`
 
-`pnpm deploy:cf` 会在构建后先检查 Wrangler 配置，遇到错误或警告就停止；然后记录 D1 Time Travel 恢复点、执行 remote pending migrations、验证运行时必需表，再调用 `wrangler deploy --config apps/worker/wrangler.deploy.toml`。如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
+`pnpm deploy:cf` 构建网站后，先校验 Cloudflare 配置和 AI 额度回收 Cron，再通过 `cf deploy --mode production --dry-run` 检查部署产物。随后记录 D1 Time Travel 恢复点、使用 cf 执行远程 pending migrations、验证运行时必需表，最后通过 `cf deploy --mode production --prebuilt` 部署同一份产物。检测到 `.deploy.secrets` 时，会一并上传 secrets。
 
-Worker 的类型检查与 lint 会先通过 `wrangler types` 生成绑定类型。生成文件不提交到 Git；修改绑定后，也可运行 `pnpm --filter @ddlbuilder/worker typegen` 手动更新。
+开发、生产和端到端测试分别使用 `development`、`production` 和 `e2e` mode。Worker 绑定类型直接从配置推导，无需生成类型文件。
+
+cf 1.0.0-beta.12 的 `d1 query --local` 尚无对应接口；本机验证 `d1 raw --local` 能返回结果，但进程未正常退出。项目暂时保留 Wrangler 仅用于本地 D1。开发和部署使用 cf 的官方 Vite 插件，`apps/worker/vite.config.ts` 配置静态资源目录和本地存储；本地 D1 配置由同一份 Cloudflare 配置生成到 `.wrangler/`。本地状态目录保留 `.wrangler/state/dev`，可通过 `CF_PERSIST_DIR` 覆盖。e2e 使用独立目录 `.wrangler/state/e2e`，并禁用本地 `.env` / `.dev.vars` 文件加载。
 
 `.deploy.secrets` 使用标准 `.env` 格式，例如：
 
@@ -111,7 +115,7 @@ ADMIN_SESSION_SECRET=xxx
 如果你想把 secrets 文件放在别处，部署时可通过环境变量覆盖：
 
 ```bash
-WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
+CF_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 ```
 
 ### 环境变量
