@@ -52,7 +52,7 @@ describe('MySQL ALTER dependencies', () => {
       dependencyNotice + 'ALTER TABLE users\n  DROP PRIMARY KEY,\n  MODIFY COLUMN id INT NOT NULL;',
     );
     expect(generateRollbackDDL(diff)).toBe(
-      'ALTER TABLE users\n  MODIFY COLUMN id INT AUTO_INCREMENT NOT NULL,\n  ADD PRIMARY KEY (id);',
+      'ALTER TABLE users\n  MODIFY COLUMN id INT AUTO_INCREMENT NOT NULL,\n  ADD PRIMARY KEY (id ASC);',
     );
   });
 
@@ -60,7 +60,7 @@ describe('MySQL ALTER dependencies', () => {
     const withoutIdentity = { ...before, rows: before.rows.slice(1), indexes: [] };
     const diff = diffPersistedState(withoutIdentity, before);
     expect(generateAlterDDL(diff)).toBe(
-      'ALTER TABLE users\n  ADD COLUMN id INT AUTO_INCREMENT NOT NULL,\n  ADD PRIMARY KEY (id);',
+      'ALTER TABLE users\n  ADD COLUMN id INT AUTO_INCREMENT NOT NULL,\n  ADD PRIMARY KEY (id ASC);',
     );
     expect(generateRollbackDDL(diff)).toBe(
       dependencyNotice + 'ALTER TABLE users\n  DROP PRIMARY KEY,\n  DROP COLUMN id;',
@@ -78,18 +78,18 @@ describe('MySQL ALTER dependencies', () => {
     const diff = diffPersistedState(before, after);
     expect(generateAlterDDL(diff)).toBe(
       dependencyNotice +
-        'ALTER TABLE users\n  DROP PRIMARY KEY,\n  RENAME COLUMN id TO user_id,\n  ADD PRIMARY KEY (user_id);',
+        'ALTER TABLE users\n  DROP PRIMARY KEY,\n  RENAME COLUMN id TO user_id,\n  ADD PRIMARY KEY (user_id ASC);',
     );
     expect(generateRollbackDDL(diff)).toBe(
       dependencyNotice +
-        'ALTER TABLE users\n  DROP PRIMARY KEY,\n  RENAME COLUMN user_id TO id,\n  ADD PRIMARY KEY (id);',
+        'ALTER TABLE users\n  DROP PRIMARY KEY,\n  RENAME COLUMN user_id TO id,\n  ADD PRIMARY KEY (id ASC);',
     );
   });
 
   it.each([
     { kind: 'index', clause: 'INDEX idx_id (id ASC)' },
     { kind: 'unique_index', clause: 'UNIQUE INDEX idx_id (id ASC)' },
-    { kind: 'unique_constraint', clause: 'CONSTRAINT idx_id UNIQUE (id)' },
+    { kind: 'unique_constraint', clause: 'CONSTRAINT idx_id UNIQUE (id ASC)' },
   ] as const)(
     'replaces the supporting key without leaving an unindexed identity: $clause',
     (index) => {
@@ -109,7 +109,7 @@ describe('MySQL ALTER dependencies', () => {
         dependencyNotice + `ALTER TABLE users\n  DROP PRIMARY KEY,\n  ADD ${index.clause};`,
       );
       expect(generateRollbackDDL(diff)).toBe(
-        dependencyNotice + 'ALTER TABLE users\n  DROP INDEX idx_id,\n  ADD PRIMARY KEY (id);',
+        dependencyNotice + 'ALTER TABLE users\n  DROP INDEX idx_id,\n  ADD PRIMARY KEY (id ASC);',
       );
     },
   );
@@ -128,7 +128,7 @@ describe('MySQL ALTER dependencies', () => {
         'ALTER TABLE users\n  DROP PRIMARY KEY,\n  CHANGE COLUMN id user_id INT NOT NULL;',
     );
     expect(generateRollbackDDL(diff)).toBe(
-      'ALTER TABLE users\n  CHANGE COLUMN user_id id INT AUTO_INCREMENT NOT NULL,\n  ADD PRIMARY KEY (id);',
+      'ALTER TABLE users\n  CHANGE COLUMN user_id id INT AUTO_INCREMENT NOT NULL,\n  ADD PRIMARY KEY (id ASC);',
     );
   });
 
@@ -172,7 +172,7 @@ describe('MySQL ALTER dependencies', () => {
     const diff = diffPersistedState(before, after);
     expect(generateAlterDDL(diff)).toBe(
       dependencyNotice +
-        "ALTER TABLE users\n  DROP PRIMARY KEY,\n  CHANGE COLUMN id `select` INT AUTO_INCREMENT NOT NULL COMMENT 'it''s; a,b',\n  ADD PRIMARY KEY (`select`);",
+        "ALTER TABLE users\n  DROP PRIMARY KEY,\n  CHANGE COLUMN id `select` INT AUTO_INCREMENT NOT NULL COMMENT 'it''s; a,b',\n  ADD PRIMARY KEY (`select` ASC);",
     );
   });
 });

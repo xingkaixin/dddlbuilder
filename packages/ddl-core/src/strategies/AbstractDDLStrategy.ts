@@ -15,8 +15,7 @@ import { formatSqlTableName } from '../utils/databaseTypeMapping';
 import { buildForeignKeyDDL } from '../utils/foreignKeys';
 import { formatSqlIdentifier } from '../utils/sqlIdentifiers';
 import { TypeMapper } from '../utils/TypeMapper';
-import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
-import { getIdentifierNameMaxLength, truncateIdentifierName } from '../utils/identifierNaming';
+import { resolveIndexName } from '../utils/primaryKeyNaming';
 import { buildColumnComment } from './dialectComments';
 
 export interface ColumnDefinitionSegments {
@@ -54,12 +53,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
    */
   protected generatePrimaryKeyDDL(tableName: string, index: IndexDefinition): string {
     const fieldList = index.fields.map((f) => this.formatFieldName(f.name)).join(', ');
-    const maxLength = getIdentifierNameMaxLength(this.getDatabaseType());
-
-    const constraintName = truncateIdentifierName(
-      index.name.trim() || buildPrimaryKeyName(tableName, maxLength),
-      maxLength,
-    );
+    const constraintName = resolveIndexName(tableName, index, this.getDatabaseType());
 
     return `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${this.formatFieldName(constraintName)} PRIMARY KEY (${fieldList});`;
   }

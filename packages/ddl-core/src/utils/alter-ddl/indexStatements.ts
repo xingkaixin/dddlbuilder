@@ -1,6 +1,7 @@
 import type { DatabaseType, IndexDefinition } from '@ddlbuilder/shared-types';
 import { formatSqlIdentifier } from '../sqlIdentifiers';
 import { getDatabaseFamily } from '../databaseFamily';
+import { resolveIndexName } from '../primaryKeyNaming';
 import type { IndexDiff } from '../tableDiff';
 import {
   buildQualifiedTableName,
@@ -15,7 +16,7 @@ export function generateDropIndex(
 ): string {
   tableName = formatSqlTableName(tableName, dbType);
   const index = idxDiff.index;
-  const indexName = formatSqlIdentifier(index.name, dbType);
+  const indexName = formatSqlIdentifier(resolveIndexName(tableName, index, dbType), dbType);
   const family = getDatabaseFamily(dbType);
 
   if (!family || family === 'hive') {
@@ -50,7 +51,7 @@ export function generateAddIndex(
 ): string {
   tableName = formatSqlTableName(tableName, dbType);
   const index = idxDiff.index;
-  const indexName = formatSqlIdentifier(index.name, dbType);
+  const indexName = formatSqlIdentifier(resolveIndexName(tableName, index, dbType), dbType);
   const family = getDatabaseFamily(dbType);
 
   if (!family || family === 'hive') {
@@ -81,8 +82,8 @@ export function generateRenameIndex(
   newIndex: IndexDefinition,
   dbType: DatabaseType,
 ): string {
-  const oldName = formatSqlIdentifier(oldIndex.name, dbType);
-  const newName = formatSqlIdentifier(newIndex.name, dbType);
+  const oldName = formatSqlIdentifier(resolveIndexName(tableName, oldIndex, dbType), dbType);
+  const newName = formatSqlIdentifier(resolveIndexName(tableName, newIndex, dbType), dbType);
 
   if (oldIndex.kind === 'primary' || oldIndex.kind === 'unique_constraint') {
     return `ALTER TABLE ${tableName} RENAME CONSTRAINT ${oldName} TO ${newName};`;

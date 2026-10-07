@@ -680,6 +680,27 @@ describe('generateAlterDDL', () => {
     expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP PRIMARY KEY;');
   });
 
+  it('drops the same truncated primary key name that CREATE emitted', () => {
+    const index = createIndex({
+      name: `pk_${'audit_events_'.repeat(4)}`,
+      kind: 'primary',
+      fields: [{ name: 'id', direction: 'ASC' }],
+    });
+    const created = buildDDL({
+      dbType: 'oracle',
+      tableName: 'users',
+      tableComment: '',
+      fields: [createField()],
+      indexes: [index],
+    });
+    const constraint = created.match(/ADD CONSTRAINT (\S+) PRIMARY KEY/)?.[1];
+
+    expect(constraint).toHaveLength(30);
+    expect(
+      generateRollbackDDL(createTableDiff({ indexes: [{ type: 'add', index }] }, 'oracle')),
+    ).toContain(`DROP CONSTRAINT ${constraint};`);
+  });
+
   it('generates add primary key statement', () => {
     const diff = createTableDiff({
       indexes: [
@@ -694,7 +715,7 @@ describe('generateAlterDDL', () => {
       ],
     });
     const sql = generateAlterDDL(diff);
-    expect(sql).toBe('ALTER TABLE users ADD PRIMARY KEY (id);');
+    expect(sql).toBe('ALTER TABLE users ADD PRIMARY KEY (id ASC);');
   });
 
   it('generates add foreign key statement', () => {

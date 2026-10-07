@@ -34,14 +34,8 @@ function buildIndexClause(change: IndexDiff, dbType: DatabaseType): string {
     return index.kind === 'primary' ? 'DROP PRIMARY KEY' : `DROP INDEX ${name}`;
   }
 
-  const constraint = index.kind === 'primary' || index.kind === 'unique_constraint';
-
   const columns = index.fields
-    .map((field) => {
-      const name = formatSqlIdentifier(field.name, dbType);
-
-      return constraint ? name : `${name} ${field.direction}`;
-    })
+    .map((field) => `${formatSqlIdentifier(field.name, dbType)} ${field.direction}`)
     .join(', ');
 
   if (index.kind === 'primary') return `ADD PRIMARY KEY (${columns})`;
