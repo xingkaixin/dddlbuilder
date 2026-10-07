@@ -7,12 +7,7 @@ import {
 import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser as resolveSessionUser } from '../lib/auth.js';
-import {
-  countCreditLedger,
-  getCreditAccount,
-  grantSignupCredits,
-  listCreditLedger,
-} from '../lib/credits.js';
+import { countCreditLedger, listCreditLedger, readCreditBalance } from '../lib/credits.js';
 import { DomainError, withMeta } from '../lib/http.js';
 import { getRequestLogger, toWorkerError } from '../lib/logging.js';
 
@@ -44,8 +39,7 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
     const user = await resolveAuthenticatedUser(c);
 
     return wrapCreditService(c, async () => {
-      await grantSignupCredits(c.env, user);
-      const account = await getCreditAccount(c.env, user.userId);
+      const account = await readCreditBalance(c.env, user);
 
       return c.json(
         Schema.decodeUnknownSync(CreditBalanceResponseSchema)(

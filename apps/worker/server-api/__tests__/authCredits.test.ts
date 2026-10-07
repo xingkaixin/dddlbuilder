@@ -72,6 +72,8 @@ describe('authentication credit initialization', () => {
     registerCreditRoutes(app);
     const response = await app.request('/credits/balance', {}, env);
     expect(await response.json()).toMatchObject({ balance: 100000 });
+    const repeated = await app.request('/credits/balance', {}, env);
+    expect(await repeated.json()).toMatchObject({ balance: 100000, version: 1 });
   });
 
   it.each(['200000', '50000'])(

@@ -46,8 +46,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
-      getCreditAccount: vi.fn().mockResolvedValue({
+      readCreditBalance: vi.fn().mockResolvedValue({
         userId: 'user-1',
         balance: 8800,
         version: 3,
@@ -75,8 +74,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn(),
-      getCreditAccount: vi.fn().mockResolvedValue({ balance: -1, version: 0 }),
+      readCreditBalance: vi.fn().mockResolvedValue({ balance: -1, version: 0 }),
       listCreditLedger: vi.fn(),
       countCreditLedger: vi.fn(),
     }));
@@ -98,8 +96,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
-      getCreditAccount: vi.fn().mockResolvedValue(null),
+      readCreditBalance: vi.fn().mockResolvedValue(null),
       listCreditLedger: vi.fn(),
       countCreditLedger: vi.fn(),
     }));
@@ -127,8 +124,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
-      getCreditAccount: vi.fn(),
+      readCreditBalance: vi.fn(),
       listCreditLedger: vi.fn().mockResolvedValue([
         {
           id: 'grant:signup',
@@ -178,8 +174,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
-      getCreditAccount: vi.fn(),
+      readCreditBalance: vi.fn(),
       listCreditLedger,
       countCreditLedger,
     }));
@@ -210,8 +205,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
-      getCreditAccount: vi.fn(),
+      readCreditBalance: vi.fn(),
       listCreditLedger,
       countCreditLedger,
     }));
@@ -242,8 +236,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
-      getCreditAccount: vi.fn(),
+      readCreditBalance: vi.fn(),
       listCreditLedger,
       countCreditLedger,
     }));
@@ -274,8 +267,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
-      getCreditAccount: vi.fn(),
+      readCreditBalance: vi.fn(),
       listCreditLedger,
       countCreditLedger,
     }));
@@ -306,8 +298,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
-      getCreditAccount: vi.fn(),
+      readCreditBalance: vi.fn(),
       listCreditLedger,
       countCreditLedger,
     }));
@@ -351,8 +342,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
-      getCreditAccount: vi.fn().mockRejectedValue(new Error('DB down')),
+      readCreditBalance: vi.fn().mockRejectedValue(new Error('DB down')),
       listCreditLedger: vi.fn(),
       countCreditLedger: vi.fn(),
     }));
@@ -379,8 +369,7 @@ describe('/api/credits/*', () => {
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- Replace credit persistence so this route test controls account outcomes.
     vi.doMock('../lib/credits.js', () => ({
-      grantSignupCredits: vi.fn().mockResolvedValue(undefined),
-      getCreditAccount: vi.fn(),
+      readCreditBalance: vi.fn(),
       listCreditLedger: vi.fn().mockRejectedValue(new Error('DB down')),
       countCreditLedger: vi.fn().mockResolvedValue(0),
     }));

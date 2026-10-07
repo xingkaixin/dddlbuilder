@@ -305,13 +305,13 @@ export const applyCreditMutation = async (
   }
 };
 
+const signupGrantKey = (userId: string) => `signup_bonus:${userId}`;
+
 export const grantSignupCredits = async (
   env: ApiEnv['Bindings'],
   user: { userId: string; email: string },
 ): Promise<void> => {
-  const idempotencyKey = `signup_bonus:${user.userId}`;
-
-  if (await readCreditLedgerEntry(env, user.userId, idempotencyKey)) return;
+  const idempotencyKey = signupGrantKey(user.userId);
 
   try {
     await applyCreditMutation(env, {
@@ -326,4 +326,30 @@ export const grantSignupCredits = async (
   } catch (error) {
     if (!(await readCreditLedgerEntry(env, user.userId, idempotencyKey))) throw error;
   }
+};
+
+export const readCreditBalance = async (
+  env: ApiEnv['Bindings'],
+  user: { userId: string; email: string },
+): Promise<CreditAccountRow | null> => {
+  const granted = await env.USER_DB.prepare(
+    `
+      SELECT
+        user_id AS userId,
+        balance,
+        version,
+        updated_at AS updatedAt
+      FROM credit_accounts
+      WHERE user_id = ? AND EXISTS (
+        SELECT 1 FROM credit_ledger WHERE user_id = ? AND idempotency_key = ?
+      )
+    `,
+  )
+    .bind(user.userId, user.userId, signupGrantKey(user.userId))
+    .first<CreditAccountRow>();
+
+  if (granted) return granted;
+  await grantSignupCredits(env, user);
+
+  return getCreditAccount(env, user.userId);
 };
