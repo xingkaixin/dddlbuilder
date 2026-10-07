@@ -70,7 +70,9 @@ describe('field comment semantics', () => {
       expect(sql).toContain(
         dbType === 'sqlite'
           ? "Owner's status | 枚举: active(启用/It's active)"
-          : "Owner''s status | 枚举: active(启用/It''s active)",
+          : dbType === 'hive'
+            ? "Owner\\'s status | 枚举: active(启用/It\\'s active)"
+            : "Owner''s status | 枚举: active(启用/It''s active)",
       );
       expect(sql).not.toContain("Owner''''s");
       expect(field.comment).toBe("Owner's status");

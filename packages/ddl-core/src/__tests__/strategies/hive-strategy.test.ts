@@ -124,7 +124,7 @@ describe('HiveStrategy', () => {
 
     const ddl = strategy.generateTableDDL('test_table', '', fields);
 
-    expect(ddl).toContain("COMMENT '描述''内容'");
+    expect(ddl).toContain("COMMENT '描述\\'内容'");
   });
 
   it('应生成表注释', () => {

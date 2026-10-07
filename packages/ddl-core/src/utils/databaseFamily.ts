@@ -76,5 +76,6 @@ export const escapeSqlString = (value: string, databaseType: DatabaseType): stri
   const family = getDatabaseFamily(databaseType);
   const escaped = family === 'mysql' || family === 'hive' ? value.replaceAll('\\', '\\\\') : value;
 
-  return escaped.replaceAll("'", "''");
+  // Hive 把相邻字符串字面量拼接，'' 会吞掉撇号，只能用反斜杠转义。
+  return escaped.replaceAll("'", family === 'hive' ? "\\'" : "''");
 };
