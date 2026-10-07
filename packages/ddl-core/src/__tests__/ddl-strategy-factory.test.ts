@@ -22,13 +22,8 @@ describe('DDLStrategyFactory', () => {
     );
   });
 
-  it('应该返回支持的数据库类型列表', () => {
-    const supported = DDLStrategyFactory.getSupportedDatabaseTypes();
-    expect(supported).toEqual(DATABASE_TYPES);
-  });
-
   it('应该为每种支持的数据库创建对应策略', () => {
-    for (const dbType of DDLStrategyFactory.getSupportedDatabaseTypes()) {
+    for (const dbType of DATABASE_TYPES) {
       expect(DDLStrategyFactory.create(dbType).getDatabaseType()).toBe(dbType);
     }
   });

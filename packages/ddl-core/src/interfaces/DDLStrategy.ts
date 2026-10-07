@@ -34,11 +34,6 @@ export interface DDLStrategy {
   ): string;
 
   /**
-   * 生成索引的DDL语句
-   */
-  generateIndexDDL(tableName: string, index: IndexDefinition): string;
-
-  /**
    * 生成外键约束的DDL语句
    */
   generateForeignKeyDDL(tableName: string, fk: ForeignKeyDefinition): string;

@@ -25,8 +25,4 @@ export class DDLStrategyFactory {
 
     return strategy;
   }
-
-  static getSupportedDatabaseTypes(): DatabaseType[] {
-    return Array.from(strategies.keys());
-  }
 }

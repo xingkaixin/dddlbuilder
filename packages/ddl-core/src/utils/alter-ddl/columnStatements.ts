@@ -7,9 +7,8 @@ import {
   formatSqlTableName,
   getSchemaAndTable,
 } from '../databaseTypeMapping';
-import { buildDialectColumn } from '../../strategies/dialectColumn';
+import { buildDialectColumn, buildDialectDefaultClause } from '../../strategies/dialectColumn';
 import { formatSqlIdentifier, unquoteSqlIdentifier } from '../sqlIdentifiers';
-import { buildDefaultClause } from './defaultClause';
 import { buildColumnComment, buildExtendedProperty } from '../../strategies/dialectComments';
 import {
   generateSqlServerDropDefault,
@@ -56,7 +55,7 @@ export function generateDropColumn(
   }
 
   const defaultSql =
-    dbType === 'sqlserver' && buildDefaultClause(fieldDiff.oldField, dbType)
+    dbType === 'sqlserver' && buildDialectDefaultClause(fieldDiff.oldField, dbType)
       ? generateSqlServerDropDefault(tableName, fieldDiff.fieldName)
       : '';
 
@@ -148,7 +147,9 @@ export function generateModifyColumn(
     family === 'oracle' || family === 'dm'
       ? [
           changes.includes('type') ? getFieldTypeForDatabase(dbType, field.type) : '',
-          changes.includes('default') ? buildDefaultClause(field, dbType) || 'DEFAULT NULL' : '',
+          changes.includes('default')
+            ? buildDialectDefaultClause(field, dbType) || 'DEFAULT NULL'
+            : '',
           changes.includes('nullable') ? (field.nullable ? 'NULL' : 'NOT NULL') : '',
         ]
           .filter(Boolean)
@@ -193,7 +194,7 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: ModifyFieldD
   }
 
   if (changes.includes('default') && !isIdentity) {
-    const defaultClause = buildDefaultClause(field, 'postgresql');
+    const defaultClause = buildDialectDefaultClause(field, 'postgresql');
 
     if (defaultClause) {
       statements.push(`${alterColumn} SET ${defaultClause};`);

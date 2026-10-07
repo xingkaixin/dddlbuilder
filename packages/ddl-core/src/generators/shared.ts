@@ -6,10 +6,6 @@ export function getPrimaryKeyFieldNames(indexes: IndexDefinition[]): string[] {
   return primaryIndex?.fields.map((f) => f.name) ?? [];
 }
 
-export function isPrimaryKeyField(fieldName: string, indexes: IndexDefinition[]): boolean {
-  return getPrimaryKeyFieldNames(indexes).includes(fieldName);
-}
-
 export function buildIndexFieldLookup(indexes: IndexDefinition[]) {
   const primaryFields = new Set(getPrimaryKeyFieldNames(indexes));
   const singleUniqueFields = new Set<string>();

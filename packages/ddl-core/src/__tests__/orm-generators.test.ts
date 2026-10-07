@@ -11,7 +11,6 @@ import { GORMGenerator } from '../generators/GORMGenerator';
 import { JPAGenerator } from '../generators/JPAGenerator';
 import {
   getPrimaryKeyFieldNames,
-  isPrimaryKeyField,
   buildIndexFieldLookup,
   toCamelCase,
   toPascalCase,
@@ -58,16 +57,6 @@ describe('shared utilities', () => {
         }),
       ];
       expect(getPrimaryKeyFieldNames(indexes)).toEqual(['id', 'org_id']);
-    });
-  });
-
-  describe('isPrimaryKeyField', () => {
-    it('returns true for PK field', () => {
-      expect(isPrimaryKeyField('id', [createIndex()])).toBe(true);
-    });
-
-    it('returns false for non-PK field', () => {
-      expect(isPrimaryKeyField('name', [createIndex()])).toBe(false);
     });
   });
 

@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  parseFieldType,
-  canonicalizeBaseType,
-  getFieldTypeForDatabase,
-  TYPE_ALIASES,
-} from '../index';
+import { parseFieldType, getFieldTypeForDatabase } from '../utils/databaseTypeMapping';
+import { canonicalizeBaseType, TYPE_ALIASES } from '../utils/typeAliases';
 
 describe('Type Mapping Functions', () => {
   it.each([

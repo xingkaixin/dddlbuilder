@@ -141,26 +141,9 @@ describe('buildORM', () => {
 });
 
 describe('ORMGeneratorFactory', () => {
-  it('returns supported targets', () => {
-    const targets = ORMGeneratorFactory.getSupportedTargets();
-    expect(targets).toContain('prisma');
-    expect(targets).toContain('typeorm');
-    expect(targets).toContain('sqlalchemy');
-    expect(targets).toContain('gorm');
-    expect(targets).toContain('jpa');
-    expect(targets).toContain('drizzle');
-    expect(targets).toHaveLength(6);
-  });
-
   it('throws for unsupported target', () => {
     // @ts-expect-error This fixture intentionally exercises an unsupported runtime target value.
     expect(() => ORMGeneratorFactory.create('invalid')).toThrow('Unsupported ORM target');
-  });
-
-  it('creates every supported generator', () => {
-    for (const target of ORMGeneratorFactory.getSupportedTargets()) {
-      expect(ORMGeneratorFactory.create(target)).toBeDefined();
-    }
   });
 });
 

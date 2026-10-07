@@ -32,8 +32,4 @@ export class ORMGeneratorFactory {
 
     return generator;
   }
-
-  static getSupportedTargets(): ORMTarget[] {
-    return Array.from(generators.keys());
-  }
 }

@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildCitusShardingDDL,
-  buildMysqlPartitionClause,
-  buildOracleSynonyms,
-} from '../utils/tableFeatures';
+import { buildCitusShardingDDL, buildMysqlPartitionClause } from '../utils/tableFeatures';
 import { buildDDL } from '../utils/ddlGenerators';
 
 describe('tableFeatures', () => {
@@ -163,13 +159,6 @@ describe('tableFeatures', () => {
         partitions: [],
       }),
     ).toBe('');
-  });
-
-  it('生成 Oracle 公共同义词', () => {
-    expect(buildOracleSynonyms('')).toBe('');
-    expect(buildOracleSynonyms(' users ')).toBe(
-      'CREATE OR REPLACE PUBLIC SYNONYM users FOR users;',
-    );
   });
 
   it.each(['mysql', 'postgresql'] as const)('装配 %s 表选项时保留字符串内的分号', (dbType) => {

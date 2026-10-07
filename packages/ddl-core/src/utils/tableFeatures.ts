@@ -4,7 +4,7 @@ import {
   type CitusShardingConfig,
   type MysqlPartitionConfig,
 } from '@ddlbuilder/shared-types';
-import { escapeSingleQuotes, formatSqlTableName, getSchemaAndTable } from './databaseTypeMapping';
+import { escapeSingleQuotes, formatSqlTableName } from './databaseTypeMapping';
 
 export const buildCitusShardingDDL = (tableName: string, config: CitusShardingConfig): string => {
   const cleanTableName = escapeSingleQuotes(formatSqlTableName(tableName, 'postgresql-citus'));
@@ -58,13 +58,4 @@ export const buildMysqlPartitionClause = (config: MysqlPartitionConfig): string 
     default:
       return '';
   }
-};
-
-export const buildOracleSynonyms = (tableName: string): string => {
-  const cleanTableName = tableName.trim();
-
-  if (!cleanTableName) return '';
-  const { table } = getSchemaAndTable(cleanTableName);
-
-  return `CREATE OR REPLACE PUBLIC SYNONYM ${formatSqlIdentifier(table, 'oracle')} FOR ${formatSqlTableName(cleanTableName, 'oracle')};`;
 };

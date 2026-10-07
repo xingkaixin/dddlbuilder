@@ -28,10 +28,4 @@ export class SQLiteStrategy extends AbstractDDLStrategy {
       indexes,
     });
   }
-  override generateIndexDDL() {
-    return '-- SQLite keys and indexes are included in CREATE output.';
-  }
-  override generateForeignKeyDDL() {
-    return '-- SQLite foreign keys must be included in CREATE TABLE.';
-  }
 }

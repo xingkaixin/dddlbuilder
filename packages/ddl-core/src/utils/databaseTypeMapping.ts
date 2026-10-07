@@ -264,16 +264,6 @@ export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, fieldType: st
   }
 };
 
-export const formatConstantDefault = (
-  canonical: string,
-  value: string,
-  dbType: DatabaseType = 'postgresql',
-) => {
-  const expression = formatConstantDefaultExpression(canonical, value, dbType);
-
-  return expression ? ` DEFAULT ${expression}` : '';
-};
-
 export const formatConstantDefaultExpression = (
   canonical: string,
   value: string,

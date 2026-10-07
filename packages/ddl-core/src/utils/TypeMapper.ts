@@ -80,16 +80,4 @@ export class TypeMapper {
   }
 
   private uppercaseArg = (value: string) => (value.toLowerCase() === 'max' ? 'MAX' : value);
-
-  getSupportedTypes(): string[] {
-    const mapping = TYPE_MAPPINGS[this.databaseType];
-
-    return mapping ? Object.keys(mapping) : [];
-  }
-
-  hasMapping(type: string): boolean {
-    const canonical = canonicalizeBaseType(type);
-
-    return !!TYPE_MAPPINGS[this.databaseType]?.[canonical];
-  }
 }

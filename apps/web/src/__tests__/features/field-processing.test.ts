@@ -4,13 +4,10 @@ import {
   supportsAutoIncrement,
   supportsDefaultCurrentTimestamp,
   supportsOnUpdateCurrentTimestamp,
-  escapeSingleQuotes,
-  formatConstantDefault,
-  shouldQuoteDefault,
   getCanonicalBaseType,
-  splitQualifiedName,
   getSchemaAndTable,
 } from '@ddlbuilder/ddl-core';
+import { splitQualifiedName } from '@ddlbuilder/shared-types';
 import { RESERVED_KEYWORDS } from '@/utils/constants';
 
 describe('Field Processing Functions', () => {
@@ -129,82 +126,6 @@ describe('Field Processing Functions', () => {
       expect(isReservedKeyword('mysql', '')).toBe(false);
       expect(isReservedKeyword('mysql', '   ')).toBe(false);
       expect(isReservedKeyword('mysql', ' table ')).toBe(true); // table is a keyword regardless of whitespace
-    });
-  });
-
-  describe('escapeSingleQuotes', () => {
-    it('should escape single quotes for SQL', () => {
-      expect(escapeSingleQuotes("O'Reilly")).toBe("O''Reilly");
-      expect(escapeSingleQuotes("It's a test")).toBe("It''s a test");
-      expect(escapeSingleQuotes("''multiple''quotes''")).toBe("''''multiple''''quotes''''");
-      expect(escapeSingleQuotes('no quotes')).toBe('no quotes');
-      expect(escapeSingleQuotes('')).toBe('');
-    });
-  });
-
-  describe('formatConstantDefault', () => {
-    it('should format constant defaults correctly', () => {
-      // Text-like types should be quoted
-      expect(formatConstantDefault('varchar', 'test')).toBe(" DEFAULT 'test'");
-      expect(formatConstantDefault('text', 'hello world')).toBe(" DEFAULT 'hello world'");
-      expect(formatConstantDefault('char', "O'Reilly")).toBe(" DEFAULT 'O''Reilly'");
-      expect(formatConstantDefault('date', '2023-01-01')).toBe(" DEFAULT '2023-01-01'");
-      expect(formatConstantDefault('timestamp', '2023-01-01 12:00:00')).toBe(
-        " DEFAULT '2023-01-01 12:00:00'",
-      );
-
-      // Numeric types should not be quoted
-      expect(formatConstantDefault('int', '123')).toBe(' DEFAULT 123');
-      expect(formatConstantDefault('decimal', '123.45')).toBe(' DEFAULT 123.45');
-      expect(formatConstantDefault('float', '12.34')).toBe(' DEFAULT 12.34');
-
-      // Constants remain literal even when their text resembles SQL.
-      expect(formatConstantDefault('varchar', 'CURRENT_TIMESTAMP')).toBe(
-        " DEFAULT 'CURRENT_TIMESTAMP'",
-      );
-      expect(formatConstantDefault('varchar', 'UUID()')).toBe(" DEFAULT 'UUID()'");
-      expect(formatConstantDefault('varchar', 'GEN_RANDOM_UUID()')).toBe(
-        " DEFAULT 'GEN_RANDOM_UUID()'",
-      );
-
-      // Empty strings and whitespace are valid text defaults.
-      expect(formatConstantDefault('varchar', '')).toBe(" DEFAULT ''");
-      expect(formatConstantDefault('varchar', '   ')).toBe(" DEFAULT '   '");
-    });
-  });
-
-  describe('shouldQuoteDefault', () => {
-    it('should identify types that need quoting', () => {
-      expect(shouldQuoteDefault('varchar', '')).toBe(true);
-      expect(shouldQuoteDefault('nvarchar', '')).toBe(true);
-      expect(shouldQuoteDefault('char', '')).toBe(true);
-      expect(shouldQuoteDefault('nchar', '')).toBe(true);
-      expect(shouldQuoteDefault('text', '')).toBe(true);
-      expect(shouldQuoteDefault('mediumtext', '')).toBe(true);
-      expect(shouldQuoteDefault('longtext', '')).toBe(true);
-      expect(shouldQuoteDefault('uuid', '')).toBe(true);
-      expect(shouldQuoteDefault('xml', '')).toBe(true);
-      expect(shouldQuoteDefault('json', '')).toBe(true);
-      expect(shouldQuoteDefault('jsonb', '')).toBe(true);
-      expect(shouldQuoteDefault('clob', '')).toBe(true);
-      expect(shouldQuoteDefault('varchar2', '')).toBe(true);
-      expect(shouldQuoteDefault('nvarchar2', '')).toBe(true);
-      expect(shouldQuoteDefault('date', '')).toBe(true);
-      expect(shouldQuoteDefault('time', '')).toBe(true);
-      expect(shouldQuoteDefault('timestamp', '')).toBe(true);
-      expect(shouldQuoteDefault('datetime', '')).toBe(true);
-      expect(shouldQuoteDefault('datetime2', '')).toBe(true);
-      expect(shouldQuoteDefault('timetz', '')).toBe(true);
-      expect(shouldQuoteDefault('timestamptz', '')).toBe(true);
-
-      expect(shouldQuoteDefault('int', '')).toBe(false);
-      expect(shouldQuoteDefault('bigint', '')).toBe(false);
-      expect(shouldQuoteDefault('decimal', '')).toBe(false);
-      expect(shouldQuoteDefault('float', '')).toBe(false);
-      expect(shouldQuoteDefault('double', '')).toBe(false);
-      expect(shouldQuoteDefault('real', '')).toBe(false);
-      expect(shouldQuoteDefault('boolean', '')).toBe(false);
-      expect(shouldQuoteDefault('bit', '')).toBe(false);
     });
   });
 

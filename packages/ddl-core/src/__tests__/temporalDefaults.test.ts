@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
-import { buildDDL, generateModifyColumn } from '../index';
+import { buildDDL } from '../index';
+import { generateModifyColumn } from '../utils/alter-ddl/columnStatements';
 
 const field: NormalizedField = {
   name: 'created_at',

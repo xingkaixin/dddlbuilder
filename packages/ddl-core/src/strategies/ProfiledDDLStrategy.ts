@@ -10,7 +10,7 @@ import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 import { DIALECT_PROFILES } from './dialectProfiles';
 import type { DialectProfile } from './dialectProfiles';
 import { buildDialectColumn } from './dialectColumn';
-import { buildCitusShardingStatement, buildMysqlPartitionClause } from './dialectStatements';
+import { buildCitusShardingDDL, buildMysqlPartitionClause } from '../utils/tableFeatures';
 import { buildExtendedProperty } from './dialectComments';
 import type { ConfiguredTableDDL, TableFeatureConfig } from '../interfaces/DDLStrategy';
 import {
@@ -52,7 +52,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
         ...configured,
         trailingStatements: [
           ...configured.trailingStatements,
-          buildCitusShardingStatement(tableName, config.citusShardingConfig),
+          buildCitusShardingDDL(tableName, config.citusShardingConfig),
         ],
       };
     }

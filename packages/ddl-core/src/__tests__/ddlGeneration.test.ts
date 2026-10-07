@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDDL, buildDCL, buildOracleSynonyms } from '../utils/ddlGenerators';
+import { buildDDL, buildDCL } from '../utils/ddlGenerators';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('DDL generation', () => {
@@ -181,10 +181,5 @@ describe('DDL generation', () => {
     });
     expect(result).toContain('CREATE TABLE public.users');
     expect(result).toContain('public.users.name');
-  });
-
-  it('keeps the schema on the Oracle synonym target', () => {
-    const result = buildOracleSynonyms('schema.users');
-    expect(result).toBe('CREATE OR REPLACE PUBLIC SYNONYM users FOR schema.users;');
   });
 });

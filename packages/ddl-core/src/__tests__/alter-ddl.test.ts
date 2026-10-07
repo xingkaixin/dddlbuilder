@@ -9,6 +9,7 @@ import type {
 } from '@ddlbuilder/shared-types';
 import { diffPersistedState, hasTableChanges } from '../utils/tableDiff';
 import { buildDDL } from '../utils/ddlGenerators';
+import { buildDialectDefaultClause } from '../strategies/dialectColumn';
 import type {
   TableDiff,
   FieldDiff,
@@ -24,7 +25,6 @@ import {
   generateRenameColumn,
   generateAddColumn,
   generateModifyColumn,
-  buildDefaultClause,
   generateAddIndex,
   generateDropIndex,
   generateAddForeignKey,
@@ -1426,12 +1426,12 @@ describe('generateModifyColumn', () => {
   });
 });
 
-describe('buildDefaultClause', () => {
+describe('buildDialectDefaultClause', () => {
   it.each(['', '   ', 'now()', 'current_timestamp', "O'Reilly"])(
     'keeps the text constant %j literal',
     (value) => {
       expect(
-        buildDefaultClause(
+        buildDialectDefaultClause(
           createField({ type: 'text', defaultKind: 'constant', defaultValue: value }),
           'postgresql',
         ),
@@ -1441,7 +1441,7 @@ describe('buildDefaultClause', () => {
 
   it('emits SQL only for explicit expression defaults', () => {
     expect(
-      buildDefaultClause(
+      buildDialectDefaultClause(
         createField({ type: 'text', defaultKind: 'expression', defaultValue: "lower('HELLO')" }),
         'postgresql',
       ),
@@ -1449,12 +1449,12 @@ describe('buildDefaultClause', () => {
   });
 
   it('returns empty for none defaultKind', () => {
-    expect(buildDefaultClause(createField({ defaultKind: 'none' }), 'mysql')).toBe('');
+    expect(buildDialectDefaultClause(createField({ defaultKind: 'none' }), 'mysql')).toBe('');
   });
 
   it('formats constant default with quotes for string', () => {
     expect(
-      buildDefaultClause(
+      buildDialectDefaultClause(
         createField({ defaultKind: 'constant', defaultValue: "O'Hara", type: 'varchar' }),
         'mysql',
       ),
@@ -1463,7 +1463,7 @@ describe('buildDefaultClause', () => {
 
   it('formats constant default without quotes for numeric', () => {
     expect(
-      buildDefaultClause(
+      buildDialectDefaultClause(
         createField({ defaultKind: 'constant', defaultValue: '0', type: 'int' }),
         'mysql',
       ),
@@ -1471,20 +1471,23 @@ describe('buildDefaultClause', () => {
   });
 
   it('formats uuid default for mysql', () => {
-    expect(buildDefaultClause(createField({ defaultKind: 'uuid', type: 'varchar' }), 'mysql')).toBe(
-      'DEFAULT (UUID())',
-    );
+    expect(
+      buildDialectDefaultClause(createField({ defaultKind: 'uuid', type: 'varchar' }), 'mysql'),
+    ).toBe('DEFAULT (UUID())');
   });
 
   it('formats uuid default for postgresql', () => {
     expect(
-      buildDefaultClause(createField({ defaultKind: 'uuid', type: 'varchar' }), 'postgresql'),
+      buildDialectDefaultClause(
+        createField({ defaultKind: 'uuid', type: 'varchar' }),
+        'postgresql',
+      ),
     ).toBe('DEFAULT gen_random_uuid()');
   });
 
   it('formats current_timestamp for mysql', () => {
     expect(
-      buildDefaultClause(
+      buildDialectDefaultClause(
         createField({ defaultKind: 'current_timestamp', type: 'timestamp' }),
         'mysql',
       ),
@@ -1493,7 +1496,7 @@ describe('buildDefaultClause', () => {
 
   it('formats current_timestamp for sqlserver', () => {
     expect(
-      buildDefaultClause(
+      buildDialectDefaultClause(
         createField({ defaultKind: 'current_timestamp', type: 'datetime' }),
         'sqlserver',
       ),
@@ -1502,13 +1505,13 @@ describe('buildDefaultClause', () => {
 
   it('uses the configured family defaults for compatible databases', () => {
     expect(
-      buildDefaultClause(createField({ defaultKind: 'uuid', type: 'varchar' }), 'oceanbase'),
+      buildDialectDefaultClause(createField({ defaultKind: 'uuid', type: 'varchar' }), 'oceanbase'),
     ).toBe('DEFAULT (UUID())');
-    expect(buildDefaultClause(createField({ defaultKind: 'uuid', type: 'uuid' }), 'kingbase')).toBe(
-      'DEFAULT gen_random_uuid()',
-    );
     expect(
-      buildDefaultClause(
+      buildDialectDefaultClause(createField({ defaultKind: 'uuid', type: 'uuid' }), 'kingbase'),
+    ).toBe('DEFAULT gen_random_uuid()');
+    expect(
+      buildDialectDefaultClause(
         createField({ defaultKind: 'current_timestamp', type: 'timestamp' }),
         'oracle',
       ),
@@ -1527,12 +1530,17 @@ describe('buildDefaultClause', () => {
   });
 
   it('returns empty for unsupported default on type', () => {
-    expect(buildDefaultClause(createField({ defaultKind: 'uuid', type: 'int' }), 'mysql')).toBe('');
-    expect(buildDefaultClause(createField({ defaultKind: 'uuid', type: 'json' }), 'mysql')).toBe(
-      '',
-    );
     expect(
-      buildDefaultClause(createField({ defaultKind: 'current_timestamp', type: 'int' }), 'mysql'),
+      buildDialectDefaultClause(createField({ defaultKind: 'uuid', type: 'int' }), 'mysql'),
+    ).toBe('');
+    expect(
+      buildDialectDefaultClause(createField({ defaultKind: 'uuid', type: 'json' }), 'mysql'),
+    ).toBe('');
+    expect(
+      buildDialectDefaultClause(
+        createField({ defaultKind: 'current_timestamp', type: 'int' }),
+        'mysql',
+      ),
     ).toBe('');
   });
 });

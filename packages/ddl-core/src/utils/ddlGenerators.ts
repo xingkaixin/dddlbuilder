@@ -13,8 +13,6 @@ import { formatSqlIdentifier } from './sqlIdentifiers';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
 import { resolveFieldComment } from './fieldComment';
 
-export { buildOracleSynonyms } from './tableFeatures';
-
 export interface BuildDDLInput {
   dbType: DatabaseType;
   tableName: string;

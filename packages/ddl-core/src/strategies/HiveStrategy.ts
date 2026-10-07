@@ -65,10 +65,6 @@ export class HiveStrategy extends AbstractDDLStrategy {
     );
   }
 
-  generateIndexDDL(): string {
-    return '';
-  }
-
   private buildPartitionClause(config?: TableMiscConfig['partitions']): string {
     if (!config?.enabled || config.columns.length === 0) {
       return '';

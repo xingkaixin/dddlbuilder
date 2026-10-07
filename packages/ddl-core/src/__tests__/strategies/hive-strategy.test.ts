@@ -418,12 +418,6 @@ describe('HiveStrategy', () => {
     expect(ddl).not.toContain('PARTITIONED BY');
   });
 
-  it('索引 DDL 应返回空字符串', () => {
-    const result = strategy.generateIndexDDL();
-
-    expect(result).toBe('');
-  });
-
   it('应生成 CLUSTERED BY 分桶子句', () => {
     const fields: NormalizedField[] = [
       {

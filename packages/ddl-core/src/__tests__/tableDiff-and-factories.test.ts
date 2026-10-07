@@ -8,7 +8,7 @@ import type {
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 import { diffPersistedState, hasTableChanges } from '../utils/tableDiff';
-import { buildDDL, buildViewDDL, buildDCL, buildOracleSynonyms } from '../utils/ddlGenerators';
+import { buildDDL, buildViewDDL, buildDCL } from '../utils/ddlGenerators';
 import {
   supportsStorageOption,
   supportsEngineOption,
@@ -876,22 +876,6 @@ describe('buildDCL', () => {
   it('trims auth object names', () => {
     const dcl = buildDCL('users', ['  app_user  ']);
     expect(dcl).toBe('GRANT SELECT ON users TO app_user;');
-  });
-});
-
-describe('buildOracleSynonyms', () => {
-  it('returns empty for empty table name', () => {
-    expect(buildOracleSynonyms('')).toBe('');
-  });
-
-  it('generates public synonym', () => {
-    expect(buildOracleSynonyms('users')).toBe('CREATE OR REPLACE PUBLIC SYNONYM users FOR users;');
-  });
-
-  it('trims table name', () => {
-    expect(buildOracleSynonyms('  users  ')).toBe(
-      'CREATE OR REPLACE PUBLIC SYNONYM users FOR users;',
-    );
   });
 });
 
