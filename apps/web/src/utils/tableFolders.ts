@@ -11,12 +11,10 @@ import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspac
 import { runIndexedDbRequest } from './indexedDbTransaction';
 import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
 import {
-  buildFolderTreeModel,
   buildFolderDeletionPlan,
   createFolderRecord,
   moveFolderRecord,
   renameFolderRecord,
-  type FolderTreeNode,
 } from './folderModel';
 
 export type { FolderTreeNode } from './folderModel';
@@ -263,15 +261,4 @@ export async function bulkPutFolders(folders: TableFolder[], scope: WorkspaceSco
 
     return store.put(encodeFolder(folders[folders.length - 1], scope));
   });
-}
-
-/**
- * 获取文件夹路径（从根到当前）
- */
-
-/**
- * 构建文件夹树结构
- */
-export async function buildFolderTree(scope: WorkspaceScope): Promise<FolderTreeNode[]> {
-  return buildFolderTreeModel(await listFolders(scope));
 }

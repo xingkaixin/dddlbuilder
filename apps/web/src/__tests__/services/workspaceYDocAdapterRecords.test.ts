@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { toEditorSessionState, type PersistedState } from '@ddlbuilder/shared-types';
 import {
-  buildFolderTreeFromYDoc,
   deleteFolderFromYDoc,
   deleteSavedDraftFromYDoc,
   getSavedDraftFromYDoc,
@@ -255,13 +254,6 @@ describe('workspaceYDocAdapter records', () => {
       'child',
       'root',
       'orphan',
-    ]);
-    expect(
-      buildFolderTreeFromYDoc(doc).map((node) => [node.id, node.children.map((child) => child.id)]),
-    ).toEqual([
-      ['first', []],
-      ['root', ['child']],
-      ['orphan', []],
     ]);
 
     deleteFolderFromYDoc(doc, 'child');

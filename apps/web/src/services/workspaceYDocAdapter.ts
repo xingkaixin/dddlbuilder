@@ -61,7 +61,6 @@ import type {
   SavedTableRecord,
   TableFolder,
 } from '@/utils/workspaceStorageTypes';
-import { buildFolderTreeModel, type FolderTreeNode } from '@/utils/folderModel';
 import { resolveSavedTableSnapshot } from './savedTableSnapshot';
 import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 
@@ -224,9 +223,6 @@ export const upsertFolderInYDoc = (doc: Y.Doc, folder: TableFolder) => {
 export const deleteFolderFromYDoc = deleteWorkspaceFolder;
 
 export const listFoldersFromYDoc = (doc: Y.Doc): TableFolder[] => listWorkspaceFolders(doc);
-
-export const buildFolderTreeFromYDoc = (doc: Y.Doc): FolderTreeNode[] =>
-  buildFolderTreeModel(listFoldersFromYDoc(doc));
 
 export const getStateForWorkspaceSource = (
   doc: Y.Doc,

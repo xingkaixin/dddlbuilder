@@ -16,8 +16,6 @@ const folder = (id: string, name: string): TableFolder => ({
   updatedAt: 1,
 });
 
-const folderNode = (id: string, name: string) => ({ ...folder(id, name), children: [] });
-
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
   const { wrapper } = createQueryClientWrapper();
 
@@ -32,7 +30,6 @@ vi.mock('@/utils/tableFolders', () => ({
   renameFolder: vi.fn(),
   deleteFolder: vi.fn(),
   moveFolder: vi.fn(),
-  buildFolderTree: vi.fn(),
   getDescendantFolderIds: vi.fn(),
   getFolder: vi.fn(),
   updateFolder: vi.fn(),
@@ -55,7 +52,6 @@ describe('useFolders', () => {
   const mockRenameFolder = vi.mocked(tableFolders.renameFolder);
   const mockDeleteFolder = vi.mocked(tableFolders.deleteFolder);
   const mockMoveFolder = vi.mocked(tableFolders.moveFolder);
-  const mockBuildFolderTree = vi.mocked(tableFolders.buildFolderTree);
   const mockGetFolder = vi.mocked(tableFolders.getFolder);
 
   beforeEach(() => {
@@ -82,7 +78,6 @@ describe('useFolders', () => {
 
   it('should load folders on mount', async () => {
     mockListFolders.mockResolvedValue([folder('1', 'Root')]);
-    mockBuildFolderTree.mockResolvedValue([folderNode('1', 'Root')]);
 
     const { result } = renderHook(() => useFolders());
 
@@ -93,7 +88,6 @@ describe('useFolders', () => {
 
   it('should reload folders when a workspace snapshot is applied', async () => {
     mockListFolders.mockResolvedValueOnce([]).mockResolvedValueOnce([folder('1', 'Root')]);
-    mockBuildFolderTree.mockResolvedValueOnce([]).mockResolvedValueOnce([folderNode('1', 'Root')]);
 
     const { result } = renderHook(() => {
       useWorkspaceQuerySync();
@@ -116,7 +110,6 @@ describe('useFolders', () => {
 
   it('should handle load error', async () => {
     mockListFolders.mockRejectedValue(new Error('load error'));
-    mockBuildFolderTree.mockResolvedValue([]);
 
     const { result } = renderHook(() => useFolders());
 
@@ -126,7 +119,6 @@ describe('useFolders', () => {
 
   it('should fallback to default message when load fails with non-error', async () => {
     mockListFolders.mockRejectedValue('boom');
-    mockBuildFolderTree.mockResolvedValue([]);
 
     const { result } = renderHook(() => useFolders());
 
@@ -136,7 +128,6 @@ describe('useFolders', () => {
 
   it('should create folder and refresh list', async () => {
     mockListFolders.mockResolvedValueOnce([]).mockResolvedValueOnce([folder('2', 'New')]);
-    mockBuildFolderTree.mockResolvedValueOnce([]).mockResolvedValueOnce([folderNode('2', 'New')]);
     mockCreateFolder.mockResolvedValue(folder('2', 'New'));
 
     const { result } = renderHook(() => useFolders());
@@ -155,7 +146,6 @@ describe('useFolders', () => {
 
   it('should delete folder and return affected ids', async () => {
     mockListFolders.mockResolvedValueOnce([folder('1', 'Root')]).mockResolvedValueOnce([]);
-    mockBuildFolderTree.mockResolvedValueOnce([folderNode('1', 'Root')]).mockResolvedValueOnce([]);
     mockDeleteFolder.mockResolvedValue(['1', 'child']);
 
     const { result } = renderHook(() => useFolders());
@@ -174,7 +164,6 @@ describe('useFolders', () => {
 
   it('should throw when rename or move fails', async () => {
     mockListFolders.mockResolvedValue([]);
-    mockBuildFolderTree.mockResolvedValue([]);
     mockRenameFolder.mockRejectedValue(new Error('rename failed'));
     mockMoveFolder.mockRejectedValue(new Error('move failed'));
 
@@ -193,10 +182,6 @@ describe('useFolders', () => {
       .mockResolvedValueOnce([folder('1', 'Root')])
       .mockResolvedValueOnce([folder('1', 'Renamed')])
       .mockResolvedValueOnce([folder('1', 'Renamed')]);
-    mockBuildFolderTree
-      .mockResolvedValueOnce([folderNode('1', 'Root')])
-      .mockResolvedValueOnce([folderNode('1', 'Renamed')])
-      .mockResolvedValueOnce([folderNode('1', 'Renamed')]);
     mockRenameFolder.mockResolvedValue(undefined);
     mockMoveFolder.mockResolvedValue(undefined);
     mockGetFolder.mockResolvedValue(folder('1', 'Renamed'));
@@ -222,7 +207,6 @@ describe('useFolders', () => {
 
   it('should throw default messages when operations fail with non-error', async () => {
     mockListFolders.mockResolvedValue([]);
-    mockBuildFolderTree.mockResolvedValue([]);
     mockCreateFolder.mockRejectedValue('fail');
     mockRenameFolder.mockRejectedValue('fail');
     mockDeleteFolder.mockRejectedValue('fail');
@@ -242,7 +226,6 @@ describe('useFolders', () => {
 
   it('should keep original error message when create/delete fail with Error', async () => {
     mockListFolders.mockResolvedValue([]);
-    mockBuildFolderTree.mockResolvedValue([]);
     mockCreateFolder.mockRejectedValue(new Error('create err'));
     mockDeleteFolder.mockRejectedValue(new Error('delete err'));
 

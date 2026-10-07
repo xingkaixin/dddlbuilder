@@ -8,7 +8,6 @@ import {
   bulkPutFolders,
   clearFolders,
   getFolder as getFolderInScope,
-  buildFolderTree as buildFolderTreeInScope,
 } from '@/utils/tableFolders';
 import * as dbUtils from '@/utils/workspaceDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
@@ -27,7 +26,6 @@ const moveFolder = (id: string, newParentId?: string) =>
   moveFolderInScope(id, anonymousScope, newParentId);
 const deleteFolder = (id: string) => deleteFolderInScope(id, anonymousScope);
 const getFolder = (id: string) => getFolderInScope(id, anonymousScope);
-const buildFolderTree = () => buildFolderTreeInScope(anonymousScope);
 const createState = (): PersistedState => ({
   schemaName: '',
   tableName: 'users',
@@ -69,13 +67,6 @@ describe('tableFolders', () => {
     await moveFolder(child.id, otherRoot.id);
     const moved = await getFolder(child.id);
     expect(moved?.parentId).toBe(otherRoot.id);
-  });
-
-  it('should treat missing-parent folder as root in tree', async () => {
-    const orphan = await createFolder('Orphan', 'missing-parent-id');
-    const tree = await buildFolderTree();
-
-    expect(tree.map((node) => node.id)).toContain(orphan.id);
   });
 
   it('should move folder back to root when parent is undefined', async () => {
@@ -196,7 +187,7 @@ describe('tableFolders', () => {
       );
     }
 
-    expect((await buildFolderTree()).map((folder) => folder.id)).toEqual(['a', 'b']);
+    expect((await listFolders()).map((folder) => folder.id)).toEqual(['a', 'b']);
     expect(await deleteFolder('a')).toEqual(['a']);
     expect((await listFolders()).map((folder) => folder.id)).toEqual(['b']);
     expect((await listTrashedSavedTables(anonymousScope)).map((table) => table.name)).toEqual([
