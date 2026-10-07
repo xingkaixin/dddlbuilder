@@ -68,9 +68,6 @@ const now = () => Date.now();
 
 const buildWorkspaceId = () => `ws_${crypto.randomUUID()}`;
 
-const buildEntityRowId = (workspaceId: string, entityType: WorkspaceEntityType, entityId: string) =>
-  `${workspaceId}:${entityType}:${entityId}`;
-
 const readDefaultWorkspace = async (env: ApiEnv['Bindings'], userId: string) =>
   firstWorkspaceD1Result<WorkspaceRow>(
     env.USER_DB.prepare(
@@ -228,7 +225,6 @@ const writeEntityVersions = async (
         return env.USER_DB.prepare(
           `
       INSERT INTO workspace_entities (
-        id,
         workspace_id,
         user_id,
         entity_type,
@@ -240,7 +236,7 @@ const writeEntityVersions = async (
         created_at,
         updated_at
       )
-      SELECT ?, ?, ?, ?, ?, ?, ?, next_version - ?, ?, ?, ?
+      SELECT ?, ?, ?, ?, ?, ?, next_version - ?, ?, ?, ?
       FROM workspace_clocks
       WHERE workspace_id = ?
       ON CONFLICT(workspace_id, entity_type, entity_id) DO UPDATE SET
@@ -252,7 +248,6 @@ const writeEntityVersions = async (
       RETURNING version
     `,
         ).bind(
-          buildEntityRowId(input.workspaceId, input.entityType, input.entityId),
           input.workspaceId,
           input.userId,
           input.entityType,
