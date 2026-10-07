@@ -55,6 +55,10 @@ export function useTabLifecycle({
     () => tabs.find((tab) => tab.id === activeTabId) ?? null,
     [activeTabId, tabs],
   );
+  const resolveDraftTitle = useCallback(
+    (tableName: string) => tableName.trim() || t('app.workspace.unnamedDraft'),
+    [t],
+  );
   // 标签会先激活、编辑器再替换；等待表名与目标快照对齐，避免写入上一标签的标题。
   const previousActiveTabId = useRef(activeTabId);
   const pendingDraftTitleId = useRef<string | null>(null);
@@ -76,17 +80,30 @@ export function useTabLifecycle({
     }
 
     pendingDraftTitleId.current = null;
-    const title = activeTableName.trim() || t('app.workspace.unnamedDraft');
-    updateDraftTitle(activeDraftId, title);
+    updateDraftTitle(activeDraftId, resolveDraftTitle(activeTableName));
   }, [
     activeDraftId,
     activeSnapshotTableName,
     activeTabId,
     activeTableName,
     enabled,
-    t,
+    resolveDraftTitle,
     updateDraftTitle,
   ]);
+
+  // 输入表名时在同一事件里更新标题，与编辑器更新合并为一次渲染；上面的副作用只兜底其他改名来源。
+  const renameActiveDraft = useCallback(
+    (tableName: string) => {
+      const activeTab = getActiveTab();
+
+      if (!enabled || activeTab?.source.kind !== 'draft') return;
+
+      if (pendingDraftTitleId.current === activeTab.id) return;
+
+      updateDraftTitle(activeTab.id, resolveDraftTitle(tableName));
+    },
+    [enabled, getActiveTab, resolveDraftTitle, updateDraftTitle],
+  );
 
   // 编辑器是唯一真相源，标签快照只在冲刷点回写；内容没变时跳过，避免无谓的持久化。
   const flushActiveTab = useCallback(() => {
@@ -189,5 +206,6 @@ export function useTabLifecycle({
     switchToTabById,
     closeTab,
     closeTabBySource,
+    renameActiveDraft,
   };
 }

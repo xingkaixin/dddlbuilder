@@ -175,7 +175,15 @@ export function useAppController() {
     resolveWorkspaceSnapshot,
     resetWorkspaceSelection,
   });
-  const { tabs, activeTabId, activeWorkspaceTab } = tabLifecycle;
+  const { tabs, activeTabId, activeWorkspaceTab, renameActiveDraft } = tabLifecycle;
+
+  const handleTableNameChange = useCallback(
+    (value: string) => {
+      setTableName(value);
+      renameActiveDraft(value);
+    },
+    [renameActiveDraft, setTableName],
+  );
   const activeEditorSource = activeWorkspaceTab?.source ?? activeSource;
   const canSyncActiveTab = activeWorkspaceTab != null && !activeWorkspaceTab.isLoading;
 
@@ -427,7 +435,7 @@ export function useAppController() {
     loadedTableNormalizedName,
     workspaceLabel,
     dataTableToolbarLeft,
-    onTableNameChange: setTableName,
+    onTableNameChange: handleTableNameChange,
     onDbTypeChange: setDbType,
     onSaveCurrent: handleSaveCurrent,
     onViewCurrentVersionHistory: handleViewCurrentVersionHistory,
