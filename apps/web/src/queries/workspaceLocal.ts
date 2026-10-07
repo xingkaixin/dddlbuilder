@@ -9,7 +9,8 @@ import {
   listSavedTableMetadata,
   listTrashedSavedTableMetadata,
 } from '@/utils/savedTablesDb';
-import { buildFolderTree, listFolders } from '@/utils/tableFolders';
+import { buildFolderTreeModel } from '@/utils/folderModel';
+import { listFolders } from '@/utils/tableFolders';
 import i18n from '@/i18n';
 
 export const workspaceLocalQueryKeys = {
@@ -62,9 +63,9 @@ export function localFoldersOptions(scope: WorkspaceScope | null) {
     queryKey: workspaceLocalQueryKeys.folders(scope),
     queryFn: async () => {
       if (!scope) throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
-      const [folders, folderTree] = await Promise.all([listFolders(scope), buildFolderTree(scope)]);
+      const folders = await listFolders(scope);
 
-      return { folders, folderTree };
+      return { folders, folderTree: buildFolderTreeModel(folders) };
     },
     staleTime: Number.POSITIVE_INFINITY,
   });

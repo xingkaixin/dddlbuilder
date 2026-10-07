@@ -13,3 +13,11 @@ export const getWorkspaceScopeStorageKey = (scope: WorkspaceScope) =>
 
 export const buildScopedWorkspaceKey = (scope: WorkspaceScope, key: string) =>
   `${getWorkspaceScopeStorageKey(scope)}::${key}`;
+
+// 匿名分区还要读取没有分区前缀的旧 key，只能全量读取。
+export const scopedWorkspaceKeyRange = (scope: WorkspaceScope) => {
+  if (scope.kind === 'anonymous') return undefined;
+  const prefix = buildScopedWorkspaceKey(scope, '');
+
+  return IDBKeyRange.bound(prefix, `${prefix}\uffff`);
+};

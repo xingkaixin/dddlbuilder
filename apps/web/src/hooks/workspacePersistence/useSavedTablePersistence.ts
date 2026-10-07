@@ -19,8 +19,7 @@ import {
   addSavedTable,
   deleteSavedTable,
   getSavedTable,
-  listSavedTables,
-  listTrashedSavedTables,
+  listSavedTablesByStatus,
   replaceSavedTable,
   updateSavedTable,
   updateSavedTables,
@@ -86,9 +85,7 @@ export function useSavedTablePersistence() {
       });
     }
 
-    return Promise.all([listSavedTables(target.scope), listTrashedSavedTables(target.scope)]).then(
-      ([active, trashed]) => ({ active, trashed }),
-    );
+    return listSavedTablesByStatus(target.scope);
   }, [storage]);
 
   const putTable = useCallback(

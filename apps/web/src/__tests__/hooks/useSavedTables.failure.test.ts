@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook as testingLibraryRenderHook, act, waitFor } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import type { SavedTableRecord } from '@/utils/savedTablesDb';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
@@ -58,6 +59,10 @@ vi.mock('@/utils/savedTablesDb', () => ({
   listSavedTableMetadata: savedTableMocks.listSavedTableMetadata,
   listTrashedSavedTables: savedTableMocks.listTrashedSavedTables,
   listTrashedSavedTableMetadata: savedTableMocks.listTrashedSavedTableMetadata,
+  listSavedTablesByStatus: async (scope: WorkspaceScope) => ({
+    active: await savedTableMocks.listSavedTables(scope),
+    trashed: await savedTableMocks.listTrashedSavedTables(scope),
+  }),
   normalizeSavedTableName: savedTableMocks.normalizeSavedTableName,
   replaceSavedTable: savedTableMocks.replaceSavedTable,
   updateSavedTable: savedTableMocks.updateSavedTable,

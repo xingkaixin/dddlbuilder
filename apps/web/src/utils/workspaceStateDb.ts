@@ -19,6 +19,7 @@ import {
   buildScopedWorkspaceKey,
   getAnonymousWorkspaceScope,
   getWorkspaceScopeStorageKey,
+  scopedWorkspaceKeyRange,
 } from './workspaceScope';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
@@ -207,33 +208,42 @@ export const deleteDraft = async (draftId: string, scope: WorkspaceScope): Promi
   );
 };
 
-const readAllDraftEntities = () =>
-  runWithStore<WorkspaceDraftEntity[]>(WORKSPACE_GLOBAL_DRAFT_STORE_NAME, 'readonly', (store) =>
-    store.getAll(),
+type DraftListEntry = { draftId: string; record: WorkspaceDraftRecord };
+
+const readScopedDraftEntities = async (scope: WorkspaceScope) =>
+  decodeDrafts(
+    await runWithStore<WorkspaceDraftEntity[]>(
+      WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
+      'readonly',
+      (store) => store.getAll(scopedWorkspaceKeyRange(scope)),
+    ),
+    scope,
   );
 
-export const listDrafts = async (
-  scope: WorkspaceScope,
-): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> =>
-  decodeDrafts(await readAllDraftEntities(), scope)
-    .filter((entity) => entity.trashedAt == null)
-    .flatMap((entity) => {
-      const record = toDraftRecord(entity);
+const toDraftEntries = (entities: WorkspaceDraftEntity[], trashed: boolean): DraftListEntry[] => {
+  const entries = entities.flatMap((entity) => {
+    if ((entity.trashedAt != null) !== trashed) return [];
+    const record = toDraftRecord(entity);
 
-      return record ? [{ draftId: entity.id, record }] : [];
-    });
+    return record ? [{ draftId: entity.id, record }] : [];
+  });
 
-export const listTrashedDrafts = async (
-  scope: WorkspaceScope,
-): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> =>
-  decodeDrafts(await readAllDraftEntities(), scope)
-    .filter((entity) => entity.trashedAt != null)
-    .flatMap((entity) => {
-      const record = toDraftRecord(entity);
+  return trashed
+    ? entries.sort((a, b) => (b.record.trashedAt ?? 0) - (a.record.trashedAt ?? 0))
+    : entries;
+};
 
-      return record ? [{ draftId: entity.id, record }] : [];
-    })
-    .sort((a, b) => (b.record.trashedAt ?? 0) - (a.record.trashedAt ?? 0));
+export const listDrafts = async (scope: WorkspaceScope): Promise<DraftListEntry[]> =>
+  toDraftEntries(await readScopedDraftEntities(scope), false);
+
+export const listTrashedDrafts = async (scope: WorkspaceScope): Promise<DraftListEntry[]> =>
+  toDraftEntries(await readScopedDraftEntities(scope), true);
+
+export const listDraftsByStatus = async (scope: WorkspaceScope) => {
+  const entities = await readScopedDraftEntities(scope);
+
+  return { active: toDraftEntries(entities, false), trashed: toDraftEntries(entities, true) };
+};
 
 export const listSavedDrafts = async (
   scope: WorkspaceScope,

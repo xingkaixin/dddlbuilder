@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
-import { buildFolderTreeFromYDoc, listFoldersFromYDoc } from '@/services/workspaceYDocAdapter';
+import { listFoldersFromYDoc } from '@/services/workspaceYDocAdapter';
+import { buildFolderTreeModel } from '@/utils/folderModel';
 import type { TableFolder } from '@/utils/workspaceStorageTypes';
 import { type FolderTreeNode } from '@/utils/tableFolders';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
@@ -17,10 +18,11 @@ const EMPTY_FOLDER_PROJECTION = {
   folderTree: [],
 } satisfies { folders: TableFolder[]; folderTree: FolderTreeNode[] };
 
-const readFolderProjection = (doc: Y.Doc) => ({
-  folders: listFoldersFromYDoc(doc),
-  folderTree: buildFolderTreeFromYDoc(doc),
-});
+const readFolderProjection = (doc: Y.Doc) => {
+  const folders = listFoldersFromYDoc(doc);
+
+  return { folders, folderTree: buildFolderTreeModel(folders) };
+};
 
 export function useFolders() {
   const { t } = useTranslation();

@@ -5,7 +5,11 @@ import {
 } from '@ddlbuilder/workspace-core';
 import { savedTableReference, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspaceScope';
+import {
+  buildScopedWorkspaceKey,
+  getWorkspaceScopeStorageKey,
+  scopedWorkspaceKeyRange,
+} from './workspaceScope';
 import { normalizePersistedRows } from '@ddlbuilder/shared-types';
 import { runIndexedDbRequest, runIndexedDbTransaction } from './indexedDbTransaction';
 import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
@@ -150,62 +154,73 @@ export const ensureSavedTableName = (name: string): string => {
   return trimmed || DEFAULT_SAVED_TABLE_NAME;
 };
 
-export const listSavedTables = async (scope: WorkspaceScope): Promise<SavedTableRecord[]> => {
-  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
+const readScopedTables = async (scope: WorkspaceScope) => {
+  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) =>
+    store.getAll(scopedWorkspaceKeyRange(scope)),
+  );
 
-  if (!Array.isArray(records)) return [];
-
-  return records
-    .map((record) => decodeScopedTableRecord(record, scope))
-    .filter((record): record is SavedTableRecord => record != null && !record.trashedAt);
+  return Array.isArray(records) ? records : [];
 };
 
-export const listTrashedSavedTables = async (
-  scope: WorkspaceScope,
-): Promise<SavedTableRecord[]> => {
-  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
-
-  if (!Array.isArray(records)) return [];
-
-  return records
-    .map((record) => decodeScopedTableRecord(record, scope))
-    .filter((record): record is SavedTableRecord => record != null && Boolean(record.trashedAt));
-};
-
-const listScopedTableMetadata = async (
+const decodeTablesByStatus = (
+  records: SavedTableRecord[],
   scope: WorkspaceScope,
   trashed: boolean,
-): Promise<SavedTableMetadata[]> => {
-  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
+): SavedTableRecord[] =>
+  records.flatMap((record) => {
+    if (Boolean(record.trashedAt) !== trashed) return [];
+    const decoded = decodeScopedTableRecord(record, scope);
 
-  if (!Array.isArray(records)) return [];
-
-  return records.flatMap((record) => {
-    const identity = decodeScopedTableIdentity(record, scope);
-
-    if (!identity || Boolean(record.trashedAt) !== trashed) return [];
-
-    return [
-      {
-        tableId: identity.tableId,
-        normalizedName: identity.normalizedName,
-        name: record.name,
-        dbType: record.state.dbType,
-        fieldCount: record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
-        folderId: record.folderId,
-        ...(trashed ? { trashedAt: record.trashedAt } : {}),
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
-      },
-    ];
+    return decoded ? [decoded] : [];
   });
+
+export const listSavedTables = async (scope: WorkspaceScope): Promise<SavedTableRecord[]> =>
+  decodeTablesByStatus(await readScopedTables(scope), scope, false);
+
+export const listTrashedSavedTables = async (scope: WorkspaceScope): Promise<SavedTableRecord[]> =>
+  decodeTablesByStatus(await readScopedTables(scope), scope, true);
+
+export const listSavedTablesByStatus = async (scope: WorkspaceScope) => {
+  const records = await readScopedTables(scope);
+
+  return {
+    active: decodeTablesByStatus(records, scope, false),
+    trashed: decodeTablesByStatus(records, scope, true),
+  };
 };
 
-export const listSavedTableMetadata = (scope: WorkspaceScope) =>
-  listScopedTableMetadata(scope, false);
+export const listSavedTableMetadataByStatus = async (scope: WorkspaceScope) => {
+  const active: SavedTableMetadata[] = [];
+  const trashed: SavedTableMetadata[] = [];
 
-export const listTrashedSavedTableMetadata = (scope: WorkspaceScope) =>
-  listScopedTableMetadata(scope, true);
+  for (const record of await readScopedTables(scope)) {
+    const identity = decodeScopedTableIdentity(record, scope);
+
+    if (!identity) continue;
+
+    const metadata = {
+      tableId: identity.tableId,
+      normalizedName: identity.normalizedName,
+      name: record.name,
+      dbType: record.state.dbType,
+      fieldCount: record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
+      folderId: record.folderId,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    };
+
+    if (record.trashedAt) trashed.push({ ...metadata, trashedAt: record.trashedAt });
+    else active.push(metadata);
+  }
+
+  return { active, trashed };
+};
+
+export const listSavedTableMetadata = async (scope: WorkspaceScope) =>
+  (await listSavedTableMetadataByStatus(scope)).active;
+
+export const listTrashedSavedTableMetadata = async (scope: WorkspaceScope) =>
+  (await listSavedTableMetadataByStatus(scope)).trashed;
 
 export const getSavedTable = async (
   target: SavedTableTarget,

@@ -11,13 +11,7 @@ import {
   type WorkspaceYDocChange,
 } from '@/services/workspaceYDocAdapter';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
-import {
-  deleteDraft,
-  listDrafts,
-  listTrashedDrafts,
-  readDraft,
-  writeDraft,
-} from '@/utils/workspaceStateDb';
+import { deleteDraft, listDraftsByStatus, readDraft, writeDraft } from '@/utils/workspaceStateDb';
 import {
   buildPersistedStateSignature,
   buildSchemaStateSignature,
@@ -129,11 +123,8 @@ export function useDraftRecords({
   const refreshDrafts = useCallback(async () => {
     if (disabled || storage.kind !== 'indexeddb') return;
 
-    const [drafts, trashed] = await Promise.all([
-      listDrafts(storage.scope),
-      listTrashedDrafts(storage.scope),
-    ]);
-    replaceDrafts(drafts);
+    const { active, trashed } = await listDraftsByStatus(storage.scope);
+    replaceDrafts(active);
     replaceTrashedDrafts(trashed);
   }, [disabled, replaceDrafts, replaceTrashedDrafts, storage]);
   const getRecord = useCallback(
