@@ -68,6 +68,7 @@ const isSocketAttachment = (value: unknown): value is WorkspaceYDocSocketAttachm
 export class WorkspaceYDocDurableObject {
   private doc: Y.Doc | null = null;
   private validationDoc: Y.Doc | null = null;
+  private validatedSocket: WebSocket | null = null;
   private loadPromise: Promise<Y.Doc> | null = null;
   private persistQueue: Promise<void> | null = null;
   private compactQueue: Promise<void> = Promise.resolve();
@@ -250,11 +251,17 @@ export class WorkspaceYDocDurableObject {
       if (header.kind !== 'sync') return;
       requestId = header.requestId;
       this.assertValidSyncMessage(decoder, doc);
-      response = encodeWorkspaceYDocSyncMessage((encoder) => {
-        syncProtocol.readSyncMessage(decoder, encoder, doc, ws, (error) => {
-          throw error;
+      this.validatedSocket = ws;
+
+      try {
+        response = encodeWorkspaceYDocSyncMessage((encoder) => {
+          syncProtocol.readSyncMessage(decoder, encoder, doc, ws, (error) => {
+            throw error;
+          });
         });
-      });
+      } finally {
+        this.validatedSocket = null;
+      }
     } catch (error) {
       logWorkspaceYDocHealth('invalid_update', {
         workspaceId: this.workspaceId,
@@ -430,7 +437,10 @@ export class WorkspaceYDocDurableObject {
     // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Yjs origin is an opaque caller-owned value.
     origin: unknown,
   ) => {
-    if (this.validationDoc) Y.applyUpdate(this.validationDoc, update);
+    if (this.validationDoc && origin !== this.validatedSocket) {
+      Y.applyUpdate(this.validationDoc, update);
+    }
+
     this.queuePersistUpdate(update);
     this.state.waitUntil(
       // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Promise rejection values are arbitrary platform failures.
