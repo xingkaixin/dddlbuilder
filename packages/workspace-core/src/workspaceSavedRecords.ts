@@ -189,11 +189,18 @@ export const listWorkspaceSavedTableRecords = (doc: Y.Doc): WorkspaceSavedTableR
     readSavedTableRecord(key, tableDoc),
   );
 
+const listSavedTableRecordsByTrash = (doc: Y.Doc, trashed: boolean) =>
+  Array.from(getWorkspaceRoot(doc).savedTables.entries()).flatMap(([key, tableDoc]) =>
+    (typeof tableMetadata(tableDoc).trashedAt === 'number') === trashed
+      ? [readSavedTableRecord(key, tableDoc)]
+      : [],
+  );
+
 export const listWorkspaceSavedTables = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>
-  listWorkspaceSavedTableRecords(doc).filter((record) => record.trashedAt == null);
+  listSavedTableRecordsByTrash(doc, false);
 
 export const listWorkspaceTrashedSavedTables = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>
-  listWorkspaceSavedTableRecords(doc).filter((record) => record.trashedAt != null);
+  listSavedTableRecordsByTrash(doc, true);
 
 const findSavedDraftEntry = (
   doc: Y.Doc,

@@ -7,7 +7,7 @@ import type {
   WorkspaceSnapshot,
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
-import type { ApplySchemaDocumentStateOptions } from './workspaceTableDoc';
+import { type ApplySchemaDocumentStateOptions, tableMetadata } from './workspaceTableDoc';
 import {
   getDraftRecordFromYDoc,
   getWorkspaceRoot,
@@ -78,18 +78,23 @@ export const deleteWorkspaceDraft = (doc: Y.Doc, draftId: string) => {
   getWorkspaceRoot(doc).drafts.delete(draftId);
 };
 
-export const listWorkspaceDraftRecords = (doc: Y.Doc) =>
-  Array.from(getWorkspaceRoot(doc).drafts.keys()).flatMap((draftId) => {
+const readDraftRecords = (doc: Y.Doc, trashed?: boolean) =>
+  Array.from(getWorkspaceRoot(doc).drafts.entries()).flatMap(([draftId, tableDoc]) => {
+    if (
+      trashed !== undefined &&
+      (typeof tableMetadata(tableDoc).trashedAt === 'number') !== trashed
+    )
+      return [];
     const record = getDraftRecordFromYDoc(doc, draftId);
 
     return record ? [{ draftId, record }] : [];
   });
 
-export const listWorkspaceDrafts = (doc: Y.Doc) =>
-  listWorkspaceDraftRecords(doc).filter(({ record }) => record.trashedAt == null);
+export const listWorkspaceDraftRecords = (doc: Y.Doc) => readDraftRecords(doc);
 
-export const listWorkspaceTrashedDrafts = (doc: Y.Doc) =>
-  listWorkspaceDraftRecords(doc).filter(({ record }) => record.trashedAt != null);
+export const listWorkspaceDrafts = (doc: Y.Doc) => readDraftRecords(doc, false);
+
+export const listWorkspaceTrashedDrafts = (doc: Y.Doc) => readDraftRecords(doc, true);
 
 export const upsertWorkspaceFolder = (doc: Y.Doc, folder: TableFolderSnapshot) => {
   writeFolderRecord(doc, folder);
