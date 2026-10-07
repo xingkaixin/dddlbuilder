@@ -300,6 +300,7 @@ function diffFields(
 
   for (const oldIndex of Array.from(unmatchedOld)) {
     const key = getSqlIdentifierKey(oldFields[oldIndex].field.name, dbType);
+
     const candidates = (newIndexesByKey.get(key) ?? []).filter((newIndex) =>
       unmatchedNew.has(newIndex),
     );

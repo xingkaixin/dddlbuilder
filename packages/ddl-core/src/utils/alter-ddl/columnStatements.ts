@@ -132,6 +132,7 @@ export function generateModifyColumn(
   if (dbType === 'hive') {
     return `-- Manual migration required: modify column ${fieldName} on ${tableName} (${dbType}).`;
   }
+
   const family = getDatabaseFamily(dbType);
 
   if (family === 'postgresql') return generatePostgresModifyColumn(tableName, fieldDiff);
