@@ -33,32 +33,38 @@ export function useWorkspacePresentation({
     () => [...savedTables].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3),
     [savedTables],
   );
-  const presentedTabs = useMemo(
-    () =>
-      tabs.map((tab) =>
+  // 当前标签的快照只在冲刷时更新，未保存标记取实时编辑状态；其余标签用快照判断。
+  const dirtyTabIds = useMemo(() => {
+    const ids = new Set<string>();
+
+    for (const tab of tabs) {
+      const isDirty =
         tab.id === activeTabId
-          ? { ...tab, isDirty: activeSourceKind === 'saved_table' && isLoadedDirty }
-          : tab,
-      ),
-    [activeSourceKind, activeTabId, isLoadedDirty, tabs],
-  );
+          ? activeSourceKind === 'saved_table' && isLoadedDirty
+          : isWorkspaceTabDirty(tab);
+
+      if (isDirty) ids.add(tab.id);
+    }
+
+    return ids;
+  }, [activeSourceKind, activeTabId, isLoadedDirty, tabs]);
   const tablePresentations = useMemo(() => {
     const presentations = new Map<string, { title: string; isDirty: boolean }>();
 
-    for (const tab of presentedTabs) {
+    for (const tab of tabs) {
       if (tab.source.kind === 'saved_table') {
         presentations.set(savedTableKey(tab.source), {
           title: tab.title,
-          isDirty: isWorkspaceTabDirty(tab),
+          isDirty: dirtyTabIds.has(tab.id),
         });
       }
     }
 
     return presentations;
-  }, [presentedTabs]);
+  }, [dirtyTabIds, tabs]);
 
   return {
-    presentedTabs,
+    dirtyTabIds,
     recentDrafts,
     recentTables,
     tablePresentations,

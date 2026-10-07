@@ -86,6 +86,7 @@ const gateTree = () => (
     <TabBar
       // SAFETY: TabBar receives no tabs in this gate-only fixture; no tab value is consumed.
       tabs={[] as never[]}
+      dirtyTabIds={new Set()}
       activeTabId={null}
       onActivateTab={() => {}}
       onCloseTab={() => {}}

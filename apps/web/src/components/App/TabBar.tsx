@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Plus, X, Loader2, ChevronDown } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { WorkspaceTab } from '@/stores';
-import { isWorkspaceTabDirty } from '@/stores/tabStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +14,7 @@ interface TabBarProps {
   leadingAction?: ReactNode;
   trailingAction?: ReactNode;
   tabs: WorkspaceTab[];
+  dirtyTabIds: ReadonlySet<string>;
   activeTabId: string | null;
   onActivateTab: (id: string) => void;
   onCloseTab: (id: string) => void;
@@ -27,17 +27,18 @@ const TabItem = memo(
   ({
     tab,
     isActive,
+    isDirty,
     onActivate,
     onClose,
   }: {
     tab: WorkspaceTab;
     isActive: boolean;
+    isDirty: boolean;
     onActivate: (id: string) => void;
     onClose: (id: string) => void;
   }) => {
     const { t } = useTranslation();
     const isDraft = tab.source.kind === 'draft';
-    const isDirty = isWorkspaceTabDirty(tab);
 
     return (
       <div
@@ -100,6 +101,7 @@ export const TabBar = memo(
     leadingAction,
     trailingAction,
     tabs,
+    dirtyTabIds,
     activeTabId,
     onActivateTab,
     onCloseTab,
@@ -131,6 +133,7 @@ export const TabBar = memo(
               key={tab.id}
               tab={tab}
               isActive={tab.id === activeTabId}
+              isDirty={dirtyTabIds.has(tab.id)}
               onActivate={onActivateTab}
               onClose={onCloseTab}
             />
@@ -150,7 +153,7 @@ export const TabBar = memo(
                 >
                   <span className="select-none">{t('tabBar.more')}</span>
                   <ChevronDown className="h-3 w-3" />
-                  {hiddenTabs.some((t) => t.id === activeTabId && isWorkspaceTabDirty(t)) && (
+                  {hiddenTabs.some((t) => t.id === activeTabId && dirtyTabIds.has(t.id)) && (
                     <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
                   )}
                 </button>
@@ -170,12 +173,12 @@ export const TabBar = memo(
                     />
                     <span className="min-w-0 flex-1 truncate">
                       {tab.title}
-                      {isWorkspaceTabDirty(tab) ? ' *' : ''}
+                      {dirtyTabIds.has(tab.id) ? ' *' : ''}
                     </span>
                     {tab.isLoading && (
                       <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
                     )}
-                    {isWorkspaceTabDirty(tab) && !tab.isLoading && (
+                    {dirtyTabIds.has(tab.id) && !tab.isLoading && (
                       <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
                     )}
                     <button
