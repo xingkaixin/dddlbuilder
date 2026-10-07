@@ -109,7 +109,15 @@ export function useAIGenerateTable() {
       const requestOptions = {
         mode: options?.mode,
         templates: options?.templates,
-        existingConfig: baseState ?? options?.existingConfig,
+        existingConfig: baseState
+          ? {
+              schemaName: baseState.schemaName,
+              tableName: baseState.tableName,
+              tableComment: baseState.tableComment,
+              rows: baseState.rows,
+              indexes: baseState.indexes,
+            }
+          : options?.existingConfig,
         previousSchema: previousSchema ?? undefined,
         conversationHistory: baseConversation,
       };

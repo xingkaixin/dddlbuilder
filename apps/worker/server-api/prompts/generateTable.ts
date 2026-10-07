@@ -116,8 +116,8 @@ export const buildGenerateTableSystemPrompt = (params: {
 
   const templateContext = templates?.length
     ? locale === 'zh-CN'
-      ? `\n\n用户定义的模板和整表蓝本（优先参考）：\n${JSON.stringify(templates, null, 2)}`
-      : `\n\nUser-defined templates and table blueprints (high priority):\n${JSON.stringify(templates, null, 2)}`
+      ? `\n\n用户定义的模板和整表蓝本（优先参考）：\n${JSON.stringify(templates)}`
+      : `\n\nUser-defined templates and table blueprints (high priority):\n${JSON.stringify(templates)}`
     : '';
 
   const usePreviousSchema = mode !== 'patch' && !!previousSchema;
@@ -125,8 +125,8 @@ export const buildGenerateTableSystemPrompt = (params: {
   const existingContext =
     existingConfig && !usePreviousSchema
       ? locale === 'zh-CN'
-        ? `\n\n当前已有表配置（本轮唯一修改基线；历史对话中的提案可能未被应用）：\n${JSON.stringify(existingConfig, null, 2)}`
-        : `\n\nCurrent table config (the only baseline for this revision; proposals in conversation history may not have been applied):\n${JSON.stringify(existingConfig, null, 2)}`
+        ? `\n\n当前已有表配置（本轮唯一修改基线；历史对话中的提案可能未被应用）：\n${JSON.stringify(existingConfig)}`
+        : `\n\nCurrent table config (the only baseline for this revision; proposals in conversation history may not have been applied):\n${JSON.stringify(existingConfig)}`
       : '';
   const patchContext =
     mode === 'patch'
@@ -136,8 +136,8 @@ export const buildGenerateTableSystemPrompt = (params: {
       : '';
   const previousSchemaContext = usePreviousSchema
     ? locale === 'zh-CN'
-      ? `\n\n上一版表结构（本轮修改的基线，按用户要求做增量变更）：\n${JSON.stringify(previousSchema, null, 2)}`
-      : `\n\nPrevious schema (baseline for this revision; apply the user's requested changes incrementally):\n${JSON.stringify(previousSchema, null, 2)}`
+      ? `\n\n上一版表结构（本轮修改的基线，按用户要求做增量变更）：\n${JSON.stringify(previousSchema)}`
+      : `\n\nPrevious schema (baseline for this revision; apply the user's requested changes incrementally):\n${JSON.stringify(previousSchema)}`
     : '';
 
   return SYSTEM_PROMPT_TEMPLATES[locale]
@@ -155,21 +155,13 @@ export const buildGenerateTableMessages = (params: {
 }) => {
   const { systemPrompt, description, conversationHistory } = params;
 
-  const messages: Array<{
-    role: 'system' | 'user' | 'assistant';
-    content: string;
-  }> = [{ role: 'system', content: systemPrompt }];
+  const history = conversationHistory ?? [];
+  const latestAssistant = history.map((message) => message.role).lastIndexOf('assistant');
 
-  if (conversationHistory?.length) {
-    for (const msg of conversationHistory) {
-      messages.push({
-        role: msg.role,
-        content: msg.content,
-      });
-    }
-  }
-
-  messages.push({ role: 'user', content: description });
-
-  return messages;
+  return [
+    { role: 'system' as const, content: systemPrompt },
+    // Each assistant turn is a full table schema; only the latest one is still a useful baseline.
+    ...history.filter((message, index) => message.role === 'user' || index === latestAssistant),
+    { role: 'user' as const, content: description },
+  ];
 };
