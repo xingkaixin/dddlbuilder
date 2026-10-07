@@ -3,54 +3,29 @@ import {
   type DatabaseType,
   type TableMiscConfig,
 } from '@ddlbuilder/shared-types';
+import { getDatabaseFamily } from './databaseFamily.js';
 
-const MYSQL_LIKE_DBS = new Set<DatabaseType>([
-  'mysql',
-  'mariadb',
-  'tidb',
-  'oceanbase',
-  'gbase',
-  'polardb',
-]);
+export const supportsStorageOption = (dbType: DatabaseType): boolean =>
+  getDatabaseFamily(dbType) === 'hive';
 
-const TABLESPACE_DBS = new Set<DatabaseType>([
-  'postgresql',
-  'postgresql-citus',
-  'kingbase',
-  'gaussdb',
-  'oracle',
-  'oceanbase-oracle',
-  'dm',
-]);
+export const supportsEngineOption = (dbType: DatabaseType): boolean =>
+  getDatabaseFamily(dbType) === 'mysql';
 
-const HIVE_DBS = new Set<DatabaseType>(['hive']);
+export const supportsCharsetOption = supportsEngineOption;
 
-const FILLFACTOR_DBS = new Set<DatabaseType>([
-  'postgresql',
-  'postgresql-citus',
-  'kingbase',
-  'gaussdb',
-]);
+export const supportsCollationOption = supportsEngineOption;
 
-const ORACLE_STORAGE_DBS = new Set<DatabaseType>(['oracle', 'oceanbase-oracle']);
+export const supportsTablespaceOption = (dbType: DatabaseType): boolean => {
+  const family = getDatabaseFamily(dbType);
 
-export const supportsStorageOption = (dbType: DatabaseType): boolean => HIVE_DBS.has(dbType);
-
-export const supportsEngineOption = (dbType: DatabaseType): boolean => MYSQL_LIKE_DBS.has(dbType);
-
-export const supportsCharsetOption = (dbType: DatabaseType): boolean => MYSQL_LIKE_DBS.has(dbType);
-
-export const supportsCollationOption = (dbType: DatabaseType): boolean =>
-  MYSQL_LIKE_DBS.has(dbType);
-
-export const supportsTablespaceOption = (dbType: DatabaseType): boolean =>
-  TABLESPACE_DBS.has(dbType);
+  return family === 'postgresql' || family === 'oracle' || family === 'dm';
+};
 
 export const supportsFillfactorOption = (dbType: DatabaseType): boolean =>
-  FILLFACTOR_DBS.has(dbType);
+  getDatabaseFamily(dbType) === 'postgresql';
 
 export const supportsOracleStorageOption = (dbType: DatabaseType): boolean =>
-  ORACLE_STORAGE_DBS.has(dbType);
+  getDatabaseFamily(dbType) === 'oracle';
 
 const normalizeValue = (value?: string): string => {
   const normalized = (value || '').trim();
@@ -60,7 +35,7 @@ const normalizeValue = (value?: string): string => {
 
 export const buildTableOptionsClause = (dbType: DatabaseType, config?: TableMiscConfig): string => {
   if (!config?.enabled) return '';
-  if (HIVE_DBS.has(dbType)) return '';
+  if (supportsStorageOption(dbType)) return '';
   const normalizedConfig = normalizeTableMiscConfigNumbers(config);
 
   const engine = normalizeValue(normalizedConfig.engine);

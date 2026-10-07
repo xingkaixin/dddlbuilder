@@ -58,7 +58,6 @@ export {
   truncateIdentifierName,
   getIdentifierNameMaxLength,
   DEFAULT_IDENTIFIER_NAME_MAX_LENGTH,
-  ORACLE_IDENTIFIER_NAME_MAX_LENGTH,
 } from './utils/identifierNaming.js';
 export {
   generateAlterDDL,

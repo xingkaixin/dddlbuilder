@@ -1,18 +1,17 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { expandDatabaseFamilies } from './databaseFamily.js';
 
 export const DEFAULT_IDENTIFIER_NAME_MAX_LENGTH = 64;
-export const ORACLE_IDENTIFIER_NAME_MAX_LENGTH = 30;
 
-const IDENTIFIER_NAME_MAX_LENGTHS: Partial<Record<DatabaseType, number>> = {
+const IDENTIFIER_NAME_MAX_LENGTHS = expandDatabaseFamilies({
+  mysql: DEFAULT_IDENTIFIER_NAME_MAX_LENGTH,
+  sqlite: DEFAULT_IDENTIFIER_NAME_MAX_LENGTH,
   postgresql: 63,
-  'postgresql-citus': 63,
-  kingbase: 63,
-  oracle: ORACLE_IDENTIFIER_NAME_MAX_LENGTH,
-  'oceanbase-oracle': ORACLE_IDENTIFIER_NAME_MAX_LENGTH,
+  oracle: 30,
   sqlserver: 128,
   dm: 128,
   hive: 128,
-};
+});
 
 const generateShortHash = (value: string): string => {
   let hash = 5381;
@@ -25,7 +24,7 @@ const generateShortHash = (value: string): string => {
 };
 
 export const getIdentifierNameMaxLength = (dbType: DatabaseType): number =>
-  IDENTIFIER_NAME_MAX_LENGTHS[dbType] ?? DEFAULT_IDENTIFIER_NAME_MAX_LENGTH;
+  IDENTIFIER_NAME_MAX_LENGTHS[dbType];
 
 export const truncateIdentifierName = (
   name: string,
