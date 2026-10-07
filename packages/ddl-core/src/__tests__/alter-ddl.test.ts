@@ -108,6 +108,37 @@ describe('generateAlterDDL', () => {
     );
   });
 
+  it('reports Hive column changes instead of emitting unsupported ALTER syntax', () => {
+    const diff = createTableDiff(
+      {
+        fields: [
+          { type: 'add', fieldName: 'email', newField: createField({ name: 'email' }) },
+          { type: 'remove', fieldName: 'age', oldField: createField({ name: 'age' }) },
+          {
+            type: 'modify',
+            fieldName: 'name',
+            oldField: createField({ name: 'name' }),
+            newField: createField({ name: 'name', type: 'bigint' }),
+            changes: ['type'],
+          },
+          createRename('nick', 'nickname'),
+        ],
+      },
+      'hive',
+    );
+
+    expect(generateAlterDDL(diff)).toBe(
+      dependencyNotice +
+        [
+          '-- Manual migration required: drop column age on users (hive).',
+          '-- Manual migration required: rename column nick to nickname on users (hive).',
+          '-- Manual migration required: add column email on users (hive).',
+          '-- Manual migration required: modify column name on users (hive).',
+        ].join('\n\n'),
+    );
+    expect(generateRollbackDDL(diff)).not.toMatch(/^ALTER TABLE/m);
+  });
+
   it.each(['postgresql-citus', 'kingbase', 'gaussdb'] as const)(
     '%s drops and restores indexes and comments using PostgreSQL syntax',
     (dbType) => {

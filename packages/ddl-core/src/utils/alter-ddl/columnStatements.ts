@@ -51,6 +51,10 @@ export function generateDropColumn(
   tableName = formatSqlTableName(tableName, dbType);
   const fieldName = formatSqlIdentifier(fieldDiff.fieldName, dbType);
 
+  if (dbType === 'hive') {
+    return `-- Manual migration required: drop column ${fieldName} on ${tableName} (${dbType}).`;
+  }
+
   const defaultSql =
     dbType === 'sqlserver' && buildDefaultClause(fieldDiff.oldField, dbType)
       ? generateSqlServerDropDefault(tableName, fieldDiff.fieldName)
@@ -70,6 +74,10 @@ export function generateRenameColumn(
   const oldName = formatSqlIdentifier(fieldDiff.oldFieldName, dbType);
   const newName = formatSqlIdentifier(fieldDiff.newFieldName, dbType);
 
+  if (dbType === 'hive') {
+    return `-- Manual migration required: rename column ${oldName} to ${newName} on ${tableName} (${dbType}).`;
+  }
+
   if (getDatabaseFamily(dbType) === 'sqlserver') {
     return `EXEC sp_rename '${escapeSingleQuotes(`${tableName}.${oldName}`)}', '${escapeSingleQuotes(unquoteSqlIdentifier(newName))}', 'COLUMN';`;
   }
@@ -86,6 +94,11 @@ export function generateAddColumn(
   const field = fieldDiff.newField;
   tableName = formatSqlTableName(tableName, dbType);
   const fieldName = formatSqlIdentifier(field.name, dbType);
+
+  if (dbType === 'hive') {
+    return `-- Manual migration required: add column ${fieldName} on ${tableName} (${dbType}).`;
+  }
+
   const columnDef = buildColumnDefinition(field, dbType);
   const family = getDatabaseFamily(dbType);
   const column = `${fieldName} ${columnDef}`;
@@ -115,6 +128,10 @@ export function generateModifyColumn(
 
   if (dbType === 'sqlserver') return generateSqlServerModifyColumn(tableName, fieldDiff);
   const fieldName = formatSqlIdentifier(field.name, dbType);
+
+  if (dbType === 'hive') {
+    return `-- Manual migration required: modify column ${fieldName} on ${tableName} (${dbType}).`;
+  }
   const family = getDatabaseFamily(dbType);
 
   if (family === 'postgresql') return generatePostgresModifyColumn(tableName, fieldDiff);
