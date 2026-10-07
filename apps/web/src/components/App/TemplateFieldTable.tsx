@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import type { DatabaseType, EnumValueMeta, FieldRow } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet } from '@/stores';
 import { isReservedKeyword, createEmptyRow, toStringSafe } from '@/utils/helpers';
-import { useFieldColumns, getEditableColumnKeys } from './table/columns';
+import { FieldRowStateContext, useFieldColumns, getEditableColumnKeys } from './table/columns';
 import { fieldTableFeatures, type FieldTableRow } from './table/tableFeatures';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
@@ -27,6 +27,7 @@ interface TemplateFieldTableProps {
 
 interface SortableTemplateRowProps {
   row: FieldTableRow;
+  warnings: string[];
   selectedCell: { row: number; col: string } | null;
   handleCellActivate: (rowIndex: number, columnId: string) => void;
   focusEditableCell: (rowIndex: number, columnId: string) => void;
@@ -37,6 +38,7 @@ interface SortableTemplateRowProps {
 const SortableTemplateRow = memo<SortableTemplateRowProps>(
   ({
     row,
+    warnings,
     selectedCell,
     handleCellActivate,
     focusEditableCell,
@@ -48,72 +50,74 @@ const SortableTemplateRow = memo<SortableTemplateRowProps>(
     });
 
     return (
-      <tr
-        ref={setNodeRef}
-        style={{
-          transform: CSS.Transform.toString(transform),
-          transition,
-        }}
-        data-row-index={row.index}
-        className={cn(
-          'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
-          isDragging && 'opacity-80',
-        )}
-      >
-        {row.getAllCells().map((cell, colIndex) => {
-          const isSelected =
-            selectedCell && selectedCell.row === row.index && selectedCell.col === cell.column.id;
-          const isOrderColumn = cell.column.id === 'order';
+      <FieldRowStateContext value={{ editingColumn: null, warnings }}>
+        <tr
+          ref={setNodeRef}
+          style={{
+            transform: CSS.Transform.toString(transform),
+            transition,
+          }}
+          data-row-index={row.index}
+          className={cn(
+            'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
+            isDragging && 'opacity-80',
+          )}
+        >
+          {row.getAllCells().map((cell, colIndex) => {
+            const isSelected =
+              selectedCell && selectedCell.row === row.index && selectedCell.col === cell.column.id;
+            const isOrderColumn = cell.column.id === 'order';
 
-          return (
-            <td
-              key={cell.id}
-              data-row-index={row.index}
-              data-col-index={colIndex}
-              data-column-id={cell.column.id}
-              data-editable-column={cell.column.columnDef.meta?.editable || undefined}
-              className={cn(
-                'h-10 px-1 bg-background transition-colors group-hover/row:bg-muted/30',
-                isSelected && 'ring-2 ring-primary ring-inset',
-              )}
-              style={{
-                width: cell.column.getSize(),
-                minWidth: cell.column.getSize(),
-              }}
-              onPointerDown={(event) => {
-                if (event.button !== 0 || !cell.column.columnDef.meta?.editable) return;
-                if (event.target !== event.currentTarget) return;
-                handleCellActivate(row.index, cell.column.id);
-                focusFirstInteractiveInCell(event.currentTarget);
-                setTimeout(() => {
-                  focusEditableCell(row.index, cell.column.id);
-                }, 0);
-              }}
-              onFocusCapture={() => {
-                if (cell.column.columnDef.meta?.editable)
+            return (
+              <td
+                key={cell.id}
+                data-row-index={row.index}
+                data-col-index={colIndex}
+                data-column-id={cell.column.id}
+                data-editable-column={cell.column.columnDef.meta?.editable || undefined}
+                className={cn(
+                  'h-10 px-1 bg-background transition-colors group-hover/row:bg-muted/30',
+                  isSelected && 'ring-2 ring-primary ring-inset',
+                )}
+                style={{
+                  width: cell.column.getSize(),
+                  minWidth: cell.column.getSize(),
+                }}
+                onPointerDown={(event) => {
+                  if (event.button !== 0 || !cell.column.columnDef.meta?.editable) return;
+                  if (event.target !== event.currentTarget) return;
                   handleCellActivate(row.index, cell.column.id);
-              }}
-            >
-              {isOrderColumn ? (
-                <div className="flex items-center justify-center gap-1.5">
-                  <button
-                    type="button"
-                    className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label={t('templateManager.editor.dragField')}
-                    {...attributes}
-                    {...listeners}
-                  >
-                    <DragDropVerticalIcon className="h-3.5 w-3.5" />
-                  </button>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </div>
-              ) : (
-                flexRender(cell.column.columnDef.cell, cell.getContext())
-              )}
-            </td>
-          );
-        })}
-      </tr>
+                  focusFirstInteractiveInCell(event.currentTarget);
+                  setTimeout(() => {
+                    focusEditableCell(row.index, cell.column.id);
+                  }, 0);
+                }}
+                onFocusCapture={() => {
+                  if (cell.column.columnDef.meta?.editable)
+                    handleCellActivate(row.index, cell.column.id);
+                }}
+              >
+                {isOrderColumn ? (
+                  <div className="flex items-center justify-center gap-1.5">
+                    <button
+                      type="button"
+                      className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label={t('templateManager.editor.dragField')}
+                      {...attributes}
+                      {...listeners}
+                    >
+                      <DragDropVerticalIcon className="h-3.5 w-3.5" />
+                    </button>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </div>
+                ) : (
+                  flexRender(cell.column.columnDef.cell, cell.getContext())
+                )}
+              </td>
+            );
+          })}
+        </tr>
+      </FieldRowStateContext>
     );
   },
 );
@@ -211,7 +215,6 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
   const columns = useFieldColumns({
     mode: 'template',
     columnWidths,
-    rowWarnings,
     dbType,
     updateCellValue: guardedUpdateCellValue,
     updateEnumValues,
@@ -276,6 +279,7 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
                   <SortableTemplateRow
                     key={row.id}
                     row={row}
+                    warnings={rowWarnings[row.index] ?? []}
                     selectedCell={selectedCell}
                     handleCellActivate={handleCellActivate}
                     focusEditableCell={focusEditableCell}

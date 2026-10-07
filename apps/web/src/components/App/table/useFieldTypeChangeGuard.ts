@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useLayoutEffect, useRef } from 'react';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import { detectFieldTypeRisk, type FieldTypeRisk } from '@/utils/fieldTypeRisk';
 import type { UpdateEditableField } from './useFieldRowMutations';
@@ -28,13 +28,18 @@ export function useFieldTypeChangeGuard(
   updateCellValue: UpdateCellValue,
 ): FieldTypeChangeGuard {
   const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
+  const rowsRef = useRef(rows);
+
+  useLayoutEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
 
   const guardedUpdateCellValue = useCallback<UpdateCellValue>(
     (...args) => {
       const [rowIndex, columnId, value] = args;
 
       if (columnId === 'fieldType') {
-        const oldType = rows[rowIndex]?.fieldType ?? '';
+        const oldType = rowsRef.current[rowIndex]?.fieldType ?? '';
 
         if (oldType) {
           const risk = detectFieldTypeRisk(oldType, value);
@@ -49,7 +54,7 @@ export function useFieldTypeChangeGuard(
 
       updateCellValue(...args);
     },
-    [rows, updateCellValue],
+    [updateCellValue],
   );
 
   const handleConfirm = useCallback(() => {

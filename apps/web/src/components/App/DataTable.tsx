@@ -9,8 +9,12 @@ import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import { normalizeAddCount, type EnumValueMeta } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet, useEditorStore } from '@/stores';
-import { useFieldColumns, getEditableColumnKeys } from './table/columns';
-import { fieldTableFeatures, type FieldTableRow } from './table/tableFeatures';
+import { FieldRowStateContext, useFieldColumns, getEditableColumnKeys } from './table/columns';
+import {
+  fieldTableFeatures,
+  type FieldTableColumnDef,
+  type FieldTableRow,
+} from './table/tableFeatures';
 import { useFreezeColumns } from './table/useFreezeColumns';
 import { useRowHighlight } from './table/useRowHighlight';
 import { DataTableToolbar } from './table/DataTableToolbar';
@@ -36,8 +40,23 @@ interface DataTableProps {
   onOpenAIIndexAdvisor?: () => void;
 }
 
+const COLUMN_WIDTHS = {
+  order: 72,
+  fieldName: 120,
+  fieldComment: 150,
+  fieldType: 120,
+  nullable: 70,
+  defaultKind: 110,
+  defaultValue: 100,
+  onUpdate: 100,
+  actions: 50,
+} satisfies Record<string, number>;
+const TABLE_MIN_WIDTH = Object.values(COLUMN_WIDTHS).reduce((a, b) => a + b, 0);
+
 interface SortableDataRowProps {
   row: FieldTableRow;
+  columns: FieldTableColumnDef[];
+  warnings: string[];
   selectedColumn: string | null;
   editingColumn: string | null;
   setEditingCell: (cell: { row: number; col: string } | null) => void;
@@ -58,8 +77,21 @@ function isCellContentEvent({ target, currentTarget }: SyntheticEvent<HTMLTableC
   );
 }
 
+// TanStack 在数据变化时会为每一行重建 Row 对象；按原始数据、序号和告警内容比较，只重渲染真正变化的行。
+const areRowPropsEqual = (previous: SortableDataRowProps, next: SortableDataRowProps) =>
+  previous.row.original === next.row.original &&
+  previous.row.index === next.row.index &&
+  previous.warnings.join('\n') === next.warnings.join('\n') &&
+  Object.keys(next).every((key) => {
+    // SAFETY: keys come from the props object being compared.
+    const prop = key as keyof SortableDataRowProps;
+
+    return prop === 'row' || prop === 'warnings' || Object.is(previous[prop], next[prop]);
+  });
+
 const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
   row,
+  warnings,
   selectedColumn,
   editingColumn,
   setEditingCell,
@@ -85,101 +117,103 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
   }, []);
 
   return (
-    <tr
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      data-row-index={row.index}
-      className={cn(
-        'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
-        isRowHighlighted && 'bg-blue-500/10',
-        isDragging && 'opacity-80',
-      )}
-    >
-      {row.getAllCells().map((cell, colIndex) => {
-        const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
-        const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
-        const isSelected = selectedColumn === cell.column.id;
-        const isOrderColumn = cell.column.id === 'order';
+    <FieldRowStateContext value={{ editingColumn, warnings }}>
+      <tr
+        ref={setNodeRef}
+        style={{
+          transform: CSS.Transform.toString(transform),
+          transition,
+        }}
+        data-row-index={row.index}
+        className={cn(
+          'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
+          isRowHighlighted && 'bg-blue-500/10',
+          isDragging && 'opacity-80',
+        )}
+      >
+        {row.getAllCells().map((cell, colIndex) => {
+          const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
+          const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
+          const isSelected = selectedColumn === cell.column.id;
+          const isOrderColumn = cell.column.id === 'order';
 
-        return (
-          <td
-            key={cell.id}
-            data-row-index={row.index}
-            data-col-index={colIndex}
-            data-column-id={cell.column.id}
-            data-editing={editingColumn === cell.column.id || undefined}
-            data-editable-column={cell.column.columnDef.meta?.editable || undefined}
-            className={cn(
-              'h-10 px-1 bg-background text-xs transition-colors group-hover/row:bg-muted/30',
-              isFrozen && 'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
-              isLastFrozen &&
-                'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
-              isRowHighlighted && 'bg-blue-500/10',
-              isSelected && 'ring-2 ring-primary ring-inset',
-            )}
-            style={{
-              width: cell.column.getSize(),
-              minWidth: cell.column.getSize(),
-              left: isFrozen ? getStickyLeft(colIndex) : undefined,
-            }}
-            onPointerDown={(event) => {
-              if (event.button !== 0 || !cell.column.columnDef.meta?.editable) return;
-              if (!isCellContentEvent(event)) return;
+          return (
+            <td
+              key={cell.id}
+              data-row-index={row.index}
+              data-col-index={colIndex}
+              data-column-id={cell.column.id}
+              data-editing={editingColumn === cell.column.id || undefined}
+              data-editable-column={cell.column.columnDef.meta?.editable || undefined}
+              className={cn(
+                'h-10 px-1 bg-background text-xs transition-colors group-hover/row:bg-muted/30',
+                isFrozen && 'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
+                isLastFrozen &&
+                  'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
+                isRowHighlighted && 'bg-blue-500/10',
+                isSelected && 'ring-2 ring-primary ring-inset',
+              )}
+              style={{
+                width: cell.column.getSize(),
+                minWidth: cell.column.getSize(),
+                left: isFrozen ? getStickyLeft(colIndex) : undefined,
+              }}
+              onPointerDown={(event) => {
+                if (event.button !== 0 || !cell.column.columnDef.meta?.editable) return;
+                if (!isCellContentEvent(event)) return;
 
-              const isTextEditableCell =
-                cell.column.columnDef.meta?.editable === 'text' &&
-                !event.currentTarget.querySelector('[data-editable-cell-trigger][tabindex="-1"]');
+                const isTextEditableCell =
+                  cell.column.columnDef.meta?.editable === 'text' &&
+                  !event.currentTarget.querySelector('[data-editable-cell-trigger][tabindex="-1"]');
 
-              if (isTextEditableCell) {
-                commitActiveInputOutsideCell(event.currentTarget);
-                event.preventDefault();
-                setEditingCell({ row: row.index, col: cell.column.id });
+                if (isTextEditableCell) {
+                  commitActiveInputOutsideCell(event.currentTarget);
+                  event.preventDefault();
+                  setEditingCell({ row: row.index, col: cell.column.id });
+                  handleCellActivate(row.index, cell.column.id);
+                  setTimeout(() => {
+                    focusEditableCell(row.index, cell.column.id);
+                  }, 0);
+
+                  return;
+                }
+
                 handleCellActivate(row.index, cell.column.id);
+
+                if (event.target !== event.currentTarget) return;
+                focusFirstInteractiveInCell(event.currentTarget);
                 setTimeout(() => {
                   focusEditableCell(row.index, cell.column.id);
                 }, 0);
-
-                return;
-              }
-
-              handleCellActivate(row.index, cell.column.id);
-
-              if (event.target !== event.currentTarget) return;
-              focusFirstInteractiveInCell(event.currentTarget);
-              setTimeout(() => {
-                focusEditableCell(row.index, cell.column.id);
-              }, 0);
-            }}
-            onFocusCapture={() => {
-              if (cell.column.columnDef.meta?.editable)
-                handleCellActivate(row.index, cell.column.id);
-            }}
-          >
-            {isOrderColumn ? (
-              <div className="flex items-center justify-center gap-1.5">
-                <button
-                  type="button"
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label={dragFieldLabel}
-                  {...attributes}
-                  {...listeners}
-                >
-                  <DragDropVerticalIcon className="h-3.5 w-3.5" />
-                </button>
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </div>
-            ) : (
-              flexRender(cell.column.columnDef.cell, cell.getContext())
-            )}
-          </td>
-        );
-      })}
-    </tr>
+              }}
+              onFocusCapture={() => {
+                if (cell.column.columnDef.meta?.editable)
+                  handleCellActivate(row.index, cell.column.id);
+              }}
+            >
+              {isOrderColumn ? (
+                <div className="flex items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={dragFieldLabel}
+                    {...attributes}
+                    {...listeners}
+                  >
+                    <DragDropVerticalIcon className="h-3.5 w-3.5" />
+                  </button>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </div>
+              ) : (
+                flexRender(cell.column.columnDef.cell, cell.getContext())
+              )}
+            </td>
+          );
+        })}
+      </tr>
+    </FieldRowStateContext>
   );
-});
+}, areRowPropsEqual);
 
 SortableDataRow.displayName = 'SortableDataRow';
 
@@ -213,18 +247,6 @@ export const DataTable = memo<DataTableProps>(
     const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [dragFeedback, setDragFeedback] = useState<string | null>(null);
     const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
-
-    const [columnWidths] = useState<Record<string, number>>({
-      order: 72,
-      fieldName: 120,
-      fieldComment: 150,
-      fieldType: 120,
-      nullable: 70,
-      defaultKind: 110,
-      defaultValue: 100,
-      onUpdate: 100,
-      actions: 50,
-    });
 
     const { updateCellValue } = useFieldRowMutations({ setRows });
 
@@ -283,9 +305,7 @@ export const DataTable = memo<DataTableProps>(
     }, [setSelectedCell]);
 
     const columns = useFieldColumns({
-      columnWidths,
-      rowWarnings,
-      editingCell,
+      columnWidths: COLUMN_WIDTHS,
       onEditingCellChange: setEditingCell,
       dbType,
       updateCellValue: guardedUpdateCellValue,
@@ -334,7 +354,7 @@ export const DataTable = memo<DataTableProps>(
     });
 
     const { getStickyLeft, frozenAreaWidth, effectiveFreezeColumns } = useFreezeColumns(
-      columnWidths,
+      COLUMN_WIDTHS,
       freezeEnabled,
       freezeColumns,
     );
@@ -409,7 +429,7 @@ export const DataTable = memo<DataTableProps>(
             <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
               <table
                 className="border-separate border-spacing-0 table-fixed text-xs"
-                style={{ minWidth: Object.values(columnWidths).reduce((a, b) => a + b, 0) }}
+                style={{ minWidth: TABLE_MIN_WIDTH }}
                 data-testid="data-table"
                 aria-label={t('dataTable.ariaLabel')}
                 aria-describedby="field-config-table-description"
@@ -454,6 +474,8 @@ export const DataTable = memo<DataTableProps>(
                     <SortableDataRow
                       key={row.id}
                       row={row}
+                      columns={columns}
+                      warnings={rowWarnings[row.index] ?? []}
                       selectedColumn={selectedCell?.row === row.index ? selectedCell.col : null}
                       editingColumn={editingCell?.row === row.index ? editingCell.col : null}
 
