@@ -1,5 +1,5 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
@@ -104,12 +104,17 @@ export function useSavedTables() {
     ...localTrashedTablesOptions(currentScope),
     enabled: Boolean(currentScope && !yDocReady),
   });
-  const savedTables = sortSavedTablesByCreatedAt(
-    yDocReady ? yDocProjection.savedTables : (localSavedTablesQuery.data ?? []),
+  const savedTableSource = yDocReady ? yDocProjection.savedTables : localSavedTablesQuery.data;
+  const trashedTableSource = yDocReady ? yDocProjection.trashedTables : trashedTablesQuery.data;
+
+  const savedTables = useMemo(
+    () => sortSavedTablesByCreatedAt(savedTableSource ?? []),
+    [savedTableSource],
   );
-  const trashedTables = [
-    ...(yDocReady ? yDocProjection.trashedTables : (trashedTablesQuery.data ?? [])),
-  ].sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
+  const trashedTables = useMemo(
+    () => [...(trashedTableSource ?? [])].sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0)),
+    [trashedTableSource],
+  );
   const loading =
     !currentScope ||
     (!yDocReady && (trashedTablesQuery.isPending || localSavedTablesQuery.isPending));
