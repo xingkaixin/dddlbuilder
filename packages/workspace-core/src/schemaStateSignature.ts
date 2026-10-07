@@ -115,10 +115,18 @@ export const normalizeSchemaStateForSignature = (state: SchemaDocumentState) => 
   return sortValue(normalized);
 };
 
-export const buildSchemaStateSignature = (state: SchemaDocumentState) => {
-  const bytes = new TextEncoder().encode(JSON.stringify(normalizeSchemaStateForSignature(state)));
+// Callers treat schema states as immutable values, so the object identity is a safe cache key.
+const schemaStateSignatures = new WeakMap<SchemaDocumentState, string>();
 
-  return `sha256:${Array.from(digest(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+export const buildSchemaStateSignature = (state: SchemaDocumentState) => {
+  const cached = schemaStateSignatures.get(state);
+
+  if (cached) return cached;
+  const bytes = new TextEncoder().encode(JSON.stringify(normalizeSchemaStateForSignature(state)));
+  const signature = `sha256:${Array.from(digest(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+  schemaStateSignatures.set(state, signature);
+
+  return signature;
 };
 
 export const normalizePersistedStateForSignature = (state: PersistedState) => ({
