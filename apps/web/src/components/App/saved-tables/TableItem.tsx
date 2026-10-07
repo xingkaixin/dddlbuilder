@@ -32,10 +32,9 @@ export interface TableItemProps {
   isDirty?: boolean;
   isDraft?: boolean;
   depth?: number;
-  onSelect: () => void;
-  onRename?: () => void;
-  onDelete: () => void;
-  onViewHistory?: () => void;
+  onSelect: (item: SavedTableSummary) => void;
+  onRename?: (item: SavedTableSummary) => void;
+  onDelete: (item: SavedTableSummary) => void;
   dragDisabled?: boolean;
 }
 
@@ -102,7 +101,7 @@ export const TableItem = memo<TableItemProps>(
             'min-w-0 flex-1 rounded-sm text-left disabled:cursor-not-allowed disabled:opacity-70',
             drawerInteractiveButtonClass,
           )}
-          onClick={onSelect}
+          onClick={() => onSelect(item)}
         >
           <div className="flex items-center gap-1">
             {isDraft ? (
@@ -157,14 +156,14 @@ export const TableItem = memo<TableItemProps>(
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-32">
               {onRename && !isDraft && (
-                <DropdownMenuItem onClick={onRename}>
+                <DropdownMenuItem onClick={() => onRename(item)}>
                   <Pencil className="mr-2 h-4 w-4" />
                   {t('savedTables.rename')}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={onDelete}
+                onClick={() => onDelete(item)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t('savedTables.delete')}

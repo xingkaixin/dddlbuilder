@@ -108,7 +108,6 @@ export function buildAppWorkspaceModel({
       onSelect: workspaceTabs.handleSelectSavedTable,
       onRename: savedTableFlow.handleOpenRenameDialog,
       onDelete: savedTableFlow.handleOpenDeleteDialog,
-      onViewHistory: navigationActions.handleViewVersionHistory,
       onMoveToFolder: folderActions.handleMoveTableToFolder,
       onMoveFolder: folderActions.handleMoveFolderToFolder,
       onCreateFolder: folderActions.handleOpenCreateFolderDialog,
@@ -146,7 +145,6 @@ export function buildAppWorkspaceModel({
       onMoveFolder: folderActions.handleMoveFolderToFolder,
       onRenameFolder: folderActions.handleOpenRenameFolderDialog,
       onDeleteFolder: folderActions.handleOpenDeleteFolderDialog,
-      onViewHistory: navigationActions.handleViewVersionHistory,
     },
     tabBar: {
       activeTabId: tabLifecycle.activeTabId,

@@ -49,7 +49,6 @@ export interface SavedTablesDrawerProps {
   onSelect: (item: SavedTableSummary) => void;
   onRename: (item: SavedTableSummary) => void;
   onDelete: (item: SavedTableSummary) => void;
-  onViewHistory?: (item: SavedTableSummary) => void;
   onMoveToFolder?: (
     item: SavedTableSummary,
     folderId?: string,
@@ -85,7 +84,6 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     onSelect,
     onRename,
     onDelete,
-    onViewHistory,
     onMoveToFolder,
     onMoveFolder,
     onCreateFolder,
@@ -123,6 +121,17 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     const { searchQuery, setSearchQuery, foldersWithCount, filteredItems, isSearching } =
       treeControls;
 
+    const handleSelectItem = useCallback(
+      (item: SavedTableSummary) =>
+        draftIdSet.has(item.tableId) ? onSelectDraft?.(item.normalizedName) : onSelect(item),
+      [draftIdSet, onSelect, onSelectDraft],
+    );
+    const handleDeleteItem = useCallback(
+      (item: SavedTableSummary) =>
+        draftIdSet.has(item.tableId) ? onDeleteDraft?.(item.normalizedName) : onDelete(item),
+      [draftIdSet, onDelete, onDeleteDraft],
+    );
+
     const renderTableList = useCallback(
       (tableItems: SavedTableSummary[], depth = 0) => (
         <div className="space-y-2">
@@ -140,15 +149,14 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                 key={item.tableId}
                 item={item}
                 isActive={isActive}
-                activeDirty={activeDirty}
+                activeDirty={isActive && activeDirty}
                 displayName={tablePresentations?.get(item.tableId)?.title}
                 isDirty={tablePresentations?.get(item.tableId)?.isDirty}
                 isDraft={isDraft}
                 depth={depth}
-                onSelect={() => (isDraft ? onSelectDraft?.(item.normalizedName) : onSelect(item))}
-                onRename={isDraft ? undefined : () => onRename(item)}
-                onDelete={() => (isDraft ? onDeleteDraft?.(item.normalizedName) : onDelete(item))}
-                onViewHistory={isDraft || !onViewHistory ? undefined : () => onViewHistory(item)}
+                onSelect={handleSelectItem}
+                onRename={isDraft ? undefined : onRename}
+                onDelete={handleDeleteItem}
                 dragDisabled={isSearching || isDraft}
               />
             );
@@ -162,12 +170,9 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
         activeDraftId,
         draftIdSet,
         isSearching,
-        onDelete,
-        onDeleteDraft,
+        handleDeleteItem,
         onRename,
-        onSelect,
-        onSelectDraft,
-        onViewHistory,
+        handleSelectItem,
         tablePresentations,
       ],
     );

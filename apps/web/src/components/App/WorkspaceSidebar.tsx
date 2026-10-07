@@ -75,7 +75,6 @@ interface WorkspaceSidebarProps {
   ) => MoveOperationResult | Promise<MoveOperationResult | undefined> | undefined;
   onRenameFolder?: (folder: FolderTreeNode) => void;
   onDeleteFolder?: (folder: FolderTreeNode) => void;
-  onViewHistory?: (item: SavedTableSummary) => void;
 }
 
 export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
@@ -110,7 +109,6 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     onMoveFolder,
     onRenameFolder,
     onDeleteFolder,
-    onViewHistory,
   }) => {
     const { t } = useTranslation();
     const [showTrash, setShowTrash] = useState(false);
@@ -148,26 +146,27 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     const renderTableList = useCallback(
       (tableItems: SavedTableSummary[], depth = 0) => (
         <div className="space-y-1">
-          {tableItems.map((item) => (
-            <TableItem
-              key={item.tableId}
-              item={item}
-              isActive={
-                activeTableId
-                  ? activeTableId === item.tableId
-                  : activeNormalizedName === item.normalizedName
-              }
-              activeDirty={activeDirty}
-              displayName={tablePresentations?.get(item.tableId)?.title}
-              isDirty={tablePresentations?.get(item.tableId)?.isDirty}
-              depth={depth}
-              onSelect={() => onSelect(item)}
-              onRename={() => onRename(item)}
-              onDelete={() => onDelete(item)}
-              onViewHistory={onViewHistory ? () => onViewHistory(item) : undefined}
-              dragDisabled={isSearching}
-            />
-          ))}
+          {tableItems.map((item) => {
+            const isActive = activeTableId
+              ? activeTableId === item.tableId
+              : activeNormalizedName === item.normalizedName;
+
+            return (
+              <TableItem
+                key={item.tableId}
+                item={item}
+                isActive={isActive}
+                activeDirty={isActive && activeDirty}
+                displayName={tablePresentations?.get(item.tableId)?.title}
+                isDirty={tablePresentations?.get(item.tableId)?.isDirty}
+                depth={depth}
+                onSelect={onSelect}
+                onRename={onRename}
+                onDelete={onDelete}
+                dragDisabled={isSearching}
+              />
+            );
+          })}
         </div>
       ),
       [
@@ -178,7 +177,6 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
         onDelete,
         onRename,
         onSelect,
-        onViewHistory,
         tablePresentations,
       ],
     );
