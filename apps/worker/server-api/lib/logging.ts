@@ -56,7 +56,6 @@ export const configureWorkerLogging = (
         '**.messages',
         '**.requestBody',
         '**.responseBody',
-        '**.debugInput',
         '**.state',
         '**.snapshot',
         '**.yjsUpdate',

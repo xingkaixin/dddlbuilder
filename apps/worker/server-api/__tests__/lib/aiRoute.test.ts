@@ -238,10 +238,8 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           return yield* session.streamCompletion({
-            scope: 'test-json-stream',
             temperature: 0,
             jsonResponse: true,
-            debugInput: {},
           });
         }),
       ),
@@ -285,10 +283,8 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           return yield* session.streamCompletion({
-            scope: 'test-stream',
             temperature: 0,
             jsonResponse,
-            debugInput: {},
           });
         }),
       ),
@@ -338,7 +334,7 @@ describe('withAIGovernance', () => {
     app.post('/t', (c) =>
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
-          yield* session.completeJson({ scope: 'test-json', temperature: 0 });
+          yield* session.completeJson({ temperature: 0 });
 
           return c.json({ ok: true });
         }),
@@ -383,14 +379,10 @@ describe('withAIGovernance', () => {
           (session) =>
             streamed
               ? session.streamCompletion({
-                  scope: 'test',
                   temperature: 0,
                   jsonResponse: true,
-                  debugInput: {},
                 })
-              : session
-                  .completeJson({ scope: 'test', temperature: 0 })
-                  .pipe(Effect.map((value) => c.json(value))),
+              : session.completeJson({ temperature: 0 }).pipe(Effect.map((value) => c.json(value))),
         ),
       );
       const response = await post(app, {}, waitUntil);
@@ -451,7 +443,7 @@ describe('withAIGovernance', () => {
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
-        session.streamCompletion({ scope: 'test', temperature: 0, debugInput: {} }),
+        session.streamCompletion({ temperature: 0 }),
       ),
     );
     const waitUntil = vi.fn();
@@ -491,9 +483,7 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           return yield* session.streamCompletion({
-            scope: 'test-cancel',
             temperature: 0,
-            debugInput: {},
           });
         }),
       ),
@@ -571,9 +561,7 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           return yield* session.streamCompletion({
-            scope: 'test-cancel',
             temperature: 0,
-            debugInput: {},
           });
         }),
       ),
@@ -615,9 +603,7 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           return yield* session.streamCompletion({
-            scope: 'test-stream',
             temperature: 0,
-            debugInput: {},
           });
         }),
       ),
@@ -678,7 +664,7 @@ describe('withAIGovernance', () => {
     app.post('/t', (c) =>
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
-          yield* session.completeJson({ scope: 'sdk-options', temperature: 0 });
+          yield* session.completeJson({ temperature: 0 });
 
           return c.json({ ok: true });
         }),
@@ -698,7 +684,7 @@ describe('withAIGovernance', () => {
     app.post('/t', (c) =>
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
-          yield* session.completeJson({ scope: 'test-json', temperature: 0 });
+          yield* session.completeJson({ temperature: 0 });
 
           return c.json({ ok: true });
         }),
@@ -721,7 +707,7 @@ describe('withAIGovernance', () => {
     app.post('/t', (c) =>
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
-          yield* session.completeJson({ scope: 'test-retry', temperature: 0 });
+          yield* session.completeJson({ temperature: 0 });
 
           return c.json({ ok: true });
         }),
@@ -758,7 +744,7 @@ describe('withAIGovernance', () => {
     app.post('/t', (c) =>
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
-          yield* session.completeJson({ scope: 'test-settlement', temperature: 0 });
+          yield* session.completeJson({ temperature: 0 });
 
           return c.json({ ok: true });
         }),
@@ -848,7 +834,6 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
         Effect.gen(function* () {
           yield* session.completeJson({
-            scope: 'test-json',
             temperature: 0,
           });
 

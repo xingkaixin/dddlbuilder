@@ -119,9 +119,7 @@ describe('AI client cancellation accounting', () => {
           (session) =>
             Effect.gen(function* () {
               return yield* session.streamCompletion({
-                scope: 'cancel-test',
                 temperature: 0,
-                debugInput: {},
               });
             }),
         ),

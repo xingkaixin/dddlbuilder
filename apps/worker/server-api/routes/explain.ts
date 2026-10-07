@@ -3,7 +3,6 @@ import {
   AIExplainRequestSchema,
   type AIExplainRequest,
 } from '@ddlbuilder/shared-types/ai-generate';
-import * as Effect from 'effect/Effect';
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
@@ -32,16 +31,7 @@ export function registerExplainRoute(app: Hono<ApiEnv>) {
           { code: 'SQL_REQUIRED', message: 'SQL is required' },
         ),
       },
-      (session) =>
-        Effect.gen(function* () {
-          const { sql, context, locale } = session.request;
-
-          return yield* session.streamCompletion({
-            scope: 'Explain',
-            temperature: 0.3,
-            debugInput: { sqlLength: sql.length, contextLength: context.length, locale },
-          });
-        }),
+      (session) => session.streamCompletion({ temperature: 0.3 }),
     ),
   );
 }

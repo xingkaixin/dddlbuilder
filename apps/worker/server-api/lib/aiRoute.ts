@@ -40,7 +40,6 @@ import {
   DomainError,
   type ApiErrorCode,
 } from './http.js';
-import { createOpenAIStreamDebugLogger } from './aiStreamDebug.js';
 import { getAIExecutionTimeoutMs } from './openaiConfig.js';
 import {
   createWorkerBackgroundLogger,
@@ -85,16 +84,11 @@ export type AISession<Request> = {
 export type AIChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
 export type AIStreamInput = {
-  scope: string;
   temperature: number;
   jsonResponse?: boolean;
-  /** 只进 stream debug 日志，用来还原是什么输入触发了这次流。 */
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- stream diagnostics accept route-specific debug fields without sending their values to the model.
-  debugInput: Record<string, unknown>;
 };
 
 export type AICompletionInput = {
-  scope: string;
   temperature: number;
 };
 
@@ -696,9 +690,9 @@ export const aiGovernance = <Request, E>(
 
         const session: AISession<Request> = {
           request: parsed,
-          completeJson: ({ scope, temperature }) =>
+          completeJson: ({ temperature }) =>
             Effect.gen(function* () {
-              const { data: response } = yield* retryOpenAI(
+              const response = yield* retryOpenAI(
                 runOpenAIAttempt(
                   provider.complete(
                     {
@@ -712,7 +706,7 @@ export const aiGovernance = <Request, E>(
                     openAIAbortController.signal,
                   ),
                 ),
-                { scope, onRetry },
+                { onRetry },
                 config,
               );
               const usageSnapshot = response.usage;
@@ -746,20 +740,10 @@ export const aiGovernance = <Request, E>(
                 ),
               );
             }),
-          streamCompletion: ({ scope, temperature, jsonResponse, debugInput }) =>
+          streamCompletion: ({ temperature, jsonResponse }) =>
             Effect.sync(() => {
               c.header('X-AI-Stream-Debug', config.streamDebugEnabled ? '1' : '0');
               streamed = true;
-
-              const streamDebug = createOpenAIStreamDebugLogger({
-                enabled: config.streamDebugEnabled,
-                requestId,
-                route,
-                model,
-                startedAt,
-                input: debugInput,
-                log: getRequestLogger(c),
-              });
               c.header('Content-Type', 'application/x-ndjson; charset=utf-8');
               c.header('Cache-Control', 'no-cache');
 
@@ -775,9 +759,7 @@ export const aiGovernance = <Request, E>(
                     catch: (cause) => new AIProviderError({ cause }),
                   });
                 const completion = Effect.gen(function* () {
-                  streamDebug.start();
-
-                  const { data: response } = yield* retryOpenAI(
+                  const response = yield* retryOpenAI(
                     runOpenAIAttempt(
                       provider.stream(
                         {
@@ -795,10 +777,9 @@ export const aiGovernance = <Request, E>(
                         openAIAbortController.signal,
                       ),
                     ),
-                    { scope, onRetry },
+                    { onRetry },
                     config,
                   );
-                  streamDebug.connected();
                   let fullText = '';
                   let finishReason: string | null = null;
                   yield* Stream.fromAsyncIterable(
@@ -820,7 +801,6 @@ export const aiGovernance = <Request, E>(
                               clock.currentTimeMillisUnsafe() - startedAt,
                             );
                           fullText += content;
-                          streamDebug.chunk(content);
                           yield* write({ type: 'delta', text: content });
                         }
                       }),
@@ -837,7 +817,6 @@ export const aiGovernance = <Request, E>(
                   yield* validateOutput(completed);
                   requestSpan.attribute('ai.finish_reason', finishReason ?? 'unknown');
                   requestSpan.attribute('ai.output_chars', fullText.length);
-                  streamDebug.complete();
                 });
                 const task = Effect.runPromise(
                   execute(completion).pipe(
@@ -845,15 +824,8 @@ export const aiGovernance = <Request, E>(
                     Effect.flatMap(() => write({ type: 'done' })),
                     Effect.catchCause((cause) =>
                       Effect.gen(function* () {
+                        if (requestAborted) return;
                         const error = Cause.squash(cause);
-
-                        if (requestAborted) {
-                          streamDebug.error(new Error('Client aborted AI stream'));
-
-                          return;
-                        }
-
-                        streamDebug.error(error);
                         getRequestLogger(c)?.error(toWorkerError(error, 'Unknown stream error'), {
                           ai: { failurePhase: 'stream' },
                         });

@@ -71,10 +71,7 @@ export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
       },
       (session) =>
         Effect.gen(function* () {
-          const data = yield* session.completeJson({
-            scope: 'IndexAdvisor',
-            temperature: 0.2,
-          });
+          const data = yield* session.completeJson({ temperature: 0.2 });
           const result = normalizeResult(data, session.request.fields);
 
           return c.json(

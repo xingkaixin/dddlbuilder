@@ -4,7 +4,6 @@ import {
   AIGenerateTableRequestSchema,
   type AIGenerateTableRequest,
 } from '@ddlbuilder/shared-types/ai-generate';
-import * as Effect from 'effect/Effect';
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
@@ -59,27 +58,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
           { code: 'INVALID_DATABASE_TYPE', message: 'Invalid database type' },
         ),
       },
-      (session) =>
-        Effect.gen(function* () {
-          const { description, dbType, locale, mode, templates, existingConfig, previousSchema } =
-            session.request;
-
-          return yield* session.streamCompletion({
-            scope: 'GenerateTable',
-            temperature: 0.3,
-            jsonResponse: true,
-            debugInput: {
-              descriptionLength: description.length,
-              dbType,
-              locale,
-              mode,
-              templateCount: templates.length,
-              hasExistingConfig: existingConfig != null,
-              hasPreviousSchema: previousSchema != null,
-              conversationTurnCount: session.request.conversationHistory.length,
-            },
-          });
-        }),
+      (session) => session.streamCompletion({ temperature: 0.3, jsonResponse: true }),
     ),
   );
 }

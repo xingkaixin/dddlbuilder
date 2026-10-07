@@ -7,8 +7,6 @@ import { reserveAIDailyBudget } from './lib/aiBudget.js';
 import type { OpenAIConfig } from './lib/openaiConfig.js';
 import { logWorkerBackgroundError } from './lib/logging.js';
 
-export { buildOpenAIConfig } from './lib/openaiConfig.js';
-
 export type AuditLogPayload = {
   requestId: string;
   route: AIRouteKey;

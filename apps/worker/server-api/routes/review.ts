@@ -1,7 +1,6 @@
 import { ddlReviewProviderSchema } from '@ddlbuilder/shared-types/ddl-review';
 import { decodeAIRequest } from '../lib/aiRequest.js';
 import { AIReviewRequestSchema, type AIReviewRequest } from '@ddlbuilder/shared-types/ai-generate';
-import * as Effect from 'effect/Effect';
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
@@ -34,22 +33,7 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
           { code: 'INVALID_DATABASE_TYPE', message: 'Invalid database type' },
         ),
       },
-      (session) =>
-        Effect.gen(function* () {
-          const { ddl, tableName, dbType, locale } = session.request;
-
-          return yield* session.streamCompletion({
-            scope: 'Review',
-            temperature: 0.3,
-            jsonResponse: true,
-            debugInput: {
-              ddlLength: ddl.length,
-              tableNameLength: tableName.length,
-              dbType,
-              locale,
-            },
-          });
-        }),
+      (session) => session.streamCompletion({ temperature: 0.3, jsonResponse: true }),
     ),
   );
 }

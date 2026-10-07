@@ -76,9 +76,7 @@ it('runs an injected provider through real credit reservation and settlement', a
           buildMessages: () => [{ role: 'user', content: 'Describe the table' }],
         },
         (session) =>
-          session
-            .completeJson({ scope: 'test', temperature: 0 })
-            .pipe(Effect.map((data) => c.json(data))),
+          session.completeJson({ temperature: 0 }).pipe(Effect.map((data) => c.json(data))),
       ).pipe(Effect.provide(services), Effect.provide(AIRequestAccess.layer(c))),
     ),
   );

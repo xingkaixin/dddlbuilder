@@ -5,23 +5,11 @@ import { AIProviderError, AIUsageError } from './aiErrors.js';
 import type { OpenAIConfig } from './openaiConfig.js';
 
 type RetryOptions = {
-  scope: string;
-  maxAttempts?: number;
-  baseDelayMs?: number;
-  maxDelayMs?: number;
   onRetry?: (event: OpenAIRetryEvent) => void;
 };
 
-export type OpenAIRetryResult<T> = {
-  data: T;
-  attempts: number;
-  retryCount: number;
-};
-
 export type OpenAIRetryEvent = {
-  error: unknown;
   attempt: number;
-  maxAttempts: number;
   status: number | null;
   waitMs: number;
 };
@@ -155,38 +143,30 @@ const isRetryableError = (error: unknown): boolean => {
 // oxlint-enable anti-slop/no-reflect-get
 // oxlint-enable anti-slop/no-object-parameters
 
-const createRetrySchedule = (options: {
-  maxAttempts: number;
-  baseDelayMs: number;
-  maxDelayMs: number;
-  onRetry?: (event: OpenAIRetryEvent) => void;
-}) =>
-  Schedule.exponential(Duration.millis(options.baseDelayMs)).pipe(
+const createRetrySchedule = (config: OpenAIConfig, options: RetryOptions) =>
+  Schedule.exponential(Duration.millis(config.retryBaseDelayMs)).pipe(
     Schedule.setInputType<unknown>(),
     Schedule.while(({ input }) => isRetryableError(input)),
-    Schedule.upTo({ times: Math.max(0, options.maxAttempts - 1) }),
+    Schedule.upTo({ times: config.retryMaxAttempts - 1 }),
     Schedule.modifyDelay(({ duration }) =>
-      Effect.succeed(Duration.min(duration, Duration.millis(options.maxDelayMs))),
+      Effect.succeed(Duration.min(duration, Duration.millis(config.retryMaxDelayMs))),
     ),
     Schedule.jittered,
     Schedule.modifyDelay(({ input, duration, now }) => {
-      const retryAfterMs = getRetryAfterFromError(input, now);
       const backoffMs = Math.max(100, Math.round(Duration.toMillis(duration)));
 
       return Effect.succeed(
-        Duration.millis(Math.min(retryAfterMs ?? backoffMs, options.maxDelayMs)),
+        Duration.millis(
+          Math.min(getRetryAfterFromError(input, now) ?? backoffMs, config.retryMaxDelayMs),
+        ),
       );
     }),
     Schedule.tap(({ input, attempt, duration }) =>
       Effect.sync(() => {
-        const status = getErrorStatus(input);
-        const waitMs = Duration.toMillis(duration);
         options.onRetry?.({
-          error: input,
           attempt,
-          maxAttempts: options.maxAttempts,
-          status,
-          waitMs,
+          status: getErrorStatus(input),
+          waitMs: Duration.toMillis(duration),
         });
       }),
     ),
@@ -196,28 +176,4 @@ export const retryOpenAI = <A, E, R>(
   operation: Effect.Effect<A, E, R>,
   options: RetryOptions,
   config: OpenAIConfig,
-): Effect.Effect<OpenAIRetryResult<A>, E, R> =>
-  Effect.suspend(() => {
-    const maxAttempts = options.maxAttempts ?? config.retryMaxAttempts;
-    const baseDelayMs = options.baseDelayMs ?? config.retryBaseDelayMs;
-    const maxDelayMs = options.maxDelayMs ?? config.retryMaxDelayMs;
-
-    if (maxAttempts < 1) {
-      return Effect.die(new Error(`[${options.scope}] OpenAI retry failed unexpectedly`));
-    }
-
-    let attempts = 0;
-
-    const attempt = Effect.suspend(() => {
-      attempts += 1;
-
-      return operation;
-    });
-
-    return attempt.pipe(
-      Effect.retry(
-        createRetrySchedule({ maxAttempts, baseDelayMs, maxDelayMs, onRetry: options.onRetry }),
-      ),
-      Effect.map((data) => ({ data, attempts, retryCount: Math.max(0, attempts - 1) })),
-    );
-  });
+): Effect.Effect<A, E, R> => Effect.retry(operation, createRetrySchedule(config, options));

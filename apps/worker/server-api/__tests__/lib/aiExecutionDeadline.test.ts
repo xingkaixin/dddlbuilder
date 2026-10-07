@@ -54,11 +54,9 @@ const startRequest = async (streaming = true) => {
         Effect.gen(function* () {
           return streaming
             ? yield* session.streamCompletion({
-                scope: 'deadline-test',
                 temperature: 0,
-                debugInput: {},
               })
-            : c.json(yield* session.completeJson({ scope: 'deadline-test', temperature: 0 }));
+            : c.json(yield* session.completeJson({ temperature: 0 }));
         }),
     ),
   );
