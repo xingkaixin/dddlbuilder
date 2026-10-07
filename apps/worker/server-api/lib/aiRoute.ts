@@ -162,6 +162,7 @@ export const aiGovernance = <Request, Output, E>(
         let rateLimitRemaining: number | null = governance.rateLimitLimit;
         let budgetUsedTokens: number | null = null;
         let requestAborted = false;
+        let streamOutputChars: number | null = null;
 
         const audit = (
           status: number,
@@ -419,6 +420,23 @@ export const aiGovernance = <Request, Output, E>(
 
             return {
               observedTotalTokens: 0,
+              chargedTokens,
+              providerBudgetTokens,
+              usageEstimated,
+            };
+          }
+
+          if (streamOutputChars !== null && attemptCount === 1) {
+            // Usage only arrives in the final chunk; an accepted stream that ends early is charged by characters.
+            chargedTokens = Math.min(
+              reservation.reservedTokens,
+              estimateRequestTokens(messages, 0) + streamOutputChars,
+            );
+            providerBudgetTokens = getProviderBudgetTokens(chargedTokens);
+            usageEstimated = true;
+
+            return {
+              observedTotalTokens: null,
               chargedTokens,
               providerBudgetTokens,
               usageEstimated,
@@ -806,6 +824,7 @@ export const aiGovernance = <Request, Output, E>(
                   );
                   let fullText = '';
                   let finishReason: string | null = null;
+                  streamOutputChars = 0;
                   yield* Stream.fromAsyncIterable(
                     response,
                     (cause) => new AIProviderError({ cause }),
@@ -825,6 +844,7 @@ export const aiGovernance = <Request, Output, E>(
                               clock.currentTimeMillisUnsafe() - startedAt,
                             );
                           fullText += content;
+                          streamOutputChars = fullText.length;
                           yield* write({ type: 'delta', text: content });
                         }
                       }),

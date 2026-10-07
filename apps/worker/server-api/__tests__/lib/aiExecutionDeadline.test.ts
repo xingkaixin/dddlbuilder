@@ -142,7 +142,9 @@ describe('AI execution deadline with the real OpenAI stream reader', () => {
     expect(events.some((event) => event.type === 'done')).toBe(false);
     const usage = readUsage(sqlite);
     expect(usage).toMatchObject({ status: 'failed', attempt_count: 1 });
-    expect(usage?.charged_tokens).toBe(usage?.estimated_tokens);
+    expect(usage?.charged_tokens).toBe(
+      Number(usage?.estimated_tokens) - 100 + 'Complete text'.length,
+    );
     expect(
       await Effect.runPromise(
         reclaimStaleAIUsage(env, { now: Date.now() + 16 * 60_000 }).pipe(

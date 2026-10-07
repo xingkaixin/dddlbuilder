@@ -11,6 +11,9 @@ const PROMPT_MESSAGES = [
   { role: 'system' as const, content: 'System prompt used by the model' },
   { role: 'user' as const, content: 'User prompt used by the model' },
 ];
+const PROMPT_CHARS = JSON.stringify(PROMPT_MESSAGES).length;
+const LARGE_RESERVATION = { ...RESERVATION, reservedTokens: 1000 };
+const reserveLargeAIUsage = () => vi.fn().mockResolvedValue(LARGE_RESERVATION);
 
 type ShellOverrides = {
   authenticateRequest?: ReturnType<typeof vi.fn>;
@@ -477,7 +480,7 @@ describe('withAIGovernance', () => {
       yield { choices: [], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
     }
 
-    const shell = await loadShell({}, '{}', upstream());
+    const shell = await loadShell({ reserveAIUsage: reserveLargeAIUsage() }, '{}', upstream());
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
@@ -490,6 +493,7 @@ describe('withAIGovernance', () => {
       ),
     );
     const response = await post(app, {}, waitUntil);
+    const estimatedTokens = PROMPT_CHARS + 'partial'.length;
 
     if (!response.body) throw new Error('Missing stream response body');
     const reader = response.body.getReader();
@@ -502,12 +506,12 @@ describe('withAIGovernance', () => {
     expect(protectedBeforeUsage).toBeGreaterThan(0);
     expect(shell.prepareAIUsageSettlement).toHaveBeenCalledWith(
       expect.anything(),
-      RESERVATION,
+      LARGE_RESERVATION,
       'failed',
       {
         observedTotalTokens: null,
-        chargedTokens: 100,
-        providerBudgetTokens: 100,
+        chargedTokens: estimatedTokens,
+        providerBudgetTokens: estimatedTokens,
         usageEstimated: true,
       },
       'UPSTREAM_OPENAI_ERROR',
@@ -515,8 +519,8 @@ describe('withAIGovernance', () => {
     expect(shell.recordAIUsageAttempt).toHaveBeenCalledOnce();
     expect(shell.createCompletion).toHaveBeenCalledOnce();
     expect(shell.logOpenAIAudit.mock.calls.at(-1)?.[1]).toMatchObject({
-      chargedTokens: 100,
-      providerBudgetTokens: 100,
+      chargedTokens: estimatedTokens,
+      providerBudgetTokens: estimatedTokens,
       usageEstimated: true,
       accountingFinalized: true,
     });
@@ -597,7 +601,8 @@ describe('withAIGovernance', () => {
       throw new Error('upstream disconnected');
     }
 
-    const shell = await loadShell({}, '{}', upstream());
+    const shell = await loadShell({ reserveAIUsage: reserveLargeAIUsage() }, '{}', upstream());
+    const estimatedTokens = PROMPT_CHARS + (hasOutput ? 'partial'.length : 0);
     const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
@@ -629,8 +634,8 @@ describe('withAIGovernance', () => {
     ]);
     expect(shell.prepareAIUsageSettlement.mock.calls[0]?.[3]).toEqual({
       observedTotalTokens: null,
-      chargedTokens: 100,
-      providerBudgetTokens: 100,
+      chargedTokens: estimatedTokens,
+      providerBudgetTokens: estimatedTokens,
       usageEstimated: true,
     });
     expect(shell.prepareAIUsageSettlement).toHaveBeenCalledTimes(1);
