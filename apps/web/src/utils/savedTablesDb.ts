@@ -84,19 +84,29 @@ const rejectFailedWrite = (request: IDBRequest, fail: (error: unknown) => void) 
   request.onerror = () => fail(request.error ?? new Error('IndexedDB 写入失败'));
 };
 
+const decodeScopedTableIdentity = (record: SavedTableRecord, scope: WorkspaceScope) => {
+  const decoded = decodeWorkspaceScopedKey(record.normalizedName, record.scope, scope);
+
+  return decoded
+    ? {
+        tableId: resolveSavedTableId({ ...record, normalizedName: decoded.key }),
+        normalizedName: decoded.key,
+        scope: decoded.scope,
+      }
+    : null;
+};
+
 const decodeScopedTableRecord = (
   record: SavedTableRecord,
   scope: WorkspaceScope,
 ): SavedTableRecord | null => {
-  const decoded = decodeWorkspaceScopedKey(record.normalizedName, record.scope, scope);
+  const identity = decodeScopedTableIdentity(record, scope);
 
-  if (!decoded) return null;
+  if (!identity) return null;
 
   return {
     ...record,
-    tableId: resolveSavedTableId({ ...record, normalizedName: decoded.key }),
-    normalizedName: decoded.key,
-    scope: decoded.scope,
+    ...identity,
     state: {
       ...normalizePersistedRows(record.state),
       indexes: decodeIndexDefinitions(record.state.indexes),
@@ -105,6 +115,22 @@ const decodeScopedTableRecord = (
         : {}),
     },
   };
+};
+
+const findScopedTableRecord = (
+  records: SavedTableRecord[],
+  target: SavedTableTarget,
+  scope: WorkspaceScope,
+): SavedTableRecord | null => {
+  const { tableId, normalizedName } = savedTableReference(target);
+
+  const record = records.find((item) => {
+    const identity = decodeScopedTableIdentity(item, scope);
+
+    return tableId ? identity?.tableId === tableId : identity?.normalizedName === normalizedName;
+  });
+
+  return record ? decodeScopedTableRecord(record, scope) : null;
 };
 
 const runWithStore = async <T>(
@@ -146,41 +172,40 @@ export const listTrashedSavedTables = async (
     .filter((record): record is SavedTableRecord => record != null && Boolean(record.trashedAt));
 };
 
-// 仅获取元数据（性能优化）
-export const listSavedTableMetadata = async (
+const listScopedTableMetadata = async (
   scope: WorkspaceScope,
+  trashed: boolean,
 ): Promise<SavedTableMetadata[]> => {
-  const records = await listSavedTables(scope);
+  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
 
-  return records.map((record) => ({
-    tableId: resolveSavedTableId(record),
-    normalizedName: record.normalizedName,
-    name: record.name,
-    dbType: record.state.dbType,
-    fieldCount: record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
-    folderId: record.folderId,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-  }));
+  if (!Array.isArray(records)) return [];
+
+  return records.flatMap((record) => {
+    const identity = decodeScopedTableIdentity(record, scope);
+
+    if (!identity || Boolean(record.trashedAt) !== trashed) return [];
+
+    return [
+      {
+        tableId: identity.tableId,
+        normalizedName: identity.normalizedName,
+        name: record.name,
+        dbType: record.state.dbType,
+        fieldCount: record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
+        folderId: record.folderId,
+        ...(trashed ? { trashedAt: record.trashedAt } : {}),
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+      },
+    ];
+  });
 };
 
-export const listTrashedSavedTableMetadata = async (
-  scope: WorkspaceScope,
-): Promise<SavedTableMetadata[]> => {
-  const records = await listTrashedSavedTables(scope);
+export const listSavedTableMetadata = (scope: WorkspaceScope) =>
+  listScopedTableMetadata(scope, false);
 
-  return records.map((record) => ({
-    tableId: resolveSavedTableId(record),
-    normalizedName: record.normalizedName,
-    name: record.name,
-    dbType: record.state.dbType,
-    fieldCount: record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
-    folderId: record.folderId,
-    trashedAt: record.trashedAt,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-  }));
-};
+export const listTrashedSavedTableMetadata = (scope: WorkspaceScope) =>
+  listScopedTableMetadata(scope, true);
 
 export const getSavedTable = async (
   target: SavedTableTarget,
@@ -191,11 +216,7 @@ export const getSavedTable = async (
   if (tableId) {
     const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
 
-    return (
-      records
-        .map((item) => decodeScopedTableRecord(item, scope))
-        .find((item) => item?.tableId === tableId) ?? null
-    );
+    return findScopedTableRecord(records, target, scope);
   }
 
   const record = await runWithStore<SavedTableRecord | undefined>('readonly', (store) =>
@@ -306,18 +327,9 @@ export const updateSavedTableState = async (
     request.onerror = () => fail(request.error);
     request.onsuccess = () => {
       try {
-        const records = request.result
-          .map((record) => decodeScopedTableRecord(record, scope))
-          .filter((record): record is SavedTableRecord => record !== null);
-        updated = applySavedTableStateUpdate(target, update, (reference) => {
-          const { tableId, normalizedName } = savedTableReference(reference);
-
-          return (
-            records.find((record) =>
-              tableId ? record.tableId === tableId : record.normalizedName === normalizedName,
-            ) ?? null
-          );
-        });
+        updated = applySavedTableStateUpdate(target, update, (reference) =>
+          findScopedTableRecord(request.result, reference, scope),
+        );
 
         if (updated) {
           store.put({
@@ -351,9 +363,11 @@ export const updateSavedTableMetadata = async (
     request.onerror = () => fail(request.error);
     request.onsuccess = () => {
       try {
-        const record = request.result
-          .map((item) => decodeScopedTableRecord(item, scope))
-          .find((item) => item?.tableId === tableId);
+        const record = findScopedTableRecord(
+          request.result,
+          { normalizedName: current.normalizedName, tableId },
+          scope,
+        );
 
         if (!record) return;
         updated = { ...record, ...update };
