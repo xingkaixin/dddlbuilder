@@ -19,6 +19,7 @@ import {
 } from '@/utils/persistedStateSignature';
 import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { useWorkspaceScopeState } from '@/hooks/useWorkspaceScope';
+import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 import {
   isSameWorkspaceSource,
   isSameWorkspaceSelection,
@@ -123,6 +124,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   });
   const persistedStateRef = useRef<PersistedState | null>(null);
   const lastLocalSaveRef = useRef<PendingLocalSave | null>(null);
+  const writtenSessionRef = useRef<{ scopeKey: string; source: WorkspaceSelection } | null>(null);
 
   const { scope: currentScope, ready: workspaceScopeReady } = useWorkspaceScopeState();
 
@@ -236,6 +238,11 @@ export function usePersistedState(): UsePersistedStateReturn {
 
   const writeSession = useCallback(
     (source: WorkspaceSelection) => {
+      const scopeKey = getWorkspaceScopeStorageKey(currentScope);
+      const written = writtenSessionRef.current;
+
+      if (written?.scopeKey === scopeKey && isSameWorkspaceSelection(written.source, source)) return;
+      writtenSessionRef.current = { scopeKey, source };
       void enqueuePersistence('workspace-session', 'save workspace session', () =>
         writeWorkspaceSession(
           { activeSource: toWorkspaceSource(source), updatedAt: Date.now() },
@@ -248,6 +255,7 @@ export function usePersistedState(): UsePersistedStateReturn {
 
   const resetToDefaultDraft = useCallback(() => {
     syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
+    writtenSessionRef.current = null;
     void enqueuePersistence('workspace-session', 'clear workspace session', () =>
       clearWorkspaceSession(currentScope),
     );
