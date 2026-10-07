@@ -11,7 +11,10 @@ export const authUser = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },
-  (table) => [uniqueIndex('idx_user_email').on(table.email)],
+  (table) => [
+    uniqueIndex('idx_user_email').on(table.email),
+    index('idx_user_created_at').on(table.createdAt),
+  ],
 );
 
 export const authSession = sqliteTable(
