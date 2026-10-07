@@ -27,10 +27,6 @@ function formatSizeDisplay(bytes: number): SizeDisplay {
   };
 }
 
-function formatSizeText(display: SizeDisplay): string {
-  return `${display.value} ${display.unit}`;
-}
-
 export function useStorageEstimation(
   dbType: DatabaseType,
   fields: NormalizedField[],
@@ -63,15 +59,10 @@ export function useStorageEstimation(
     [breakdown.redundancyPerRow, estimateRows],
   );
 
-  const totalSize = useMemo(() => {
-    return breakdown.totalPerRow * estimateRows;
-  }, [breakdown.totalPerRow, estimateRows]);
-
-  const rowSizeDisplay = useMemo(
-    () => formatSizeDisplay(result.totalRowSize),
-    [result.totalRowSize],
+  const totalSizeDisplay = useMemo(
+    () => formatSizeDisplay(breakdown.totalPerRow * estimateRows),
+    [breakdown.totalPerRow, estimateRows],
   );
-  const totalSizeDisplay = useMemo(() => formatSizeDisplay(totalSize), [totalSize]);
 
   return {
     estimateRows,
@@ -81,10 +72,6 @@ export function useStorageEstimation(
     rawDataBytes,
     indexBytes,
     redundancyBytes,
-    totalSize,
-    totalSizeFormatted: formatSizeText(totalSizeDisplay),
-    rowSizeFormatted: formatSizeText(rowSizeDisplay),
-    rowSizeDisplay,
     totalSizeDisplay,
   };
 }

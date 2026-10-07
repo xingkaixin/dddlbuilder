@@ -21,9 +21,6 @@ describe('useStorageEstimation hook', () => {
 
     expect(result.current.estimateRows).toBe(10000);
     expect(result.current.result.dbName).toBe('MySQL (InnoDB)');
-    expect(result.current.rowSizeFormatted).toContain('B');
-    expect(result.current.totalSizeFormatted).toContain('KB');
-    expect(result.current.rowSizeDisplay.unit).toBe('B');
     expect(result.current.totalSizeDisplay.unit).toBe('KB');
   });
 
@@ -35,7 +32,7 @@ describe('useStorageEstimation hook', () => {
     });
 
     // 10M rows of ~30 bytes should be around 300MB
-    expect(result.current.totalSizeFormatted).toContain('MB');
+    expect(result.current.totalSizeDisplay.unit).toBe('MB');
   });
 
   it('should update result when dbType changes', () => {
@@ -51,13 +48,6 @@ describe('useStorageEstimation hook', () => {
     expect(result.current.result.dbName).toBe('PostgreSQL');
   });
 
-  it('should handle baseline overhead for empty fields', () => {
-    const { result } = renderHook(() => useStorageEstimation('mysql', []));
-    // MySQL InnoDB has 18 bytes baseline overhead (header + TRX_ID + ROLL_PTR)
-    expect(result.current.rowSizeFormatted).toBe('18 B');
-    expect(result.current.rowSizeDisplay).toEqual({ value: 18, unit: 'B' });
-  });
-
   it('should format zero total size when estimated rows is zero', () => {
     const { result } = renderHook(() => useStorageEstimation('mysql', fields));
 
@@ -65,8 +55,6 @@ describe('useStorageEstimation hook', () => {
       result.current.setEstimateRows(0);
     });
 
-    expect(result.current.totalSize).toBe(0);
-    expect(result.current.totalSizeFormatted).toBe('0 B');
     expect(result.current.totalSizeDisplay).toEqual({ value: 0, unit: 'B' });
   });
 });
