@@ -307,18 +307,29 @@ export const getWorkspaceSavedDraft = (
   return entry ? readSavedDraftRecord(...entry, parent?.[1]) : null;
 };
 
-export const listWorkspaceSavedDrafts = (doc: Y.Doc): WorkspaceSavedDraftRecord[] => {
+export const listWorkspaceSavedDrafts = (
+  doc: Y.Doc,
+  entityIds?: ReadonlySet<string>,
+): WorkspaceSavedDraftRecord[] => {
   const { savedTables, savedDrafts } = getWorkspaceRoot(doc);
 
   const parentsById = new Map(
     Array.from(savedTables.entries(), ([key, value]) => [savedTableId(key, value), value]),
   );
 
-  return Array.from(savedDrafts.entries(), ([key, value]) => {
+  return Array.from(savedDrafts.entries()).flatMap(([key, value]) => {
     const tableId = tableMetadata(value).tableId;
     const parent = typeof tableId === 'string' ? parentsById.get(tableId) : savedTables.get(key);
+    const namedDoc = parent ?? value;
 
-    return readSavedDraftRecord(key, value, parent);
+    if (
+      entityIds &&
+      !entityIds.has(savedTableId(key, namedDoc)) &&
+      !entityIds.has(savedTableName(key, namedDoc))
+    )
+      return [];
+
+    return [readSavedDraftRecord(key, value, parent)];
   });
 };
 

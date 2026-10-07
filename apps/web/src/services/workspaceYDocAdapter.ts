@@ -209,9 +209,9 @@ export const getSavedDraftFromYDoc = (
   return { ...savedDraft, state: withDefaultEditorSession(savedDraft.state) };
 };
 
-export const listSavedDraftsFromYDoc = (doc: Y.Doc) =>
+export const listSavedDraftsFromYDoc = (doc: Y.Doc, entityIds?: ReadonlySet<string>) =>
   new Map(
-    listWorkspaceSavedDrafts(doc).map((record) => [
+    listWorkspaceSavedDrafts(doc, entityIds).map((record) => [
       savedTableKey(record),
       { ...record, state: withDefaultEditorSession(record.state) },
     ]),

@@ -45,7 +45,10 @@ interface UseWorkspaceYDocSubscriptionParams {
   activeSourceRef: MutableValue<WorkspaceSelection>;
   persistedStateRef: MutableValue<PersistedState | null>;
   lastLocalSaveRef: MutableValue<PendingLocalSave | null>;
-  replaceSavedTableDrafts: (records: Map<string, SavedTableDraftRecord>) => void;
+  replaceSavedTableDrafts: (
+    records: Map<string, SavedTableDraftRecord>,
+    entityIds?: ReadonlySet<string>,
+  ) => void;
   applyYDocState: (state: PersistedState) => void;
   setPersistedStateIfChanged: (state: PersistedState | null) => void;
   syncActiveSource: (source: WorkspaceSelection) => void;
@@ -74,11 +77,15 @@ export function useWorkspaceYDocSubscription({
           withEditorSession(state, toEditorSessionSnapshot(useEditorStore.getState())),
         );
 
-      if (!change || change.collection === 'savedDrafts' || change.collection === 'savedTables') {
-        replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc));
-      }
+      const refreshSavedTableDrafts = (entityIds?: ReadonlySet<string>) =>
+        replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc, entityIds), entityIds);
 
+      // 本地编辑在写入 Y.Doc 前已同步更新草稿缓存。
       if (change?.origin === WorkspaceYDocOrigin.LocalEdit) return;
+
+      if (!change || change.collection === 'savedDrafts' || change.collection === 'savedTables') {
+        refreshSavedTableDrafts(change?.entityIds.size ? change.entityIds : undefined);
+      }
 
       if (change?.collection === 'drafts') {
         const tabs = useTabStore.getState();
@@ -188,6 +195,7 @@ export function useWorkspaceYDocSubscription({
                 baseState: savedTable.state,
               }),
             );
+            refreshSavedTableDrafts(new Set([savedTableKey(snapshot.source)]));
             lastLocalSaveRef.current = {
               source: snapshot.source,
               baseState: savedTable.state,

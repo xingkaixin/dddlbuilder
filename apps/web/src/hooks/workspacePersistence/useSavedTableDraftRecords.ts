@@ -42,11 +42,21 @@ export function useSavedTableDraftRecords({
 }: UseSavedTableDraftRecordsParams) {
   const recordsRef = useRef<Map<string, SavedTableDraftRecord>>(new Map());
 
-  const replaceRecords = useCallback((records: Map<string, SavedTableDraftRecord>) => {
-    recordsRef.current = new Map(
-      Array.from(records, ([key, record]) => [record.tableId ?? key, record]),
-    );
-  }, []);
+  const replaceRecords = useCallback(
+    (records: Map<string, SavedTableDraftRecord>, entityIds?: ReadonlySet<string>) => {
+      const retained = entityIds
+        ? Array.from(recordsRef.current).filter(
+            ([key, record]) =>
+              !entityIds.has(key) && !(record.tableId && entityIds.has(record.tableId)),
+          )
+        : [];
+      recordsRef.current = new Map([
+        ...retained,
+        ...Array.from(records, ([key, record]) => [record.tableId ?? key, record] as const),
+      ]);
+    },
+    [],
+  );
 
   const getRecord = useCallback((target: SavedTableTarget) => {
     const { normalizedName, tableId } = savedTableReference(target);
