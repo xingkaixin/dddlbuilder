@@ -54,5 +54,7 @@ export const TYPE_ALIASES = {
   nvarchar2: 'nvarchar',
 };
 
+const TYPE_ALIAS_LOOKUP = new Map<string, string>(Object.entries(TYPE_ALIASES));
+
 export const canonicalizeBaseType = (baseType: string) =>
-  Object.entries(TYPE_ALIASES).find(([alias]) => alias === baseType)?.[1] ?? baseType;
+  TYPE_ALIAS_LOOKUP.get(baseType) ?? baseType;

@@ -164,52 +164,64 @@ export const getCanonicalBaseType = (fieldType: string): string => {
 };
 
 // 保留原有的支持函数以保持向后兼容
-const isIntegerType = (canonical: string) =>
-  new Set(['tinyint', 'smallint', 'int', 'integer', 'bigint']).has(canonical);
+const INTEGER_TYPES = new Set(['tinyint', 'smallint', 'int', 'integer', 'bigint']);
 
-const isNumericType = (canonical: string) =>
-  new Set([
-    'tinyint',
-    'smallint',
-    'int',
-    'integer',
-    'bigint',
-    'decimal',
-    'number',
-    'numeric',
-    'real',
-    'double',
-    'float',
-  ]).has(canonical);
+const NUMERIC_TYPES = new Set([
+  ...INTEGER_TYPES,
+  'decimal',
+  'number',
+  'numeric',
+  'real',
+  'double',
+  'float',
+]);
 
-const isCharacterType = (canonical: string) =>
-  new Set([
-    'char',
-    'varchar',
-    'text',
-    'nchar',
-    'nvarchar',
-    'longtext',
-    'mediumtext',
-    'tinytext',
-    'clob',
-    'varchar2',
-    'nvarchar2',
-    'uuid',
-  ]).has(canonical);
+const CHARACTER_TYPES = new Set([
+  'char',
+  'varchar',
+  'text',
+  'nchar',
+  'nvarchar',
+  'longtext',
+  'mediumtext',
+  'tinytext',
+  'clob',
+  'varchar2',
+  'nvarchar2',
+  'uuid',
+]);
+
+const AUTO_INCREMENT_TYPES = {
+  sqlite: new Set(['int', 'integer', 'smallint', 'tinyint', 'bigint']),
+  postgresql: new Set(['smallint', 'int', 'integer', 'bigint']),
+  sqlserver: new Set(['tinyint', 'smallint', 'int', 'bigint']),
+};
+
+const CURRENT_TIMESTAMP_TYPES = {
+  mysql: new Set(['timestamp', 'datetime']),
+  postgresql: new Set(['timestamp', 'timestamptz']),
+  sqlserver: new Set(['datetime', 'datetime2', 'datetimeoffset', 'timestamp']),
+  oracle: new Set(['timestamp', 'timestamptz', 'date']),
+};
+
+const isIntegerType = (canonical: string) => INTEGER_TYPES.has(canonical);
+
+const isNumericType = (canonical: string) => NUMERIC_TYPES.has(canonical);
+
+const isCharacterType = (canonical: string) => CHARACTER_TYPES.has(canonical);
 
 export const supportsUuidDefault = (canonical: string) => isCharacterType(canonical);
 
 export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
   switch (getDatabaseFamily(db)) {
     case 'sqlite':
-      return new Set(['int', 'integer', 'smallint', 'tinyint', 'bigint']).has(canonical);
+      return AUTO_INCREMENT_TYPES.sqlite.has(canonical);
     case 'mysql':
       return isIntegerType(canonical);
     case 'postgresql':
-      return new Set(['smallint', 'int', 'integer', 'bigint']).has(canonical);
+      return AUTO_INCREMENT_TYPES.postgresql.has(canonical);
     case 'sqlserver':
-      return new Set(['tinyint', 'smallint', 'int', 'bigint']).has(canonical);
+      return AUTO_INCREMENT_TYPES.sqlserver.has(canonical);
     case 'oracle':
     case 'dm':
       return isNumericType(canonical);
@@ -225,14 +237,14 @@ export const supportsDefaultCurrentTimestamp = (db: DatabaseType, fieldType: str
     case 'sqlite':
       return canonical === 'text';
     case 'mysql':
-      return new Set(['timestamp', 'datetime']).has(canonical);
+      return CURRENT_TIMESTAMP_TYPES.mysql.has(canonical);
     case 'postgresql':
-      return new Set(['timestamp', 'timestamptz']).has(canonical);
+      return CURRENT_TIMESTAMP_TYPES.postgresql.has(canonical);
     case 'sqlserver':
-      return new Set(['datetime', 'datetime2', 'datetimeoffset', 'timestamp']).has(canonical);
+      return CURRENT_TIMESTAMP_TYPES.sqlserver.has(canonical);
     case 'oracle':
     case 'dm':
-      return new Set(['timestamp', 'timestamptz', 'date']).has(canonical);
+      return CURRENT_TIMESTAMP_TYPES.oracle.has(canonical);
     default:
       return false;
   }
@@ -246,7 +258,7 @@ export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, fieldType: st
     case 'sqlite':
       return canonical === 'text';
     case 'mysql':
-      return new Set(['timestamp', 'datetime']).has(canonical);
+      return CURRENT_TIMESTAMP_TYPES.mysql.has(canonical);
     default:
       return false;
   }

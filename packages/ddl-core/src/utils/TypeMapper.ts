@@ -10,8 +10,16 @@ export class TypeMapper {
     this.databaseType = databaseType;
   }
 
+  private static readonly instances = new Map<DatabaseType, TypeMapper>();
+
   static create(databaseType: DatabaseType): TypeMapper {
-    return new TypeMapper(databaseType);
+    const cached = TypeMapper.instances.get(databaseType);
+
+    if (cached) return cached;
+    const mapper = new TypeMapper(databaseType);
+    TypeMapper.instances.set(databaseType, mapper);
+
+    return mapper;
   }
 
   mapType(parsed: ParsedFieldType): string {

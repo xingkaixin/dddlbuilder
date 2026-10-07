@@ -19,16 +19,17 @@ const comment = (value: string) =>
     .map((line) => `-- ${line}`)
     .join('\n');
 
+const SQLITE_TYPE_LOOKUP = new Map(Object.entries(SQLITE_TYPE_MAPPINGS));
+
 function sqliteType(field: NormalizedField): string {
-  const canonical = getCanonicalBaseType(field.type);
-  const entry = Object.entries(SQLITE_TYPE_MAPPINGS).find(([name]) => name === canonical);
+  const entry = SQLITE_TYPE_LOOKUP.get(getCanonicalBaseType(field.type));
 
   if (!entry || /\bunsigned\b/i.test(field.type))
     throw new Error(
       `Unsupported SQLite type: ${field.name} (${field.type}). Choose INTEGER, TEXT, REAL, BLOB or NUMERIC explicitly.`,
     );
 
-  return entry[1].mapping.toUpperCase();
+  return entry.mapping.toUpperCase();
 }
 
 function sqliteDefault(field: NormalizedField): string {
