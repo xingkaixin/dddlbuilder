@@ -187,25 +187,11 @@ function extractFields(state: PersistedState): DiffField[] {
   return state.rows.map(normalizeFieldRow).filter((field): field is DiffField => field !== null);
 }
 
-/**
- * 比较两个字段是否相同
- */
 const stableTypeKey = (type: string) => {
   const parsed = parseFieldType(type);
 
   return JSON.stringify([parsed.baseType, parsed.args, parsed.unsigned]);
 };
-
-function fieldsEqual(a: NormalizedField, b: NormalizedField): boolean {
-  return (
-    stableTypeKey(a.type) === stableTypeKey(b.type) &&
-    a.nullable === b.nullable &&
-    a.defaultKind === b.defaultKind &&
-    a.defaultValue === b.defaultValue &&
-    a.onUpdate === b.onUpdate &&
-    a.comment === b.comment
-  );
-}
 
 /**
  * 获取两个字段之间的差异
@@ -262,7 +248,6 @@ function createMatchedFieldDiff(
     } satisfies FieldDiff;
   }
 
-  if (fieldsEqual(oldField, newField)) return null;
   if (!fieldChanges) return null;
 
   return {
@@ -306,17 +291,18 @@ function diffFields(
     if (newIndex !== undefined && unmatchedNew.has(newIndex)) match(oldIndex, newIndex);
   });
 
+  const newIndexesByKey = new Map<string, number[]>();
+
+  for (const newIndex of unmatchedNew) {
+    const key = getSqlIdentifierKey(newFields[newIndex].field.name, dbType);
+    newIndexesByKey.set(key, [...(newIndexesByKey.get(key) ?? []), newIndex]);
+  }
+
   for (const oldIndex of Array.from(unmatchedOld)) {
-    const oldField = oldFields[oldIndex];
-
-    const candidates = Array.from(unmatchedNew).filter((newIndex) => {
-      const newField = newFields[newIndex];
-
-      return (
-        getSqlIdentifierKey(oldField.field.name, dbType) ===
-        getSqlIdentifierKey(newField.field.name, dbType)
-      );
-    });
+    const key = getSqlIdentifierKey(oldFields[oldIndex].field.name, dbType);
+    const candidates = (newIndexesByKey.get(key) ?? []).filter((newIndex) =>
+      unmatchedNew.has(newIndex),
+    );
 
     if (candidates.length === 1) match(oldIndex, candidates[0]);
   }
