@@ -150,6 +150,7 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
             {...outputProps}
             onCollapse={collapseOutput}
             onMaximize={view === 'split' ? maximizeOutput : undefined}
+            frozen={view === 'design'}
           />
         </div>
       </div>
