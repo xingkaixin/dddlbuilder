@@ -7,12 +7,11 @@ import {
 } from '@ddlbuilder/ddl-core';
 import { isDatabaseType, type PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
-import { buildWorkspaceContentHash } from '@ddlbuilder/workspace-core';
 import { requestSqlParse } from '@/services/sqlParseService';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
 import { lintSchema, type SchemaLintIssue } from '@/utils/schemaLint';
-import { normalizeSchemaStateForSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { applySchemaPatchOperations, parseSchemaPatchOperations } from './schemaPatch';
 import { createWebMcpTools, WebMcpToolError, type ToolInput } from './tools';
 import {
@@ -85,9 +84,6 @@ const readInteger = (
 
   return integer;
 };
-
-const buildSignature = (state: PersistedState) =>
-  buildWorkspaceContentHash(normalizeSchemaStateForSignature(state));
 
 const applyPatchOperations = (state: PersistedState, operations: WebMcpChangeSet['operations']) => {
   if (!operations) throw new WebMcpToolError('INVALID_INPUT', 'Operations are required');
@@ -164,14 +160,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         throw new WebMcpToolError('BUSY', 'Another change set is awaiting user confirmation');
       }
 
-      const currentSignature = await buildSignature(snapshot.state);
-
-      if (snapshotRef.current.state !== snapshot.state) {
-        throw new WebMcpToolError(
-          'CONFLICT',
-          'The active document changed. Inspect it again before proposing changes.',
-        );
-      }
+      const currentSignature = buildSchemaStateSignature(snapshot.state);
 
       if (requestedSignature !== currentSignature) {
         throw new WebMcpToolError(
@@ -259,7 +248,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     const offset = readInteger(toolInput, 'offset', 0, 0, Number.MAX_SAFE_INTEGER);
     const limit = readInteger(toolInput, 'limit', 20, 1, MAX_PAGE_SIZE);
     const state = snapshot.state;
-    const baseSignature = await buildSignature(state);
+    const baseSignature = buildSchemaStateSignature(state);
     const base = { ok: true, section, baseSignature };
 
     if (section === 'overview') {
@@ -501,7 +490,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
 
         if (!confirmed) return { ok: true, status: 'canceled_by_user' };
 
-        const currentSignature = await buildSignature(snapshotRef.current.state);
+        const currentSignature = buildSchemaStateSignature(snapshotRef.current.state);
 
         if (currentSignature !== pending.baseSignature) {
           throw new WebMcpToolError(
