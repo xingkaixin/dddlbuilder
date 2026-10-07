@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   dispatchTelegramAuditNotification,
   formatTelegramAuditMessage,
-  shouldSendTelegramNotification,
 } from '../lib/telegramNotifier';
 import type { ApiEnv } from '../lib/context';
 
@@ -71,24 +70,16 @@ describe('telegram notifier', () => {
   );
 
   it('应仅在开关和必要配置完整时启用发送', () => {
-    expect(shouldSendTelegramNotification(createEnv())).toBe(false);
+    expect(dispatchTelegramAuditNotification(createEnv(), auditPayload)).toBeNull();
     expect(
-      shouldSendTelegramNotification(
+      dispatchTelegramAuditNotification(
         createEnv({
           TELEGRAM_NOTIFY_ENABLED: 'true',
           TELEGRAM_BOT_TOKEN: 'bot-token',
         }),
+        auditPayload,
       ),
-    ).toBe(false);
-    expect(
-      shouldSendTelegramNotification(
-        createEnv({
-          TELEGRAM_NOTIFY_ENABLED: 'true',
-          TELEGRAM_BOT_TOKEN: 'bot-token',
-          TELEGRAM_CHAT_ID: 'chat-id',
-        }),
-      ),
-    ).toBe(true);
+    ).toBeNull();
   });
 
   it('应输出脱敏且稳定的 Telegram 文本', () => {

@@ -31,12 +31,6 @@ const readTelegramNotifyConfig = (env: ApiEnv['Bindings']): TelegramNotifyConfig
   chatId: env.TELEGRAM_CHAT_ID?.trim() || null,
 });
 
-export const shouldSendTelegramNotification = (env: ApiEnv['Bindings']) => {
-  const config = readTelegramNotifyConfig(env);
-
-  return config.enabled && Boolean(config.botToken) && Boolean(config.chatId);
-};
-
 export const formatTelegramAuditMessage = (payload: AuditNotificationPayload) => {
   const lines = [
     `[LLM Usage] ${payload.route}`,
@@ -64,23 +58,17 @@ export const formatTelegramAuditMessage = (payload: AuditNotificationPayload) =>
   return lines.join('\n');
 };
 
-export const sendTelegramAuditNotification = async (
-  env: ApiEnv['Bindings'],
+const sendTelegramAuditNotification = async (
+  { botToken, chatId }: { botToken: string; chatId: string },
   payload: AuditNotificationPayload,
 ) => {
-  const config = readTelegramNotifyConfig(env);
-
-  if (!config.enabled || !config.botToken || !config.chatId) {
-    return;
-  }
-
-  const response = await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      chat_id: config.chatId,
+      chat_id: chatId,
       text: formatTelegramAuditMessage(payload),
       disable_notification: true,
     }),
@@ -100,11 +88,11 @@ export const dispatchTelegramAuditNotification = (
     return null;
   }
 
-  const config = readTelegramNotifyConfig(env);
+  const { enabled, botToken, chatId } = readTelegramNotifyConfig(env);
 
-  if (!config.enabled || !config.botToken || !config.chatId) {
+  if (!enabled || !botToken || !chatId) {
     return null;
   }
 
-  return sendTelegramAuditNotification(env, payload);
+  return sendTelegramAuditNotification({ botToken, chatId }, payload);
 };
