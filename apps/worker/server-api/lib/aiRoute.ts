@@ -19,7 +19,7 @@ import {
   AIOutputError,
   type AICompletionError,
 } from './aiErrors.js';
-import { retryOpenAI } from './openaiRetry.js';
+import { isUpstreamRejection, retryOpenAI } from './openaiRetry.js';
 import { AIRequestAccess } from './aiAccess.js';
 import type { Context } from 'hono';
 import { stream } from 'hono/streaming';
@@ -556,6 +556,7 @@ export const aiGovernance = <Request, E>(
         }
 
         let settled = false;
+        let startedAttempts = 0;
         let retryCount = 0;
         const openAIAbortController = new AbortController();
 
@@ -581,29 +582,35 @@ export const aiGovernance = <Request, E>(
               yield* checkAborted;
               let started = false;
 
+              const cancelAttempt = ledger.cancelAttempt(reservation, attemptCount).pipe(
+                Effect.tap((count) =>
+                  Effect.sync(() => {
+                    attemptCount = count;
+                  }),
+                ),
+              );
+
               return yield* restore(
                 Effect.suspend(() => {
                   started = true;
-                  retryCount = Math.max(0, attemptCount - 1);
+                  startedAttempts += 1;
+                  retryCount = startedAttempts - 1;
 
                   return operation.pipe(
                     Effect.withSpan('ai.provider.attempt', {
-                      attributes: { 'ai.attempt': attemptCount },
+                      attributes: { 'ai.attempt': startedAttempts },
                     }),
                   );
                 }),
               ).pipe(
-                Effect.onExit(() =>
-                  started
-                    ? Effect.void
-                    : ledger.cancelAttempt(reservation, attemptCount).pipe(
-                        Effect.tap((count) =>
-                          Effect.sync(() => {
-                            attemptCount = count;
-                          }),
-                        ),
-                      ),
-                ),
+                Effect.onExit((exit) => {
+                  if (!started) return cancelAttempt;
+
+                  // An explicit upstream 4xx consumed nothing; if recording that fails, the conservative charge stays.
+                  return Exit.isFailure(exit) && isUpstreamRejection(Cause.squash(exit.cause))
+                    ? Effect.ignore(cancelAttempt)
+                    : Effect.void;
+                }),
               );
             }),
           );
@@ -674,11 +681,13 @@ export const aiGovernance = <Request, E>(
             audit(status, completedRetryCount, false, false, code);
           });
 
+        const deadline = startedAt + getAIExecutionTimeoutMs(config);
+
         const execute = <A, E>(operation: Effect.Effect<A, E>) =>
           withAIExecution(
             operation,
             openAIAbortController,
-            getAIExecutionTimeoutMs(config) - (clock.currentTimeMillisUnsafe() - startedAt),
+            deadline - clock.currentTimeMillisUnsafe(),
           );
         const settleExit = (exit: Exit.Exit<unknown, unknown>) => {
           if (Exit.isSuccess(exit)) return settleSuccess(retryCount);
@@ -706,7 +715,7 @@ export const aiGovernance = <Request, E>(
                     openAIAbortController.signal,
                   ),
                 ),
-                { onRetry },
+                { deadline, onRetry },
                 config,
               );
               const usageSnapshot = response.usage;
@@ -777,7 +786,7 @@ export const aiGovernance = <Request, E>(
                         openAIAbortController.signal,
                       ),
                     ),
-                    { onRetry },
+                    { deadline, onRetry },
                     config,
                   );
                   let fullText = '';

@@ -13,6 +13,7 @@ type RetryFixture = {
   maxAttempts: number;
   baseDelayMs?: number;
   maxDelayMs?: number;
+  deadline?: number;
   onRetry?: (event: OpenAIRetryEvent) => void;
   signal?: AbortSignal;
 };
@@ -21,7 +22,7 @@ const runRetry = <A>(operation: () => Promise<A>, fixture: RetryFixture) =>
   Effect.runPromise(
     retryOpenAI(
       Effect.tryPromise({ try: operation, catch: (error) => error }),
-      { onRetry: fixture.onRetry },
+      { deadline: fixture.deadline ?? Number.POSITIVE_INFINITY, onRetry: fixture.onRetry },
       {
         ...defaults,
         retryMaxAttempts: fixture.maxAttempts,
@@ -79,6 +80,14 @@ describe('retryOpenAI', () => {
     await expect(runRetry(operation, { maxAttempts: 3, onRetry })).rejects.toBe(error);
     expect(operation).toHaveBeenCalledOnce();
     expect(onRetry).not.toHaveBeenCalled();
+  });
+
+  it('does not retry an exhausted upstream quota', async () => {
+    const error = Object.assign(createStatusError(429), { code: 'insufficient_quota' });
+    const operation = vi.fn<() => Promise<never>>().mockRejectedValue(error);
+
+    await expect(runRetry(operation, { maxAttempts: 3 })).rejects.toBe(error);
+    expect(operation).toHaveBeenCalledOnce();
   });
 
   it('cancels retry backoff without starting another attempt', async () => {
@@ -200,7 +209,7 @@ describe('retryOpenAI', () => {
     expect(operation).toHaveBeenCalledOnce();
   });
 
-  it('honors Retry-After while capping it to the configured maximum delay', async () => {
+  it('honors Retry-After beyond the backoff cap while it fits the deadline', async () => {
     vi.useFakeTimers();
     const error = createStatusError(429, new Headers({ 'Retry-After': '5' }));
 
@@ -214,17 +223,30 @@ describe('retryOpenAI', () => {
       maxAttempts: 2,
       baseDelayMs: 10,
       maxDelayMs: 250,
+      deadline: Date.now() + 10_000,
       onRetry,
     });
     await vi.advanceTimersByTimeAsync(0);
-    expect(onRetry).toHaveBeenCalledWith({ attempt: 1, status: 429, waitMs: 250 });
+    expect(onRetry).toHaveBeenCalledWith({ attempt: 1, status: 429, waitMs: 5_000 });
 
-    await vi.advanceTimersByTimeAsync(249);
+    await vi.advanceTimersByTimeAsync(4_999);
     expect(operation).toHaveBeenCalledOnce();
     await vi.advanceTimersByTimeAsync(1);
 
     await expect(result).resolves.toBe('ok');
     expect(operation).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails immediately when Retry-After exceeds the remaining deadline', async () => {
+    const error = createStatusError(429, new Headers({ 'Retry-After': '30' }));
+    const operation = vi.fn<() => Promise<never>>().mockRejectedValue(error);
+    const onRetry = vi.fn();
+
+    await expect(
+      runRetry(operation, { maxAttempts: 3, deadline: Date.now() + 10_000, onRetry }),
+    ).rejects.toBe(error);
+    expect(operation).toHaveBeenCalledOnce();
+    expect(onRetry).not.toHaveBeenCalled();
   });
 
   it('uses the schedule clock for an HTTP-date Retry-After value', async () => {
@@ -287,7 +309,11 @@ it('does not retry a usage failure even when its cause looks transient', async (
   });
   const attempt = vi.fn(() => Effect.fail(failure));
 
-  const program = retryOpenAI(Effect.suspend(attempt), {}, { ...defaults, retryMaxAttempts: 3 });
+  const program = retryOpenAI(
+    Effect.suspend(attempt),
+    { deadline: Number.POSITIVE_INFINITY },
+    { ...defaults, retryMaxAttempts: 3 },
+  );
   expect(attempt).not.toHaveBeenCalled();
   await expect(Effect.runPromise(program)).rejects.toBe(failure);
   expect(attempt).toHaveBeenCalledOnce();

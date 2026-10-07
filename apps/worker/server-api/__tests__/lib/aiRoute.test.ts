@@ -17,6 +17,7 @@ type ShellOverrides = {
   enforceOpenAIRateLimit?: ReturnType<typeof vi.fn>;
   reserveAIUsage?: ReturnType<typeof vi.fn>;
   recordAIUsageAttempt?: ReturnType<typeof vi.fn>;
+  cancelUnstartedAIUsageAttempt?: ReturnType<typeof vi.fn>;
   prepareAIUsageSettlement?: ReturnType<typeof vi.fn>;
 };
 
@@ -728,6 +729,37 @@ describe('withAIGovernance', () => {
       },
       null,
     );
+  });
+
+  it('上游明确拒绝的尝试不计入预留扣费', async () => {
+    let attempts = 0;
+
+    const shell = await loadShell({
+      recordAIUsageAttempt: vi.fn(async () => ++attempts),
+      cancelUnstartedAIUsageAttempt: vi.fn(async () => --attempts),
+    });
+    shell.createCompletion.mockRejectedValueOnce(
+      Object.assign(new Error('rate limited'), { status: 429 }),
+    );
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
+        Effect.gen(function* () {
+          yield* session.completeJson({ temperature: 0 });
+
+          return c.json({ ok: true });
+        }),
+      ),
+    );
+
+    expect((await post(app, { sql: 'select 1' })).status).toBe(200);
+    expect(shell.createCompletion).toHaveBeenCalledTimes(2);
+    expect(shell.prepareAIUsageSettlement.mock.calls[0]?.[3]).toEqual({
+      observedTotalTokens: 15,
+      chargedTokens: 15,
+      providerBudgetTokens: 15,
+      usageEstimated: false,
+    });
   });
 
   it('结算事实首次写入失败时先重试 intent，再执行终态事务', async () => {

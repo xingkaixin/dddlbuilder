@@ -5,6 +5,7 @@ import { AIProviderError, AIUsageError } from './aiErrors.js';
 import type { OpenAIConfig } from './openaiConfig.js';
 
 type RetryOptions = {
+  deadline: number;
   onRetry?: (event: OpenAIRetryEvent) => void;
 };
 
@@ -119,15 +120,23 @@ const getErrorChain = (error: unknown) => {
   return chain;
 };
 
+export const isUpstreamRejection = (error: unknown) => {
+  const status = getErrorStatus(error);
+
+  return status !== null && status >= 400 && status < 500;
+};
+
 const isRetryableError = (error: unknown): boolean => {
   if (error instanceof AIUsageError) return false;
   const status = getErrorStatus(error);
+  const chain = getErrorChain(error);
 
   if (status !== null) {
-    return RETRYABLE_STATUS_CODES.has(status);
+    return (
+      RETRYABLE_STATUS_CODES.has(status) &&
+      !chain.some((item) => Reflect.get(item, 'code') === 'insufficient_quota')
+    );
   }
-
-  const chain = getErrorChain(error);
 
   if (chain.some((item) => ABORT_ERROR_NAMES.has(readErrorName(item) ?? ''))) return false;
 
@@ -146,7 +155,11 @@ const isRetryableError = (error: unknown): boolean => {
 const createRetrySchedule = (config: OpenAIConfig, options: RetryOptions) =>
   Schedule.exponential(Duration.millis(config.retryBaseDelayMs)).pipe(
     Schedule.setInputType<unknown>(),
-    Schedule.while(({ input }) => isRetryableError(input)),
+    Schedule.while(
+      ({ input, now }) =>
+        isRetryableError(input) &&
+        (getRetryAfterFromError(input, now) ?? 0) < options.deadline - now,
+    ),
     Schedule.upTo({ times: config.retryMaxAttempts - 1 }),
     Schedule.modifyDelay(({ duration }) =>
       Effect.succeed(Duration.min(duration, Duration.millis(config.retryMaxDelayMs))),
@@ -157,7 +170,7 @@ const createRetrySchedule = (config: OpenAIConfig, options: RetryOptions) =>
 
       return Effect.succeed(
         Duration.millis(
-          Math.min(getRetryAfterFromError(input, now) ?? backoffMs, config.retryMaxDelayMs),
+          getRetryAfterFromError(input, now) ?? Math.min(backoffMs, config.retryMaxDelayMs),
         ),
       );
     }),
