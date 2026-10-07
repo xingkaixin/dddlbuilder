@@ -481,7 +481,9 @@ export const checkpointWorkspaceSnapshotEntities = async (
   snapshot: WorkspaceSnapshot,
 ) => {
   const metrics = createWorkspaceD1Metrics();
-  await assertWorkspaceOwner(env, userId, workspaceId, metrics);
+  const workspace = await assertWorkspaceOwner(env, userId, workspaceId, metrics);
+  // Tombstones only stop the one-time legacy backfill from restoring deleted entities.
+  const keepTombstones = workspace.isDefault && workspace.legacySnapshotBackfilledAt === null;
   const entities = workspaceSnapshotToEntities(snapshot);
 
   const [hashedEntities, existingRows] = await Promise.all([
@@ -500,6 +502,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
     hashedEntities.map((entity) => buildEntityKey(entity.entityType, entity.entityId)),
   );
   const writes: EntityVersionInput[] = [];
+  const purges: Pick<EntityRow, 'entityType' | 'entityId'>[] = [];
   let upserted = 0;
   let deleted = 0;
   let skipped = 0;
@@ -529,6 +532,12 @@ export const checkpointWorkspaceSnapshotEntities = async (
 
   for (const row of existingRows) {
     if (nextKeys.has(buildEntityKey(row.entityType, row.entityId))) continue;
+    deleted++;
+
+    if (!keepTombstones) {
+      purges.push(row);
+      continue;
+    }
 
     writes.push({
       userId,
@@ -540,10 +549,21 @@ export const checkpointWorkspaceSnapshotEntities = async (
       contentHash: null,
       updatedAt: checkpointedAt,
     });
-    deleted++;
   }
 
   const writeResult = await writeEntityVersions(env, writes, metrics);
+
+  if (purges.length > 0) {
+    await batchWorkspaceD1Results(
+      env.USER_DB,
+      purges.map((row) =>
+        env.USER_DB.prepare(
+          'DELETE FROM workspace_entities WHERE workspace_id = ? AND entity_type = ? AND entity_id = ?',
+        ).bind(workspaceId, row.entityType, row.entityId),
+      ),
+      metrics,
+    );
+  }
 
   const response = {
     cursor: writeResult?.cursor ?? (await readWorkspaceCursor(env, workspaceId, metrics)),

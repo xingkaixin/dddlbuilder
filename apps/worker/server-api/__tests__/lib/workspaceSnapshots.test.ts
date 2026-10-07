@@ -277,6 +277,35 @@ describe('workspace entity checkpoints', () => {
     expect(snapshot.savedTables.map((item) => item.normalizedName)).toEqual(['orders']);
   });
 
+  it('旧快照回填完成前保留 tombstone，完成后直接删除实体', async () => {
+    const { checkpointWorkspaceSnapshotEntities } = await import('../../lib/workspaceEntities.js');
+    const env = createEnv(createWorkspaceSnapshotDb());
+
+    const countEntities = () =>
+      env.USER_DB.prepare(
+        'SELECT COUNT(*) AS total, COUNT(deleted_at) AS tombstones FROM workspace_entities',
+      ).first<{ total: number; tombstones: number }>();
+    const workspaceId = await checkpointDefaultWorkspace(env, createSnapshot(['orders', 'users']));
+
+    await checkpointWorkspaceSnapshotEntities(
+      env,
+      'user-1',
+      workspaceId,
+      createSnapshot(['orders']),
+    );
+
+    expect(await countEntities()).toEqual({ total: 2, tombstones: 1 });
+
+    await env.USER_DB.prepare(
+      'UPDATE workspaces SET legacy_snapshot_backfilled_at = 1 WHERE id = ?',
+    )
+      .bind(workspaceId)
+      .run();
+    await checkpointWorkspaceSnapshotEntities(env, 'user-1', workspaceId, createSnapshot([]));
+
+    expect(await countEntities()).toEqual({ total: 1, tombstones: 1 });
+  });
+
   it('checkpoint 日志应覆盖单次实体列表读取和批量写入', async () => {
     const { checkpointWorkspaceSnapshotEntities, getOrCreateDefaultWorkspace } =
       await import('../../lib/workspaceEntities.js');
