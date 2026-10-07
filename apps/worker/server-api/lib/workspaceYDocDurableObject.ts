@@ -233,7 +233,16 @@ export class WorkspaceYDocDurableObject {
       throw error;
     }
 
-    if ((await this.authorizeSockets([ws])).length === 0) return;
+    let authorized: WebSocket[];
+
+    try {
+      authorized = await this.authorizeSockets([ws]);
+    } catch (error) {
+      ws.close(1011, 'Workspace authorization unavailable');
+      throw error;
+    }
+
+    if (authorized.length === 0) return;
     const decoder = decoding.createDecoder(new Uint8Array(message));
     let requestId: number | undefined;
     let response: Uint8Array;
@@ -538,27 +547,22 @@ export class WorkspaceYDocDurableObject {
   private async authorizeSockets(sockets: WebSocket[]): Promise<WebSocket[]> {
     if (sockets.length === 0) return [];
 
-    try {
-      const sessionIds = await this.authorizedSessionIds();
+    const sessionIds = await this.authorizedSessionIds();
 
-      return sockets.filter((socket) => {
-        const attachment = socket.deserializeAttachment?.();
+    return sockets.filter((socket) => {
+      const attachment = socket.deserializeAttachment?.();
 
-        if (
-          isSocketAttachment(attachment) &&
-          attachment.workspaceId === this.workspaceId &&
-          attachment.userId === this.userId &&
-          sessionIds.has(attachment.sessionId)
-        )
-          return true;
-        socket.close(1008, 'Workspace access denied');
+      if (
+        isSocketAttachment(attachment) &&
+        attachment.workspaceId === this.workspaceId &&
+        attachment.userId === this.userId &&
+        sessionIds.has(attachment.sessionId)
+      )
+        return true;
+      socket.close(1008, 'Workspace access denied');
 
-        return false;
-      });
-    } catch (error) {
-      for (const socket of sockets) socket.close(1011, 'Workspace authorization unavailable');
-      throw error;
-    }
+      return false;
+    });
   }
 
   private assertValidSyncMessage(decoder: decoding.Decoder, doc: Y.Doc) {
@@ -609,8 +613,17 @@ export class WorkspaceYDocDurableObject {
     const sockets = this.state
       .getWebSockets()
       .filter((socket) => socket !== origin && socket.readyState === WebSocket.OPEN);
+    let recipients = sockets;
 
-    for (const socket of await this.authorizeSockets(sockets)) {
+    try {
+      recipients = await this.authorizeSockets(sockets);
+    } catch (error) {
+      // Receivers passed authorization on connect and revocations arrive through kicks, so a
+      // transient lookup failure skips this re-check instead of disconnecting everyone.
+      console.error('[workspace-yjs-do] broadcast authorization unavailable', error);
+    }
+
+    for (const socket of recipients) {
       socket.send(message);
     }
   }
