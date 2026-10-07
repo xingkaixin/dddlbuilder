@@ -81,6 +81,7 @@ export class WorkspaceYDocDurableObject {
   private checkpointFailedAt: number | undefined;
   private workspaceId: string | undefined;
   private userId: string | undefined;
+  private identityUnsaved = false;
   private authCache: { key: string; sessionIds: Set<string>; expiresAt: number } | null = null;
   private readonly state: DurableObjectState;
   private readonly env: ApiEnv['Bindings'];
@@ -131,7 +132,8 @@ export class WorkspaceYDocDurableObject {
       const attachment = this.createSocketAttachment(sessionId);
       server.serializeAttachment?.(attachment);
       this.state.acceptWebSocket(server, attachment.workspaceId ? [attachment.workspaceId] : []);
-      await this.writeMeta();
+
+      if (this.identityUnsaved) await this.writeMeta();
       server.send(
         encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, doc)),
       );
@@ -348,6 +350,7 @@ export class WorkspaceYDocDurableObject {
 
       if (meta) {
         this.bindIdentity(meta);
+        this.identityUnsaved = false;
         this.nextSeq = meta.nextSeq;
         this.updateCount = meta.updateCount;
         this.updateBytes = meta.updateBytes;
@@ -749,6 +752,7 @@ export class WorkspaceYDocDurableObject {
 
   private async writeMeta() {
     await this.state.storage.put(WORKSPACE_YDOC_META_KEY, this.storedMeta());
+    this.identityUnsaved = false;
   }
 
   private async ensureAlarm() {
@@ -801,6 +805,7 @@ export class WorkspaceYDocDurableObject {
 
       if (!this.workspaceId) {
         this.workspaceId = identity.workspaceId;
+        this.identityUnsaved = true;
         this.authCache = null;
       }
     }
@@ -812,6 +817,7 @@ export class WorkspaceYDocDurableObject {
 
       if (!this.userId) {
         this.userId = identity.userId;
+        this.identityUnsaved = true;
         this.authCache = null;
       }
     }
