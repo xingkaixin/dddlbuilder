@@ -37,6 +37,24 @@ export const readSessionAccess = async (
   };
 };
 
+const readRequestSessionAccess = async (
+  env: ApiEnv['Bindings'],
+  userId: string,
+  sessionId: string,
+) => {
+  const row = await env.USER_DB.prepare(`
+    SELECT
+      EXISTS (
+        SELECT 1 FROM session WHERE id = ? AND user_id = ? AND expires_at > ?
+      ) AS active,
+      EXISTS (SELECT 1 FROM admin_user_flags WHERE user_id = ?) AS disabled
+  `)
+    .bind(sessionId, userId, Date.now(), userId)
+    .first<{ active: number; disabled: number }>();
+
+  return { active: row?.active === 1, disabled: row?.disabled === 1 };
+};
+
 export const revokeUserSessions = async (env: ApiEnv['Bindings'], userId: string) => {
   const context = await createBetterAuth(env).$context;
   let deleteError: unknown;
@@ -90,14 +108,14 @@ export const resolveAuthenticatedUser = async (
     return null;
   }
 
-  const access = await readSessionAccess(c.env, session.user.id).catch(
+  const access = await readRequestSessionAccess(c.env, session.user.id, session.session.id).catch(
     // oxlint-disable-next-line anti-slop/no-unknown-parameters -- database adapter failures cross the async boundary as unknown.
     (error: unknown) => throwAuthenticationUnavailable(c, error),
   );
 
   if (access.disabled) throw new DomainError(403, 'USER_DISABLED', 'USER_DISABLED');
 
-  if (!access.sessionIds.has(session.session.id)) return null;
+  if (!access.active) return null;
 
   return {
     userId: session.user.id,
