@@ -62,6 +62,28 @@ const makeProvider = (client: () => OpenAI) => ({
     }),
 });
 
+let cachedClient: { key: string; client: OpenAI } | undefined;
+
+const getClient = (apiKey: string | undefined, baseURL: string, timeout: number) => {
+  const key = JSON.stringify([apiKey, baseURL, timeout]);
+
+  if (cachedClient?.key !== key) {
+    cachedClient = {
+      key,
+      client: new OpenAI({
+        apiKey,
+        baseURL,
+        maxRetries: 0,
+        timeout,
+        // The SDK captures fetch at construction; resolve the global per call so a cached client never pins a replaced binding.
+        fetch: (input, init) => fetch(input, init),
+      }),
+    };
+  }
+
+  return cachedClient.client;
+};
+
 export class AIProvider extends Context.Service<AIProvider, ReturnType<typeof makeProvider>>()(
   'ddlbuilder/AIProvider',
 ) {
@@ -69,17 +91,8 @@ export class AIProvider extends Context.Service<AIProvider, ReturnType<typeof ma
     AIProvider,
     Effect.gen(function* () {
       const { apiKey, baseURL, config } = yield* AIConfiguration;
-      let client: OpenAI | undefined;
 
-      return makeProvider(
-        () =>
-          (client ??= new OpenAI({
-            apiKey,
-            baseURL,
-            maxRetries: 0,
-            timeout: config.requestTimeoutMs,
-          })),
-      );
+      return makeProvider(() => getClient(apiKey, baseURL, config.requestTimeoutMs));
     }),
   );
 }
