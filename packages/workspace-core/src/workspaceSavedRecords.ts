@@ -195,11 +195,14 @@ export const listWorkspaceSavedTables = (doc: Y.Doc): WorkspaceSavedTableRecord[
 export const listWorkspaceTrashedSavedTables = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>
   listWorkspaceSavedTableRecords(doc).filter((record) => record.trashedAt != null);
 
-const findSavedDraftEntry = (doc: Y.Doc, target: SavedTableTarget) => {
+const findSavedDraftEntry = (
+  doc: Y.Doc,
+  target: SavedTableTarget,
+  parent = findSavedTableEntry(doc, target),
+) => {
   const reference = savedTableReference(target);
   const { normalizedName } = reference;
   const { savedDrafts } = getWorkspaceRoot(doc);
-  const parent = findSavedTableEntry(doc, target);
   const tableId = reference.tableId ?? (parent ? savedTableId(...parent) : undefined);
   const directKey = parent?.[0] ?? normalizedName;
 
@@ -261,7 +264,7 @@ export const upsertWorkspaceSavedDraft = (
   const { savedDrafts } = getWorkspaceRoot(doc);
 
   const key =
-    findSavedDraftEntry(doc, record)?.[0] ??
+    findSavedDraftEntry(doc, record, parent)?.[0] ??
     availableRecordKey(savedDrafts, tableId ?? record.normalizedName);
   upsertTableRecord(
     savedDrafts,
@@ -273,7 +276,7 @@ export const upsertWorkspaceSavedDraft = (
       tableName: record.tableName,
       ...decodeSavedDraftBase(
         record,
-        parent ? tableDocToSchemaDocumentState(parent[1]) : undefined,
+        parent ? () => tableDocToSchemaDocumentState(parent[1]) : undefined,
       ),
       updatedAt: record.updatedAt,
     },
@@ -291,8 +294,8 @@ export const getWorkspaceSavedDraft = (
   doc: Y.Doc,
   target: SavedTableTarget,
 ): WorkspaceSavedDraftRecord | null => {
-  const entry = findSavedDraftEntry(doc, target);
   const parent = findSavedTableEntry(doc, target);
+  const entry = findSavedDraftEntry(doc, target, parent);
 
   return entry ? readSavedDraftRecord(...entry, parent?.[1]) : null;
 };

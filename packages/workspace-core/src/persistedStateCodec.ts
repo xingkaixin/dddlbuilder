@@ -41,13 +41,17 @@ import { buildSchemaStateSignature } from './schemaStateSignature';
 
 export const decodeSavedDraftBase = (
   value: { baseState?: unknown; baseSignature?: unknown },
-  savedState?: SchemaDocumentState,
+  readSavedState?: () => SchemaDocumentState,
 ): { baseSignature: string; baseState?: SchemaDocumentState } => {
   const signature = typeof value.baseSignature === 'string' ? value.baseSignature : '';
   let baseState = decodeSchemaDocumentState(value.baseState);
 
-  if (!baseState && savedState && buildSchemaStateSignature(savedState) === signature)
-    baseState = toSchemaDocumentState(savedState);
+  if (!baseState && readSavedState) {
+    const savedState = readSavedState();
+
+    if (buildSchemaStateSignature(savedState) === signature)
+      baseState = toSchemaDocumentState(savedState);
+  }
 
   if (!baseState && signature.startsWith('{')) {
     try {
