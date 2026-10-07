@@ -193,12 +193,6 @@ export class WorkspaceYDocDurableObject {
       return Response.json(result);
     }
 
-    if (request.method === 'POST' && url.pathname.endsWith('/compact')) {
-      await this.compact();
-
-      return Response.json({ ok: true });
-    }
-
     return new Response('Not Found', { status: 404 });
   }
 
@@ -631,16 +625,14 @@ export class WorkspaceYDocDurableObject {
     }
   }
 
-  private compact(options: { checkpoint?: boolean } = {}) {
-    const compact = this.compactQueue
-      .catch(() => undefined)
-      .then(() => this.compactSnapshot(options));
+  private compact() {
+    const compact = this.compactQueue.catch(() => undefined).then(() => this.compactSnapshot());
     this.compactQueue = compact;
 
     return compact;
   }
 
-  private async compactSnapshot(options: { checkpoint?: boolean }) {
+  private async compactSnapshot() {
     if (!this.doc) return;
     const startedAt = Date.now();
     const snapshot = Y.encodeStateAsUpdate(this.doc);
@@ -659,12 +651,10 @@ export class WorkspaceYDocDurableObject {
     this.compactCount += 1;
     let checkpointError: unknown;
 
-    if (options.checkpoint !== false) {
-      try {
-        await this.checkpointD1();
-      } catch (error) {
-        checkpointError = error;
-      }
+    try {
+      await this.checkpointD1();
+    } catch (error) {
+      checkpointError = error;
     }
 
     await this.writeMeta();
@@ -675,7 +665,7 @@ export class WorkspaceYDocDurableObject {
       compactedUpdateCount,
       snapshotBytes: snapshot.byteLength,
       connectedSockets: this.connectedSocketCount(),
-      checkpointed: options.checkpoint !== false && checkpointError === undefined,
+      checkpointed: checkpointError === undefined,
       lastCompactedSeq: this.lastCompactedSeq,
       lastCheckpointSeq: this.lastCheckpointSeq,
     });

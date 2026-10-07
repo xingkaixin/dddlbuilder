@@ -1398,9 +1398,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       createWebSocket(),
       trackedUpdate(Y.encodeStateAsUpdate(source), 1),
     );
-    await Promise.all(
-      [1, 2].map(() => object.fetch(createRequest('/compact', { method: 'POST' }))),
-    );
+    await Promise.all([object.alarm(), object.alarm()]);
     expect(store.get('meta')).toMatchObject({ updateCount: 0, updateBytes: 0 });
     source.destroy();
   });
