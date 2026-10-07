@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { act, render, screen, fireEvent, waitFor, within } from '@/__tests__/utils/test-utils';
 import { withDefaultEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import { AppDialogLayer } from '@/components/App/AppDialogLayer';
+// 预先加载懒加载的对话框模块，避免首个用例把模块转换耗时算进查询超时。
+import '@/components/App/AISchemaPatchDialog';
 import type { AppDialogLayerModel } from '@/components/App/buildAppDialogLayerModel';
 import { applyAISchemaChanges } from '@/components/App/aiSchemaPatchTransition';
 import { requestGenerateTable } from '@/services/aiGenerateTableService';
@@ -129,7 +131,7 @@ describe('AI patch dialog session', () => {
 
   it('keeps the conversation input across closing and reopening the view', async () => {
     render(<Harness />);
-    const input = screen.getByRole('textbox');
+    const input = await screen.findByRole('textbox');
     fireEvent.change(input, { target: { value: '保留这次结构修改' } });
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     await waitFor(() => expect(screen.queryByRole('textbox')).toBeNull());
@@ -148,7 +150,7 @@ describe('AI patch dialog session', () => {
       });
     });
     render(<Harness />);
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '添加状态列' } });
+    fireEvent.change(await screen.findByRole('textbox'), { target: { value: '添加状态列' } });
     fireEvent.click(screen.getByRole('button', { name: '发送' }));
     await waitFor(() => expect(signal).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
@@ -163,7 +165,7 @@ describe('AI patch dialog session', () => {
 
   it('only clears the session after confirming restart', async () => {
     render(<Harness />);
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '尚未提交的修改' } });
+    fireEvent.change(await screen.findByRole('textbox'), { target: { value: '尚未提交的修改' } });
     fireEvent.click(screen.getByRole('button', { name: '重新开始' }));
     const confirmation = screen.getByRole('alertdialog');
     fireEvent.click(within(confirmation).getByRole('button', { name: '取消' }));
@@ -187,7 +189,7 @@ describe('AI patch dialog session', () => {
     });
     render(<Harness />);
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '补充表说明' } });
+    fireEvent.change(await screen.findByRole('textbox'), { target: { value: '补充表说明' } });
     fireEvent.click(screen.getByRole('button', { name: '发送' }));
     await screen.findByText('调整表英文名');
     fireEvent.click(screen.getAllByRole('button', { name: '确认' })[0]);
@@ -259,7 +261,7 @@ describe('AI patch dialog session', () => {
     });
     render(<Harness initialState={initialState} />);
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '重命名字段' } });
+    fireEvent.change(await screen.findByRole('textbox'), { target: { value: '重命名字段' } });
     fireEvent.click(screen.getByRole('button', { name: '发送' }));
 
     const renameTitle = await screen.findByRole('button', {
@@ -302,7 +304,7 @@ describe('AI patch dialog session', () => {
     });
     render(<Harness alternateState={{ ...state, tableName: 'accounts' }} />);
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '重命名表' } });
+    fireEvent.change(await screen.findByRole('textbox'), { target: { value: '重命名表' } });
     fireEvent.click(screen.getByRole('button', { name: '发送' }));
     const title = await screen.findByText('调整表英文名');
     // SAFETY: The selected transition card is rendered as an HTMLElement by the dialog component.
@@ -345,7 +347,7 @@ describe('AI patch dialog session', () => {
     });
     render(<Harness alternateState={state} />);
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '重命名表' } });
+    fireEvent.change(await screen.findByRole('textbox'), { target: { value: '重命名表' } });
     fireEvent.click(screen.getByRole('button', { name: '发送' }));
     await waitFor(() => expect(signal).toBeDefined());
     fireEvent.click(screen.getByText('Switch target'));

@@ -1,4 +1,4 @@
-import { type ComponentProps } from 'react';
+import { lazy, Suspense, type ComponentProps } from 'react';
 import { AlertTriangle, Trash2 } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,20 +10,63 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { NamePromptDialog } from './NamePromptDialog';
-import { AIGenerateDialog } from '../AIGenerateDialog';
-import { DiffDialog } from '../DiffDialog';
 import { DeleteFolderDialog, FolderDialog } from '../FolderDialogs';
-import { MockDataDialog } from '../MockDataDialog';
-import { ReviewHistoryDialog } from '../ReviewHistoryDialog';
-import { ErDiagramDialog } from '../ErDiagramDialog';
-import { StorageEstimatorDialog } from '../StorageEstimatorDialog';
-import { TemplateManagerDialog } from '../TemplateManagerDialog';
-import { TableTemplateManagerDialog } from '../TableTemplateManagerDialog';
-import { CreateTableTemplateDialog } from '../CreateTableTemplateDialog';
-import { CreateTemplateDialog } from '../CreateTemplateDialog';
-import { VersionHistoryDialog } from '../VersionHistoryDialog';
-import { SchemaTimelinePlayer } from '../SchemaTimelinePlayer';
+import type { AIGenerateDialog as AIGenerateDialogComponent } from '../AIGenerateDialog';
+import type { DiffDialog as DiffDialogComponent } from '../DiffDialog';
+import type { MockDataDialog as MockDataDialogComponent } from '../MockDataDialog';
+import type { ReviewHistoryDialog as ReviewHistoryDialogComponent } from '../ReviewHistoryDialog';
+import type { ErDiagramDialog as ErDiagramDialogComponent } from '../ErDiagramDialog';
+import type { StorageEstimatorDialog as StorageEstimatorDialogComponent } from '../StorageEstimatorDialog';
+import type { TemplateManagerDialog as TemplateManagerDialogComponent } from '../TemplateManagerDialog';
+import type { TableTemplateManagerDialog as TableTemplateManagerDialogComponent } from '../TableTemplateManagerDialog';
+import type { CreateTableTemplateDialog as CreateTableTemplateDialogComponent } from '../CreateTableTemplateDialog';
+import type { CreateTemplateDialog as CreateTemplateDialogComponent } from '../CreateTemplateDialog';
+import type { VersionHistoryDialog as VersionHistoryDialogComponent } from '../VersionHistoryDialog';
+import type { SchemaTimelinePlayer as SchemaTimelinePlayerComponent } from '../SchemaTimelinePlayer';
 import { useTranslation } from 'react-i18next';
+
+const AIGenerateDialog = lazy(() =>
+  import('../AIGenerateDialog').then((module) => ({ default: module.AIGenerateDialog })),
+);
+const DiffDialog = lazy(() =>
+  import('../DiffDialog').then((module) => ({ default: module.DiffDialog })),
+);
+const MockDataDialog = lazy(() =>
+  import('../MockDataDialog').then((module) => ({ default: module.MockDataDialog })),
+);
+const ReviewHistoryDialog = lazy(() =>
+  import('../ReviewHistoryDialog').then((module) => ({ default: module.ReviewHistoryDialog })),
+);
+const ErDiagramDialog = lazy(() =>
+  import('../ErDiagramDialog').then((module) => ({ default: module.ErDiagramDialog })),
+);
+const StorageEstimatorDialog = lazy(() =>
+  import('../StorageEstimatorDialog').then((module) => ({
+    default: module.StorageEstimatorDialog,
+  })),
+);
+const TemplateManagerDialog = lazy(() =>
+  import('../TemplateManagerDialog').then((module) => ({ default: module.TemplateManagerDialog })),
+);
+const TableTemplateManagerDialog = lazy(() =>
+  import('../TableTemplateManagerDialog').then((module) => ({
+    default: module.TableTemplateManagerDialog,
+  })),
+);
+const CreateTableTemplateDialog = lazy(() =>
+  import('../CreateTableTemplateDialog').then((module) => ({
+    default: module.CreateTableTemplateDialog,
+  })),
+);
+const CreateTemplateDialog = lazy(() =>
+  import('../CreateTemplateDialog').then((module) => ({ default: module.CreateTemplateDialog })),
+);
+const VersionHistoryDialog = lazy(() =>
+  import('../VersionHistoryDialog').then((module) => ({ default: module.VersionHistoryDialog })),
+);
+const SchemaTimelinePlayer = lazy(() =>
+  import('../SchemaTimelinePlayer').then((module) => ({ default: module.SchemaTimelinePlayer })),
+);
 
 interface GlobalDialogsProps {
   clearDialog: {
@@ -60,18 +103,18 @@ interface GlobalDialogsProps {
   };
   folderDialogProps: ComponentProps<typeof FolderDialog>;
   deleteFolderDialogProps: ComponentProps<typeof DeleteFolderDialog>;
-  templateManagerDialogProps: ComponentProps<typeof TemplateManagerDialog>;
-  createTemplateDialogProps: ComponentProps<typeof CreateTemplateDialog>;
-  tableTemplateManagerDialogProps: ComponentProps<typeof TableTemplateManagerDialog>;
-  createTableTemplateDialogProps: ComponentProps<typeof CreateTableTemplateDialog>;
-  diffDialogProps: ComponentProps<typeof DiffDialog>;
-  versionHistoryDialogProps: ComponentProps<typeof VersionHistoryDialog> | null;
-  timelinePlayerProps: ComponentProps<typeof SchemaTimelinePlayer> | null;
-  reviewHistoryDialogProps: ComponentProps<typeof ReviewHistoryDialog>;
-  aiGenerateDialogProps: ComponentProps<typeof AIGenerateDialog>;
-  storageEstimatorDialogProps: ComponentProps<typeof StorageEstimatorDialog>;
-  mockDataDialogProps: ComponentProps<typeof MockDataDialog>;
-  erDiagramDialogProps: ComponentProps<typeof ErDiagramDialog>;
+  templateManagerDialogProps: ComponentProps<typeof TemplateManagerDialogComponent>;
+  createTemplateDialogProps: ComponentProps<typeof CreateTemplateDialogComponent>;
+  tableTemplateManagerDialogProps: ComponentProps<typeof TableTemplateManagerDialogComponent>;
+  createTableTemplateDialogProps: ComponentProps<typeof CreateTableTemplateDialogComponent>;
+  diffDialogProps: ComponentProps<typeof DiffDialogComponent>;
+  versionHistoryDialogProps: ComponentProps<typeof VersionHistoryDialogComponent> | null;
+  timelinePlayerProps: ComponentProps<typeof SchemaTimelinePlayerComponent> | null;
+  reviewHistoryDialogProps: ComponentProps<typeof ReviewHistoryDialogComponent>;
+  aiGenerateDialogProps: ComponentProps<typeof AIGenerateDialogComponent>;
+  storageEstimatorDialogProps: ComponentProps<typeof StorageEstimatorDialogComponent>;
+  mockDataDialogProps: ComponentProps<typeof MockDataDialogComponent>;
+  erDiagramDialogProps: ComponentProps<typeof ErDiagramDialogComponent>;
   emptyTrashDialog: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -106,19 +149,51 @@ export function GlobalDialogs({
     <>
       {folderDialogProps.open && <FolderDialog {...folderDialogProps} />}
       {deleteFolderDialogProps.open && <DeleteFolderDialog {...deleteFolderDialogProps} />}
-      {templateManagerDialogProps.open && <TemplateManagerDialog {...templateManagerDialogProps} />}
-      {createTemplateDialogProps.open && <CreateTemplateDialog {...createTemplateDialogProps} />}
+      {templateManagerDialogProps.open && (
+        <Suspense fallback={null}>
+          <TemplateManagerDialog {...templateManagerDialogProps} />
+        </Suspense>
+      )}
+      {createTemplateDialogProps.open && (
+        <Suspense fallback={null}>
+          <CreateTemplateDialog {...createTemplateDialogProps} />
+        </Suspense>
+      )}
       {tableTemplateManagerDialogProps.open && (
-        <TableTemplateManagerDialog {...tableTemplateManagerDialogProps} />
+        <Suspense fallback={null}>
+          <TableTemplateManagerDialog {...tableTemplateManagerDialogProps} />
+        </Suspense>
       )}
       {createTableTemplateDialogProps.open && (
-        <CreateTableTemplateDialog {...createTableTemplateDialogProps} />
+        <Suspense fallback={null}>
+          <CreateTableTemplateDialog {...createTableTemplateDialogProps} />
+        </Suspense>
       )}
-      {diffDialogProps.open && <DiffDialog {...diffDialogProps} />}
-      {versionHistoryDialogProps && <VersionHistoryDialog {...versionHistoryDialogProps} />}
-      {timelinePlayerProps && <SchemaTimelinePlayer {...timelinePlayerProps} />}
-      {reviewHistoryDialogProps.open && <ReviewHistoryDialog {...reviewHistoryDialogProps} />}
-      {aiGenerateDialogProps.open && <AIGenerateDialog {...aiGenerateDialogProps} />}
+      {diffDialogProps.open && (
+        <Suspense fallback={null}>
+          <DiffDialog {...diffDialogProps} />
+        </Suspense>
+      )}
+      {versionHistoryDialogProps && (
+        <Suspense fallback={null}>
+          <VersionHistoryDialog {...versionHistoryDialogProps} />
+        </Suspense>
+      )}
+      {timelinePlayerProps && (
+        <Suspense fallback={null}>
+          <SchemaTimelinePlayer {...timelinePlayerProps} />
+        </Suspense>
+      )}
+      {reviewHistoryDialogProps.open && (
+        <Suspense fallback={null}>
+          <ReviewHistoryDialog {...reviewHistoryDialogProps} />
+        </Suspense>
+      )}
+      {aiGenerateDialogProps.open && (
+        <Suspense fallback={null}>
+          <AIGenerateDialog {...aiGenerateDialogProps} />
+        </Suspense>
+      )}
 
       <Dialog open={clearDialog.open} onOpenChange={clearDialog.onOpenChange}>
         <DialogContent className="max-w-sm">
@@ -227,10 +302,20 @@ export function GlobalDialogs({
       </Dialog>
 
       {storageEstimatorDialogProps.open && storageEstimatorDialogProps.dbType !== 'sqlite' && (
-        <StorageEstimatorDialog {...storageEstimatorDialogProps} />
+        <Suspense fallback={null}>
+          <StorageEstimatorDialog {...storageEstimatorDialogProps} />
+        </Suspense>
       )}
-      {mockDataDialogProps.open && <MockDataDialog {...mockDataDialogProps} />}
-      {erDiagramDialogProps.open && <ErDiagramDialog {...erDiagramDialogProps} />}
+      {mockDataDialogProps.open && (
+        <Suspense fallback={null}>
+          <MockDataDialog {...mockDataDialogProps} />
+        </Suspense>
+      )}
+      {erDiagramDialogProps.open && (
+        <Suspense fallback={null}>
+          <ErDiagramDialog {...erDiagramDialogProps} />
+        </Suspense>
+      )}
     </>
   );
 }

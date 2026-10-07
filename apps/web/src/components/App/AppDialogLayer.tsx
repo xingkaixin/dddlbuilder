@@ -1,14 +1,21 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AISchemaPatchDialog } from './AISchemaPatchDialog';
 import { useAuthIdentity } from '@/auth/AuthSessionProvider';
-import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import type { AppDialogLayerModel } from './buildAppDialogLayerModel';
 import { WebMcpChangeDialog } from '@/webmcp/WebMcpChangeDialog';
 import { AuthDialogs } from '@/auth/AuthDialogs';
 import { WorkspaceMigrationDialog } from './WorkspaceMigrationDialog';
-import { UserSettingsDialog } from './UserSettingsDialog';
+
+const AISchemaPatchDialog = lazy(() =>
+  import('./AISchemaPatchDialog').then((module) => ({ default: module.AISchemaPatchDialog })),
+);
+const AIIndexAdvisorDialog = lazy(() =>
+  import('./AIIndexAdvisorDialog').then((module) => ({ default: module.AIIndexAdvisorDialog })),
+);
+const UserSettingsDialog = lazy(() =>
+  import('./UserSettingsDialog').then((module) => ({ default: module.UserSettingsDialog })),
+);
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -44,21 +51,37 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
     ),
   };
   const { visible: importVisible, ...importDialogProps } = importDialog;
+  // AI 补丁会话在关闭后仍需保留，首次打开后才挂载，之后保持挂载。
+  const [aiPatchMounted, setAiPatchMounted] = useState(false);
+
+  if (aiPatchProps.open && !aiPatchMounted) setAiPatchMounted(true);
 
   return (
     <>
       <AuthDialogs />
       <WorkspaceMigrationDialog />
-      {model.userSettings.open && <UserSettingsDialog {...model.userSettings} />}
+      {model.userSettings.open && (
+        <Suspense fallback={null}>
+          <UserSettingsDialog {...model.userSettings} />
+        </Suspense>
+      )}
       <WebMcpChangeDialog model={model.webMcpDialog} />
       <GlobalDialogs {...globalDialogs} saveDialog={saveDialog} />
 
-      <AISchemaPatchDialog
-        key={JSON.stringify([authSession.userId, authSession.workspaceId, aiPatchTargetKey])}
-        {...aiPatchProps}
-      />
+      {aiPatchMounted && (
+        <Suspense fallback={null}>
+          <AISchemaPatchDialog
+            key={JSON.stringify([authSession.userId, authSession.workspaceId, aiPatchTargetKey])}
+            {...aiPatchProps}
+          />
+        </Suspense>
+      )}
 
-      {indexAdvisor.open && <AIIndexAdvisorDialog {...indexAdvisor} />}
+      {indexAdvisor.open && (
+        <Suspense fallback={null}>
+          <AIIndexAdvisorDialog {...indexAdvisor} />
+        </Suspense>
+      )}
 
       <Suspense fallback={null}>
         {importVisible && <ImportSqlDialog {...importDialogProps} />}
