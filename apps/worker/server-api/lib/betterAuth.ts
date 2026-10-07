@@ -244,14 +244,16 @@ const buildBetterAuth = (env: ApiEnv['Bindings']) => {
   });
 };
 
-const authInstances = new WeakMap<ApiEnv['Bindings'], ReturnType<typeof buildBetterAuth>>();
+// Request handlers receive a per-request copy of env (it carries the request logger), so the
+// isolate-stable D1 binding is the cache key; buildBetterAuth must not read request-scoped fields.
+const authInstances = new WeakMap<D1Database, ReturnType<typeof buildBetterAuth>>();
 
 export const createBetterAuth = (env: ApiEnv['Bindings']) => {
-  let auth = authInstances.get(env);
+  let auth = authInstances.get(env.USER_DB);
 
   if (!auth) {
     auth = buildBetterAuth(env);
-    authInstances.set(env, auth);
+    authInstances.set(env.USER_DB, auth);
   }
 
   return auth;

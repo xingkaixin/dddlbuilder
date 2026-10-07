@@ -87,7 +87,7 @@ describe('createBetterAuth', () => {
     const { createBetterAuth } = await import('../../lib/betterAuth.js');
     const env = createEnv();
     createBetterAuth(env);
-    createBetterAuth(env);
+    createBetterAuth({ ...env });
     const config = betterAuthMock.mock.calls[0][0];
     expect(betterAuthMock).toHaveBeenCalledTimes(1);
     expect(config.databaseHooks.user.create.after).toBeTypeOf('function');
