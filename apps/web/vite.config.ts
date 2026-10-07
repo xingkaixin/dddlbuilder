@@ -33,6 +33,7 @@ export default defineConfig({
     outDir: 'dist/client',
     assetsDir: 'static',
     emptyOutDir: true,
+    chunkSizeWarningLimit: 900,
     rollupOptions: {},
   },
 });
