@@ -96,7 +96,10 @@ export function useSavedTableDraftRecords({
             upsertSavedDraftInYDoc(
               doc,
               target,
-              withSavedBase(nextRecord, getSavedTableFromYDoc(doc, target)?.state),
+              withSavedBase(
+                nextRecord,
+                nextRecord.baseState ? undefined : getSavedTableFromYDoc(doc, target)?.state,
+              ),
               { compactSnapshotBase: true },
             ),
           );
@@ -106,7 +109,12 @@ export function useSavedTableDraftRecords({
 
         await upsertSavedDraft(
           normalizedName,
-          withSavedBase(nextRecord, (await getSavedTable(target, destination.scope))?.state),
+          withSavedBase(
+            nextRecord,
+            nextRecord.baseState
+              ? undefined
+              : (await getSavedTable(target, destination.scope))?.state,
+          ),
           destination.scope,
         );
       });

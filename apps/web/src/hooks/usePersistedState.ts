@@ -313,19 +313,17 @@ export function usePersistedState(): UsePersistedStateReturn {
         return;
       }
 
-      if (payload.source.kind === 'draft' && !getDraftState(payload.source.draftId)) return;
-
-      if (payload.source.kind === 'saved_table' && persistedStateRef.current) {
-        lastLocalSaveRef.current = {
-          source: payload.source,
-          baseState: persistedStateRef.current,
-          localState: payload.state,
-        };
-      }
-
       if (payload.source.kind === 'draft') {
-        saveDraftState(payload.source.draftId, payload.state);
+        if (!saveDraftState(payload.source.draftId, payload.state, { activeOnly: true })) return;
       } else {
+        if (persistedStateRef.current) {
+          lastLocalSaveRef.current = {
+            source: payload.source,
+            baseState: persistedStateRef.current,
+            localState: payload.state,
+          };
+        }
+
         const { tableName, baseSignature } = payload.source;
         const existingDraft = getSavedTableDraft(payload.source);
         const isDirty = buildSchemaStateSignature(payload.state) !== payload.source.baseSignature;
@@ -352,7 +350,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     [
       dropSavedTableDraft,
       getSavedTableDraft,
-      getDraftState,
       hydrated,
       persistSavedTableDraft,
       saveDraftState,

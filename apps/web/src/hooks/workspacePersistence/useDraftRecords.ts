@@ -32,19 +32,6 @@ import {
 
 const DRAFT_COLLECTIONS = ['drafts'] as const;
 const EMPTY_DRAFTS: DraftEntry[] = [];
-const readDraftProjection = (doc: Y.Doc, previous?: DraftEntry[], change?: WorkspaceYDocChange) => {
-  if (!previous || !change) return listAllDraftRecordsFromYDoc(doc);
-  const records = new Map(previous.map((entry) => [entry.draftId, entry]));
-
-  for (const draftId of change.entityIds) {
-    const record = getDraftRecordFromYDoc(doc, draftId);
-
-    if (record) records.set(draftId, { draftId, record });
-    else records.delete(draftId);
-  }
-
-  return [...records.values()];
-};
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   drafts.sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
 
@@ -63,7 +50,25 @@ export function useDraftRecords({
 }: UseDraftRecordsParams) {
   const [localRecords, setLocalRecords] = useState<Map<string, GlobalDraftRecord>>(() => new Map());
   const localRecordsRef = useRef(localRecords);
+  const writingRecordsRef = useRef(new Map<string, GlobalDraftRecord>());
 
+  const readDraftProjection = useCallback(
+    (doc: Y.Doc, previous?: DraftEntry[], change?: WorkspaceYDocChange) => {
+      if (!previous || !change) return listAllDraftRecordsFromYDoc(doc);
+      const records = new Map(previous.map((entry) => [entry.draftId, entry]));
+
+      for (const draftId of change.entityIds) {
+        const record =
+          writingRecordsRef.current.get(draftId) ?? getDraftRecordFromYDoc(doc, draftId);
+
+        if (record) records.set(draftId, { draftId, record });
+        else records.delete(draftId);
+      }
+
+      return [...records.values()];
+    },
+    [],
+  );
   const yDocDrafts = useWorkspaceYDocProjection(
     yDoc,
     DRAFT_COLLECTIONS,
@@ -156,9 +161,16 @@ export function useDraftRecords({
       const target = storage;
 
       if (target.kind === 'ydoc') {
-        target.transact((doc) =>
-          upsertDraftInYDoc(doc, draftId, record, { compactSnapshotBase: true }),
-        );
+        // Y.Doc 观察者在事务结束时同步触发，投影可直接复用刚写入的记录。
+        writingRecordsRef.current.set(draftId, record);
+
+        try {
+          target.transact((doc) =>
+            upsertDraftInYDoc(doc, draftId, record, { compactSnapshotBase: true }),
+          );
+        } finally {
+          writingRecordsRef.current.delete(draftId);
+        }
 
         return;
       }
@@ -172,14 +184,16 @@ export function useDraftRecords({
   );
 
   const saveDraftState = useCallback(
-    (draftId: string, state: PersistedState) => {
-      if (disabled) return;
+    (draftId: string, state: PersistedState, { activeOnly = false } = {}) => {
+      if (disabled) return false;
       const existing = getRecord(draftId);
+
+      if (activeOnly && (!existing || existing.trashedAt != null)) return false;
 
       if (existing) {
         const buildSignature = yDoc ? buildSchemaStateSignature : buildPersistedStateSignature;
 
-        if (buildSignature(existing.state) === buildSignature(state)) return;
+        if (buildSignature(existing.state) === buildSignature(state)) return true;
       }
 
       persistRecord(
@@ -192,6 +206,8 @@ export function useDraftRecords({
         },
         'save draft',
       );
+
+      return true;
     },
     [disabled, getRecord, persistRecord, yDoc],
   );
