@@ -3,6 +3,7 @@ import {
   PublicationSchema,
   PublicationSummarySchema,
   PublicationCommentsSchema,
+  type Publication,
   type PublicationWrite,
 } from '@ddlbuilder/shared-types/api';
 import { decodeDeliveryTables } from '@ddlbuilder/workspace-core';
@@ -93,6 +94,8 @@ export async function writePublication(
   if (new TextEncoder().encode(encoded).length > 512 * 1024)
     throw new DomainError(413, 'PAYLOAD_TOO_LARGE', 'Publication content exceeds 512 KiB');
 
+  let summary: unknown;
+
   if (id) {
     const previous = await readPublication(db, id, userId);
 
@@ -108,14 +111,14 @@ export async function writePublication(
         'Proposal snapshots are immutable; create a new proposal',
       );
 
-    const updated = await db
+    summary = await db
       .prepare(
-        `UPDATE schema_publications SET title = ?, visibility = ?, content = ?, revision = revision + 1, updated_at = ? WHERE id = ? AND owner_id = ? AND revision = ? RETURNING id`,
+        `UPDATE schema_publications SET title = ?, visibility = ?, content = ?, revision = revision + 1, updated_at = ? WHERE id = ? AND owner_id = ? AND revision = ? RETURNING ${summaryColumns}`,
       )
       .bind(input.title.trim(), input.visibility, encoded, now, id, userId, input.revision)
       .first();
 
-    if (!updated)
+    if (!summary)
       throw new DomainError(
         409,
         'PUBLICATION_CONFLICT',
@@ -124,14 +127,12 @@ export async function writePublication(
   } else {
     if (input.revision !== 0)
       throw new DomainError(400, 'INVALID_JSON', 'New publications start at revision zero');
-    id = crypto.randomUUID();
-
-    const created = await db
+    summary = await db
       .prepare(
-        `INSERT INTO schema_publications (id, owner_id, kind, title, visibility, content, created_at, updated_at) SELECT ?, ?, ?, ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM schema_publications WHERE owner_id = ?) < 100 RETURNING id`,
+        `INSERT INTO schema_publications (id, owner_id, kind, title, visibility, content, created_at, updated_at) SELECT ?, ?, ?, ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM schema_publications WHERE owner_id = ?) < 100 RETURNING ${summaryColumns}`,
       )
       .bind(
-        id,
+        crypto.randomUUID(),
         userId,
         content.kind,
         input.title.trim(),
@@ -143,11 +144,15 @@ export async function writePublication(
       )
       .first();
 
-    if (!created)
+    if (!summary)
       throw new DomainError(409, 'PUBLICATION_LIMIT', 'At most 100 publications per account');
   }
 
-  return readPublication(db, id, userId);
+  return {
+    ...Schema.decodeUnknownSync(PublicationSummarySchema)(summary),
+    content,
+    isOwner: true,
+  } satisfies Publication;
 }
 
 export async function deletePublication(db: D1Database, userId: string, id: string) {
@@ -159,11 +164,22 @@ export async function deletePublication(db: D1Database, userId: string, id: stri
   if (!deleted) throw new DomainError(404, 'SHARE_NOT_FOUND', 'Publication not found');
 }
 
-export async function readPublicationComments(db: D1Database, id: string, userId: string | null) {
-  const publication = await readPublication(db, id, userId);
+async function assertCommentableProposal(db: D1Database, id: string, userId: string | null) {
+  const row = await db
+    .prepare(
+      `SELECT kind FROM schema_publications WHERE id = ? AND (visibility = 'link' OR owner_id = ?)`,
+    )
+    .bind(id, userId)
+    .first<{ kind: string }>();
 
-  if (publication.kind !== 'proposal')
+  if (!row) throw new DomainError(404, 'SHARE_NOT_FOUND', 'Publication not found');
+
+  if (row.kind !== 'proposal')
     throw new DomainError(400, 'INVALID_JSON', 'Only proposals support comments');
+}
+
+export async function readPublicationComments(db: D1Database, id: string, userId: string | null) {
+  await assertCommentableProposal(db, id, userId);
 
   const { results } = await db
     .prepare(
@@ -184,10 +200,7 @@ export async function addPublicationComment(
   target: string,
   body: string,
 ) {
-  const publication = await readPublication(db, id, user.userId);
-
-  if (publication.kind !== 'proposal')
-    throw new DomainError(400, 'INVALID_JSON', 'Only proposals support comments');
+  await assertCommentableProposal(db, id, user.userId);
 
   const inserted = await db
     .prepare(
