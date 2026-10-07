@@ -2,7 +2,6 @@ import { AIIndexAdvisorProviderResultSchema } from '@ddlbuilder/shared-types/ai-
 import { decodeAIRequest } from '../lib/aiRequest.js';
 import {
   AIIndexAdvisorRequestSchema,
-  decodeAIIndexAdvisorProviderResult,
   type AIIndexAdvisorRequest,
 } from '@ddlbuilder/shared-types/ai-generate';
 import * as Effect from 'effect/Effect';
@@ -22,12 +21,12 @@ import type {
 const MAX_OUTPUT_TOKENS = 2200;
 const MAX_REQUEST_BYTES = 64_000;
 
+type AIIndexAdvisorProviderResult = typeof AIIndexAdvisorProviderResultSchema.Type;
+
 const normalizeResult = (
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- provider JSON is decoded by the shared contract at this route boundary.
-  payload: unknown,
+  result: AIIndexAdvisorProviderResult,
   fields: AIIndexAdvisorFieldInput[],
 ): AIIndexAdvisorResult => {
-  const result = decodeAIIndexAdvisorProviderResult(payload);
   const fieldNames = new Set(fields.map((field) => field.fieldName));
 
   return {
@@ -52,7 +51,7 @@ const buildMessages = (request: AIIndexAdvisorRequest): AIChatMessage[] => [
 
 export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
   app.post('/index-advisor', (c) =>
-    withAIGovernance<AIIndexAdvisorRequest>(
+    withAIGovernance<AIIndexAdvisorRequest, AIIndexAdvisorProviderResult>(
       c,
       {
         route: 'index-advisor',

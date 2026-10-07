@@ -74,10 +74,10 @@ export const rejectAIRequest = (code: ApiErrorCode, message: string): AIRequestR
  * 非流式路径在 run 返回后 succeed，流式路径在流结束/出错的回调里 settle，
  * run 抛异常则 fail——调用方没有任何需要记住的结算义务。
  */
-export type AISession<Request> = {
+export type AISession<Request, Output = unknown> = {
   request: Request;
-  /** 非流式补全：重试、usage 上报和 JSON 解析都在里面，调用方只拿结果。 */
-  completeJson: (input: AICompletionInput) => Effect.Effect<unknown, AICompletionError>;
+  /** 非流式补全：重试、usage 上报、JSON 解析和输出 Schema 解码都在里面，调用方只拿结果。 */
+  completeJson: (input: AICompletionInput) => Effect.Effect<Output, AICompletionError>;
   /** 流式补全：把增量直接写进响应，结算和审计在流结束或出错时完成。 */
   streamCompletion: (input: AIStreamInput) => Effect.Effect<Response>;
 };
@@ -93,10 +93,10 @@ export type AICompletionInput = {
   temperature: number;
 };
 
-export type AIRouteSpec<Request> = {
+export type AIRouteSpec<Request, Output = unknown> = {
   route: AIRouteKey;
   maxOutputTokens: number;
-  outputSchema?: Schema.ConstraintDecoder<unknown>;
+  outputSchema?: Schema.ConstraintDecoder<Output>;
   bodyMaxBytes: number;
   /** 返回 rejection 表示请求体不合法。 */
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- each route decodes this raw JSON at its schema boundary.
@@ -110,10 +110,10 @@ export type AIRouteSpec<Request> = {
  * 任一步失败都会带上审计日志直接返回。走通之后把句柄交给 run，由它决定怎么调模型、
  * 怎么回包——流式路由会在流回调里才结算，所以结算时机必须留给 run 自己。
  */
-export const aiGovernance = <Request, E>(
+export const aiGovernance = <Request, Output, E>(
   c: Context<ApiEnv>,
-  spec: AIRouteSpec<Request>,
-  run: (session: AISession<Request>) => Effect.Effect<Response, E>,
+  spec: AIRouteSpec<Request, Output>,
+  run: (session: AISession<Request, Output>) => Effect.Effect<Response, E>,
 ) =>
   Effect.gen(function* () {
     const requestSpan = yield* Effect.makeSpan('ai.request', {
@@ -139,14 +139,14 @@ export const aiGovernance = <Request, E>(
         const validateOutput = (
           // oxlint-disable-next-line anti-slop/no-unknown-parameters -- output validation accepts the provider's decoded JSON boundary.
           value: unknown,
-        ) =>
+        ): Effect.Effect<Output, AIOutputError> =>
           spec.outputSchema
             ? Schema.decodeUnknownEffect(spec.outputSchema)(value).pipe(
                 Effect.mapError((cause) => new AIOutputError({ reason: 'invalid-schema', cause })),
-                Effect.as(value),
                 Effect.withSpan('ai.output.validate'),
               )
-            : Effect.succeed(value);
+            : // SAFETY: routes without an output schema keep the default `unknown` output type.
+              Effect.succeed(value as Output);
         const governance = getOpenAIGovernanceSnapshot(route, config);
         const waitUntil = c.executionCtx.waitUntil.bind(c.executionCtx);
 
@@ -703,7 +703,7 @@ export const aiGovernance = <Request, E>(
           return settleFailure(failure.code, requestAborted ? 499 : failure.status, retryCount);
         };
 
-        const session: AISession<Request> = {
+        const session: AISession<Request, Output> = {
           request: parsed,
           completeJson: ({ temperature }) =>
             Effect.gen(function* () {
@@ -896,10 +896,10 @@ export const aiGovernance = <Request, E>(
     );
   });
 
-export const withAIGovernance = <Request, E = AICompletionError>(
+export const withAIGovernance = <Request, Output = unknown, E = AICompletionError>(
   c: Context<ApiEnv>,
-  spec: AIRouteSpec<Request>,
-  run: (session: AISession<Request>) => Effect.Effect<Response, E>,
+  spec: AIRouteSpec<Request, Output>,
+  run: (session: AISession<Request, Output>) => Effect.Effect<Response, E>,
 ): Promise<Response> => {
   const services = Layer.mergeAll(
     AIProvider.layer,

@@ -2,7 +2,6 @@ import { AICommentResultSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { decodeAIRequest } from '../lib/aiRequest.js';
 import {
   AICommentRequestSchema,
-  decodeAICommentResult,
   type AICommentRequest,
 } from '@ddlbuilder/shared-types/ai-generate';
 import * as Effect from 'effect/Effect';
@@ -20,12 +19,7 @@ const REQUEST_BODY_MAX_BYTES = 1024 * 1024;
 
 const MAX_OUTPUT_TOKENS = 1800;
 
-const normalizeResult = (
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- provider JSON is decoded by the shared contract at this route boundary.
-  payload: unknown,
-  fields: AICommentFieldInput[],
-): AICommentResult => {
-  const data = decodeAICommentResult(payload);
+const normalizeResult = (data: AICommentResult, fields: AICommentFieldInput[]): AICommentResult => {
   const byName = new Map(data.fields.map((field) => [field.fieldName, field.fieldComment]));
 
   return {
@@ -44,7 +38,7 @@ const buildMessages = (request: AICommentRequest): AIChatMessage[] => [
 
 export function registerGenerateCommentsRoute(app: Hono<ApiEnv>) {
   app.post('/generate-comments', (c) =>
-    withAIGovernance<AICommentRequest>(
+    withAIGovernance<AICommentRequest, AICommentResult>(
       c,
       {
         route: 'generate-comments',
