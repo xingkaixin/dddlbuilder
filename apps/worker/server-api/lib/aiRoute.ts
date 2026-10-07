@@ -556,6 +556,7 @@ export const aiGovernance = <Request, E>(
         }
 
         let settled = false;
+        let releaseCompletion: (() => void) | undefined;
         let startedAttempts = 0;
         let retryCount = 0;
         const openAIAbortController = new AbortController();
@@ -701,6 +702,15 @@ export const aiGovernance = <Request, E>(
           request: parsed,
           completeJson: ({ temperature }) =>
             Effect.gen(function* () {
+              if (!releaseCompletion) {
+                // Non-streaming settlement finishes before the response; keep it alive if the client disconnects.
+                waitUntil(
+                  new Promise<void>((resolve) => {
+                    releaseCompletion = resolve;
+                  }),
+                );
+              }
+
               const response = yield* retryOpenAI(
                 runOpenAIAttempt(
                   provider.complete(
@@ -859,6 +869,7 @@ export const aiGovernance = <Request, E>(
 
         return yield* restore(execute(Effect.suspend(() => run(session)))).pipe(
           Effect.onExit((exit) => (streamed ? Effect.void : settleExit(exit))),
+          Effect.ensuring(Effect.sync(() => releaseCompletion?.())),
           Effect.catchCause((cause) =>
             Effect.sync(() => {
               const error = Cause.squash(cause);

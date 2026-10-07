@@ -731,7 +731,7 @@ describe('withAIGovernance', () => {
     );
   });
 
-  it('上游明确拒绝的尝试不计入预留扣费', async () => {
+  it('上游明确拒绝的尝试不计入预留扣费，非流式结算挂到 waitUntil', async () => {
     let attempts = 0;
 
     const shell = await loadShell({
@@ -741,6 +741,7 @@ describe('withAIGovernance', () => {
     shell.createCompletion.mockRejectedValueOnce(
       Object.assign(new Error('rate limited'), { status: 429 }),
     );
+    const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, (session) =>
@@ -752,7 +753,7 @@ describe('withAIGovernance', () => {
       ),
     );
 
-    expect((await post(app, { sql: 'select 1' })).status).toBe(200);
+    expect((await post(app, { sql: 'select 1' }, waitUntil)).status).toBe(200);
     expect(shell.createCompletion).toHaveBeenCalledTimes(2);
     expect(shell.prepareAIUsageSettlement.mock.calls[0]?.[3]).toEqual({
       observedTotalTokens: 15,
@@ -760,6 +761,8 @@ describe('withAIGovernance', () => {
       providerBudgetTokens: 15,
       usageEstimated: false,
     });
+    expect(waitUntil).toHaveBeenCalledTimes(1);
+    await waitUntil.mock.calls[0]?.[0];
   });
 
   it('结算事实首次写入失败时先重试 intent，再执行终态事务', async () => {
