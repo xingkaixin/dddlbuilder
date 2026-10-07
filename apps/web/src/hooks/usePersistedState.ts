@@ -241,13 +241,18 @@ export function usePersistedState(): UsePersistedStateReturn {
       const scopeKey = getWorkspaceScopeStorageKey(currentScope);
       const written = writtenSessionRef.current;
 
-      if (written?.scopeKey === scopeKey && isSameWorkspaceSelection(written.source, source)) return;
+      if (written?.scopeKey === scopeKey && isSameWorkspaceSelection(written.source, source))
+        return;
       writtenSessionRef.current = { scopeKey, source };
-      void enqueuePersistence('workspace-session', 'save workspace session', () =>
-        writeWorkspaceSession(
-          { activeSource: toWorkspaceSource(source), updatedAt: Date.now() },
-          currentScope,
-        ),
+      void enqueuePersistence(
+        'workspace-session',
+        'save workspace session',
+        () =>
+          writeWorkspaceSession(
+            { activeSource: toWorkspaceSource(source), updatedAt: Date.now() },
+            currentScope,
+          ),
+        { replaceable: true },
       );
     },
     [currentScope, enqueuePersistence],

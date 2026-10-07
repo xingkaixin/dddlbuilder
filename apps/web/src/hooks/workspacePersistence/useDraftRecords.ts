@@ -176,8 +176,11 @@ export function useDraftRecords({
       }
 
       updateLocalRecord(draftId, record);
-      void enqueuePersistence(`draft:${draftId}`, operation, () =>
-        writeDraft(draftId, record, target.scope),
+      void enqueuePersistence(
+        `draft:${draftId}`,
+        operation,
+        () => writeDraft(draftId, record, target.scope),
+        { replaceable: true },
       );
     },
     [enqueuePersistence, storage, updateLocalRecord],

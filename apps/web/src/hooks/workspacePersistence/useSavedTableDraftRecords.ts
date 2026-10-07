@@ -88,36 +88,41 @@ export function useSavedTableDraftRecords({
       if (!nextRecord.baseState && existing?.baseSignature === nextRecord.baseSignature)
         nextRecord.baseState = existing.baseState;
       recordsRef.current.set(key, nextRecord);
-      void enqueuePersistence(`saved-draft:${key}`, 'save saved-table draft', async () => {
-        const destination = requireReadyWorkspaceStorage(storage);
+      void enqueuePersistence(
+        `saved-draft:${key}`,
+        'save saved-table draft',
+        async () => {
+          const destination = requireReadyWorkspaceStorage(storage);
 
-        if (destination.kind === 'ydoc') {
-          destination.transact((doc) =>
-            upsertSavedDraftInYDoc(
-              doc,
-              target,
-              withSavedBase(
-                nextRecord,
-                nextRecord.baseState ? undefined : getSavedTableFromYDoc(doc, target)?.state,
+          if (destination.kind === 'ydoc') {
+            destination.transact((doc) =>
+              upsertSavedDraftInYDoc(
+                doc,
+                target,
+                withSavedBase(
+                  nextRecord,
+                  nextRecord.baseState ? undefined : getSavedTableFromYDoc(doc, target)?.state,
+                ),
+                { compactSnapshotBase: true },
               ),
-              { compactSnapshotBase: true },
+            );
+
+            return;
+          }
+
+          await upsertSavedDraft(
+            normalizedName,
+            withSavedBase(
+              nextRecord,
+              nextRecord.baseState
+                ? undefined
+                : (await getSavedTable(target, destination.scope))?.state,
             ),
+            destination.scope,
           );
-
-          return;
-        }
-
-        await upsertSavedDraft(
-          normalizedName,
-          withSavedBase(
-            nextRecord,
-            nextRecord.baseState
-              ? undefined
-              : (await getSavedTable(target, destination.scope))?.state,
-          ),
-          destination.scope,
-        );
-      });
+        },
+        { replaceable: true },
+      );
     },
     [enqueuePersistence, storage],
   );

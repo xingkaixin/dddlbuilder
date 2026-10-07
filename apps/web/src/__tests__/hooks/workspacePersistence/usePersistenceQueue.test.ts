@@ -61,4 +61,37 @@ describe('usePersistenceQueue', () => {
 
     await waitFor(() => expect(second).toHaveBeenCalledOnce());
   });
+
+  it('只执行同一实体最新的待执行整条写入', async () => {
+    let finishFirst!: () => void;
+
+    const first = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishFirst = resolve;
+        }),
+    );
+    const superseded = vi.fn().mockResolvedValue(undefined);
+    const latest = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => usePersistenceQueue());
+
+    act(() => {
+      result.current.enqueue('draft:default', 'save draft', first, { replaceable: true });
+    });
+    await waitFor(() => expect(first).toHaveBeenCalledOnce());
+
+    let supersededCompletion!: Promise<unknown>;
+    act(() => {
+      supersededCompletion = result.current.enqueue('draft:default', 'save draft', superseded, {
+        replaceable: true,
+      });
+      result.current.enqueue('draft:default', 'save draft', latest, { replaceable: true });
+    });
+
+    act(() => finishFirst());
+    await supersededCompletion;
+
+    expect(superseded).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledOnce();
+  });
 });

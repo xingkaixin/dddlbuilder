@@ -7,6 +7,11 @@ interface PersistenceTask {
   run: () => Promise<unknown>;
 }
 
+interface PendingTask {
+  task: PersistenceTask;
+  completion: Promise<unknown>;
+}
+
 export interface PersistenceFailure {
   id: number;
   operation: string;
@@ -14,6 +19,7 @@ export interface PersistenceFailure {
 
 export function usePersistenceQueue() {
   const chainsRef = useRef(new Map<string, Promise<unknown>>());
+  const pendingRef = useRef(new Map<string, PendingTask>());
   const versionsRef = useRef(new Map<string, number>());
   const failedTasksRef = useRef(new Map<string, PersistenceTask>());
   const failureIdRef = useRef(0);
@@ -21,15 +27,41 @@ export function usePersistenceQueue() {
   const failureRef = useRef<PersistenceFailure | null>(null);
 
   const enqueue = useCallback(
-    // oxlint-disable-next-line anti-slop/no-unknown-returns -- enqueue accepts completion-only producer promises.
-    (key: string, operation: string, run: () => Promise<unknown>) => {
+    (
+      key: string,
+      operation: string,
+      // oxlint-disable-next-line anti-slop/no-unknown-returns -- enqueue accepts completion-only producer promises.
+      run: () => Promise<unknown>,
+      { replaceable = false }: { replaceable?: boolean } = {},
+    ) => {
+      const pending = pendingRef.current.get(key);
+
+      // 尚未开始的整条写入会被同 key 的新整条写入完全覆盖，只需执行最新的一次。
+      if (replaceable && pending) {
+        pending.task.operation = operation;
+        pending.task.run = run;
+
+        return pending.completion;
+      }
+
       const version = (versionsRef.current.get(key) ?? 0) + 1;
       versionsRef.current.set(key, version);
       failedTasksRef.current.delete(key);
 
+      const task: PersistenceTask = { key, operation, run };
       const previous = chainsRef.current.get(key) ?? Promise.resolve();
-      const current = previous.catch(() => undefined).then(run);
+
+      const current = previous
+        .catch(() => undefined)
+        .then(() => {
+          if (pendingRef.current.get(key)?.task === task) pendingRef.current.delete(key);
+
+          return task.run();
+        });
       chainsRef.current.set(key, current);
+
+      if (replaceable) pendingRef.current.set(key, { task, completion: current });
+      else pendingRef.current.delete(key);
 
       void current.then(
         () => {
@@ -47,16 +79,16 @@ export function usePersistenceQueue() {
         },
         // oxlint-disable-next-line anti-slop/no-unknown-parameters -- queued work can reject with any JavaScript value.
         (error: unknown) => {
-          console.error(`[workspace-persistence] ${operation} failed`, error);
+          console.error(`[workspace-persistence] ${task.operation} failed`, error);
 
           if (chainsRef.current.get(key) === current) {
             chainsRef.current.delete(key);
           }
 
           if (versionsRef.current.get(key) !== version) return;
-          failedTasksRef.current.set(key, { key, operation, run });
+          failedTasksRef.current.set(key, { ...task });
           failureIdRef.current += 1;
-          const nextFailure = { id: failureIdRef.current, operation };
+          const nextFailure = { id: failureIdRef.current, operation: task.operation };
           failureRef.current = nextFailure;
           setFailure(nextFailure);
         },
