@@ -44,7 +44,7 @@ const buildModel = (documentId: string): EditorSurfaceModel => ({
       onSqlFormatModeChange: () => {},
       onCopySql: async () => true,
       onCopyDcl: async () => true,
-      generatedOrm: '',
+      generateOrm: () => '',
       ormTarget: 'prisma',
       onOrmTargetChange: () => {},
       onCopyOrm: async () => true,

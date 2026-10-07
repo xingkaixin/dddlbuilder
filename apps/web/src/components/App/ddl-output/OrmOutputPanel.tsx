@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ORMTarget } from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
@@ -7,19 +8,20 @@ import { SearchableSelect } from '@/components/ui/select';
 import { CopyOutputButton, OutputCode, OutputHeading } from './OutputPrimitives';
 
 export function OrmOutputPanel({
-  code,
+  generateCode,
   dbType,
   target,
   onTargetChange,
   onCopy,
 }: {
-  code: string;
+  generateCode: () => string;
   dbType: DatabaseType;
   target: ORMTarget;
   onTargetChange: (target: ORMTarget) => void;
   onCopy: () => Promise<boolean>;
 }) {
   const { t } = useTranslation();
+  const code = useMemo(() => generateCode(), [generateCode]);
 
   const options = ORM_TARGET_OPTIONS.filter((option) =>
     dbType === 'sqlite' ? option.value === 'drizzle' : option.value !== 'drizzle',

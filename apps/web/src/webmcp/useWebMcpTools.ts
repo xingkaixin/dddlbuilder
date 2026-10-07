@@ -32,7 +32,7 @@ interface UseWebMcpToolsInput {
   state: PersistedState;
   generatedSql: string;
   generatedDcl: string;
-  generatedOrm: string;
+  getGeneratedOrm: () => string;
   replaceState: (state: PersistedState) => void;
 }
 
@@ -326,7 +326,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
 
     if (kind === 'ddl') content = snapshot.generatedSql;
     else if (kind === 'dcl') content = snapshot.generatedDcl;
-    else if (kind === 'orm') content = snapshot.generatedOrm;
+    else if (kind === 'orm') content = snapshot.getGeneratedOrm();
     else if (kind === 'alter' || kind === 'rollback') {
       if (!pending) throw new WebMcpToolError('NOT_FOUND', 'No staged change set is available');
       content =

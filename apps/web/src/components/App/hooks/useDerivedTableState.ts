@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useDeferredValue, useMemo } from 'react';
 import type {
   PersistedState,
   FieldRow,
@@ -10,7 +10,6 @@ import type {
   TableMiscConfig,
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
-import { buildNormalizedFields } from '@/stores';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
 import {
   buildSchemaStateSignature,
@@ -80,22 +79,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   } = deps;
 
   // --- 字段派生 ---
-  const normalizedFields = useMemo(() => buildNormalizedFields(rows), [rows]);
-
-  // 以内容为键，字段名未变时保持同一引用，避免只改注释或类型时重渲染依赖字段列表的面板。
-  const availableFieldsKey = useMemo(
-    () =>
-      normalizedFields
-        .map((field) => field.name)
-        .filter((name) => name.length > 0)
-        .join('\0'),
-    [normalizedFields],
-  );
-  const availableFields = useMemo(
-    () => (availableFieldsKey ? availableFieldsKey.split('\0') : []),
-    [availableFieldsKey],
-  );
-
   const filledRowCount = useMemo(() => rows.filter((row) => row.fieldName?.trim()).length, [rows]);
 
   // --- Tab 计算 ---
@@ -177,16 +160,16 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   const saveInputDisabled = hasLoadedTable;
 
   // --- Diff ---
+  const deferredPersistedState = useDeferredValue(currentPersistedState);
+
   const tableDiff = useMemo<TableDiff | null>(() => {
     if (!isLoadedDirty || !loadedTableState) return null;
 
-    return diffPersistedState(loadedTableState, currentPersistedState);
-  }, [isLoadedDirty, loadedTableState, currentPersistedState]);
+    return diffPersistedState(loadedTableState, deferredPersistedState);
+  }, [isLoadedDirty, loadedTableState, deferredPersistedState]);
 
   return {
     // 字段
-    normalizedFields,
-    availableFields,
     filledRowCount,
     // Tab
     supportsMysqlPartition: canPartitionMysqlTable,

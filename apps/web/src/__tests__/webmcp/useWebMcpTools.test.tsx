@@ -79,7 +79,7 @@ describe('useWebMcpTools', () => {
         state: createState(),
         generatedSql: 'CREATE TABLE orders (id bigint);',
         generatedDcl: '',
-        generatedOrm: '',
+        getGeneratedOrm: () => '',
         replaceState,
       }),
     );

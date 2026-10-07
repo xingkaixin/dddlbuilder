@@ -3,13 +3,14 @@ import {
   type WorkspaceScope,
   type WorkspaceSelection,
 } from '@ddlbuilder/shared-types/workspace';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useDeferredValue, useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { DDLReviewResult } from '@ddlbuilder/shared-types/ddl-review';
-import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
+import { buildQualifiedTableName, supportsMysqlPartition } from '@ddlbuilder/ddl-core';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useOrmGeneration } from '@/hooks/useOrmGeneration';
 import { useTabStore, type WorkspaceTab } from '@/stores/tabStore';
+import { buildNormalizedFields } from '@/stores';
 import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { useToast } from '@/hooks/useToast';
@@ -141,31 +142,85 @@ export function useSchemaController({
     isDirty: derived.isLoadedDirty,
     countTableVersions,
   });
+  // 生成输出读取延后的编辑器状态：按键先提交输入，DDL、ORM 和 Lint 在后台渲染中重算。
+  const output = useDeferredValue(
+    useMemo(
+      () => ({
+        objectType,
+        schemaName,
+        tableName,
+        tableComment,
+        viewDefinition,
+        viewCreateOrReplace,
+        dbType,
+        sqlFormatMode,
+        rows,
+        indexes,
+        foreignKeys,
+        authObjects,
+        citusShardingConfig,
+        mysqlPartitionConfig,
+        tableMiscConfig,
+      }),
+      [
+        objectType,
+        schemaName,
+        tableName,
+        tableComment,
+        viewDefinition,
+        viewCreateOrReplace,
+        dbType,
+        sqlFormatMode,
+        rows,
+        indexes,
+        foreignKeys,
+        authObjects,
+        citusShardingConfig,
+        mysqlPartitionConfig,
+        tableMiscConfig,
+      ],
+    ),
+  );
+  const normalizedFields = useMemo(() => buildNormalizedFields(output.rows), [output.rows]);
+
+  const availableFieldsKey = useMemo(
+    () =>
+      normalizedFields
+        .map((field) => field.name)
+        .filter((name) => name.length > 0)
+        .join('\0'),
+    [normalizedFields],
+  );
+  // 字段名未变时保持同一引用，只改注释或类型不会让依赖字段列表的面板重渲染。
+  const availableFields = useMemo(
+    () => (availableFieldsKey ? availableFieldsKey.split('\0') : []),
+    [availableFieldsKey],
+  );
   const sql = useSqlGeneration(
-    objectType,
-    dbType,
-    schemaName,
-    tableName,
-    tableComment,
-    viewDefinition,
-    viewCreateOrReplace,
-    derived.normalizedFields,
-    indexes,
-    authObjects,
-    sqlFormatMode,
-    dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
-    derived.supportsMysqlPartition ? mysqlPartitionConfig : undefined,
-    tableMiscConfig,
-    foreignKeys,
+    output.objectType,
+    output.dbType,
+    output.schemaName,
+    output.tableName,
+    output.tableComment,
+    output.viewDefinition,
+    output.viewCreateOrReplace,
+    normalizedFields,
+    output.indexes,
+    output.authObjects,
+    output.sqlFormatMode,
+    output.dbType === 'postgresql-citus' ? output.citusShardingConfig : undefined,
+    supportsMysqlPartition(output.dbType) ? output.mysqlPartitionConfig : undefined,
+    output.tableMiscConfig,
+    output.foreignKeys,
   );
   const orm = useOrmGeneration({
-    dbType,
-    schemaName,
-    tableName,
-    tableComment,
-    fields: derived.normalizedFields,
-    indexes,
-    foreignKeys,
+    dbType: output.dbType,
+    schemaName: output.schemaName,
+    tableName: output.tableName,
+    tableComment: output.tableComment,
+    fields: normalizedFields,
+    indexes: output.indexes,
+    foreignKeys: output.foreignKeys,
   });
   const activeWorkspaceTab = useTabStore((state) =>
     state.tabs.find((tab) => tab.id === state.activeTabId),
@@ -198,7 +253,7 @@ export function useSchemaController({
     schemaName,
     tableName,
     tableComment,
-    fields: derived.normalizedFields,
+    fields: normalizedFields,
     indexes,
   });
   const reviewActions = useReviewActions({
@@ -229,23 +284,15 @@ export function useSchemaController({
   const schemaLintIssues = useMemo(
     () =>
       lintSchema({
-        tableName,
-        rows,
-        indexes,
-        foreignKeys,
-        mysqlPartitionConfig,
-        citusShardingConfig,
-        tableMiscConfig,
+        tableName: output.tableName,
+        rows: output.rows,
+        indexes: output.indexes,
+        foreignKeys: output.foreignKeys,
+        mysqlPartitionConfig: output.mysqlPartitionConfig,
+        citusShardingConfig: output.citusShardingConfig,
+        tableMiscConfig: output.tableMiscConfig,
       }),
-    [
-      citusShardingConfig,
-      foreignKeys,
-      indexes,
-      mysqlPartitionConfig,
-      rows,
-      tableMiscConfig,
-      tableName,
-    ],
+    [output],
   );
   const shareAction = useShareAction({
     buildPersistedState,
@@ -254,6 +301,8 @@ export function useSchemaController({
 
   return {
     derived,
+    normalizedFields,
+    availableFields,
     loadedPresentation,
     qualifiedTableName,
     sql,

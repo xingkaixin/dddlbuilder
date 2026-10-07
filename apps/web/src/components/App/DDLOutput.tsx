@@ -26,7 +26,7 @@ interface DDLOutputProps {
   onSqlFormatModeChange: (mode: SqlFormatMode) => void;
   onCopySql: () => Promise<boolean>;
   onCopyDcl: () => Promise<boolean>;
-  generatedOrm: string;
+  generateOrm: () => string;
   ormTarget: ORMTarget;
   onOrmTargetChange: (target: ORMTarget) => void;
   onCopyOrm: () => Promise<boolean>;
@@ -134,7 +134,7 @@ export const DDLOutput = memo<DDLOutputProps>((props) => {
         <TabsContent value="orm" className="mt-0">
           <OrmOutputPanel
             dbType={props.dbType}
-            code={props.generatedOrm}
+            generateCode={props.generateOrm}
             target={props.ormTarget}
             onTargetChange={props.onOrmTargetChange}
             onCopy={props.onCopyOrm}

@@ -27,14 +27,14 @@ describe('useOrmGeneration', () => {
         }),
       { initialProps: { schemaName: 'public', dbType: 'postgresql' } },
     );
-    expect(result.current.generatedOrm).toContain('model Users {');
-    expect(result.current.generatedOrm).toContain('@@schema("public")');
+    expect(result.current.getGeneratedOrm()).toContain('model Users {');
+    expect(result.current.getGeneratedOrm()).toContain('@@schema("public")');
     rerender({ schemaName: 'audit', dbType: 'postgresql' });
-    expect(result.current.generatedOrm).toContain('@@schema("audit")');
-    expect(result.current.generatedOrm).not.toContain('@@schema("public")');
+    expect(result.current.getGeneratedOrm()).toContain('@@schema("audit")');
+    expect(result.current.getGeneratedOrm()).not.toContain('@@schema("public")');
     rerender({ schemaName: 'audit', dbType: 'mysql' });
-    expect(result.current.generatedOrm).not.toContain('@@schema(');
-    expect(result.current.generatedOrm).toContain('Select database "audit"');
+    expect(result.current.getGeneratedOrm()).not.toContain('@@schema(');
+    expect(result.current.getGeneratedOrm()).toContain('Select database "audit"');
   });
 
   it('defaults to prisma target', () => {
@@ -47,7 +47,7 @@ describe('useOrmGeneration', () => {
       }),
     );
     expect(result.current.ormTarget).toBe('prisma');
-    expect(result.current.generatedOrm).toContain('model Users {');
+    expect(result.current.getGeneratedOrm()).toContain('model Users {');
   });
 
   it('switches ORM target', () => {
@@ -65,7 +65,7 @@ describe('useOrmGeneration', () => {
     });
 
     expect(result.current.ormTarget).toBe('typeorm');
-    expect(result.current.generatedOrm).toContain('@Entity');
+    expect(result.current.getGeneratedOrm()).toContain('@Entity');
   });
 
   it('generates GORM model', () => {
@@ -82,8 +82,8 @@ describe('useOrmGeneration', () => {
       result.current.setOrmTarget('gorm');
     });
 
-    expect(result.current.generatedOrm).toContain('package models');
-    expect(result.current.generatedOrm).toContain('type Users struct {');
+    expect(result.current.getGeneratedOrm()).toContain('package models');
+    expect(result.current.getGeneratedOrm()).toContain('type Users struct {');
   });
 
   it('generates SQLAlchemy model', () => {
@@ -100,8 +100,8 @@ describe('useOrmGeneration', () => {
       result.current.setOrmTarget('sqlalchemy');
     });
 
-    expect(result.current.generatedOrm).toContain('from sqlalchemy import Column');
-    expect(result.current.generatedOrm).toContain('class Users(Base):');
+    expect(result.current.getGeneratedOrm()).toContain('from sqlalchemy import Column');
+    expect(result.current.getGeneratedOrm()).toContain('class Users(Base):');
   });
 
   it('generates JPA entity', () => {
@@ -118,8 +118,8 @@ describe('useOrmGeneration', () => {
       result.current.setOrmTarget('jpa');
     });
 
-    expect(result.current.generatedOrm).toContain('@Entity');
-    expect(result.current.generatedOrm).toContain('public class Users {');
+    expect(result.current.getGeneratedOrm()).toContain('@Entity');
+    expect(result.current.getGeneratedOrm()).toContain('public class Users {');
   });
 
   it('copies ORM to clipboard', async () => {
@@ -154,7 +154,7 @@ describe('useOrmGeneration', () => {
       }),
     );
 
-    expect(result.current.generatedOrm).toContain('@id');
+    expect(result.current.getGeneratedOrm()).toContain('@id');
   });
 
   it('forwards referenced model fields used by relationship mappings', () => {
@@ -182,7 +182,7 @@ describe('useOrmGeneration', () => {
       }),
     );
 
-    expect(result.current.generatedOrm).toContain('references: [userId_2]');
+    expect(result.current.getGeneratedOrm()).toContain('references: [userId_2]');
   });
 
   it('handles empty fields gracefully', () => {
@@ -190,6 +190,6 @@ describe('useOrmGeneration', () => {
       useOrmGeneration({ dbType: 'mysql', tableName: 'users', tableComment: '用户表', fields: [] }),
     );
 
-    expect(result.current.generatedOrm).toBeTruthy();
+    expect(result.current.getGeneratedOrm()).toBeTruthy();
   });
 });

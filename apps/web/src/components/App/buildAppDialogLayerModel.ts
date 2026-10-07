@@ -229,7 +229,7 @@ export function buildAppDialogLayerModel({
         open: ui.isStorageEstimatorOpen,
         onOpenChange: ui.setIsStorageEstimatorOpen,
         dbType: editor.dbType,
-        fields: derived.normalizedFields,
+        fields: schemaController.normalizedFields,
         indexes: editor.indexes,
         storageFormat: tableOptions.tableMiscConfig.storedAs || undefined,
       },
@@ -239,7 +239,7 @@ export function buildAppDialogLayerModel({
         tableName: editor.tableName,
         schemaName: editor.schemaName,
         dbType: editor.dbType,
-        fields: derived.normalizedFields,
+        fields: schemaController.normalizedFields,
       },
       erDiagramDialogProps: {
         open: ui.isErDialogOpen,

@@ -122,7 +122,8 @@ export function useEditorSurfaceModel({
   } = navigationActions;
 
   const {
-    derived: { availableFields, canSaveCurrent, tableDiff },
+    derived: { canSaveCurrent, tableDiff },
+    availableFields,
     sql,
     orm,
     aiCommentActions,
@@ -329,7 +330,7 @@ export function useEditorSurfaceModel({
       onSqlFormatModeChange: setSqlFormatMode,
       onCopySql: sql.copySql,
       onCopyDcl: sql.copyDcl,
-      generatedOrm: orm.generatedOrm,
+      generateOrm: orm.getGeneratedOrm,
       ormTarget: orm.ormTarget,
       onOrmTargetChange: orm.setOrmTarget,
       onCopyOrm: orm.copyOrm,
@@ -351,7 +352,7 @@ export function useEditorSurfaceModel({
       setSqlFormatMode,
       sql.copySql,
       sql.copyDcl,
-      orm.generatedOrm,
+      orm.getGeneratedOrm,
       orm.ormTarget,
       orm.setOrmTarget,
       orm.copyOrm,

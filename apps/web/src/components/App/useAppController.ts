@@ -444,7 +444,7 @@ export function useAppController() {
     state: currentPersistedState,
     generatedSql: schemaController.sql.generatedSql,
     generatedDcl: schemaController.sql.generatedDcl,
-    generatedOrm: schemaController.orm.generatedOrm,
+    getGeneratedOrm: schemaController.orm.getGeneratedOrm,
     replaceState: applySavedState,
   });
 

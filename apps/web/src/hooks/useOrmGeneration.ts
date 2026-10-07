@@ -1,5 +1,5 @@
 import { copyText } from '@/utils/clipboard';
-import { useMemo, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { buildORM } from '@ddlbuilder/ddl-core';
 import type { ORMModelInput, ORMTarget } from '@ddlbuilder/ddl-core';
 
@@ -13,7 +13,7 @@ export const ORM_TARGET_OPTIONS: { value: ORMTarget; label: string }[] = [
 ];
 
 export interface UseOrmGenerationReturn {
-  generatedOrm: string;
+  getGeneratedOrm: () => string;
   copyOrm: () => Promise<boolean>;
   ormTarget: ORMTarget;
   setOrmTarget: (target: ORMTarget) => void;
@@ -34,7 +34,8 @@ export function useOrmGeneration({
   const ormTarget =
     dbType === 'sqlite' ? 'drizzle' : selectedTarget === 'drizzle' ? 'prisma' : selectedTarget;
 
-  const generatedOrm = useMemo(
+  // ORM 只在输出面板展示或复制时生成，避免编辑时为不可见的标签页重复计算。
+  const getGeneratedOrm = useCallback(
     () =>
       buildORM(ormTarget, {
         dbType,
@@ -59,10 +60,13 @@ export function useOrmGeneration({
     ],
   );
 
-  const copyOrm = useCallback(() => copyText(generatedOrm || '-- 请选择 ORM 框架'), [generatedOrm]);
+  const copyOrm = useCallback(
+    () => copyText(getGeneratedOrm() || '-- 请选择 ORM 框架'),
+    [getGeneratedOrm],
+  );
 
   return {
-    generatedOrm,
+    getGeneratedOrm,
     copyOrm,
     ormTarget,
     setOrmTarget,
