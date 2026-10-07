@@ -15,6 +15,8 @@ export type StructuredSuggestion = DDLReviewStructuredSuggestion;
 
 export type ReviewResult = DDLReviewResult;
 
+const STREAMING_COMMIT_INTERVAL_MS = 100;
+
 interface ReviewState {
   documentKey: string;
   streamingText: string;
@@ -94,16 +96,30 @@ export function useDDLReview(documentKey: string) {
           error: null,
         });
 
+        let pendingText: string | null = null;
+        let flushTimer: ReturnType<typeof setTimeout> | undefined;
+
+        const commitStreamingText = (streamingText: string) =>
+          commitIfCurrent(() => {
+            setState((previous) => ({ ...previous, streamingText }));
+          });
+        const flushStreamingText = () => {
+          flushTimer = undefined;
+
+          if (pendingText === null) return;
+
+          commitStreamingText(pendingText);
+          pendingText = null;
+          flushTimer = setTimeout(flushStreamingText, STREAMING_COMMIT_INTERVAL_MS);
+        };
+
         try {
           const reviewResult = await requestDDLReview(requestPayload, {
             signal,
             onStreamingText: (streamingText) => {
-              commitIfCurrent(() => {
-                setState((previous) => ({
-                  ...previous,
-                  streamingText,
-                }));
-              });
+              pendingText = streamingText;
+
+              if (flushTimer === undefined) flushStreamingText();
             },
           });
 
@@ -129,6 +145,8 @@ export function useDDLReview(documentKey: string) {
           });
 
           return undefined;
+        } finally {
+          clearTimeout(flushTimer);
         }
       }, requestKey);
 
