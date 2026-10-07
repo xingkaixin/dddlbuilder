@@ -12,6 +12,7 @@ import * as Result from 'effect/Result';
 import * as Cause from 'effect/Cause';
 import * as Stream from 'effect/Stream';
 import * as Schema from 'effect/Schema';
+import * as Schedule from 'effect/Schedule';
 import { AIConfiguration, AIProvider, AIUsage } from './aiServices.js';
 import {
   AIProviderError,
@@ -479,6 +480,7 @@ export const aiGovernance = <Request, E>(
         ) =>
           ledger.prepare(reservation, outcome, settlement, code).pipe(
             Effect.retry({
+              schedule: Schedule.exponential('20 millis'),
               times: SETTLEMENT_INTENT_MAX_ATTEMPTS - 1,
               while: (error) => !(error instanceof DomainError),
             }),
