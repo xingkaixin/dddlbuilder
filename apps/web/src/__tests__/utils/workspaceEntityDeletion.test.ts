@@ -47,24 +47,27 @@ describe('workspace entity commits', () => {
 
       if (operation === 'activate') {
         const remove = IDBObjectStore.prototype.delete;
-        vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(
-          function (this: IDBObjectStore, key) {
-            const request = remove.call(this, key);
-            request.addEventListener('success', () => this.transaction.abort());
+        vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(function (
+          this: IDBObjectStore,
+          key,
+        ) {
+          const request = remove.call(this, key);
+          request.addEventListener('success', () => this.transaction.abort());
 
-            return request;
-          },
-        );
+          return request;
+        });
       } else {
         const put = IDBObjectStore.prototype.put;
-        vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(
-          function (this: IDBObjectStore, value, key) {
-            const request = put.call(this, value, key);
-            request.addEventListener('success', () => this.transaction.abort());
+        vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
+          this: IDBObjectStore,
+          value,
+          key,
+        ) {
+          const request = put.call(this, value, key);
+          request.addEventListener('success', () => this.transaction.abort());
 
-            return request;
-          },
-        );
+          return request;
+        });
       }
 
       const completion =

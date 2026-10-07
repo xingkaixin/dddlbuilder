@@ -36,13 +36,13 @@ export function setupSchemaTools() {
 
   URL.revokeObjectURL = () => {};
 
-  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(
-    function (this: HTMLAnchorElement) {
-      const blob = blobs.get(this.href);
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    const blob = blobs.get(this.href);
 
-      if (blob) downloads.push({ name: this.download, blob });
-    },
-  );
+    if (blob) downloads.push({ name: this.download, blob });
+  });
 
   const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const path = String(input);
