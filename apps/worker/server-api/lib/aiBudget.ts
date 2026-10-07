@@ -16,16 +16,8 @@ const getBudgetExpiry = () => {
   return Math.max(Date.now() + 60_000, tomorrow);
 };
 
-const readBudgetValue = async (env: ApiEnv['Bindings'], windowId: string) => {
-  const row = await env.USER_DB.prepare(
-    `
-      SELECT value
-      FROM ai_daily_budget_counters
-      WHERE window_id = ?
-    `,
-  )
-    .bind(windowId)
-    .first<{ value: number }>();
+const readBudgetValue = (result: D1Result<{ value: number }> | undefined) => {
+  const row = result?.results[0];
 
   return row ? Number(row.value) : null;
 };
@@ -63,8 +55,9 @@ export const reserveAIDailyBudget = async (
   const normalizedLimitTokens = normalizeBudgetReservationTokens(limitTokens, 1);
 
   try {
-    await env.USER_DB.prepare(
-      `
+    const [, counter] = await env.USER_DB.batch<{ value: number }>([
+      env.USER_DB.prepare(
+        `
         INSERT INTO ai_budget_reservations (
           usage_event_id,
           window_id,
@@ -77,22 +70,24 @@ export const reserveAIDailyBudget = async (
         )
         VALUES (?, ?, ?, NULL, ?, ?, NULL, ?)
       `,
-    )
-      .bind(
+      ).bind(
         usageEventId,
         windowId,
         reservedTokens,
         normalizedLimitTokens,
         getBudgetExpiry(),
         Date.now(),
-      )
-      .run();
+      ),
+      env.USER_DB.prepare('SELECT value FROM ai_daily_budget_counters WHERE window_id = ?').bind(
+        windowId,
+      ),
+    ]);
+
+    return readBudgetValue(counter);
   } catch (error) {
     if (isBudgetExceeded(error)) return null;
     throw error;
   }
-
-  return readBudgetValue(env, windowId);
 };
 
 export const settleAIDailyBudget = async (
@@ -102,20 +97,28 @@ export const settleAIDailyBudget = async (
 ) => {
   const normalizedActualTokens =
     actualTokens === null ? null : normalizeBudgetActualTokens(actualTokens);
-  const reservation = await env.USER_DB.prepare(
-    `
+  const [reservation, counter] = await env.USER_DB.batch<{ value: number }>([
+    env.USER_DB.prepare(
+      `
       UPDATE ai_budget_reservations
       SET
         actual_tokens = COALESCE(?, reserved_tokens),
         settled_at = ?
       WHERE usage_event_id = ? AND actual_tokens IS NULL
-      RETURNING window_id AS windowId
+      RETURNING window_id
     `,
-  )
-    .bind(normalizedActualTokens, Date.now(), usageEventId)
-    .first<{ windowId: string }>();
+    ).bind(normalizedActualTokens, Date.now(), usageEventId),
+    env.USER_DB.prepare(
+      `
+      SELECT value FROM ai_daily_budget_counters
+      WHERE window_id = (
+        SELECT window_id FROM ai_budget_reservations WHERE usage_event_id = ?
+      )
+    `,
+    ).bind(usageEventId),
+  ]);
 
-  return reservation ? readBudgetValue(env, reservation.windowId) : null;
+  return reservation?.results.length ? readBudgetValue(counter) : null;
 };
 
 export const reconcileTerminalAIBudgets = async (env: ApiEnv['Bindings']) => {

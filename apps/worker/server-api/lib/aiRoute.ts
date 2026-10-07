@@ -346,17 +346,20 @@ export const aiGovernance = <Request, E>(
           return errorResponse(c, 503, 'OpenAI service unavailable', 'SERVICE_UNAVAILABLE');
         }
 
+        const reserve = ledger.reserve({
+          userId: user.userId,
+          routeKey: route,
+          requestId,
+          estimatedTokens,
+        });
         const credit = yield* Effect.result(
-          Effect.gen(function* () {
-            yield* ledger.grantSignup(user);
-
-            return yield* ledger.reserve({
-              userId: user.userId,
-              routeKey: route,
-              requestId,
-              estimatedTokens,
-            });
-          }).pipe(Effect.withSpan('ai.reserve')),
+          reserve.pipe(
+            Effect.catchIf(
+              (error) => error instanceof DomainError && error.message === 'CREDIT_ACCOUNT_MISSING',
+              () => ledger.grantSignup(user).pipe(Effect.andThen(reserve)),
+            ),
+            Effect.withSpan('ai.reserve'),
+          ),
         );
 
         if (Result.isFailure(credit)) {

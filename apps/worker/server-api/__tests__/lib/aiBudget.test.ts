@@ -199,44 +199,16 @@ describe('AI daily budget lifecycle', () => {
       const waitForOld = new Promise<void>((resolve) => {
         releaseOld = resolve;
       });
-      const prepare = env.USER_DB.prepare.bind(env.USER_DB);
-
       const delayedEnv = {
         ...env,
-        // SAFETY: this proxy implements the D1 prepare/bind protocol used by the budget helper.
+        // SAFETY: delayedEnv preserves the real D1 prepare and only delays the reservation batch under test.
         USER_DB: {
-          prepare(sql: string) {
-            const statement = prepare(sql);
+          prepare: env.USER_DB.prepare.bind(env.USER_DB),
+          batch: async (statements: D1PreparedStatement[]) => {
+            await waitForOld;
 
-            return {
-              bind(...bindings: unknown[]) {
-                const bound = statement.bind(...bindings);
-
-                return new Proxy(bound, {
-                  get(target, key) {
-                    if (
-                      key === 'run' &&
-                      sql.includes('INSERT INTO ai_budget_reservations') &&
-                      bindings[0] === 'old-late'
-                    ) {
-                      return async () => {
-                        await waitForOld;
-
-                        return target.run();
-                      };
-                    }
-
-                    // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy forwarding must preserve arbitrary D1 statement keys
-                    const value = Reflect.get(target, key);
-
-                    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- dynamic Proxy forwarding binds callable statement methods
-                    return typeof value === 'function' ? value.bind(target) : value;
-                  },
-                });
-              },
-            };
+            return env.USER_DB.batch(statements);
           },
-          // SAFETY: delayedEnv preserves the real D1 methods and only intercepts the single race under test.
         } as D1Database,
       };
 

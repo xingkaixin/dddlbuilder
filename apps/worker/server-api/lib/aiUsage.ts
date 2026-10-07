@@ -228,8 +228,9 @@ export const prepareAIUsageSettlement = async (
     !settlement.usageEstimated;
   const isZeroFailureWithoutAttempt = status === 'failed' && isZeroWithoutAttempt;
 
-  if (from !== settlingStatus) {
-    await env.USER_DB.prepare(`
+  const write =
+    from !== settlingStatus
+      ? env.USER_DB.prepare(`
       UPDATE usage_events SET
         status = ?,
         actual_total_tokens = ?,
@@ -243,23 +244,20 @@ export const prepareAIUsageSettlement = async (
           OR (attempt_count = 0 AND ? = 1)
           OR (attempt_count > 0 AND ? = 0)
         )
-    `)
-      .bind(
-        settlingStatus,
-        settlement.observedTotalTokens,
-        settlement.chargedTokens,
-        settlement.providerBudgetTokens,
-        settlement.usageEstimated ? 1 : 0,
-        errorCode,
-        reservation.usageEventId,
-        reservation.userId,
-        from,
-        isZeroWithoutAttempt ? 1 : 0,
-        isZeroFailureWithoutAttempt ? 1 : 0,
-      )
-      .run();
-  } else {
-    await env.USER_DB.prepare(`
+    `).bind(
+          settlingStatus,
+          settlement.observedTotalTokens,
+          settlement.chargedTokens,
+          settlement.providerBudgetTokens,
+          settlement.usageEstimated ? 1 : 0,
+          errorCode,
+          reservation.usageEventId,
+          reservation.userId,
+          from,
+          isZeroWithoutAttempt ? 1 : 0,
+          isZeroFailureWithoutAttempt ? 1 : 0,
+        )
+      : env.USER_DB.prepare(`
       UPDATE usage_events SET
         actual_total_tokens = COALESCE(actual_total_tokens, ?),
         charged_tokens = COALESCE(charged_tokens, ?),
@@ -268,32 +266,30 @@ export const prepareAIUsageSettlement = async (
         error_code = COALESCE(error_code, ?)
       WHERE id = ? AND user_id = ? AND status = ?
         AND (charged_tokens IS NULL OR provider_budget_tokens IS NULL)
-    `)
-      .bind(
-        settlement.observedTotalTokens,
-        settlement.chargedTokens,
-        settlement.providerBudgetTokens,
-        settlement.usageEstimated ? 1 : 0,
-        errorCode,
-        reservation.usageEventId,
-        reservation.userId,
-        settlingStatus,
-      )
-      .run();
-  }
-
-  const prepared = await env.USER_DB.prepare(`
-    SELECT status, charged_tokens AS chargedTokens,
-      provider_budget_tokens AS providerBudgetTokens
-    FROM usage_events
-    WHERE id = ? AND user_id = ?
-  `)
-    .bind(reservation.usageEventId, reservation.userId)
-    .first<{
-      status: AIUsageStatus;
-      chargedTokens: number | null;
-      providerBudgetTokens: number | null;
-    }>();
+    `).bind(
+          settlement.observedTotalTokens,
+          settlement.chargedTokens,
+          settlement.providerBudgetTokens,
+          settlement.usageEstimated ? 1 : 0,
+          errorCode,
+          reservation.usageEventId,
+          reservation.userId,
+          settlingStatus,
+        );
+  const [, current] = await env.USER_DB.batch<{
+    status: AIUsageStatus;
+    chargedTokens: number | null;
+    providerBudgetTokens: number | null;
+  }>([
+    write,
+    env.USER_DB.prepare(`
+      SELECT status, charged_tokens AS chargedTokens,
+        provider_budget_tokens AS providerBudgetTokens
+      FROM usage_events
+      WHERE id = ? AND user_id = ?
+    `).bind(reservation.usageEventId, reservation.userId),
+  ]);
+  const prepared = current?.results[0];
 
   if (
     !prepared ||
