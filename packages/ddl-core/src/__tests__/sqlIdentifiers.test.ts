@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getSqlIdentifierKey } from '../utils/sqlIdentifiers';
+import { formatSqlIdentifier, getSqlIdentifierKey } from '../utils/sqlIdentifiers';
 
 describe('getSqlIdentifierKey', () => {
   it.each(['postgresql', 'kingbase', 'gaussdb'] as const)(
@@ -29,6 +29,16 @@ describe('getSqlIdentifierKey', () => {
       expect(getSqlIdentifierKey('"UserID"', dbType)).toBe('UserID');
       expect(getSqlIdentifierKey('"User""ID"', dbType)).toBe('User"ID');
       expect(getSqlIdentifierKey('"USERID"', dbType)).toBe(getSqlIdentifierKey('userid', dbType));
+    },
+  );
+
+  it.each(['oracle', 'dm'] as const)(
+    '%s quotes unquoted reserved names by folded identity',
+    (dbType) => {
+      const quoted = formatSqlIdentifier('level', dbType);
+
+      expect(quoted).toBe('"LEVEL"');
+      expect(getSqlIdentifierKey(quoted, dbType)).toBe(getSqlIdentifierKey('level', dbType));
     },
   );
 });

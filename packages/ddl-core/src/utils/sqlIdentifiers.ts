@@ -39,15 +39,17 @@ export function formatSqlIdentifier(name: string, dbType: DatabaseType): string 
 
   if (unquoted !== value) return quoteIdentifier(unquoted, dbType);
   const lower = value.toLowerCase();
+  const family = getDatabaseFamily(dbType);
+  const regular = (family === 'hive' ? /^[a-z_][a-z0-9_]*$/i : /^[a-z_][a-z0-9_$]*$/i).test(value);
+  const reserved = RESERVED_KEYWORDS[dbType]?.has(lower);
 
-  if (
-    (getDatabaseFamily(dbType) === 'hive' ? /^[a-z_][a-z0-9_]*$/i : /^[a-z_][a-z0-9_$]*$/i).test(
-      value,
-    ) &&
-    !RESERVED_KEYWORDS[dbType]?.has(lower) &&
-    (getDatabaseFamily(dbType) !== 'postgresql' || value === lower)
-  ) {
+  if (regular && !reserved && (family !== 'postgresql' || value === lower)) {
     return value;
+  }
+
+  // 未加引号的普通名称在 Oracle/DM 中折叠为大写，与 getSqlIdentifierKey 保持同一身份。
+  if (regular && reserved && (family === 'oracle' || family === 'dm')) {
+    return quoteIdentifier(value.toUpperCase(), dbType);
   }
 
   return quoteIdentifier(value, dbType);
