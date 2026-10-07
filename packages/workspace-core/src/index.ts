@@ -46,11 +46,13 @@ export {
   isWorkspaceYDocEmpty,
   materializeWorkspaceYDoc,
   readFolderRecords,
+  trackWorkspaceYDocTableChanges,
   upsertTableRecord,
   WORKSPACE_YDOC_COLLECTIONS,
   WORKSPACE_YDOC_SCHEMA_VERSION,
   type WorkspaceYDocCollection,
   type WorkspaceYDocDraftRecord,
+  type WorkspaceYDocTableChanges,
   writeFolderRecord,
 } from './workspaceYDoc';
 export {

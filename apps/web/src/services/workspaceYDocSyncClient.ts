@@ -6,6 +6,7 @@ import {
   encodeWorkspaceYDocSyncMessage,
   encodeWorkspaceYDocTrackedSyncMessage,
   readWorkspaceYDocMessageHeader,
+  trackWorkspaceYDocTableChanges,
 } from '@ddlbuilder/workspace-core';
 import { materializeWorkspaceYDoc, WorkspaceYDocOrigin } from '@/services/workspaceYDocAdapter';
 
@@ -520,8 +521,12 @@ export class WorkspaceYDocSyncClient {
 
     const syncMessageType = decoding.peekVarUint(decoder);
 
-    const response = encodeWorkspaceYDocSyncMessage((encoder) => {
-      syncProtocol.readSyncMessage(decoder, encoder, this.doc, WorkspaceYDocOrigin.RemoteSync);
+    let response = new Uint8Array();
+
+    const changes = trackWorkspaceYDocTableChanges(this.doc, () => {
+      response = encodeWorkspaceYDocSyncMessage((encoder) => {
+        syncProtocol.readSyncMessage(decoder, encoder, this.doc, WorkspaceYDocOrigin.RemoteSync);
+      });
     });
 
     if (response.byteLength > 1) {
@@ -530,7 +535,10 @@ export class WorkspaceYDocSyncClient {
 
     let materialized = false;
     this.doc.transact(() => {
-      materialized = materializeWorkspaceYDoc(this.doc);
+      materialized = materializeWorkspaceYDoc(
+        this.doc,
+        syncMessageType === syncProtocol.messageYjsUpdate ? changes : undefined,
+      );
     }, WorkspaceYDocOrigin.RemoteMaterialize);
 
     if (materialized) {

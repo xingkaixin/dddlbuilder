@@ -20,6 +20,7 @@ import {
   exportWorkspaceYDocToSnapshot,
   mergeWorkspaceSnapshotIntoYDoc,
   readWorkspaceYDocMessageHeader,
+  trackWorkspaceYDocTableChanges,
 } from '@ddlbuilder/workspace-core';
 import { logWorkspaceYDocHealth } from './workspaceSyncMetrics.js';
 import { applyWorkspaceMigrationSnapshot } from './workspaceMigration.js';
@@ -580,12 +581,16 @@ export class WorkspaceYDocDurableObject {
     if (!candidate) throw new Error('Workspace validation document is unavailable');
 
     try {
-      encodeWorkspaceYDocSyncMessage((encoder) => {
-        syncProtocol.readSyncMessage(decoding.clone(decoder), encoder, candidate, null, (error) => {
-          throw error;
+      const message = decoding.clone(decoder);
+
+      const changes = trackWorkspaceYDocTableChanges(candidate, () => {
+        encodeWorkspaceYDocSyncMessage((encoder) => {
+          syncProtocol.readSyncMessage(message, encoder, candidate, null, (error) => {
+            throw error;
+          });
         });
       });
-      assertWorkspaceYDocStructure(candidate);
+      assertWorkspaceYDocStructure(candidate, changes);
     } catch (error) {
       this.resetValidationDoc(doc);
       throw error;

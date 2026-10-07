@@ -27,6 +27,7 @@ import {
   isWorkspaceYDocEmpty,
   materializeWorkspaceYDoc,
   readFolderRecords,
+  trackWorkspaceYDocTableChanges,
   upsertTableRecord,
   WORKSPACE_YDOC_SCHEMA_VERSION,
   writeFolderRecord,
@@ -461,6 +462,37 @@ describe('workspace YDoc roots', () => {
 
     expect(() => assertWorkspaceYDocStructure(invalidFieldType)).toThrow(
       'drafts.draft.fields.field-id.fieldName must be a string or null',
+    );
+  });
+
+  it('validates only tables changed by an applied update', () => {
+    const doc = new Y.Doc();
+    ensureWorkspaceYDocMeta(doc);
+    const { drafts } = getWorkspaceRoot(doc);
+
+    for (const id of ['stale', 'edited']) {
+      upsertTableRecord(drafts, id, toSchemaDocumentState(createState(id)), { updatedAt: 1 });
+    }
+
+    // SAFETY: writeTableDoc creates fields as an ordered Y.Map of Y.Map entries.
+    const fieldsOf = (target: Y.Doc, id: string) =>
+      getWorkspaceRoot(target).drafts.get(id)?.get('fields') as Y.Map<Y.Map<unknown>>;
+    fieldsOf(doc, 'stale').get('field-id')?.set('fieldName', 42);
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+
+    const applyRemote = (fieldName: string | number) => {
+      const before = Y.encodeStateVector(remote);
+      fieldsOf(remote, 'edited').get('field-id')?.set('fieldName', fieldName);
+
+      return trackWorkspaceYDocTableChanges(doc, () => {
+        Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote, before));
+      });
+    };
+
+    expect(() => assertWorkspaceYDocStructure(doc, applyRemote('renamed'))).not.toThrow();
+    expect(() => assertWorkspaceYDocStructure(doc, applyRemote(42))).toThrow(
+      'drafts.edited.fields.field-id.fieldName must be a string or null',
     );
   });
 

@@ -103,27 +103,62 @@ const assertTableDocStructure = (tableDoc: Y.Map<unknown>, collection: string) =
   }
 };
 
-const assertWorkspaceYDocCollections = (doc: Y.Doc) => {
+export type WorkspaceYDocTableChanges = Map<WorkspaceYDocCollection, Set<string>>;
+
+const TABLE_COLLECTIONS = ['drafts', 'savedTables', 'savedDrafts'] as const;
+
+export const trackWorkspaceYDocTableChanges = (doc: Y.Doc, apply: () => void) => {
+  const root = getWorkspaceRoot(doc);
+  const changes: WorkspaceYDocTableChanges = new Map();
+
+  const stops = TABLE_COLLECTIONS.map((collection) => {
+    const keys = new Set<string>();
+    changes.set(collection, keys);
+
+    const observer = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>) => {
+      for (const event of events) {
+        const [key] = event.path;
+
+        if (typeof key === 'string') keys.add(key);
+        else if (event instanceof Y.YMapEvent) event.keysChanged.forEach((k) => keys.add(k));
+      }
+    };
+    root[collection].observeDeep(observer);
+
+    return () => root[collection].unobserveDeep(observer);
+  });
+
+  try {
+    apply();
+  } finally {
+    stops.forEach((stop) => stop());
+  }
+
+  return changes;
+};
+
+const assertWorkspaceYDocCollections = (doc: Y.Doc, changes?: WorkspaceYDocTableChanges) => {
   const root = getWorkspaceRoot(doc);
 
   for (const collection of WORKSPACE_YDOC_COLLECTIONS) {
+    const changedKeys = changes?.get(collection);
+
     for (const [key, value] of root[collection].entries()) {
       if (!(value instanceof Y.Map)) {
         throw new Error(`${collection} entries must be Y.Maps`);
       }
 
-      if (collection !== 'folders') {
-        const path = `${collection}.${key}`;
-        assertTableDocStructure(value, path);
-        assertTableDocDecodable(value, path);
-      }
+      if (collection === 'folders' || (changes && !changedKeys?.has(key))) continue;
+      const path = `${collection}.${key}`;
+      assertTableDocStructure(value, path);
+      assertTableDocDecodable(value, path);
     }
   }
 };
 
-export const assertWorkspaceYDocStructure = (doc: Y.Doc) => {
+export const assertWorkspaceYDocStructure = (doc: Y.Doc, changes?: WorkspaceYDocTableChanges) => {
   assertWorkspaceYDocSchemaVersion(doc);
-  assertWorkspaceYDocCollections(doc);
+  assertWorkspaceYDocCollections(doc, changes);
 };
 
 export const initializeOrMigrateWorkspaceYDoc = (doc: Y.Doc) => {
@@ -145,13 +180,17 @@ export const isWorkspaceYDocEmpty = (doc: Y.Doc) => {
   return WORKSPACE_YDOC_COLLECTIONS.every((collection) => root[collection].size === 0);
 };
 
-export const materializeWorkspaceYDoc = (doc: Y.Doc) => {
-  const { drafts, savedTables, savedDrafts } = getWorkspaceRoot(doc);
+export const materializeWorkspaceYDoc = (doc: Y.Doc, changes?: WorkspaceYDocTableChanges) => {
+  const root = getWorkspaceRoot(doc);
   let materialized = false;
 
-  for (const collection of [drafts, savedTables, savedDrafts]) {
-    for (const tableDoc of collection.values()) {
-      materialized = materializeTableDoc(tableDoc) || materialized;
+  for (const collection of TABLE_COLLECTIONS) {
+    const tableDocs = changes
+      ? Array.from(changes.get(collection) ?? [], (key) => root[collection].get(key))
+      : root[collection].values();
+
+    for (const tableDoc of tableDocs) {
+      if (tableDoc) materialized = materializeTableDoc(tableDoc) || materialized;
     }
   }
 
