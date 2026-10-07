@@ -43,13 +43,17 @@ export function useWorkspaceSnapshotRefresh({
     if (disabled) return;
 
     let cancelled = false;
+    let latestRefresh = 0;
 
     const handleSnapshotApplied = () => {
+      const refresh = ++latestRefresh;
+      const isStale = () => cancelled || refresh !== latestRefresh;
+
       void (async () => {
         const bootstrap = await getWorkspaceBootstrap(currentScope);
         const savedDrafts = await listSavedDrafts(currentScope);
 
-        if (cancelled) return;
+        if (isStale()) return;
         replaceSavedTableDrafts(new Map(Object.entries(savedDrafts)));
 
         const drafts = collectBootstrapDrafts(bootstrap);
@@ -87,7 +91,7 @@ export function useWorkspaceSnapshotRefresh({
         setHydrated(true);
         // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected async hydration can throw any JavaScript value.
       })().catch((error: unknown) => {
-        if (!cancelled) failHydration(error);
+        if (!isStale()) failHydration(error);
       });
     };
 
