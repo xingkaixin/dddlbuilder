@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { isSqlError } from 'effect/unstable/sql/SqlError';
+import { isSqlError } from 'effect/sql/SqlError';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import * as Cause from 'effect/Cause';
 import * as Clock from 'effect/Clock';
