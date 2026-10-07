@@ -108,13 +108,21 @@ export async function pruneOldVersions(
   target: TableVersionTarget,
   maxCount: number,
 ): Promise<number> {
-  const versions = await listVersions(target);
-  const toDelete = versions.slice(Math.max(0, maxCount));
+  const keepCount = Math.max(0, maxCount);
+
+  if ((await countVersions(target)) <= keepCount) return 0;
+
+  const versions = await runWithStore<TableVersion[]>('readonly', (store) =>
+    store.index('tableKey').getAll(getTableVersionKey(target)),
+  );
+  const toDelete = versions.sort((a, b) => b.createdAt - a.createdAt).slice(keepCount);
   await deleteVersions(toDelete);
 
   return toDelete.length;
 }
 
 export async function countVersions(target: TableVersionTarget): Promise<number> {
-  return (await listVersions(target)).length;
+  return runWithStore<number>('readonly', (store) =>
+    store.index('tableKey').count(getTableVersionKey(target)),
+  );
 }
