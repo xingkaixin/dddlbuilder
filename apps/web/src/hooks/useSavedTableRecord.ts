@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type * as Y from 'yjs';
 import { savedTableReference, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { getSavedTableFromYDoc } from '@/services/workspaceYDocAdapter';
+import { getSavedTableFromYDoc, type WorkspaceYDocChange } from '@/services/workspaceYDocAdapter';
+import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { localSavedTableOptions } from '@/queries/workspaceLocal';
 import { useWorkspaceScope } from './useWorkspaceScope';
 import { useWorkspaceYDocGateway } from './useWorkspaceYDocGateway';
@@ -18,8 +19,20 @@ export function useSavedTableRecord(target: SavedTableTarget | null) {
     ? savedTableReference(target)
     : { tableId: undefined, normalizedName: '' };
   const readRecord = useCallback(
-    (doc: Y.Doc) =>
-      normalizedName ? getSavedTableFromYDoc(doc, { tableId, normalizedName }) : null,
+    (doc: Y.Doc, previous?: SavedTableRecord | null, change?: WorkspaceYDocChange) => {
+      if (!normalizedName) return null;
+
+      if (
+        previous !== undefined &&
+        change &&
+        change.entityIds.size > 0 &&
+        !change.entityIds.has(normalizedName) &&
+        !(tableId && change.entityIds.has(tableId))
+      )
+        return previous;
+
+      return getSavedTableFromYDoc(doc, { tableId, normalizedName });
+    },
     [tableId, normalizedName],
   );
   const record = useWorkspaceYDocProjection(yDoc, SAVED_TABLE_COLLECTIONS, readRecord, null);
