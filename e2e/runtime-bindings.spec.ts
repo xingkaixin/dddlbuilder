@@ -1,12 +1,19 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import * as Y from 'yjs';
+import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import * as syncProtocol from 'y-protocols/sync';
-import { WORKSPACE_SYNC_MESSAGE } from '../packages/shared-types/src/index';
-import { exportWorkspaceYDocToSnapshot } from '../packages/workspace-core/src/index';
+import { WORKSPACE_SYNC_MESSAGE, type PersistedState } from '../packages/shared-types/src/index';
+import {
+  createWorkspaceYDocUpdateFromSnapshot,
+  encodeWorkspaceYDocSyncMessage,
+  encodeWorkspaceYDocTrackedSyncMessage,
+  exportWorkspaceYDocToSnapshot,
+  readWorkspaceYDocMessageHeader,
+} from '../packages/workspace-core/src/index';
 import type { WorkspaceMigrationResponse } from '../packages/shared-types/src/api';
 
-const createState = (tableName: string) => ({
+const createState = (tableName: string): PersistedState => ({
   schemaName: '',
   objectType: 'table',
   tableName,
@@ -22,6 +29,71 @@ const createState = (tableName: string) => ({
   authObjects: [],
   foreignKeys: [],
 });
+
+const sendWorkspaceUpdate = (page: Page, workspaceId: string, update: Uint8Array) =>
+  page.evaluate(
+    ({ workspaceId, message, persisted }) =>
+      new Promise((resolve, reject) => {
+        const socket = new WebSocket(`ws://${location.host}/api/workspaces/${workspaceId}/yjs`);
+        socket.binaryType = 'arraybuffer';
+        socket.onopen = () => socket.send(new Uint8Array(message));
+        socket.onerror = () => reject(new Error('Workspace socket failed'));
+        socket.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+          if (new Uint8Array(event.data)[0] === persisted) socket.close(1000, 'done');
+        };
+
+        socket.onclose = ({ code, reason, wasClean }) => resolve({ code, reason, wasClean });
+      }),
+    {
+      workspaceId,
+      message: [
+        ...encodeWorkspaceYDocTrackedSyncMessage(
+          1,
+          encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update)),
+        ),
+      ],
+      persisted: WORKSPACE_SYNC_MESSAGE.persisted,
+    },
+  );
+
+const readWorkspaceDoc = async (page: Page, workspaceId: string) => {
+  const empty = new Y.Doc();
+
+  const request = encodeWorkspaceYDocSyncMessage((encoder) =>
+    syncProtocol.writeSyncStep1(encoder, empty),
+  );
+  empty.destroy();
+
+  const response = await page.evaluate(
+    ({ workspaceId, request, header }) =>
+      new Promise<number[]>((resolve, reject) => {
+        const socket = new WebSocket(`ws://${location.host}/api/workspaces/${workspaceId}/yjs`);
+        socket.binaryType = 'arraybuffer';
+        socket.onopen = () => socket.send(new Uint8Array(request));
+        socket.onerror = () => reject(new Error('Workspace socket failed'));
+        socket.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+          const bytes = new Uint8Array(event.data);
+
+          if (bytes[0] !== header[0] || bytes[1] !== header[1]) return;
+          resolve([...bytes]);
+          socket.close(1000, 'done');
+        };
+
+        socket.onclose = ({ code }) => reject(new Error(`Socket closed before state: ${code}`));
+      }),
+    {
+      workspaceId,
+      request: [...request],
+      header: [WORKSPACE_SYNC_MESSAGE.sync, syncProtocol.messageYjsSyncStep2],
+    },
+  );
+  const decoder = decoding.createDecoder(new Uint8Array(response));
+  readWorkspaceYDocMessageHeader(decoder);
+  const doc = new Y.Doc();
+  syncProtocol.readSyncMessage(decoder, encoding.createEncoder(), doc, null);
+
+  return doc;
+};
 
 test.describe('Cloudflare runtime bindings', () => {
   test('enforces strict SQL snapshots without changing ordinary imports', async ({ request }) => {
@@ -274,12 +346,9 @@ test.describe('Cloudflare runtime bindings', () => {
         data: { email, password },
       });
       expect(signin.ok(), await signin.text()).toBe(true);
-      const current = await context.request.get(`/api/workspaces/${workspaceId}/yjs/state`);
-      expect(current.ok()).toBe(true);
-      const restored = new Y.Doc();
+      const restored = await readWorkspaceDoc(page, workspaceId);
 
       try {
-        Y.applyUpdate(restored, new Uint8Array(await current.body()));
         expect(restored.getMap('authorizationProbe').get('value')).toBe('before');
       } finally {
         restored.destroy();
@@ -323,38 +392,20 @@ test.describe('Cloudflare runtime bindings', () => {
 
     await page.goto('/api/health');
 
-    const closed = await page.evaluate(
-      (id) =>
-        new Promise((resolve, reject) => {
-          const socket = new WebSocket(`ws://${location.host}/api/workspaces/${id}/yjs`);
-          socket.onopen = () => socket.close(1000, 'done');
-          socket.onerror = () => reject(new Error('Workspace socket failed to open'));
-          socket.onclose = ({ code, reason, wasClean }) => resolve({ code, reason, wasClean });
-        }),
-      workspaceId,
-    );
-
-    expect(closed).toEqual({ code: 1000, reason: 'done', wasClean: true });
-
     const state = createState(`runtime_${Date.now()}`);
-    const importedAt = Date.now();
 
-    const importResponse = await context.request.post(`/api/workspaces/${workspaceId}/yjs/import`, {
-      data: {
-        globalDraft: null,
-        drafts: [
-          {
-            draftId: 'runtime-draft',
-            state,
-            updatedAt: importedAt,
-          },
-        ],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      },
+    const draftUpdate = createWorkspaceYDocUpdateFromSnapshot({
+      globalDraft: null,
+      drafts: [{ draftId: 'runtime-draft', state, updatedAt: Date.now() }],
+      savedTables: [],
+      savedDrafts: [],
+      folders: [],
     });
-    expect(importResponse.ok(), await importResponse.text()).toBe(true);
+    expect(await sendWorkspaceUpdate(page, workspaceId, draftUpdate)).toEqual({
+      code: 1000,
+      reason: 'done',
+      wasClean: true,
+    });
 
     const migrations = ['version A', 'version B'].map((tableComment) => ({
       mode: 'commit',
@@ -417,15 +468,9 @@ test.describe('Cloudflare runtime bindings', () => {
       state,
     });
 
-    const durableObjectResponse = await context.request.get(
-      `/api/workspaces/${workspaceId}/yjs/state`,
-    );
-    expect(durableObjectResponse.ok(), await durableObjectResponse.text()).toBe(true);
-    expect(durableObjectResponse.headers()['content-type']).toBe('application/octet-stream');
-    const doc = new Y.Doc();
+    const doc = await readWorkspaceDoc(page, workspaceId);
 
     try {
-      Y.applyUpdate(doc, new Uint8Array(await durableObjectResponse.body()));
       const snapshot = exportWorkspaceYDocToSnapshot(doc);
       expect(snapshot.savedTables.map((table) => table.state.tableComment).sort()).toEqual([
         'version A',
@@ -437,30 +482,6 @@ test.describe('Cloudflare runtime bindings', () => {
           state: expect.objectContaining({ tableName: state.tableName }),
         }),
       ]);
-
-      const originalRecord = doc.getMap('drafts').get('runtime-draft');
-
-      for (const [tableComment, updatedAt] of [
-        ['updated', importedAt + 1],
-        ['stale', importedAt],
-      ] as const) {
-        const response = await context.request.post(`/api/workspaces/${workspaceId}/yjs/import`, {
-          data: {
-            globalDraft: null,
-            drafts: [{ draftId: 'runtime-draft', state: { ...state, tableComment }, updatedAt }],
-            savedTables: [],
-            savedDrafts: [],
-            folders: [],
-          },
-        });
-        expect(response.ok(), await response.text()).toBe(true);
-        const current = await context.request.get(`/api/workspaces/${workspaceId}/yjs/state`);
-        expect(current.ok()).toBe(true);
-        Y.applyUpdate(doc, new Uint8Array(await current.body()));
-        expect(doc.getMap('drafts').get('runtime-draft')).toBe(originalRecord);
-        expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]?.state.tableComment).toBe('updated');
-        expect(exportWorkspaceYDocToSnapshot(doc).savedTables).toEqual(snapshot.savedTables);
-      }
     } finally {
       doc.destroy();
     }
