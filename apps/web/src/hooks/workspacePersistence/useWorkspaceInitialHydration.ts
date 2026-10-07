@@ -30,7 +30,7 @@ import {
 } from './hydration';
 import { normalizePersistedState, normalizeWorkspaceSession } from './normalize';
 import { leaveShareRoute } from './shareRoute';
-import { readStorageJson, writeStorageJson } from './storage';
+import { cacheShareJson, readStorageJson } from './storage';
 
 interface UseWorkspaceInitialHydrationParams {
   pathInvalid: boolean;
@@ -187,7 +187,7 @@ export function useWorkspaceInitialHydration({
 
     if (shareQuery.isSuccess) {
       hydrateWithState(shareQuery.data);
-      writeStorageJson(shareStorageKey, shareQuery.data);
+      cacheShareJson(shareStorageKey, shareQuery.data);
     } else if (shareQuery.isError) {
       const messageKey =
         shareQuery.error instanceof ShareApiError && shareQuery.error.code === 'SHARE_NOT_FOUND'

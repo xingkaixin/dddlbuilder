@@ -2,6 +2,7 @@ import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import { describe, expect, it, vi } from 'vitest';
 import {
   buildShareStorageKey,
+  cacheShareJson,
   parseSharePath,
   readStorageJson,
   removeStorage,
@@ -14,13 +15,13 @@ describe('workspacePersistence/storage', () => {
     const memory = setupMemoryLocalStorage();
 
     for (let i = 0; i < 7; i += 1)
-      writeStorageJson(buildShareStorageKey(String(i)), { tableName: String(i) });
+      cacheShareJson(buildShareStorageKey(String(i)), { tableName: String(i) });
     const shares = [...memory.keys()].filter((key) => key.startsWith(`${STORAGE_KEY}:share:`));
     expect(shares).toHaveLength(5);
     expect(readStorageJson(buildShareStorageKey('0'))).toBeNull();
     expect(readStorageJson(buildShareStorageKey('6'))).toEqual({ tableName: '6' });
     readStorageJson(buildShareStorageKey('2'));
-    writeStorageJson(buildShareStorageKey('7'), {});
+    cacheShareJson(buildShareStorageKey('7'), {});
     expect(readStorageJson(buildShareStorageKey('2'))).not.toBeNull();
     expect(readStorageJson(buildShareStorageKey('3'))).toBeNull();
   });

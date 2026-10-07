@@ -37,6 +37,16 @@ const rememberShare = (key: string) => {
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
 export const writeStorageJson = (key: string, value: unknown) => {
   try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn('[workspace] share cache write failed', error);
+  }
+};
+
+// 进入分享页时维护一次最近使用顺序，编辑时只覆盖当前缓存。
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
+export const cacheShareJson = (key: string, value: unknown) => {
+  try {
     rememberShare(key);
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
