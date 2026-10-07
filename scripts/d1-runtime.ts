@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildD1ExecuteArgs, listMigrationFiles, writeLocalD1Config } from './d1-utils';
@@ -47,8 +48,20 @@ export const queryLocalD1 = <T>(options: D1RuntimeOptions, command: string): T[]
 export const prepareLocalD1Runtime = (options: D1RuntimeOptions): void => {
   mkdirSync(options.persistDir, { recursive: true });
 
-  for (const file of listMigrationFiles()) {
+  // 每次调用 wrangler 都要启动一次本地运行时，逐个迁移执行会让 E2E 启动超时
+  const tempDir = mkdtempSync(path.join(tmpdir(), 'ddlbuilder-d1-migrations-'));
+  const file = path.join(tempDir, 'migrations.sql');
+
+  try {
+    writeFileSync(
+      file,
+      listMigrationFiles()
+        .map((migration) => readFileSync(migration, 'utf8'))
+        .join('\n'),
+    );
     runWrangler(options, { file });
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
   }
 };
 
