@@ -3,10 +3,10 @@ import {
   deleteFolderFromYDoc,
   listDraftRecordsFromYDoc,
   listFoldersFromYDoc,
-  listSavedTableRecordsFromYDoc,
+  listSavedTableMetadataFromYDoc,
+  updateSavedTableMetadataInYDoc,
   upsertDraftInYDoc,
   upsertFolderInYDoc,
-  upsertSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { createFolder, deleteFolder, moveFolder, renameFolder } from '@/utils/tableFolders';
 import {
@@ -70,7 +70,7 @@ export function useFolderPersistence() {
           const plan = buildFolderDeletionPlan(
             listFoldersFromYDoc(doc),
             [
-              ...listSavedTableRecordsFromYDoc(doc),
+              ...listSavedTableMetadataFromYDoc(doc),
               ...listDraftRecordsFromYDoc(doc).map(({ draftId, record }) => ({
                 ...record,
                 draftId,
@@ -84,7 +84,10 @@ export function useFolderPersistence() {
               const { draftId, ...record } = item;
               upsertDraftInYDoc(doc, draftId, record);
             } else {
-              upsertSavedTableInYDoc(doc, item);
+              updateSavedTableMetadataInYDoc(doc, item, {
+                trashedAt: item.trashedAt,
+                updatedAt: item.updatedAt,
+              });
             }
           }
 

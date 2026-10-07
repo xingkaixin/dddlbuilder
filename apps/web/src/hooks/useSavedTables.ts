@@ -80,6 +80,7 @@ export function useSavedTables() {
     refresh,
     readTable,
     readAllTables,
+    readAllTableMetadata,
     putTable,
     putTables,
     updateTableState,
@@ -137,7 +138,7 @@ export function useSavedTables() {
         if (!currentScope) throw new Error(t('savedTables.toast.workspaceNotReady'));
         const displayName = ensureSavedTableName(name);
         const normalizedName = normalizeSavedTableName(displayName);
-        const { active, trashed } = await readAllTables();
+        const { active, trashed } = await readAllTableMetadata();
 
         if (active.some((table) => table.normalizedName === normalizedName)) {
           return { ok: false, reason: 'duplicate' };
@@ -198,7 +199,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, dismiss, persistActiveTable, readAllTables, refresh, t, warning],
+    [currentScope, dismiss, persistActiveTable, readAllTableMetadata, refresh, t, warning],
   );
 
   const overwriteTable = useCallback(
@@ -358,7 +359,7 @@ export function useSavedTables() {
 
         const displayName = ensureSavedTableName(newName);
         const nextNormalizedName = normalizeSavedTableName(displayName);
-        const { active, trashed } = await readAllTables();
+        const { active, trashed } = await readAllTableMetadata();
 
         const existing = [...active, ...trashed].find(
           (table) =>
@@ -392,7 +393,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, readTable, readAllTables, refresh, replaceTable, t],
+    [currentScope, readTable, readAllTableMetadata, refresh, replaceTable, t],
   );
 
   const loadTable = useCallback(

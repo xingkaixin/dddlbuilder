@@ -8,7 +8,9 @@ import type { WorkspaceSavedTableMetadataUpdate } from '@ddlbuilder/workspace-co
 import {
   deleteSavedTableFromYDoc,
   getSavedTableFromYDoc,
+  listSavedTableMetadataFromYDoc,
   listSavedTableRecordsFromYDoc,
+  listTrashedSavedTableMetadataFromYDoc,
   listTrashedSavedTableRecordsFromYDoc,
   recreateSavedTableInYDoc,
   upsertSavedTableInYDoc,
@@ -19,6 +21,7 @@ import {
   addSavedTable,
   deleteSavedTable,
   getSavedTable,
+  listSavedTableMetadataByStatus,
   listSavedTablesByStatus,
   replaceSavedTable,
   updateSavedTable,
@@ -86,6 +89,19 @@ export function useSavedTablePersistence() {
     }
 
     return listSavedTablesByStatus(target.scope);
+  }, [storage]);
+
+  const readAllTableMetadata = useCallback(() => {
+    const target = requireReadyWorkspaceStorage(storage);
+
+    if (target.kind === 'ydoc') {
+      return Promise.resolve({
+        active: listSavedTableMetadataFromYDoc(target.yDoc),
+        trashed: listTrashedSavedTableMetadataFromYDoc(target.yDoc),
+      });
+    }
+
+    return listSavedTableMetadataByStatus(target.scope);
   }, [storage]);
 
   const putTable = useCallback(
@@ -291,6 +307,7 @@ export function useSavedTablePersistence() {
     ...authority,
     readTable,
     readAllTables,
+    readAllTableMetadata,
     putTable,
     putTables,
     updateTableState,

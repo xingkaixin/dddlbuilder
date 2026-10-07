@@ -63,6 +63,10 @@ vi.mock('@/utils/savedTablesDb', () => ({
     active: await savedTableMocks.listSavedTables(scope),
     trashed: await savedTableMocks.listTrashedSavedTables(scope),
   }),
+  listSavedTableMetadataByStatus: async (scope: WorkspaceScope) => ({
+    active: await savedTableMocks.listSavedTableMetadata(scope),
+    trashed: await savedTableMocks.listTrashedSavedTableMetadata(scope),
+  }),
   normalizeSavedTableName: savedTableMocks.normalizeSavedTableName,
   replaceSavedTable: savedTableMocks.replaceSavedTable,
   updateSavedTable: savedTableMocks.updateSavedTable,
@@ -291,7 +295,7 @@ describe('useSavedTables failure states', () => {
     const duplicateRecord = createRecord('beta', 'Beta');
 
     savedTableMocks.getSavedTable.mockResolvedValueOnce(null).mockResolvedValueOnce(sourceRecord);
-    savedTableMocks.listSavedTables.mockResolvedValue([sourceRecord, duplicateRecord]);
+    savedTableMocks.listSavedTableMetadata.mockResolvedValue([sourceRecord, duplicateRecord]);
 
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
