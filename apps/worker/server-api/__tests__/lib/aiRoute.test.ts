@@ -654,7 +654,7 @@ describe('withAIGovernance', () => {
     expect(shell.reserveAIUsage).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        estimatedTokens: 100 + new TextEncoder().encode(JSON.stringify(PROMPT_MESSAGES)).length,
+        estimatedTokens: 100 + JSON.stringify(PROMPT_MESSAGES).length,
       }),
     );
   });

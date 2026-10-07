@@ -1121,10 +1121,9 @@ describe('openai governance', { concurrent: false }, () => {
     // SAFETY: the successful request records a reservation input with estimatedTokens.
     const reservedInput = reserveAIUsageMock.mock.calls[0]?.[1] as { estimatedTokens: number };
 
-    const utf8MessageBytes = new TextEncoder().encode(
-      JSON.stringify(completionInput.messages),
-    ).length;
-    expect(reservedInput.estimatedTokens).toBe(utf8MessageBytes + completionInput.max_tokens);
+    expect(reservedInput.estimatedTokens).toBe(
+      JSON.stringify(completionInput.messages).length + completionInput.max_tokens,
+    );
     expect(consoleInfoSpy).not.toHaveBeenCalled();
   });
 });

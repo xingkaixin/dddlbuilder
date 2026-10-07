@@ -55,40 +55,15 @@ export type GovernanceSnapshot = {
   budgetLimitTokens: number | null;
 };
 
-const toUtf8Bytes = (input: string) => new TextEncoder().encode(input).length;
-
-// oxlint-disable anti-slop/no-unknown-parameters -- token estimation intentionally accepts arbitrary prompt payloads.
-// oxlint-disable anti-slop/no-runtime-typeof -- serialization sizing must classify arbitrary prompt values.
-const estimateValueBytes = (value: unknown): number => {
-  if (value == null) return 0;
-  if (typeof value === 'string') return toUtf8Bytes(value);
-
-  if (
-    typeof value === 'number' ||
-    typeof value === 'boolean' ||
-    typeof value === 'bigint' ||
-    typeof value === 'symbol'
-  ) {
-    return toUtf8Bytes(String(value));
-  }
-
-  try {
-    const serialized = JSON.stringify(value);
-
-    return serialized ? toUtf8Bytes(serialized) : 0;
-  } catch {
-    return 0;
-  }
-};
-
-export const estimateRequestTokens = (payload: unknown, maxOutputTokens = 0): number => {
-  const estimatedInputTokens = Math.max(1, estimateValueBytes(payload));
-  const outputTokens = Math.max(0, Math.floor(maxOutputTokens));
-
-  return Math.min(Number.MAX_SAFE_INTEGER, estimatedInputTokens + outputTokens);
-};
-// oxlint-enable anti-slop/no-unknown-parameters
-// oxlint-enable anti-slop/no-runtime-typeof
+// Characters, not UTF-8 bytes: CJK text is about one token per character, and settlement charges actual usage.
+export const estimateRequestTokens = (
+  messages: ReadonlyArray<{ role: string; content: string }>,
+  maxOutputTokens: number,
+): number =>
+  Math.min(
+    Number.MAX_SAFE_INTEGER,
+    Math.max(1, JSON.stringify(messages).length) + Math.max(0, Math.floor(maxOutputTokens)),
+  );
 
 export const getOpenAIGovernanceSnapshot = (
   routeKey: AIRouteKey,
