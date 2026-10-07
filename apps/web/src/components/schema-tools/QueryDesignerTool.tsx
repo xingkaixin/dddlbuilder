@@ -1,5 +1,5 @@
 import { ToolLayout } from './ToolLayout';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import {
@@ -84,17 +84,31 @@ export function QueryDesignerTool() {
   const { t } = useTranslation();
   const [tables, setTables] = useState<PersistedState[]>([]);
   const [design, setDesign] = useState<QueryDesign>(emptyDesign);
-  let error = '';
-  let relations: ReturnType<typeof getQueryRelations> = [];
-  let result: ReturnType<typeof buildSelectQuery> | null = null;
 
-  try {
-    if (tables.length) relations = getQueryRelations(tables);
+  const relationState = useMemo(() => {
+    try {
+      return { relations: tables.length ? getQueryRelations(tables) : [], error: '' };
+    } catch (cause) {
+      return {
+        relations: [],
+        error: cause instanceof Error ? cause.message : t('schemaTools.failed'),
+      };
+    }
+  }, [tables, t]);
+  const queryState = useMemo(() => {
+    if (relationState.error || !design.root) return { result: null, error: relationState.error };
 
-    if (design.root) result = buildSelectQuery(tables, design);
-  } catch (cause) {
-    error = cause instanceof Error ? cause.message : t('schemaTools.failed');
-  }
+    try {
+      return { result: buildSelectQuery(tables, design), error: '' };
+    } catch (cause) {
+      return {
+        result: null,
+        error: cause instanceof Error ? cause.message : t('schemaTools.failed'),
+      };
+    }
+  }, [design, relationState.error, tables, t]);
+  const { relations } = relationState;
+  const { result, error } = queryState;
 
   const joined = new Set([design.root]);
 

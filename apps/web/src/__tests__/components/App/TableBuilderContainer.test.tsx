@@ -74,7 +74,7 @@ function buildProps(): TableBuilderContainerProps {
       onDefinitionChange: noop,
       onCreateOrReplaceChange: noop,
     },
-    indexPanelProps: {},
+    indexPanelProps: { availableFields: [] },
     foreignKeyPanelProps: { availableFields: [] },
     authPanelProps: {
       authInput: '',

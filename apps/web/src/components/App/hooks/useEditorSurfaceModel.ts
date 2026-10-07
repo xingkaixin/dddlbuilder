@@ -225,7 +225,7 @@ export function useEditorSurfaceModel({
         onDefinitionChange: setViewDefinition,
         onCreateOrReplaceChange: setViewCreateOrReplace,
       },
-      indexPanelProps: { animatingIndexIds, removingIndexIds },
+      indexPanelProps: { availableFields, animatingIndexIds, removingIndexIds },
       foreignKeyPanelProps: { availableFields },
       authPanelProps: {
         authInput,

@@ -51,7 +51,7 @@ describe('IndexPanel a11y', () => {
         fields: [{ name: 'user_id', direction: 'ASC' }],
       },
     ]);
-    render(<IndexPanel />);
+    render(<IndexPanel availableFields={['id', 'user_id', 'item_id']} />);
     fireEvent.click(screen.getAllByRole('button', { name: '编辑' })[0]);
     fireEvent.change(screen.getByDisplayValue('uq_user'), { target: { value: 'uq_order_user' } });
     fireEvent.click(screen.getByRole('button', { name: '保存索引' }));
@@ -73,7 +73,7 @@ describe('IndexPanel a11y', () => {
         kind: 'index',
       },
     ]);
-    render(<IndexPanel />);
+    render(<IndexPanel availableFields={['id', 'user_id', 'item_id']} />);
     fireEvent.click(screen.getAllByRole('button', { name: '编辑' })[0]);
     const nameInput = screen.getByDisplayValue('idx_orders_id');
     fireEvent.change(nameInput, { target: { value: 'local_draft_index' } });
@@ -96,7 +96,7 @@ describe('IndexPanel a11y', () => {
         kind: 'index',
       },
     ]);
-    render(<IndexPanel />);
+    render(<IndexPanel availableFields={['id', 'user_id', 'item_id']} />);
     fireEvent.click(screen.getByRole('button', { name: '添加索引' }));
     fireEvent.change(screen.getByPlaceholderText('留空则自动生成'), {
       target: { value: 'IDX_ORDERS_ID' },
@@ -123,7 +123,7 @@ describe('IndexPanel a11y', () => {
         kind: 'primary',
       },
     ]);
-    render(<IndexPanel />);
+    render(<IndexPanel availableFields={['id', 'user_id', 'item_id']} />);
     fireEvent.click(screen.getByRole('button', { name: '删除索引' }));
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: '取消' }));
     expect(useEditorStore.getState().indexes).toHaveLength(1);
@@ -135,7 +135,7 @@ describe('IndexPanel a11y', () => {
   });
 
   it('字段建议输入框应具备 combobox/listbox 语义并支持上下键导航', async () => {
-    render(<IndexPanel />);
+    render(<IndexPanel availableFields={['id', 'user_id', 'item_id']} />);
 
     const input = screen.getByPlaceholderText('输入字段名进行匹配...');
     fireEvent.change(input, { target: { value: 'id' } });
@@ -161,7 +161,7 @@ describe('IndexPanel a11y', () => {
   });
 
   it('按 Escape 应关闭字段建议下拉框', async () => {
-    render(<IndexPanel />);
+    render(<IndexPanel availableFields={['id', 'user_id', 'item_id']} />);
 
     const input = screen.getByPlaceholderText('输入字段名进行匹配...');
     fireEvent.change(input, { target: { value: 'id' } });

@@ -51,8 +51,6 @@ interface TableConfigProps {
   showHistoryButton?: boolean;
   loadedTableName?: string | null;
   workspaceLabel?: string | null;
-  fieldCount?: number;
-  indexCount?: number;
 }
 
 export const TableConfig = memo<TableConfigProps>(

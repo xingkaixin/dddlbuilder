@@ -15,7 +15,7 @@ import {
   buildSchemaStateSignature,
   normalizeSchemaStateSignature,
 } from '@/utils/persistedStateSignature';
-import { diffPersistedState, supportsMysqlPartition, type TableDiff } from '@ddlbuilder/ddl-core';
+import { diffPersistedState, type TableDiff } from '@ddlbuilder/ddl-core';
 import { useEditorStore } from '@/stores';
 
 interface UseDerivedTableStateDeps {
@@ -77,12 +77,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     loadedTableSignature,
     loadedTableState,
   } = deps;
-
-  // --- 字段派生 ---
-  const filledRowCount = useMemo(() => rows.filter((row) => row.fieldName?.trim()).length, [rows]);
-
-  // --- Tab 计算 ---
-  const canPartitionMysqlTable = supportsMysqlPartition(dbType);
 
   // --- 持久化状态 ---
   const currentPersistedState = useMemo(
@@ -156,7 +150,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     currentStateSignature != null &&
     currentStateSignature !== normalizedLoadedTableSignature;
   const canSaveCurrent = !hasLoadedTable || isLoadedDirty;
-  const loadedStatus = hasLoadedTable ? (isLoadedDirty ? 'dirty' : 'clean') : null;
   const saveInputDisabled = hasLoadedTable;
 
   // --- Diff ---
@@ -169,10 +162,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   }, [isLoadedDirty, loadedTableState, deferredPersistedState]);
 
   return {
-    // 字段
-    filledRowCount,
-    // Tab
-    supportsMysqlPartition: canPartitionMysqlTable,
     // 持久化
     currentPersistedState,
     buildPersistedState,
@@ -180,7 +169,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     hasLoadedTable,
     isLoadedDirty,
     canSaveCurrent,
-    loadedStatus,
     saveInputDisabled,
     // Diff
     tableDiff,
