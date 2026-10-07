@@ -280,18 +280,17 @@ const writeEntityVersions = async (
   return { cursor, versions };
 };
 
-const listEntityHashes = async (
+const listActiveEntityHashes = async (
   env: ApiEnv['Bindings'],
   workspaceId: string,
   metrics?: WorkspaceD1Metrics,
 ) => {
   const result = await allWorkspaceD1Result<
-    Pick<EntityRow, 'entityType' | 'entityId' | 'contentHash' | 'deletedAt'>
+    Pick<EntityRow, 'entityType' | 'entityId' | 'contentHash'>
   >(
     env.USER_DB.prepare(`
-      SELECT entity_type AS entityType, entity_id AS entityId,
-        content_hash AS contentHash, deleted_at AS deletedAt
-      FROM workspace_entities WHERE workspace_id = ?
+      SELECT entity_type AS entityType, entity_id AS entityId, content_hash AS contentHash
+      FROM workspace_entities WHERE workspace_id = ? AND deleted_at IS NULL
     `).bind(workspaceId),
     metrics,
   );
@@ -497,7 +496,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
         contentHash: await buildWorkspaceContentHash(entity.payload),
       })),
     ),
-    listEntityHashes(env, workspaceId, metrics),
+    listActiveEntityHashes(env, workspaceId, metrics),
   ]);
   const existingByKey = new Map(
     existingRows.map((row) => [buildEntityKey(row.entityType, row.entityId), row]),
@@ -513,7 +512,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
   for (const entity of hashedEntities) {
     const existing = existingByKey.get(buildEntityKey(entity.entityType, entity.entityId));
 
-    if (existing && existing.deletedAt == null && existing.contentHash === entity.contentHash) {
+    if (existing && existing.contentHash === entity.contentHash) {
       skipped++;
       continue;
     }
@@ -534,9 +533,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
   const checkpointedAt = now();
 
   for (const row of existingRows) {
-    if (row.deletedAt != null || nextKeys.has(buildEntityKey(row.entityType, row.entityId))) {
-      continue;
-    }
+    if (nextKeys.has(buildEntityKey(row.entityType, row.entityId))) continue;
 
     writes.push({
       userId,
