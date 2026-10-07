@@ -2,10 +2,7 @@ import { readSessionAccess } from './auth.js';
 import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
-import type {
-  WorkspaceMigrationSnapshot,
-  WorkspaceSnapshot,
-} from '@ddlbuilder/shared-types/workspace';
+import type { WorkspaceMigrationSnapshot } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
 import {
   checkpointWorkspaceSnapshotEntities,
@@ -18,7 +15,6 @@ import {
   encodeWorkspaceYDocSyncMessage,
   ensureWorkspaceYDocMeta,
   exportWorkspaceYDocToSnapshot,
-  mergeWorkspaceSnapshotIntoYDoc,
   readWorkspaceYDocMessageHeader,
   trackWorkspaceYDocTableChanges,
 } from '@ddlbuilder/workspace-core';
@@ -165,22 +161,6 @@ export class WorkspaceYDocDurableObject {
           'content-type': 'application/octet-stream',
           'cache-control': 'no-store',
         },
-      });
-    }
-
-    if (request.method === 'POST' && url.pathname.endsWith('/import')) {
-      // SAFETY: routes/workspaceYDoc.ts decodes this body with decodeWorkspaceSnapshot before buildForwardedRequest sends it to this DO.
-      const snapshot = (await request.json()) as WorkspaceSnapshot;
-      doc.transact(() => {
-        ensureWorkspaceYDocMeta(doc);
-        mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
-      }, this);
-      await this.awaitPersisted();
-      await this.compact();
-
-      return Response.json({
-        ok: true,
-        stateVectorBytes: Y.encodeStateVector(doc).byteLength,
       });
     }
 

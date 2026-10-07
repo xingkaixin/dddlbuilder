@@ -29,19 +29,6 @@ const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Binding
 const createRequest = (path: string, init: RequestInit = {}) =>
   new Request(`http://localhost${path}`, init);
 
-const createState = () => ({
-  schemaName: '',
-  tableName: 'users',
-  tableComment: '',
-  dbType: 'mysql',
-  sqlFormatMode: 'compact',
-  rows: [],
-  addCount: 12,
-  indexes: [],
-  authInput: '',
-  authObjects: [],
-});
-
 describe('/api/workspaces/:workspaceId/yjs', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -96,7 +83,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     expect(await response.json()).toMatchObject({ code: 'WORKSPACE_ACCESS_DENIED' });
   });
 
-  it('forwards authorized state requests to the durable object', async () => {
+  it('forwards authorized requests with trusted identity headers', async () => {
     const stubFetch = vi
       .fn<(request: Request) => Promise<Response>>()
       .mockResolvedValue(new Response('state'));
@@ -123,7 +110,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     const { default: app } = await import('../../api/index');
 
     const response = await app.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/state', {
+      createRequest('/api/workspaces/ws-1/yjs', {
         headers: { 'x-ddlbuilder-session-id': 'untrusted-session' },
       }),
       createEnv({ WORKSPACE_YDOC: createYDocNamespace(stubFetch) }),
@@ -169,79 +156,5 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
 
     expect(response.status).toBe(204);
     expect(stubFetch).not.toHaveBeenCalled();
-  });
-
-  it('validates import payload before forwarding', async () => {
-    const stubFetch = vi
-      .fn<(request: Request) => Promise<Response>>()
-      .mockResolvedValue(new Response('imported'));
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates import payload validation.
-    vi.doMock('../lib/auth.js', () => ({
-      authenticateRequest: vi.fn().mockResolvedValue({
-        userId: 'user-1',
-        sessionId: 'session-1',
-        email: 'user@example.com',
-        emailVerified: true,
-        name: 'User One',
-      }),
-    }));
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates successful ownership validation.
-    vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
-
-      return {
-        ...actual,
-        assertWorkspaceOwner: vi.fn().mockResolvedValue(undefined),
-      };
-    });
-
-    const { default: app } = await import('../../api/index');
-    const env = createEnv({ WORKSPACE_YDOC: createYDocNamespace(stubFetch) });
-
-    const invalid = await app.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ savedTables: [] }),
-      }),
-      env,
-    );
-    expect(invalid.status).toBe(400);
-    expect(stubFetch).not.toHaveBeenCalled();
-
-    const invalidState = await app.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          globalDraft: { state: {}, updatedAt: 1 },
-          drafts: [],
-          savedTables: [],
-          savedDrafts: [],
-          folders: [],
-        }),
-      }),
-      env,
-    );
-    expect(invalidState.status).toBe(400);
-    expect(stubFetch).not.toHaveBeenCalled();
-
-    const valid = await app.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          globalDraft: { state: createState(), updatedAt: 1 },
-          drafts: [],
-          savedTables: [],
-          savedDrafts: [],
-          folders: [],
-        }),
-      }),
-      env,
-    );
-
-    expect(valid.status).toBe(200);
-    expect(stubFetch).toHaveBeenCalledTimes(1);
   });
 });

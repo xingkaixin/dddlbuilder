@@ -538,173 +538,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     expect(getWorkspaceSnapshotForWorkspace).toHaveBeenCalledTimes(2);
   });
 
-  it('checkpoints imported snapshots during compact', async () => {
-    const checkpointWorkspaceSnapshotEntities = vi.fn().mockResolvedValue({
-      cursor: 1,
-      upserted: 1,
-      deleted: 0,
-      skipped: 0,
-    });
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test checkpoint behavior
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities,
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-        globalDraft: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      }),
-    }));
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state, store } = createDurableObjectState();
-    store.set('meta', {
-      workspaceId: 'ws-1',
-      schemaVersion: 1,
-      nextSeq: 0,
-      updateCount: 0,
-      updateBytes: 0,
-      updatedAt: 1,
-      lastCompactedSeq: 0,
-    });
-    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
-
-    const response = await durableObject.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
-        method: 'POST',
-        body: JSON.stringify(createSnapshot('users')),
-      }),
-    );
-
-    expect(response.status).toBe(200);
-    expect(checkpointWorkspaceSnapshotEntities).toHaveBeenCalledWith(
-      expect.anything(),
-      'user-1',
-      'ws-1',
-      expect.objectContaining({
-        drafts: [expect.objectContaining({ draftId: 'default' })],
-      }),
-    );
-  });
-
-  it('imports newer records in place and keeps them through retries and restart', async () => {
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test import checkpointing
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities: vi.fn(),
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-        globalDraft: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      }),
-    }));
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
-    const { state } = createDurableObjectState();
-    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
-    const peer = new Y.Doc();
-
-    const syncPeer = async () => {
-      const response = await durableObject.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
-      Y.applyUpdate(peer, new Uint8Array(await response.arrayBuffer()));
-    };
-    const initial = createSnapshot('original');
-    initial.drafts.push({ draftId: 'untouched', state: createState('other'), updatedAt: 1 });
-
-    try {
-      await durableObject.fetch(
-        createRequest('/api/workspaces/ws-1/yjs/import', {
-          method: 'POST',
-          body: JSON.stringify(initial),
-        }),
-      );
-      await syncPeer();
-      const originalRecord = peer.getMap('drafts').get('default');
-      expect(originalRecord).toBeInstanceOf(Y.Map);
-
-      for (const [name, updatedAt] of [
-        ['updated', 3],
-        ['stale', 2],
-        ['tie', 3],
-        ['updated', 3],
-      ] as const) {
-        const response = await durableObject.fetch(
-          createRequest('/api/workspaces/ws-1/yjs/import', {
-            method: 'POST',
-            body: JSON.stringify(createSnapshot(name, updatedAt)),
-          }),
-        );
-        expect(response.status).toBe(200);
-        await syncPeer();
-        expect(peer.getMap('drafts').get('default')).toBe(originalRecord);
-        expect(exportWorkspaceYDocToSnapshot(peer).drafts).toEqual([
-          expect.objectContaining({
-            draftId: 'default',
-            updatedAt: 3,
-            state: expect.objectContaining({ tableName: 'updated' }),
-          }),
-          expect.objectContaining({ draftId: 'untouched' }),
-        ]);
-      }
-
-      const coldObject = new WorkspaceYDocDurableObject(state, createEnv());
-      const response = await coldObject.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
-      const restored = new Y.Doc();
-
-      try {
-        Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
-        expect(exportWorkspaceYDocToSnapshot(restored)).toEqual(
-          exportWorkspaceYDocToSnapshot(peer),
-        );
-      } finally {
-        restored.destroy();
-      }
-    } finally {
-      peer.destroy();
-    }
-  });
-
-  it('persists an imported empty workspace as initialized', async () => {
-    const empty: WorkspaceSnapshot = {
-      globalDraft: null,
-      drafts: [],
-      savedTables: [],
-      savedDrafts: [],
-      folders: [],
-    };
-    const getWorkspaceSnapshotForWorkspace = vi.fn().mockResolvedValue(empty);
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test restart semantics
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities: vi.fn(),
-      getWorkspaceSnapshotForWorkspace,
-    }));
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-
-    const { exportWorkspaceYDocToSnapshot, isWorkspaceYDocInitialized } =
-      await import('@ddlbuilder/workspace-core');
-    const { state } = createDurableObjectState();
-    await new WorkspaceYDocDurableObject(state, createEnv()).fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
-        method: 'POST',
-        body: JSON.stringify(empty),
-      }),
-    );
-    getWorkspaceSnapshotForWorkspace.mockResolvedValue(createSnapshot('stale'));
-    const coldObject = new WorkspaceYDocDurableObject(state, createEnv());
-    const response = await coldObject.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
-    const restored = new Y.Doc();
-
-    try {
-      Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
-      expect(isWorkspaceYDocInitialized(restored)).toBe(true);
-      expect(exportWorkspaceYDocToSnapshot(restored)).toEqual(empty);
-    } finally {
-      restored.destroy();
-    }
-  });
-
-  it('persists and reloads imports larger than the storage value limit', async () => {
+  it('persists and reloads migrations larger than the storage value limit', async () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test compact recovery
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
@@ -756,7 +590,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       })),
     };
     const response = await new WorkspaceYDocDurableObject(state, createEnv()).fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
+      createRequest('/api/workspaces/ws-1/yjs/migrate', {
         method: 'POST',
         body: JSON.stringify(snapshot),
       }),
@@ -789,23 +623,11 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test migration merge semantics
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities,
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-        globalDraft: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      }),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue(createSnapshot('current')),
     }));
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state } = createDurableObjectState();
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
-    await durableObject.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
-        method: 'POST',
-        body: JSON.stringify(createSnapshot('current')),
-      }),
-    );
 
     const migrationSnapshot: WorkspaceSnapshot = {
       globalDraft: null,
@@ -936,50 +758,46 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     },
   );
 
-  it.each(['import', 'migrate'])(
-    'rejects %s when Durable Object storage cannot persist its update',
-    async (operation) => {
-      // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to inject storage failure for this operation
-      vi.doMock('../../lib/workspaceEntities.js', () => ({
-        checkpointWorkspaceSnapshotEntities: vi.fn(),
-        getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-          globalDraft: null,
-          drafts: [],
-          savedTables: [],
-          savedDrafts: [],
-          folders: [],
+  it('rejects migrate when Durable Object storage cannot persist its update', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to inject storage failure for this operation
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn(),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    vi.mocked(state.storage.put).mockImplementation(async (key, value) => {
+      const storageKey = String(key);
+
+      if (storageKey.startsWith('update:')) {
+        throw new Error('storage unavailable');
+      }
+
+      store.set(storageKey, value);
+    });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+
+    await expect(
+      durableObject.fetch(
+        createRequest('/api/workspaces/ws-1/yjs/migrate', {
+          method: 'POST',
+          body: JSON.stringify(createSnapshot('users')),
         }),
-      }));
-
-      const { WorkspaceYDocDurableObject } =
-        await import('../../lib/workspaceYDocDurableObject.js');
-      const { state, store } = createDurableObjectState();
-      vi.mocked(state.storage.put).mockImplementation(async (key, value) => {
-        const storageKey = String(key);
-
-        if (storageKey.startsWith('update:')) {
-          throw new Error('storage unavailable');
-        }
-
-        store.set(storageKey, value);
-      });
-      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
-
-      await expect(
-        durableObject.fetch(
-          createRequest(`/api/workspaces/ws-1/yjs/${operation}`, {
-            method: 'POST',
-            body: JSON.stringify(createSnapshot('users')),
-          }),
-        ),
-      ).rejects.toThrow('storage unavailable');
-      expect(error).toHaveBeenCalledWith(
-        '[workspace-yjs-do] persist failed',
-        expect.objectContaining({ message: 'storage unavailable' }),
-      );
-    },
-  );
+      ),
+    ).rejects.toThrow('storage unavailable');
+    expect(error).toHaveBeenCalledWith(
+      '[workspace-yjs-do] persist failed',
+      expect.objectContaining({ message: 'storage unavailable' }),
+    );
+  });
 
   it('retries a failed update before persisting later updates', async () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test deferred constructor work
@@ -1045,7 +863,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     expect(restoredDoc.getMap('recovery').toJSON()).toEqual({ first: true, second: true });
   });
 
-  it.each(['import', 'migrate'])('rejects %s when its D1 checkpoint fails', async (operation) => {
+  it('rejects migrate when its D1 checkpoint fails', async () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test health logging
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi
@@ -1066,7 +884,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
 
     await expect(
       durableObject.fetch(
-        createRequest(`/api/workspaces/ws-1/yjs/${operation}`, {
+        createRequest('/api/workspaces/ws-1/yjs/migrate', {
           method: 'POST',
           body: JSON.stringify(createSnapshot('users')),
         }),
@@ -1123,7 +941,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
 
     const response = await durableObject.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
+      createRequest('/api/workspaces/ws-1/yjs/migrate', {
         method: 'POST',
         body: JSON.stringify(createSnapshot('users')),
       }),
@@ -1241,7 +1059,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const firstState = createDurableObjectState(sharedStore).state;
     const firstObject = new WorkspaceYDocDurableObject(firstState, createEnv());
     await firstObject.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
+      createRequest('/api/workspaces/ws-1/yjs/migrate', {
         method: 'POST',
         body: JSON.stringify(createSnapshot('compacted')),
       }),
@@ -1356,7 +1174,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       createEnv(),
     );
     await firstObject.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
+      createRequest('/api/workspaces/ws-1/yjs/migrate', {
         method: 'POST',
         body: JSON.stringify(createSnapshot('alarm_safe')),
       }),
@@ -1424,7 +1242,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { state } = createDurableObjectState();
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     await durableObject.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/import', {
+      createRequest('/api/workspaces/ws-1/yjs/migrate', {
         method: 'POST',
         body: JSON.stringify(createSnapshot('alarm_done')),
       }),
@@ -1456,7 +1274,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     await expect(
       durableObject.fetch(
-        createRequest('/api/workspaces/ws-1/yjs/import', {
+        createRequest('/api/workspaces/ws-1/yjs/migrate', {
           method: 'POST',
           body: JSON.stringify(createSnapshot('alarm_retry')),
         }),

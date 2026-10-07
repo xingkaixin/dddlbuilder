@@ -1,148 +1,45 @@
-import type { Context, Hono } from 'hono';
+import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest } from '../lib/auth.js';
-import { errorResponse, parseJsonBodyWithLimit } from '../lib/http.js';
+import { errorResponse } from '../lib/http.js';
 import { assertWorkspaceOwner, WorkspaceNotFoundError } from '../lib/workspaceEntities.js';
-import { decodeWorkspaceSnapshot } from '@ddlbuilder/workspace-core';
-
-const IMPORT_BODY_MAX_BYTES = 5 * 1024 * 1024;
-
-const getWorkspaceYDocStub = (env: ApiEnv['Bindings'], workspaceId: string) => {
-  const namespace = env.WORKSPACE_YDOC;
-
-  if (!namespace) return null;
-
-  return namespace.get(namespace.idFromName(workspaceId));
-};
-
-const buildForwardedRequest = (
-  request: Request,
-  workspaceId: string,
-  userId: string,
-  sessionId: string,
-  body?: BodyInit,
-) => {
-  const headers = new Headers(request.headers);
-  headers.set('x-ddlbuilder-workspace-id', workspaceId);
-  headers.set('x-ddlbuilder-user-id', userId);
-  headers.set('x-ddlbuilder-session-id', sessionId);
-
-  return new Request(request.url, {
-    method: request.method,
-    headers,
-    body,
-  });
-};
-
-type WorkspaceYDocAuthResult =
-  | { userId: string; sessionId: string; workspaceId: string; stub: DurableObjectStub }
-  | { response: Response };
-
-const authenticateWorkspaceRequest = async (
-  c: Context<ApiEnv>,
-): Promise<WorkspaceYDocAuthResult> => {
-  const user = await authenticateRequest(c);
-
-  const workspaceId = c.req.param('workspaceId');
-
-  if (!workspaceId) {
-    return {
-      response: errorResponse(c, 400, 'Invalid workspace id', 'INVALID_JSON'),
-    };
-  }
-
-  try {
-    await assertWorkspaceOwner(c.env, user.userId, workspaceId);
-  } catch (error) {
-    if (error instanceof WorkspaceNotFoundError) {
-      return {
-        response: errorResponse(c, 403, 'Workspace access denied', 'WORKSPACE_ACCESS_DENIED'),
-      };
-    }
-
-    throw error;
-  }
-
-  const stub = getWorkspaceYDocStub(c.env, workspaceId);
-
-  if (!stub) {
-    return {
-      response: errorResponse(c, 503, 'Workspace sync unavailable', 'SERVICE_UNAVAILABLE'),
-    };
-  }
-
-  return { userId: user.userId, sessionId: user.sessionId, workspaceId, stub };
-};
-
-const withAuthenticatedWorkspace = async (
-  c: Context<ApiEnv>,
-  handle: (auth: {
-    userId: string;
-    sessionId: string;
-    workspaceId: string;
-    stub: DurableObjectStub;
-  }) => Promise<Response>,
-) => {
-  const authenticated = await authenticateWorkspaceRequest(c);
-
-  if ('response' in authenticated) return authenticated.response;
-
-  return handle(authenticated);
-};
 
 export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
-  app.get('/workspaces/:workspaceId/yjs', async (c) =>
-    withAuthenticatedWorkspace(c, async (authenticated) => {
-      if (c.req.raw.method === 'HEAD') {
-        return new Response(null, { status: 204 });
+  app.get('/workspaces/:workspaceId/yjs', async (c) => {
+    const user = await authenticateRequest(c);
+    const workspaceId = c.req.param('workspaceId');
+
+    if (!workspaceId) {
+      return errorResponse(c, 400, 'Invalid workspace id', 'INVALID_JSON');
+    }
+
+    try {
+      await assertWorkspaceOwner(c.env, user.userId, workspaceId);
+    } catch (error) {
+      if (error instanceof WorkspaceNotFoundError) {
+        return errorResponse(c, 403, 'Workspace access denied', 'WORKSPACE_ACCESS_DENIED');
       }
 
-      return authenticated.stub.fetch(
-        buildForwardedRequest(
-          c.req.raw,
-          authenticated.workspaceId,
-          authenticated.userId,
-          authenticated.sessionId,
-        ),
-      );
-    }),
-  );
+      throw error;
+    }
 
-  app.get('/workspaces/:workspaceId/yjs/state', async (c) =>
-    withAuthenticatedWorkspace(c, async (authenticated) =>
-      authenticated.stub.fetch(
-        buildForwardedRequest(
-          c.req.raw,
-          authenticated.workspaceId,
-          authenticated.userId,
-          authenticated.sessionId,
-        ),
-      ),
-    ),
-  );
+    const namespace = c.env.WORKSPACE_YDOC;
 
-  app.post('/workspaces/:workspaceId/yjs/import', async (c) =>
-    withAuthenticatedWorkspace(c, async (authenticated) => {
-      const parsedBody = await parseJsonBodyWithLimit(c, IMPORT_BODY_MAX_BYTES);
+    if (!namespace) {
+      return errorResponse(c, 503, 'Workspace sync unavailable', 'SERVICE_UNAVAILABLE');
+    }
 
-      if (!parsedBody.ok) return parsedBody.response;
-      const body = parsedBody.data;
+    if (c.req.raw.method === 'HEAD') {
+      return new Response(null, { status: 204 });
+    }
 
-      const snapshot = decodeWorkspaceSnapshot(body);
+    const headers = new Headers(c.req.raw.headers);
+    headers.set('x-ddlbuilder-workspace-id', workspaceId);
+    headers.set('x-ddlbuilder-user-id', user.userId);
+    headers.set('x-ddlbuilder-session-id', user.sessionId);
 
-      if (!snapshot) {
-        return errorResponse(c, 400, 'Invalid workspace snapshot payload', 'INVALID_JSON');
-      }
-
-      return authenticated.stub.fetch(
-        buildForwardedRequest(
-          c.req.raw,
-          authenticated.workspaceId,
-          authenticated.userId,
-          authenticated.sessionId,
-          JSON.stringify(snapshot),
-        ),
-      );
-    }),
-  );
+    return namespace
+      .get(namespace.idFromName(workspaceId))
+      .fetch(new Request(c.req.raw.url, { method: c.req.raw.method, headers }));
+  });
 }
