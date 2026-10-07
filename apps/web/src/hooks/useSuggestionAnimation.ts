@@ -1,13 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
 
-export type AnimationType = 'add' | 'remove' | 'modify';
+export type IndexAnimationType = 'add' | 'remove';
 
 interface AnimationState {
   animatingIndexIds: Set<string>;
   removingIndexIds: Set<string>;
-  animatingFieldNames: Set<string>;
-  removingFieldNames: Set<string>;
-  modifyingFieldNames: Set<string>;
   isFieldTableHighlighted: boolean;
   highlightedRowIndex: number | null;
 }
@@ -15,22 +12,23 @@ interface AnimationState {
 const ANIMATION_DURATIONS = {
   add: 600,
   remove: 500,
-  modify: 800,
   fieldTableHighlight: 1200,
+} as const;
+
+const INDEX_ANIMATION_KEYS = {
+  add: 'animatingIndexIds',
+  remove: 'removingIndexIds',
 } as const;
 
 /**
  * Hook for managing suggestion application animations.
- * Provides state and methods to trigger animations on indexes and fields
+ * Provides state and methods to animate indexes and highlight the field table
  * when applying review suggestions.
  */
 export function useSuggestionAnimation() {
   const [state, setState] = useState<AnimationState>({
     animatingIndexIds: new Set(),
     removingIndexIds: new Set(),
-    animatingFieldNames: new Set(),
-    removingFieldNames: new Set(),
-    modifyingFieldNames: new Set(),
     isFieldTableHighlighted: false,
     highlightedRowIndex: null,
   });
@@ -38,145 +36,24 @@ export function useSuggestionAnimation() {
   // Use refs to track pending timeouts for cleanup
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  /**
-   * Trigger an animation on an index.
-   * @param indexId - The ID of the index to animate
-   * @param type - The type of animation ('add' | 'remove' | 'modify')
-   * @returns A promise that resolves when the animation completes
-   */
-  const triggerIndexAnimation = useCallback(
-    (indexId: string, type: AnimationType): Promise<void> => {
-      return new Promise((resolve) => {
-        // Clear any existing timeout for this index
-        const existingTimeout = timeoutsRef.current.get(`index-${indexId}`);
+  const triggerIndexAnimation = useCallback((indexId: string, type: IndexAnimationType) => {
+    const timeoutKey = `index-${indexId}`;
+    const stateKey = INDEX_ANIMATION_KEYS[type];
+    clearTimeout(timeoutsRef.current.get(timeoutKey));
 
-        if (existingTimeout) {
-          clearTimeout(existingTimeout);
-        }
+    setState((prev) => ({ ...prev, [stateKey]: new Set(prev[stateKey]).add(indexId) }));
 
-        // Add to appropriate set based on type
-        setState((prev) => {
-          const newState = { ...prev };
+    const timeout = setTimeout(() => {
+      setState((prev) => {
+        const next = new Set(prev[stateKey]);
+        next.delete(indexId);
 
-          if (type === 'add') {
-            newState.animatingIndexIds = new Set(prev.animatingIndexIds).add(indexId);
-          } else if (type === 'remove') {
-            newState.removingIndexIds = new Set(prev.removingIndexIds).add(indexId);
-          }
-
-          return newState;
-        });
-
-        // Schedule cleanup after animation duration
-        const timeout = setTimeout(() => {
-          setState((prev) => {
-            const newState = { ...prev };
-
-            if (type === 'add') {
-              const newSet = new Set(prev.animatingIndexIds);
-              newSet.delete(indexId);
-              newState.animatingIndexIds = newSet;
-            } else if (type === 'remove') {
-              const newSet = new Set(prev.removingIndexIds);
-              newSet.delete(indexId);
-              newState.removingIndexIds = newSet;
-            }
-
-            return newState;
-          });
-          timeoutsRef.current.delete(`index-${indexId}`);
-          resolve();
-        }, ANIMATION_DURATIONS[type]);
-
-        timeoutsRef.current.set(`index-${indexId}`, timeout);
+        return { ...prev, [stateKey]: next };
       });
-    },
-    [],
-  );
+      timeoutsRef.current.delete(timeoutKey);
+    }, ANIMATION_DURATIONS[type]);
 
-  /**
-   * Trigger an animation on a field.
-   * @param fieldName - The name of the field to animate
-   * @param type - The type of animation ('add' | 'remove' | 'modify')
-   * @returns A promise that resolves when the animation completes
-   */
-  const triggerFieldAnimation = useCallback(
-    (fieldName: string, type: AnimationType): Promise<void> => {
-      return new Promise((resolve) => {
-        // Clear any existing timeout for this field
-        const existingTimeout = timeoutsRef.current.get(`field-${fieldName}`);
-
-        if (existingTimeout) {
-          clearTimeout(existingTimeout);
-        }
-
-        // Add to appropriate set based on type
-        setState((prev) => {
-          const newState = { ...prev };
-
-          if (type === 'add') {
-            newState.animatingFieldNames = new Set(prev.animatingFieldNames).add(fieldName);
-          } else if (type === 'remove') {
-            newState.removingFieldNames = new Set(prev.removingFieldNames).add(fieldName);
-          } else if (type === 'modify') {
-            newState.modifyingFieldNames = new Set(prev.modifyingFieldNames).add(fieldName);
-          }
-
-          return newState;
-        });
-
-        // Schedule cleanup after animation duration
-        const timeout = setTimeout(() => {
-          setState((prev) => {
-            const newState = { ...prev };
-
-            if (type === 'add') {
-              const newSet = new Set(prev.animatingFieldNames);
-              newSet.delete(fieldName);
-              newState.animatingFieldNames = newSet;
-            } else if (type === 'remove') {
-              const newSet = new Set(prev.removingFieldNames);
-              newSet.delete(fieldName);
-              newState.removingFieldNames = newSet;
-            } else if (type === 'modify') {
-              const newSet = new Set(prev.modifyingFieldNames);
-              newSet.delete(fieldName);
-              newState.modifyingFieldNames = newSet;
-            }
-
-            return newState;
-          });
-          timeoutsRef.current.delete(`field-${fieldName}`);
-          resolve();
-        }, ANIMATION_DURATIONS[type]);
-
-        timeoutsRef.current.set(`field-${fieldName}`, timeout);
-      });
-    },
-    [],
-  );
-
-  /**
-   * Clear all pending animations and timeouts.
-   */
-  const clearAllAnimations = useCallback(() => {
-    // Clear all timeouts
-    for (const timeout of timeoutsRef.current.values()) {
-      clearTimeout(timeout);
-    }
-
-    timeoutsRef.current.clear();
-
-    // Reset state
-    setState({
-      animatingIndexIds: new Set(),
-      removingIndexIds: new Set(),
-      animatingFieldNames: new Set(),
-      removingFieldNames: new Set(),
-      modifyingFieldNames: new Set(),
-      isFieldTableHighlighted: false,
-      highlightedRowIndex: null,
-    });
+    timeoutsRef.current.set(timeoutKey, timeout);
   }, []);
 
   /**
@@ -212,19 +89,11 @@ export function useSuggestionAnimation() {
   }, []);
 
   return {
-    // Index animation states
     animatingIndexIds: state.animatingIndexIds,
     removingIndexIds: state.removingIndexIds,
-    // Field animation states
-    animatingFieldNames: state.animatingFieldNames,
-    removingFieldNames: state.removingFieldNames,
-    modifyingFieldNames: state.modifyingFieldNames,
     isFieldTableHighlighted: state.isFieldTableHighlighted,
     highlightedRowIndex: state.highlightedRowIndex,
-    // Methods
     triggerIndexAnimation,
-    triggerFieldAnimation,
     triggerFieldTableHighlight,
-    clearAllAnimations,
   };
 }

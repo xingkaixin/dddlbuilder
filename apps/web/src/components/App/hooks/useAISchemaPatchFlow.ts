@@ -12,7 +12,7 @@ interface UseAISchemaPatchFlowParams {
   applyState: (state: PersistedState) => void;
   setActiveTab: (tab: BuilderTab) => void;
   highlightField: (rowIndex?: number) => void;
-  animateIndex: (indexId: string, type: 'add' | 'remove') => Promise<void>;
+  animateIndex: (indexId: string, type: 'add' | 'remove') => void;
 }
 
 export function useAISchemaPatchFlow({
@@ -52,7 +52,7 @@ export function useAISchemaPatchFlow({
         if (change.kind !== 'index' || change.type === 'remove') continue;
         const index = nextState.indexes.find((item) => key(item.name) === key(change.indexName));
 
-        if (index) setTimeout(() => void animateIndex(index.id, 'add'), 50);
+        if (index) setTimeout(() => animateIndex(index.id, 'add'), 50);
       }
 
       return nextState;
@@ -86,7 +86,7 @@ export function useAISchemaPatchFlow({
           change.oldIndex;
 
         if (targetIndex) {
-          void animateIndex(targetIndex.id, change.type === 'remove' ? 'remove' : 'add');
+          animateIndex(targetIndex.id, change.type === 'remove' ? 'remove' : 'add');
         }
       }
     },
