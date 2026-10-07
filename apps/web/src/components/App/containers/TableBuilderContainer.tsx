@@ -13,6 +13,7 @@ import {
   Code2,
   type AppIconProps,
 } from '@/components/icons';
+import type { DatabaseType, SchemaObjectType } from '@ddlbuilder/shared-types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEditorStore } from '@/stores';
 import { getAvailableTabs, isBuilderTab, type BuilderTab } from '@/utils/tabUtils';
@@ -24,7 +25,6 @@ import { HivePartitionPanel } from '../HivePartitionPanel';
 import { IndexPanel } from '../IndexPanel';
 import { PartitionPanel } from '../PartitionPanel';
 import { ShardingPanel } from '../ShardingPanel';
-import type { TableConfig } from '../TableConfig';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -37,7 +37,8 @@ import { TableOptionsPanel } from '../TableOptionsPanel';
 import { ViewDefinitionPanel } from '../ViewDefinitionPanel';
 
 export interface TableBuilderContainerProps {
-  tableConfigProps: ComponentProps<typeof TableConfig>;
+  objectType: SchemaObjectType;
+  dbType: DatabaseType;
   tabsValue: BuilderTab;
   onTabsValueChange: (value: BuilderTab) => void;
   dataTableProps: ComponentProps<typeof DataTable>;
@@ -110,7 +111,8 @@ function IndexStatsBadge({ stats }: { stats: IndexStats }) {
 }
 
 export const TableBuilderContainer = memo(function TableBuilderContainer({
-  tableConfigProps,
+  objectType,
+  dbType,
   tabsValue,
   onTabsValueChange,
   dataTableProps,
@@ -124,7 +126,6 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
   hivePartitionPanelProps,
 }: TableBuilderContainerProps) {
   const { t } = useTranslation();
-  const { objectType, dbType } = tableConfigProps;
 
   const fieldCount = useEditorStore(
     (state) => state.rows.filter((row) => row.fieldName?.trim()).length,

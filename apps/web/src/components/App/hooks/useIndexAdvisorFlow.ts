@@ -73,6 +73,7 @@ export function useIndexAdvisorFlow({
   const { showToast } = useToast();
   const { isLoading, result, error, analyzeIndexes, clearAdvice } = useAIIndexAdvisor(documentKey);
   const [open, setOpen] = useState(false);
+  const openDialog = useCallback(() => setOpen(true), []);
 
   useLayoutEffect(() => () => setOpen(false), [documentKey]);
 
@@ -228,7 +229,7 @@ export function useIndexAdvisorFlow({
   return {
     open,
     setDialogOpen,
-    openDialog: () => setOpen(true),
+    openDialog,
     isLoading,
     result,
     error,

@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import type { HivePartitionConfig } from '@ddlbuilder/shared-types';
 import type { EditorContentView } from '@/stores/appUiStore';
 import { useTranslation } from 'react-i18next';
 import type { EditorSurfaceModel } from '../EditorSurface';
@@ -12,6 +13,8 @@ import { hasTableChanges } from '@ddlbuilder/ddl-core';
 type EditorDomains = ReturnType<typeof useEditorDomains>;
 
 type SchemaController = ReturnType<typeof useSchemaController>;
+
+const EMPTY_HIVE_PARTITION_CONFIG: HivePartitionConfig = { enabled: false, columns: [] };
 
 interface UseEditorSurfaceModelInput {
   documentId: string;
@@ -29,7 +32,7 @@ interface UseEditorSurfaceModelInput {
   workspaceLabel: string;
   dataTableToolbarLeft: ReactNode;
   onTableNameChange: (value: string) => void;
-  onDbTypeChange: EditorSurfaceModel['tableBuilderProps']['tableConfigProps']['onDbTypeChange'];
+  onDbTypeChange: EditorSurfaceModel['tableConfigProps']['onDbTypeChange'];
   onSaveCurrent: () => void;
   onViewCurrentVersionHistory: () => void;
   onOpenErDiagram: () => void;
@@ -61,10 +64,65 @@ export function useEditorSurfaceModel({
   Pick<UseEditorSurfaceModelInput, 'editorView' | 'setEditorView'> {
   const { t } = useTranslation();
   const { editor, auth, sharding, animations, partition, tableOptions } = domains;
-  const { setObjectType } = editor;
 
   const {
-    derived: { availableFields, canSaveCurrent, filledRowCount, tableDiff },
+    schemaName,
+    tableName,
+    tableComment,
+    objectType,
+    dbType,
+    activeTab,
+    viewDefinition,
+    viewCreateOrReplace,
+    sqlFormatMode,
+    setSchemaName,
+    setTableComment,
+    setObjectType,
+    setViewDefinition,
+    setViewCreateOrReplace,
+    setSqlFormatMode,
+  } = editor;
+  const { authInput, authObjects, setAuthInput, addAuthObject, removeAuthObject } = auth;
+
+  const {
+    citusShardingConfig,
+    setCitusMode: onShardingModeChange,
+    setDistributionColumn,
+  } = sharding;
+  const { isFieldTableHighlighted, highlightedRowIndex, animatingIndexIds, removingIndexIds } =
+    animations;
+  const { mysqlPartitionConfig } = partition;
+
+  const {
+    tableMiscConfig,
+    setMiscEnabled,
+    setEngine,
+    setCharset,
+    setCollation,
+    setTablespace,
+    setFillfactor,
+    setPctfree,
+    setInitrans,
+    setStoredAs,
+    setExternal,
+    setLocation,
+    setHivePartitionEnabled,
+    addHivePartitionColumn,
+    removeHivePartitionColumn,
+    updateHivePartitionColumn,
+    setHiveClustering,
+  } = tableOptions;
+  const { handleClearAll } = clearActions;
+
+  const {
+    handleOpenDiffDialog,
+    handleTabValueChange,
+    handleOpenStorageEstimator,
+    handleOpenMockDataGenerator,
+  } = navigationActions;
+
+  const {
+    derived: { availableFields, canSaveCurrent, tableDiff },
     sql,
     orm,
     aiCommentActions,
@@ -74,98 +132,130 @@ export function useEditorSurfaceModel({
     qualifiedTableName,
     schemaLintIssues,
   } = schemaController;
+  const showDiffButton = isLoadedDirty && Boolean(tableDiff && hasTableChanges(tableDiff));
+  const supportsAI = dbType !== 'sqlite';
 
-  return {
-    documentId,
-    isShareView,
-    editorView,
-    setEditorView,
-    tableBuilderProps: {
-      tableConfigProps: {
-        schemaName: editor.schemaName,
-        tableName: editor.tableName,
-        tableComment: editor.tableComment,
-        objectType: editor.objectType,
-        dbType: editor.dbType,
-        onSchemaNameChange: editor.setSchemaName,
-        onTableNameChange,
-        onTableCommentChange: editor.setTableComment,
-        onObjectTypeChange: setObjectType,
-        onDbTypeChange,
-        onClearAll: clearActions.handleClearAll,
-        onSaveCurrent,
-        onViewDiff: navigationActions.handleOpenDiffDialog,
-        onViewHistory: onViewCurrentVersionHistory,
-        onOpenErDiagram,
-        saveDisabled: !canSaveCurrent,
-        saveDisabledHint: t('dialogs.save.disabledTip'),
-        showDiffButton: isLoadedDirty && Boolean(tableDiff && hasTableChanges(tableDiff)),
-        showHistoryButton: Boolean(loadedTableNormalizedName),
-        loadedTableName,
-        workspaceLabel,
-        fieldCount: filledRowCount,
-        indexCount: editor.indexes.length,
-      },
-      tabsValue: editor.activeTab,
-      onTabsValueChange: navigationActions.handleTabValueChange,
-      dataTableProps: {
-        isHighlighted: animations.isFieldTableHighlighted,
-        highlightedRowIndex: animations.highlightedRowIndex,
-        onOpenStorageEstimator:
-          editor.dbType === 'sqlite' ? undefined : navigationActions.handleOpenStorageEstimator,
-        onOpenMockDataGenerator:
-          editor.dbType === 'sqlite' ? undefined : navigationActions.handleOpenMockDataGenerator,
-        onOpenAISchemaPatch: editor.dbType === 'sqlite' ? undefined : onOpenAISchemaPatch,
-        onGenerateComments:
-          editor.dbType === 'sqlite' ? undefined : aiCommentActions.handleGenerateComments,
-        isGeneratingComments: aiCommentActions.isGeneratingComments,
-        onOpenAIIndexAdvisor:
-          editor.dbType === 'hive' || editor.dbType === 'sqlite'
-            ? undefined
-            : indexAdvisor.openDialog,
-        toolbarLeft: dataTableToolbarLeft,
-      },
+  const tableConfigProps = useMemo(
+    () => ({
+      schemaName,
+      tableName,
+      tableComment,
+      objectType,
+      dbType,
+      onSchemaNameChange: setSchemaName,
+      onTableNameChange,
+      onTableCommentChange: setTableComment,
+      onObjectTypeChange: setObjectType,
+      onDbTypeChange,
+      onClearAll: handleClearAll,
+      onSaveCurrent,
+      onViewDiff: handleOpenDiffDialog,
+      onViewHistory: onViewCurrentVersionHistory,
+      onOpenErDiagram,
+      saveDisabled: !canSaveCurrent,
+      saveDisabledHint: t('dialogs.save.disabledTip'),
+      showDiffButton,
+      showHistoryButton: Boolean(loadedTableNormalizedName),
+      loadedTableName,
+      workspaceLabel,
+    }),
+    [
+      schemaName,
+      tableName,
+      tableComment,
+      objectType,
+      dbType,
+      setSchemaName,
+      onTableNameChange,
+      setTableComment,
+      setObjectType,
+      onDbTypeChange,
+      handleClearAll,
+      onSaveCurrent,
+      handleOpenDiffDialog,
+      onViewCurrentVersionHistory,
+      onOpenErDiagram,
+      canSaveCurrent,
+      t,
+      showDiffButton,
+      loadedTableNormalizedName,
+      loadedTableName,
+      workspaceLabel,
+    ],
+  );
+
+  const dataTableProps = useMemo(
+    () => ({
+      isHighlighted: isFieldTableHighlighted,
+      highlightedRowIndex,
+      onOpenStorageEstimator: supportsAI ? handleOpenStorageEstimator : undefined,
+      onOpenMockDataGenerator: supportsAI ? handleOpenMockDataGenerator : undefined,
+      onOpenAISchemaPatch: supportsAI ? onOpenAISchemaPatch : undefined,
+      onGenerateComments: supportsAI ? aiCommentActions.handleGenerateComments : undefined,
+      isGeneratingComments: aiCommentActions.isGeneratingComments,
+      onOpenAIIndexAdvisor: supportsAI && dbType !== 'hive' ? indexAdvisor.openDialog : undefined,
+      toolbarLeft: dataTableToolbarLeft,
+    }),
+    [
+      isFieldTableHighlighted,
+      highlightedRowIndex,
+      supportsAI,
+      handleOpenStorageEstimator,
+      handleOpenMockDataGenerator,
+      onOpenAISchemaPatch,
+      aiCommentActions.handleGenerateComments,
+      aiCommentActions.isGeneratingComments,
+      dbType,
+      indexAdvisor.openDialog,
+      dataTableToolbarLeft,
+    ],
+  );
+
+  const tableBuilderProps = useMemo(
+    () => ({
+      objectType,
+      dbType,
+      tabsValue: activeTab,
+      onTabsValueChange: handleTabValueChange,
+      dataTableProps,
       viewDefinitionPanelProps: {
-        definition: editor.viewDefinition,
-        createOrReplace: editor.viewCreateOrReplace,
-        onDefinitionChange: editor.setViewDefinition,
-        onCreateOrReplaceChange: editor.setViewCreateOrReplace,
+        definition: viewDefinition,
+        createOrReplace: viewCreateOrReplace,
+        onDefinitionChange: setViewDefinition,
+        onCreateOrReplaceChange: setViewCreateOrReplace,
       },
-      indexPanelProps: {
-        animatingIndexIds: animations.animatingIndexIds,
-        removingIndexIds: animations.removingIndexIds,
-      },
+      indexPanelProps: { animatingIndexIds, removingIndexIds },
       foreignKeyPanelProps: { availableFields },
       authPanelProps: {
-        authInput: auth.authInput,
-        authObjects: auth.authObjects,
-        onAuthInputChange: auth.setAuthInput,
-        onAddAuthObject: auth.addAuthObject,
-        onRemoveAuthObject: auth.removeAuthObject,
+        authInput,
+        authObjects,
+        onAuthInputChange: setAuthInput,
+        onAddAuthObject: addAuthObject,
+        onRemoveAuthObject: removeAuthObject,
       },
       tableOptionsPanelProps: {
-        dbType: editor.dbType,
-        config: tableOptions.tableMiscConfig,
-        onEnabledChange: tableOptions.setMiscEnabled,
-        onEngineChange: tableOptions.setEngine,
-        onCharsetChange: tableOptions.setCharset,
-        onCollationChange: tableOptions.setCollation,
-        onTablespaceChange: tableOptions.setTablespace,
-        onFillfactorChange: tableOptions.setFillfactor,
-        onPctfreeChange: tableOptions.setPctfree,
-        onInitransChange: tableOptions.setInitrans,
-        onStoredAsChange: tableOptions.setStoredAs,
-        onExternalChange: tableOptions.setExternal,
-        onLocationChange: tableOptions.setLocation,
+        dbType,
+        config: tableMiscConfig,
+        onEnabledChange: setMiscEnabled,
+        onEngineChange: setEngine,
+        onCharsetChange: setCharset,
+        onCollationChange: setCollation,
+        onTablespaceChange: setTablespace,
+        onFillfactorChange: setFillfactor,
+        onPctfreeChange: setPctfree,
+        onInitransChange: setInitrans,
+        onStoredAsChange: setStoredAs,
+        onExternalChange: setExternal,
+        onLocationChange: setLocation,
       },
       shardingPanelProps: {
-        config: sharding.citusShardingConfig,
+        config: citusShardingConfig,
         availableFields,
-        onModeChange: sharding.setCitusMode,
-        onDistributionColumnChange: sharding.setDistributionColumn,
+        onModeChange: onShardingModeChange,
+        onDistributionColumnChange: setDistributionColumn,
       },
       partitionPanelProps: {
-        config: partition.mysqlPartitionConfig,
+        config: mysqlPartitionConfig,
         availableFields,
         onEnabledChange: partition.setPartitionEnabled,
         onTypeChange: partition.setPartitionType,
@@ -178,37 +268,112 @@ export function useEditorSurfaceModel({
         onGeneratePartitions: partition.generateRangePartitions,
       },
       hivePartitionPanelProps: {
-        config: tableOptions.tableMiscConfig.partitions || { enabled: false, columns: [] },
-        onEnabledChange: tableOptions.setHivePartitionEnabled,
-        onAddColumn: tableOptions.addHivePartitionColumn,
-        onRemoveColumn: tableOptions.removeHivePartitionColumn,
-        onUpdateColumn: tableOptions.updateHivePartitionColumn,
-        onClusteringChange: tableOptions.setHiveClustering,
+        config: tableMiscConfig.partitions ?? EMPTY_HIVE_PARTITION_CONFIG,
+        onEnabledChange: setHivePartitionEnabled,
+        onAddColumn: addHivePartitionColumn,
+        onRemoveColumn: removeHivePartitionColumn,
+        onUpdateColumn: updateHivePartitionColumn,
+        onClusteringChange: setHiveClustering,
       },
-    },
-    outputProps: {
-      ddlOutputProps: {
-        generatedSql: sql.generatedSql,
-        generatedDcl: sql.generatedDcl,
-        dbType: editor.dbType,
-        routineTableNameDefault: qualifiedTableName,
-        sqlFormatMode: editor.sqlFormatMode,
-        onSqlFormatModeChange: editor.setSqlFormatMode,
-        onCopySql: sql.copySql,
-        onCopyDcl: sql.copyDcl,
-        generatedOrm: orm.generatedOrm,
-        ormTarget: orm.ormTarget,
-        onOrmTargetChange: orm.setOrmTarget,
-        onCopyOrm: orm.copyOrm,
-        isReviewing: reviewState.isLoading,
-        reviewPartialResult: reviewState.partialResult,
-        reviewResult: reviewState.result,
-        reviewError: reviewState.error,
-        schemaLintIssues,
-        onStartReview: reviewActions.handleStartReview,
-        onViewReviewHistory: reviewActions.handleViewReviewHistory,
-        onApplySuggestion: schemaActions.handleApplySuggestion,
-      },
-    },
+    }),
+    [
+      objectType,
+      dbType,
+      activeTab,
+      handleTabValueChange,
+      dataTableProps,
+      viewDefinition,
+      viewCreateOrReplace,
+      setViewDefinition,
+      setViewCreateOrReplace,
+      availableFields,
+      animatingIndexIds,
+      removingIndexIds,
+      authInput,
+      authObjects,
+      setAuthInput,
+      addAuthObject,
+      removeAuthObject,
+      tableMiscConfig,
+      setMiscEnabled,
+      setEngine,
+      setCharset,
+      setCollation,
+      setTablespace,
+      setFillfactor,
+      setPctfree,
+      setInitrans,
+      setStoredAs,
+      setExternal,
+      setLocation,
+      setHivePartitionEnabled,
+      addHivePartitionColumn,
+      removeHivePartitionColumn,
+      updateHivePartitionColumn,
+      setHiveClustering,
+      citusShardingConfig,
+      onShardingModeChange,
+      setDistributionColumn,
+      mysqlPartitionConfig,
+      partition,
+    ],
+  );
+
+  const ddlOutputProps = useMemo(
+    () => ({
+      generatedSql: sql.generatedSql,
+      generatedDcl: sql.generatedDcl,
+      dbType,
+      routineTableNameDefault: qualifiedTableName,
+      sqlFormatMode,
+      onSqlFormatModeChange: setSqlFormatMode,
+      onCopySql: sql.copySql,
+      onCopyDcl: sql.copyDcl,
+      generatedOrm: orm.generatedOrm,
+      ormTarget: orm.ormTarget,
+      onOrmTargetChange: orm.setOrmTarget,
+      onCopyOrm: orm.copyOrm,
+      isReviewing: reviewState.isLoading,
+      reviewPartialResult: reviewState.partialResult,
+      reviewResult: reviewState.result,
+      reviewError: reviewState.error,
+      schemaLintIssues,
+      onStartReview: reviewActions.handleStartReview,
+      onViewReviewHistory: reviewActions.handleViewReviewHistory,
+      onApplySuggestion: schemaActions.handleApplySuggestion,
+    }),
+    [
+      sql.generatedSql,
+      sql.generatedDcl,
+      dbType,
+      qualifiedTableName,
+      sqlFormatMode,
+      setSqlFormatMode,
+      sql.copySql,
+      sql.copyDcl,
+      orm.generatedOrm,
+      orm.ormTarget,
+      orm.setOrmTarget,
+      orm.copyOrm,
+      reviewState.isLoading,
+      reviewState.partialResult,
+      reviewState.result,
+      reviewState.error,
+      schemaLintIssues,
+      reviewActions.handleStartReview,
+      reviewActions.handleViewReviewHistory,
+      schemaActions.handleApplySuggestion,
+    ],
+  );
+  const outputProps = useMemo(() => ({ ddlOutputProps }), [ddlOutputProps]);
+
+  return {
+    documentId,
+    isShareView,
+    editorView,
+    setEditorView,
+    tableConfigProps,
+    tableBuilderProps,
+    outputProps,
   };
 }

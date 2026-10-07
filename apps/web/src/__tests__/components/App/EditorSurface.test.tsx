@@ -31,6 +31,8 @@ const buildModel = (documentId: string): EditorSurfaceModel => ({
   isShareView: false,
   editorView: 'design',
   setEditorView: vi.fn(),
+  // SAFETY: TableConfig is mocked and the parent only spreads these props into it.
+  tableConfigProps: {} as EditorSurfaceModel['tableConfigProps'],
   // SAFETY: The child container is mocked and the parent only spreads these props into it.
   tableBuilderProps: {} as EditorSurfaceModel['tableBuilderProps'],
   outputProps: {

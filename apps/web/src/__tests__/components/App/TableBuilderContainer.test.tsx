@@ -63,19 +63,8 @@ function buildProps(): TableBuilderContainerProps {
   const state = useEditorStore.getState();
 
   return {
-    tableConfigProps: {
-      schemaName: state.schemaName,
-      tableName: state.tableName,
-      tableComment: state.tableComment,
-      objectType: state.objectType,
-      dbType: state.dbType,
-      onSchemaNameChange: noop,
-      onTableNameChange: noop,
-      onTableCommentChange: noop,
-      onObjectTypeChange: noop,
-      onDbTypeChange: noop,
-      onClearAll: noop,
-    },
+    objectType: state.objectType,
+    dbType: state.dbType,
     tabsValue: state.activeTab,
     onTabsValueChange: state.setActiveTab,
     dataTableProps: {},

@@ -9,13 +9,13 @@ type TemplateCatalogParams = Pick<
   Parameters<typeof useTemplateActions>[0],
   'rows' | 'setRows' | 'showToast'
 > &
-  Pick<Parameters<typeof useTableTemplateActions>[0], 'currentState' | 'applyState'>;
+  Pick<Parameters<typeof useTableTemplateActions>[0], 'getCurrentState' | 'applyState'>;
 
 export function useTemplateCatalog({
   rows,
   setRows,
   showToast,
-  currentState,
+  getCurrentState,
   applyState,
 }: TemplateCatalogParams) {
   const fieldTemplateData = useFieldTemplates();
@@ -32,7 +32,7 @@ export function useTemplateCatalog({
     createTemplateFromFields: fieldTemplateData.createFromFields,
   });
   const tableTemplateActions = useTableTemplateActions({
-    currentState,
+    getCurrentState,
     applyState,
     showToast,
     createTemplate: tableTemplateData.create,

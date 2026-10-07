@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { EditorView } from '@/stores/appUiStore';
 import { Button } from '@/components/ui/button';
@@ -17,13 +17,21 @@ export interface EditorSurfaceModel {
   isShareView: boolean;
   editorView: EditorView;
   setEditorView: (view: EditorView) => void;
+  tableConfigProps: ComponentProps<typeof TableConfig>;
   tableBuilderProps: TableBuilderContainerProps;
   outputProps: OutputContainerProps;
 }
 
 export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
-  const { documentId, isShareView, editorView, setEditorView, tableBuilderProps, outputProps } =
-    model;
+  const {
+    documentId,
+    isShareView,
+    editorView,
+    setEditorView,
+    tableConfigProps,
+    tableBuilderProps,
+    outputProps,
+  } = model;
   const { t } = useTranslation();
   const view = editorView;
   const selectView = setEditorView;
@@ -32,6 +40,8 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
   const builderId = useId();
   const issues = outputProps.ddlOutputProps.schemaLintIssues ?? [];
   const resize = (value: number) => setSplitPercent(Math.max(30, Math.min(75, value)));
+  const collapseOutput = useCallback(() => selectView('design'), [selectView]);
+  const maximizeOutput = useCallback(() => selectView('output'), [selectView]);
 
   return (
     <section
@@ -44,7 +54,7 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
           className={isShareView ? 'pointer-events-none select-none opacity-80' : undefined}
           inert={isShareView}
         >
-          <TableConfig key={documentId} {...tableBuilderProps.tableConfigProps} />
+          <TableConfig key={documentId} {...tableConfigProps} />
         </div>
       </div>
       {view !== 'split' && (
@@ -138,8 +148,8 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
         >
           <OutputContainer
             {...outputProps}
-            onCollapse={() => selectView('design')}
-            onMaximize={view === 'split' ? () => selectView('output') : undefined}
+            onCollapse={collapseOutput}
+            onMaximize={view === 'split' ? maximizeOutput : undefined}
           />
         </div>
       </div>

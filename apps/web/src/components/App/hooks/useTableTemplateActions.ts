@@ -5,7 +5,7 @@ import { applyBlueprintToState, createBlueprintFromState } from '@/utils/tableTe
 import i18n from '@/i18n';
 
 interface UseTableTemplateActionsParams {
-  currentState: PersistedState;
+  getCurrentState: () => PersistedState;
   applyState: (state: PersistedState) => void;
   createTemplate: (
     name: string,
@@ -16,7 +16,7 @@ interface UseTableTemplateActionsParams {
 }
 
 export function useTableTemplateActions({
-  currentState,
+  getCurrentState,
   applyState,
   createTemplate,
   showToast,
@@ -27,7 +27,7 @@ export function useTableTemplateActions({
   const handleManageTemplates = useCallback(() => setIsManagerOpen(true), []);
 
   const handleSaveAsTemplate = useCallback(() => {
-    const blueprint = createBlueprintFromState(currentState);
+    const blueprint = createBlueprintFromState(getCurrentState());
 
     if (blueprint.rows.length === 0) {
       showToast(i18n.t('tableTemplate.toast.noValidFieldsForSave'));
@@ -37,7 +37,7 @@ export function useTableTemplateActions({
 
     setPendingBlueprint(blueprint);
     setIsCreateDialogOpen(true);
-  }, [currentState, showToast]);
+  }, [getCurrentState, showToast]);
 
   const handleCreateTemplate = useCallback(
     async (name: string, blueprint: TableBlueprint, description?: string) => {
@@ -55,10 +55,10 @@ export function useTableTemplateActions({
 
   const handleApplyTemplate = useCallback(
     (template: TableTemplate) => {
-      applyState(applyBlueprintToState(currentState, template.blueprint));
+      applyState(applyBlueprintToState(getCurrentState(), template.blueprint));
       showToast(i18n.t('tableTemplate.toast.applied', { name: template.name }));
     },
-    [applyState, currentState, showToast],
+    [applyState, getCurrentState, showToast],
   );
 
   return {

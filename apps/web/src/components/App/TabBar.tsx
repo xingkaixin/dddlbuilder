@@ -32,8 +32,8 @@ const TabItem = memo(
   }: {
     tab: WorkspaceTab;
     isActive: boolean;
-    onActivate: () => void;
-    onClose: (e: React.MouseEvent) => void;
+    onActivate: (id: string) => void;
+    onClose: (id: string) => void;
   }) => {
     const { t } = useTranslation();
     const isDraft = tab.source.kind === 'draft';
@@ -43,11 +43,11 @@ const TabItem = memo(
       <div
         role="button"
         tabIndex={0}
-        onClick={onActivate}
+        onClick={() => onActivate(tab.id)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            onActivate();
+            onActivate(tab.id);
           }
         }}
         className={cn(
@@ -76,7 +76,10 @@ const TabItem = memo(
         {/* 关闭按钮 */}
         <button
           type="button"
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose(tab.id);
+          }}
           className={cn(
             'flex h-5 w-5 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity hover:bg-accent',
             isActive ? 'opacity-100' : 'group-hover:opacity-100',
@@ -128,11 +131,8 @@ export const TabBar = memo(
               key={tab.id}
               tab={tab}
               isActive={tab.id === activeTabId}
-              onActivate={() => onActivateTab(tab.id)}
-              onClose={(e) => {
-                e.stopPropagation();
-                onCloseTab(tab.id);
-              }}
+              onActivate={onActivateTab}
+              onClose={onCloseTab}
             />
           ))}
 

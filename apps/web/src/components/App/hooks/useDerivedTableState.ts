@@ -82,9 +82,18 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   // --- 字段派生 ---
   const normalizedFields = useMemo(() => buildNormalizedFields(rows), [rows]);
 
-  const availableFields = useMemo(
-    () => normalizedFields.map((field) => field.name).filter((name) => name.length > 0),
+  // 以内容为键，字段名未变时保持同一引用，避免只改注释或类型时重渲染依赖字段列表的面板。
+  const availableFieldsKey = useMemo(
+    () =>
+      normalizedFields
+        .map((field) => field.name)
+        .filter((name) => name.length > 0)
+        .join('\0'),
     [normalizedFields],
+  );
+  const availableFields = useMemo(
+    () => (availableFieldsKey ? availableFieldsKey.split('\0') : []),
+    [availableFieldsKey],
   );
 
   const filledRowCount = useMemo(() => rows.filter((row) => row.fieldName?.trim()).length, [rows]);

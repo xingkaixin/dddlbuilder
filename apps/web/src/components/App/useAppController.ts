@@ -304,7 +304,7 @@ export function useAppController() {
     rows,
     setRows,
     showToast,
-    currentState: currentPersistedState,
+    getCurrentState: buildPersistedState,
     applyState: openStateInNewDraftTab,
   });
 

@@ -1,30 +1,19 @@
 import { useCallback, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { AICommentMode, FieldRow } from '@ddlbuilder/shared-types';
+import type { AICommentMode } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import { useAIComments } from '@/hooks/useAIComments';
 import { useToast } from '@/hooks/useToast';
+import { useEditorStore } from '@/stores';
 
 interface UseAICommentActionsParams {
   documentKey: string;
   getCurrentDocumentKey: () => string;
-  schemaName: string;
-  tableName: string;
-  tableComment: string;
-  rows: FieldRow[];
-  setTableComment: (value: string) => void;
-  setRows: (value: FieldRow[] | ((previous: FieldRow[]) => FieldRow[])) => void;
 }
 
 export function useAICommentActions({
   documentKey,
   getCurrentDocumentKey,
-  schemaName,
-  tableName,
-  tableComment,
-  rows,
-  setTableComment,
-  setRows,
 }: UseAICommentActionsParams) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -34,6 +23,11 @@ export function useAICommentActions({
 
   const generateFieldComments = useCallback(
     (mode: AICommentMode, targetLocale?: AppLocale) => {
+      const requestDocumentKey = getCurrentDocumentKey();
+
+      const { schemaName, tableName, tableComment, rows, setTableComment, setRows } =
+        useEditorStore.getState();
+
       void (async () => {
         try {
           const result = await generateComments({
@@ -51,7 +45,7 @@ export function useAICommentActions({
               })),
           });
 
-          if (!result || getCurrentDocumentKey() !== documentKey) return;
+          if (!result || getCurrentDocumentKey() !== requestDocumentKey) return;
 
           const commentsByField = new Map(
             result.fields.map((field) => [field.fieldName, field.fieldComment]),
@@ -82,19 +76,7 @@ export function useAICommentActions({
         }
       })();
     },
-    [
-      documentKey,
-      generateComments,
-      getCurrentDocumentKey,
-      rows,
-      schemaName,
-      setRows,
-      setTableComment,
-      showToast,
-      t,
-      tableComment,
-      tableName,
-    ],
+    [generateComments, getCurrentDocumentKey, showToast, t],
   );
 
   return {

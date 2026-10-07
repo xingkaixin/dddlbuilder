@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Upload } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
@@ -38,19 +38,44 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
   const contentView = view.isShareView ? shareView : editorSurface.editorView;
   const selectContentView = view.isShareView ? setShareView : editorSurface.setEditorView;
 
-  const surfaceModel = {
-    ...editorSurface,
-    editorView: splitPreview ? ('split' as const) : contentView,
-    setEditorView: (nextView: EditorView) => {
+  const setSurfaceView = useCallback(
+    (nextView: EditorView) => {
       setSplitPreview(nextView === 'split');
 
       if (nextView !== 'split') selectContentView(nextView);
     },
+    [selectContentView],
+  );
+  const surfaceModel = {
+    ...editorSurface,
+    editorView: splitPreview ? ('split' as const) : contentView,
+    setEditorView: setSurfaceView,
   };
-  const splitToggle =
-    !view.shouldShowWorkspaceSkeleton && (view.hasTabs || view.isShareView) ? (
-      <WorkspaceSplitToggle checked={splitPreview} onCheckedChange={setSplitPreview} />
-    ) : null;
+  const showSplitToggle = !view.shouldShowWorkspaceSkeleton && (view.hasTabs || view.isShareView);
+
+  const splitToggle = useMemo(
+    () =>
+      showSplitToggle ? (
+        <WorkspaceSplitToggle checked={splitPreview} onCheckedChange={setSplitPreview} />
+      ) : null,
+    [showSplitToggle, splitPreview],
+  );
+  const expandSidebarLabel = t('savedTables.expand');
+
+  const expandSidebarButton = useMemo(
+    () =>
+      view.workspaceSidebarOpen ? undefined : (
+        <button
+          type="button"
+          className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          onClick={view.expandSidebar}
+          aria-label={expandSidebarLabel}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      ),
+    [expandSidebarLabel, view.expandSidebar, view.workspaceSidebarOpen],
+  );
 
   return (
     <>
@@ -85,22 +110,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="workspace-content">
           {!view.isShareView && (
-            <TabBar
-              leadingAction={
-                !view.workspaceSidebarOpen ? (
-                  <button
-                    type="button"
-                    className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    onClick={view.expandSidebar}
-                    aria-label={t('savedTables.expand')}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                ) : undefined
-              }
-              trailingAction={splitToggle}
-              {...tabBar}
-            />
+            <TabBar leadingAction={expandSidebarButton} trailingAction={splitToggle} {...tabBar} />
           )}
           {view.isShareView && splitToggle && (
             <div className="flex shrink-0 justify-end border-b bg-muted/20 px-2 py-1">

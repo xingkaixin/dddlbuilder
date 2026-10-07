@@ -3,7 +3,7 @@ import {
   type WorkspaceScope,
   type WorkspaceSelection,
 } from '@ddlbuilder/shared-types/workspace';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { DDLReviewResult } from '@ddlbuilder/shared-types/ddl-review';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
@@ -92,8 +92,6 @@ export function useSchemaController({
     sqlFormatMode,
     addCount,
     rows,
-    setRows,
-    setTableComment,
     indexes,
     foreignKeys,
     fieldTableFreezeEnabled,
@@ -172,31 +170,30 @@ export function useSchemaController({
   const activeWorkspaceTab = useTabStore((state) =>
     state.tabs.find((tab) => tab.id === state.activeTabId),
   );
-  const getCurrentDocumentKey = () =>
-    buildDocumentKey(
-      workspaceScope,
-      useTabStore.getState().getActiveTab(),
-      derived.buildPersistedState(),
-    );
-  const documentKey = buildDocumentKey(
-    workspaceScope,
-    activeWorkspaceTab,
-    derived.currentPersistedState,
+  const { buildPersistedState, currentPersistedState } = derived;
+
+  const getCurrentDocumentKey = useCallback(
+    () =>
+      buildDocumentKey(
+        workspaceScope,
+        useTabStore.getState().getActiveTab(),
+        buildPersistedState(),
+      ),
+    [buildPersistedState, workspaceScope],
   );
-  const aiCommentActions = useAICommentActions({
-    documentKey,
-    getCurrentDocumentKey,
-    schemaName,
-    tableName,
-    tableComment,
-    rows,
-    setTableComment,
-    setRows,
-  });
+  const documentKey = useMemo(
+    () => buildDocumentKey(workspaceScope, activeWorkspaceTab, currentPersistedState),
+    [workspaceScope, activeWorkspaceTab, currentPersistedState],
+  );
+  const aiCommentActions = useAICommentActions({ documentKey, getCurrentDocumentKey });
+
+  const getCurrentDocumentIdentityKey = useCallback(
+    () => buildDocumentIdentityKey(workspaceScope, useTabStore.getState().getActiveTab()),
+    [workspaceScope],
+  );
   const indexAdvisor = useIndexAdvisorFlow({
     documentKey: buildDocumentIdentityKey(workspaceScope, activeWorkspaceTab),
-    getCurrentDocumentKey: () =>
-      buildDocumentIdentityKey(workspaceScope, useTabStore.getState().getActiveTab()),
+    getCurrentDocumentKey: getCurrentDocumentIdentityKey,
     dbType,
     schemaName,
     tableName,
@@ -217,14 +214,18 @@ export function useSchemaController({
     loadedTableNormalizedName,
     setIsReviewHistoryOpen,
   });
-  const reviewState = {
-    ...reviewActions.reviewState,
-    setReviewResult: (result: DDLReviewResult | null, state: PersistedState) =>
-      reviewActions.reviewState.setReviewResult(
+  const { setReviewResult: setDocumentReviewResult } = reviewActions.reviewState;
+
+  const setReviewResult = useCallback(
+    (result: DDLReviewResult | null, state: PersistedState) =>
+      setDocumentReviewResult(
         result,
         buildDocumentKey(workspaceScope, useTabStore.getState().getActiveTab(), state),
       ),
-  };
+    [setDocumentReviewResult, workspaceScope],
+  );
+  const reviewState = { ...reviewActions.reviewState, setReviewResult };
+
   const schemaLintIssues = useMemo(
     () =>
       lintSchema({
@@ -247,7 +248,7 @@ export function useSchemaController({
     ],
   );
   const shareAction = useShareAction({
-    buildPersistedState: derived.buildPersistedState,
+    buildPersistedState,
     showToast,
   });
 
