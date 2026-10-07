@@ -162,6 +162,16 @@ const renderResetPasswordEmail = (url: string, name: string) => {
   };
 };
 
+// Endpoints that delete every session of the user through deleteUserSessions.
+const USER_SESSION_SWEEP_PATHS = new Set([
+  '/reset-password',
+  '/change-password',
+  '/revoke-sessions',
+  '/delete-user',
+  '/delete-user/callback',
+]);
+const sweptContexts = new WeakSet<object>();
+
 const buildBetterAuth = (env: ApiEnv['Bindings']) => {
   const config = getUserSystemConfig(env);
   const db = drizzle(env.USER_DB);
@@ -236,8 +246,29 @@ const buildBetterAuth = (env: ApiEnv['Bindings']) => {
       },
       session: {
         delete: {
-          after: (session) =>
-            kickWorkspaceSockets(env, { userId: session.userId, sessionId: session.id }),
+          after: async (session, context) => {
+            // Direct adapter calls (revokeUserSessions) kick the whole user themselves.
+            if (!context) return;
+
+            const sweepsUserSessions = USER_SESSION_SWEEP_PATHS.has(context.path);
+
+            if (sweepsUserSessions) {
+              if (sweptContexts.has(context)) return;
+              sweptContexts.add(context);
+            }
+
+            try {
+              await kickWorkspaceSockets(env, {
+                userId: session.userId,
+                ...(sweepsUserSessions ? {} : { sessionId: session.id }),
+              });
+            } catch (error) {
+              console.error('[auth] session socket revocation failed', {
+                userId: session.userId,
+                error,
+              });
+            }
+          },
         },
       },
     },

@@ -58,7 +58,7 @@ describe('auth schema migration parity', () => {
 });
 
 describe('better-auth session revocation integration', () => {
-  it('deletes sessions through the adapter and fires socket revocation hooks', async () => {
+  it('deletes sessions through the adapter and kicks workspace sockets once per user', async () => {
     const { revokeUserSessions, readSessionAccess } = await import('../../lib/auth.js');
     const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
     const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
@@ -87,13 +87,7 @@ describe('better-auth session revocation integration', () => {
       expect((await readSessionAccess(env, 'u', 'w')).sessionIds.has('s')).toBe(true);
       await revokeUserSessions(env, 'u');
       expect((await readSessionAccess(env, 'u', 'w')).sessionIds.size).toBe(0);
-      expect(fetch).toHaveBeenCalledWith(
-        'https://workspace-ydoc.internal/kick',
-        expect.objectContaining({
-          headers: { 'x-ddlbuilder-user-id': 'u', 'x-ddlbuilder-session-id': 's' },
-        }),
-      );
-      expect(fetch).toHaveBeenCalledWith(
+      expect(fetch).toHaveBeenCalledExactlyOnceWith(
         'https://workspace-ydoc.internal/kick',
         expect.objectContaining({ headers: { 'x-ddlbuilder-user-id': 'u' } }),
       );
@@ -144,7 +138,7 @@ describe('better-auth session revocation integration', () => {
         sqlite.prepare("SELECT COUNT(*) AS count FROM session WHERE user_id = 'u-retry'").get(),
       ).toMatchObject({ count: 0 });
       await expect(revokeUserSessions(env, 'u-retry')).resolves.toBeUndefined();
-      expect(fetch).toHaveBeenCalledTimes(5);
+      expect(fetch).toHaveBeenCalledTimes(4);
     } finally {
       vi.useRealTimers();
       vi.restoreAllMocks();
