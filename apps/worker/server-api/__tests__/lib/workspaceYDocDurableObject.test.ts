@@ -615,7 +615,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
 
   it('merges migration records without replacing authoritative state', async () => {
     const checkpointWorkspaceSnapshotEntities = vi.fn().mockResolvedValue({
-      cursor: 1,
       upserted: 1,
       deleted: 0,
       skipped: 0,
@@ -923,7 +922,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test websocket attachment identity
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
-        cursor: 1,
         upserted: 1,
         deleted: 0,
         skipped: 0,
@@ -1039,7 +1037,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test update retry ordering
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
-        cursor: 1,
         upserted: 1,
         deleted: 0,
         skipped: 0,
@@ -1152,7 +1149,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test websocket close metrics
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
-        cursor: 1,
         upserted: 1,
         deleted: 0,
         skipped: 0,
@@ -1225,7 +1221,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test alarm completion
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
-        cursor: 1,
         upserted: 1,
         deleted: 0,
         skipped: 0,

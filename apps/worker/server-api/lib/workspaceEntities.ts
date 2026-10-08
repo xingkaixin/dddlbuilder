@@ -33,7 +33,6 @@ type EntityRow = {
   entityId: string;
   payloadJson: string | null;
   contentHash: string | null;
-  version: number;
   deletedAt: number | null;
   updatedAt: number;
 };
@@ -43,7 +42,7 @@ type EntityKeyRow = {
   entityId: string;
 };
 
-type EntityVersionInput = {
+type EntityWriteInput = {
   userId: string;
   workspaceId: string;
   entityType: WorkspaceEntityType;
@@ -94,7 +93,7 @@ export const getOrCreateDefaultWorkspace = async (
 
   const timestamp = now();
   const workspaceId = buildWorkspaceId();
-  await batchWorkspaceD1Results(env.USER_DB, [
+  await runWorkspaceD1Result(
     env.USER_DB.prepare(
       `
       INSERT INTO workspaces (
@@ -110,16 +109,7 @@ export const getOrCreateDefaultWorkspace = async (
       ON CONFLICT DO NOTHING
     `,
     ).bind(workspaceId, userId, DEFAULT_WORKSPACE_NAME, timestamp, timestamp, timestamp),
-    env.USER_DB.prepare(
-      `
-        INSERT INTO workspace_clocks (workspace_id, next_version)
-        SELECT id, 0
-        FROM workspaces
-        WHERE user_id = ? AND is_default = 1
-        ON CONFLICT(workspace_id) DO NOTHING
-      `,
-    ).bind(userId),
-  ]);
+  );
 
   const created = await readDefaultWorkspace(env, userId);
 
@@ -170,60 +160,24 @@ export const assertWorkspaceOwner = async (
   };
 };
 
-const readWorkspaceCursor = async (
+const writeEntities = async (
   env: ApiEnv['Bindings'],
-  workspaceId: string,
-  metrics?: WorkspaceD1Metrics,
-) => {
-  const row = await firstWorkspaceD1Result<{ cursor: number }>(
-    env.USER_DB.prepare(
-      `
-      SELECT next_version AS cursor
-      FROM workspace_clocks
-      WHERE workspace_id = ?
-      LIMIT 1
-    `,
-    ).bind(workspaceId),
-    metrics,
-  );
-
-  return row?.cursor ?? 0;
-};
-
-const writeEntityVersions = async (
-  env: ApiEnv['Bindings'],
-  inputs: EntityVersionInput[],
+  inputs: EntityWriteInput[],
   metrics?: WorkspaceD1Metrics,
 ) => {
   if (inputs.length === 0) {
-    return null;
+    return;
   }
 
-  const workspaceId = inputs[0].workspaceId;
-
-  if (inputs.some((input) => input.workspaceId !== workspaceId)) {
-    throw new Error('Workspace entity batch must target one workspace');
-  }
-
-  const results = await batchWorkspaceD1Results<{ cursor?: number; version?: number }>(
+  await batchWorkspaceD1Results(
     env.USER_DB,
-    [
-      env.USER_DB.prepare(
-        `
-          UPDATE workspace_clocks
-          SET next_version = next_version + ?
-          WHERE workspace_id = ?
-          RETURNING next_version AS cursor
-        `,
-      ).bind(inputs.length, workspaceId),
-      ...inputs.map((input, index) => {
-        const deletedAt = input.op === 'delete' ? input.updatedAt : null;
-        const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
-        const contentHash = input.op === 'delete' ? null : input.contentHash;
-        const versionOffset = inputs.length - index - 1;
+    inputs.map((input) => {
+      const deletedAt = input.op === 'delete' ? input.updatedAt : null;
+      const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
+      const contentHash = input.op === 'delete' ? null : input.contentHash;
 
-        return env.USER_DB.prepare(
-          `
+      return env.USER_DB.prepare(
+        `
       INSERT INTO workspace_entities (
         workspace_id,
         user_id,
@@ -231,48 +185,31 @@ const writeEntityVersions = async (
         entity_id,
         payload_json,
         content_hash,
-        version,
         deleted_at,
         created_at,
         updated_at
       )
-      SELECT ?, ?, ?, ?, ?, ?, next_version - ?, ?, ?, ?
-      FROM workspace_clocks
-      WHERE workspace_id = ?
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(workspace_id, entity_type, entity_id) DO UPDATE SET
         payload_json = excluded.payload_json,
         content_hash = excluded.content_hash,
-        version = excluded.version,
         deleted_at = excluded.deleted_at,
         updated_at = excluded.updated_at
-      RETURNING version
     `,
-        ).bind(
-          input.workspaceId,
-          input.userId,
-          input.entityType,
-          input.entityId,
-          payloadJson,
-          contentHash,
-          versionOffset,
-          deletedAt,
-          input.updatedAt,
-          input.updatedAt,
-          input.workspaceId,
-        );
-      }),
-    ],
+      ).bind(
+        input.workspaceId,
+        input.userId,
+        input.entityType,
+        input.entityId,
+        payloadJson,
+        contentHash,
+        deletedAt,
+        input.updatedAt,
+        input.updatedAt,
+      );
+    }),
     metrics,
   );
-
-  const cursor = Number(results[0]?.results?.[0]?.cursor);
-  const versions = results.slice(1).map((result) => Number(result.results?.[0]?.version));
-
-  if (!Number.isFinite(cursor) || versions.some((version) => !Number.isFinite(version))) {
-    throw new Error('Workspace entity batch write failed');
-  }
-
-  return { cursor, versions };
 };
 
 const listActiveEntityHashes = async (
@@ -306,12 +243,11 @@ const listActiveEntities = async (
         entity_id AS entityId,
         payload_json AS payloadJson,
         content_hash AS contentHash,
-        version,
         deleted_at AS deletedAt,
         updated_at AS updatedAt
       FROM workspace_entities
       WHERE workspace_id = ? AND deleted_at IS NULL
-      ORDER BY version ASC
+      ORDER BY updated_at ASC
     `,
     ).bind(workspaceId),
     metrics,
@@ -388,7 +324,7 @@ const writeEntityInputs = async (
       updatedAt: entity.sourceUpdatedAt,
     })),
   );
-  await writeEntityVersions(env, entities, metrics);
+  await writeEntities(env, entities, metrics);
 };
 
 const backfillLegacySnapshotEntities = async (
@@ -501,7 +437,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
   const nextKeys = new Set(
     hashedEntities.map((entity) => buildEntityKey(entity.entityType, entity.entityId)),
   );
-  const writes: EntityVersionInput[] = [];
+  const writes: EntityWriteInput[] = [];
   const purges: Pick<EntityRow, 'entityType' | 'entityId'>[] = [];
   let upserted = 0;
   let deleted = 0;
@@ -551,7 +487,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
     });
   }
 
-  const writeResult = await writeEntityVersions(env, writes, metrics);
+  await writeEntities(env, writes, metrics);
 
   if (purges.length > 0) {
     await batchWorkspaceD1Results(
@@ -565,12 +501,6 @@ export const checkpointWorkspaceSnapshotEntities = async (
     );
   }
 
-  const response = {
-    cursor: writeResult?.cursor ?? (await readWorkspaceCursor(env, workspaceId, metrics)),
-    upserted,
-    deleted,
-    skipped,
-  };
   logWorkspaceD1Metrics(
     'checkpoint',
     {
@@ -583,5 +513,5 @@ export const checkpointWorkspaceSnapshotEntities = async (
     metrics,
   );
 
-  return response;
+  return { upserted, deleted, skipped };
 };
