@@ -26,6 +26,11 @@
 - `packages/ddl-core`、`packages/workspace-core` → `@ddlbuilder/shared-types`
 - 多数 package dev 依赖 `@ddlbuilder/tsconfig`
 
+## 文档
+
+- `docs/` 记录产品目标与非目标、架构边界和各模块设计原则，入口为 `docs/README.md`；领域术语在 `CONTEXT.md`。
+- 改动产品范围、模块边界或数据归属前，先读相关文档。改动与文档冲突时，在同一 PR 中更新文档或新增 ADR。
+
 ## 开发
 - 添加依赖时，在目标 workspace 中运行 `pnpm add <package>`，或从仓库根目录运行 `pnpm --filter <workspace> add <package>`。添加到根 workspace 时使用 `pnpm add -w <package>`。不要手动编辑 `package.json`。
 - 多个 workspace 共用的外部依赖版本集中在 `pnpm-workspace.yaml` 的 `catalog` 中。复用已有条目时使用 `pnpm --filter <workspace> add <package>@catalog:`（开发依赖加 `-D`）；将依赖纳入 catalog 时使用 `pnpm add <package>@<版本范围> --save-catalog`。
