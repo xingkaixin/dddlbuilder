@@ -80,9 +80,6 @@ const createWorkspaceSnapshotDb = (
       id, user_id, name, is_default, active_at, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
-  const insertClock = sqlite.prepare(
-    'INSERT INTO workspace_clocks (workspace_id, next_version) VALUES (?, 0)',
-  );
 
   for (const workspace of options.initialWorkspaces ?? []) {
     insertWorkspace.run(
@@ -94,7 +91,6 @@ const createWorkspaceSnapshotDb = (
       workspace.updatedAt,
       workspace.updatedAt,
     );
-    insertClock.run(workspace.id);
   }
 
   return database;
@@ -330,10 +326,10 @@ describe('workspace entity checkpoints', () => {
       deleted: 0,
       skipped: 0,
       d1: {
-        queries: 4,
+        queries: 3,
         rowsRead: 1,
-        rowsWritten: 2,
-        durationMs: 4,
+        rowsWritten: 1,
+        durationMs: 3,
       },
     });
   });
@@ -355,10 +351,10 @@ describe('workspace entity checkpoints', () => {
       workspaceId,
       entityCount: 3,
       d1: {
-        queries: 3,
-        rowsRead: 5,
+        queries: 2,
+        rowsRead: 4,
         rowsWritten: 0,
-        durationMs: 3,
+        durationMs: 2,
       },
     });
   });

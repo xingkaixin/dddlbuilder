@@ -132,6 +132,3 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
     importWorkspaceSnapshotToYDoc(doc, merged);
   }
 };
-
-export const isWorkspaceYDocInitialized = (doc: Y.Doc) =>
-  doc.getMap('meta').get('schemaVersion') != null;

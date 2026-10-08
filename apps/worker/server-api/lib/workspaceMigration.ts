@@ -18,21 +18,23 @@ import {
   buildMigrationWritePlan,
 } from './workspaceMigrationPlan.js';
 
-const readWorkspaceLink = async (
+const isWorkspaceMigrated = async (
   env: ApiEnv['Bindings'],
   userId: string,
   localFingerprint: string,
 ) => {
-  return env.USER_DB.prepare(
+  const row = await env.USER_DB.prepare(
     `
-      SELECT migration_status AS migrationStatus
+      SELECT 1 AS migrated
       FROM workspace_links
       WHERE user_id = ? AND local_fingerprint = ?
       LIMIT 1
     `,
   )
     .bind(userId, localFingerprint)
-    .first<{ migrationStatus: string }>();
+    .first();
+
+  return row !== null;
 };
 
 const recordCompletedWorkspaceMigration = async (
@@ -40,7 +42,6 @@ const recordCompletedWorkspaceMigration = async (
   input: {
     userId: string;
     localFingerprint: string;
-    idempotencyKey: string;
   },
 ) => {
   const now = Date.now();
@@ -50,15 +51,11 @@ const recordCompletedWorkspaceMigration = async (
         id,
         user_id,
         local_fingerprint,
-        migration_status,
-        last_idempotency_key,
         migrated_at,
         created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(user_id, local_fingerprint) DO UPDATE SET
-        migration_status = excluded.migration_status,
-        last_idempotency_key = excluded.last_idempotency_key,
         migrated_at = excluded.migrated_at
     `,
   )
@@ -66,8 +63,6 @@ const recordCompletedWorkspaceMigration = async (
       `workspace-link:${input.userId}:${input.localFingerprint}`,
       input.userId,
       input.localFingerprint,
-      'completed',
-      input.idempotencyKey,
       now,
       now,
     )
@@ -95,9 +90,7 @@ export const analyzeWorkspaceMigration = async (
     };
   }
 
-  const existingLink = await readWorkspaceLink(env, userId, payload.localFingerprint);
-
-  if (existingLink?.migrationStatus === 'completed') {
+  if (await isWorkspaceMigrated(env, userId, payload.localFingerprint)) {
     return {
       status: 'completed',
       createdCount: 0,
@@ -185,9 +178,7 @@ export const commitWorkspaceMigration = async (
     };
   }
 
-  const existingLink = await readWorkspaceLink(env, userId, payload.localFingerprint);
-
-  if (existingLink?.migrationStatus === 'completed') {
+  if (await isWorkspaceMigrated(env, userId, payload.localFingerprint)) {
     return {
       status: 'completed',
       createdCount: 0,
@@ -203,7 +194,6 @@ export const commitWorkspaceMigration = async (
   await recordCompletedWorkspaceMigration(env, {
     userId,
     localFingerprint: payload.localFingerprint,
-    idempotencyKey: payload.idempotencyKey,
   });
 
   return result;

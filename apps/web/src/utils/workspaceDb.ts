@@ -6,7 +6,7 @@ import {
 } from './workspaceScope';
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 17;
+export const DB_VERSION = 18;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
@@ -17,10 +17,13 @@ export const TABLE_TEMPLATE_STORE_NAME = 'table_templates';
 export const WORKSPACE_GLOBAL_DRAFT_STORE_NAME = 'workspace_global_draft';
 export const WORKSPACE_SAVED_DRAFTS_STORE_NAME = 'workspace_saved_drafts';
 export const WORKSPACE_SESSION_STORE_NAME = 'workspace_session';
-export const WORKSPACE_SYNC_META_STORE_NAME = 'workspace_sync_meta';
-export const WORKSPACE_SYNC_OUTBOX_STORE_NAME = 'workspace_sync_outbox';
 export const WORKSPACE_ENTITY_META_STORE_NAME = 'workspace_entity_meta';
-export const WORKSPACE_SYNC_CONFLICT_STORE_NAME = 'workspace_sync_conflicts';
+
+const RETIRED_STORE_NAMES = [
+  'workspace_sync_meta',
+  'workspace_sync_outbox',
+  'workspace_sync_conflicts',
+] as const;
 
 const LEGACY_SCOPE = getWorkspaceScopeStorageKey(getAnonymousWorkspaceScope());
 
@@ -182,10 +185,7 @@ export const openDb = (): Promise<IDBDatabase> =>
           WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
           WORKSPACE_SAVED_DRAFTS_STORE_NAME,
           WORKSPACE_SESSION_STORE_NAME,
-          WORKSPACE_SYNC_META_STORE_NAME,
-          WORKSPACE_SYNC_OUTBOX_STORE_NAME,
           WORKSPACE_ENTITY_META_STORE_NAME,
-          WORKSPACE_SYNC_CONFLICT_STORE_NAME,
         ] as const;
         workspaceStores.forEach((storeName) => {
           if (!db.objectStoreNames.contains(storeName)) {
@@ -193,6 +193,10 @@ export const openDb = (): Promise<IDBDatabase> =>
               keyPath: storeName === WORKSPACE_SAVED_DRAFTS_STORE_NAME ? 'normalizedName' : 'id',
             });
           }
+        });
+
+        RETIRED_STORE_NAMES.forEach((storeName) => {
+          if (db.objectStoreNames.contains(storeName)) db.deleteObjectStore(storeName);
         });
 
         if (transaction && oldVersion < 8 && db.objectStoreNames.contains(STORE_NAME)) {

@@ -59,7 +59,6 @@ export {
   createWorkspaceYDocUpdateFromSnapshot,
   exportWorkspaceYDocToSnapshot,
   importWorkspaceSnapshotToYDoc,
-  isWorkspaceYDocInitialized,
   mergeWorkspaceSnapshotIntoYDoc,
 } from './workspaceYDocCodec';
 export {
