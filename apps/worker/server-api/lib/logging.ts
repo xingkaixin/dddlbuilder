@@ -60,6 +60,10 @@ export const configureWorkerLogging = (
         '**.snapshot',
         '**.yjsUpdate',
       ],
+      // The built-in creditCard pattern also matches all-digit UUID tails such as
+      // `-8633-830276798924`, so card numbers must not touch `-` or word characters.
+      builtins: ['email', 'ipv4', 'phone', 'jwt', 'bearer', 'iban'],
+      patterns: [/(?<![\w-])\d{4}(?:[\s-]?\d{4}){3}(?![\w-])/g],
     },
   });
 };
