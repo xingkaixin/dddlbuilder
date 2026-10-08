@@ -54,7 +54,8 @@ graph TD
 ### 6. User Accounts & Real-Time CRDT Cloud Sync
 - Signing in binds your workspace to your account using **CRDT (Yjs Y.Doc)** for state synchronization.
 - Drafts, saved tables, folder hierarchies, and trash entries sync **incrementally and automatically in the background** across devices.
-- The Settings page provides manual tools ("Sync Now", "Sync to Cloud", "Download from Cloud") along with detailed conflict inspection if concurrent multi-device edits diverge.
+- Sync needs no manual action. Edits are saved to a local copy first. You can keep editing offline, and changes sync automatically when the network returns.
+- "Settings > Workspace Sync" shows the current sync status. If sync fails, click "Retry sync".
 
 ### 7. AI Credits & Intelligent Capabilities
 - DDLBuilder incorporates a complete AI suite: Master Workshop, AI Modify, AI Index Advisor, DDL Reviewer, SQL Explanations, and Smart Comments.
@@ -68,6 +69,6 @@ graph TD
 |---|---|
 | **Where are changes saved?** | Temporary edits remain in Drafts; click the Save icon to create a named Saved Table. |
 | **Can viewers edit a shared link?** | No. Shared links are read-only. Viewers must fork a copy to make edits. |
-| **How does multi-device sync work?** | Sign into your account for automatic incremental background sync, or use the Settings page for manual backups. |
+| **How does multi-device sync work?** | Sign in to the same account. Changes sync automatically in the background; no manual upload or download is needed. |
 | **Will data be lost if I switch machines?** | Guest data is stored locally in the browser. Sign in to guarantee secure cloud persistence. |
 | **Can deleted tables be recovered?** | Yes. Deleted tables move to the Trash bin and can be restored before clearing the trash. |

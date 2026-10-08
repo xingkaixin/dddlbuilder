@@ -47,12 +47,14 @@ Opening a shared link displays an alert stating "Share link does not exist or ha
 
 ### Symptoms
 - Sign-in displays "Email not verified" or "Too many requests".
-- Workspace reports "Sync Failed" or presents conflict alerts.
+- Workspace sync status shows "Sync failed", "Network issue", or "Sync service unavailable".
+- Signing out shows "Sign out was cancelled because cloud sync is not confirmed."
 
 ### Troubleshooting Steps
 1. **Email Verification Code**: Enter the six-digit code from your email to verify your address and sign in automatically. Codes expire after 10 minutes. If the email is missing, check your spam folder or resend after the countdown ends. Use the latest code after resending.
 2. **Rate Limiting Guard**: If prompted with "Too many requests", wait 1–2 minutes before retrying to clear temporary security rate limits.
-3. **Trigger Manual Sync**: Go to "Settings > Workspace Sync", click "Sync Now", and review conflict details if multi-device edits diverged.
+3. **Restore Sync**: Check your network, then click the refresh icon next to the sync status in the header, or click "Retry sync" in "Settings > Workspace Sync".
+4. **Sign-Out Cancelled**: This prevents losing unsynced changes; your local data is kept. Restore sync as in the previous step, wait until the status shows "Synced to cloud", then sign out again.
 
 ---
 
