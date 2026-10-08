@@ -87,16 +87,13 @@ describe('workspaceMigration', () => {
       createPayload(),
     );
     await vi.waitFor(() => expect(authorityMocks.migrateSnapshot).toHaveBeenCalled());
-    const inProgress = sqlite.prepare('SELECT migration_status FROM workspace_links').all();
+    const inProgress = sqlite.prepare('SELECT id FROM workspace_links').all();
     resume();
     await task;
 
-    const completed = sqlite
-      .prepare('SELECT migration_status, created_at FROM workspace_links')
-      .get();
+    const completed = sqlite.prepare('SELECT created_at FROM workspace_links').get();
     sqlite.close();
     expect(inProgress).toEqual([]);
-    expect(completed?.migration_status).toBe('completed');
     expect(Number(completed?.created_at)).toBeGreaterThan(0);
   });
   let cloudDoc: Y.Doc;
@@ -246,30 +243,21 @@ describe('workspaceMigration', () => {
 
     if (!payload) throw new Error('Invalid migration fixture');
     const doc = cloudDoc;
-    let status: string | null = null;
-    let failCompletedOnce = true;
+    let migrated = false;
+    let failWriteOnce = true;
 
     const database = {
       prepare: () => {
-        let args: unknown[] = [];
-
         const statement = {
-          bind: (...values: unknown[]) => {
-            args = values;
-
-            return statement;
-          },
-          first: async () => (status ? { migrationStatus: status } : null),
+          bind: () => statement,
+          first: async () => (migrated ? { migrated: 1 } : null),
           run: async () => {
-            // SAFETY: migration writes bind the next status as the fourth argument.
-            const nextStatus = args[3] as string;
-
-            if (nextStatus === 'completed' && failCompletedOnce) {
-              failCompletedOnce = false;
+            if (failWriteOnce) {
+              failWriteOnce = false;
               throw new Error('workspace_links write failed');
             }
 
-            status = nextStatus;
+            migrated = true;
 
             return { success: true };
           },
