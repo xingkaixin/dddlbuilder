@@ -8,16 +8,18 @@ DDLBuilder helps a user design database schemas, preserve workspace state, and s
 A user's isolated schema-design environment containing drafts, saved tables, saved-table drafts, and folders.
 
 **Workspace Entity**:
-One independently addressable piece of workspace state whose changes can be synchronized.
+One record in a Workspace (a Draft, Saved Table, Saved-Table Draft or folder) addressed by a stable
+id. It is the unit of migration conflict detection and of the server-side projection.
 _Avoid_: Snapshot record, Yjs item
-
-**Workspace Version**:
-The monotonically increasing commit position of a successfully stored Workspace Entity change.
-_Avoid_: Sequence allocation, tentative version
 
 **Workspace Document**:
 The Yjs representation of a Workspace used for collaborative persistence and transport.
 _Avoid_: Snapshot
+
+**Editor Session**:
+Device-local view state, such as the active tab and source. It is never part of the Workspace
+Document and does not synchronize across devices.
+_Avoid_: Workspace state
 
 **Initialized Workspace Document**:
 A Workspace Document whose schema version has been established, even when all entity collections
@@ -57,7 +59,7 @@ An explicit association between a table field and a Field Standard. Changes to t
 _Avoid_: Synchronized copy
 
 **Trash Entry**:
-A soft-deleted Draft or Saved Table retained in the workspace document until it is restored or permanently deleted. The deletion timestamp is synchronized across devices.
+A soft-deleted Draft or Saved Table retained in the Workspace until it is restored or permanently deleted. For a signed-in user the deletion timestamp is part of the Workspace Document and synchronizes across devices.
 _Avoid_: Local-only deleted entity
 
 ## Schema Delivery
@@ -114,6 +116,7 @@ _Avoid_: Idempotency key
 
 ## Migration
 
-**Workspace Import**:
-The idempotent adoption of local workspace state into a user's Workspace.
-_Avoid_: Migration commit
+**Workspace Migration**:
+The idempotent adoption of a device's anonymous workspace state into a user's Workspace. Conflicting
+Workspace Entities are kept as imported copies instead of overwriting account data.
+_Avoid_: Workspace import (import refers to SQL and structure import)
