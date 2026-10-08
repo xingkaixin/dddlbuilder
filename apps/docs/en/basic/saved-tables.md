@@ -31,10 +31,10 @@ Manage multi-project schemas over long lifecycles, organize domain tables into s
 
 ### 5. Account Sign-In & Real-Time Cloud Synchronization
 - **Automatic Incremental Sync**: Signing in binds your workspace to your account, continuously synchronizing drafts, saved tables, folders, and trash state in the background via Y.Doc.
-- **Local-First & Offline Resilience**: Signed-in sessions load instant local cache copies on startup, ensuring that network fluctuations never stall your modeling flow.
-- **Sync Settings Hub**: Visit "Settings > Workspace Sync" to monitor status, trigger an immediate push/pull ("Sync Now"), or inspect conflict details when concurrent edits occur.
-- **Manual Backup and Overwrite**: Use "Sync to Cloud" (push entire local workspace to cloud) or "Download from Cloud" (overwrite local state from cloud) as explicit disaster recovery mechanisms.
-- **First-Time Migration**: When logging in on a browser containing guest data, an onboarding prompt assists in promoting local tables to your account without overwriting existing cloud assets.
+- **Local-First & Offline Use**: On a signed-in device, the page opens from the local copy first. You can keep editing offline; changes are saved locally and sync automatically when the network returns.
+- **Sync Status**: The header and "Settings > Workspace Sync" both show the current sync status. If sync fails, click "Retry sync". No manual upload or download is needed.
+- **Moving Guest Data into Your Account**: After you sign in, if your account workspace is empty and this browser still has data created while signed out, a "Migrate local workspace" prompt appears. Migration never overwrites account content: if the account already has the same item with different content, the local item is saved as a copy with an "(Imported)" suffix; identical items are skipped. You can also choose "Later". The guest data stays in this browser after migration.
+- **Signing Out**: Before signing out, DDLBuilder waits for the cloud to confirm your local changes are saved. If it cannot confirm, sign-out is cancelled and local data is kept; restore sync and try again. After a successful sign-out, the account's local workspace copy is removed from this device.
 
 ---
 
@@ -46,10 +46,6 @@ Manage multi-project schemas over long lifecycles, organize domain tables into s
 - [ ] Deleted tables can be promptly located and restored from the Trash bin.
 
 ## Tips and Common Traps
-
-::: warning Manual Full Overwrites
-"Sync to Cloud" and "Download from Cloud" perform full workspace overwrites. Verify which side holds the definitive dataset before proceeding. Routine editing is reliably handled by automatic incremental sync.
-:::
 
 - **Drafts vs. Saved Tables**: Drafts are scratchpads. Always save milestones explicitly as named tables.
 - **Guest Data Storage**: Guest sessions store data strictly within browser local storage. Clearing browser cache will wipe guest data; sign in to safeguard work in the cloud.
