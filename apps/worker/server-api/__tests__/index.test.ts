@@ -291,6 +291,29 @@ describe('api security guards', () => {
       }
     });
 
+    it('keeps a request id whose UUID tail looks like a card number', async () => {
+      const events: CapturedLogEvent[] = [];
+      const requestId = 'a2f47b9b-7812-4de0-8633-830276798924';
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation((value: CapturedLogEvent) => {
+        if (value.service === 'ddlbuilder-worker') events.push(value);
+      });
+      configureWorkerLogging(true);
+
+      try {
+        await app.fetch(
+          createRequest('/api/share/not-a-uuid', { headers: { 'x-request-id': requestId } }),
+          createEnv(),
+        );
+
+        expect(events).toHaveLength(1);
+        expect(events[0]?.requestId).toBe(requestId);
+      } finally {
+        configureWorkerLogging(false);
+        warnSpy.mockRestore();
+      }
+    });
+
     it('does not emit request events for health checks', async () => {
       const events: CapturedLogEvent[] = [];
 
