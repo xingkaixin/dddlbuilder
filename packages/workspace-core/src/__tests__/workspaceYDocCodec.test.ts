@@ -10,7 +10,6 @@ import {
   createWorkspaceYDocUpdateFromSnapshot,
   exportWorkspaceYDocToSnapshot,
   importWorkspaceSnapshotToYDoc,
-  isWorkspaceYDocInitialized,
   mergeWorkspaceSnapshotIntoYDoc,
 } from '../workspaceYDocCodec';
 
@@ -126,8 +125,6 @@ describe('workspace YDoc codec', () => {
     const doc = new Y.Doc();
     importWorkspaceSnapshotToYDoc(doc, createSnapshot());
 
-    expect(isWorkspaceYDocInitialized(doc)).toBe(true);
-
     const expected = {
       ...createSnapshot(),
       globalDraft: null,
@@ -204,7 +201,6 @@ describe('workspace YDoc codec', () => {
       }),
     );
 
-    expect(isWorkspaceYDocInitialized(doc)).toBe(true);
     expect(exportWorkspaceYDocToSnapshot(doc)).toEqual({
       globalDraft: null,
       drafts: [],
@@ -364,10 +360,6 @@ describe('workspace YDoc codec', () => {
       tableName: 'bare',
       baseSignature: '',
     });
-  });
-
-  it('reports an untouched document as uninitialized', () => {
-    expect(isWorkspaceYDocInitialized(new Y.Doc())).toBe(false);
   });
 
   it('exports without emitting document updates', () => {
