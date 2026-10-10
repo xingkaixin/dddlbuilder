@@ -6,6 +6,21 @@ outline: [2, 2]
 
 ## [Unreleased]
 
+## [0.25.2] - 2026-10-10
+
+### Improved
+- **Editor responsiveness**: Reduce repeated processing when editing fields, switching tables and saving drafts. Defer code generation while typing and load less-used dialogs on demand.
+- **Compact-screen editing**: Adapt table settings and toolbars to narrow screens and prevent touch keyboards from zooming into field editors.
+- **Task-based guides**: Add database design guides and clarify automatic workspace sync, SQL import, relationships, ORM exports and database tools.
+
+### Fixed
+- **Unsaved changes and workspace sync**: Update the active tab's unsaved indicator immediately, ignore outdated workspace refreshes and keep sync connections open during temporary authentication-check failures.
+- **AI credit settlement**: Stop charging rejected upstream attempts, estimate reservations and interrupted responses by character count, and let non-streaming settlement finish after the response is returned.
+- **SQL dialect output**: Keep primary-key constraint names consistent between CREATE and ALTER statements, correct Oracle reserved-name quoting and Hive string escaping, and report unsupported Hive column changes as requiring manual migration.
+
+### Deployment
+- **Workspace storage migrations**: Apply migrations `0023`–`0027` before publishing. They add lookup indexes, update workspace entity keys and remove retired sync metadata. `pnpm deploy:cf` records a D1 recovery point, applies pending migrations and verifies runtime tables before deployment.
+
 ## [0.25.1] - 2026-09-19
 
 ### Improved
