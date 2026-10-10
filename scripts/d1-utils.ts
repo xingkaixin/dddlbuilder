@@ -153,8 +153,7 @@ export const buildD1QueryArgs = (databaseId: string, input: D1Input): string[] =
     'd1',
     'query',
     databaseId,
-    '--sql',
-    input.file ? readFileSync(input.file, 'utf8') : (input.command ?? ''),
+    `--sql=${input.file ? readFileSync(input.file, 'utf8') : (input.command ?? '')}`,
   ];
 };
 

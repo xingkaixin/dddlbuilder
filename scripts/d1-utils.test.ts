@@ -112,13 +112,12 @@ describe('d1-utils', () => {
     ]);
   });
 
-  it('builds a remote cf query without local runtime flags', () => {
-    expect(buildD1QueryArgs('production-db-id', { command: 'SELECT 1' })).toEqual([
+  it('keeps leading SQL comments inside the remote cf query argument', () => {
+    expect(buildD1QueryArgs('production-db-id', { command: '-- migration\nSELECT 1' })).toEqual([
       'd1',
       'query',
       'production-db-id',
-      '--sql',
-      'SELECT 1',
+      '--sql=-- migration\nSELECT 1',
     ]);
   });
 
