@@ -1,9 +1,9 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
-import { buildORMPropertyNames } from './ormNames.js';
+import { buildORMPropertyNames, classIdentifier } from './ormNames.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { buildQualifiedTableName } from '../utils/databaseTypeMapping.js';
 import { resolveFieldDefault } from '../utils/fieldDefault.js';
-import { buildIndexFieldLookup, toPascalCase, formatLineComment } from './shared.js';
+import { buildIndexFieldLookup, formatLineComment } from './shared.js';
 
 export class GORMGenerator implements ORMGenerator {
   generateModel(input: ORMModelInput): string {
@@ -47,7 +47,7 @@ export class GORMGenerator implements ORMGenerator {
       lines.push(formatLineComment(tableComment, '// '));
     }
 
-    const structName = toPascalCase(tableName.trim());
+    const structName = classIdentifier('gorm', tableName);
     lines.push(`type ${structName} struct {`);
 
     for (const field of fields) {
@@ -88,7 +88,7 @@ export class GORMGenerator implements ORMGenerator {
 
     for (const foreignKey of foreignKeys) {
       const fieldName = names.relation(foreignKey);
-      const referencedType = toPascalCase(foreignKey.refTable);
+      const referencedType = classIdentifier('gorm', foreignKey.refTable);
 
       const isNullable = foreignKey.fields.some(
         (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,

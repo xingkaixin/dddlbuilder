@@ -1,14 +1,9 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
-import { buildORMPropertyNames } from './ormNames.js';
+import { buildORMPropertyNames, classIdentifier } from './ormNames.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { escapeSqlString, getDatabaseFamily } from '../utils/databaseFamily.js';
 import { resolveFieldDefault } from '../utils/fieldDefault.js';
-import {
-  buildIndexFieldLookup,
-  toPascalCase,
-  escapePrismaDefault,
-  formatLineComment,
-} from './shared.js';
+import { buildIndexFieldLookup, escapePrismaDefault, formatLineComment } from './shared.js';
 
 const toReferentialAction = (action: string) =>
   action
@@ -43,7 +38,7 @@ export class PrismaGenerator implements ORMGenerator {
     const names = propertyNames.names;
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
-    const modelName = toPascalCase(tableName.trim());
+    const modelName = classIdentifier('prisma', tableName);
     const family = getDatabaseFamily(dbType);
     const supportsSchema = family === 'postgresql' || family === 'sqlserver';
 
@@ -139,7 +134,7 @@ export class PrismaGenerator implements ORMGenerator {
       const localFields = fk.fields.map((f) => names.field(f)).join(', ');
       const refFields = fk.refFields.map((f) => names.reference(fk, f)).join(', ');
       const relationName = names.relation(fk);
-      const relationType = toPascalCase(fk.refTable);
+      const relationType = classIdentifier('prisma', fk.refTable);
 
       const isNullable = fk.fields.some(
         (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,

@@ -1,5 +1,5 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
-import { buildORMPropertyNames } from './ormNames.js';
+import { buildORMPropertyNames, classIdentifier } from './ormNames.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { getDatabaseFamily } from '../utils/databaseFamily.js';
 import { resolveFieldDefault } from '../utils/fieldDefault.js';
@@ -72,7 +72,7 @@ export class JPAGenerator implements ORMGenerator {
     const namespace = schemaName ? `, ${namespaceOption} = ${JSON.stringify(schemaName)}` : '';
     lines.push(`@Table(name = ${JSON.stringify(tableName.trim())}${namespace})`);
 
-    const className = toPascalCase(tableName.trim());
+    const className = classIdentifier('jpa', tableName);
     lines.push(`public class ${className} {`);
     lines.push('');
 
@@ -107,7 +107,7 @@ export class JPAGenerator implements ORMGenerator {
     }
 
     for (const foreignKey of foreignKeys) {
-      const referencedType = toPascalCase(foreignKey.refTable);
+      const referencedType = classIdentifier('jpa', foreignKey.refTable);
       const propertyName = names.relation(foreignKey);
 
       const isNullable = foreignKey.fields.some(
@@ -157,7 +157,7 @@ export class JPAGenerator implements ORMGenerator {
     }
 
     for (const foreignKey of foreignKeys) {
-      const referencedType = toPascalCase(foreignKey.refTable);
+      const referencedType = classIdentifier('jpa', foreignKey.refTable);
       const propertyName = names.relation(foreignKey);
       const accessorName = toPascalCase(propertyName);
       lines.push(`    public ${referencedType} get${accessorName}() {`);

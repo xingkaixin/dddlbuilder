@@ -50,6 +50,20 @@ function propertyIdentifier(target: ORMTarget, name: string): string {
   return candidate;
 }
 
+export function classIdentifier(target: ORMTarget, tableName: string): string {
+  const sanitized = tableName.trim().replace(/[^A-Za-z0-9_]/g, '_');
+
+  const candidate =
+    target === 'sqlalchemy'
+      ? sanitized
+          .split('_')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+          .join('')
+      : toPascalCase(sanitized);
+
+  return /^[A-Za-z]/.test(candidate) ? candidate : `Model_${candidate}`;
+}
+
 function createPropertyAllocator(target: ORMTarget) {
   const used = new Set<string>();
   const nextSuffix = new Map<string, number>();

@@ -1,13 +1,8 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
-import { buildORMPropertyNames } from './ormNames.js';
+import { buildORMPropertyNames, classIdentifier } from './ormNames.js';
 import { getDatabaseFamily } from '../utils/databaseFamily.js';
 import { resolveFieldDefault } from '../utils/fieldDefault.js';
-import {
-  buildIndexFieldLookup,
-  toPascalCase,
-  tsStringLiteral,
-  formatLineComment,
-} from './shared.js';
+import { buildIndexFieldLookup, tsStringLiteral, formatLineComment } from './shared.js';
 import { resolveTypeORMColumn } from './typeormColumn.js';
 
 export class TypeORMGenerator implements ORMGenerator {
@@ -46,12 +41,15 @@ export class TypeORMGenerator implements ORMGenerator {
       ...(foreignKeys.length > 0 ? ['ManyToOne', 'JoinColumn'] : []),
     ];
     lines.push(`import { ${decorators.join(', ')} } from 'typeorm';`);
-    const className = toPascalCase(tableName.trim());
+    const className = classIdentifier('typeorm', tableName);
 
     const referencedEntities = new Map(
       foreignKeys
-        .filter((foreignKey) => toPascalCase(foreignKey.refTable) !== className)
-        .map((foreignKey) => [toPascalCase(foreignKey.refTable), foreignKey.refTable] as const),
+        .map(
+          (foreignKey) =>
+            [classIdentifier('typeorm', foreignKey.refTable), foreignKey.refTable] as const,
+        )
+        .filter(([referencedClass]) => referencedClass !== className),
     );
 
     for (const [referencedClass, referencedTable] of referencedEntities) {
@@ -150,7 +148,7 @@ export class TypeORMGenerator implements ORMGenerator {
     }
 
     for (const foreignKey of foreignKeys) {
-      const referencedClass = toPascalCase(foreignKey.refTable);
+      const referencedClass = classIdentifier('typeorm', foreignKey.refTable);
       const propertyName = names.relation(foreignKey);
 
       const isNullable = foreignKey.fields.some(

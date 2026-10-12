@@ -65,6 +65,52 @@ describe('ORM database name mapping', () => {
     expect(model).not.toContain('@map(');
   });
 
+  it('derives valid class names from table names while keeping physical table names', () => {
+    const input = {
+      dbType: 'mysql' as const,
+      tableName: 'order-items',
+      tableComment: '',
+      fields: [field('id'), field('order_id')],
+      indexes: [primaryKey(['id'])],
+      foreignKeys: [
+        {
+          id: 'order',
+          name: 'fk_order',
+          fields: ['order_id'],
+          refTable: '2024_orders',
+          refFields: ['id'],
+        },
+      ],
+      referencedModels: [{ tableName: '2024_orders', fields: [field('id')] }],
+    };
+
+    const prisma = buildORM('prisma', input);
+    expect(prisma).toContain('model OrderItems {');
+    expect(prisma).toContain('@@map("order-items")');
+    expect(prisma).toContain('fkOrder Model_2024Orders @relation(');
+
+    const typeorm = buildORM('typeorm', input);
+    expect(typeorm).toContain("@Entity('order-items')");
+    expect(typeorm).toContain('export class OrderItems {');
+    expect(typeorm).toContain("import { Model_2024Orders } from './2024_orders';");
+    expect(typeorm).toContain('@ManyToOne(() => Model_2024Orders)');
+
+    const gorm = buildORM('gorm', input);
+    expect(gorm).toContain('type OrderItems struct {');
+    expect(gorm).toMatch(/FkOrder\s+Model_2024Orders\s/);
+    expect(gorm).toContain('func (OrderItems) TableName() string {');
+    expect(gorm).toContain('return "order-items"');
+
+    const jpa = buildORM('jpa', input);
+    expect(jpa).toContain('@Table(name = "order-items")');
+    expect(jpa).toContain('public class OrderItems {');
+    expect(jpa).toContain('private Model_2024Orders fkOrder;');
+
+    const sqlalchemy = buildORM('sqlalchemy', input);
+    expect(sqlalchemy).toContain('class OrderItems(Base):');
+    expect(sqlalchemy).toContain("__tablename__ = 'order-items'");
+  });
+
   it.each([
     { kind: 'index', defaultKind: 'none', decorator: 'Column' },
     { kind: 'primary', defaultKind: 'none', decorator: 'PrimaryColumn' },

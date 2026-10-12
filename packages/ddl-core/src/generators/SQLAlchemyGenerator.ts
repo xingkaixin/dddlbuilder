@@ -1,5 +1,5 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
-import { buildORMPropertyNames } from './ormNames.js';
+import { buildORMPropertyNames, classIdentifier } from './ormNames.js';
 import { getCanonicalBaseType } from '../utils/databaseTypeMapping.js';
 import { resolveFieldDefault } from '../utils/fieldDefault.js';
 import { getORMTypeWithArgs } from '../utils/ormTypeResolver.js';
@@ -64,7 +64,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       lines.push(formatLineComment(tableComment, '# '));
     }
 
-    const className = this.toClassName(tableName.trim());
+    const className = classIdentifier('sqlalchemy', tableName);
     lines.push(`class ${className}(Base):`);
     lines.push(`    __tablename__ = '${escapePythonString(tableName.trim())}'`);
 
@@ -158,12 +158,5 @@ export class SQLAlchemyGenerator implements ORMGenerator {
     }
 
     return lines.join('\n');
-  }
-
-  private toClassName(tableName: string): string {
-    return tableName
-      .split('_')
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-      .join('');
   }
 }
