@@ -140,4 +140,44 @@ describe('useWebMcpTools', () => {
     hook.unmount();
     expect(registrations.size).toBe(0);
   });
+
+  it('stages a patch that only reorders fields', async () => {
+    const state = createState();
+    state.rows.push({ ...state.rows[0], id: 'field-status', fieldName: 'status' });
+
+    renderHook(() =>
+      useWebMcpTools({
+        authStatus: 'signed_out',
+        openAuthDialog: vi.fn(),
+        hydrated: true,
+        isShareView: false,
+        source: { kind: 'draft', draftId: 'global' },
+        state,
+        generatedSql: '',
+        generatedDcl: '',
+        getGeneratedOrm: () => '',
+        replaceState: vi.fn(),
+      }),
+    );
+
+    await waitFor(() => expect(registrations.size).toBe(8));
+    const inspect = registrations.get('inspect_active_schema');
+    const preview = registrations.get('preview_schema_patch');
+
+    if (!inspect || !preview) throw new Error('WebMCP tools are incomplete');
+
+    // SAFETY: The preceding tool execution is checked against the WebMCP result contract used by this scenario.
+    const inspected = (await execute(inspect, { section: 'overview' })) as {
+      baseSignature: string;
+    };
+    let previewed: unknown;
+    await act(async () => {
+      previewed = await execute(preview, {
+        baseSignature: inspected.baseSignature,
+        operations: [{ id: 'move-status', kind: 'field.reorder', fieldId: 'field-status' }],
+      });
+    });
+
+    expect(previewed).toMatchObject({ ok: true, status: 'preview_ready' });
+  });
 });

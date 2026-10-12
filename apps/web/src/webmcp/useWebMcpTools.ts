@@ -110,6 +110,9 @@ const lintState = (state: PersistedState): SchemaLintIssue[] =>
     tableMiscConfig: state.tableMiscConfig,
   });
 
+const namedFieldOrder = (state: PersistedState) =>
+  JSON.stringify(state.rows.filter((row) => row.fieldName.trim()).map((row) => row.id));
+
 const assertReady = (snapshot: RuntimeSnapshot) => {
   if (!snapshot.hydrated) throw new WebMcpToolError('NOT_READY', 'Workspace is still loading');
 };
@@ -171,7 +174,10 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
 
       const diff = diffPersistedState(snapshot.state, candidateState);
 
-      if (!hasTableChanges(diff)) {
+      if (
+        !hasTableChanges(diff) &&
+        namedFieldOrder(snapshot.state) === namedFieldOrder(candidateState)
+      ) {
         throw new WebMcpToolError('NO_CHANGES', 'The proposal changes nothing');
       }
 
