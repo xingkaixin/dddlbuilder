@@ -42,7 +42,8 @@ INSERT OR IGNORE INTO credit_accounts (
   1
 );
 
-INSERT OR IGNORE INTO credit_ledger (
+-- 余额校验触发器先于唯一约束执行，OR IGNORE 拦不住重复执行时的 CREDIT_CONFLICT
+INSERT INTO credit_ledger (
   id,
   user_id,
   kind,
@@ -51,13 +52,21 @@ INSERT OR IGNORE INTO credit_ledger (
   balance_after,
   idempotency_key,
   metadata_json
-) VALUES (
+)
+SELECT
   'ledger_local_seed_signup_bonus',
-  'usr_local_seed',
+  user_id,
   'grant',
   'signup_bonus',
   100000,
-  100000,
+  balance + 100000,
   'seed-signup-bonus',
   '{"seed":true}'
-);
+FROM credit_accounts
+WHERE user_id = 'usr_local_seed'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM credit_ledger
+    WHERE user_id = 'usr_local_seed'
+      AND idempotency_key = 'seed-signup-bonus'
+  );
