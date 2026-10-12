@@ -61,7 +61,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
     return (
       `CREATE ${externalClause}TABLE ${this.formatTableName(tableName)} (\n` +
       `${columnLines.join(',\n')}\n)` +
-      `${partitionClause}${clusteringClause}${commentClause}${storedAsClause}${locationClause};`
+      `${commentClause}${partitionClause}${clusteringClause}${storedAsClause}${locationClause};`
     );
   }
 

@@ -536,12 +536,17 @@ describe('HiveStrategy', () => {
 
     const ddl = strategy.generateTableDDL('events', '事件表', fields, config);
 
-    expect(ddl).toContain('CREATE EXTERNAL TABLE events (');
-    expect(ddl).toContain("COMMENT '事件表'");
-    expect(ddl).toContain("PARTITIONED BY (\n  dt STRING COMMENT '日期分区'\n)");
-    expect(ddl).toContain('CLUSTERED BY (user_id) INTO 8 BUCKETS');
-    expect(ddl).toContain('STORED AS ORC');
-    expect(ddl).toContain("LOCATION '/data/events'");
+    expect(ddl).toBe(
+      'CREATE EXTERNAL TABLE events (\n' +
+        '  id BIGINT\n' +
+        ") COMMENT '事件表'\n" +
+        'PARTITIONED BY (\n' +
+        "  dt STRING COMMENT '日期分区'\n" +
+        ')\n' +
+        'CLUSTERED BY (user_id) INTO 8 BUCKETS\n' +
+        'STORED AS ORC\n' +
+        "LOCATION '/data/events';",
+    );
   });
 
   it('分桶未启用时不应生成 CLUSTERED BY', () => {
