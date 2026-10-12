@@ -105,7 +105,7 @@ export function validateSnapshotStatement(statement: AstStatement, dbType: Datab
 
       if (
         definition.resource === 'constraint' &&
-        !['primary key', 'unique', 'unique key', 'foreign key'].includes(
+        !['primary key', 'unique', 'unique key', 'unique index', 'foreign key'].includes(
           definition.constraint_type?.toLowerCase() ?? '',
         )
       ) {

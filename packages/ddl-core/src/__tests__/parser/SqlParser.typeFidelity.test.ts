@@ -118,4 +118,24 @@ describe('SQL import fidelity', () => {
     expect(results[0].indexes).toEqual([]);
     expect(failed).toEqual([{ statement: indexSql, error: expect.stringContaining('FULLTEXT') }]);
   });
+
+  it.each([false, true])('UNIQUE INDEX 与 UNIQUE 约束同样导入（strict: %s）', async (strict) => {
+    const sql = `CREATE TABLE t (
+      a INT, b INT, c INT, d INT,
+      UNIQUE INDEX u_a (a DESC),
+      CONSTRAINT u_b UNIQUE INDEX ix_b (b),
+      UNIQUE KEY u_c (c),
+      CONSTRAINT u_d UNIQUE (d)
+    );`;
+
+    const { results, failed } = await new SqlParser().parseMultiAsync(sql, 'mysql', strict);
+
+    expect(failed).toEqual([]);
+    expect(results[0].indexes.map(({ name, fields, kind }) => ({ name, fields, kind }))).toEqual([
+      { name: 'u_a', fields: [{ name: 'a', direction: 'DESC' }], kind: 'unique_constraint' },
+      { name: 'u_b', fields: [{ name: 'b', direction: 'ASC' }], kind: 'unique_constraint' },
+      { name: 'u_c', fields: [{ name: 'c', direction: 'ASC' }], kind: 'unique_constraint' },
+      { name: 'u_d', fields: [{ name: 'd', direction: 'ASC' }], kind: 'unique_constraint' },
+    ]);
+  });
 });

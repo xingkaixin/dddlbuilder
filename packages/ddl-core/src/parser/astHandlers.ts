@@ -389,7 +389,7 @@ export function parseCreateTable(
       } else if (def.resource === 'constraint') {
         if (def.constraint_type === 'primary key') {
           pushPrimaryKey(result, buildIndexFields(def.definition), def.constraint || def.index);
-        } else if (def.constraint_type === 'unique key' || def.constraint_type === 'unique') {
+        } else if (['unique', 'unique key', 'unique index'].includes(def.constraint_type ?? '')) {
           const fields = buildIndexFields(def.definition || []);
 
           const indexName =
