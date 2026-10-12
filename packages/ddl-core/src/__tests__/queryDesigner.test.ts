@@ -144,6 +144,20 @@ describe('query designer', () => {
       }),
     ).toThrow('text field');
   });
+  it.each([
+    ['mysql', 'mediumint unsigned', 'tinytext'],
+    ['mysql', 'int', "enum('a','b')"],
+    ['postgresql', 'smallserial', 'character(10)'],
+    ['postgresql', 'int2', 'bpchar'],
+    ['postgresql', 'float4', 'citext'],
+  ] as const)('accepts %s %s for SUM and %s for LIKE', (dialect, numeric, text) => {
+    const tables = queryFixture(dialect);
+    tables[1].rows[1].fieldType = numeric;
+    tables[0].rows[1].fieldType = text;
+    const design = query(tables);
+    design.filters.push({ ...design.filters[0], operator: 'LIKE' });
+    expect(buildSelectQuery(tables, design).sql).toContain('SUM(t2.');
+  });
   it('rejects mixed dialects, views, ambiguous models and invalid relationships', () => {
     const tables = queryFixture();
     expect(() => getQueryRelations([tables[0], { ...tables[1], dbType: 'postgresql' }])).toThrow(

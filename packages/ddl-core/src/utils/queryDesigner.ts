@@ -17,6 +17,40 @@ export const QUERY_OPERATORS = [
   'IS NOT NULL',
 ] as const;
 
+// TYPE_ALIASES 不归一化 int2/int8/float4/character/bpchar，这里按原名匹配
+const NUMERIC_TYPES = new Set([
+  'tinyint',
+  'smallint',
+  'mediumint',
+  'int',
+  'bigint',
+  'int2',
+  'int8',
+  'decimal',
+  'float',
+  'float4',
+  'double',
+  'real',
+  'smallserial',
+  'serial',
+  'bigserial',
+]);
+
+const TEXT_TYPES = new Set([
+  'char',
+  'character',
+  'bpchar',
+  'nchar',
+  'varchar',
+  'nvarchar',
+  'tinytext',
+  'text',
+  'mediumtext',
+  'longtext',
+  'citext',
+  'enum',
+]);
+
 export interface QueryField {
   table: string;
   field: string;
@@ -182,21 +216,7 @@ export function buildSelectQuery(tables: PersistedState[], design: QueryDesign) 
     const reference =
       column.field === '*' && column.aggregate === 'COUNT' ? { sql: '*', type: '' } : field(column);
 
-    if (
-      ['SUM', 'AVG'].includes(column.aggregate) &&
-      ![
-        'int',
-        'smallint',
-        'tinyint',
-        'bigint',
-        'decimal',
-        'float',
-        'double',
-        'real',
-        'serial',
-        'bigserial',
-      ].includes(reference.type)
-    )
+    if (['SUM', 'AVG'].includes(column.aggregate) && !NUMERIC_TYPES.has(reference.type))
       throw new Error('SUM and AVG require a numeric field.');
 
     if ((hasAggregate || groups.size > 0) && !column.aggregate && !groups.has(reference.sql))
@@ -219,12 +239,7 @@ export function buildSelectQuery(tables: PersistedState[], design: QueryDesign) 
 
     if (filter.operator.startsWith('IS ')) return `${reference.sql} ${filter.operator}`;
 
-    if (
-      filter.operator === 'LIKE' &&
-      !['varchar', 'nvarchar', 'char', 'nchar', 'text', 'mediumtext', 'longtext'].includes(
-        reference.type,
-      )
-    )
+    if (filter.operator === 'LIKE' && !TEXT_TYPES.has(reference.type))
       throw new Error('LIKE requires a text field.');
     parameters.push(filter.value);
 
