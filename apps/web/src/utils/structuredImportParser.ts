@@ -214,10 +214,9 @@ function throwExcelWorkbookLimitError(): never {
 function parseDelimitedTable(content: string, fallbackTableName: string): ParsedResult {
   const delimiter = detectDelimiter(content);
 
-  const rows = content
-    .split(/\r?\n/)
-    .map((line) => parseDelimitedLine(line, delimiter))
-    .filter((row) => row.some((cell) => cell.trim()));
+  const rows = parseDelimitedRows(content, delimiter).filter((row) =>
+    row.some((cell) => cell.trim()),
+  );
   assertStructuredImportLimits([Math.max(0, rows.length - 1)]);
 
   return tableFromRows(rows, fallbackTableName);
@@ -485,14 +484,15 @@ function detectDelimiter(content: string): ',' | '\t' | ';' {
   );
 }
 
-function parseDelimitedLine(line: string, delimiter: string): string[] {
-  const cells: string[] = [];
+function parseDelimitedRows(content: string, delimiter: string): string[][] {
+  const rows: string[][] = [];
+  let cells: string[] = [];
   let current = '';
   let quoted = false;
 
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
-    const next = line[i + 1];
+  for (let i = 0; i < content.length; i += 1) {
+    const char = content[i];
+    const next = content[i + 1];
 
     if (char === '"' && quoted && next === '"') {
       current += '"';
@@ -502,14 +502,20 @@ function parseDelimitedLine(line: string, delimiter: string): string[] {
     } else if (char === delimiter && !quoted) {
       cells.push(current.trim());
       current = '';
+    } else if (char === '\n' && !quoted) {
+      cells.push(current.trim());
+      rows.push(cells);
+      cells = [];
+      current = '';
     } else {
       current += char;
     }
   }
 
   cells.push(current.trim());
+  rows.push(cells);
 
-  return cells;
+  return rows;
 }
 
 function sanitizeIdentifier(value: string | undefined, fallback: string): string {

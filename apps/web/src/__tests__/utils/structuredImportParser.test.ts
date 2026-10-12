@@ -41,6 +41,19 @@ describe('structuredImportParser', () => {
     );
   });
 
+  it('keeps line breaks inside quoted CSV cells', () => {
+    const [table] = parseStructuredImportText(
+      'csv',
+      'fieldName,fieldType,fieldComment\r\nid,bigint,"first line\r\nsecond line"\r\nname,varchar(100),Name',
+      'users.csv',
+    );
+
+    expect(table.fields).toEqual([
+      expect.objectContaining({ name: 'id', comment: 'first line\r\nsecond line' }),
+      expect.objectContaining({ name: 'name', type: 'varchar(100)', comment: 'Name' }),
+    ]);
+  });
+
   it('parses a JSON Schema object into one table', () => {
     const [table] = parseStructuredImportText(
       'json',
