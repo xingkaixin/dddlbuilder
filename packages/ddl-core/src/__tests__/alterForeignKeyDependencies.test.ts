@@ -118,6 +118,42 @@ describe('ALTER foreign key dependencies', () => {
     }
   });
 
+  it('rebuilds unchanged SQL Server keys and indexes around altered columns', () => {
+    const original = state('sqlserver');
+
+    const otherIndex: IndexDefinition = {
+      id: 'other',
+      name: 'ix_other',
+      kind: 'index',
+      fields: [{ name: 'other_id', direction: 'ASC' }],
+    };
+    const before = { ...original, indexes: [...original.indexes, otherIndex] };
+
+    const after = {
+      ...before,
+      rows: before.rows.map((row) =>
+        row.id === 'other_id' ? row : { ...row, fieldType: 'bigint' },
+      ),
+    };
+    const diff = diffPersistedState(before, after);
+    expect(diff.indexes).toEqual([]);
+
+    for (const [sql, type] of [
+      [generateAlterDDL(diff), 'BIGINT'],
+      [generateRollbackDDL(diff), 'INT'],
+    ]) {
+      expect(sql).toBe(
+        '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.\n\n' +
+          'ALTER TABLE items DROP CONSTRAINT fk_parent;\n\n' +
+          'ALTER TABLE items DROP CONSTRAINT items_pkey;\n\n' +
+          `ALTER TABLE items ALTER COLUMN id ${type} NOT NULL;\n\n` +
+          `ALTER TABLE items ALTER COLUMN parent_id ${type} NULL;\n\n` +
+          'ALTER TABLE items ADD CONSTRAINT items_pkey PRIMARY KEY (id);\n\n' +
+          'ALTER TABLE items ADD CONSTRAINT fk_parent FOREIGN KEY (parent_id) REFERENCES items (id) ON DELETE CASCADE;',
+      );
+    }
+  });
+
   it('leaves unrelated foreign keys untouched', () => {
     const before = state('mysql');
 

@@ -3,6 +3,7 @@ import type { IndexDiff, ModifyFieldDiff, RenameFieldDiff, TableDiff } from '../
 import { getDatabaseFamily } from '../databaseFamily';
 import { getSchemaAndTable } from '../databaseTypeMapping';
 import { getSqlIdentifierKey } from '../sqlIdentifiers';
+import { altersSqlServerColumn } from './sqlServerColumnStatements';
 
 export function planDependencies(tableName: string, diff: TableDiff, dbType: DatabaseType) {
   const family = getDatabaseFamily(dbType);
@@ -50,8 +51,6 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
     }
   }
 
-  const indexes = diff.indexes.filter((change) => !consumed.has(change));
-
   const removedFields = new Set(
     diff.fields.filter((field) => field.type === 'remove').map((field) => key(field.fieldName)),
   );
@@ -64,6 +63,25 @@ export function planDependencies(tableName: string, diff: TableDiff, dbType: Dat
       )
       .map((field) => key(field.oldField.name)),
   );
+  const alteredSqlServerColumns = new Set(
+    family === 'sqlserver'
+      ? diff.fields
+          .filter(
+            (field): field is ModifyFieldDiff | RenameFieldDiff =>
+              (field.type === 'modify' || field.type === 'rename') && altersSqlServerColumn(field),
+          )
+          .map((field) => key(field.oldField.name))
+      : [],
+  );
+  const indexes: IndexDiff[] = [
+    ...diff.indexes.filter((change) => !consumed.has(change)),
+    ...(diff.unchangedIndexes ?? [])
+      .filter((index) => index.fields.some((field) => alteredSqlServerColumns.has(key(field.name))))
+      .flatMap((index) => [
+        { type: 'remove' as const, index },
+        { type: 'add' as const, index },
+      ]),
+  ];
   const droppedKeys = indexes.filter(
     (change) => change.type === 'remove' && (family === 'mysql' || change.index.kind !== 'index'),
   );

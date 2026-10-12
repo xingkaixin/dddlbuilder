@@ -4,7 +4,9 @@ import { formatSqlIdentifier, unquoteSqlIdentifier } from '../sqlIdentifiers';
 import { buildDialectDefaultClause } from '../../strategies/dialectColumn';
 import { buildColumnComment } from '../../strategies/dialectComments';
 
-export function getSqlServerColumnChangeNotice(diff: ModifyFieldDiff): string {
+type ColumnChange = Pick<ModifyFieldDiff, 'oldField' | 'newField'>;
+
+export function getSqlServerColumnChangeNotice(diff: ColumnChange): string {
   if (
     (diff.oldField.defaultKind === 'auto_increment') !==
     (diff.newField.defaultKind === 'auto_increment')
@@ -13,6 +15,15 @@ export function getSqlServerColumnChangeNotice(diff: ModifyFieldDiff): string {
   }
 
   return '';
+}
+
+export function altersSqlServerColumn(diff: ColumnChange): boolean {
+  return (
+    !getSqlServerColumnChangeNotice(diff) &&
+    (diff.newField.nullable !== diff.oldField.nullable ||
+      getFieldTypeForDatabase('sqlserver', diff.newField.type) !==
+        getFieldTypeForDatabase('sqlserver', diff.oldField.type))
+  );
 }
 
 export function generateSqlServerDropDefault(tableName: string, fieldName: string): string {
@@ -49,7 +60,7 @@ export function generateSqlServerModifyColumn(tableName: string, diff: ModifyFie
   if (replaceDefault && oldDefault)
     statements.push(generateSqlServerDropDefault(tableName, field.name));
 
-  if (typeChanged || field.nullable !== diff.oldField.nullable) {
+  if (altersSqlServerColumn(diff)) {
     statements.push(
       `ALTER TABLE ${tableName} ALTER COLUMN ${fieldName} ${type} ${field.nullable ? 'NULL' : 'NOT NULL'};`,
     );
