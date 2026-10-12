@@ -1,7 +1,8 @@
 import { bindings, defineConfig, exports, triggers } from '@cloudflare/config';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import * as Schema from 'effect/Schema';
 import { URL, fileURLToPath } from 'node:url';
+import { parseEnv } from 'node:util';
 import e2eVars from './cloudflare.e2e.json' with { type: 'json' };
 
 export const workerDirectory = fileURLToPath(new URL('.', import.meta.url));
@@ -14,6 +15,19 @@ const DeploymentSettings = Schema.Struct({
   kvId: nonEmpty,
   vars: Schema.Record(Schema.String, Schema.String),
 });
+
+// The cf Vite plugin only feeds `.dev.vars` into declared secrets, so local values become text bindings.
+const readDevVars = () => {
+  const file = new URL('../../.dev.vars', import.meta.url);
+
+  if (!existsSync(file)) return {};
+
+  return Object.fromEntries(
+    Object.entries(parseEnv(readFileSync(file, 'utf8'))).flatMap(([key, value]) =>
+      value === undefined ? [] : [[key, value]],
+    ),
+  );
+};
 
 export const getWorkerConfig = (mode = 'development') => {
   if (!['development', 'production', 'e2e', 'example'].includes(mode)) {
@@ -38,7 +52,9 @@ export const getWorkerConfig = (mode = 'development') => {
     : undefined;
 
   const name = e2e ? 'ddlbuilder-e2e' : 'ddlbuilder';
-  const vars = deployment?.vars ?? (e2e ? e2eVars : { ENVIRONMENT: 'development' });
+
+  const vars =
+    deployment?.vars ?? (e2e ? e2eVars : { ENVIRONMENT: 'development', ...readDevVars() });
 
   return {
     name,

@@ -120,7 +120,7 @@ CF_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 
 ### 环境变量
 
-本地 Worker 变量示例见 `.env.vars.example`；复制为 `.dev.vars` 后按需填写：
+本地 Worker 变量示例见 `.env.vars.example`；复制为项目根目录下的 `.dev.vars` 后按需填写：
 
 - `OPENAI_BASE_URL`：OpenAI 兼容接口地址
 - `OPENAI_API_KEY`：模型服务密钥
