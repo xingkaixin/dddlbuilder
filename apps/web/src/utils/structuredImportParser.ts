@@ -278,8 +278,8 @@ function parseJsonSchemaImport(content: string): ParsedResult[] {
   }
 
   const root = parsed;
-  const schemas = collectSchemas(root);
-  const entries = Object.entries(schemas);
+  const rootIsTable = root.properties !== undefined || root.allOf !== undefined;
+  const entries = rootIsTable ? [] : Object.entries(collectSchemas(root));
 
   const tableSchemas: Array<[string, JsonSchemaLike]> =
     entries.length > 0

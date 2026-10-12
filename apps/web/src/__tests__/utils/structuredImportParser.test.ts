@@ -101,6 +101,29 @@ describe('structuredImportParser', () => {
     );
   });
 
+  it.each(['$defs', 'definitions'])('keeps the root JSON Schema object beside %s', (key) => {
+    const tables = parseStructuredImportText(
+      'json',
+      JSON.stringify({
+        title: 'User',
+        type: 'object',
+        properties: {
+          id: { $ref: `#/${key}/Id` },
+          name: { type: 'string' },
+        },
+        [key]: { Id: { type: 'integer' } },
+      }),
+      'schema.json',
+    );
+
+    expect(tables).toHaveLength(1);
+    expect(tables[0].tableName).toBe('User');
+    expect(tables[0].fields).toEqual([
+      expect.objectContaining({ name: 'id', type: 'bigint' }),
+      expect.objectContaining({ name: 'name', type: 'varchar(255)' }),
+    ]);
+  });
+
   it('rejects CSV input with more than 1,000 fields', () => {
     const content = [
       'fieldName,fieldType',
