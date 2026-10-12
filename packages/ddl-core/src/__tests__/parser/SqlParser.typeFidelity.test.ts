@@ -89,6 +89,9 @@ describe('SQL import fidelity', () => {
     ['CHARACTER SET', 'name VARCHAR(20) CHARACTER SET utf8mb4'],
     ['COLLATE', 'name VARCHAR(20) COLLATE utf8mb4_bin'],
     ['ZEROFILL', 'code INT(8) ZEROFILL'],
+    ['FULLTEXT', 'note TEXT, FULLTEXT INDEX ft_note (note)'],
+    ['SPATIAL', 'area GEOMETRY NOT NULL, SPATIAL KEY sp_area (area)'],
+    ['15 位有效数字', 'rate DECIMAL(30,20) DEFAULT 0.12345678901234567890'],
   ])('批量导入将无法保留的 %s 定义报告为失败', async (feature, definition) => {
     const unsupportedSql = `CREATE TABLE unsupported_table (${definition});`;
 
@@ -101,5 +104,18 @@ describe('SQL import fidelity', () => {
     expect(failed).toEqual([
       { statement: unsupportedSql, error: expect.stringContaining(feature) },
     ]);
+  });
+
+  it.each([false, true])('CREATE FULLTEXT INDEX 报告为失败（strict: %s）', async (strict) => {
+    const indexSql = 'CREATE FULLTEXT INDEX ft_note ON notes (note);';
+
+    const { results, failed } = await new SqlParser().parseMultiAsync(
+      `CREATE TABLE notes (id INT, note TEXT); ${indexSql}`,
+      'mysql',
+      strict,
+    );
+
+    expect(results[0].indexes).toEqual([]);
+    expect(failed).toEqual([{ statement: indexSql, error: expect.stringContaining('FULLTEXT') }]);
   });
 });

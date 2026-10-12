@@ -8,7 +8,12 @@ import {
   type PreprocessResult,
   type PreprocessedTableMetadata,
 } from './preprocessors/index.js';
-import { parseCreateIndex, parseCreateTable, parseAlterTable } from './astHandlers.js';
+import {
+  assertRepresentableIndexType,
+  parseCreateIndex,
+  parseCreateTable,
+  parseAlterTable,
+} from './astHandlers.js';
 import {
   isAlterTableStmt,
   isCreateIndexStmt,
@@ -454,6 +459,12 @@ export class SqlParser {
         const parsed = Array.isArray(ast) ? ast : [ast];
 
         if (strict) parsed.forEach((statement) => validateSnapshotStatement(statement, dbType));
+
+        // CREATE INDEX is applied after this loop, where failures are no longer tied to a statement.
+        for (const statement of parsed) {
+          if (isCreateIndexStmt(statement)) assertRepresentableIndexType(statement.index_type);
+        }
+
         statements.push(...parsed);
 
         for (const stmt of parsed) {

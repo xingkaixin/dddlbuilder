@@ -60,6 +60,12 @@ const UNSUPPORTED_COLUMN_ATTRIBUTES = [
   ['collate', '列级 COLLATE'],
 ] as const;
 
+export const assertRepresentableIndexType = (indexType: string | null | undefined) => {
+  const unsupported = indexType?.match(/^(fulltext|spatial)\b/i)?.[1];
+
+  if (unsupported) throw SqlParseError.unsupported(`${unsupported.toUpperCase()} 索引`);
+};
+
 const generatedIdentifierPart = (name: string) =>
   unquoteSqlIdentifier(name).replace(/[^\p{L}\p{N}_$]+/gu, '_');
 
@@ -230,6 +236,16 @@ function mapColumnToField(
           ? value.replace(/''/g, "'")
           : value.replace(/""/g, '"');
     } else if (literalType === 'number' || literalType === 'bool' || (!literalType && !funcName)) {
+      const numericText = readField(val, 'value');
+
+      // node-sql-parser builds decimal literals with parseFloat().toFixed(), so values beyond
+      // 15 significant digits may already differ from the SQL text.
+      if (
+        literalType === 'number' &&
+        typeof numericText === 'string' &&
+        numericText.replace(/\D/g, '').replace(/^0+/, '').length > 15
+      )
+        throw SqlParseError.unsupported('超过 15 位有效数字的数值默认值（可改用带引号的写法）');
       defaultKind = 'constant';
       defaultValue = normalizeLiteral(val);
     } else if (funcName && ['now', 'current_timestamp', 'sysdate'].includes(funcName)) {
@@ -387,6 +403,7 @@ export function parseCreateTable(
           throw SqlParseError.unsupported('CHECK 约束');
         }
       } else if (def.resource === 'index') {
+        assertRepresentableIndexType(def.keyword);
         const fields = buildIndexFields(def.definition || []);
         pushIndex(
           result,
@@ -423,6 +440,7 @@ export function parseCreateIndex(
 
   const fields: IndexField[] = buildIndexFields(columns);
 
+  assertRepresentableIndexType(stmt.index_type);
   pushIndex(
     result,
     indexName,
