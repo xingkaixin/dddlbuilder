@@ -184,18 +184,40 @@ export class JPAGenerator implements ORMGenerator {
 
     if (hasIdClass) {
       const idNames = idFields.map((field) => names.field(field.name));
+      const idTypes = idFields.map((field) => mapCanonicalToORMType('jpa', field.type));
       lines.push(`    public static class ${idClassName} implements Serializable {`);
 
-      for (const [index, field] of idFields.entries()) {
-        lines.push(
-          `        private ${mapCanonicalToORMType('jpa', field.type)} ${idNames[index]};`,
-        );
+      for (const [index, name] of idNames.entries()) {
+        lines.push(`        private ${idTypes[index]} ${name};`);
       }
 
       lines.push('');
       lines.push(`        public ${idClassName}() {`);
       lines.push(`        }`);
       lines.push('');
+      lines.push(
+        `        public ${idClassName}(${idNames.map((name, index) => `${idTypes[index]} ${name}`).join(', ')}) {`,
+      );
+
+      for (const name of idNames) {
+        lines.push(`            this.${name} = ${name};`);
+      }
+
+      lines.push(`        }`);
+      lines.push('');
+
+      for (const [index, name] of idNames.entries()) {
+        const accessorName = toPascalCase(name);
+        lines.push(`        public ${idTypes[index]} get${accessorName}() {`);
+        lines.push(`            return this.${name};`);
+        lines.push(`        }`);
+        lines.push('');
+        lines.push(`        public void set${accessorName}(${idTypes[index]} ${name}) {`);
+        lines.push(`            this.${name} = ${name};`);
+        lines.push(`        }`);
+        lines.push('');
+      }
+
       lines.push(`        @Override`);
       lines.push(`        public boolean equals(Object o) {`);
       lines.push(`            if (this == o) return true;`);

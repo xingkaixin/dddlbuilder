@@ -478,6 +478,24 @@ describe('JPAGenerator', () => {
       ].join('\n'),
     );
     expect(result).toContain(
+      [
+        '        public OrderItemsId(Long orderId, Integer lineNo) {',
+        '            this.orderId = orderId;',
+        '            this.lineNo = lineNo;',
+        '        }',
+      ].join('\n'),
+    );
+    expect(result).toContain(
+      [
+        '        public Integer getLineNo() {',
+        '            return this.lineNo;',
+        '        }',
+        '',
+        '        public void setLineNo(Integer lineNo) {',
+        '            this.lineNo = lineNo;',
+      ].join('\n'),
+    );
+    expect(result).toContain(
       'return Objects.equals(this.orderId, other.orderId) && Objects.equals(this.lineNo, other.lineNo);',
     );
     expect(result).toContain('return Objects.hash(this.orderId, this.lineNo);');
