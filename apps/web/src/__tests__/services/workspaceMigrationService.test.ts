@@ -474,6 +474,27 @@ describe('workspaceMigrationService legacy promotion', () => {
     doc.destroy();
   });
 
+  it('legacy 分区只有活动会话时应提升并恢复出草稿', async () => {
+    await writeLegacyWorkspaceSession(
+      {
+        activeSource: { kind: 'draft', draftId: 'session-only' },
+        activeState: createState('session_only'),
+        updatedAt: 5,
+      },
+      legacyScope,
+    );
+
+    const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
+
+    expect(snapshot?.drafts).toEqual([
+      expect.objectContaining({
+        draftId: 'session-only',
+        state: expect.objectContaining({ tableName: 'session_only' }),
+        updatedAt: 5,
+      }),
+    ]);
+  });
+
   it('没有 legacy 数据时应返回 null', async () => {
     expect(await prepareLegacyWorkspaceSnapshot(scope)).toBeNull();
   });

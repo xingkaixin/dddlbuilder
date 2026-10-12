@@ -2,7 +2,7 @@ import {
   decodeApiError,
   decodeWorkspaceMigrationResponse,
 } from '@ddlbuilder/shared-types/api-contracts';
-import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
+import type { PersistedState, SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import * as Option from 'effect/Option';
 import type {
@@ -45,6 +45,11 @@ const hasSchemaDocumentContent = (state: SchemaDocumentState): boolean =>
   state.objectType === 'view'
     ? Boolean(state.viewDefinition?.trim())
     : state.rows.some((row) => row.fieldName.trim().length > 0);
+
+const getMeaningfulActiveState = (session: { activeState?: PersistedState | null } | null) =>
+  session?.activeState && hasSchemaDocumentContent(session.activeState)
+    ? session.activeState
+    : null;
 
 const stripUpdatedAtFromSnapshot = (snapshot: WorkspaceMigrationSnapshot) => ({
   globalDraft: snapshot.globalDraft ? { state: snapshot.globalDraft.state } : null,
@@ -127,10 +132,7 @@ export const collectWorkspaceMigrationPayload = async (
     ),
     ...trashedDrafts,
   ].map(({ draftId, record }) => ({ draftId, ...record }));
-  const meaningfulActiveState =
-    activeSession?.activeState && hasSchemaDocumentContent(activeSession.activeState)
-      ? activeSession.activeState
-      : null;
+  const meaningfulActiveState = getMeaningfulActiveState(activeSession);
 
   const hasData =
     Boolean(meaningfulActiveState) ||
@@ -201,7 +203,8 @@ export const promoteLegacyUserWorkspaceData = async (
     savedTables.length === 0 &&
     trashedTables.length === 0 &&
     Object.keys(savedDrafts).length === 0 &&
-    folders.length === 0
+    folders.length === 0 &&
+    !getMeaningfulActiveState(session)
   ) {
     return false;
   }
