@@ -418,7 +418,7 @@ export class SqlParser {
 
     for (const stmt of statements) {
       if (isCreateTableStmt(stmt)) {
-        parseCreateTable(stmt, result, serializeExpression);
+        parseCreateTable(stmt, result, serializeExpression, getDatabaseFamily(dbType));
       }
     }
 
@@ -480,7 +480,7 @@ export class SqlParser {
             foreignKeys: [],
             authObjects: [],
           };
-          parseCreateTable(stmt, tableResult, serializeExpression);
+          parseCreateTable(stmt, tableResult, serializeExpression, getDatabaseFamily(dbType));
 
           if (tableResult.tableName) results.push(tableResult);
         }

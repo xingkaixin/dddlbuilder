@@ -6,6 +6,7 @@ import {
   type ColumnTypeNode,
 } from './astTypes.js';
 import { SqlParseError } from './SqlParseError.js';
+import type { DatabaseFamily } from '../utils/databaseFamily.js';
 
 // These helpers consume node-sql-parser's undocumented AST values and normalize them before
 // domain handlers use them; the parser is the only owner of this dynamic representation.
@@ -37,11 +38,53 @@ export function normalizeColumnName(column: unknown): string {
   return stringifyAstValue(column);
 }
 
+// node-sql-parser reads INT8/FLOAT4/SERIAL8 as INT/FLOAT/SERIAL with a length but no parentheses.
+const SIZED_TYPE_ALIASES = new Map([
+  [
+    'INT',
+    new Map([
+      [1, 'TINYINT'],
+      [2, 'SMALLINT'],
+      [3, 'MEDIUMINT'],
+      [4, 'INTEGER'],
+      [8, 'BIGINT'],
+    ]),
+  ],
+  [
+    'FLOAT',
+    new Map([
+      [4, 'FLOAT'],
+      [8, 'DOUBLE PRECISION'],
+    ]),
+  ],
+  [
+    'SERIAL',
+    new Map([
+      [2, 'SMALLSERIAL'],
+      [4, 'SERIAL'],
+      [8, 'BIGSERIAL'],
+    ]),
+  ],
+]);
+
+const sizedTypeAlias = (definition: ColumnTypeNode, databaseFamily?: DatabaseFamily) => {
+  if (!definition.dataType || definition.parentheses || definition.expr) return undefined;
+  const dataType = definition.dataType.toUpperCase();
+  const size = Number(definition.length);
+
+  // PostgreSQL FLOAT means double precision, while MySQL REAL means double precision.
+  if (dataType === 'FLOAT' && size === 4 && databaseFamily === 'postgresql') return 'REAL';
+
+  return SIZED_TYPE_ALIASES.get(dataType)?.get(size);
+};
+
 export function buildTypeString(
   definition: ColumnTypeNode | undefined,
   serializeExpression: (value: unknown) => string,
+  databaseFamily?: DatabaseFamily,
 ): string {
-  const baseType = definition?.dataType || '';
+  const alias = definition && sizedTypeAlias(definition, databaseFamily);
+  const baseType = alias ?? (definition?.dataType || '');
   const length = definition?.length;
   const scale = definition?.scale;
 
@@ -59,7 +102,7 @@ export function buildTypeString(
 
   if (definition?.expr) {
     parameters = serializeExpression(definition.expr);
-  } else if (length !== undefined && length !== null) {
+  } else if (!alias && length !== undefined && length !== null) {
     parameters = `(${length}${normalizedScale === undefined ? '' : `,${normalizedScale}`})`;
   }
 

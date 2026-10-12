@@ -65,6 +65,31 @@ describe('SQL import fidelity', () => {
     expect(reparsed.fields).toEqual(result.fields);
   });
 
+  it('PostgreSQL 定宽类型别名导入后保持存储宽度', async () => {
+    const sql = `CREATE TABLE metrics (
+      a int2, b int4, c int8, d float4, e float8, f serial2, g serial8
+    );`;
+    const parser = new SqlParser();
+    const result = await parser.parseAsync(sql, 'postgresql');
+
+    expect(result.fields.map((field) => field.type)).toEqual([
+      'SMALLINT',
+      'INTEGER',
+      'BIGINT',
+      'REAL',
+      'DOUBLE PRECISION',
+      'SMALLSERIAL',
+      'BIGSERIAL',
+    ]);
+
+    const generated = buildDDL({ ...result, dbType: 'postgresql' });
+    const reparsed = await parser.parseAsync(generated, 'postgresql');
+    expect(reparsed.fields).toEqual(result.fields);
+
+    const mysql = await parser.parseAsync('CREATE TABLE metrics (d float4);', 'mysql');
+    expect(mysql.fields[0].type).toBe('FLOAT');
+  });
+
   it('PostgreSQL 生成的 BY DEFAULT IDENTITY 列可重新导入并生成相同 DDL', async () => {
     const parser = new SqlParser();
 

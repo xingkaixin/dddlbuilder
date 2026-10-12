@@ -21,6 +21,7 @@ export type ColumnTypeNode = {
   dataType?: string;
   length?: number | string;
   scale?: number | string | null;
+  parentheses?: boolean;
   suffix?: unknown[] | null;
   expr?: unknown;
   array?: { dimension?: number };

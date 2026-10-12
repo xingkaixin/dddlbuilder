@@ -27,6 +27,7 @@ import {
   normalizeLiteral,
 } from './normalizers.js';
 import { unquoteSqlIdentifier } from '../utils/sqlIdentifiers.js';
+import type { DatabaseFamily } from '../utils/databaseFamily.js';
 import { SqlParseError } from './SqlParseError.js';
 
 // This module is the node-sql-parser AST adapter. Runtime field inspection stays here until
@@ -189,13 +190,14 @@ function normalizeEngineName(engine: string): string {
 function mapColumnToField(
   colDef: ColumnDefNode,
   serializeExpression: (value: unknown) => string,
+  databaseFamily?: DatabaseFamily,
 ): NormalizedField {
   for (const [attribute, feature] of UNSUPPORTED_COLUMN_ATTRIBUTES) {
     if (colDef[attribute]) throw SqlParseError.unsupported(feature);
   }
 
   const name = normalizeColumnName(colDef.column);
-  const typeStr = buildTypeString(colDef.definition, serializeExpression);
+  const typeStr = buildTypeString(colDef.definition, serializeExpression, databaseFamily);
 
   // Comment
   let comment = '';
@@ -290,6 +292,7 @@ export function parseCreateTable(
   stmt: CreateTableStmt,
   result: ParsedResult,
   serializeExpression: (value: unknown) => string,
+  databaseFamily?: DatabaseFamily,
 ) {
   // 1. Table Name
   if (stmt.table && stmt.table.length > 0) {
@@ -366,7 +369,7 @@ export function parseCreateTable(
   if (stmt.create_definitions) {
     stmt.create_definitions.forEach((def) => {
       if (def.resource === 'column') {
-        const field = mapColumnToField(def, serializeExpression);
+        const field = mapColumnToField(def, serializeExpression, databaseFamily);
         result.fields.push(field);
 
         // Handle inline primary key / unique
