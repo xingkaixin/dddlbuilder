@@ -1,7 +1,7 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { buildORMPropertyNames, classIdentifier } from './ormNames.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
-import { buildQualifiedTableName } from '../utils/databaseTypeMapping.js';
+import { buildQualifiedTableName, getCanonicalBaseType } from '../utils/databaseTypeMapping.js';
 import { resolveFieldDefault } from '../utils/fieldDefault.js';
 import { buildIndexFieldLookup, formatLineComment } from './shared.js';
 
@@ -57,13 +57,22 @@ export class GORMGenerator implements ORMGenerator {
       const defaultValue = resolveFieldDefault(field, input.dbType);
       const isNullable = field.nullable && !isPk;
 
+      const isAutoIncrement =
+        defaultValue.kind === 'auto_increment' ||
+        ['serial', 'bigserial'].includes(getCanonicalBaseType(field.type));
+      const isPrioritizedPk =
+        primaryFields.size === 1 || ['id', 'ID'].includes(field.name) || fieldName === 'ID';
+
       const tagParts: string[] = [`column:${field.name}`];
 
       if (isPk) {
         tagParts.push('primaryKey');
 
-        if (defaultValue.kind === 'auto_increment') {
+        if (isAutoIncrement) {
           tagParts.push('autoIncrement');
+        } else if (isPrioritizedPk && /^u?int\d*$/.test(goType)) {
+          // GORM auto-increments its prioritized integer primary key unless the tag is present.
+          tagParts.push('autoIncrement:false');
         }
       }
 

@@ -372,6 +372,35 @@ describe('GORMGenerator', () => {
     expect(result).toContain('return "user_info"');
   });
 
+  it.each([
+    { names: ['id'], tags: ['column:id;primaryKey;autoIncrement:false"'] },
+    {
+      names: ['tenant_id', 'id'],
+      tags: ['column:id;primaryKey;autoIncrement:false"', 'column:tenant_id;primaryKey"'],
+    },
+  ])(
+    'disables default auto increment on manual integer primary keys: $names',
+    ({ names, tags }) => {
+      const result = buildORM('gorm', {
+        dbType: 'mysql',
+        tableName: 'items',
+        tableComment: '',
+        fields: [
+          { ...sampleFields[0], comment: '', defaultKind: 'none' },
+          { ...sampleFields[0], name: 'tenant_id', comment: '', defaultKind: 'none' },
+        ],
+        indexes: [
+          {
+            ...sampleIndexes[0],
+            fields: names.map((name) => ({ name, direction: 'ASC' as const })),
+          },
+        ],
+      });
+
+      for (const tag of tags) expect(result).toContain(tag);
+    },
+  );
+
   it('does not import time when not needed', () => {
     const fields: NormalizedField[] = [
       {

@@ -165,7 +165,7 @@ describe('ORM property identifiers', () => {
       fields: [...input.fields, field('table_name')],
     });
     expect(model).toMatch(/UserId\s+int\s+`gorm:"column:user_id"/);
-    expect(model).toMatch(/UserId_2\s+int\s+`gorm:"column:userId;primaryKey"/);
+    expect(model).toMatch(/UserId_2\s+int\s+`gorm:"column:userId;primaryKey;autoIncrement:false"/);
     expect(model).toMatch(/UserId_3\s+Members\s+`gorm:"foreignKey:UserId;references:UserId_2"/);
     expect(model).toMatch(/TableName_\s+int\s+`gorm:"column:table_name"/);
     expect(model).toMatch(/Field_1st\s+int/);
