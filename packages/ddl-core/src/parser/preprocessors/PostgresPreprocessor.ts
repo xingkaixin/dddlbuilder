@@ -1,7 +1,11 @@
-import { mapSqlCode, splitSqlStatements, type SqlScanOptions } from '../sqlSegments.js';
+import {
+  LEADING_SQL_TRIVIA,
+  mapSqlCode,
+  splitSqlStatements,
+  type SqlScanOptions,
+} from '../sqlSegments.js';
 import type { PreprocessResult } from './types.js';
 
-const LEADING_SQL_TRIVIA = /^(?:\s|--[^\r\n]*|\/\*[\s\S]*?\*\/)*/;
 const TABLE_COMMENT_PATTERN = /^COMMENT\s+ON\s+TABLE\s+([\w".]+)\s+IS\s+'((?:''|[^'])*)'\s*;$/i;
 const COLUMN_COMMENT_PATTERN =
   /^COMMENT\s+ON\s+COLUMN\s+([\w".]+)\.(["\w]+)\s+IS\s+'((?:''|[^'])*)'\s*;$/i;

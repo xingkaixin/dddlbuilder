@@ -1,16 +1,21 @@
 import type { PreprocessResult } from './types.js';
-import { mapDoubleQuotedSqlIdentifiers, mapSqlCode } from '../sqlSegments.js';
+import {
+  LEADING_SQL_TRIVIA,
+  mapDoubleQuotedSqlIdentifiers,
+  mapSqlCode,
+  splitSqlStatements,
+} from '../sqlSegments.js';
 
 const DELIMITED_IDENTIFIER_PATTERN = String.raw`"(?:[^"]|"")*"`;
 const IDENTIFIER_PATTERN = String.raw`(?:${DELIMITED_IDENTIFIER_PATTERN}|[\p{L}\p{N}_$#]+)`;
 const QUALIFIED_IDENTIFIER_PATTERN = String.raw`${IDENTIFIER_PATTERN}(?:\s*\.\s*${IDENTIFIER_PATTERN})*`;
 const TABLE_COMMENT_PATTERN = new RegExp(
-  String.raw`\bCOMMENT\s+ON\s+TABLE\s+(${QUALIFIED_IDENTIFIER_PATTERN})\s+IS\s+'((?:''|[^'])*)'\s*;`,
-  'giu',
+  String.raw`^COMMENT\s+ON\s+TABLE\s+(${QUALIFIED_IDENTIFIER_PATTERN})\s+IS\s+'((?:''|[^'])*)'\s*;$`,
+  'iu',
 );
 const COLUMN_COMMENT_PATTERN = new RegExp(
-  String.raw`\bCOMMENT\s+ON\s+COLUMN\s+(${QUALIFIED_IDENTIFIER_PATTERN})\s*\.\s*(${IDENTIFIER_PATTERN})\s+IS\s+'((?:''|[^'])*)'\s*;`,
-  'giu',
+  String.raw`^COMMENT\s+ON\s+COLUMN\s+(${QUALIFIED_IDENTIFIER_PATTERN})\s*\.\s*(${IDENTIFIER_PATTERN})\s+IS\s+'((?:''|[^'])*)'\s*;$`,
+  'iu',
 );
 
 /**
@@ -42,17 +47,28 @@ export function preprocessOracle(sql: string): PreprocessResult {
   };
 
   // Extract and remove COMMENT statements
-  sql = sql.replace(TABLE_COMMENT_PATTERN, (_m, tableName, comment) => {
-    getTableMetadata(tableName).tableComment = unescapeComment(comment);
+  sql = splitSqlStatements(sql, { backslashEscapes: false })
+    .map((statement) => {
+      const code = statement.replace(LEADING_SQL_TRIVIA, '');
+      const table = code.match(TABLE_COMMENT_PATTERN);
 
-    return '';
-  });
+      if (table) {
+        getTableMetadata(table[1]).tableComment = unescapeComment(table[2]);
 
-  sql = sql.replace(COLUMN_COMMENT_PATTERN, (_m, tableName, column, comment) => {
-    getTableMetadata(tableName).columnComments[column] = unescapeComment(comment);
+        return '';
+      }
 
-    return '';
-  });
+      const column = code.match(COLUMN_COMMENT_PATTERN);
+
+      if (column) {
+        getTableMetadata(column[1]).columnComments[column[2]] = unescapeComment(column[3]);
+
+        return '';
+      }
+
+      return statement;
+    })
+    .join('');
 
   // Remove synonym creation statements
   sql = sql.replace(/CREATE\s+OR\s+REPLACE\s+PUBLIC\s+SYNONYM[\s\S]*?;/gi, '');

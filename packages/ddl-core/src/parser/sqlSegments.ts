@@ -2,6 +2,8 @@ export interface SqlScanOptions {
   backslashEscapes?: boolean;
 }
 
+export const LEADING_SQL_TRIVIA = /^(?:\s|--[^\r\n]*|\/\*[\s\S]*?\*\/)*/;
+
 function* sqlSegments(sql: string, { backslashEscapes = true }: SqlScanOptions = {}) {
   const tokens = /[eE]'|'|"|`|\[|--|\/\*|\$(?:[\p{L}_][\p{L}\p{N}_]*)?\$/gu;
   let offset = 0;

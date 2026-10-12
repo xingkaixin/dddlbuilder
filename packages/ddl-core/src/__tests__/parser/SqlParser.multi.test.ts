@@ -118,6 +118,20 @@ describe('SqlParser.parseMultiAsync', () => {
       'mysql',
     );
     expect(mysql.results[0].fields[0].comment).toBe('');
+
+    const oracle = await parser.parseMultiAsync(
+      `CREATE TABLE t (id INT, note VARCHAR2(100) DEFAULT 'COMMENT ON TABLE t IS '''';');
+      -- COMMENT ON TABLE t IS 'line';
+      /* COMMENT ON COLUMN t.id IS 'block'; */
+      COMMENT ON COLUMN t.note IS 'real';`,
+      'oracle',
+    );
+    expect(oracle.failed).toEqual([]);
+    expect(oracle.results[0].tableComment).toBe('');
+    expect(oracle.results[0].fields.map((field) => [field.comment, field.defaultValue])).toEqual([
+      ['', ''],
+      ['real', "COMMENT ON TABLE t IS '';"],
+    ]);
   });
 
   it('MySQL 分区配置只应用到目标表', async () => {
