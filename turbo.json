@@ -8,7 +8,8 @@
     },
     "dev": {
       "persistent": true,
-      "cache": false
+      "cache": false,
+      "passThroughEnv": ["CF_PERSIST_DIR", "WRANGLER_PERSIST_DIR"]
     },
     "typecheck": {
       "dependsOn": ["^typecheck"]
