@@ -96,6 +96,30 @@ describe('SqlParser.parseMultiAsync', () => {
     expect(beta?.fields[0].comment).toBe('Beta id');
   });
 
+  it('字符串和注释里的 COMMENT ON 文本不作为注释语句', async () => {
+    const parser = new SqlParser();
+
+    const postgres = await parser.parseMultiAsync(
+      `CREATE TABLE t (id INT, note TEXT DEFAULT $$COMMENT ON TABLE t IS 'wrong';$$);
+      -- COMMENT ON TABLE t IS 'line';
+      /* COMMENT ON COLUMN t.id IS 'block'; */
+      COMMENT ON COLUMN t.note IS 'real';`,
+      'postgresql',
+    );
+    expect(postgres.failed).toEqual([]);
+    expect(postgres.results[0].tableComment).toBe('');
+    expect(postgres.results[0].fields.map((field) => [field.comment, field.defaultValue])).toEqual([
+      ['', ''],
+      ['real', "$$COMMENT ON TABLE t IS 'wrong';$$"],
+    ]);
+
+    const mysql = await parser.parseMultiAsync(
+      "CREATE TABLE t (id INT); /* COMMENT ON COLUMN t.id IS 'block'; */",
+      'mysql',
+    );
+    expect(mysql.results[0].fields[0].comment).toBe('');
+  });
+
   it('MySQL 分区配置只应用到目标表', async () => {
     const sql = `
       CREATE TABLE alpha (id INT)

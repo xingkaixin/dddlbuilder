@@ -313,7 +313,9 @@ export class SqlParser {
       }
     }
 
-    const standalone = extractStandaloneComments(sqlToParse);
+    const standalone = extractStandaloneComments(sqlToParse, {
+      backslashEscapes: databaseFamily !== 'postgresql',
+    });
     sqlToParse = standalone.sql;
     mergeCommentSource(standalone);
 

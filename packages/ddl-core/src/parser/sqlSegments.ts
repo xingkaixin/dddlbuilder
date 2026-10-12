@@ -1,4 +1,4 @@
-interface SqlScanOptions {
+export interface SqlScanOptions {
   backslashEscapes?: boolean;
 }
 
