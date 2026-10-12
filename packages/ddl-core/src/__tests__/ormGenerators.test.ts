@@ -443,6 +443,44 @@ describe('JPAGenerator', () => {
     expect(result).toContain('private String name;');
     expect(result).toContain('public Long getId()');
     expect(result).toContain('public void setId(Long id)');
+    expect(result).not.toContain('@IdClass');
+  });
+
+  it('maps composite primary keys through a serializable IdClass', () => {
+    const result = buildORM('jpa', {
+      dbType: 'mysql',
+      tableName: 'order_items',
+      tableComment: '',
+      fields: [
+        { ...sampleFields[0], name: 'order_id', comment: '', defaultKind: 'none' },
+        { ...sampleFields[0], name: 'line_no', type: 'int', comment: '', defaultKind: 'none' },
+      ],
+      indexes: [
+        {
+          ...sampleIndexes[0],
+          fields: [
+            { name: 'order_id', direction: 'ASC' },
+            { name: 'line_no', direction: 'ASC' },
+          ],
+        },
+      ],
+    });
+    expect(result).toContain('import java.io.Serializable;');
+    expect(result).toContain('import java.util.Objects;');
+    expect(result).toContain('@IdClass(OrderItems.OrderItemsId.class)\npublic class OrderItems {');
+    expect(result).toContain(
+      [
+        '    public static class OrderItemsId implements Serializable {',
+        '        private Long orderId;',
+        '        private Integer lineNo;',
+        '',
+        '        public OrderItemsId() {',
+      ].join('\n'),
+    );
+    expect(result).toContain(
+      'return Objects.equals(this.orderId, other.orderId) && Objects.equals(this.lineNo, other.lineNo);',
+    );
+    expect(result).toContain('return Objects.hash(this.orderId, this.lineNo);');
   });
 
   it('imports BigDecimal when needed', () => {

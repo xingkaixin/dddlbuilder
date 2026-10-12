@@ -36,6 +36,10 @@ export class JPAGenerator implements ORMGenerator {
     const names = propertyNames.names;
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
+    const className = classIdentifier('jpa', tableName);
+    const idClassName = `${className}Id`;
+    const idFields = fields.filter((field) => primaryFields.has(field.name));
+    const hasIdClass = idFields.length > 1;
 
     const imports = new Set<string>(['jakarta.persistence.*']);
 
@@ -55,6 +59,11 @@ export class JPAGenerator implements ORMGenerator {
 
     if (needsUUID) imports.add('java.util.UUID');
 
+    if (hasIdClass) {
+      imports.add('java.io.Serializable');
+      imports.add('java.util.Objects');
+    }
+
     for (const imp of imports) {
       lines.push(`import ${imp};`);
     }
@@ -72,7 +81,10 @@ export class JPAGenerator implements ORMGenerator {
     const namespace = schemaName ? `, ${namespaceOption} = ${JSON.stringify(schemaName)}` : '';
     lines.push(`@Table(name = ${JSON.stringify(tableName.trim())}${namespace})`);
 
-    const className = classIdentifier('jpa', tableName);
+    if (hasIdClass) {
+      lines.push(`@IdClass(${className}.${idClassName}.class)`);
+    }
+
     lines.push(`public class ${className} {`);
     lines.push('');
 
@@ -166,6 +178,40 @@ export class JPAGenerator implements ORMGenerator {
       lines.push('');
       lines.push(`    public void set${accessorName}(${referencedType} ${propertyName}) {`);
       lines.push(`        this.${propertyName} = ${propertyName};`);
+      lines.push(`    }`);
+      lines.push('');
+    }
+
+    if (hasIdClass) {
+      const idNames = idFields.map((field) => names.field(field.name));
+      lines.push(`    public static class ${idClassName} implements Serializable {`);
+
+      for (const [index, field] of idFields.entries()) {
+        lines.push(
+          `        private ${mapCanonicalToORMType('jpa', field.type)} ${idNames[index]};`,
+        );
+      }
+
+      lines.push('');
+      lines.push(`        public ${idClassName}() {`);
+      lines.push(`        }`);
+      lines.push('');
+      lines.push(`        @Override`);
+      lines.push(`        public boolean equals(Object o) {`);
+      lines.push(`            if (this == o) return true;`);
+      lines.push(`            if (!(o instanceof ${idClassName})) return false;`);
+      lines.push(`            ${idClassName} other = (${idClassName}) o;`);
+      lines.push(
+        `            return ${idNames.map((name) => `Objects.equals(this.${name}, other.${name})`).join(' && ')};`,
+      );
+      lines.push(`        }`);
+      lines.push('');
+      lines.push(`        @Override`);
+      lines.push(`        public int hashCode() {`);
+      lines.push(
+        `            return Objects.hash(${idNames.map((name) => `this.${name}`).join(', ')});`,
+      );
+      lines.push(`        }`);
       lines.push(`    }`);
       lines.push('');
     }
