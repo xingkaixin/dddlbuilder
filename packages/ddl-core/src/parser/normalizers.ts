@@ -63,7 +63,9 @@ export function buildTypeString(
     parameters = `(${length}${normalizedScale === undefined ? '' : `,${normalizedScale}`})`;
   }
 
-  return `${baseType}${parameters}${suffix ? ` ${suffix}` : ''}`;
+  const arrayDimensions = definition?.array ? '[]'.repeat(definition.array.dimension ?? 1) : '';
+
+  return `${baseType}${parameters}${suffix ? ` ${suffix}` : ''}${arrayDimensions}`;
 }
 
 export function extractFunctionName(val: unknown): string | null {

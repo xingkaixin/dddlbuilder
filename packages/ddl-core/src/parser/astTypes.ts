@@ -23,6 +23,7 @@ export type ColumnTypeNode = {
   scale?: number | string | null;
   suffix?: unknown[] | null;
   expr?: unknown;
+  array?: { dimension?: number };
 };
 
 export type ColumnDefNode = {
@@ -38,6 +39,7 @@ export type ColumnDefNode = {
   default_val?: { value?: unknown };
   on_update?: { value?: unknown };
   generated?: unknown;
+  generated_by_default?: unknown;
   check?: unknown;
   character_set?: unknown;
   collate?: unknown;

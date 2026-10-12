@@ -209,7 +209,7 @@ function mapColumnToField(
     }
   }
 
-  if (colDef.primary_key) {
+  if (colDef.primary_key || colDef.generated_by_default) {
     nullable = false;
   }
 
@@ -243,7 +243,7 @@ function mapColumnToField(
   }
 
   // Auto Increment
-  if (colDef.auto_increment) {
+  if (colDef.auto_increment || colDef.generated_by_default) {
     defaultKind = 'auto_increment';
     defaultValue = '';
   }
