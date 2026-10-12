@@ -90,6 +90,22 @@ describe('SQL import fidelity', () => {
     expect(mysql.fields[0].type).toBe('FLOAT');
   });
 
+  it('PostgreSQL character(n) 与 bpchar(n) 导入为定长 CHAR', async () => {
+    const parser = new SqlParser();
+
+    const result = await parser.parseAsync(
+      'CREATE TABLE character (code character(3), label bpchar(2), note character varying(4));',
+      'postgresql',
+    );
+
+    expect(result.tableName).toBe('character');
+    expect(result.fields.map((field) => field.type)).toEqual([
+      'CHAR(3)',
+      'CHAR(2)',
+      'CHARACTER VARYING(4)',
+    ]);
+  });
+
   it('PostgreSQL 生成的 BY DEFAULT IDENTITY 列可重新导入并生成相同 DDL', async () => {
     const parser = new SqlParser();
 

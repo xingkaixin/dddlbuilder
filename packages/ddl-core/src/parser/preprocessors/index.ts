@@ -4,6 +4,7 @@ export { preprocessSqlServer } from './SqlServerPreprocessor.js';
 export {
   extractStandaloneComments,
   foldUnquotedPostgresIdentifiers,
+  normalizePostgresCharTypes,
 } from './PostgresPreprocessor.js';
 
 // Types

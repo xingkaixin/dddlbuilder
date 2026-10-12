@@ -19,6 +19,17 @@ export function foldUnquotedPostgresIdentifiers(sql: string): string {
   );
 }
 
+// node-sql-parser 把 character(n) 解析成 character varying(n)，也不认识 bpchar(n)；两者都等同 char(n)。
+// 关键字后的同名表引用不是类型。
+const CHAR_TYPE_ALIAS =
+  /(?<!\b(?:table|exists|references|on|into)\s+)(?<![\p{L}\p{N}_$.])(?:character|bpchar)(?=\s*\()/giu;
+
+export function normalizePostgresCharTypes(sql: string): string {
+  return mapSqlCode(sql, (code) => code.replace(CHAR_TYPE_ALIAS, 'char'), {
+    backslashEscapes: false,
+  });
+}
+
 /**
  * Extract standalone COMMENT ON statements from PostgreSQL SQL
  *

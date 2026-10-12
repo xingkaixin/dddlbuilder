@@ -5,6 +5,7 @@ import {
   preprocessSqlServer,
   extractStandaloneComments,
   foldUnquotedPostgresIdentifiers,
+  normalizePostgresCharTypes,
   type PreprocessResult,
   type PreprocessedTableMetadata,
 } from './preprocessors/index.js';
@@ -256,7 +257,9 @@ export class SqlParser {
     const databaseFamily = getDatabaseFamily(dbType);
 
     const normalizedSql =
-      databaseFamily === 'postgresql' ? foldUnquotedPostgresIdentifiers(sql) : sql;
+      databaseFamily === 'postgresql'
+        ? normalizePostgresCharTypes(foldUnquotedPostgresIdentifiers(sql))
+        : sql;
     let sqlToParse = normalizedSql;
     const tableMetadata = new Map<string, PreprocessedTableMetadata>();
     const partitionConfigs = new Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>();
