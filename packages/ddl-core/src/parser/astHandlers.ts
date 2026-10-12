@@ -477,6 +477,7 @@ export function parseAlterTable(
         break;
       case 'unique':
       case 'unique key':
+      case 'unique index':
         pushIndex(
           result,
           name || `uk_${fields.map((field) => generatedIdentifierPart(field.name)).join('_')}`,

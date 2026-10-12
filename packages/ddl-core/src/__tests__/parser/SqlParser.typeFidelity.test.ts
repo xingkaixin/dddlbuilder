@@ -138,4 +138,17 @@ describe('SQL import fidelity', () => {
       { name: 'u_d', fields: [{ name: 'd', direction: 'ASC' }], kind: 'unique_constraint' },
     ]);
   });
+
+  it.each([false, true])('ALTER TABLE ADD UNIQUE INDEX 同样导入（strict: %s）', async (strict) => {
+    const { results, failed } = await new SqlParser().parseMultiAsync(
+      'CREATE TABLE t (a INT); ALTER TABLE t ADD UNIQUE INDEX u_a (a);',
+      'mysql',
+      strict,
+    );
+
+    expect(failed).toEqual([]);
+    expect(results[0].indexes).toMatchObject([
+      { name: 'u_a', fields: [{ name: 'a' }], kind: 'unique_constraint' },
+    ]);
+  });
 });
