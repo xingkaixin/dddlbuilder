@@ -146,7 +146,7 @@ it('keeps D1 failure causes while excluding SQL from native recovery spans', asy
       failure: { _tag: 'SqlError', reason: { cause: expect.any(Error) } },
     });
     // oxlint-enable anti-slop-effect/no-manual-tagged-construction
-    const query = spans.find((span) => span.name === 'sql.execute');
+    const query = spans.find((span) => span.name === 'sqlite');
     expect(query?.parent).toBe('ai.usage.reclaim.scan');
     expect(Object.fromEntries(query?.attributes ?? [])).toEqual({
       'ai.outcome': 'failed',

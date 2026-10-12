@@ -255,13 +255,13 @@ test.describe('Cloudflare runtime bindings', () => {
         expect.arrayContaining([
           'ai.usage.recovery',
           'ai.usage.reclaim.scan',
-          'sql.execute',
+          'sqlite',
           'ai.budget.reconcile',
           'ai.governance.cleanup',
         ]),
       );
     const scan = rows.find((row) => row[0] === 'ai.usage.reclaim.scan');
-    const query = rows.find((row) => row[0] === 'sql.execute' && row[2] === scan?.[1]);
+    const query = rows.find((row) => row[0] === 'sqlite' && row[2] === scan?.[1]);
 
     if (!query) throw new Error('Missing recovery SQL span');
     expect(JSON.parse(query[3])).toMatchObject({ 'ai.outcome': 'succeeded' });

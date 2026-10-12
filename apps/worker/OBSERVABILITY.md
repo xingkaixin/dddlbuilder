@@ -18,7 +18,7 @@ AI 业务阶段使用 Effect span，由 `server-api/lib/aiTracing.ts` 接到 Clo
 
 Cron 的 `ai.usage.recovery` 覆盖用量回收、预算补结算和过期治理记录清理，完整 Promise 交给 `waitUntil`。子阶段包括 `ai.usage.reclaim`、`ai.budget.reconcile` 和 `ai.governance.cleanup`；`ai.usage.reclaim` 下又分为 `ai.usage.reclaim.scan`、`ai.usage.reclaim.entry`、`ai.usage.reclaim.settle` 和 `ai.usage.reclaim.defer`。
 
-扫描、状态查询和延期写入通过 `@effect/sql-d1` 执行，SQL span 为 `sql.execute`，数据库失败标记 `ai.failure_kind=accounting`。SQL client Layer 按任务创建；驱动产生的 SQL 文本属性仍受追踪白名单过滤。余额结算继续使用原生 D1 原子批处理。
+扫描、状态查询和延期写入通过 `@effect/sql-d1` 执行，SQL span 为 `sqlite`，数据库失败标记 `ai.failure_kind=accounting`。SQL client Layer 按任务创建；驱动产生的 SQL 文本属性仍受追踪白名单过滤。余额结算继续使用原生 D1 原子批处理。
 
 回收按条执行。单条结算失败后写入下次重试时间；延期写入也失败时保留两份错误，继续处理后续条目。存在单条失败时，根 span 标记 `ai.outcome=failed`，后台日志记录失败条目。扫描或后续整批阶段失败则让后台任务失败，留待下次 Cron 恢复。数据库中的结算意图、触发器和幂等约束仍负责持久化一致性。
 
