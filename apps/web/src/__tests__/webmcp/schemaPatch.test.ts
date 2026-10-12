@@ -275,7 +275,7 @@ describe('WebMCP schema patch', () => {
           fieldComment: 'State',
           nullable: false,
           defaultKind: 'constant',
-          defaultValue: 'pending',
+          defaultValue: ' pending ',
           onUpdate: 'current_timestamp',
         },
       },

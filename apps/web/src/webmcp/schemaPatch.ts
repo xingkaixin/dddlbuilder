@@ -96,7 +96,11 @@ const parseField = (value: unknown, partial: boolean): Partial<Omit<FieldRow, 'i
   const fieldName = readString(value, 'fieldName', !partial);
   const fieldType = readString(value, 'fieldType', !partial);
   const fieldComment = readString(value, 'fieldComment');
-  const defaultValue = readString(value, 'defaultValue');
+  const { defaultValue } = value;
+
+  if (defaultValue !== undefined && typeof defaultValue !== 'string') {
+    throw new Error('Invalid defaultValue');
+  }
 
   const nullable =
     value.nullable === undefined ? undefined : normalizeFieldNullable(value.nullable);
