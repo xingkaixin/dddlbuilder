@@ -10,6 +10,7 @@ type AdminView = { kind: 'list' } | { kind: 'detail'; userId: string };
 export function AdminApp() {
   const { isAuthenticated, isLoading, login, logout } = useAdminSession();
   const [view, setView] = useState<AdminView>({ kind: 'list' });
+  const [userListOffset, setUserListOffset] = useState(0);
 
   if (isLoading) {
     return (
@@ -26,7 +27,11 @@ export function AdminApp() {
   return (
     <AdminLayout onLogout={logout}>
       {view.kind === 'list' ? (
-        <AdminUserList onSelectUser={(userId) => setView({ kind: 'detail', userId })} />
+        <AdminUserList
+          offset={userListOffset}
+          onOffsetChange={setUserListOffset}
+          onSelectUser={(userId) => setView({ kind: 'detail', userId })}
+        />
       ) : (
         <AdminUserDetailView userId={view.userId} onBack={() => setView({ kind: 'list' })} />
       )}

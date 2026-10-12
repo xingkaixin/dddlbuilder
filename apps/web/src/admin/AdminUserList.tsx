@@ -1,18 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { Eye } from '@/components/icons';
+import { ChevronLeft, ChevronRight, Eye } from '@/components/icons';
 import { adminUsersOptions } from '@/queries/admin';
 
 type AdminUserListProps = {
+  offset: number;
+  onOffsetChange: (offset: number) => void;
   onSelectUser: (userId: string) => void;
 };
 
 const PAGE_SIZE = 50;
 
-export function AdminUserList({ onSelectUser }: AdminUserListProps) {
+export function AdminUserList({ offset, onOffsetChange, onSelectUser }: AdminUserListProps) {
   const { t } = useTranslation();
-  const usersQuery = useQuery(adminUsersOptions(PAGE_SIZE, 0));
+  // 多取一条，只用来判断是否还有下一页。
+  const usersQuery = useQuery(adminUsersOptions(PAGE_SIZE + 1, offset));
 
   if (usersQuery.isPending) {
     return <div className="flex items-center justify-center py-20 text-muted-foreground">...</div>;
@@ -38,6 +41,9 @@ export function AdminUserList({ onSelectUser }: AdminUserListProps) {
     );
   }
 
+  const users = usersQuery.data.slice(0, PAGE_SIZE);
+  const hasNextPage = usersQuery.data.length > PAGE_SIZE;
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">{t('admin.users.title')}</h2>
@@ -56,7 +62,7 @@ export function AdminUserList({ onSelectUser }: AdminUserListProps) {
             </tr>
           </thead>
           <tbody>
-            {usersQuery.data.map((user) => (
+            {users.map((user) => (
               <tr
                 key={user.id}
                 className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
@@ -90,6 +96,33 @@ export function AdminUserList({ onSelectUser }: AdminUserListProps) {
           </tbody>
         </table>
       </div>
+
+      {offset > 0 || hasNextPage ? (
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            disabled={offset === 0}
+            onClick={() => onOffsetChange(Math.max(0, offset - PAGE_SIZE))}
+            aria-label={t('settings.previousPage')}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            disabled={!hasNextPage}
+            onClick={() => onOffsetChange(offset + PAGE_SIZE)}
+            aria-label={t('settings.nextPage')}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
