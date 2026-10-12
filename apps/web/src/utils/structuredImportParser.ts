@@ -357,33 +357,41 @@ function schemaPropertyToField(
 }
 
 function resolveSchema(schema: JsonSchemaLike, root: Record<string, unknown>): JsonSchemaLike {
-  let current = schema;
   let steps = 0;
-  const visited = new Set<JsonSchemaLike>();
 
-  while (true) {
-    if (visited.has(current)) return throwJsonSchemaResolutionError();
-    visited.add(current);
-
-    let next: JsonSchemaLike | undefined;
-
-    if (current.$ref) {
-      const target = resolveRef(current.$ref, root);
-
-      if (!target) return current;
-      next = target;
-    } else {
-      const composed = current.allOf ?? current.oneOf ?? current.anyOf;
-
-      if (!composed?.length) return current;
-      next = composed[0];
-    }
-
+  // One budget across allOf branches bounds both cycles and shared-ref fan-out.
+  const follow = (next: JsonSchemaLike): JsonSchemaLike => {
     steps += 1;
 
     if (steps > MAX_SCHEMA_RESOLUTION_STEPS) return throwJsonSchemaResolutionError();
-    current = next;
-  }
+
+    return resolve(next);
+  };
+
+  const resolve = (current: JsonSchemaLike): JsonSchemaLike => {
+    if (current.$ref) {
+      const target = resolveRef(current.$ref, root);
+
+      return target ? follow(target) : current;
+    }
+
+    if (current.allOf) return mergeAllOf(current, current.allOf.map(follow));
+
+    const branch = (current.oneOf ?? current.anyOf)?.[0];
+
+    return branch ? follow(branch) : current;
+  };
+
+  return resolve(schema);
+}
+
+function mergeAllOf(schema: JsonSchemaLike, branches: JsonSchemaLike[]): JsonSchemaLike {
+  const members = [...branches, schema];
+
+  return Object.assign({}, ...members, {
+    properties: Object.assign({}, ...members.map((member) => member.properties)),
+    required: members.flatMap((member) => member.required ?? []),
+  });
 }
 
 function resolveRef(ref: string, root: Record<string, unknown>): JsonSchemaLike | null {
