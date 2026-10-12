@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -39,6 +39,8 @@ const isValidCreditAmount = (value: string) => {
   return Number.isSafeInteger(amount) && amount > 0;
 };
 
+type CreditGrant = { amount: number; note?: string; idempotencyKey: string };
+
 type AdminUserDetailProps = {
   userId: string;
   onBack: () => void;
@@ -65,6 +67,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
   const [disableReason, setDisableReason] = useState('');
   const [creditAmount, setCreditAmount] = useState('');
   const [creditNote, setCreditNote] = useState('');
+  const creditGrantRef = useRef<CreditGrant | null>(null);
 
   const resetPasswordMutation = useMutation({
     mutationFn: () => resetUserPassword(userId),
@@ -83,8 +86,8 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
     retry: false,
   });
   const grantCreditsMutation = useMutation({
-    mutationFn: ({ amount, note }: { amount: number; note?: string }) =>
-      grantUserCredits(userId, amount, note),
+    mutationFn: ({ amount, note, idempotencyKey }: CreditGrant) =>
+      grantUserCredits(userId, amount, idempotencyKey, note),
     retry: false,
   });
 
@@ -135,12 +138,22 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
 
   const handleGrantCredits = async (e: FormEvent) => {
     e.preventDefault();
-    const amount = Number(creditAmount);
 
-    if (!isValidCreditAmount(creditAmount)) return;
+    if (grantCreditsMutation.isPending || !isValidCreditAmount(creditAmount)) return;
+    const amount = Number(creditAmount);
+    const note = creditNote || undefined;
+    const previous = creditGrantRef.current;
+
+    const idempotencyKey =
+      previous?.amount === amount && previous.note === note
+        ? previous.idempotencyKey
+        : crypto.randomUUID();
+
+    creditGrantRef.current = { amount, note, idempotencyKey };
 
     try {
-      await grantCreditsMutation.mutateAsync({ amount, note: creditNote || undefined });
+      await grantCreditsMutation.mutateAsync({ amount, note, idempotencyKey });
+      creditGrantRef.current = null;
       toast.success(t('admin.detail.creditsAdded', { amount }));
       setCreditsDialogOpen(false);
       setCreditAmount('');
@@ -476,7 +489,10 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel type="button">{t('common.cancel')}</AlertDialogCancel>
-              <Button type="submit" disabled={!isValidCreditAmount(creditAmount)}>
+              <Button
+                type="submit"
+                disabled={grantCreditsMutation.isPending || !isValidCreditAmount(creditAmount)}
+              >
                 {t('admin.detail.addCreditsSubmit')}
               </Button>
             </AlertDialogFooter>

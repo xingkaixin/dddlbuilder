@@ -98,11 +98,41 @@ describe('AdminUserDetailView', () => {
     fireEvent.click(screen.getByRole('button', { name: '确认' }));
 
     await waitFor(() => {
-      expect(mocks.grantUserCredits).toHaveBeenCalledWith('user-1', 500, 'manual bonus');
+      expect(mocks.grantUserCredits).toHaveBeenCalledWith(
+        'user-1',
+        500,
+        expect.any(String),
+        'manual bonus',
+      );
     });
     expect(mocks.getUserDetail).toHaveBeenCalledTimes(2);
     expect(mocks.getUserCreditLedger).toHaveBeenCalledTimes(2);
     expect(mocks.toastSuccess).toHaveBeenCalledWith('已成功增加 500 额度');
+  });
+
+  it('同一笔赠额重试沿用幂等键，修改金额后换新键', async () => {
+    mocks.grantUserCredits
+      .mockRejectedValueOnce(new Error('network'))
+      .mockRejectedValueOnce(new Error('network'));
+    render(<AdminUserDetailView userId="user-1" onBack={vi.fn()} />);
+
+    await screen.findByText('user@example.com');
+    fireEvent.click(screen.getByRole('button', { name: '增加额度' }));
+    fireEvent.change(screen.getByPlaceholderText('100'), { target: { value: '500' } });
+    const submit = screen.getByRole('button', { name: '确认' });
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(submit).toBeEnabled());
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(submit).toBeEnabled());
+    fireEvent.change(screen.getByPlaceholderText('100'), { target: { value: '600' } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalled());
+
+    const keys = mocks.grantUserCredits.mock.calls.map((call) => call[2]);
+    expect(keys[1]).toBe(keys[0]);
+    expect(keys[2]).not.toBe(keys[0]);
   });
 
   it('小数额度不能提交', async () => {

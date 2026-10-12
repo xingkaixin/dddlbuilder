@@ -130,13 +130,14 @@ export const updateUserEmailVerification = async (
 export const grantUserCredits = async (
   userId: string,
   amount: number,
+  idempotencyKey: string,
   note?: string,
 ): Promise<number> => {
   const result = await adminFetch(`/users/${userId}/credits`, decodeAdminCreditGrantResponse, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'Idempotency-Key': crypto.randomUUID(),
+      'Idempotency-Key': idempotencyKey,
     },
     body: JSON.stringify({ amount, note }),
   });

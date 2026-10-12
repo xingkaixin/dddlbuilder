@@ -58,7 +58,7 @@ describe('admin response boundaries', () => {
   });
   it('requires an explicit success result when granting credits', async () => {
     reply({ ok: false, newBalance: 100 });
-    await expect(grantUserCredits('u1', 100)).rejects.toThrow('Invalid admin response');
+    await expect(grantUserCredits('u1', 100, 'grant-1')).rejects.toThrow('Invalid admin response');
   });
   it('rejects incomplete user records', async () => {
     reply({ users: [{ id: 'u1' }] });
