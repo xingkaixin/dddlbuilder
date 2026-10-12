@@ -1,16 +1,13 @@
 import type { SeedRule } from '@ddlbuilder/shared-types/api';
 import { compileSeedScenario } from './seedScenario.js';
 import type { ForeignKeyDefinition, PersistedState } from '@ddlbuilder/shared-types';
-import {
-  buildQualifiedTableName,
-  parseFieldType,
-  getCanonicalBaseType,
-} from './databaseTypeMapping.js';
+import { buildQualifiedTableName, parseFieldType } from './databaseTypeMapping.js';
 import { formatSqlIdentifier, getSqlIdentifierKey } from './sqlIdentifiers.js';
 import { getForeignKeyIssue } from './foreignKeys.js';
 import { indexSnapshot, snapshotTableKey, snapshotTableLabel } from './schemaSnapshot.js';
 import {
   createSeedColumn,
+  seedBaseType,
   seedRandom,
   type SeedColumn,
   type SeedRow,
@@ -52,7 +49,7 @@ function keyColumns(table: PersistedState): string[][] {
 
 function referenceType(type: string): string {
   const parsed = parseFieldType(type);
-  const base = getCanonicalBaseType(parsed.baseType);
+  const base = seedBaseType(parsed);
 
   const canonical =
     base === 'serial'

@@ -1,6 +1,12 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SeedRule } from '@ddlbuilder/shared-types/api';
-import { createSeedColumn, seedRandom, type SeedRow, type SeedValue } from './seedValues.js';
+import {
+  createSeedColumn,
+  seedBaseType,
+  seedRandom,
+  type SeedRow,
+  type SeedValue,
+} from './seedValues.js';
 import { parseFieldType, getCanonicalBaseType } from './databaseTypeMapping.js';
 import { getSqlIdentifierKey } from './sqlIdentifiers.js';
 import { snapshotTableKey } from './schemaSnapshot.js';
@@ -69,7 +75,7 @@ export function compileSeedScenario(
     if (rule.nullPercent > 0 && (!field.nullable || primary.has(identifier(field.fieldName))))
       throw new Error(`${field.fieldName}: NULL is not permitted.`);
     const parsed = parseFieldType(field.fieldType);
-    const type = getCanonicalBaseType(parsed.baseType);
+    const type = seedBaseType(parsed);
     const column = createSeedColumn(field, `${seed}:${snapshotTableKey(table)}`);
 
     let generate: (row: SeedRow, ordinal: number, random: () => number) => SeedValue = (

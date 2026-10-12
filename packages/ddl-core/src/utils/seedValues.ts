@@ -1,4 +1,4 @@
-import type { FieldRow } from '@ddlbuilder/shared-types';
+import type { FieldRow, ParsedFieldType } from '@ddlbuilder/shared-types';
 import { parseFieldType, getCanonicalBaseType } from './databaseTypeMapping.js';
 
 export type SeedValue = string | number | boolean | null;
@@ -9,6 +9,27 @@ export interface SeedColumn {
   field: FieldRow;
   numeric: boolean;
   generate: (ordinal: number) => SeedValue;
+}
+
+// TYPE_ALIASES 不归一化这些 PostgreSQL 原名，改它会影响 DDL 输出
+const POSTGRESQL_TYPE_NAMES = new Map([
+  ['int2', 'smallint'],
+  ['int8', 'bigint'],
+  ['serial2', 'smallserial'],
+  ['serial4', 'serial'],
+  ['serial8', 'bigserial'],
+  ['float4', 'real'],
+  ['character', 'char'],
+  ['citext', 'text'],
+]);
+
+export function seedBaseType(parsed: ParsedFieldType): string {
+  const type = getCanonicalBaseType(parsed.baseType);
+
+  // 不带长度的 bpchar 不限长度，带长度时等同 char(n)
+  if (type === 'bpchar') return parsed.args.length ? 'char' : 'text';
+
+  return POSTGRESQL_TYPE_NAMES.get(type) ?? type;
 }
 
 export function seedHash(seed: string): number {
@@ -38,7 +59,7 @@ export function createSeedColumn(field: FieldRow, seed: string): SeedColumn {
       `${field.fieldName}: move constraints out of the type before generating test data.`,
     );
   const parsed = parseFieldType(field.fieldType);
-  const type = getCanonicalBaseType(parsed.baseType);
+  const type = seedBaseType(parsed);
   const offset = seedHash(`${seed}:${field.fieldName}`);
 
   const integerBits = new Map([

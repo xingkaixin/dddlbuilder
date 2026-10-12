@@ -158,6 +158,64 @@ describe('relational test datasets', () => {
     expect(result.tables[0].rows.map((row) => row.email)).toEqual([null, null, null]);
   });
 
+  it('treats PostgreSQL native type names like their standard names', () => {
+    const postgres = (...args: Parameters<typeof table>): PersistedState => ({
+      ...table(...args),
+      dbType: 'postgresql',
+    });
+    const metrics = (types: string[]) =>
+      postgres(
+        'metrics',
+        types.map((type, index) => field(`c${index}`, type)),
+        ['c0'],
+      );
+    const generate = (types: string[]) =>
+      generateRelationalSeed([{ table: metrics(types), rowCount: 3 }], 'pg').tables[0].rows;
+    expect(
+      generate(['int2', 'int8', 'float4', 'serial8', 'character(3)', 'bpchar', 'citext']),
+    ).toEqual(generate(['smallint', 'bigint', 'real', 'bigserial', 'char(3)', 'text', 'text']));
+
+    const accounts = postgres('accounts', [field('id', 'bigserial')]);
+
+    const orders = postgres(
+      'orders',
+      [field('id'), field('account_id', 'int8')],
+      ['id'],
+      [
+        {
+          id: 'fk',
+          name: 'fk_account',
+          fields: ['account_id'],
+          refTable: 'accounts',
+          refFields: ['id'],
+        },
+      ],
+    );
+    expect(
+      generateRelationalSeed(
+        [
+          { table: accounts, rowCount: 2 },
+          { table: orders, rowCount: 2 },
+        ],
+        'pg',
+      ).tables,
+    ).toHaveLength(2);
+
+    const quantities = metrics(['int4', 'int2']);
+
+    const rule: SeedRule = {
+      tableKey: snapshotTableKey(quantities),
+      field: 'c1',
+      kind: 'range',
+      min: '1',
+      max: '40000',
+      nullPercent: 0,
+    };
+    expect(() =>
+      generateRelationalSeed([{ table: quantities, rowCount: 1 }], 'pg', false, [rule]),
+    ).toThrow('integer range');
+  });
+
   it('preserves bigint and decimal precision and escapes SQL values', () => {
     const precise = table('precise', [
       { ...field('id', 'bigint'), enumMeta: [{ value: '9007199254740993' }] },
