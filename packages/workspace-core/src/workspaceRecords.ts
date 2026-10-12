@@ -46,6 +46,7 @@ export type WorkspaceYDocChange = {
   collection: WorkspaceYDocCollection;
   entityIds: ReadonlySet<string>;
   origin: unknown;
+  replacedSavedDrafts?: ReadonlySet<string>;
   renamedTables?: Array<{
     previousName: string;
     normalizedName: string;
@@ -121,6 +122,22 @@ export const getWorkspaceSourceState = (
   return record && record.trashedAt == null ? record.state : null;
 };
 
+// A Y.Map set records the replaced node as its origin; any other origin means both peers created the
+// node concurrently and the losing node's edits were dropped with it.
+const isConcurrentReplacement = (
+  parent: Y.Map<Y.Map<unknown>>,
+  key: string,
+  change: { action: string; oldValue: unknown },
+) => {
+  const current = parent.get(key);
+
+  if (change.action !== 'update' || !(change.oldValue instanceof Y.Map)) return false;
+  if (!(current instanceof Y.Map) || !current._item || !change.oldValue._item) return false;
+  const { origin } = current._item;
+
+  return !origin || !Y.compareIDs(origin, change.oldValue._item.id);
+};
+
 export const subscribeWorkspaceYDoc = (
   doc: Y.Doc,
   notify: (change: WorkspaceYDocChange) => void,
@@ -149,17 +166,24 @@ export const subscribeWorkspaceYDoc = (
       transaction: Y.Transaction,
     ) => {
       const changedKeys = new Set<string>();
+      const replacedKeys = new Set<string>();
 
       for (const event of events) {
         const key = event.path[0];
 
         if (typeof key === 'string') changedKeys.add(key);
         else if (event instanceof Y.YMapEvent) {
-          for (const changedKey of event.changes.keys.keys()) changedKeys.add(changedKey);
+          for (const [changedKey, change] of event.changes.keys) {
+            changedKeys.add(changedKey);
+
+            if (collection === 'savedDrafts' && isConcurrentReplacement(root, changedKey, change))
+              replacedKeys.add(changedKey);
+          }
         }
       }
 
       const entityIds = new Set<string>();
+      const replacedSavedDrafts = new Set<string>();
       const renamedTables: NonNullable<WorkspaceYDocChange['renamedTables']> = [];
 
       for (const key of changedKeys) {
@@ -177,6 +201,12 @@ export const subscribeWorkspaceYDoc = (
 
           if (next.tableId) entityIds.add(next.tableId);
           identities.set(key, next);
+
+          if (replacedKeys.has(key)) {
+            replacedSavedDrafts.add(next.normalizedName);
+
+            if (next.tableId) replacedSavedDrafts.add(next.tableId);
+          }
         } else identities.delete(key);
 
         if (
@@ -193,6 +223,7 @@ export const subscribeWorkspaceYDoc = (
         collection,
         entityIds,
         origin: transaction.origin,
+        ...(replacedSavedDrafts.size > 0 ? { replacedSavedDrafts } : {}),
         ...(renamedTables.length > 0 ? { renamedTables } : {}),
       });
     };
