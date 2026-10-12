@@ -24,6 +24,7 @@ import {
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import { pickInitialDraft } from './hydration';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
+import { mergeSchemaStates } from '@/services/schemaStateMerge';
 import { isSameWorkspaceSource } from './normalize';
 import { useEditorStore } from '@/stores';
 import { toEditorSessionSnapshot } from '@/stores/editorDocumentCodec';
@@ -163,11 +164,35 @@ export function useWorkspaceYDocSubscription({
       }
 
       if (source.kind === 'saved_table') {
-        const savedDraft = getSavedDraftFromYDoc(yDoc, source);
+        let savedDraft = getSavedDraftFromYDoc(yDoc, source);
         const savedTable = getSavedTableFromYDoc(yDoc, source);
 
         if (savedTable) {
           const pending = lastLocalSaveRef.current;
+
+          // 两端同时新建草稿节点时只保留一个；落选端把本地修改合并进胜出节点。
+          if (
+            savedDraft &&
+            change?.replacedSavedDrafts?.has(savedTableKey(source)) &&
+            pending?.source.kind === 'saved_table' &&
+            isSameWorkspaceSource(pending.source, source) &&
+            savedDraft.baseSignature === source.baseSignature &&
+            buildSchemaStateSignature(savedTable.state) === source.baseSignature
+          ) {
+            const state = mergeSchemaStates(savedTable.state, savedDraft.state, pending.localState);
+
+            if (!isSameState(state, savedDraft.state)) {
+              const mergedDraft = { ...savedDraft, state, updatedAt: Date.now() };
+              runInYDoc(() => upsertSavedDraftInYDoc(yDoc, source, mergedDraft));
+              refreshSavedTableDrafts(new Set([savedTableKey(source)]));
+              lastLocalSaveRef.current = {
+                source: pending.source,
+                baseState: savedTable.state,
+                localState: state,
+              };
+              savedDraft = mergedDraft;
+            }
+          }
 
           // 远端保存会删除共享草稿节点，但尚未同步的本地输入仍需重新落回草稿。
           const pendingDraft =

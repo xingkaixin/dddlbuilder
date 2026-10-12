@@ -659,6 +659,61 @@ describe('usePersistedState', () => {
     remote.destroy();
   });
 
+  it('两端同时新建已保存表草稿时，落选端合并本地修改', async () => {
+    const doc = new Y.Doc();
+    doc.clientID = 1;
+    const base = createState('users');
+    const target = { tableId: 'table-1', normalizedName: 'users' };
+    upsertSavedTableInYDoc(doc, {
+      ...target,
+      name: 'Users',
+      state: base,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const remote = new Y.Doc();
+    remote.clientID = 2;
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    mockSignedInWorkspaceYDoc(doc);
+    const { wrapper } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    const loaded = result.current.resolveWorkspaceSnapshot({
+      kind: 'saved_table',
+      ...target,
+      tableName: 'Users',
+      baseSignature: '',
+    });
+
+    if (!loaded || loaded.source.kind !== 'saved_table')
+      throw new Error('Saved table snapshot missing');
+    act(() => result.current.selectWorkspaceSnapshot(loaded.source, loaded.state));
+    await act(async () =>
+      result.current.saveState({
+        source: loaded.source,
+        state: { ...loaded.state, tableComment: 'local edit' },
+      }),
+    );
+    upsertSavedDraftInYDoc(remote, target, {
+      state: { ...base, schemaName: 'remote_schema' },
+      tableName: 'Users',
+      baseSignature: loaded.source.baseSignature,
+      updatedAt: 2,
+    });
+
+    act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote'));
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+
+    const merged = { tableComment: 'local edit', schemaName: 'remote_schema' };
+    expect(result.current.persistedState).toMatchObject(merged);
+    expect(getSavedDraftFromYDoc(doc, target)?.state).toMatchObject(merged);
+    expect(getSavedDraftFromYDoc(remote, target)?.state).toMatchObject(merged);
+    unmount();
+    doc.destroy();
+    remote.destroy();
+  });
+
   it('协作保存后实时显示、切换标签和重载应保留相同的草稿修改', async () => {
     const doc = new Y.Doc();
     const base = { ...createState('users'), tableComment: 'base' };
