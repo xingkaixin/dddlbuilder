@@ -22,6 +22,26 @@ describe('EditableCell', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
+  it('受控进入编辑时应使用外部更新后的值作为输入和提交基线', async () => {
+    const onChange = vi.fn();
+
+    const { rerender } = render(
+      <EditableCell value="主键" onChange={onChange} isEditing={false} />,
+    );
+
+    rerender(<EditableCell value="远端新注释" onChange={onChange} isEditing={false} />);
+    rerender(<EditableCell value="远端新注释" onChange={onChange} isEditing />);
+
+    const input = screen.getByRole('textbox');
+    expect(input).toHaveValue('远端新注释');
+
+    await userEvent.clear(input);
+    await userEvent.keyboard('主键{Enter}');
+
+    expect(onChange).toHaveBeenCalledWith('主键');
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
   it('编辑输入框应禁用密码管理器填充', () => {
     render(<EditableCell value="" onChange={vi.fn()} placeholder="字段名" />);
 

@@ -36,6 +36,16 @@ export const EditableCell = memo<EditableCellProps>(
     const initialEditValueRef = useRef(value);
     const lastCommittedValueRef = useRef(value);
 
+    if (!isEditing && editValue !== value) {
+      setEditValue(value);
+    }
+
+    useEffect(() => {
+      if (isEditing) return;
+      initialEditValueRef.current = value;
+      lastCommittedValueRef.current = value;
+    }, [isEditing, value]);
+
     const setEditing = useCallback(
       (nextIsEditing: boolean) => {
         if (controlledIsEditing === undefined) {
