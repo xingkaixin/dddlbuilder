@@ -66,14 +66,14 @@ function referenceType(type: string): string {
   return JSON.stringify([canonical, parsed.unsigned, parsed.args]);
 }
 
-function uniqueKey(values: SeedValue[], mysql: boolean): string {
+function uniqueKey(values: SeedValue[], mysql: boolean): string | null {
+  if (values.includes(null)) return null;
+
   return JSON.stringify(
     values.map((value) =>
-      value === null
-        ? null
-        : mysql
-          ? String(value).normalize('NFKD').replaceAll(/\p{M}/gu, '').trimEnd().toLowerCase()
-          : String(value),
+      mysql
+        ? String(value).normalize('NFKD').replaceAll(/\p{M}/gu, '').trimEnd().toLowerCase()
+        : String(value),
     ),
   );
 }
@@ -315,8 +315,15 @@ export function generateRelationalSeed(
           ),
         );
 
-        if (signatures.some((signature, constraint) => seen[constraint].has(signature))) continue;
-        signatures.forEach((signature, constraint) => seen[constraint].add(signature));
+        if (
+          signatures.some(
+            (signature, constraint) => signature !== null && seen[constraint].has(signature),
+          )
+        )
+          continue;
+        signatures.forEach((signature, constraint) => {
+          if (signature !== null) seen[constraint].add(signature);
+        });
         rows.push(row);
         accepted = true;
         break;

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
 import type { PersistedState, FieldRow, ForeignKeyDefinition } from '@ddlbuilder/shared-types';
+import type { SeedRule } from '@ddlbuilder/shared-types/api';
 import { generateRelationalSeed } from '../utils/relationalSeed';
+import { snapshotTableKey } from '../utils/schemaSnapshot';
 
 function field(fieldName: string, fieldType = 'int'): FieldRow {
   return { id: fieldName, fieldName, fieldType, fieldComment: '', nullable: false };
@@ -126,6 +128,34 @@ describe('relational test datasets', () => {
       [{ id: 'self', name: 'fk_self', fields: ['parent'], refTable: 'self', refFields: ['id'] }],
     );
     expect(() => generateRelationalSeed([{ table: self, rowCount: 1 }], 'seed')).toThrow('Cyclic');
+  });
+
+  it('allows repeated NULLs in nullable unique keys', () => {
+    const accounts = table('accounts', [
+      field('id'),
+      { ...field('tenant_id'), enumMeta: [{ value: '1' }] },
+      { ...field('email', 'varchar(40)'), nullable: true },
+    ]);
+    accounts.indexes.push({
+      id: 'uq',
+      name: 'uq_tenant_email',
+      kind: 'unique_index',
+      fields: [
+        { name: 'tenant_id', direction: 'ASC' },
+        { name: 'email', direction: 'ASC' },
+      ],
+    });
+
+    const rule: SeedRule = {
+      tableKey: snapshotTableKey(accounts),
+      field: 'email',
+      kind: 'default',
+      nullPercent: 100,
+    };
+    const result = generateRelationalSeed([{ table: accounts, rowCount: 3 }], 'seed', false, [
+      rule,
+    ]);
+    expect(result.tables[0].rows.map((row) => row.email)).toEqual([null, null, null]);
   });
 
   it('preserves bigint and decimal precision and escapes SQL values', () => {
