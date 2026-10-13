@@ -6,6 +6,20 @@ outline: [2, 2]
 
 ## [Unreleased]
 
+## [0.25.3] - 2026-10-13
+
+### Fixed
+- **SQL import type fidelity**: Preserve PostgreSQL arrays, identity columns and fixed-length `CHAR` types, and retain the widths of aliases such as `INT8`, `FLOAT4` and `SERIAL8`.
+- **Imported indexes and comments**: Keep MySQL `UNIQUE INDEX` definitions in both CREATE TABLE and ALTER TABLE statements. Parse PostgreSQL and Oracle `COMMENT ON` only as complete statements so matching text inside strings or comments stays intact.
+- **Unsupported SQL import feedback**: Reject unsupported FULLTEXT/SPATIAL indexes and unquoted numeric defaults with more than 15 significant digits instead of silently changing their meaning.
+- **DDL output**: Drop and rebuild dependent indexes and key constraints around SQL Server column type or nullability changes, and place Hive table comments before partition and clustering clauses.
+- **ORM model output**: Generate valid model names for tables containing special characters or leading digits, add complete JPA composite-key classes, and prevent GORM from implicitly enabling auto-increment on integer primary keys.
+- **CSV and JSON Schema import**: Preserve line breaks in quoted CSV cells, merge all `allOf` branches and retain root object fields when `$defs` is present.
+- **Workspace migration and concurrent editing**: Migrate legacy workspaces containing only an active session, retain local edits when devices concurrently create a saved-table draft, and refresh field editor values after synchronized data changes.
+- **Test data and query design**: Allow repeated NULL values in unique test-data keys, support PostgreSQL native numeric and text type names in test data, and recognize more field types for SUM, AVG and LIKE queries.
+- **WebMCP schema proposals**: Accept proposals that only reorder fields and preserve spaces in default values.
+- **Account administration**: Paginate the user list beyond the first 50 accounts and reuse the same request identifier when retrying a credit grant to prevent duplicate grants.
+
 ## [0.25.2] - 2026-10-10
 
 ### Improved
