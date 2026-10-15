@@ -106,10 +106,16 @@ const normalizeSettlement = (settlement: AIUsageSettlement): AIUsageSettlement =
 
 export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
   env: ApiEnv['Bindings'],
-  input: { userId: string; routeKey: RouteKey; requestId: string; estimatedTokens: number },
+  input: {
+    userId: string;
+    routeKey: RouteKey;
+    requestId: string;
+    estimatedTokens: number;
+    usageEventId?: string;
+  },
 ): Promise<AIUsageReservation<RouteKey>> => {
   const reservation: AIUsageReservation<RouteKey> = {
-    usageEventId: `usage:${crypto.randomUUID()}`,
+    usageEventId: input.usageEventId ?? `usage:${crypto.randomUUID()}`,
     userId: input.userId,
     routeKey: input.routeKey,
     requestId: input.requestId,
@@ -541,6 +547,7 @@ export const reclaimStaleAIUsage = Effect.fn('ai.usage.reclaim')(function* (
       ) AS hasReservationLedger
     FROM usage_events
     WHERE ${sql.in('status', RECLAIMABLE_STATUSES)}
+      AND NOT EXISTS (SELECT 1 FROM ai_call_attempts a WHERE a.usage_id = usage_events.id)
       AND (recovery_after IS NULL OR recovery_after <= ${now})
       AND (
         status IN ('settling_succeeded', 'settling_failed')

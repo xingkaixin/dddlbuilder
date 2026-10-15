@@ -102,3 +102,9 @@ export type {
 export { splitQualifiedName, getSchemaAndTable } from './qualifiedName';
 
 export { indexKindOf, isIndexKind, type IndexKind } from './indexKind';
+export {
+  AIConversationRouteSchema,
+  AIOperationIdentitySchema,
+  AIConversationSnapshotSchema,
+} from './aiConversation.js';
+export type { AIConversationSnapshot, AIConversationRoute } from './aiConversation.js';
