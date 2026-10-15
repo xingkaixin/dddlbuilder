@@ -202,19 +202,18 @@ test.describe('Cloudflare runtime bindings', () => {
     ) SELECT name, span_id, parent_id, json(attributes) FROM spans
       WHERE span_id IN (SELECT span_id FROM root) OR parent_id IN (SELECT span_id FROM root)`;
     let rows: string[][] = [];
-    await expect
-      .poll(async () => {
-        const query = await request.post('/cdn-cgi/local/explorer/api/local/observability/query', {
-          data: { sql },
-        });
-        expect(query.ok()).toBe(true);
-        const payload = await query.json();
-        expect(payload.success).toBe(true);
-        rows = payload.result.rows;
-
-        return rows.map((row) => row[0]);
-      })
-      .toEqual(expect.arrayContaining(['ai.request', 'ai.authenticate']));
+    await expect(async () => {
+      const query = await request.post('/cdn-cgi/local/explorer/api/local/observability/query', {
+        data: { sql },
+      });
+      expect(query.ok(), await query.text()).toBe(true);
+      const payload = await query.json();
+      expect(payload.success).toBe(true);
+      rows = payload.result.rows;
+      expect(rows.map((row) => row[0])).toEqual(
+        expect.arrayContaining(['ai.request', 'ai.authenticate']),
+      );
+    }).toPass({ timeout: 10_000 });
     const root = rows.find((row) => row[0] === 'ai.request');
     const auth = rows.find((row) => row[0] === 'ai.authenticate');
 
