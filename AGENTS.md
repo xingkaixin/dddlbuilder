@@ -39,19 +39,18 @@
 
 ### Effect
 
-- AI 请求链路使用 Effect v4。`apps/worker/server-api/lib/aiRoute.ts` 中的 `aiGovernance` 负责业务编排，`withAIGovernance` 负责 Hono 入口适配。路由回调与 `AISession` 命令返回 Effect，业务模块内不要调用 `runPromise`。
-- `aiServices.ts` 中的 `AIConfiguration`、`AIProvider`、`AIUsage` 通过 Layer 按请求提供。不要将请求身份、绑定或可变计费状态放进全局 Runtime。数据库和 SDK 的 Promise 在适配层转换为 Effect。
-- 可恢复失败使用类型化错误，现有 `DomainError` 保留其业务语义。数据库失败不能进入上游请求重试；程序缺陷保留为 defect，HTTP／流输出适配处再处理完整 Cause。
-- `aiExecution.ts` 用 Scope 管理执行期限与取消。SDK 必须同时响应业务 AbortSignal 和 Effect 中断。D1 记账写入使用最小的不可中断区间，未启动的上游尝试需要撤销计数。
-- 流响应有独立执行入口，承接请求 Effect 上下文，并将包含最终结算的完整 Promise 交给 `waitUntil`。不能因返回 Response 就关闭流的生命周期。新增有资源释放需求的 Layer 时，必须确保它覆盖整个流消费过程。
-- 结算通过 `onExit` 执行，保留数据库中的幂等、结算意图和回收机制；Effect finalizer 不能替代持久化恢复。AI JSON 输出使用 `aiCompletion.ts` 的 Schema 解码。
+- AI 执行使用 pi-durable 内置 Conversation/GenerationTask，状态在独立 `AIConversationDurableObject` 中。禁止再建自定义 Task 或并行 SDK 执行循环。SDK 重试关闭，恢复和重试都受持久化调用上限约束。
+- Effect v4 用于 HTTP 鉴权、配置、Schema 与旧用量回收边界。`runPromise` 仅允许在 HTTP、DO 或 Cron 适配入口；不将请求身份、bindings 或可变计费状态放入全局 Runtime。
+- `aiConversationUsage.ts` 在每次实际模型请求前鉴权、预留额度与预算。数据库失败不能触发上游重试。服务端操作身份、Submission requestId、物理调用 Usage Identity 必须区分。
+- DO 用量凭据先持久化，再写 D1；结算保留原账本触发器、幂等键和结算意图。Alarm 与 Cron 补偿跨存储失败。旧用量回收器必须排除 `ai_call_attempts` 关联记录。
+- 断开观察流不取消操作；显式停止和会话撤销才中断模型。DO 异步执行与观察流必须交给 `waitUntil`。共享输出 Schema 完整解码后才能成功，失败仍结算真实消耗。
 - AI 请求及注释、索引建议的输出契约定义在 `packages/shared-types/src/aiContracts.ts`，类型从 Schema 推导。Worker 使用 `aiRequest.ts` 将请求解码错误映射为现有 API 错误码；前端复用共享输出解码器。字段引用、建议编号和按请求补齐注释等业务规则保留在 Worker。
 - SQL 解析、分享和 workspace 响应契约定义在 `packages/shared-types/src/apiContracts.ts`，Worker 返回前校验，前端使用同一份解码器。SQL 解析结果和迁移响应类型从 Schema 推导。分享 state 和迁移快照仍交给 `workspace-core` 的领域解码器处理历史兼容，不在接口 Schema 中重复归一化。
 - 账户、额度和管理接口契约定义在 `accountContracts.ts`，通过 `shared-types/api` 导出。管理请求先校验再执行副作用；账本时间在网络层保持字符串，用户端解码后转换为毫秒。额度响应校验失败不能回退为余额 0；认证库自身的协议仍由认证库处理。
 - NDJSON 事件使用 `aiStream.ts` 的共享编解码器；事件 Schema 只校验单帧，终止顺序、字节分片和取消由流读取器负责。生成表结构使用 `aiGenerate.ts` 的 Schema 校验完整结果，预览复用条目守卫；字段身份和方言规则留在业务层。
-- DDL 审查的类型由 `ddlReview.ts` 的 Schema 推导，兼容归一化通过 Schema 转换进入输出契约。`AIRouteSpec.outputSchema` 在完成状态检查后、成功结算及发送 `done` 前校验输出；校验失败保留真实上游消耗。
-- `AIRequestAccess` 按请求提供鉴权、限流和预算预留适配，基础设施失败使用 `AIGovernanceError`；`OpenAISettings` 通过 ConfigProvider 从当前 Worker bindings 加载，保留原配置容错规则。
-- `aiTracing.ts` 将 Effect span 桥接到 Worker 原生 tracing，并按 fiber 恢复异步上下文。AI 根 span 必须覆盖流消费和结算，不能随 Response 返回而结束。属性只能通过白名单输出；生产采样沿用 `apps/worker/cloudflare.config.ts` 配置。查询方式见 `apps/worker/OBSERVABILITY.md`。
+- DDL 审查的类型由 `ddlReview.ts` 的 Schema 推导，兼容归一化通过 Schema 转换进入输出契约。`aiScenarios.ts` 在完成状态检查后、成功结算前校验输出；校验失败保留真实上游消耗。
+- `aiConversationConfig.ts` 从当前 bindings 读取供应商、模型与 thinking，默认 Anthropic Haiku 5.5、thinking 关闭。只允许服务端配置。供应商结构化输出 Schema 保持简单，通过匹配的 Effect JSON codec 解码，再验证业务契约。
+- `aiTracing.ts` 将请求和 Cron 的 Effect span 桥接到 Worker 原生 tracing。Conversation 日志按 operationId/conversationId 关联；恢复可能跨多个 invocation，不能声称整个持久化生命周期属于一个请求 span。日志和属性禁止包含 SQL、提示词、响应正文和密钥。查询方式见 `apps/worker/OBSERVABILITY.md`。
 - 定时用量回收返回 Effect，Worker Cron 入口提供按任务创建的 `@effect/sql-d1` Layer，并将完整执行交给 `waitUntil`。回收扫描、状态查询和延期写入使用 SQL client；余额结算继续使用原生 D1 batch、触发器和持久化幂等机制。单条失败不能中断后续回收，延期失败保留原始结算错误。
 - 时间相关的 Effect 测试使用 `effect/testing/TestClock`；服务替换使用 Layer。保留真实 D1、SDK 流和取消计费集成测试来验证适配层行为。
 
