@@ -1,3 +1,4 @@
+import { fetchAIConversation } from '@/services/aiConversationService';
 import { useCallback, useState } from 'react';
 import { readTextStream } from '@/services/streamingText';
 import i18n from '@/i18n';
@@ -50,7 +51,7 @@ export function useDDLExplain() {
         setState({ phase: 'loading', explanation: null, error: null });
 
         try {
-          const response = await fetch('/api/explain', {
+          const response = await fetchAIConversation('explain', {
             method: 'POST',
             headers: buildAuthenticatedJsonHeaders(),
             credentials: 'include',

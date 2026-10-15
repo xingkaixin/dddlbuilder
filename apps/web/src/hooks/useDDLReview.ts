@@ -1,4 +1,4 @@
-import { useState, useCallback, useLayoutEffect, useMemo } from 'react';
+import { useState, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartialJson';
 import { requestDDLReview } from '@/services/reviewService';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -6,6 +6,7 @@ import i18n from '@/i18n';
 import { useAIRequestAccess } from './useAIRequestAccess';
 import type {
   DDLReviewResult,
+  DDLReviewSuggestion,
   DDLReviewStructuredSuggestion,
 } from '@ddlbuilder/shared-types/ddl-review';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
@@ -25,6 +26,10 @@ interface ReviewState {
 }
 
 export function useDDLReview(documentKey: string) {
+  const conversationRef = useRef<{ documentKey: string; id: string } | null>(null);
+  const [thinking, setThinking] = useState('');
+
+  const [suggestions, setSuggestions] = useState<readonly DDLReviewSuggestion[]>([]);
   const { resolvedLocale } = useLocale();
   const requestAccess = useAIRequestAccess();
 
@@ -40,7 +45,7 @@ export function useDDLReview(documentKey: string) {
 
   useLayoutEffect(
     () => () => {
-      cancel();
+      cancel('detach');
     },
     [cancel, documentKey],
   );
@@ -51,12 +56,19 @@ export function useDDLReview(documentKey: string) {
       return null;
     }
 
-    return parsePartialJson(state.streamingText);
-  }, [isLoading, state.streamingText]);
+    const partial = parsePartialJson(state.streamingText);
+
+    return {
+      ...partial,
+      suggestions: suggestions.length ? [...suggestions] : partial?.suggestions,
+    };
+  }, [isLoading, state.streamingText, suggestions]);
 
   const startReview = useCallback(
     async (ddl: string, tableName: string, dbType: DatabaseType) => {
       if (!ddl || ddl.trim().length === 0) {
+        setThinking('');
+        setSuggestions([]);
         setState({
           documentKey,
           streamingText: '',
@@ -70,6 +82,8 @@ export function useDDLReview(documentKey: string) {
       const accessError = requestAccess.getAccessError();
 
       if (accessError) {
+        setThinking('');
+        setSuggestions([]);
         setState({
           documentKey,
           streamingText: '',
@@ -89,6 +103,8 @@ export function useDDLReview(documentKey: string) {
       const requestKey = JSON.stringify([documentKey, requestPayload]);
 
       const result = await run(async ({ signal, isCurrent, commitIfCurrent }) => {
+        setThinking('');
+        setSuggestions([]);
         setState({
           documentKey,
           streamingText: '',
@@ -116,6 +132,15 @@ export function useDDLReview(documentKey: string) {
         try {
           const reviewResult = await requestDDLReview(requestPayload, {
             signal,
+            onThinking: (text) => commitIfCurrent(() => setThinking(text)),
+            onSuggestions: (items) => commitIfCurrent(() => setSuggestions(items)),
+            conversationId:
+              conversationRef.current?.documentKey === documentKey
+                ? conversationRef.current.id
+                : undefined,
+            onConversation: (id) => {
+              conversationRef.current = { documentKey, id };
+            },
             onStreamingText: (streamingText) => {
               pendingText = streamingText;
 
@@ -157,6 +182,9 @@ export function useDDLReview(documentKey: string) {
 
   const clearReview = useCallback(() => {
     cancel();
+    conversationRef.current = null;
+    setThinking('');
+    setSuggestions([]);
     setState({
       documentKey,
       streamingText: '',
@@ -176,6 +204,7 @@ export function useDDLReview(documentKey: string) {
 
   return {
     isLoading,
+    thinking: isLoading ? thinking : '',
     streamingText: isCurrentDocument ? state.streamingText : '',
     partialResult,
     result: isCurrentDocument ? state.result : null,

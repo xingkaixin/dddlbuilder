@@ -1,3 +1,8 @@
+import * as aiTransport from '@/services/aiConversationService';
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Transport lifecycle has dedicated integration tests; these tests protect scenario decoding and hook state.
+vi.mock('@/services/aiConversationService', () => ({ fetchAIConversation: vi.fn() }));
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { requestDDLReview } from '@/services/reviewService';
 import { createAITextStream as createTextStream } from '@/__tests__/utils/aiStream';
@@ -8,7 +13,7 @@ describe('requestDDLReview', () => {
   });
 
   it('rejects a streamed service error instead of producing a default review', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
       new Response('{"type":"error","error":"upstream failed","code":"UPSTREAM_OPENAI_ERROR"}\n'),
     );
     await expect(
@@ -22,8 +27,9 @@ describe('requestDDLReview', () => {
   it('should parse stream result and normalize score', async () => {
     // SAFETY: this stream fixture implements the response fields consumed by requestDDLReview.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
       ok: true,
+      headers: new Headers(),
       status: 200,
       body: createTextStream(['{"score": 99, "summary": "ok", "suggestions": []}']),
       json: vi.fn(),
@@ -42,8 +48,9 @@ describe('requestDDLReview', () => {
   it('should throw business error when response is non-ok', async () => {
     // SAFETY: this error fixture implements the response status and JSON body consumed by requestDDLReview.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
       ok: false,
+      headers: new Headers(),
       status: 500,
       json: vi.fn().mockResolvedValue({ error: 'boom' }),
     } as unknown as Response);
@@ -59,8 +66,9 @@ describe('requestDDLReview', () => {
   it('should handle non-ok response with invalid JSON body via catch block', async () => {
     // SAFETY: this malformed-body fixture implements the response status and rejected JSON reader.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
       ok: false,
+      headers: new Headers(),
       status: 502,
       json: () => Promise.reject(new Error('Unexpected end of JSON input')),
     } as unknown as Response);
@@ -76,8 +84,9 @@ describe('requestDDLReview', () => {
   it('should throw error when missing response body', async () => {
     // SAFETY: this missing-body fixture implements the response fields checked before stream reading.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
       ok: true,
+      headers: new Headers(),
       status: 200,
       body: null,
       json: vi.fn(),
@@ -94,8 +103,9 @@ describe('requestDDLReview', () => {
   it('should throw parse error when stream contains no JSON object', async () => {
     // SAFETY: this invalid-stream fixture implements the response fields consumed by the JSON parser path.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
       ok: true,
+      headers: new Headers(),
       status: 200,
       body: createTextStream(['this is not valid json!']),
       json: vi.fn(),
@@ -112,8 +122,9 @@ describe('requestDDLReview', () => {
   it('should normalize invalid summary and non-array suggestions', async () => {
     // SAFETY: this normalization fixture implements the response stream consumed by requestDDLReview.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
       ok: true,
+      headers: new Headers(),
       status: 200,
       body: createTextStream(['{"score": "abc", "summary": 123, "suggestions": "not_an_array"}']),
       json: vi.fn(),
@@ -137,8 +148,9 @@ describe('requestDDLReview', () => {
       .mockImplementation((text) => (text === '{}' ? null : parse(text)));
     // SAFETY: this null-payload fixture implements the response stream consumed by requestDDLReview.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
       ok: true,
+      headers: new Headers(),
       status: 200,
       body: createTextStream(['{}']),
       json: vi.fn(),
@@ -159,8 +171,9 @@ describe('requestDDLReview', () => {
   it('downgrades malformed actionable suggestions at the service boundary', async () => {
     // SAFETY: this malformed-suggestion fixture implements the response stream consumed by requestDDLReview.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture implements only the fetch response members used by the service.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
       ok: true,
+      headers: new Headers(),
       status: 200,
       body: createTextStream([
         JSON.stringify({

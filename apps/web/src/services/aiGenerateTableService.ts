@@ -1,3 +1,4 @@
+import { fetchAIConversation } from './aiConversationService';
 import { readTextStream } from '@/services/streamingText';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
 import {
@@ -10,9 +11,8 @@ import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import i18n from '@/i18n';
 import { normalizeGeneratedTableSchema } from '@/utils/normalizeAiEnumValue';
 
-const AI_GENERATE_API_ENDPOINT = '/api/generate-table';
-
 export interface GenerateTableRequestOptions {
+  conversationId?: string;
   mode?: 'generate' | 'patch';
   templates?: unknown[];
   existingConfig?: Partial<PersistedState>;
@@ -23,6 +23,7 @@ export interface GenerateTableRequestOptions {
 interface RequestGenerateTableOptions {
   signal: AbortSignal;
   onStreamingText?: (text: string) => void;
+  onConversation?: (id: string) => void;
 }
 
 interface RequestGenerateTablePayload {
@@ -45,22 +46,31 @@ export async function requestGenerateTable(
     payload.options?.mode === 'patch' ? undefined : payload.options?.previousSchema;
   const existingConfig = previousSchema ? undefined : payload.options?.existingConfig;
 
-  const response = await fetch(AI_GENERATE_API_ENDPOINT, {
-    method: 'POST',
-    headers: buildAuthenticatedJsonHeaders(),
-    credentials: 'include',
-    body: JSON.stringify({
-      description: payload.description,
-      dbType: payload.dbType,
-      locale: payload.locale,
-      mode: payload.options?.mode,
-      templates: payload.options?.templates,
-      existingConfig,
-      previousSchema,
-      conversationHistory: payload.options?.conversationHistory ?? [],
-    }),
-    signal: options.signal,
-  });
+  const response = await fetchAIConversation(
+    'generate-table',
+    {
+      method: 'POST',
+      headers: buildAuthenticatedJsonHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({
+        description: payload.description,
+        dbType: payload.dbType,
+        locale: payload.locale,
+        mode: payload.options?.mode,
+        templates: payload.options?.templates,
+        existingConfig,
+        previousSchema,
+        conversationHistory: payload.options?.conversationId
+          ? []
+          : (payload.options?.conversationHistory ?? []),
+      }),
+      signal: options.signal,
+    },
+    payload.options?.conversationId,
+  );
+  const conversation = response.headers.get('X-AI-Conversation');
+
+  if (conversation) options.onConversation?.(conversation);
 
   if (!response.ok) {
     throw new Error(await readAIErrorMessage(response, 'generationFailed'));

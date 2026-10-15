@@ -190,7 +190,7 @@ test.describe('Cloudflare runtime bindings', () => {
   test('connects Effect spans to the native Worker trace', async ({ request }) => {
     const requestId = `trace-${crypto.randomUUID()}`;
 
-    const response = await request.post('/api/explain', {
+    const response = await request.post('/api/ai/operations', {
       headers: { 'X-Request-Id': requestId },
       data: {},
     });

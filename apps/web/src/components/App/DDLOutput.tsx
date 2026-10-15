@@ -31,6 +31,7 @@ interface DDLOutputProps {
   onOrmTargetChange: (target: ORMTarget) => void;
   onCopyOrm: () => Promise<boolean>;
   isReviewing: boolean;
+  reviewThinking?: string;
   reviewPartialResult: PartialReviewResult | null;
   reviewResult: DDLReviewResult | null;
   reviewError: string | null;
@@ -116,6 +117,7 @@ export const DDLOutput = memo<DDLOutputProps>((props) => {
             onCopy={props.onCopySql}
             isReviewing={props.isReviewing}
             reviewPartialResult={props.reviewPartialResult}
+            reviewThinking={props.reviewThinking}
             reviewResult={props.reviewResult}
             reviewError={props.reviewError}
             schemaLintIssues={props.schemaLintIssues}

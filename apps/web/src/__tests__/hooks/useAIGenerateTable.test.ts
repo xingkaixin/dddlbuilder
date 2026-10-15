@@ -1,3 +1,8 @@
+import * as aiTransport from '@/services/aiConversationService';
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Transport lifecycle has dedicated integration tests; these tests protect scenario decoding and hook state.
+vi.mock('@/services/aiConversationService', () => ({ fetchAIConversation: vi.fn() }));
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { useAIGenerateTable } from '@/hooks/useAIGenerateTable';
@@ -53,9 +58,10 @@ describe('useAIGenerateTable failure states', () => {
   it('should set error when server responds with non-ok status', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
+      headers: new Headers(),
       json: async () => ({ error: '生成失败' }),
     });
-    vi.stubGlobal('fetch', fetchMock);
+    vi.mocked(aiTransport.fetchAIConversation).mockImplementation(fetchMock);
 
     const { result } = renderAIGenerateTableHook();
 
@@ -71,6 +77,7 @@ describe('useAIGenerateTable failure states', () => {
   it('should execute completed generation again for same params', async () => {
     const fetchMock = vi.fn().mockImplementation(() => ({
       ok: true,
+      headers: new Headers(),
       body: createAITextStream([
         JSON.stringify({
           tableName: 'users',
@@ -81,7 +88,7 @@ describe('useAIGenerateTable failure states', () => {
         }),
       ]),
     }));
-    vi.stubGlobal('fetch', fetchMock);
+    vi.mocked(aiTransport.fetchAIConversation).mockImplementation(fetchMock);
 
     const { result } = renderAIGenerateTableHook();
 

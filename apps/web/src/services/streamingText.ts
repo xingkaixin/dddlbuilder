@@ -1,3 +1,4 @@
+import type { DDLReviewSuggestion } from '@ddlbuilder/shared-types/ddl-review';
 import { logAiStreamDebug } from '@/services/aiStreamDebug';
 import { getAIErrorMessage } from '@/services/aiApi';
 import i18n from '@/i18n';
@@ -7,6 +8,8 @@ const DEFAULT_STREAM_UPDATE_INTERVAL_MS = 33;
 
 interface ReadTextStreamOptions {
   onUpdate?: (text: string) => void;
+  onThinking?: (text: string) => void;
+  onSuggestions?: (items: readonly DDLReviewSuggestion[]) => void;
   updateIntervalMs?: number;
   debugContext?: {
     route: string;
@@ -36,7 +39,10 @@ export async function readTextStream(
   let totalBytes = 0;
   let firstChunkAt: number | null = null;
 
-  const emitText = (reason: 'first_chunk' | 'throttled' | 'final', emittedAt = Date.now()) => {
+  const emitText = (
+    reason: 'first_chunk' | 'throttled' | 'final' | 'reset',
+    emittedAt = Date.now(),
+  ) => {
     if (!onUpdate) {
       return;
     }
@@ -96,6 +102,13 @@ export async function readTextStream(
           completed = true;
         } else if (event.type === 'delta') {
           fullText += event.text;
+        } else if (event.type === 'reset') {
+          fullText = event.text;
+          emitText('reset');
+        } else if (event.type === 'suggestions') {
+          options.onSuggestions?.(event.suggestions);
+        } else if (event.type === 'thinking') {
+          options.onThinking?.(event.text);
         } else {
           throw new Error(i18n.t('services.aiServiceUnavailable'));
         }

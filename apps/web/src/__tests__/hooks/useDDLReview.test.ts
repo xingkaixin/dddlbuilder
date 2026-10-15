@@ -1,3 +1,8 @@
+import * as aiTransport from '@/services/aiConversationService';
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Transport lifecycle has dedicated integration tests; these tests protect scenario decoding and hook state.
+vi.mock('@/services/aiConversationService', () => ({ fetchAIConversation: vi.fn() }));
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDDLReview } from '@/hooks/useDDLReview';
@@ -75,7 +80,9 @@ describe('useDDLReview', () => {
 
     const stream = createStream(['{"score": 8,', '"summary": "ok", "suggestions": ["a", "b"]}']);
 
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(stream));
+    const fetchMock = vi
+      .spyOn(aiTransport, 'fetchAIConversation')
+      .mockResolvedValue(createResponse(stream));
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -94,7 +101,7 @@ describe('useDDLReview', () => {
     const { result } = renderDDLReviewWithLocaleHook();
 
     const fetchMock = vi
-      .spyOn(globalThis, 'fetch')
+      .spyOn(aiTransport, 'fetchAIConversation')
       .mockResolvedValue(
         createResponse(createStream(['{"score": 8, "summary": "ok", "suggestions": []}'])),
       );
@@ -113,7 +120,7 @@ describe('useDDLReview', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/review',
+      'review',
       expect.objectContaining({
         body: JSON.stringify({
           ddl: 'ddl',
@@ -122,11 +129,12 @@ describe('useDDLReview', () => {
           locale: 'en-US',
         }),
       }),
+      undefined,
     );
   });
 
   it('should handle non-ok response', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
       createResponse(JSON.stringify({ error: 'boom' }), 500),
     );
 
@@ -153,7 +161,7 @@ describe('useDDLReview', () => {
       },
     });
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(stream));
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(createResponse(stream));
 
     // Start the review
     act(() => {
@@ -211,7 +219,7 @@ describe('useDDLReview', () => {
       start() {},
     });
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(stream));
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(createResponse(stream));
 
     // Start a review
     act(() => {
@@ -234,7 +242,7 @@ describe('useDDLReview', () => {
 
     const stream = createStream(['invalid json response']);
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(stream));
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(createResponse(stream));
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -248,7 +256,7 @@ describe('useDDLReview', () => {
   it('should handle empty response body', async () => {
     const { result } = renderDDLReviewHook();
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(null));
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(createResponse(null));
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -262,7 +270,7 @@ describe('useDDLReview', () => {
   it('should handle network error', async () => {
     const { result } = renderDDLReviewHook();
 
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network error'));
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockRejectedValue(new Error('Network error'));
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -279,7 +287,7 @@ describe('useDDLReview', () => {
     const abortError = new Error('AbortError');
     abortError.name = 'AbortError';
 
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(abortError);
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockRejectedValue(abortError);
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -295,7 +303,7 @@ describe('useDDLReview', () => {
     let firstSignal: AbortSignal | undefined;
     let requestCount = 0;
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((_, init) => {
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockImplementation((_, init) => {
       requestCount += 1;
       const signal = init?.signal ?? undefined;
 
@@ -359,7 +367,7 @@ describe('useDDLReview', () => {
 
     const stream = createStream([mockResponse]);
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(stream));
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(createResponse(stream));
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -389,7 +397,7 @@ describe('useDDLReview', () => {
     const { result } = renderDDLReviewHook();
 
     const fetchMock = vi
-      .spyOn(globalThis, 'fetch')
+      .spyOn(aiTransport, 'fetchAIConversation')
       .mockImplementation(async () =>
         createResponse(createStream(['{"score": 9, "summary": "fresh", "suggestions": []}'])),
       );
@@ -418,7 +426,7 @@ describe('useDDLReview', () => {
       },
     });
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockImplementation(() => {
       fetchCount++;
 
       return Promise.resolve(createResponse(stream));

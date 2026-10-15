@@ -1,3 +1,4 @@
+import { createAIConversationMock } from './ai-conversations';
 import { selectWorkspaceView } from './utils';
 import { openFieldTool, openTableAction } from './utils';
 import {
@@ -13,7 +14,6 @@ import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import { WORKSPACE_SYNC_MESSAGE } from '../packages/shared-types/src/workspaceSync';
-import { encodeAIStreamEvent } from '../packages/shared-types/src/aiStream';
 import type { PersistedState } from '../packages/shared-types/src/index';
 import { confirmFieldTypeChangeIfNeeded, ensureBuilderVisible } from './utils';
 import type { WorkspaceMigrationPayload } from '../packages/shared-types/src/workspace';
@@ -852,7 +852,10 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
   try {
     await mockSignedInWorkspace(contextA, server, workspaceId);
     await mockSignedInWorkspace(contextB, server, workspaceId);
-    await contextA.route('**/api/generate-table', async (route) => {
+    const ai = createAIConversationMock();
+    await contextA.route('**/api/ai/operations{,/**}', async (route) => {
+      if (await ai.handle(route)) return;
+
       // SAFETY: The generate-table route is invoked by the typed AI client with this request contract.
       const { existingConfig } = route.request().postDataJSON() as {
         existingConfig: PersistedState;
@@ -865,12 +868,7 @@ test('AI suggestions reject concurrent workspace edits and can be regenerated', 
           .map((row) => ({ ...row, fieldType: 'INT' })),
         indexes: [],
       };
-      await route.fulfill({
-        contentType: 'application/x-ndjson',
-        body:
-          encodeAIStreamEvent({ type: 'delta', text: JSON.stringify(schema) }) +
-          encodeAIStreamEvent({ type: 'done' }),
-      });
+      await ai.fulfill(route, { json: schema });
     });
     const pageA = await contextA.newPage();
     const pageB = await contextB.newPage();
@@ -992,9 +990,11 @@ test('remote draft removal cancels index advice when switching to a same-name dr
   const responseReady = new Promise<void>((resolve) => {
     finishResponse = resolve;
   });
-  await contextB.route('**/api/index-advisor', async (route) => {
+  const ai = createAIConversationMock();
+  await contextB.route('**/api/ai/operations{,/**}', async (route) => {
+    if (await ai.handle(route)) return;
     await responseReady;
-    await route.fulfill({
+    await ai.fulfill(route, {
       json: {
         summary: 'Advice for the deleted draft',
         recommendations: [
@@ -1045,7 +1045,12 @@ test('remote draft removal cancels index advice when switching to a same-name dr
     await advisor
       .locator('#ai-index-query-patterns')
       .fill('SELECT * FROM shared_draft WHERE id = ?');
-    const requestStarted = pageB.waitForRequest('**/api/index-advisor');
+
+    const requestStarted = pageB.waitForRequest(
+      (request) =>
+        /\/api\/ai\/operations\/[^/]+$/.test(new URL(request.url()).pathname) &&
+        request.method() === 'POST',
+    );
     await advisor.getByRole('button', { name: '分析索引', exact: true }).click();
     const request = await requestStarted;
     expect(request.postDataJSON().tableName).toBe('shared_draft');

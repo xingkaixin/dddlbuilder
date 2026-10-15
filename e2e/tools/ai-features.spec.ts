@@ -1,16 +1,11 @@
+import { createAIConversationMock } from '../ai-conversations';
 import { openFieldTool } from '../utils';
 import { test, expect, type Locator } from '@playwright/test';
 import { setupHydratedState } from '../utils';
-import { encodeAIStreamEvent } from '../../packages/shared-types/src/aiStream';
 import type { PersistedState } from '../../packages/shared-types/src/index';
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- This fixture serializes route-specific JSON payloads into the shared NDJSON protocol.
-const streamedResponse = (value: unknown) => ({
-  contentType: 'application/x-ndjson',
-  body:
-    encodeAIStreamEvent({ type: 'delta', text: JSON.stringify(value) }) +
-    encodeAIStreamEvent({ type: 'done' }),
-});
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Fixture responses intentionally include malformed domain objects to test UI validation.
+const streamedResponse = (value: object) => ({ json: value });
 
 const expectAppliedPatchHistory = async (dialog: Locator, count: number) => {
   await expect(
@@ -24,11 +19,13 @@ const expectAppliedPatchHistory = async (dialog: Locator, count: number) => {
 };
 
 test('AI 修改保留字段身份，将改名应用为单个变更', async ({ page }) => {
+  const ai = createAIConversationMock();
   await page.route('**/api/**', async (route) => {
-    const path = new URL(route.request().url()).pathname;
+    if (await ai.handle(route)) return;
+    const path = ai.path(route);
 
     if (path === '/api/me') {
-      await route.fulfill({
+      await ai.fulfill(route, {
         json: {
           signedIn: true,
           user: {
@@ -40,17 +37,18 @@ test('AI 修改保留字段身份，将改名应用为单个变更', async ({ pa
         },
       });
     } else if (path === '/api/workspaces') {
-      await route.fulfill({ json: { workspaceId: 'rename-workspace' } });
+      await ai.fulfill(route, { json: { workspaceId: 'rename-workspace' } });
     } else if (path === '/api/credits/balance') {
-      await route.fulfill({ json: { balance: 1000, version: 1, userId: 'rename-user' } });
-    } else if (path === '/api/generate-table') {
+      await ai.fulfill(route, { json: { balance: 1000, version: 1, userId: 'rename-user' } });
+    } else if (path === 'generate-table') {
       // SAFETY: This route is a test fixture for the typed generate-table request emitted by the app.
       const { existingConfig } = route.request().postDataJSON() as {
         existingConfig: PersistedState;
       };
       const original = existingConfig.rows.find((row) => row.fieldName === 'HYDRATED_FIELD');
       expect(original?.id).toBeTruthy();
-      await route.fulfill(
+      await ai.fulfill(
+        route,
         streamedResponse({
           tableName: existingConfig.tableName,
           tableComment: existingConfig.tableComment,
@@ -59,7 +57,7 @@ test('AI 修改保留字段身份，将改名应用为单个变更', async ({ pa
         }),
       );
     } else {
-      await route.fulfill({ status: 503, json: { error: 'Not available in this test' } });
+      await ai.fulfill(route, { status: 503, json: { error: 'Not available in this test' } });
     }
   });
   await page.goto('/');
@@ -80,7 +78,7 @@ test('AI 修改保留字段身份，将改名应用为单个变更', async ({ pa
 });
 
 test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page }) => {
-  const responses = new Map<string, unknown>([
+  const responses = new Map<string, object>([
     [
       '/api/me',
       {
@@ -96,17 +94,20 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
     ['/api/workspaces', { workspaceId: 'partial-workspace' }],
     ['/api/credits/balance', { balance: 1000, version: 1, userId: 'partial-user' }],
   ]);
+  const ai = createAIConversationMock();
   await page.route('**/api/**', async (route) => {
-    const path = new URL(route.request().url()).pathname;
+    if (await ai.handle(route)) return;
+    const path = ai.path(route);
 
-    if (path === '/api/generate-table') {
+    if (path === 'generate-table') {
       // SAFETY: This route is a test fixture for the typed generate-table request emitted by the app.
       const { existingConfig } = route.request().postDataJSON() as {
         existingConfig: PersistedState;
       };
       const original = existingConfig.rows.find((row) => row.fieldName === 'HYDRATED_FIELD');
       expect(original?.id).toBeTruthy();
-      await route.fulfill(
+      await ai.fulfill(
+        route,
         streamedResponse({
           tableName: existingConfig.tableName,
           tableComment: existingConfig.tableComment,
@@ -115,7 +116,8 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
         }),
       );
     } else {
-      await route.fulfill(
+      await ai.fulfill(
+        route,
         responses.get(path)
           ? { json: responses.get(path) }
           : { status: 503, json: { error: 'Not available in this test' } },
@@ -158,7 +160,7 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
 });
 
 test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page }) => {
-  const responses = new Map<string, unknown>([
+  const responses = new Map<string, object>([
     [
       '/api/me',
       {
@@ -175,11 +177,14 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
     ['/api/credits/balance', { balance: 1000, version: 1, userId: 'baseline-user' }],
   ]);
   let requests = 0;
+  const ai = createAIConversationMock();
   await page.route('**/api/**', async (route) => {
-    const path = new URL(route.request().url()).pathname;
+    if (await ai.handle(route)) return;
+    const path = ai.path(route);
 
-    if (path !== '/api/generate-table') {
-      await route.fulfill(
+    if (path !== 'generate-table') {
+      await ai.fulfill(
+        route,
         responses.get(path)
           ? { json: responses.get(path) }
           : { status: 503, json: { error: 'Not available in this test' } },
@@ -202,11 +207,12 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
 
     if (requests === 2) {
       expect(request.previousSchema).toBeUndefined();
-      expect(request.conversationHistory).toHaveLength(2);
+      expect(request.conversationHistory).toHaveLength(0);
       expect(existingConfig.tableComment).toBe('第一轮注释');
     }
 
-    await route.fulfill(
+    await ai.fulfill(
+      route,
       streamedResponse({
         tableName: existingConfig.tableName,
         tableComment: '第一轮注释',
@@ -249,7 +255,7 @@ test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page })
 });
 
 test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', async ({ page }) => {
-  const responses = new Map<string, unknown>([
+  const responses = new Map<string, object>([
     [
       '/api/me',
       {
@@ -265,7 +271,7 @@ test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', a
     ['/api/workspaces', { workspaceId: 'review-workspace' }],
     ['/api/credits/balance', { balance: 1000, version: 1, userId: 'review-user' }],
     [
-      '/api/review',
+      'review',
       {
         score: 8,
         summary: '补充审计字段和索引',
@@ -288,12 +294,15 @@ test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', a
       },
     ],
   ]);
+  const ai = createAIConversationMock();
   await page.route('**/api/**', async (route) => {
-    const path = new URL(route.request().url()).pathname;
+    if (await ai.handle(route)) return;
+    const path = ai.path(route);
     const response = responses.get(path);
-    await route.fulfill(
+    await ai.fulfill(
+      route,
       response
-        ? path === '/api/review'
+        ? path === 'review'
           ? streamedResponse(response)
           : { json: response }
         : { status: 503, json: { error: 'Not available in this test' } },
@@ -326,11 +335,13 @@ test('AI 注释请求在切换文档后取消，不覆盖另一张表', async ({
   const responseReady = new Promise<void>((resolve) => {
     finishResponse = resolve;
   });
+  const ai = createAIConversationMock();
   await page.route('**/api/**', async (route) => {
-    const path = new URL(route.request().url()).pathname;
+    if (await ai.handle(route)) return;
+    const path = ai.path(route);
 
     if (path === '/api/me') {
-      await route.fulfill({
+      await ai.fulfill(route, {
         json: {
           signedIn: true,
           user: {
@@ -342,19 +353,19 @@ test('AI 注释请求在切换文档后取消，不覆盖另一张表', async ({
         },
       });
     } else if (path === '/api/workspaces') {
-      await route.fulfill({ json: { workspaceId: 'ai-comments-workspace' } });
+      await ai.fulfill(route, { json: { workspaceId: 'ai-comments-workspace' } });
     } else if (path === '/api/credits/balance') {
-      await route.fulfill({ json: { balance: 1000, version: 1, userId: 'ai-comments-user' } });
-    } else if (path === '/api/generate-comments') {
+      await ai.fulfill(route, { json: { balance: 1000, version: 1, userId: 'ai-comments-user' } });
+    } else if (path === 'generate-comments') {
       await responseReady;
-      await route.fulfill({
+      await ai.fulfill(route, {
         json: {
           tableComment: '用户表',
           fields: [{ fieldName: 'HYDRATED_FIELD', fieldComment: '用户字段' }],
         },
       });
     } else {
-      await route.fulfill({ status: 503, json: { error: 'Not available in this test' } });
+      await ai.fulfill(route, { status: 503, json: { error: 'Not available in this test' } });
     }
   });
 
@@ -372,7 +383,11 @@ test('AI 注释请求在切换文档后取消，不覆盖另一张表', async ({
       .click();
     await expect(page.locator('#table-name')).toHaveValue('users');
 
-    const requestStarted = page.waitForRequest('**/api/generate-comments');
+    const requestStarted = page.waitForRequest(
+      (request) =>
+        /\/api\/ai\/operations\/[^/]+$/.test(new URL(request.url()).pathname) &&
+        request.method() === 'POST',
+    );
     await openFieldTool(page, 'AI 工具', 'AI 注释');
     await page.getByRole('menuitem', { name: '补全缺失注释' }).click();
     const request = await requestStarted;
@@ -489,11 +504,13 @@ test.describe('AI 功能 UI 测试 @tools @ai', () => {
 });
 
 test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async ({ page }) => {
+  const ai = createAIConversationMock();
   await page.route('**/api/**', async (route) => {
-    const path = new URL(route.request().url()).pathname;
+    if (await ai.handle(route)) return;
+    const path = ai.path(route);
 
     if (path === '/api/me') {
-      await route.fulfill({
+      await ai.fulfill(route, {
         json: {
           signedIn: true,
           user: {
@@ -505,12 +522,13 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
         },
       });
     } else if (path === '/api/workspaces') {
-      await route.fulfill({ json: { workspaceId: 'patch-workspace' } });
+      await ai.fulfill(route, { json: { workspaceId: 'patch-workspace' } });
     } else if (path === '/api/credits/balance') {
-      await route.fulfill({ json: { balance: 1000, version: 1, userId: 'patch-user' } });
-    } else if (path === '/api/generate-table') {
+      await ai.fulfill(route, { json: { balance: 1000, version: 1, userId: 'patch-user' } });
+    } else if (path === 'generate-table') {
       const { existingConfig } = route.request().postDataJSON();
-      await route.fulfill(
+      await ai.fulfill(
+        route,
         streamedResponse({
           tableName: existingConfig.tableName,
           tableComment: existingConfig.tableComment,
@@ -536,7 +554,7 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
         }),
       );
     } else {
-      await route.fulfill({ status: 503, json: { error: 'Not available in this test' } });
+      await ai.fulfill(route, { status: 503, json: { error: 'Not available in this test' } });
     }
   });
   await page.goto('/');
@@ -563,4 +581,57 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
   await page.keyboard.press('Escape');
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('INDEX email_lookup');
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('email VARCHAR(255)');
+});
+
+test('刷新后从 AI 任务入口恢复结果，切换账号不显示旧任务', async ({ page }) => {
+  let userId = 'resume-user';
+
+  const operation = {
+    operationId: 'resume-operation',
+    conversationId: 'resume-conversation',
+    userId,
+    route: 'explain',
+  };
+  await page.addInitScript(
+    (item) => sessionStorage.setItem('ddlbuilder.ai.operations', JSON.stringify([item])),
+    operation,
+  );
+  await page.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+
+    if (path === '/api/me')
+      await route.fulfill({
+        json: {
+          signedIn: true,
+          user: { userId, email: 'resume@example.test', name: 'Resume', emailVerified: true },
+        },
+      });
+    else if (path === '/api/credits/balance')
+      await route.fulfill({ json: { balance: 1000, version: 1, userId } });
+    else if (path === '/api/workspaces')
+      await route.fulfill({ json: { workspaceId: 'resume-workspace' } });
+    else if (path === '/api/ai/operations/resume-operation')
+      await route.fulfill({
+        json: {
+          ...operation,
+          status: 'succeeded',
+          text: 'Recovered SQL explanation',
+          thinking: '',
+          suggestions: [],
+          result: 'Recovered SQL explanation',
+          error: null,
+          accountingPending: false,
+        },
+      });
+    else await route.fulfill({ status: 503, json: { error: 'Unavailable' } });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'AI 任务 (1)', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'AI 任务' });
+  await dialog.getByRole('button', { name: 'SQL 解释', exact: true }).click();
+  await expect(dialog.getByText('Recovered SQL explanation', { exact: true })).toBeVisible();
+  await page.screenshot({ path: '/tmp/ddl-ai-operations.png' });
+  userId = 'other-user';
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'AI 任务 (1)', exact: true })).toHaveCount(0);
 });
