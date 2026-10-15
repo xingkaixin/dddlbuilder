@@ -70,7 +70,10 @@ export const getWorkerConfig = (mode = 'development') => {
       runWorkerFirst: ['/api/*'],
     },
     triggers: e2e ? [] : [triggers.scheduled({ schedule: '*/10 * * * *' })],
-    exports: { WorkspaceYDocDurableObject: exports.durableObject({ storage: 'sqlite' }) },
+    exports: {
+      WorkspaceYDocDurableObject: exports.durableObject({ storage: 'sqlite' }),
+      AIConversationDurableObject: exports.durableObject({ storage: 'sqlite' }),
+    },
     env: {
       ...Object.fromEntries(
         Object.entries(vars).map(([key, value]) => [key, bindings.text(value)]),
@@ -80,6 +83,10 @@ export const getWorkerConfig = (mode = 'development') => {
       USER_DB: bindings.d1({
         name: deployment?.databaseName ?? `ddlbuilder-user-${e2e ? 'e2e' : 'local'}`,
         id: deployment?.databaseId ?? `00000000-0000-0000-0000-00000000000${e2e ? '2' : '1'}`,
+      }),
+      AI_CONVERSATIONS: bindings.durableObject({
+        worker: name,
+        exportName: 'AIConversationDurableObject',
       }),
       WORKSPACE_YDOC: bindings.durableObject({
         worker: name,

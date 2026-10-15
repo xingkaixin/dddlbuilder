@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url';
 
 interface SqliteD1Options {
   includeMeta?: boolean;
+  filename?: string;
 }
 
 type SqliteRow = Record<string, SQLInputValue>;
@@ -130,8 +131,12 @@ class SqliteD1Statement {
 }
 
 export const createSqliteD1Database = (options: SqliteD1Options = {}) => {
-  const sqlite = new DatabaseSync(':memory:');
-  applyMigrations(sqlite);
+  const sqlite = new DatabaseSync(options.filename ?? ':memory:');
+
+  if (
+    !sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user'").get()
+  )
+    applyMigrations(sqlite);
 
   // SAFETY: this adapter implements the D1 methods exercised by the worker tests.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the SQLite-backed fixture implements the D1 methods used by tests.

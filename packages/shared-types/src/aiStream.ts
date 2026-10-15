@@ -1,3 +1,4 @@
+import { DDLReviewSuggestionSchema } from './ddlReview.js';
 import * as Effect from 'effect/Effect';
 import * as Option from 'effect/Option';
 import * as Result from 'effect/Result';
@@ -11,6 +12,12 @@ const errorCode = Schema.Literals(API_ERROR_CODES).pipe(
 );
 
 export const AIStreamEventSchema = Schema.Union([
+  Schema.Struct({
+    type: Schema.Literal('suggestions'),
+    suggestions: Schema.Array(DDLReviewSuggestionSchema),
+  }),
+  Schema.Struct({ type: Schema.Literal('reset'), text: Schema.String }),
+  Schema.Struct({ type: Schema.Literal('thinking'), text: Schema.String }),
   Schema.Struct({ type: Schema.Literal('delta'), text: Schema.String }),
   Schema.Struct({ type: Schema.Literal('done') }),
   Schema.Struct({

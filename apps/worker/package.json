@@ -29,7 +29,6 @@
     "evlog": "2.31.0",
     "hono": "catalog:",
     "lib0": "catalog:",
-    "openai": "^7.32.0",
     "resend": "^6.32.1",
     "y-protocols": "catalog:",
     "yjs": "catalog:"

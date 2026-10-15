@@ -26,6 +26,8 @@ type CallAttempt = {
   estimated_tokens: number;
   dispatched_at: number | null;
   observed_tokens: number | null;
+  usage_complete: number;
+  succeeded: number;
   output_chars: number;
   completed_at: number | null;
 };
@@ -35,9 +37,11 @@ export const readAIOperation = (env: ApiEnv['Bindings'], id: string) =>
 
 export const assertAIOperationAccess = async (env: ApiEnv['Bindings'], operation: AIOperation) => {
   const access = await readSessionAccess(env, operation.user_id);
+
   if (!access.sessionIds.has(operation.session_id)) {
     throw new DomainError(401, 'AUTH_REQUIRED', 'AI operation authorization expired');
   }
+
   if (
     operation.stopped_at ||
     operation.completed_at ||
@@ -52,25 +56,32 @@ export const settleAICalls = async (
   env: ApiEnv['Bindings'],
   operationId: string,
   route: AIRouteKey,
+  successfulOutput?: boolean,
 ) => {
   const operation = await readAIOperation(env, operationId);
+
   if (!operation) throw new Error('AI operation missing');
+
   const { results } = await env.USER_DB.prepare(
     'SELECT * FROM ai_call_attempts WHERE operation_id = ?',
   )
     .bind(operationId)
     .all<CallAttempt>();
+
   for (const call of results) {
     const usage = await env.USER_DB.prepare('SELECT status FROM usage_events WHERE id = ?')
       .bind(call.usage_id)
       .first<{ status: string }>();
+
     if (!usage) continue;
+
     if (call.dispatched_at !== null)
       await env.USER_DB.prepare(
         "UPDATE usage_events SET attempt_count = 1 WHERE id = ? AND status = 'reserved' AND attempt_count = 0",
       )
         .bind(call.usage_id)
         .run();
+
     const reservation = {
       usageEventId: call.usage_id,
       userId: operation.user_id,
@@ -78,10 +89,15 @@ export const settleAICalls = async (
       requestId: operationId,
       reservedTokens: call.estimated_tokens,
     };
-    const charged = call.dispatched_at ? (call.observed_tokens ?? call.estimated_tokens) : 0;
-    const succeeded = call.observed_tokens !== null && call.completed_at !== null;
+    const charged = call.dispatched_at
+      ? call.usage_complete
+        ? (call.observed_tokens ?? 0)
+        : Math.max(call.estimated_tokens, call.observed_tokens ?? 0)
+      : 0;
+    const succeeded = call.succeeded === 1 && successfulOutput !== false;
     const outcome = succeeded ? 'succeeded' : 'failed';
     const code = succeeded ? null : 'RESERVATION_ABANDONED';
+
     const prepared = await prepareAIUsageSettlement(
       env,
       reservation,
@@ -90,10 +106,11 @@ export const settleAICalls = async (
         observedTotalTokens: call.dispatched_at ? call.observed_tokens : 0,
         chargedTokens: charged,
         providerBudgetTokens: charged,
-        usageEstimated: call.dispatched_at !== null && call.observed_tokens === null,
+        usageEstimated: call.dispatched_at !== null && call.usage_complete === 0,
       },
       code,
     );
+
     if (prepared.needsFinalization)
       await finalizeAIUsageSettlement(env, reservation, outcome, code);
     await settleAIDailyBudget(env, call.usage_id, prepared.providerBudgetTokens);
@@ -108,14 +125,17 @@ export const admitAICall = async (
   estimatedTokens: number,
 ) => {
   const operation = await readAIOperation(env, operationId);
+
   if (!operation) throw new Error('AI operation missing');
   await assertAIOperationAccess(env, operation);
   await settleAICalls(env, operationId, route);
+
   const count = await env.USER_DB.prepare(
     'SELECT COUNT(*) AS count FROM ai_call_attempts WHERE operation_id = ?',
   )
     .bind(operationId)
     .first<{ count: number }>();
+
   if ((count?.count ?? 0) >= AI_MAX_CALLS) throw new Error('AI model call limit reached');
   const id = crypto.randomUUID();
   const usageId = `usage:${id}`;
@@ -131,6 +151,7 @@ export const admitAICall = async (
     usageEventId: usageId,
   });
   const config = buildOpenAIConfig(env);
+
   if (config.dailyBudgetEnabled) {
     const budget = await reserveAIDailyBudget(
       env,
@@ -138,9 +159,11 @@ export const admitAICall = async (
       estimatedTokens,
       config.dailyBudgetMaxTokens,
     );
+
     if (budget === null)
       throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'AI daily budget exhausted');
   }
+
   // Mark before dispatch: a crash between this commit and fetch is conservatively treated as possible usage.
   const dispatched =
     await env.USER_DB.prepare(`UPDATE ai_call_attempts SET dispatched_at = ? WHERE id = ?
@@ -148,13 +171,24 @@ export const admitAICall = async (
     RETURNING id`)
       .bind(Date.now(), id, operationId, Date.now())
       .first();
+
   if (!dispatched) throw new Error('AI operation stopped before model dispatch');
   await env.USER_DB.prepare(
     "UPDATE usage_events SET attempt_count = 1 WHERE id = ? AND status = 'reserved'",
   )
     .bind(usageId)
     .run();
+
   return id;
+};
+
+export type AIUsageReceipt = {
+  complete: boolean;
+  succeeded: boolean;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
 };
 
 export const recordAICallUsage = async (
@@ -162,11 +196,23 @@ export const recordAICallUsage = async (
   id: string,
   tokens: number,
   outputChars: number,
+  receipt: AIUsageReceipt = { complete: true, succeeded: true },
 ) => {
   if (!Number.isSafeInteger(tokens) || tokens < 0) throw new Error('Invalid provider token usage');
   await env.USER_DB.prepare(
-    `UPDATE ai_call_attempts SET observed_tokens = ?, output_chars = ?, completed_at = ? WHERE id = ?`,
+    `UPDATE ai_call_attempts SET observed_tokens = ?, output_chars = ?, input_tokens = ?, output_tokens = ?, cache_read_tokens = ?, cache_write_tokens = ?, usage_complete = ?, succeeded = ?, completed_at = ? WHERE id = ?`,
   )
-    .bind(tokens, outputChars, Date.now(), id)
+    .bind(
+      tokens,
+      outputChars,
+      receipt.inputTokens ?? null,
+      receipt.outputTokens ?? null,
+      receipt.cacheReadTokens ?? null,
+      receipt.cacheWriteTokens ?? null,
+      Number(receipt.complete),
+      Number(receipt.succeeded),
+      Date.now(),
+      id,
+    )
     .run();
 };

@@ -1,3 +1,6 @@
+import * as Result from 'effect/Result';
+import { recoverAIConversations } from '../server-api/lib/aiConversationRecovery.js';
+import { registerAIConversationRoutes } from '../server-api/routes/aiConversations.js';
 import { registerPublicationRoutes } from '../server-api/routes/publications.js';
 import * as D1Client from '@effect/sql-d1/D1Client';
 import * as Effect from 'effect/Effect';
@@ -20,11 +23,6 @@ import {
   withWorkerRequestLogging,
 } from '../server-api/lib/logging.js';
 import { registerParseSqlRoute } from '../server-api/routes/parseSql.js';
-import { registerExplainRoute } from '../server-api/routes/explain.js';
-import { registerReviewRoute } from '../server-api/routes/review.js';
-import { registerGenerateTableRoute } from '../server-api/routes/generateTable.js';
-import { registerGenerateCommentsRoute } from '../server-api/routes/generateComments.js';
-import { registerIndexAdvisorRoute } from '../server-api/routes/indexAdvisor.js';
 import { registerShareRoutes } from '../server-api/routes/share.js';
 import { registerAuthRoutes } from '../server-api/routes/auth.js';
 import { registerCreditRoutes } from '../server-api/routes/credits.js';
@@ -34,6 +32,8 @@ import { registerWorkspaceYDocRoutes } from '../server-api/routes/workspaceYDoc.
 import { registerAdminRoutes } from '../server-api/routes/admin.js';
 import { reclaimStaleAIUsage } from '../server-api/lib/aiUsage.js';
 import { cleanupAIGovernance, reconcileTerminalAIBudgets } from '../server-api/lib/aiBudget.js';
+
+export { AIConversationDurableObject } from '../server-api/lib/aiConversationDurableObject.js';
 
 export { WorkspaceYDocDurableObject } from '../server-api/lib/workspaceYDocDurableObject.js';
 
@@ -102,15 +102,7 @@ api.onError((error, c) => {
 
 registerParseSqlRoute(api);
 
-registerExplainRoute(api);
-
-registerReviewRoute(api);
-
-registerGenerateTableRoute(api);
-
-registerGenerateCommentsRoute(api);
-
-registerIndexAdvisorRoute(api);
+registerAIConversationRoutes(api);
 
 registerShareRoutes(api);
 
@@ -177,7 +169,19 @@ export const runAIUsageRecovery = async (
 
   try {
     const program = Effect.gen(function* () {
+      const durableRecovery = yield* Effect.result(
+        Effect.tryPromise({
+          try: () => recoverAIConversations(env),
+          catch: (cause) => new AIUsageError({ cause }),
+        }),
+      );
       const recovery = yield* reclaimStaleAIUsage(env);
+
+      if (Result.isFailure(durableRecovery))
+        recovery.failures.push({
+          usageEventId: 'durable-conversations',
+          error: durableRecovery.failure,
+        });
 
       const reconciledBudgets = yield* Effect.tryPromise({
         try: () => reconcileTerminalAIBudgets(env),

@@ -1,3 +1,4 @@
+import * as Schema from 'effect/Schema';
 import * as Config from 'effect/Config';
 import * as ConfigProvider from 'effect/ConfigProvider';
 import * as Effect from 'effect/Effect';
@@ -15,10 +16,21 @@ export const loadAIConversationConfig = (env: ApiEnv['Bindings']) =>
     Effect.provideService(ConfigProvider.ConfigProvider, ConfigProvider.fromUnknown(env)),
     Effect.map((value) => {
       if (value.provider !== 'anthropic') throw new Error('Unsupported AI provider');
-      if (!['low', 'medium', 'high'].includes(value.thinkingLevel)) {
+
+      if (
+        value.thinkingLevel !== 'low' &&
+        value.thinkingLevel !== 'medium' &&
+        value.thinkingLevel !== 'high'
+      ) {
         throw new Error('Invalid AI_THINKING_LEVEL');
       }
-      return value;
+
+      return {
+        ...value,
+        thinkingLevel: Schema.decodeUnknownSync(Schema.Literals(['low', 'medium', 'high']))(
+          value.thinkingLevel,
+        ),
+      };
     }),
   );
 

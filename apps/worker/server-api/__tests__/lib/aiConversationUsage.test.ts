@@ -21,6 +21,7 @@ const fixture = async () => {
       "INSERT INTO ai_operations (id, conversation_id, user_id, session_id, submitted_at, deadline_at, created_at) VALUES ('operation-1', 'conversation-1', 'user-1', 'session-1', 1, ?, 1)",
     )
     .run(Date.now() + 600_000);
+
   return test;
 };
 
