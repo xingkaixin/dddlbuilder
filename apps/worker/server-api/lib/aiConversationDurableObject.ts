@@ -257,16 +257,13 @@ export class AIConversationDurableObject {
       cacheWriteTokens: response.usage.cacheWrite,
     };
 
-    const outputChars = response.content.reduce(
-      (total, item) =>
-        total +
-        (item.type === 'text'
-          ? item.text.length
-          : item.type === 'thinking'
-            ? item.thinking.length
-            : 0),
-      0,
-    );
+    const outputChars = response.content.reduce((total, item) => {
+      if (item.type === 'text') return total + item.text.length;
+
+      if (item.type === 'thinking') return total + item.thinking.length;
+
+      return total;
+    }, 0);
     await this.runtime().harness.commit(async (tx) => {
       const receipts = await tx.doc(Receipts);
 
@@ -622,6 +619,7 @@ export class AIConversationDurableObject {
       if ((await this.state()).operation?.id !== operation.id) {
         await assertAIOperationAccess(this.env, operation);
         const config = await Effect.runPromise(loadAIConversationConfig(this.env));
+
         if (!this.conversation) {
           // Concurrent first submissions must share one conversation.
           this.creatingConversation ??= this.runtime().harness.createConversation(
@@ -630,6 +628,7 @@ export class AIConversationDurableObject {
           );
           this.conversation = await this.creatingConversation;
         }
+
         const conversation = this.conversation;
         const scenario = prepareAIScenario(body.route, body.input);
 

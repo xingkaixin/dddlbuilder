@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createAIRuntimeFixture as createRuntime } from '../helpers/aiRuntime.js';
-import { AI_CONTEXT_LIMIT_ERROR } from '@ddlbuilder/shared-types';
+import { AI_CONTEXT_LIMIT_ERROR, decodeAIConversationSnapshot } from '@ddlbuilder/shared-types';
 
 const response = (text = 'This query reads users.') => {
   const events = [
@@ -97,14 +97,16 @@ const submit = (
       body: JSON.stringify({ route, input }),
     }),
   );
-const snapshot = async (test: Awaited<ReturnType<typeof createRuntime>>) =>
-  (
-    await test.runtime.fetch(
-      new Request('https://internal/snapshot?operation=operation', {
-        headers: { 'x-ai-user': 'user-1' },
-      }),
-    )
-  ).json();
+const snapshot = async (test: Awaited<ReturnType<typeof createRuntime>>, id = 'operation') =>
+  decodeAIConversationSnapshot(
+    await (
+      await test.runtime.fetch(
+        new Request(`https://internal/snapshot?operation=${id}`, {
+          headers: { 'x-ai-user': 'user-1' },
+        }),
+      )
+    ).json(),
+  );
 
 it('denies insufficient credits before dispatch and finishes without charging', async () => {
   const fetch = vi.fn();
@@ -286,9 +288,24 @@ it('continues generation after an observer disconnects', async () => {
 it('charges an explicit stop by observed input and received output', async () => {
   const encoder = new TextEncoder();
 
-  const event = (value: { type: string } & Record<string, unknown>) =>
-    encoder.encode(`event: ${value.type}\ndata: ${JSON.stringify(value)}\n\n`);
+  const partial = [
+    {
+      type: 'message_start',
+      message: {
+        id: 'msg_test',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude-haiku-5-5',
+        content: [],
+        stop_reason: null,
+        usage: { input_tokens: 20, output_tokens: 0 },
+      },
+    },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Hi' } },
+  ];
   let streamed = () => {};
+
   const started = new Promise<void>((resolve) => {
     streamed = resolve;
   });
@@ -299,34 +316,10 @@ it('charges an explicit stop by observed input and received output', async () =>
         new Response(
           new ReadableStream({
             start(controller) {
-              controller.enqueue(
-                event({
-                  type: 'message_start',
-                  message: {
-                    id: 'msg_test',
-                    type: 'message',
-                    role: 'assistant',
-                    model: 'claude-haiku-5-5',
-                    content: [],
-                    stop_reason: null,
-                    usage: { input_tokens: 20, output_tokens: 0 },
-                  },
-                }),
-              );
-              controller.enqueue(
-                event({
-                  type: 'content_block_start',
-                  index: 0,
-                  content_block: { type: 'text', text: '' },
-                }),
-              );
-              controller.enqueue(
-                event({
-                  type: 'content_block_delta',
-                  index: 0,
-                  delta: { type: 'text_delta', text: 'Hi' },
-                }),
-              );
+              for (const event of partial)
+                controller.enqueue(
+                  encoder.encode(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`),
+                );
               init.signal?.addEventListener('abort', () =>
                 controller.error(new DOMException('Aborted', 'AbortError')),
               );
@@ -425,6 +418,7 @@ it('scopes persisted review suggestions to their own operation', async () => {
       "INSERT INTO ai_operations(id,conversation_id,user_id,session_id,submitted_at,deadline_at,created_at) VALUES('second','conversation','user-1','session',1,?,2)",
     )
     .run(Date.now() + 600_000);
+
   const accepted = await test.runtime.fetch(
     new Request('https://internal/submit?operation=second', {
       method: 'POST',
@@ -432,17 +426,11 @@ it('scopes persisted review suggestions to their own operation', async () => {
       body: JSON.stringify({ route: 'review', input: { ...input, locale: 'en-US' } }),
     }),
   );
-  expect((await accepted.json()).suggestions).toEqual([]);
+  expect(decodeAIConversationSnapshot(await accepted.json()).suggestions).toEqual([]);
   await test.finish();
   expect(payloads[1]).not.toContain('Persisted review suggestions');
-  const current = await (
-    await test.runtime.fetch(
-      new Request('https://internal/snapshot?operation=second', {
-        headers: { 'x-ai-user': 'user-1' },
-      }),
-    )
-  ).json();
-  expect(current.suggestions.map((item: { id: string }) => item.id)).toEqual(['second']);
+  const current = await snapshot(test, 'second');
+  expect(current.suggestions).toEqual([expect.objectContaining({ id: 'second' })]);
 });
 
 it('reports the conversation context limit without dispatching another call', async () => {
@@ -464,13 +452,7 @@ it('reports the conversation context limit without dispatching another call', as
     }),
   );
   await test.finish();
-  const current = await (
-    await test.runtime.fetch(
-      new Request('https://internal/snapshot?operation=second', {
-        headers: { 'x-ai-user': 'user-1' },
-      }),
-    )
-  ).json();
+  const current = await snapshot(test, 'second');
   expect(current).toMatchObject({ status: 'failed', error: AI_CONTEXT_LIMIT_ERROR });
   expect(fetch).toHaveBeenCalledOnce();
 });
@@ -521,8 +503,9 @@ it('accepts only one of two concurrent operations', async () => {
   );
   const test = await createRuntime();
   addOperation(test, 'second');
+
   const statuses = await Promise.all([submit(test), submitOperation(test, 'second')]).then(
-    (responses) => responses.map((item) => item.status).sort(),
+    (responses) => responses.map((item) => item.status).sort((a, b) => a - b),
   );
   await test.finish();
   expect(statuses).toEqual([200, 409]);

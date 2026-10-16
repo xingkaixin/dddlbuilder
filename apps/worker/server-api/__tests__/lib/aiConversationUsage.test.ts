@@ -39,6 +39,7 @@ describe('durable AI accounting', () => {
 
   it('charges each physical call once across settlement replay', async () => {
     const test = await fixture();
+
     const first = await admitAICall(
       test.env,
       'operation-1',
@@ -47,6 +48,7 @@ describe('durable AI accounting', () => {
       estimate,
     );
     await recordAICallUsage(test.env, first, 30, 50);
+
     const second = await admitAICall(
       test.env,
       'operation-1',
@@ -66,6 +68,7 @@ describe('durable AI accounting', () => {
   it('accounts an interrupted dispatch conservatively before recovery', async () => {
     const test = await fixture();
     await admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', estimate);
+
     const second = await admitAICall(
       test.env,
       'operation-1',
@@ -80,6 +83,7 @@ describe('durable AI accounting', () => {
 
   it('charges stopped calls by observed input and received output', async () => {
     const test = await fixture();
+
     const started = await admitAICall(
       test.env,
       'operation-1',
@@ -93,6 +97,7 @@ describe('durable AI accounting', () => {
       inputTokens: 20,
       outputTokens: 0,
     });
+
     const unanswered = await admitAICall(
       test.env,
       'operation-1',
