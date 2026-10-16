@@ -8,7 +8,7 @@ import { betterAuthSchema } from '@ddlbuilder/user-db';
 import { getUserSystemConfig } from './userSystemConfig.js';
 import { parseAllowedOrigins } from './env.js';
 import { grantSignupCredits } from './credits.js';
-import { kickWorkspaceSockets } from './sessionRevocation.js';
+import { revokeSessionActivity } from './sessionRevocation.js';
 
 const escapeHtml = (value: string) =>
   value
@@ -258,7 +258,7 @@ const buildBetterAuth = (env: ApiEnv['Bindings']) => {
             }
 
             try {
-              await kickWorkspaceSockets(env, {
+              await revokeSessionActivity(env, {
                 userId: session.userId,
                 ...(sweepsUserSessions ? {} : { sessionId: session.id }),
               });

@@ -47,7 +47,7 @@ const kickWorkspaceSocketsWithRetry = async (
   throw lastError;
 };
 
-const kickWorkspaceSocketsOnly = async (
+const kickWorkspaceSockets = async (
   env: ApiEnv['Bindings'],
   { userId, sessionId }: { userId: string; sessionId?: string },
 ) => {
@@ -121,12 +121,12 @@ const stopAIConversations = async (
   if (failures.length) throw new AggregateError(failures, 'AI session revocation failed');
 };
 
-export const kickWorkspaceSockets = async (
+export const revokeSessionActivity = async (
   env: ApiEnv['Bindings'],
   identity: { userId: string; sessionId?: string },
 ) => {
   const results = await Promise.allSettled([
-    kickWorkspaceSocketsOnly(env, identity),
+    kickWorkspaceSockets(env, identity),
     stopAIConversations(env, identity),
   ]);
   const errors = results.flatMap((result) => (result.status === 'rejected' ? [result.reason] : []));

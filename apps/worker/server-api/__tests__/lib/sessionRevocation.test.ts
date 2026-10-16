@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
-import { kickWorkspaceSockets } from '../../lib/sessionRevocation.js';
+import { revokeSessionActivity } from '../../lib/sessionRevocation.js';
 
 const createEnv = (
   workspaceIds: string[],
   fetch: (workspaceId: string, input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) =>
-  // SAFETY: The revocation tests implement exactly the USER_DB and Durable Object methods called by kickWorkspaceSockets.
+  // SAFETY: The revocation tests implement exactly the USER_DB and Durable Object methods called by revokeSessionActivity.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- this fixture intentionally omits unrelated Worker bindings.
   ({
     USER_DB: {
@@ -24,7 +24,7 @@ const createEnv = (
     },
   }) as unknown as ApiEnv['Bindings'];
 
-describe('kickWorkspaceSockets', () => {
+describe('revokeSessionActivity', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -38,7 +38,7 @@ describe('kickWorkspaceSockets', () => {
       .mockRejectedValueOnce(new Error('connection reset'))
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
       .mockResolvedValue(new Response(null, { status: 204 }));
-    const result = kickWorkspaceSockets(createEnv(['workspace-1'], fetch), {
+    const result = revokeSessionActivity(createEnv(['workspace-1'], fetch), {
       userId: 'user-1',
       sessionId: 'session-1',
     });
@@ -68,7 +68,7 @@ describe('kickWorkspaceSockets', () => {
 
       return new Response(null, { status: 204 });
     });
-    const result = kickWorkspaceSockets(createEnv(['workspace-1', 'workspace-2'], fetch), {
+    const result = revokeSessionActivity(createEnv(['workspace-1', 'workspace-2'], fetch), {
       userId: 'user-1',
     }).then(
       () => null,
@@ -92,7 +92,7 @@ describe('kickWorkspaceSockets', () => {
     const env = createEnv(['workspace-1'], vi.fn());
     delete env.WORKSPACE_YDOC;
 
-    await expect(kickWorkspaceSockets(env, { userId: 'user-1' })).rejects.toThrow(
+    await expect(revokeSessionActivity(env, { userId: 'user-1' })).rejects.toThrow(
       'Workspace socket revocation is unavailable',
     );
   });
