@@ -266,7 +266,18 @@ export class AIConversationDurableObject {
           ...usage,
         });
     }, context);
-    await recordAICallUsage(this.env, id, response.usage.totalTokens, outputChars, usage);
+    // The durable receipt is replayed before the next admission and before settlement.
+    await recordAICallUsage(this.env, id, response.usage.totalTokens, outputChars, usage).catch(
+      () => {
+        const log = createWorkerBackgroundLogger(
+          { job: { name: 'ai-usage-receipt' }, ai: { callId: id, outcome: 'replay_pending' } },
+          (promise) => this.ctx.waitUntil(promise),
+          this.env.ENVIRONMENT,
+        );
+        log.error(new Error('AI usage receipt sync deferred'));
+        log.emit();
+      },
+    );
   }
 
   private async replayReceipts() {

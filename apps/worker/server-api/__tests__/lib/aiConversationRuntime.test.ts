@@ -168,6 +168,28 @@ it('retries settlement from a saved receipt without repeating the model call', a
   expect(await test.balance()).toBe(99_970);
 });
 
+it('keeps a completed output when the receipt cannot reach D1', async () => {
+  const fetch = vi.fn(async () => response());
+  vi.stubGlobal('fetch', fetch);
+  const test = await createRuntime();
+  test.sqlite.exec(
+    "CREATE TRIGGER fail_receipt BEFORE UPDATE OF observed_tokens ON ai_call_attempts WHEN NEW.observed_tokens IS NOT NULL BEGIN SELECT RAISE(ABORT, 'injected receipt failure'); END",
+  );
+  await submit(test);
+  await expect(test.finish()).rejects.toThrow('AI operation requires durable recovery');
+  test.sqlite.exec('DROP TRIGGER fail_receipt');
+  await snapshot(test);
+  await vi.waitFor(async () =>
+    expect(await snapshot(test)).toMatchObject({
+      status: 'succeeded',
+      text: 'This query reads users.',
+      accountingPending: false,
+    }),
+  );
+  expect(fetch).toHaveBeenCalledOnce();
+  expect(await test.balance()).toBe(99_970);
+});
+
 it('records an explicit provider rejection with zero charge and a physical attempt', async () => {
   vi.stubGlobal(
     'fetch',
