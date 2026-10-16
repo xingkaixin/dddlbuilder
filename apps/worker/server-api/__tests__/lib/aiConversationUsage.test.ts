@@ -4,6 +4,8 @@ import { createCreditFixture } from '../helpers/creditFixture.js';
 import { admitAICall, recordAICallUsage, settleAICalls } from '../../lib/aiConversationUsage.js';
 import { loadAIConversationConfig } from '../../lib/aiConversationConfig.js';
 
+const estimate = { inputTokens: 40, maxOutputTokens: 60 };
+
 const fixture = async () => {
   const test = await createCreditFixture(1000);
   test.sqlite
@@ -37,32 +39,82 @@ describe('durable AI accounting', () => {
 
   it('charges each physical call once across settlement replay', async () => {
     const test = await fixture();
-    const first = await admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', 100);
+    const first = await admitAICall(
+      test.env,
+      'operation-1',
+      'explain',
+      'claude-haiku-5-5',
+      estimate,
+    );
     await recordAICallUsage(test.env, first, 30, 50);
-    const second = await admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', 100);
+    const second = await admitAICall(
+      test.env,
+      'operation-1',
+      'explain',
+      'claude-haiku-5-5',
+      estimate,
+    );
     await recordAICallUsage(test.env, second, 40, 60);
     await settleAICalls(test.env, 'operation-1', 'explain');
     await settleAICalls(test.env, 'operation-1', 'explain');
     expect(await test.balance()).toBe(930);
     await expect(
-      admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', 100),
+      admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', estimate),
     ).rejects.toThrow('limit');
   });
 
   it('accounts an interrupted dispatch conservatively before recovery', async () => {
     const test = await fixture();
-    await admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', 100);
-    const second = await admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', 100);
+    await admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', estimate);
+    const second = await admitAICall(
+      test.env,
+      'operation-1',
+      'explain',
+      'claude-haiku-5-5',
+      estimate,
+    );
     await recordAICallUsage(test.env, second, 25, 30);
     await settleAICalls(test.env, 'operation-1', 'explain');
     expect(await test.balance()).toBe(875);
+  });
+
+  it('charges stopped calls by observed input and received output', async () => {
+    const test = await fixture();
+    const started = await admitAICall(
+      test.env,
+      'operation-1',
+      'explain',
+      'claude-haiku-5-5',
+      estimate,
+    );
+    await recordAICallUsage(test.env, started, 20, 5, {
+      complete: false,
+      succeeded: false,
+      inputTokens: 20,
+      outputTokens: 0,
+    });
+    const unanswered = await admitAICall(
+      test.env,
+      'operation-1',
+      'explain',
+      'claude-haiku-5-5',
+      estimate,
+    );
+    await recordAICallUsage(test.env, unanswered, 0, 0, {
+      complete: false,
+      succeeded: false,
+      inputTokens: 0,
+      outputTokens: 0,
+    });
+    await settleAICalls(test.env, 'operation-1', 'explain', false);
+    expect(await test.balance()).toBe(1000 - (20 + 5) - 40);
   });
 
   it('denies stopped or revoked operations before reserving another call', async () => {
     const test = await fixture();
     test.sqlite.prepare("UPDATE ai_operations SET stopped_at = 1 WHERE id = 'operation-1'").run();
     await expect(
-      admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', 100),
+      admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', estimate),
     ).rejects.toThrow('stopped');
     expect(await test.balance()).toBe(1000);
     test.sqlite
@@ -70,7 +122,7 @@ describe('durable AI accounting', () => {
       .run();
     test.sqlite.prepare('DELETE FROM session').run();
     await expect(
-      admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', 100),
+      admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', estimate),
     ).rejects.toThrow('authorization');
   });
 });

@@ -66,13 +66,10 @@ export const createAIConversationModels = async (
               options?.signal?.throwIfAborted();
 
               try {
-                call = await admitAICall(
-                  env,
-                  current.operationId,
-                  current.route,
-                  model.id,
-                  inputSize + current.scenario.maxTokens,
-                );
+                call = await admitAICall(env, current.operationId, current.route, model.id, {
+                  inputTokens: inputSize,
+                  maxOutputTokens: current.scenario.maxTokens,
+                });
               } catch (error) {
                 admissionFailed = true;
                 throw error;

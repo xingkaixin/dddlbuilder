@@ -260,6 +260,75 @@ it('continues generation after an observer disconnects', async () => {
   expect(fetch).toHaveBeenCalledOnce();
 });
 
+it('charges an explicit stop by observed input and received output', async () => {
+  const encoder = new TextEncoder();
+
+  const event = (value: { type: string } & Record<string, unknown>) =>
+    encoder.encode(`event: ${value.type}\ndata: ${JSON.stringify(value)}\n\n`);
+  let streamed = () => {};
+  const started = new Promise<void>((resolve) => {
+    streamed = resolve;
+  });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async (_url, init: RequestInit) =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                event({
+                  type: 'message_start',
+                  message: {
+                    id: 'msg_test',
+                    type: 'message',
+                    role: 'assistant',
+                    model: 'claude-haiku-5-5',
+                    content: [],
+                    stop_reason: null,
+                    usage: { input_tokens: 20, output_tokens: 0 },
+                  },
+                }),
+              );
+              controller.enqueue(
+                event({
+                  type: 'content_block_start',
+                  index: 0,
+                  content_block: { type: 'text', text: '' },
+                }),
+              );
+              controller.enqueue(
+                event({
+                  type: 'content_block_delta',
+                  index: 0,
+                  delta: { type: 'text_delta', text: 'Hi' },
+                }),
+              );
+              init.signal?.addEventListener('abort', () =>
+                controller.error(new DOMException('Aborted', 'AbortError')),
+              );
+              streamed();
+            },
+          }),
+          { headers: { 'Content-Type': 'text/event-stream' } },
+        ),
+    ),
+  );
+  const test = await createRuntime();
+  await submit(test);
+  await started;
+  await vi.waitFor(async () => expect((await snapshot(test)).text).toBe('Hi'));
+  await test.runtime.fetch(
+    new Request('https://internal/stop?operation=operation', {
+      method: 'POST',
+      headers: { 'x-ai-user': 'user-1' },
+    }),
+  );
+  await test.finish();
+  expect(await snapshot(test)).toMatchObject({ status: 'cancelled', accountingPending: false });
+  expect(await test.balance()).toBe(100_000 - 20 - 'Hi'.length);
+});
+
 it('refunds a reservation when the global budget denies dispatch', async () => {
   const fetch = vi.fn();
   vi.stubGlobal('fetch', fetch);

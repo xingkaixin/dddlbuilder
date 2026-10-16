@@ -27,6 +27,7 @@ CREATE TABLE ai_call_attempts (
   provider TEXT NOT NULL,
   model TEXT NOT NULL,
   estimated_tokens INTEGER NOT NULL,
+  estimated_input_tokens INTEGER NOT NULL,
   dispatched_at INTEGER,
   observed_tokens INTEGER,
   input_tokens INTEGER,

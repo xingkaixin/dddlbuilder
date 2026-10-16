@@ -245,10 +245,16 @@ export class AIConversationDurableObject {
       cacheWriteTokens: response.usage.cacheWrite,
     };
 
-    const text = response.content
-      .filter((item) => item.type === 'text')
-      .map((item) => item.text)
-      .join('');
+    const outputChars = response.content.reduce(
+      (total, item) =>
+        total +
+        (item.type === 'text'
+          ? item.text.length
+          : item.type === 'thinking'
+            ? item.thinking.length
+            : 0),
+      0,
+    );
     await this.runtime().harness.commit(async (tx) => {
       const receipts = await tx.doc(Receipts);
 
@@ -256,11 +262,11 @@ export class AIConversationDurableObject {
         receipts.items.push({
           id,
           tokens: response.usage.totalTokens,
-          outputChars: text.length,
+          outputChars,
           ...usage,
         });
     }, context);
-    await recordAICallUsage(this.env, id, response.usage.totalTokens, text.length, usage);
+    await recordAICallUsage(this.env, id, response.usage.totalTokens, outputChars, usage);
   }
 
   private async replayReceipts() {

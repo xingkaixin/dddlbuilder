@@ -24,12 +24,36 @@ type CallAttempt = {
   operation_id: string;
   usage_id: string;
   estimated_tokens: number;
+  estimated_input_tokens: number;
   dispatched_at: number | null;
   observed_tokens: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cache_read_tokens: number | null;
+  cache_write_tokens: number | null;
   usage_complete: number;
   succeeded: number;
   output_chars: number;
   completed_at: number | null;
+};
+
+const chargedCallTokens = (call: CallAttempt) => {
+  if (call.dispatched_at === null) return 0;
+
+  if (call.usage_complete) return call.observed_tokens ?? 0;
+
+  // Without a receipt the process was lost mid-call, so nothing bounds the provider usage.
+  if (call.completed_at === null) return Math.max(call.estimated_tokens, call.observed_tokens ?? 0);
+
+  const observedInput =
+    (call.input_tokens ?? 0) + (call.cache_read_tokens ?? 0) + (call.cache_write_tokens ?? 0);
+  // Anthropic reports output tokens only at stream end; received characters bound a stopped stream.
+  const output = Math.min(
+    call.estimated_tokens - call.estimated_input_tokens,
+    Math.max(call.output_tokens ?? 0, call.output_chars),
+  );
+
+  return (observedInput || call.estimated_input_tokens) + output;
 };
 
 export const readAIOperation = (env: ApiEnv['Bindings'], id: string) =>
@@ -89,11 +113,7 @@ export const settleAICalls = async (
       requestId: operationId,
       reservedTokens: call.estimated_tokens,
     };
-    const charged = call.dispatched_at
-      ? call.usage_complete
-        ? (call.observed_tokens ?? 0)
-        : Math.max(call.estimated_tokens, call.observed_tokens ?? 0)
-      : 0;
+    const charged = chargedCallTokens(call);
     const succeeded = call.succeeded === 1 && successfulOutput !== false;
     const outcome = succeeded ? 'succeeded' : 'failed';
     const code = succeeded ? null : 'RESERVATION_ABANDONED';
@@ -122,8 +142,9 @@ export const admitAICall = async (
   operationId: string,
   route: AIRouteKey,
   model: string,
-  estimatedTokens: number,
+  estimate: { inputTokens: number; maxOutputTokens: number },
 ) => {
+  const estimatedTokens = estimate.inputTokens + estimate.maxOutputTokens;
   const operation = await readAIOperation(env, operationId);
 
   if (!operation) throw new Error('AI operation missing');
@@ -139,9 +160,9 @@ export const admitAICall = async (
   if ((count?.count ?? 0) >= AI_MAX_CALLS) throw new Error('AI model call limit reached');
   const id = crypto.randomUUID();
   const usageId = `usage:${id}`;
-  await env.USER_DB.prepare(`INSERT INTO ai_call_attempts (id, operation_id, usage_id, provider, model, estimated_tokens, created_at)
-    VALUES (?, ?, ?, 'anthropic', ?, ?, ?)`)
-    .bind(id, operationId, usageId, model, estimatedTokens, Date.now())
+  await env.USER_DB.prepare(`INSERT INTO ai_call_attempts (id, operation_id, usage_id, provider, model, estimated_tokens, estimated_input_tokens, created_at)
+    VALUES (?, ?, ?, 'anthropic', ?, ?, ?, ?)`)
+    .bind(id, operationId, usageId, model, estimatedTokens, estimate.inputTokens, Date.now())
     .run();
   await reserveAIUsage(env, {
     userId: operation.user_id,
