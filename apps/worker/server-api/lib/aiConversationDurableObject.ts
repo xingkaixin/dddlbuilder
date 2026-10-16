@@ -138,8 +138,14 @@ export class AIConversationDurableObject {
         hook(GenerationTask, {
           beforeRequest: async (request) => {
             const projection = await this.runtime().harness.snapshot(ReviewProjection, context);
+            const { operation } = await this.state();
 
-            if (!projection || projection.suggestions === '[]') return;
+            if (
+              !projection ||
+              projection.operationId !== operation?.id ||
+              projection.suggestions === '[]'
+            )
+              return;
 
             return {
               messages: [
@@ -201,7 +207,7 @@ export class AIConversationDurableObject {
       if (previous?.operationId === operation.id && previous.text === text) return;
 
       const items = Schema.decodeUnknownSync(Schema.Array(DDLReviewSuggestionSchema))(
-        JSON.parse(previous?.suggestions ?? '[]'),
+        JSON.parse(previous?.operationId === operation.id ? previous.suggestions : '[]'),
       );
       const suggestions = mergeReviewSuggestions(items, text);
       await this.runtime().harness.commit(async (tx) => {
@@ -516,6 +522,7 @@ export class AIConversationDurableObject {
 
     if (!operation) throw new Error('AI operation not submitted');
     const message = operation.status === 'running' ? await this.message() : undefined;
+    const projection = await this.runtime().harness.snapshot(ReviewProjection, context);
 
     return {
       operationId: operation.id,
@@ -534,9 +541,7 @@ export class AIConversationDurableObject {
               .join('\n') ?? '')
           : '',
       suggestions: Schema.decodeUnknownSync(Schema.Array(DDLReviewSuggestionSchema))(
-        JSON.parse(
-          (await this.runtime().harness.snapshot(ReviewProjection, context))?.suggestions ?? '[]',
-        ),
+        JSON.parse(projection?.operationId === operation.id ? projection.suggestions : '[]'),
       ),
       result: operation.result,
       error: operation.error,

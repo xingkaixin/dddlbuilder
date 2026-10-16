@@ -397,3 +397,49 @@ it('keeps conversation history across rounds and serves prior completed operatio
   expect(await snapshot(test)).toMatchObject({ status: 'succeeded', text: 'First answer' });
   expect(await test.balance()).toBe(99_940);
 });
+
+it('scopes persisted review suggestions to their own operation', async () => {
+  const payloads: string[] = [];
+
+  const review = (id: string) =>
+    JSON.stringify({
+      score: 80,
+      summary: 'Review',
+      suggestions: [{ id, type: 'general', description: `Advice ${id}`, actionable: false }],
+    });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (_url, init: RequestInit) => {
+      payloads.push(String(init.body));
+
+      return response(review(payloads.length === 1 ? 'first' : 'second'));
+    }),
+  );
+  const test = await createRuntime();
+  const input = { ddl: 'CREATE TABLE users(id INT)', tableName: 'users', dbType: 'mysql' };
+  await submit(test, 'review', input);
+  await test.finish();
+  test.sqlite
+    .prepare(
+      "INSERT INTO ai_operations(id,conversation_id,user_id,session_id,submitted_at,deadline_at,created_at) VALUES('second','conversation','user-1','session',1,?,2)",
+    )
+    .run(Date.now() + 600_000);
+  const accepted = await test.runtime.fetch(
+    new Request('https://internal/submit?operation=second', {
+      method: 'POST',
+      headers: { 'x-ai-user': 'user-1' },
+      body: JSON.stringify({ route: 'review', input: { ...input, locale: 'en-US' } }),
+    }),
+  );
+  expect((await accepted.json()).suggestions).toEqual([]);
+  await test.finish();
+  expect(payloads[1]).not.toContain('Persisted review suggestions');
+  const current = await (
+    await test.runtime.fetch(
+      new Request('https://internal/snapshot?operation=second', {
+        headers: { 'x-ai-user': 'user-1' },
+      }),
+    )
+  ).json();
+  expect(current.suggestions.map((item: { id: string }) => item.id)).toEqual(['second']);
+});
