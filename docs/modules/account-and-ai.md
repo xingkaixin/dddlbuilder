@@ -23,7 +23,7 @@
 所有场景通过 `aiConversations` 路由进入独立的 AI Conversation Durable Object。pi-durable 内置 Conversation/GenerationTask 负责模型执行、历史、检查点和恢复；不再维护另一套 Effect/SDK 重试循环。Effect 保留在请求鉴权、配置、Schema 和旧用量回收边界，业务账本仍由 D1 负责。
 
 1. 服务端鉴权、按用户与场景限流，签发操作身份，并绑定用户、原始登录会话和 Conversation。
-2. 操作提交后固定输入哈希；同一身份只能重放同一输入。Conversation 同时只运行一轮；模型及 thinking 配置在接受操作时固定。
+2. 操作提交后固定输入哈希；同一身份只能重放同一输入。Conversation 同时只运行一轮，上一轮停止或超时后先完成结算再接受下一轮；被拒绝的操作直接关闭。模型及 thinking 配置在接受操作时固定。只有建表和改表复用 Conversation；DDL 审查每次新建，审查卡片只属于当前操作。
 3. 每次实际模型请求前重新检查身份、期限与停止标记，再签发独立的 Usage Identity，预留用户额度和服务预算。数据库失败不能启动模型。
 4. 供应商结果先写入 DO 用量凭据，再写入 D1。完整业务输出通过 Schema 后才能成功；建表和修改的预览不能自动应用。
 5. 结算先写持久化意图，再经现有 D1 batch 和账本触发器退还差额或补扣。DO 凭据可重放；重放不重复扣费。
@@ -42,6 +42,7 @@
 5. 客户端不能决定用户身份、计费身份或供应商配置。模型不能直接写 Workspace。
 6. AI 上下文与 Workspace Y.Doc 独立存储；删除会话先停止并完成结算，再清理 DO。账本按原保留策略维护。
 7. 额度响应校验失败不能回退成余额 0。可观测性不记录提示词、SQL、输出或密钥。
+8. pi-durable 1.x 标记为 Experimental，DO 内的 SQLite schema 只向前迁移。升级 pi-durable 后不能直接回滚到旧版本代码，回滚前要排空进行中的操作并清理 AI Conversation DO。存储错误会关闭 Harness，DO 随即重置并在下一个事件重新打开。
 
 ## 管理后台
 
