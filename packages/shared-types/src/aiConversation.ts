@@ -18,7 +18,7 @@ export const AIOperationIdentitySchema = Schema.Struct({
 export const AIConversationSnapshotSchema = Schema.Struct({
   operationId: Schema.String,
   conversationId: Schema.String,
-  status: Schema.Literals(['prepared', 'running', 'succeeded', 'failed', 'cancelled']),
+  status: Schema.Literals(['running', 'succeeded', 'failed', 'cancelled']),
   text: Schema.String,
   thinking: Schema.String,
   result: Schema.Unknown,

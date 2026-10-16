@@ -23,7 +23,6 @@ export const jaJPCommon = {
       'index-advisor': 'インデックス提案',
     },
     states: {
-      prepared: '送信待ち',
       running: '生成中',
       succeeded: '完了',
       failed: '未完了',

@@ -22,7 +22,6 @@ export const zhCNCommon = {
       'index-advisor': '索引建议',
     },
     states: {
-      prepared: '等待提交',
       running: '正在生成',
       succeeded: '已完成',
       failed: '未完成',

@@ -94,7 +94,7 @@ export const observeAIOperation = async (
             if (snapshot.operationId !== id) throw new Error('AI operation identity mismatch');
             update(snapshot);
 
-            if (snapshot.status !== 'running' && snapshot.status !== 'prepared') return snapshot;
+            if (snapshot.status !== 'running') return snapshot;
           }
         }
       } finally {

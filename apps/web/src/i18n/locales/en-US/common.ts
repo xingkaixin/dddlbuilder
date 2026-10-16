@@ -23,7 +23,6 @@ export const enUSCommon = {
       'index-advisor': 'Index advice',
     },
     states: {
-      prepared: 'Awaiting submission',
       running: 'Generating',
       succeeded: 'Completed',
       failed: 'Incomplete',
