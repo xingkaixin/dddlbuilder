@@ -12,6 +12,11 @@ import type { ApiEnv } from './context.js';
 import type { AIRouteKey } from './aiRouteKey.js';
 import { admitAICall } from './aiConversationUsage.js';
 import type { AIScenario } from './aiScenarios.js';
+import { DomainError } from './http.js';
+
+// Neither marker may match pi-ai's retryable error patterns, or the harness would replay admission.
+export const AI_CREDIT_EXHAUSTED_ERROR = 'AI credit exhausted';
+export const AI_ADMISSION_ERROR = 'AI application admission or accounting unavailable';
 
 export type AIModelRequest = {
   operationId: string;
@@ -57,7 +62,7 @@ export const createAIConversationModels = async (
             : undefined;
           let call: string | undefined;
           let rejected = false;
-          let admissionFailed = false;
+          let admissionFailure: string | undefined;
 
           const upstream = provider.streamSimple(model, context, {
             ...options,
@@ -71,7 +76,10 @@ export const createAIConversationModels = async (
                   maxOutputTokens: current.scenario.maxTokens,
                 });
               } catch (error) {
-                admissionFailed = true;
+                admissionFailure =
+                  error instanceof DomainError && error.code === 'CREDIT_EXHAUSTED'
+                    ? AI_CREDIT_EXHAUSTED_ERROR
+                    : AI_ADMISSION_ERROR;
                 throw error;
               }
 
@@ -109,7 +117,7 @@ export const createAIConversationModels = async (
 
           const result = await upstream.result();
 
-          if (admissionFailed) result.errorMessage = 'AI application admission unavailable';
+          if (admissionFailure) result.errorMessage = admissionFailure;
 
           if (call)
             await saveUsage(
@@ -146,7 +154,7 @@ export const createAIConversationModels = async (
             errorMessage:
               error instanceof Error && error.message === AI_CONTEXT_LIMIT_ERROR
                 ? AI_CONTEXT_LIMIT_ERROR
-                : 'AI application admission or accounting unavailable',
+                : AI_ADMISSION_ERROR,
             usage: {
               input: 0,
               output: 0,

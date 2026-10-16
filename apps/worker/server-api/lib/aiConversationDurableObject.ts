@@ -27,8 +27,13 @@ import {
 } from '@ddlbuilder/shared-types';
 import type { ApiEnv } from './context.js';
 import type { AIRouteKey } from './aiRouteKey.js';
+import type { ApiErrorCode } from './http.js';
 import { prepareAIScenario } from './aiScenarios.js';
-import { createAIConversationModels } from './aiConversationModels.js';
+import {
+  AI_ADMISSION_ERROR,
+  AI_CREDIT_EXHAUSTED_ERROR,
+  createAIConversationModels,
+} from './aiConversationModels.js';
 import { loadAIConversationConfig, AI_RETENTION_MS } from './aiConversationConfig.js';
 import {
   type AIUsageReceipt,
@@ -86,6 +91,17 @@ const ReviewProjection = defineDoc<{ text: string; operationId: string; suggesti
   scope: 'session',
   initial: () => ({ text: '', operationId: '', suggestions: '[]' }),
 });
+
+const failure = (
+  response: AssistantMessage | undefined,
+): ApiErrorCode | typeof AI_CONTEXT_LIMIT_ERROR => {
+  if (response?.errorMessage === AI_CONTEXT_LIMIT_ERROR) return AI_CONTEXT_LIMIT_ERROR;
+  if (response?.errorMessage === AI_CREDIT_EXHAUSTED_ERROR) return 'CREDIT_EXHAUSTED';
+  if (response?.errorMessage === AI_ADMISSION_ERROR) return 'SERVICE_UNAVAILABLE';
+  if (response?.stopReason === 'length') return 'AI_OUTPUT_TRUNCATED';
+
+  return 'UPSTREAM_OPENAI_ERROR';
+};
 
 export class AIConversationDurableObject {
   private harness?: Harness;
@@ -445,11 +461,7 @@ export class AIConversationDurableObject {
     let result: JsonValue = null;
 
     let error: string | null =
-      status === 'cancelled'
-        ? 'AI operation cancelled'
-        : response?.errorMessage === AI_CONTEXT_LIMIT_ERROR
-          ? AI_CONTEXT_LIMIT_ERROR
-          : 'AI generation failed';
+      status === 'cancelled' ? 'AI operation cancelled' : failure(response);
 
     if (
       submission?.status === 'done' &&
@@ -472,7 +484,7 @@ export class AIConversationDurableObject {
         status = 'succeeded';
         error = null;
       } catch {
-        error = 'AI output validation failed';
+        error = 'UPSTREAM_OPENAI_ERROR';
       }
     }
 

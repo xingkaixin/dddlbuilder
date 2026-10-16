@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createAIRuntimeFixture as createRuntime } from '../helpers/aiRuntime.js';
 import { AI_CONTEXT_LIMIT_ERROR, decodeAIConversationSnapshot } from '@ddlbuilder/shared-types';
 
-const response = (text = 'This query reads users.') => {
+const response = (text = 'This query reads users.', stopReason = 'end_turn') => {
   const events = [
     {
       type: 'message_start',
@@ -21,7 +21,7 @@ const response = (text = 'This query reads users.') => {
     { type: 'content_block_stop', index: 0 },
     {
       type: 'message_delta',
-      delta: { stop_reason: 'end_turn', stop_sequence: null },
+      delta: { stop_reason: stopReason, stop_sequence: null },
       usage: { output_tokens: 10 },
     },
     { type: 'message_stop' },
@@ -116,7 +116,11 @@ it('denies insufficient credits before dispatch and finishes without charging', 
   await test.finish();
   expect(fetch).not.toHaveBeenCalled();
   expect(await test.balance()).toBe(1);
-  expect(await snapshot(test)).toMatchObject({ status: 'failed', accountingPending: false });
+  expect(await snapshot(test)).toMatchObject({
+    status: 'failed',
+    accountingPending: false,
+    error: 'CREDIT_EXHAUSTED',
+  });
 });
 
 it('bills actual usage when a completed model output fails validation', async () => {
@@ -134,8 +138,20 @@ it('bills actual usage when a completed model output fails validation', async ()
   expect(await snapshot(test)).toMatchObject({
     status: 'failed',
     accountingPending: false,
-    error: 'AI output validation failed',
+    error: 'UPSTREAM_OPENAI_ERROR',
   });
+  expect(await test.balance()).toBe(99_970);
+});
+
+it('reports a truncated model output and bills its usage', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => response('partial', 'max_tokens')),
+  );
+  const test = await createRuntime();
+  await submit(test);
+  await test.finish();
+  expect(await snapshot(test)).toMatchObject({ status: 'failed', error: 'AI_OUTPUT_TRUNCATED' });
   expect(await test.balance()).toBe(99_970);
 });
 
@@ -206,7 +222,11 @@ it('records an explicit provider rejection with zero charge and a physical attem
   const test = await createRuntime();
   await submit(test);
   await test.finish();
-  expect(await snapshot(test)).toMatchObject({ status: 'failed', accountingPending: false });
+  expect(await snapshot(test)).toMatchObject({
+    status: 'failed',
+    accountingPending: false,
+    error: 'UPSTREAM_OPENAI_ERROR',
+  });
   expect(await test.balance()).toBe(100_000);
   expect(
     test.sqlite.prepare('SELECT attempt_count, charged_tokens FROM usage_events').get(),
@@ -354,7 +374,11 @@ it('refunds a reservation when the global budget denies dispatch', async () => {
   });
   await submit(test);
   await test.finish();
-  expect(await snapshot(test)).toMatchObject({ status: 'failed', accountingPending: false });
+  expect(await snapshot(test)).toMatchObject({
+    status: 'failed',
+    accountingPending: false,
+    error: 'SERVICE_UNAVAILABLE',
+  });
   expect(fetch).not.toHaveBeenCalled();
   expect(await test.balance()).toBe(100_000);
 });
