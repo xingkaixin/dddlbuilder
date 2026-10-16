@@ -177,6 +177,10 @@ export class AIConversationDurableObject {
       },
       context,
     );
+    void this.harness.closed.then((end) => {
+      // pi-durable does not reopen after a storage failure; a reset object reinitializes on its next event.
+      if (end.reason === 'failed') this.ctx.abort('AI runtime storage failed');
+    });
     const state = await this.state();
 
     if (state.conversation !== null)
