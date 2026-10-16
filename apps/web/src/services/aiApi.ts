@@ -1,5 +1,6 @@
 import i18n from '@/i18n';
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
+import { AI_CONTEXT_LIMIT_ERROR } from '@ddlbuilder/shared-types';
 
 type ApiErrorPayload = {
   error?: string;
@@ -23,6 +24,10 @@ export const getAIErrorMessage = (payload: ApiErrorPayload | null): string | nul
 
   if (code === 'AI_OUTPUT_TRUNCATED') {
     return i18n.t('services.aiOutputTruncated');
+  }
+
+  if (payload?.error === AI_CONTEXT_LIMIT_ERROR) {
+    return i18n.t('services.aiContextLimit');
   }
 
   if (code === 'SERVICE_UNAVAILABLE' || code === 'UPSTREAM_OPENAI_ERROR') {

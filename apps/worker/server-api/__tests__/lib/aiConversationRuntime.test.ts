@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createAIRuntimeFixture as createRuntime } from '../helpers/aiRuntime.js';
+import { AI_CONTEXT_LIMIT_ERROR } from '@ddlbuilder/shared-types';
 
 const response = (text = 'This query reads users.') => {
   const events = [
@@ -442,4 +443,34 @@ it('scopes persisted review suggestions to their own operation', async () => {
     )
   ).json();
   expect(current.suggestions.map((item: { id: string }) => item.id)).toEqual(['second']);
+});
+
+it('reports the conversation context limit without dispatching another call', async () => {
+  const fetch = vi.fn(async () => response('x'.repeat(125_000)));
+  vi.stubGlobal('fetch', fetch);
+  const test = await createRuntime();
+  await submit(test);
+  await test.finish();
+  test.sqlite
+    .prepare(
+      "INSERT INTO ai_operations(id,conversation_id,user_id,session_id,submitted_at,deadline_at,created_at) VALUES('second','conversation','user-1','session',1,?,2)",
+    )
+    .run(Date.now() + 600_000);
+  await test.runtime.fetch(
+    new Request('https://internal/submit?operation=second', {
+      method: 'POST',
+      headers: { 'x-ai-user': 'user-1' },
+      body: JSON.stringify({ route: 'explain', input: { sql: 'SELECT 2' } }),
+    }),
+  );
+  await test.finish();
+  const current = await (
+    await test.runtime.fetch(
+      new Request('https://internal/snapshot?operation=second', {
+        headers: { 'x-ai-user': 'user-1' },
+      }),
+    )
+  ).json();
+  expect(current).toMatchObject({ status: 'failed', error: AI_CONTEXT_LIMIT_ERROR });
+  expect(fetch).toHaveBeenCalledOnce();
 });

@@ -1578,6 +1578,7 @@ export const enUSCommon = {
     authRequired: 'Sign in or register to use AI features',
     creditExhausted: 'You do not have enough credits to use AI right now',
     aiServiceUnavailable: 'AI service is temporarily unavailable. Please try again later.',
+    aiContextLimit: 'This conversation is too long. Start a new conversation.',
     aiOutputTruncated: 'AI output exceeded the length limit. Try a smaller request.',
   },
   aiComments: {

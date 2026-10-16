@@ -7,6 +7,7 @@ import { createModels, hasApi } from '@earendil-works/pi-ai/models';
 import { anthropicProvider } from '@earendil-works/pi-ai/providers/anthropic';
 import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream';
 import * as Schema from 'effect/Schema';
+import { AI_CONTEXT_LIMIT_ERROR } from '@ddlbuilder/shared-types';
 import type { ApiEnv } from './context.js';
 import type { AIRouteKey } from './aiRouteKey.js';
 import { admitAICall } from './aiConversationUsage.js';
@@ -47,8 +48,7 @@ export const createAIConversationModels = async (
           const current = await request();
           const inputSize = JSON.stringify(context.messages).length;
 
-          if (inputSize > 120_000)
-            throw new Error('Conversation context limit reached; start a new conversation');
+          if (inputSize > 120_000) throw new Error(AI_CONTEXT_LIMIT_ERROR);
 
           const schema = current.scenario.outputSchema
             ? Schema.toJsonSchemaDocument(Schema.toType(current.scenario.outputSchema), {
@@ -134,7 +134,7 @@ export const createAIConversationModels = async (
               reason: result.stopReason === 'aborted' ? 'aborted' : 'error',
               error: result,
             });
-        } catch {
+        } catch (error) {
           const message: AssistantMessage = {
             role: 'assistant',
             content: [],
@@ -143,7 +143,10 @@ export const createAIConversationModels = async (
             model: model.id,
             timestamp: Date.now(),
             stopReason: 'error',
-            errorMessage: 'AI application admission or accounting unavailable',
+            errorMessage:
+              error instanceof Error && error.message === AI_CONTEXT_LIMIT_ERROR
+                ? AI_CONTEXT_LIMIT_ERROR
+                : 'AI application admission or accounting unavailable',
             usage: {
               input: 0,
               output: 0,

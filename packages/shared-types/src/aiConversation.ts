@@ -8,6 +8,8 @@ export const AIConversationRouteSchema = Schema.Literals([
   'generate-comments',
   'index-advisor',
 ]);
+export const AI_CONTEXT_LIMIT_ERROR = 'AI conversation context limit reached';
+
 export const AIOperationIdentitySchema = Schema.Struct({
   operationId: Schema.String,
   conversationId: Schema.String,

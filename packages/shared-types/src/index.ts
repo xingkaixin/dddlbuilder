@@ -103,6 +103,7 @@ export { splitQualifiedName, getSchemaAndTable } from './qualifiedName';
 
 export { indexKindOf, isIndexKind, type IndexKind } from './indexKind';
 export {
+  AI_CONTEXT_LIMIT_ERROR,
   AIConversationRouteSchema,
   AIOperationIdentitySchema,
   AIConversationSnapshotSchema,

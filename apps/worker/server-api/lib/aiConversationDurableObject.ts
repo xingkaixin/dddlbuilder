@@ -21,6 +21,7 @@ import type { AssistantMessage } from '@earendil-works/pi-ai';
 import type { JsonValue } from '@earendil-works/chord';
 import * as Effect from 'effect/Effect';
 import {
+  AI_CONTEXT_LIMIT_ERROR,
   AIConversationSnapshotSchema,
   type AIConversationSnapshot,
 } from '@ddlbuilder/shared-types';
@@ -442,7 +443,11 @@ export class AIConversationDurableObject {
     let result: JsonValue = null;
 
     let error: string | null =
-      status === 'cancelled' ? 'AI operation cancelled' : 'AI generation failed';
+      status === 'cancelled'
+        ? 'AI operation cancelled'
+        : response?.errorMessage === AI_CONTEXT_LIMIT_ERROR
+          ? AI_CONTEXT_LIMIT_ERROR
+          : 'AI generation failed';
 
     if (
       submission?.status === 'done' &&
