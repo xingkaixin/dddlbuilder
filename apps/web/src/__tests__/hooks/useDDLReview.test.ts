@@ -129,7 +129,6 @@ describe('useDDLReview', () => {
           locale: 'en-US',
         }),
       }),
-      undefined,
     );
   });
 

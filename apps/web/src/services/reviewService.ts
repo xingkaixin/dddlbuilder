@@ -22,8 +22,6 @@ type ReviewServiceResult = DDLReviewResult;
 interface RequestDDLReviewOptions {
   signal: AbortSignal;
   onStreamingText?: (text: string) => void;
-  conversationId?: string;
-  onConversation?: (id: string) => void;
   onThinking?: (text: string) => void;
   onSuggestions?: (items: readonly DDLReviewSuggestion[]) => void;
 }
@@ -48,20 +46,13 @@ export async function requestDDLReview(
   payload: ReviewRequestPayload,
   options: RequestDDLReviewOptions,
 ): Promise<ReviewServiceResult> {
-  const response = await fetchAIConversation(
-    'review',
-    {
-      method: 'POST',
-      headers: buildAuthenticatedJsonHeaders(),
-      credentials: 'include',
-      body: JSON.stringify(payload),
-      signal: options.signal,
-    },
-    options.conversationId,
-  );
-  const conversation = response.headers.get('X-AI-Conversation');
-
-  if (conversation) options.onConversation?.(conversation);
+  const response = await fetchAIConversation('review', {
+    method: 'POST',
+    headers: buildAuthenticatedJsonHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(payload),
+    signal: options.signal,
+  });
 
   if (!response.ok) {
     throw new Error(await readAIErrorMessage(response, 'reviewFailed'));

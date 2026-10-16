@@ -1,4 +1,4 @@
-import { useState, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useLayoutEffect, useMemo } from 'react';
 import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartialJson';
 import { requestDDLReview } from '@/services/reviewService';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -26,7 +26,6 @@ interface ReviewState {
 }
 
 export function useDDLReview(documentKey: string) {
-  const conversationRef = useRef<{ documentKey: string; id: string } | null>(null);
   const [thinking, setThinking] = useState('');
 
   const [suggestions, setSuggestions] = useState<readonly DDLReviewSuggestion[]>([]);
@@ -134,13 +133,6 @@ export function useDDLReview(documentKey: string) {
             signal,
             onThinking: (text) => commitIfCurrent(() => setThinking(text)),
             onSuggestions: (items) => commitIfCurrent(() => setSuggestions(items)),
-            conversationId:
-              conversationRef.current?.documentKey === documentKey
-                ? conversationRef.current.id
-                : undefined,
-            onConversation: (id) => {
-              conversationRef.current = { documentKey, id };
-            },
             onStreamingText: (streamingText) => {
               pendingText = streamingText;
 
@@ -182,7 +174,6 @@ export function useDDLReview(documentKey: string) {
 
   const clearReview = useCallback(() => {
     cancel();
-    conversationRef.current = null;
     setThinking('');
     setSuggestions([]);
     setState({
