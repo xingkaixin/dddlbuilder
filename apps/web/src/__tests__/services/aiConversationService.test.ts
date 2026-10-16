@@ -5,6 +5,7 @@ import {
   readAIOperations,
 } from '@/services/aiConversationService';
 import { readTextStream } from '@/services/streamingText';
+import i18n from '@/i18n';
 
 const identity = { operationId: 'op', conversationId: 'conversation', userId: 'user' };
 const snapshot = (text: string, status = 'running') => ({
@@ -48,6 +49,28 @@ it('prepares once and reconnects observation without resubmitting the model oper
   ]);
   expect(readAIOperations()).toEqual([]);
 });
+
+it.each(['explain', 'generate-comments'] as const)(
+  'shows the localized reason when an operation fails: %s',
+  async (route) => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json(identity))
+      .mockResolvedValueOnce(Response.json(snapshot('')))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ...snapshot('', 'failed'), error: 'CREDIT_EXHAUSTED' }) + '\n',
+        ),
+      );
+
+    const reading = fetchAIConversation(route, { method: 'POST', body: '{}' }).then((response) => {
+      if (!response.body) throw new Error('Missing response body');
+
+      return readTextStream(response.body);
+    });
+
+    await expect(reading).rejects.toThrow(i18n.t('services.creditExhausted'));
+  },
+);
 
 it('retries a transient network failure but rejects mismatched operation identities', async () => {
   const fetch = vi

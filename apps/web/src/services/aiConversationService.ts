@@ -6,7 +6,11 @@ import {
   type AIConversationRoute,
   type AIConversationSnapshot,
 } from '@ddlbuilder/shared-types';
-import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from './aiApi';
+import {
+  buildAuthenticatedJsonHeaders,
+  getAIOperationErrorMessage,
+  readAIErrorMessage,
+} from './aiApi';
 
 const STORAGE_KEY = 'ddlbuilder.ai.operations';
 const StoredOperations = Schema.Array(
@@ -172,7 +176,7 @@ export const fetchAIConversation = async (
       const result = await observeAIOperation(identity.operationId, signal, () => undefined);
       forgetAIOperation(identity.operationId);
 
-      if (result.status !== 'succeeded') throw new Error(result.error ?? 'AI generation failed');
+      if (result.status !== 'succeeded') throw new Error(getAIOperationErrorMessage(result.error));
 
       return Response.json(result.result, {
         headers: { 'X-AI-Conversation': identity.conversationId },
@@ -221,7 +225,7 @@ export const fetchAIConversation = async (
           send(
             snapshot.status === 'succeeded'
               ? { type: 'done' }
-              : { type: 'error', error: snapshot.error ?? 'AI generation failed' },
+              : { type: 'error', error: getAIOperationErrorMessage(snapshot.error) },
           );
 
           if (!cancelled) controller.close();

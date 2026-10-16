@@ -10,6 +10,7 @@ import {
   forgetAIOperation,
 } from '@/services/aiConversationService';
 import { Button } from '@/components/ui/button';
+import { getAIOperationErrorMessage } from '@/services/aiApi';
 import {
   Dialog,
   DialogContent,
@@ -136,7 +137,7 @@ function UserAIOperations({ userId }: { userId: string }) {
               </pre>
               {snapshot.error && (
                 <p role="alert" className="text-sm text-destructive">
-                  {snapshot.error}
+                  {getAIOperationErrorMessage(snapshot.error)}
                 </p>
               )}
               <div className="flex gap-2">

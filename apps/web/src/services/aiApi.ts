@@ -43,6 +43,11 @@ export const getAIErrorMessage = (payload: ApiErrorPayload | null): string | nul
   return null;
 };
 
+// Operation snapshots carry an API error code, or the context limit message.
+export const getAIOperationErrorMessage = (error: string | null) =>
+  getAIErrorMessage({ error: error ?? undefined, code: error ?? undefined }) ??
+  i18n.t('services.aiServiceUnavailable');
+
 export const readAIErrorMessage = async (
   response: Response,
   fallbackKey: 'generationFailed' | 'reviewFailed' | 'explainFailed',
