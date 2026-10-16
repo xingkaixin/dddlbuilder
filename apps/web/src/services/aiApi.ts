@@ -1,5 +1,6 @@
 import i18n from '@/i18n';
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
+import { AI_CONTEXT_LIMIT_ERROR } from '@ddlbuilder/shared-types';
 
 type ApiErrorPayload = {
   error?: string;
@@ -25,6 +26,10 @@ export const getAIErrorMessage = (payload: ApiErrorPayload | null): string | nul
     return i18n.t('services.aiOutputTruncated');
   }
 
+  if (payload?.error === AI_CONTEXT_LIMIT_ERROR) {
+    return i18n.t('services.aiContextLimit');
+  }
+
   if (code === 'SERVICE_UNAVAILABLE' || code === 'UPSTREAM_OPENAI_ERROR') {
     return i18n.t('services.aiServiceUnavailable');
   }
@@ -37,6 +42,11 @@ export const getAIErrorMessage = (payload: ApiErrorPayload | null): string | nul
 
   return null;
 };
+
+// Operation snapshots carry an API error code, or the context limit message.
+export const getAIOperationErrorMessage = (error: string | null) =>
+  getAIErrorMessage({ error: error ?? undefined, code: error ?? undefined }) ??
+  i18n.t('services.aiServiceUnavailable');
 
 export const readAIErrorMessage = async (
   response: Response,

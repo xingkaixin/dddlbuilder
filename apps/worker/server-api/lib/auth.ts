@@ -3,7 +3,7 @@ import type { ApiEnv } from './context.js';
 import { createBetterAuth } from './betterAuth.js';
 import { DomainError } from './http.js';
 import { getRequestLogger } from './logging.js';
-import { kickWorkspaceSockets } from './sessionRevocation.js';
+import { revokeSessionActivity } from './sessionRevocation.js';
 
 export type AuthenticatedAppUser = {
   userId: string;
@@ -68,7 +68,7 @@ export const revokeUserSessions = async (env: ApiEnv['Bindings'], userId: string
   let kickError: unknown;
 
   try {
-    await kickWorkspaceSockets(env, { userId });
+    await revokeSessionActivity(env, { userId });
   } catch (error) {
     kickError = error;
   }

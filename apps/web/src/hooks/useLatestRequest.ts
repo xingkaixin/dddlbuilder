@@ -29,13 +29,13 @@ export function useLatestRequest() {
     [],
   );
 
-  const cancel = useCallback(() => {
+  const cancel = useCallback((reason: 'stop' | 'detach' = 'stop') => {
     const activeRequest = activeRequestRef.current;
 
     if (!activeRequest) return false;
 
     activeRequestRef.current = null;
-    activeRequest.controller.abort();
+    activeRequest.controller.abort(reason);
     setIsPending(false);
 
     return true;
@@ -52,7 +52,7 @@ export function useLatestRequest() {
         return null;
       }
 
-      previousRequest?.controller.abort();
+      previousRequest?.controller.abort('superseded');
 
       const activeRequest: ActiveRequest = {
         key,

@@ -1,3 +1,4 @@
+import { fetchAIConversation } from './aiConversationService';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
 import {
   decodeAIIndexAdvisorResult,
@@ -6,13 +7,11 @@ import {
 } from '@ddlbuilder/shared-types/ai-generate';
 import i18n from '@/i18n';
 
-const AI_INDEX_ADVISOR_API_ENDPOINT = '/api/index-advisor';
-
 export async function requestAIIndexAdvice(
   payload: AIIndexAdvisorRequest,
   signal: AbortSignal,
 ): Promise<AIIndexAdvisorResult> {
-  const response = await fetch(AI_INDEX_ADVISOR_API_ENDPOINT, {
+  const response = await fetchAIConversation('index-advisor', {
     method: 'POST',
     headers: buildAuthenticatedJsonHeaders(),
     credentials: 'include',

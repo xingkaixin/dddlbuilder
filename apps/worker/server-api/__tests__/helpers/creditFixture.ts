@@ -3,12 +3,14 @@ import { applyCreditMutation, getCreditAccount } from '../../lib/credits.js';
 import { reserveAIUsage } from '../../lib/aiUsage.js';
 import { createSqliteD1Database } from './sqliteD1.js';
 
-export const createCreditFixture = async (balance = 1000) => {
-  const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
+export const createCreditFixture = async (balance = 1000, filename?: string) => {
+  const { database, sqlite } = createSqliteD1Database({ includeMeta: true, filename });
   // SAFETY: the credit fixture intentionally supplies only the USER_DB binding used by these helpers.
   const env = { USER_DB: database } as ApiEnv['Bindings'];
   sqlite
-    .prepare('INSERT INTO user (id, name, email, created_at, updated_at) VALUES (?, ?, ?, 1, 1)')
+    .prepare(
+      'INSERT OR IGNORE INTO user (id, name, email, created_at, updated_at) VALUES (?, ?, ?, 1, 1)',
+    )
     .run('user-1', 'User', 'user@example.com');
   await applyCreditMutation(env, {
     userId: 'user-1',

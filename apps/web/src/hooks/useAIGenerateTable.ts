@@ -68,6 +68,7 @@ export function useAIGenerateTable() {
     error: null,
   });
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
+  const conversationIdRef = useRef<string | undefined>(undefined);
   const previousSchemaRef = useRef<GeneratedTableSchema | null>(null);
   const { isPending, run, cancel } = useLatestRequest();
 
@@ -107,6 +108,7 @@ export function useAIGenerateTable() {
       const baseState = options?.mode === 'patch' ? structuredClone(options.existingConfig) : null;
 
       const requestOptions = {
+        conversationId: options?.continueConversation ? conversationIdRef.current : undefined,
         mode: options?.mode,
         templates: options?.templates,
         existingConfig: baseState
@@ -141,6 +143,9 @@ export function useAIGenerateTable() {
         try {
           const { fullText, result } = await requestGenerateTable(requestPayload, {
             signal,
+            onConversation: (id) => {
+              conversationIdRef.current = id;
+            },
             onStreamingText: (streamingText) => {
               commitIfCurrent(() => {
                 setState((previous) => ({

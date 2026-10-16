@@ -1,3 +1,8 @@
+import * as aiTransport from '@/services/aiConversationService';
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Transport lifecycle has dedicated integration tests; these tests protect scenario decoding and hook state.
+vi.mock('@/services/aiConversationService', () => ({ fetchAIConversation: vi.fn() }));
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { requestGenerateTable } from '@/services/aiGenerateTableService';
 import { createAITextStream as createTextStream } from '@/__tests__/utils/aiStream';
@@ -16,7 +21,7 @@ describe('requestGenerateTable', () => {
   ])(
     'rejects malformed completed schemas instead of accepting a partial result: %j',
     async (schema) => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
         new Response(createTextStream([JSON.stringify(schema)])),
       );
       vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -30,7 +35,7 @@ describe('requestGenerateTable', () => {
   );
 
   it('normalizes provider enum aliases before checking the completed contract', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
       new Response(
         createTextStream([
           JSON.stringify({
@@ -75,7 +80,7 @@ describe('requestGenerateTable', () => {
       nullable: true,
       defaultKind: 'none' as const,
     }));
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
       new Response(
         createTextStream([
           JSON.stringify({
@@ -113,7 +118,7 @@ describe('requestGenerateTable', () => {
       fields: [fields[0]],
       indexes: [],
     };
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    const fetchMock = vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
       new Response(
         createTextStream([
           JSON.stringify({
@@ -151,7 +156,7 @@ describe('requestGenerateTable', () => {
       defaultKind: 'none' as const,
     };
     const schema = { tableName: 'users', tableComment: '', fields: [stale], indexes: [] };
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
       new Response(createTextStream([JSON.stringify(schema)])),
     );
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -179,7 +184,7 @@ describe('requestGenerateTable', () => {
     const schema = { tableName: 'users', tableComment: '', fields: [field], indexes: [] };
 
     const fetchMock = vi
-      .spyOn(globalThis, 'fetch')
+      .spyOn(aiTransport, 'fetchAIConversation')
       .mockResolvedValue(new Response(createTextStream([JSON.stringify(schema)])));
     const result = await requestGenerateTable(
       {
@@ -196,7 +201,7 @@ describe('requestGenerateTable', () => {
   });
 
   it('rejects a streamed error instead of returning an empty schema', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
       new Response('{"type":"error","error":"upstream failed","code":"UPSTREAM_OPENAI_ERROR"}\n'),
     );
     await expect(
@@ -211,8 +216,9 @@ describe('requestGenerateTable', () => {
     const updates: string[] = [];
     // SAFETY: This test double implements the Response fields consumed by the streaming/error branch.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The minimal Response fixture models only fields consumed by this boundary test.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
       ok: true,
+      headers: new Headers(),
       status: 200,
       body: createTextStream([
         '{"tableName":"users","tableComment":"u",',
@@ -248,7 +254,7 @@ describe('requestGenerateTable', () => {
       nullable: true,
       defaultKind: 'none' as const,
     };
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
       new Response(
         createTextStream([
           JSON.stringify({
@@ -274,8 +280,9 @@ describe('requestGenerateTable', () => {
   it('should throw non-ok response error', async () => {
     // SAFETY: This test double implements the Response fields consumed by the streaming/error branch.
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The minimal Response fixture models only fields consumed by this boundary test.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
       ok: false,
+      headers: new Headers(),
       status: 500,
       json: vi.fn().mockResolvedValue({ error: '生成失败' }),
     } as unknown as Response);

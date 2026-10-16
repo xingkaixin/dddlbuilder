@@ -33,6 +33,12 @@ export type ApiEnv = {
   };
   Bindings: Pick<WorkerBindings, 'SHARE_KV' | 'USER_DB'> & {
     ASSETS: Pick<WorkerBindings['ASSETS'], 'fetch'>;
+    AI_CONVERSATIONS?: DurableObjectNamespace;
+    AI_PROVIDER?: string;
+    AI_MODEL?: string;
+    AI_THINKING_ENABLED?: string;
+    AI_THINKING_LEVEL?: string;
+    ANTHROPIC_API_KEY?: string;
     WORKSPACE_YDOC?: WorkerBindings['WORKSPACE_YDOC'];
     EVLOG_REQUEST_LOG?: WorkerRequestLogger;
     // Environment variables
@@ -79,6 +85,11 @@ type EnvVariableKey = {
 }[keyof ApiEnv['Bindings']];
 
 export const ENV_VARIABLE_KEYS = [
+  'AI_PROVIDER',
+  'AI_MODEL',
+  'AI_THINKING_ENABLED',
+  'AI_THINKING_LEVEL',
+  'ANTHROPIC_API_KEY',
   'ENVIRONMENT',
   'CORS_ALLOWED_ORIGINS',
   'BETTER_AUTH_SECRET',

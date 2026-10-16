@@ -1,3 +1,4 @@
+import { fetchAIConversation } from './aiConversationService';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
 import {
   decodeAICommentResult,
@@ -6,13 +7,11 @@ import {
 } from '@ddlbuilder/shared-types/ai-generate';
 import i18n from '@/i18n';
 
-const AI_COMMENT_API_ENDPOINT = '/api/generate-comments';
-
 export async function requestAIComments(
   payload: AICommentRequest,
   signal: AbortSignal,
 ): Promise<AICommentResult> {
-  const response = await fetch(AI_COMMENT_API_ENDPOINT, {
+  const response = await fetchAIConversation('generate-comments', {
     method: 'POST',
     headers: buildAuthenticatedJsonHeaders(),
     credentials: 'include',

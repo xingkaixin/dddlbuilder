@@ -102,3 +102,11 @@ export type {
 export { splitQualifiedName, getSchemaAndTable } from './qualifiedName';
 
 export { indexKindOf, isIndexKind, type IndexKind } from './indexKind';
+export {
+  AI_CONTEXT_LIMIT_ERROR,
+  AIConversationRouteSchema,
+  AIOperationIdentitySchema,
+  AIConversationSnapshotSchema,
+  decodeAIConversationSnapshot,
+} from './aiConversation.js';
+export type { AIConversationSnapshot, AIConversationRoute } from './aiConversation.js';

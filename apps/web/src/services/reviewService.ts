@@ -1,3 +1,5 @@
+import type { DDLReviewSuggestion } from '@ddlbuilder/shared-types/ddl-review';
+import { fetchAIConversation } from './aiConversationService';
 import { readTextStream } from '@/services/streamingText';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
 import {
@@ -7,8 +9,6 @@ import {
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import i18n from '@/i18n';
-
-const REVIEW_API_ENDPOINT = '/api/review';
 
 type ReviewRequestPayload = {
   ddl: string;
@@ -22,6 +22,8 @@ type ReviewServiceResult = DDLReviewResult;
 interface RequestDDLReviewOptions {
   signal: AbortSignal;
   onStreamingText?: (text: string) => void;
+  onThinking?: (text: string) => void;
+  onSuggestions?: (items: readonly DDLReviewSuggestion[]) => void;
 }
 
 // The review response is normalized by the shared decoder before service use.
@@ -44,7 +46,7 @@ export async function requestDDLReview(
   payload: ReviewRequestPayload,
   options: RequestDDLReviewOptions,
 ): Promise<ReviewServiceResult> {
-  const response = await fetch(REVIEW_API_ENDPOINT, {
+  const response = await fetchAIConversation('review', {
     method: 'POST',
     headers: buildAuthenticatedJsonHeaders(),
     credentials: 'include',
@@ -62,6 +64,8 @@ export async function requestDDLReview(
 
   const fullText = await readTextStream(response.body, {
     onUpdate: options.onStreamingText,
+    onThinking: options.onThinking,
+    onSuggestions: options.onSuggestions,
   });
 
   let parsed: unknown;

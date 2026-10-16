@@ -21,6 +21,7 @@ interface DdlOutputPanelProps {
   onFormatModeChange: (mode: SqlFormatMode) => void;
   onCopy: () => Promise<boolean>;
   isReviewing: boolean;
+  reviewThinking?: string;
   reviewPartialResult: PartialReviewResult | null;
   reviewResult: DDLReviewResult | null;
   reviewError: string | null;
@@ -37,6 +38,7 @@ export function DdlOutputPanel({
   onFormatModeChange,
   onCopy,
   isReviewing,
+  reviewThinking,
   reviewPartialResult,
   reviewResult,
   reviewError,
@@ -136,6 +138,7 @@ export function DdlOutputPanel({
         <SchemaLintPanel issues={schemaLintIssues} />
         <ReviewResultPanel
           isLoading={isReviewing}
+          thinking={reviewThinking}
           partialResult={reviewPartialResult}
           result={reviewResult}
           error={reviewError}

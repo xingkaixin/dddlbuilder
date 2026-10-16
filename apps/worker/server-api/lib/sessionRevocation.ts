@@ -47,7 +47,7 @@ const kickWorkspaceSocketsWithRetry = async (
   throw lastError;
 };
 
-export const kickWorkspaceSockets = async (
+const kickWorkspaceSockets = async (
   env: ApiEnv['Bindings'],
   { userId, sessionId }: { userId: string; sessionId?: string },
 ) => {
@@ -84,4 +84,54 @@ export const kickWorkspaceSockets = async (
     failures.map(({ error }) => error),
     `Workspace socket revocation failed for ${failures.length} workspace(s)`,
   );
+};
+
+const stopAIConversations = async (
+  env: ApiEnv['Bindings'],
+  identity: { userId: string; sessionId?: string },
+) => {
+  if (!env.AI_CONVERSATIONS) return;
+
+  const { results } =
+    await env.USER_DB.prepare(`UPDATE ai_operations SET stopped_at = COALESCE(stopped_at, ?)
+    WHERE user_id = ? AND (? IS NULL OR session_id = ?) AND completed_at IS NULL
+    RETURNING id, conversation_id, submitted_at`)
+      .bind(Date.now(), identity.userId, identity.sessionId ?? null, identity.sessionId ?? null)
+      .all<{ id: string; conversation_id: string; submitted_at: number | null }>();
+  const failures: unknown[] = [];
+
+  for (const operation of results) {
+    if (!operation.submitted_at) continue;
+
+    try {
+      const response = await env.AI_CONVERSATIONS.get(
+        env.AI_CONVERSATIONS.idFromName(operation.conversation_id),
+      ).fetch(`https://ai.internal/stop?operation=${encodeURIComponent(operation.id)}`, {
+        method: 'POST',
+        headers: { 'x-ai-user': identity.userId },
+      });
+      await response.body?.cancel();
+
+      if (!response.ok && response.status !== 409) throw new Error('AI session revocation failed');
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+
+  if (failures.length) throw new AggregateError(failures, 'AI session revocation failed');
+};
+
+export const revokeSessionActivity = async (
+  env: ApiEnv['Bindings'],
+  identity: { userId: string; sessionId?: string },
+) => {
+  const results = await Promise.allSettled([
+    kickWorkspaceSockets(env, identity),
+    stopAIConversations(env, identity),
+  ]);
+  const errors = results.flatMap((result) => (result.status === 'rejected' ? [result.reason] : []));
+
+  if (errors.length === 1) throw errors[0];
+
+  if (errors.length) throw new AggregateError(errors, 'User activity revocation failed');
 };

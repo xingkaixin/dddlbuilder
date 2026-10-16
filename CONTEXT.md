@@ -90,6 +90,18 @@ _Avoid_: Executable migration
 
 ## AI Usage and Credits
 
+**AI Conversation**:
+A user's retained context for successive requests in one assisted schema scenario.
+_Avoid_: Login session, Workspace Document
+
+**AI Operation**:
+One accepted user request in an AI Conversation. Its identity survives reconnects and recovery.
+_Avoid_: HTTP request, model call
+
+**AI Call Attempt**:
+One physical invocation of a model for an AI Operation. Recovery can require another invocation and another usage reservation.
+_Avoid_: Operation, reconnect
+
 **Credit Account**:
 A user's current balance available for assisted schema operations.
 _Avoid_: Wallet
@@ -99,11 +111,11 @@ The immutable record of one committed Credit Account mutation.
 _Avoid_: Balance update
 
 **AI Usage Reservation**:
-A temporary allocation of credits for one authenticated assisted schema operation before its final usage is known.
+A temporary allocation of credits for one physical model call before its final usage is known.
 _Avoid_: Charge, usage event
 
 **AI Usage**:
-The settled resource consumption of one assisted schema operation, including its terminal outcome.
+The settled resource consumption of one physical model call, including its terminal outcome.
 _Avoid_: Request
 
 **Usage Identity**:

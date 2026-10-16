@@ -5,6 +5,30 @@ import { schemaTools } from './schemaTools';
 import { dataImport } from './dataImport';
 
 export const enUSCommon = {
+  aiOperations: {
+    title: 'AI operations',
+    description:
+      'Operations continue after you close the page. Recovery may call the model again and consume additional credits.',
+    failed: 'Unable to load operation',
+    accounting: 'Settling credits',
+    thinking: 'Thinking summary',
+    stop: 'Stop generation',
+    dismiss: 'Remove from list',
+    copy: 'Copy result',
+    routes: {
+      explain: 'SQL explanation',
+      review: 'DDL review',
+      'generate-table': 'Generate / modify table',
+      'generate-comments': 'Generate comments',
+      'index-advisor': 'Index advice',
+    },
+    states: {
+      running: 'Generating',
+      succeeded: 'Completed',
+      failed: 'Incomplete',
+      cancelled: 'Stopped',
+    },
+  },
   modelTools,
   dataImport,
   snapshot,
@@ -1553,6 +1577,7 @@ export const enUSCommon = {
     authRequired: 'Sign in or register to use AI features',
     creditExhausted: 'You do not have enough credits to use AI right now',
     aiServiceUnavailable: 'AI service is temporarily unavailable. Please try again later.',
+    aiContextLimit: 'This conversation is too long. Start a new conversation.',
     aiOutputTruncated: 'AI output exceeded the length limit. Try a smaller request.',
   },
   aiComments: {

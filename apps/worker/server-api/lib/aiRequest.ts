@@ -2,7 +2,8 @@ import * as Result from 'effect/Result';
 import * as Schema from 'effect/Schema';
 import * as SchemaIssue from 'effect/SchemaIssue';
 import type { ApiErrorCode } from './http.js';
-import type { AIRequestRejection } from './aiRoute.js';
+
+export type AIRequestRejection = { status: 400 | 413; code: ApiErrorCode; message: string };
 
 type RequestError = { code: ApiErrorCode; message: string };
 

@@ -102,7 +102,7 @@ cf 1.0.0-beta.12 的 `d1 query --local` 尚无对应接口；本机验证 `d1 ra
 `.deploy.secrets` 使用标准 `.env` 格式，例如：
 
 ```bash
-OPENAI_API_KEY=xxx
+ANTHROPIC_API_KEY=xxx
 BETTER_AUTH_SECRET=xxx
 ADMIN_CONSOLE_PASSWORD=xxx
 ADMIN_SESSION_SECRET=xxx
@@ -122,9 +122,11 @@ CF_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 
 本地 Worker 变量示例见 `.env.vars.example`；复制为项目根目录下的 `.dev.vars` 后按需填写：
 
-- `OPENAI_BASE_URL`：OpenAI 兼容接口地址
-- `OPENAI_API_KEY`：模型服务密钥
-- `OPENAI_MODEL_NAME`：默认模型名
+- `ANTHROPIC_API_KEY`：Anthropic 服务端密钥
+- `AI_PROVIDER`：当前支持 `anthropic`
+- `AI_MODEL`：默认 `claude-haiku-5-5`
+- `AI_THINKING_ENABLED`：默认 `false`；开启后输出供应商提供的 thinking 摘要
+- `AI_THINKING_LEVEL`：`low` / `medium` / `high`，默认 `low`，仅开启 thinking 时生效
 - `CORS_ALLOWED_ORIGINS`：允许跨域来源，多个来源用逗号分隔
 - `BETTER_AUTH_SECRET`：Better Auth 签名密钥
 - `BETTER_AUTH_URL`：Better Auth 对外基址，必须填写用户浏览器实际访问的公开站点。Vite + Worker 本地联调时应使用 `http://localhost:3000`，不要填 Worker 内部端口如 `http://127.0.0.1:8787`
@@ -141,7 +143,6 @@ CF_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 - `OPENAI_RATELIMIT_EXPLAIN_MAX` / `OPENAI_RATELIMIT_REVIEW_MAX` / `OPENAI_RATELIMIT_GENERATE_MAX`：各 AI 路由窗口内最大请求数
 - `OPENAI_DAILY_BUDGET_ENABLED`：是否启用每日预算控制
 - `OPENAI_DAILY_BUDGET_MAX_TOKENS`：每日预算上限（估算 token）
-- `OPENAI_STREAM_DEBUG`：是否启用后端 AI streaming 调试日志（默认 `false`）
 - `TELEGRAM_NOTIFY_ENABLED`：是否启用 AI usage Telegram 通知（默认 `false`）
 - `TELEGRAM_BOT_TOKEN`：Telegram Bot Token
 - `TELEGRAM_CHAT_ID`：Telegram 接收消息的 chat id
@@ -164,20 +165,19 @@ CF_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 
 调试说明：
 
-- 后端 `OPENAI_STREAM_DEBUG` 在 Worker 运行时生效；使用 `pnpm run dev:worker` 时，优先通过项目根目录下的 `.dev.vars` 注入，例如：
+AI 使用 pi-durable 内置 Conversation 和 GenerationTask，状态持久化到独立的 SQLite Durable Object。建表、修改、审查、解释、注释和索引建议共用这条链路。关闭页面只停止观察；从“AI 任务”入口可重新查看当前浏览器标签页发起的结果，主动点击停止才取消执行。会话保留 30 天。服务端重启可能重新调用模型，不承诺从上一个 token 接着生成。
 
-```bash
-OPENAI_STREAM_DEBUG=true
-```
+`OPENAI_RATELIMIT_*` 和 `OPENAI_DAILY_BUDGET_*` 为兼容现有部署配置继续有效；旧供应商、重试和超时变量不再控制新运行时。一轮最多两次物理模型调用，总期限五分钟，SDK 自动重试关闭。
+
+本地先运行 `pnpm db:migrate:local` 应用新迁移。生产发布仍须先应用 D1 迁移，再发布包含 `AIConversationDurableObject` 导出及 `AI_CONVERSATIONS` 绑定的 Worker；回退版本时保留该导出、绑定和 Cron 直到在途任务完成结算。勿删除新表或重建 DO 存储来回退。
+
+配置 `ANTHROPIC_API_KEY` 后可运行 `pnpm exec tsx scripts/verify-ai-conversation.ts` 做真实模型验收（会产生供应商用量）；`AI_SMOKE_ROUTE` 可限制场景。该脚本使用隔离的本地 SQLite，不接触生产账本。密钥只从环境读取。
 
 - 前端 `VITE_ENABLE_AI_STREAM_DEBUG` 是构建时变量；如果只是临时本地排查，可直接在浏览器控制台执行：
 
 ```js
 localStorage.setItem('ddlbuilder:ai-stream-debug', 'true');
 ```
-
-- AI 路由响应头会暴露 `X-AI-Stream-Debug`。
-  值为 `1` 表示后端 stream debug 已生效，值为 `0` 表示当前请求未开启后端 stream debug。
 
 ### 用户系统本地联调
 

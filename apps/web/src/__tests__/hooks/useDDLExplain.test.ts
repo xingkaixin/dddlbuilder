@@ -1,3 +1,8 @@
+import * as aiTransport from '@/services/aiConversationService';
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Transport lifecycle has dedicated integration tests; these tests protect scenario decoding and hook state.
+vi.mock('@/services/aiConversationService', () => ({ fetchAIConversation: vi.fn() }));
+
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
@@ -79,7 +84,9 @@ describe('useDDLExplain', () => {
   });
 
   it('should stream explanation and complete successfully', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(''));
+    const fetchMock = vi
+      .spyOn(aiTransport, 'fetchAIConversation')
+      .mockResolvedValue(new Response(''));
 
     streamingMocks.readTextStream.mockImplementation(async (_, options) => {
       options?.onUpdate?.('partial explanation');
@@ -94,7 +101,7 @@ describe('useDDLExplain', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/explain',
+      'explain',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
@@ -113,7 +120,7 @@ describe('useDDLExplain', () => {
   });
 
   it('should pass server stream debug context to the stream reader', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
       new Response('', {
         headers: {
           'X-AI-Stream-Debug': '1',
@@ -142,7 +149,9 @@ describe('useDDLExplain', () => {
   });
 
   it('should send the current locale after switching language', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(''));
+    const fetchMock = vi
+      .spyOn(aiTransport, 'fetchAIConversation')
+      .mockResolvedValue(new Response(''));
 
     streamingMocks.readTextStream.mockResolvedValue('english explanation');
 
@@ -161,7 +170,7 @@ describe('useDDLExplain', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/explain',
+      'explain',
       expect.objectContaining({
         body: JSON.stringify({
           sql: 'SELECT 1',
@@ -173,7 +182,7 @@ describe('useDDLExplain', () => {
   });
 
   it('should handle non-ok response with server error', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
       Response.json({ error: '服务异常' }, { status: 500 }),
     );
 
@@ -189,7 +198,9 @@ describe('useDDLExplain', () => {
   });
 
   it('should fallback to status error when parsing error response fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('invalid json', { status: 502 }));
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
+      new Response('invalid json', { status: 502 }),
+    );
 
     const { result } = renderDDLExplainHook();
 
@@ -202,7 +213,7 @@ describe('useDDLExplain', () => {
   });
 
   it('should handle missing response body', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null));
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(new Response(null));
 
     const { result } = renderDDLExplainHook();
 
@@ -218,7 +229,7 @@ describe('useDDLExplain', () => {
     let firstSignal: AbortSignal | null | undefined;
     let requestCount = 0;
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((_, init) => {
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockImplementation((_, init) => {
       requestCount += 1;
       const signal = init?.signal;
 
@@ -267,7 +278,7 @@ describe('useDDLExplain', () => {
         });
       })
       .mockResolvedValueOnce('newer explanation');
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(''));
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(new Response(''));
     const { result } = renderDDLExplainHook();
 
     let older!: Promise<void>;
@@ -292,7 +303,7 @@ describe('useDDLExplain', () => {
   it('should clear state and abort active request', async () => {
     let currentSignal: AbortSignal | null | undefined;
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((_, init) => {
+    vi.spyOn(aiTransport, 'fetchAIConversation').mockImplementation((_, init) => {
       currentSignal = init?.signal;
 
       return new Promise<Response>(() => {});

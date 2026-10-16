@@ -2,17 +2,13 @@
 
 AI 业务阶段使用 Effect span，由 `server-api/lib/aiTracing.ts` 接到 Cloudflare Worker 的原生自定义 span。通过异步上下文快照，Effect fiber 切换后仍保留平台上的父子关系，平台自动采集的 fetch 和数据库调用也能归到当前阶段。
 
-## 阶段
+## 请求与 Conversation
 
-- `ai.request`：一次 AI 操作，流消费、输出校验和结算完成后结束。
-- `ai.authenticate`、`ai.rate_limit`：鉴权和限流。
-- `ai.reserve`、`ai.budget.reserve`：额度及预算预留。
-- `ai.provider.attempt`：一次上游尝试，`ai.attempt` 从 1 开始。
-- `ai.stream.consume`：整个流消费过程，不逐 chunk 创建 span。
-- `ai.output.validate`：路由输出 Schema 校验。
-- `ai.settle`：结算；失败可与成功生成同时发生，应结合 `ai.accounting_finalized` 排查。
+`ai.request` 覆盖操作准备入口，`ai.authenticate` 标记鉴权。模型执行不属于这次 HTTP 响应的生命周期：DO 的模型调用、观察流和结算通过 `waitUntil` 继续运行，Alarm 可在另一 invocation 恢复。
 
-`ai.outcome` 区分 `succeeded`、`rejected`、`failed`、`cancelled`。`ai.failure_kind` 标识上游、输出、记账、治理、超时或内部错误。HTTP 200 不代表流成功，应查看操作结果及终止事件。
+后台 `ai-conversation` 日志按 `ai.operationId`、`ai.conversationId` 关联，包含场景、模型、thinking 开关、业务结果与结算状态。`ai-conversation-recovery` 的 `recovery_pending` 表示本轮执行或记账尚未完成，需结合持久化记录排查。日志不输出原始异常中的提示词或供应商响应。
+
+`ai_operations` 记录原始身份、输入哈希、期限、停止与完成时间；`ai_call_attempts` 关联独立的 `usage_events`。`dispatched_at` 表示调用可能已发送，`usage_complete` 区分完整用量和估算。一次 Operation 可以对应多次供应商调用，每次有自己的预留和结算。HTTP 200、观察流结束与账本结算完成是不同状态。
 
 ## 定时用量恢复
 
@@ -24,15 +20,13 @@ Cron 的 `ai.usage.recovery` 覆盖用量回收、预算补结算和过期治理
 
 ## 日志关联
 
-通过日志的 `requestId` 和 span 的 `request.id` 关联。Effect 内部生成的 trace ID 不作为 Cloudflare trace ID 输出。Cloudflare 的实际 trace ID 由平台提供。
+HTTP 日志和原生 span 通过 `requestId` / `request.id` 关联；跨 invocation 的 AI 执行通过 operationId 关联。Effect 内部 trace ID 不作为 Cloudflare trace ID 输出。
 
-非流请求沿用请求日志；流请求结束时通过 `ai-operation` 后台日志输出最终审计，包括用量、重试、结算状态及 `ai.observability.firstChunkMs`。首字延迟包含鉴权和额度预留时间。完整后台任务挂到 `waitUntil`。
-
-Trace 属性使用白名单，不包含 SQL、提示词、响应正文、密钥和原始异常信息。追踪 API 失败不影响请求或结算。
+Trace 属性使用白名单，不包含 SQL、提示词、响应正文、密钥和原始异常信息。追踪 API 失败不影响请求或结算。生产采样沿用 Cloudflare 配置。
 
 ## 查询
 
-生产采样配置在 `cloudflare.config.ts`：日志采样 100%，Trace 采样 5%。在 Cloudflare Traces 中查找 `ai.request`，按 `request.id`、`ai.route`、`ai.error_code` 和 `ai.accounting_finalized` 筛选。错误率和用量应从完整审计统计，不能把 5% 的 Trace 样本当成总量。
+生产采样配置在 `cloudflare.config.ts`：日志采样 100%，Trace 采样 5%。在 Cloudflare Traces 中查找 `ai.request`，按 `request.id`、`ai.outcome` 和 `ai.error_code` 筛选；操作结算状态查询 Conversation 日志与 D1。错误率和用量应从完整审计统计，不能把 5% 的 Trace 样本当成总量。
 
 `cf dev` 启动的本地运行时 Local Explorer 提供只读查询接口：
 

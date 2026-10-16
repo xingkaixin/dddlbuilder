@@ -30,6 +30,7 @@ const KNOWN_SUGGESTION_TYPES = new Set([
 ]);
 
 interface ReviewResultPanelProps {
+  thinking?: string;
   isLoading: boolean;
   partialResult: PartialReviewResult | null;
   result: ReviewResult | null;
@@ -295,7 +296,7 @@ function SuggestionsSkeleton({ count = SUGGESTION_SKELETON_COUNT, showHeader = f
 }
 
 export const ReviewResultPanel = memo<ReviewResultPanelProps>(
-  ({ isLoading, partialResult, result, error, onApplySuggestion }) => {
+  ({ isLoading, thinking, partialResult, result, error, onApplySuggestion }) => {
     const { t } = useTranslation();
     const isStreaming = isLoading && !result;
     // Determine what to show: final result or partial result during streaming
@@ -314,6 +315,12 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
 
     return (
       <div className="mt-4 rounded-lg border border-primary/10 bg-card/50 p-4 shadow-sm">
+        {isLoading && thinking && (
+          <div className="mb-4 border-b pb-3 text-sm text-muted-foreground">
+            <p className="mb-1 font-medium">{t('aiOperations.thinking')}</p>
+            <p className="whitespace-pre-wrap">{thinking}</p>
+          </div>
+        )}
         {error && (
           <div className="flex items-center gap-2 text-red-500 mb-4 animate-in fade-in slide-in-from-top-1">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />

@@ -1,0 +1,3 @@
+# Durable AI conversations and separate accounting
+
+AI execution uses pi-durable's built-in Conversation and GenerationTask in a dedicated SQLite Durable Object, replacing the request-scoped SDK loop so that disconnects and process loss do not erase progress. D1 remains the authority for authorization and credits; every physical provider call receives a distinct usage identity, and durable receipts reconcile the non-atomic boundary between the two stores. Recovery may invoke the provider again, so admission and settlement run for every call and the existing ledger constraints remain authoritative.

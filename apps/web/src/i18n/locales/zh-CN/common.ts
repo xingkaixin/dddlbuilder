@@ -5,6 +5,29 @@ import { schemaTools } from './schemaTools';
 import { dataImport } from './dataImport';
 
 export const zhCNCommon = {
+  aiOperations: {
+    title: 'AI 任务',
+    description: '关闭页面后任务继续执行。中断恢复可能重新请求模型并增加额度消耗。',
+    failed: '无法读取任务',
+    accounting: '额度结算中',
+    thinking: '思考摘要',
+    stop: '停止生成',
+    dismiss: '从列表移除',
+    copy: '复制结果',
+    routes: {
+      explain: 'SQL 解释',
+      review: 'DDL 审查',
+      'generate-table': '建表 / 改表',
+      'generate-comments': '生成注释',
+      'index-advisor': '索引建议',
+    },
+    states: {
+      running: '正在生成',
+      succeeded: '已完成',
+      failed: '未完成',
+      cancelled: '已停止',
+    },
+  },
   modelTools,
   dataImport,
   snapshot,
@@ -1503,6 +1526,7 @@ export const zhCNCommon = {
     authRequired: '请先登录或注册后再使用 AI 功能',
     creditExhausted: '当前额度不足，暂时无法使用 AI 功能',
     aiServiceUnavailable: 'AI 服务暂时不可用，请稍后再试',
+    aiContextLimit: '对话内容已超过上限，请重新开始对话',
     aiOutputTruncated: 'AI 输出超过长度限制，请缩小请求范围后重试',
   },
   aiComments: {
