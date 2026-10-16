@@ -91,6 +91,7 @@ export class AIConversationDurableObject {
   private harness?: Harness;
   private storage?: Storage;
   private conversation?: Conversation;
+  private creatingConversation?: Promise<Conversation>;
   private running?: Promise<void>;
   private projection = Promise.resolve();
   private readonly observers = new Set<() => void>();
@@ -588,28 +589,56 @@ export class AIConversationDurableObject {
 
     if (request.method === 'POST' && url.pathname === '/submit') {
       const body: { route: AIRouteKey; input: JsonValue } = await request.json();
-      const state = await this.state();
+      const previous = (await this.state()).operation;
+      const busy = () => new Response('Conversation busy', { status: 409 });
 
-      if (state.operation?.id !== operation.id) {
-        if (
-          state.operation &&
-          (state.operation.status === 'running' || state.operation.accountingPending)
-        )
-          return new Response('Conversation busy', { status: 409 });
+      if (
+        previous &&
+        previous.id !== operation.id &&
+        (previous.status === 'running' || previous.accountingPending)
+      ) {
+        if (previous.status === 'running') {
+          const access = await readAIOperation(this.env, previous.id);
 
-        if (this.running) await this.running;
+          if (
+            access &&
+            !access.stopped_at &&
+            !access.completed_at &&
+            (access.deadline_at ?? 0) > Date.now()
+          )
+            return busy();
+          await this.conversation?.abort(context);
+        }
+
+        // A stopped or expired round still settles before the conversation accepts the next one.
+        this.start();
+        await this.running?.catch(() => undefined);
+      }
+
+      if ((await this.state()).operation?.id !== operation.id) {
         await assertAIOperationAccess(this.env, operation);
         const config = await Effect.runPromise(loadAIConversationConfig(this.env));
-
-        if (!this.conversation)
-          this.conversation = await this.runtime().harness.createConversation(
+        if (!this.conversation) {
+          // Concurrent first submissions must share one conversation.
+          this.creatingConversation ??= this.runtime().harness.createConversation(
             { ownership: { kind: 'ownerless' } },
             context,
           );
+          this.conversation = await this.creatingConversation;
+        }
         const conversation = this.conversation;
         const scenario = prepareAIScenario(body.route, body.input);
-        await this.runtime().harness.commit(async (tx) => {
+
+        const accepted = await this.runtime().harness.commit(async (tx) => {
           const state = await tx.doc(State);
+
+          if (state.operation?.id === operation.id) return true;
+
+          if (
+            state.operation &&
+            (state.operation.status === 'running' || state.operation.accountingPending)
+          )
+            return false;
           state.conversation = conversation.id;
           state.operation = {
             id: operation.id,
@@ -628,7 +657,11 @@ export class AIConversationDurableObject {
             status: 'running',
             accountingPending: true,
           };
+
+          return true;
         }, context);
+
+        if (!accepted) return busy();
       }
 
       await this.ctx.storage.setAlarm(Date.now() + 30_000);

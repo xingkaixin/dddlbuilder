@@ -474,3 +474,56 @@ it('reports the conversation context limit without dispatching another call', as
   expect(current).toMatchObject({ status: 'failed', error: AI_CONTEXT_LIMIT_ERROR });
   expect(fetch).toHaveBeenCalledOnce();
 });
+
+const addOperation = (test: Awaited<ReturnType<typeof createRuntime>>, id: string) =>
+  test.sqlite
+    .prepare(
+      "INSERT INTO ai_operations(id,conversation_id,user_id,session_id,submitted_at,deadline_at,created_at) VALUES(?,'conversation','user-1','session',1,?,2)",
+    )
+    .run(id, Date.now() + 600_000);
+
+const submitOperation = (test: Awaited<ReturnType<typeof createRuntime>>, id: string) =>
+  test.runtime.fetch(
+    new Request(`https://internal/submit?operation=${id}`, {
+      method: 'POST',
+      headers: { 'x-ai-user': 'user-1' },
+      body: JSON.stringify({ route: 'explain', input: { sql: 'SELECT 2' } }),
+    }),
+  );
+
+it('settles a stopped round before accepting the next operation', async () => {
+  const fetch = vi.fn(
+    (_url: string, init: RequestInit) =>
+      new Promise<Response>((resolve, reject) => {
+        if (fetch.mock.calls.length > 1) resolve(response());
+        init.signal?.addEventListener('abort', () =>
+          reject(new DOMException('Aborted', 'AbortError')),
+        );
+      }),
+  );
+  vi.stubGlobal('fetch', fetch);
+  const test = await createRuntime();
+  await submit(test);
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+  addOperation(test, 'second');
+  expect((await submitOperation(test, 'second')).status).toBe(409);
+  test.sqlite.prepare("UPDATE ai_operations SET stopped_at = 1 WHERE id = 'operation'").run();
+  expect((await submitOperation(test, 'second')).status).toBe(200);
+  await test.finish();
+  expect(await snapshot(test)).toMatchObject({ status: 'cancelled', accountingPending: false });
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it('accepts only one of two concurrent operations', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => response()),
+  );
+  const test = await createRuntime();
+  addOperation(test, 'second');
+  const statuses = await Promise.all([submit(test), submitOperation(test, 'second')]).then(
+    (responses) => responses.map((item) => item.status).sort(),
+  );
+  await test.finish();
+  expect(statuses).toEqual([200, 409]);
+});

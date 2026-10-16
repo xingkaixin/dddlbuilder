@@ -193,7 +193,7 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
       .bind(Date.now() + AI_RETENTION_MS, conversation.id)
       .run();
 
-    return forward(
+    const response = await forward(
       c,
       conversation.id,
       operation.id,
@@ -201,6 +201,16 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
       '/submit',
       JSON.stringify({ route: conversation.route_key, input: parsed.data }),
     );
+
+    if (response.status !== 409) return response;
+    await response.body?.cancel();
+    // The conversation never accepted this operation, so recovery has nothing to resume or settle.
+    await c.env.USER_DB.prepare(
+      'UPDATE ai_operations SET stopped_at = COALESCE(stopped_at, ?), completed_at = COALESCE(completed_at, ?) WHERE id = ?',
+    )
+      .bind(Date.now(), Date.now(), operation.id)
+      .run();
+    throw new DomainError(409, 'SERVICE_UNAVAILABLE', 'AI conversation busy');
   });
 
   for (const path of ['', '/events', '/stop']) {

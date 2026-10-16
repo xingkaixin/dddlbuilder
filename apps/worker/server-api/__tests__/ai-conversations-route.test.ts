@@ -40,6 +40,7 @@ it('protects operation ownership, immutable submissions and stopped prepared ope
       : c.text(error.message, 500),
   );
   const forwarded: Request[] = [];
+  let busyOperation = '';
 
   // SAFETY: the namespace fixture implements only name lookup and fetch used by the route.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Partial Cloudflare binding backed by the real runtime fixture.
@@ -49,7 +50,9 @@ it('protects operation ownership, immutable submissions and stopped prepared ope
       fetch: async (request: Request) => {
         forwarded.push(request);
 
-        return Response.json({ accepted: true });
+        return new URL(request.url).searchParams.get('operation') === busyOperation
+          ? new Response('Conversation busy', { status: 409 })
+          : Response.json({ accepted: true });
       },
     }),
   } as unknown as DurableObjectNamespace;
@@ -97,4 +100,18 @@ it('protects operation ownership, immutable submissions and stopped prepared ope
     (await request(`/ai/operations/${second.operationId}`, 'POST', 'user-1', { sql: 'SELECT 1' }))
       .status,
   ).toBe(409);
+
+  const rejected = Schema.decodeUnknownSync(AIOperationIdentitySchema)(
+    await (await request('/ai/operations', 'POST', 'user-1', { route: 'explain' })).json(),
+  );
+  busyOperation = rejected.operationId;
+  expect(
+    (await request(`/ai/operations/${rejected.operationId}`, 'POST', 'user-1', { sql: 'SELECT 1' }))
+      .status,
+  ).toBe(409);
+  expect(
+    test.sqlite
+      .prepare('SELECT completed_at IS NOT NULL AS closed FROM ai_operations WHERE id = ?')
+      .get(rejected.operationId),
+  ).toEqual({ closed: 1 });
 });
