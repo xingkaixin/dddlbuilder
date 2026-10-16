@@ -46,7 +46,7 @@ it('prepares once and reconnects observation without resubmitting the model oper
     '/api/ai/operations/op/events',
     '/api/ai/operations/op/events',
   ]);
-  expect(readAIOperations()).toEqual([{ ...identity, route: 'explain' }]);
+  expect(readAIOperations()).toEqual([]);
 });
 
 it('retries a transient network failure but rejects mismatched operation identities', async () => {
@@ -103,6 +103,6 @@ it.each(['stop', 'detach'])(
     controller.abort(reason);
     await expect(reading).rejects.toThrow('Aborted');
     expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/stop'))).toBe(reason === 'stop');
-    expect(readAIOperations()).toHaveLength(1);
+    await vi.waitFor(() => expect(readAIOperations()).toHaveLength(reason === 'stop' ? 0 : 1));
   },
 );

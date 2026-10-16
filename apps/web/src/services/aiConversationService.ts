@@ -135,7 +135,10 @@ export const fetchAIConversation = async (
 
   const stop = () => {
     if (signal.reason === 'stop' || signal.reason === 'superseded') {
-      stopAIOperation(identity.operationId).catch(() => announce());
+      stopAIOperation(identity.operationId).then(
+        () => forgetAIOperation(identity.operationId),
+        () => announce(),
+      );
     }
   };
   signal.addEventListener('abort', stop, { once: true });
@@ -167,6 +170,7 @@ export const fetchAIConversation = async (
   if (!streaming) {
     try {
       const result = await observeAIOperation(identity.operationId, signal, () => undefined);
+      forgetAIOperation(identity.operationId);
 
       if (result.status !== 'succeeded') throw new Error(result.error ?? 'AI generation failed');
 
@@ -213,6 +217,7 @@ export const fetchAIConversation = async (
         }
       })
         .then((snapshot) => {
+          if (!cancelled) forgetAIOperation(identity.operationId);
           send(
             snapshot.status === 'succeeded'
               ? { type: 'done' }
