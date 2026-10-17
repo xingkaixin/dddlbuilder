@@ -44,7 +44,12 @@ export async function requestGenerateTable(
 ): Promise<GenerateTableServiceResult> {
   const previousSchema =
     payload.options?.mode === 'patch' ? undefined : payload.options?.previousSchema;
-  const existingConfig = previousSchema ? undefined : payload.options?.existingConfig;
+  const requestedConfig = previousSchema ? undefined : payload.options?.existingConfig;
+
+  // Blank editor rows are placeholders; offering their ids lets the model reuse them for new fields.
+  const existingConfig = requestedConfig?.rows
+    ? { ...requestedConfig, rows: requestedConfig.rows.filter((row) => row.fieldName.trim()) }
+    : requestedConfig;
 
   const response = await fetchAIConversation(
     'generate-table',

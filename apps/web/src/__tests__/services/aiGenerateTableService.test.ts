@@ -142,6 +142,36 @@ describe('requestGenerateTable', () => {
     expect(request.existingConfig.rows).toEqual(fields);
   });
 
+  it('does not offer blank placeholder row identities to the model', async () => {
+    const [field, blank] = [
+      { id: 'a', fieldName: 'a' },
+      { id: 'blank', fieldName: ' ' },
+    ].map((row) => ({
+      ...row,
+      fieldType: 'int',
+      fieldComment: '',
+      nullable: true,
+      defaultKind: 'none' as const,
+    }));
+    const fetchMock = vi
+      .spyOn(aiTransport, 'fetchAIConversation')
+      .mockResolvedValue(
+        new Response(
+          createTextStream([JSON.stringify({ tableName: 'orders', tableComment: '', fields: [] })]),
+        ),
+      );
+    await requestGenerateTable(
+      {
+        description: '生成订单表',
+        dbType: 'mysql',
+        options: { existingConfig: { rows: [field, blank] } },
+      },
+      { signal: new AbortController().signal },
+    );
+    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(request.existingConfig.rows).toEqual([field]);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
