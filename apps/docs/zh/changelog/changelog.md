@@ -16,6 +16,9 @@ outline: [2, 2]
 - **AI 额度结算**：停止或中断的生成按已发送内容和已收到的输出（含思考内容）计费，不超过单次上限。中断后的自动恢复可能再次请求模型并消耗额度，但已结算的调用不会重复扣费；只有调用记录完全丢失时，才按预留额度扣除。
 - **对话过长提示**：建表对话超过模型上下文上限时，提示重新开始对话。
 
+### 修复
+- **AI 建表**：在包含空白字段行的表（例如新建草稿）中使用大师建表或 AI 修改时，不再提示“解析响应失败”。
+
 ### 部署
 - **AI 服务配置**：AI 服务只支持 Anthropic。在 `.deploy.secrets` 中配置 `ANTHROPIC_API_KEY`，在 `cloudflare.deploy.json` 的 `vars` 中设置 `AI_PROVIDER`、`AI_MODEL`、`AI_THINKING_ENABLED`、`AI_THINKING_LEVEL`。`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL_NAME`、`OPENAI_RETRY_*`、`OPENAI_REQUEST_TIMEOUT_MS`、`OPENAI_STREAM_DEBUG` 不再用于模型请求，已从部署示例移除；限流和每日预算继续使用 `OPENAI_RATELIMIT_*`、`OPENAI_DAILY_BUDGET_*`。`--secrets-file` 不会删除线上已有的 secrets，旧的 `OPENAI_API_KEY` 需通过 `cf workers secrets delete` 手动删除。
 - **AI 任务存储**：发布前应用 `0028` 迁移，新增 AI 对话、任务和调用记录表，`pnpm deploy:cf` 会自动执行。Worker 新增 `AIConversationDurableObject` 导出和 `AI_CONVERSATIONS` 绑定；回退版本时保留该导出、绑定和每 10 分钟的恢复 Cron，直到进行中的任务完成结算。

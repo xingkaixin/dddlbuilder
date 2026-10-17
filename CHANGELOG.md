@@ -12,6 +12,9 @@
 - **AI credit settlement**: Stopped or interrupted generations are charged for the submitted input and the output received, including thinking content, up to the per-call limit. Automatic recovery after an interruption may call the model again and consume credits, but a settled call is never charged twice. Only a call whose records are lost entirely is charged its full reservation.
 - **Long conversation notice**: When a table-generation conversation exceeds the model's context limit, you are asked to start a new conversation.
 
+### Fixed
+- **AI table generation**: Generating or modifying a table with AI no longer fails with "Failed to parse response" when the table contains blank field rows, such as a new draft.
+
 ### Deployment
 - **AI service configuration**: The AI service supports Anthropic only. Set `ANTHROPIC_API_KEY` in `.deploy.secrets`, and set `AI_PROVIDER`, `AI_MODEL`, `AI_THINKING_ENABLED` and `AI_THINKING_LEVEL` under `vars` in `cloudflare.deploy.json`. `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL_NAME`, `OPENAI_RETRY_*`, `OPENAI_REQUEST_TIMEOUT_MS` and `OPENAI_STREAM_DEBUG` no longer affect model requests and have been removed from the deployment examples; rate limits and the daily budget still use `OPENAI_RATELIMIT_*` and `OPENAI_DAILY_BUDGET_*`. `--secrets-file` does not delete existing secrets, so remove the old `OPENAI_API_KEY` manually with `cf workers secrets delete`.
 - **AI operation storage**: Apply migration `0028` before publishing. It adds AI conversation, operation and call-record tables, and `pnpm deploy:cf` applies it automatically. The Worker adds the `AIConversationDurableObject` export and the `AI_CONVERSATIONS` binding; when rolling back, keep this export, the binding and the 10-minute recovery Cron until in-flight operations finish settlement.

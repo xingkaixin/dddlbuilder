@@ -16,6 +16,9 @@ outline: [2, 2]
 - **AI クレジットの精算**：停止または中断された生成は、送信した入力と受信済みの出力（思考内容を含む）に基づいて課金され、1 回あたりの上限を超えません。中断後の自動復旧でモデルが再度呼び出されクレジットを消費する場合がありますが、精算済みの呼び出しが二重に課金されることはありません。呼び出し記録が完全に失われた場合のみ、予約額で精算します。
 - **長い会話の通知**：テーブル生成の会話がモデルのコンテキスト上限を超えた場合、新しい会話を始めるよう案内します。
 
+### 修正
+- **AI テーブル生成**：新しい下書きなど空のフィールド行を含むテーブルで AI によるテーブル生成や変更を行っても、「応答の解析に失敗しました」と表示されなくなりました。
+
 ### デプロイ
 - **AI サービスの設定**：AI サービスは Anthropic のみに対応します。`.deploy.secrets` に `ANTHROPIC_API_KEY` を設定し、`cloudflare.deploy.json` の `vars` に `AI_PROVIDER`、`AI_MODEL`、`AI_THINKING_ENABLED`、`AI_THINKING_LEVEL` を設定します。`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL_NAME`、`OPENAI_RETRY_*`、`OPENAI_REQUEST_TIMEOUT_MS`、`OPENAI_STREAM_DEBUG` はモデル呼び出しに使われなくなり、デプロイ例から削除しました。レート制限と日次予算は引き続き `OPENAI_RATELIMIT_*`、`OPENAI_DAILY_BUDGET_*` を使用します。`--secrets-file` は既存の secrets を削除しないため、古い `OPENAI_API_KEY` は `cf workers secrets delete` で手動削除してください。
 - **AI タスクのストレージ**：公開前にマイグレーション `0028` を適用します。AI の会話、タスク、呼び出し記録のテーブルを追加し、`pnpm deploy:cf` が自動で適用します。Worker に `AIConversationDurableObject` のエクスポートと `AI_CONVERSATIONS` バインディングを追加しました。ロールバック時は、進行中のタスクの精算が終わるまで、このエクスポート、バインディング、10 分ごとの復旧 Cron を残してください。
