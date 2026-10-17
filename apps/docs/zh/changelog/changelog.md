@@ -6,6 +6,20 @@ outline: [2, 2]
 
 ## [未发布]
 
+## [0.25.5] - 2026-10-17
+
+### 新增
+- **后台 AI 任务**：SQL 解释、DDL 审查、建表与改表、生成注释和索引建议改由服务端执行。刷新、关闭页面或网络断开不会中断生成；手动停止或登录会话失效时任务结束。新增「AI 任务」列表，刷新页面后仍可查看进度、思考摘要和结果，并可复制结果或停止生成。
+
+### 优化
+- **默认 AI 模型**：AI 功能默认使用 Anthropic Claude Haiku 5.5，思考模式默认关闭。
+- **AI 额度结算**：停止或中断的生成按已发送内容和已收到的输出（含思考内容）计费，不超过单次上限。中断后的自动恢复可能再次请求模型并消耗额度，但已结算的调用不会重复扣费；只有调用记录完全丢失时，才按预留额度扣除。
+- **对话过长提示**：建表对话超过模型上下文上限时，提示重新开始对话。
+
+### 部署
+- **AI 服务配置**：AI 服务只支持 Anthropic。在 `.deploy.secrets` 中配置 `ANTHROPIC_API_KEY`，在 `cloudflare.deploy.json` 的 `vars` 中设置 `AI_PROVIDER`、`AI_MODEL`、`AI_THINKING_ENABLED`、`AI_THINKING_LEVEL`。`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL_NAME`、`OPENAI_RETRY_*`、`OPENAI_REQUEST_TIMEOUT_MS`、`OPENAI_STREAM_DEBUG` 不再用于模型请求，已从部署示例移除；限流和每日预算继续使用 `OPENAI_RATELIMIT_*`、`OPENAI_DAILY_BUDGET_*`。`--secrets-file` 不会删除线上已有的 secrets，旧的 `OPENAI_API_KEY` 需通过 `cf workers secrets delete` 手动删除。
+- **AI 任务存储**：发布前应用 `0028` 迁移，新增 AI 对话、任务和调用记录表，`pnpm deploy:cf` 会自动执行。Worker 新增 `AIConversationDurableObject` 导出和 `AI_CONVERSATIONS` 绑定；回退版本时保留该导出、绑定和每 10 分钟的恢复 Cron，直到进行中的任务完成结算。
+
 ## [0.25.3] - 2026-10-13
 
 ### 修复

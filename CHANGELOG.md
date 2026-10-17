@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [0.25.5] - 2026-10-17
+
+### Added
+- **Background AI operations**: SQL explanation, DDL review, table generation and modification, comment generation and index advice now run on the server. Refreshing or closing the page, or losing the network connection, no longer interrupts generation; an operation ends when you stop it or your sign-in session ends. A new AI operations list shows progress, thinking summaries and results after a page refresh, and lets you copy results or stop generation.
+
+### Improved
+- **Default AI model**: AI features use Anthropic Claude Haiku 5.5 by default, with thinking off by default.
+- **AI credit settlement**: Stopped or interrupted generations are charged for the submitted input and the output received, including thinking content, up to the per-call limit. Automatic recovery after an interruption may call the model again and consume credits, but a settled call is never charged twice. Only a call whose records are lost entirely is charged its full reservation.
+- **Long conversation notice**: When a table-generation conversation exceeds the model's context limit, you are asked to start a new conversation.
+
+### Deployment
+- **AI service configuration**: The AI service supports Anthropic only. Set `ANTHROPIC_API_KEY` in `.deploy.secrets`, and set `AI_PROVIDER`, `AI_MODEL`, `AI_THINKING_ENABLED` and `AI_THINKING_LEVEL` under `vars` in `cloudflare.deploy.json`. `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL_NAME`, `OPENAI_RETRY_*`, `OPENAI_REQUEST_TIMEOUT_MS` and `OPENAI_STREAM_DEBUG` no longer affect model requests and have been removed from the deployment examples; rate limits and the daily budget still use `OPENAI_RATELIMIT_*` and `OPENAI_DAILY_BUDGET_*`. `--secrets-file` does not delete existing secrets, so remove the old `OPENAI_API_KEY` manually with `cf workers secrets delete`.
+- **AI operation storage**: Apply migration `0028` before publishing. It adds AI conversation, operation and call-record tables, and `pnpm deploy:cf` applies it automatically. The Worker adds the `AIConversationDurableObject` export and the `AI_CONVERSATIONS` binding; when rolling back, keep this export, the binding and the 10-minute recovery Cron until in-flight operations finish settlement.
+
 ## [0.25.3] - 2026-10-13
 
 ### Fixed
