@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.25.6] - 2026-10-17
+
+### Fixed
+- **Interface font**: After the MiSans font service moved its font files to a new host, the Content Security Policy (CSP) blocked them and pages fell back to system fonts. Fonts now load from the new host.
+
 ## [0.25.5] - 2026-10-17
 
 ### Added
