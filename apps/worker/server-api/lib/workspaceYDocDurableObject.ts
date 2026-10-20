@@ -54,6 +54,8 @@ const LAST_AUTOMATIC_ALARM_RETRY = 5;
 const AUTH_CACHE_TTL_MS = 30_000;
 const MAX_SYNC_MESSAGE_BYTES = 16 * 1024 * 1024;
 
+const isSendableCloseCode = (code: number) => code === 1000 || (code >= 3000 && code <= 4999);
+
 const isSocketAttachment = (value: unknown): value is WorkspaceYDocSocketAttachment => {
   // SAFETY: the predicate below validates the required attachment fields before narrowing this platform value.
   const record = value as Partial<WorkspaceYDocSocketAttachment> | null;
@@ -270,7 +272,8 @@ export class WorkspaceYDocDurableObject {
 
   async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
     const identity = this.readSocketIdentity(ws);
-    ws.close(code, reason);
+    // The platform reports reserved codes such as 1006 for abrupt disconnects, and close() throws on them.
+    ws.close(isSendableCloseCode(code) ? code : 1000, reason);
     logWorkspaceYDocHealth('close', {
       workspaceId: this.workspaceId ?? identity.workspaceId,
       connectedSockets: this.connectedSocketCount(),
