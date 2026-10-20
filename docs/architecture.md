@@ -17,7 +17,7 @@ Cloudflare Worker（apps/worker，Hono）
   ├─ KV：只读分享（7 天过期）
   ├─ Cron：AI 用量回收、预算对账、治理数据清理
   ├─ 静态资源：Web 构建产物和 apps/docs 文档站
-  └─ 外部服务：OpenAI 兼容模型接口、Resend 邮件、可选 Telegram 通知
+  └─ 外部服务：Anthropic 模型接口、Resend 邮件、可选 Telegram 通知
 ```
 
 ## 包职责与依赖方向
