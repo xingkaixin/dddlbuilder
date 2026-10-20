@@ -10,7 +10,7 @@ const app = new Hono<ApiEnv>();
 // Local dev: bridge process.env to c.env so Hono routes can use c.env.VARIABLE_NAME
 app.use('/api/*', async (c, next) => {
   // Only bridge if not already set (Workers runtime pre-populates c.env)
-  if (!c.env.OPENAI_API_KEY) {
+  if (!c.env.ANTHROPIC_API_KEY) {
     Object.assign(
       c.env,
       Object.fromEntries(ENV_VARIABLE_KEYS.map((key) => [key, process.env[key]])),

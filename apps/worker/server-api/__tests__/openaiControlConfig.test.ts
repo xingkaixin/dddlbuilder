@@ -61,7 +61,6 @@ describe('OpenAI execution config', () => {
       createEnv({
         OPENAI_REQUEST_TIMEOUT_MS: '999999999',
         OPENAI_RETRY_MAX_ATTEMPTS: '999999999',
-        OPENAI_RETRY_BASE_DELAY_MS: '999999999',
         OPENAI_RETRY_MAX_DELAY_MS: '999999999',
       }),
     );
@@ -69,7 +68,6 @@ describe('OpenAI execution config', () => {
     expect(config).toMatchObject({
       requestTimeoutMs: 600_000,
       retryMaxAttempts: 10,
-      retryBaseDelayMs: 60_000,
       retryMaxDelayMs: 60_000,
     });
   });

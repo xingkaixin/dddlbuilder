@@ -15,11 +15,9 @@ export type OpenAIConfig = {
   rateLimitEnabled: boolean;
   requestTimeoutMs: number;
   retryMaxAttempts: number;
-  retryBaseDelayMs: number;
   retryMaxDelayMs: number;
   dailyBudgetEnabled: boolean;
   dailyBudgetMaxTokens: number;
-  streamDebugEnabled: boolean;
   rateLimitRules: Record<AIRouteKey, RateLimitRule>;
 };
 
@@ -51,11 +49,9 @@ export const OpenAISettings = Config.all({
   rateLimitEnabled: boolean('OPENAI_RATELIMIT_ENABLED', true),
   requestTimeoutMs: integer('OPENAI_REQUEST_TIMEOUT_MS', 180_000, 600_000),
   retryMaxAttempts: integer('OPENAI_RETRY_MAX_ATTEMPTS', 3, 10),
-  retryBaseDelayMs: integer('OPENAI_RETRY_BASE_DELAY_MS', 400, 60_000),
   retryMaxDelayMs: integer('OPENAI_RETRY_MAX_DELAY_MS', 3_000, 60_000),
   dailyBudgetEnabled: boolean('OPENAI_DAILY_BUDGET_ENABLED', false),
   dailyBudgetMaxTokens: integer('OPENAI_DAILY_BUDGET_MAX_TOKENS', 0),
-  streamDebugEnabled: boolean('OPENAI_STREAM_DEBUG', false),
   limits: Config.all({
     explain: integer('OPENAI_RATELIMIT_EXPLAIN_MAX', 15),
     review: integer('OPENAI_RATELIMIT_REVIEW_MAX', 6),
