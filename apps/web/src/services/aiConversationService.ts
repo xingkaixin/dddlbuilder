@@ -15,13 +15,12 @@ import {
 const STORAGE_KEY = 'ddlbuilder.ai.operations';
 const StoredOperations = Schema.Array(
   Schema.Struct({
+    resumeKey: Schema.String,
     operationId: Schema.String,
     conversationId: Schema.String,
-    userId: Schema.String,
-    route: Schema.String,
   }),
 );
-export const readAIOperations = () => {
+const readResumableOperations = () => {
   try {
     return Schema.decodeUnknownSync(StoredOperations)(
       JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '[]'),
@@ -30,24 +29,14 @@ export const readAIOperations = () => {
     return [];
   }
 };
-const announce = () => window.dispatchEvent(new Event('ai-operations-changed'));
-export const forgetAIOperation = (id: string) => {
+const forgetAIOperation = (id: string) => {
   sessionStorage.setItem(
     STORAGE_KEY,
-    JSON.stringify(readAIOperations().filter((item) => item.operationId !== id)),
+    JSON.stringify(readResumableOperations().filter((item) => item.operationId !== id)),
   );
-  announce();
 };
-export const readAIOperationSnapshot = async (id: string, signal?: AbortSignal) => {
-  const response = await fetch(`/api/ai/operations/${encodeURIComponent(id)}`, {
-    credentials: 'include',
-    signal,
-  });
-
-  if (!response.ok) throw new Error(await readAIErrorMessage(response, 'generationFailed'));
-
-  return Schema.decodeUnknownSync(AIConversationSnapshotSchema)(await response.json());
-};
+export const hasResumableAIOperation = (resumeKey: string) =>
+  readResumableOperations().some((item) => item.resumeKey === resumeKey);
 export const stopAIOperation = async (id: string) => {
   const response = await fetch(`/api/ai/operations/${encodeURIComponent(id)}/stop`, {
     method: 'POST',
@@ -56,7 +45,6 @@ export const stopAIOperation = async (id: string) => {
   });
 
   if (!response.ok) throw new Error(await readAIErrorMessage(response, 'generationFailed'));
-  announce();
 };
 
 export const observeAIOperation = async (
@@ -111,82 +99,31 @@ export const observeAIOperation = async (
     await new Promise((resolve) => setTimeout(resolve, 100 * (reconnect + 1)));
   }
 
-  throw new Error('AI connection interrupted. Reopen the operation to continue.');
+  throw new Error('AI connection interrupted.');
 };
 
-export const fetchAIConversation = async (
-  route: AIConversationRoute,
-  init: RequestInit,
-  conversationId?: string,
-): Promise<Response> => {
-  const signal = init.signal ?? new AbortController().signal;
-
-  const prepared = await fetch('/api/ai/operations', {
-    method: 'POST',
-    headers: buildAuthenticatedJsonHeaders(),
-    credentials: 'include',
-    signal,
-    body: JSON.stringify({ route, conversationId }),
-  });
-
-  if (!prepared.ok) return prepared;
-  const identity = Schema.decodeUnknownSync(AIOperationIdentitySchema)(await prepared.json());
-  sessionStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify([...readAIOperations(), { ...identity, route }].slice(-20)),
-  );
-  announce();
-
+const stopOnCancel = (operationId: string, signal: AbortSignal) => {
   const stop = () => {
     if (signal.reason === 'stop' || signal.reason === 'superseded') {
-      stopAIOperation(identity.operationId).then(
-        () => forgetAIOperation(identity.operationId),
-        () => announce(),
+      stopAIOperation(operationId).then(
+        () => forgetAIOperation(operationId),
+        () => undefined,
       );
     }
   };
-  signal.addEventListener('abort', stop, { once: true });
 
-  if (signal.aborted) {
-    stop();
-    signal.throwIfAborted();
-  }
+  if (signal.aborted) stop();
+  else signal.addEventListener('abort', stop, { once: true });
 
-  const submitted = await fetch(`/api/ai/operations/${identity.operationId}`, {
-    ...init,
-    signal,
-    credentials: 'include',
-  }).catch((error) => {
-    signal.removeEventListener('abort', stop);
-    throw error;
-  });
+  return () => signal.removeEventListener('abort', stop);
+};
 
-  if (!submitted.ok) {
-    signal.removeEventListener('abort', stop);
-
-    return submitted;
-  }
-
-  await submitted.body?.cancel();
+const streamAIOperation = (
+  identity: { operationId: string; conversationId: string },
+  signal: AbortSignal,
+  release: () => void,
+) => {
   const encoder = new TextEncoder();
-  const streaming = route === 'explain' || route === 'review' || route === 'generate-table';
-
-  if (!streaming) {
-    try {
-      const result = await observeAIOperation(identity.operationId, signal, () => undefined);
-      forgetAIOperation(identity.operationId);
-
-      if (result.status !== 'succeeded') throw new Error(getAIOperationErrorMessage(result.error));
-
-      return Response.json(result.result, {
-        headers: { 'X-AI-Conversation': identity.conversationId },
-      });
-    } finally {
-      signal.removeEventListener('abort', stop);
-      announce();
-    }
-  }
-
   let cancelled = false;
 
   const body = new ReadableStream<Uint8Array>({
@@ -233,10 +170,7 @@ export const fetchAIConversation = async (
         .catch((error) => {
           if (!cancelled) controller.error(error);
         })
-        .finally(() => {
-          signal.removeEventListener('abort', stop);
-          announce();
-        });
+        .finally(release);
     },
     cancel() {
       cancelled = true;
@@ -250,4 +184,83 @@ export const fetchAIConversation = async (
       'X-AI-Operation': identity.operationId,
     },
   });
+};
+
+export const fetchAIConversation = async (
+  route: AIConversationRoute,
+  init: RequestInit,
+  { conversationId, resumeKey }: { conversationId?: string; resumeKey?: string } = {},
+): Promise<Response> => {
+  const signal = init.signal ?? new AbortController().signal;
+
+  const prepared = await fetch('/api/ai/operations', {
+    method: 'POST',
+    headers: buildAuthenticatedJsonHeaders(),
+    credentials: 'include',
+    signal,
+    body: JSON.stringify({ route, conversationId }),
+  });
+
+  if (!prepared.ok) return prepared;
+  const identity = Schema.decodeUnknownSync(AIOperationIdentitySchema)(await prepared.json());
+
+  if (resumeKey) {
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(
+        [
+          ...readResumableOperations().filter((item) => item.resumeKey !== resumeKey),
+          { resumeKey, operationId: identity.operationId, conversationId: identity.conversationId },
+        ].slice(-20),
+      ),
+    );
+  }
+
+  const release = stopOnCancel(identity.operationId, signal);
+
+  const abandon = () => {
+    release();
+    forgetAIOperation(identity.operationId);
+  };
+
+  const submitted = await fetch(`/api/ai/operations/${identity.operationId}`, {
+    ...init,
+    signal,
+    credentials: 'include',
+  }).catch((error) => {
+    abandon();
+    throw error;
+  });
+
+  if (!submitted.ok) {
+    abandon();
+
+    return submitted;
+  }
+
+  await submitted.body?.cancel();
+
+  if (route === 'explain' || route === 'review' || route === 'generate-table')
+    return streamAIOperation(identity, signal, release);
+
+  try {
+    const result = await observeAIOperation(identity.operationId, signal, () => undefined);
+    forgetAIOperation(identity.operationId);
+
+    if (result.status !== 'succeeded') throw new Error(getAIOperationErrorMessage(result.error));
+
+    return Response.json(result.result, {
+      headers: { 'X-AI-Conversation': identity.conversationId },
+    });
+  } finally {
+    release();
+  }
+};
+
+export const resumeAIConversation = (resumeKey: string, signal: AbortSignal) => {
+  const stored = readResumableOperations().find((item) => item.resumeKey === resumeKey);
+
+  return stored
+    ? streamAIOperation(stored, signal, stopOnCancel(stored.operationId, signal))
+    : null;
 };

@@ -1,6 +1,7 @@
 import { useState, useCallback, useLayoutEffect, useMemo } from 'react';
 import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartialJson';
-import { requestDDLReview } from '@/services/reviewService';
+import { requestDDLReview, resumeDDLReview } from '@/services/reviewService';
+import { hasResumableAIOperation } from '@/services/aiConversationService';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
 import { useAIRequestAccess } from './useAIRequestAccess';
@@ -18,6 +19,10 @@ export type ReviewResult = DDLReviewResult;
 
 const STREAMING_COMMIT_INTERVAL_MS = 100;
 
+type ReviewRequestPayload = Parameters<typeof requestDDLReview>[0];
+
+type ReviewStreamOptions = Parameters<typeof resumeDDLReview>[1];
+
 interface ReviewState {
   documentKey: string;
   streamingText: string;
@@ -25,7 +30,7 @@ interface ReviewState {
   error: string | null;
 }
 
-export function useDDLReview(documentKey: string) {
+export function useDDLReview(documentKey: string, resumeScope: string | null) {
   const [thinking, setThinking] = useState('');
 
   const [suggestions, setSuggestions] = useState<readonly DDLReviewSuggestion[]>([]);
@@ -63,42 +68,11 @@ export function useDDLReview(documentKey: string) {
     };
   }, [isLoading, state.streamingText, suggestions]);
 
-  const startReview = useCallback(
-    async (ddl: string, tableName: string, dbType: DatabaseType) => {
-      if (!ddl || ddl.trim().length === 0) {
-        setThinking('');
-        setSuggestions([]);
-        setState({
-          documentKey,
-          streamingText: '',
-          result: null,
-          error: i18n.t('services.ddlRequired'),
-        });
-
-        return;
-      }
-
-      const accessError = requestAccess.getAccessError();
-
-      if (accessError) {
-        setThinking('');
-        setSuggestions([]);
-        setState({
-          documentKey,
-          streamingText: '',
-          result: null,
-          error: accessError,
-        });
-
-        return;
-      }
-
-      const requestPayload = {
-        ddl,
-        tableName,
-        dbType,
-        locale: resolvedLocale,
-      };
+  const runReview = useCallback(
+    async (
+      requestPayload: ReviewRequestPayload,
+      request: (options: ReviewStreamOptions) => Promise<ReviewResult | null>,
+    ) => {
       const requestKey = JSON.stringify([documentKey, requestPayload]);
 
       const result = await run(async ({ signal, isCurrent, commitIfCurrent }) => {
@@ -129,7 +103,7 @@ export function useDDLReview(documentKey: string) {
         };
 
         try {
-          const reviewResult = await requestDDLReview(requestPayload, {
+          const reviewResult = await request({
             signal,
             onThinking: (text) => commitIfCurrent(() => setThinking(text)),
             onSuggestions: (items) => commitIfCurrent(() => setSuggestions(items)),
@@ -139,6 +113,8 @@ export function useDDLReview(documentKey: string) {
               if (flushTimer === undefined) flushStreamingText();
             },
           });
+
+          if (!reviewResult) return undefined;
 
           commitIfCurrent(() => {
             setState({
@@ -169,7 +145,67 @@ export function useDDLReview(documentKey: string) {
 
       return result ?? undefined;
     },
-    [documentKey, requestAccess, resolvedLocale, run],
+    [documentKey, requestAccess, run],
+  );
+
+  const buildRequest = useCallback(
+    (ddl: string, tableName: string, dbType: DatabaseType) => {
+      const payload = { ddl, tableName, dbType, locale: resolvedLocale };
+
+      return {
+        payload,
+        resumeKey: resumeScope ? JSON.stringify([resumeScope, payload]) : undefined,
+      };
+    },
+    [resolvedLocale, resumeScope],
+  );
+
+  const startReview = useCallback(
+    async (ddl: string, tableName: string, dbType: DatabaseType) => {
+      if (!ddl || ddl.trim().length === 0) {
+        setThinking('');
+        setSuggestions([]);
+        setState({
+          documentKey,
+          streamingText: '',
+          result: null,
+          error: i18n.t('services.ddlRequired'),
+        });
+
+        return;
+      }
+
+      const accessError = requestAccess.getAccessError();
+
+      if (accessError) {
+        setThinking('');
+        setSuggestions([]);
+        setState({
+          documentKey,
+          streamingText: '',
+          result: null,
+          error: accessError,
+        });
+
+        return;
+      }
+
+      const { payload, resumeKey } = buildRequest(ddl, tableName, dbType);
+
+      return runReview(payload, (options) => requestDDLReview(payload, { ...options, resumeKey }));
+    },
+    [buildRequest, documentKey, requestAccess, runReview],
+  );
+
+  const resumeReview = useCallback(
+    async (ddl: string, tableName: string, dbType: DatabaseType) => {
+      const { payload, resumeKey } = buildRequest(ddl, tableName, dbType);
+
+      if (!resumeKey || !hasResumableAIOperation(resumeKey)) return;
+
+      return runReview(payload, (options) => resumeDDLReview(resumeKey, options));
+    },
+    [buildRequest, runReview],
   );
 
   const clearReview = useCallback(() => {
@@ -201,6 +237,7 @@ export function useDDLReview(documentKey: string) {
     result: isCurrentDocument ? state.result : null,
     error: isCurrentDocument ? state.error : null,
     startReview,
+    resumeReview,
     clearReview,
     setReviewResult,
   };

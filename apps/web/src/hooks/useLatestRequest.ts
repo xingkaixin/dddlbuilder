@@ -24,7 +24,7 @@ export function useLatestRequest() {
     () => () => {
       const activeRequest = activeRequestRef.current;
       activeRequestRef.current = null;
-      activeRequest?.controller.abort();
+      activeRequest?.controller.abort('stop');
     },
     [],
   );

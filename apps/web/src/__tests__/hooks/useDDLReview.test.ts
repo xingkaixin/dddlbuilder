@@ -1,7 +1,11 @@
 import * as aiTransport from '@/services/aiConversationService';
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- Transport lifecycle has dedicated integration tests; these tests protect scenario decoding and hook state.
-vi.mock('@/services/aiConversationService', () => ({ fetchAIConversation: vi.fn() }));
+vi.mock('@/services/aiConversationService', () => ({
+  fetchAIConversation: vi.fn(),
+  hasResumableAIOperation: vi.fn(),
+  resumeAIConversation: vi.fn(),
+}));
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
@@ -39,7 +43,7 @@ vi.mock('@/auth/AuthSessionProvider', () => {
 function renderDDLReviewHook() {
   const { wrapper } = createQueryClientWrapper();
 
-  return renderHook(() => useDDLReview('document'), { wrapper });
+  return renderHook(() => useDDLReview('document', null), { wrapper });
 }
 
 function renderDDLReviewWithLocaleHook() {
@@ -47,7 +51,7 @@ function renderDDLReviewWithLocaleHook() {
 
   return renderHook(
     () => ({
-      review: useDDLReview('document'),
+      review: useDDLReview('document', null),
       locale: useLocale(),
     }),
     { wrapper },
@@ -129,6 +133,7 @@ describe('useDDLReview', () => {
           locale: 'en-US',
         }),
       }),
+      { resumeKey: undefined },
     );
   });
 
@@ -440,6 +445,52 @@ describe('useDDLReview', () => {
     });
 
     await waitFor(() => expect(fetchCount).toBe(1));
+  });
+
+  it('resumes a detached review of the same DDL without submitting it again', async () => {
+    const { wrapper } = createQueryClientWrapper();
+
+    const fetchMock = vi
+      .spyOn(aiTransport, 'fetchAIConversation')
+      .mockResolvedValue(createResponse(new ReadableStream()));
+
+    const { result, rerender } = renderHook(
+      ({ documentKey }) => useDDLReview(documentKey, 'table-1'),
+      { wrapper, initialProps: { documentKey: 'document' } },
+    );
+
+    act(() => {
+      void result.current.startReview('ddl', 'table', 'mysql');
+    });
+
+    await act(async () => {
+      await flushPromises();
+    });
+
+    const [, init, options] = fetchMock.mock.calls[0];
+    rerender({ documentKey: 'other-document' });
+    expect(init.signal?.reason).toBe('detach');
+
+    vi.spyOn(aiTransport, 'hasResumableAIOperation').mockImplementation(
+      (key) => key === options?.resumeKey,
+    );
+
+    const resume = vi
+      .spyOn(aiTransport, 'resumeAIConversation')
+      .mockReturnValue(
+        createResponse(createStream(['{"score": 9, "summary": "resumed", "suggestions": []}'])),
+      );
+
+    rerender({ documentKey: 'document' });
+
+    await act(async () => {
+      await result.current.resumeReview('ddl', 'table', 'mysql');
+      await flushPromises();
+    });
+
+    expect(resume).toHaveBeenCalledWith(options?.resumeKey, expect.any(AbortSignal));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.result?.summary).toBe('resumed');
   });
 
   it('should set review result directly', () => {

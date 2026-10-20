@@ -1,4 +1,3 @@
-import { AIOperations } from './components/App/AIOperations';
 import { lazy, StrictMode, Suspense, type ComponentType, type PropsWithChildren } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -66,7 +65,6 @@ createRoot(rootElement).render(
                 ) : (
                   <WorkspaceYDocProvider>
                     <App />
-                    <AIOperations />
                   </WorkspaceYDocProvider>
                 )}
               </AuthSessionProvider>

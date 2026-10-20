@@ -71,7 +71,7 @@ export async function requestGenerateTable(
       }),
       signal: options.signal,
     },
-    payload.options?.conversationId,
+    { conversationId: payload.options?.conversationId },
   );
   const conversation = response.headers.get('X-AI-Conversation');
 
