@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.25.8] - 2026-10-20
+
 ### Improved
 - **Resuming DDL reviews**: If you switch to another table or refresh the page while an AI Review is running, the review continues on the server. When you return to the table and open Generated output, its progress or result appears in the original review panel and is saved to review history, without submitting the review again.
 - **AI operations entry removed**: Starting an AI request no longer shows an "AI operations" button in the lower-left corner or a dialog with raw model output. Except for AI Review, results of other AI features can no longer be recovered after you refresh or close the page during generation.
