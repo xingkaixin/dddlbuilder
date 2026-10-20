@@ -1,50 +1,15 @@
 import type { Context } from 'hono';
 import type { ApiEnv } from './lib/context.js';
-import { dispatchTelegramAuditNotification } from './lib/telegramNotifier.js';
-import { errorResponse, type ApiErrorCode } from './lib/http.js';
+import { errorResponse } from './lib/http.js';
 import type { AIRouteKey } from './lib/aiRouteKey.js';
 import { reserveAIDailyBudget } from './lib/aiBudget.js';
 import type { OpenAIConfig } from './lib/openaiConfig.js';
-import { logWorkerBackgroundError } from './lib/logging.js';
-
-export type AuditLogPayload = {
-  requestId: string;
-  route: AIRouteKey;
-  status: number;
-  latencyMs: number;
-  retryCount: number;
-  attemptCount: number;
-  rateLimitHit: boolean;
-  estimatedTokens: number;
-  actualPromptTokens: number | null;
-  actualCompletionTokens: number | null;
-  actualTotalTokens: number | null;
-  chargedTokens: number | null;
-  providerBudgetTokens: number | null;
-  usageEstimated: boolean | null;
-  accountingFinalized: boolean;
-  userId: string | null;
-  model?: string;
-  maxOutputTokens?: number;
-  rateLimitEnabled: boolean;
-  rateLimitStore: 'd1';
-  rateLimitLimit: number | null;
-  rateLimitRemaining: number | null;
-  rateLimitWindowMs: number | null;
-  budgetHit?: boolean;
-  budgetEnabled: boolean;
-  budgetLimitTokens: number | null;
-  budgetUsedTokens: number | null;
-  errorCode?: ApiErrorCode;
-};
 
 export type OpenAIUsageSnapshot = {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
 };
-
-type WaitUntilFn = (promise: Promise<unknown>) => void;
 
 export type GovernanceSnapshot = {
   rateLimitEnabled: boolean;
@@ -244,53 +209,6 @@ export async function enforceOpenAIDailyBudget(
     limitTokens: config.dailyBudgetMaxTokens,
     usedTokens: config.dailyBudgetMaxTokens,
   };
-}
-
-export function logOpenAIAudit(
-  env: ApiEnv['Bindings'],
-  payload: AuditLogPayload,
-  waitUntil: WaitUntilFn,
-) {
-  const log = env.EVLOG_REQUEST_LOG;
-  log?.set({ ai: payload });
-  log?.audit({
-    action: 'ai.request',
-    actor: payload.userId
-      ? { type: 'user', id: payload.userId }
-      : { type: 'api', id: payload.requestId },
-    target: {
-      type: 'ai_route',
-      id: payload.route,
-      ...(payload.model ? { model: payload.model } : {}),
-    },
-    outcome:
-      payload.status < 400
-        ? 'success'
-        : payload.status === 401 || payload.status === 402 || payload.status === 429
-          ? 'denied'
-          : 'failure',
-    ...(payload.errorCode ? { reason: payload.errorCode } : {}),
-    correlationId: payload.requestId,
-  });
-
-  const notifyTask = dispatchTelegramAuditNotification(env, payload);
-
-  if (notifyTask) {
-    waitUntil(
-      notifyTask.catch((error) => {
-        logWorkerBackgroundError(
-          error,
-          {
-            job: 'telegram-ai-audit',
-            requestId: payload.requestId,
-            route: payload.route,
-          },
-          waitUntil,
-          env.ENVIRONMENT,
-        );
-      }),
-    );
-  }
 }
 
 // oxlint-disable anti-slop/no-unknown-parameters -- OpenAI stream chunks are untyped SDK payloads decoded at this boundary.

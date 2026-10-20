@@ -1,22 +1,19 @@
 import type { ApiEnv } from './context.js';
 import { readEnvBool } from './env.js';
+import { logWorkerBackgroundError } from './logging.js';
 
-type AuditNotificationPayload = {
-  requestId: string;
+export type AIOperationNotification = {
+  operationId: string;
   route: string;
-  status: number;
-  latencyMs: number;
-  retryCount: number;
-  rateLimitHit: boolean;
-  estimatedTokens: number;
-  actualPromptTokens: number | null;
-  actualCompletionTokens: number | null;
-  actualTotalTokens: number | null;
-  model?: string;
-  maxOutputTokens?: number;
-  budgetHit?: boolean;
-  budgetUsedTokens?: number | null;
-  errorCode?: string;
+  outcome: 'succeeded' | 'failed';
+  model: string;
+  thinking: boolean;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  chargedTokens: number;
+  latencyMs: number | null;
+  error: string | null;
 };
 
 type TelegramNotifyConfig = {
@@ -31,36 +28,28 @@ const readTelegramNotifyConfig = (env: ApiEnv['Bindings']): TelegramNotifyConfig
   chatId: env.TELEGRAM_CHAT_ID?.trim() || null,
 });
 
-export const formatTelegramAuditMessage = (payload: AuditNotificationPayload) => {
+export const formatTelegramAIMessage = (payload: AIOperationNotification) => {
   const lines = [
     `[LLM Usage] ${payload.route}`,
-    `status: ${payload.status}`,
-    `requestId: ${payload.requestId}`,
-    `actualPromptTokens: ${payload.actualPromptTokens ?? 'n/a'}`,
-    `actualCompletionTokens: ${payload.actualCompletionTokens ?? 'n/a'}`,
-    `actualTotalTokens: ${payload.actualTotalTokens ?? 'n/a'}`,
-    `estimatedTokens: ${payload.estimatedTokens}`,
-    `latencyMs: ${payload.latencyMs}`,
-    `model: ${payload.model || 'unknown'}`,
-    `retryCount: ${payload.retryCount}`,
-    `rateLimitHit: ${payload.rateLimitHit ? 'yes' : 'no'}`,
-    `budgetHit: ${payload.budgetHit ? 'yes' : 'no'}`,
+    `outcome: ${payload.outcome}`,
+    `operationId: ${payload.operationId}`,
+    `model: ${payload.model}`,
+    `thinking: ${payload.thinking ? 'on' : 'off'}`,
+    `calls: ${payload.calls}`,
+    `inputTokens: ${payload.inputTokens}`,
+    `outputTokens: ${payload.outputTokens}`,
+    `chargedTokens: ${payload.chargedTokens}`,
+    `latencyMs: ${payload.latencyMs ?? 'n/a'}`,
   ];
 
-  if (payload.budgetUsedTokens != null) {
-    lines.push(`budgetUsedTokens: ${payload.budgetUsedTokens}`);
-  }
-
-  if (payload.errorCode) {
-    lines.push(`errorCode: ${payload.errorCode}`);
-  }
+  if (payload.error) lines.push(`error: ${payload.error}`);
 
   return lines.join('\n');
 };
 
-const sendTelegramAuditNotification = async (
+const sendTelegramMessage = async (
   { botToken, chatId }: { botToken: string; chatId: string },
-  payload: AuditNotificationPayload,
+  text: string,
 ) => {
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
@@ -69,7 +58,7 @@ const sendTelegramAuditNotification = async (
     },
     body: JSON.stringify({
       chat_id: chatId,
-      text: formatTelegramAuditMessage(payload),
+      text,
       disable_notification: true,
     }),
   });
@@ -80,19 +69,23 @@ const sendTelegramAuditNotification = async (
   }
 };
 
-export const dispatchTelegramAuditNotification = (
+export const notifyAIOperation = (
   env: ApiEnv['Bindings'],
-  payload: AuditNotificationPayload,
-): Promise<void> | null => {
-  if (payload.status !== 200 && payload.status < 500 && payload.errorCode !== 'BUDGET_EXCEEDED') {
-    return null;
-  }
-
+  payload: AIOperationNotification,
+  waitUntil: (promise: Promise<unknown>) => void,
+) => {
   const { enabled, botToken, chatId } = readTelegramNotifyConfig(env);
 
-  if (!enabled || !botToken || !chatId) {
-    return null;
-  }
+  if (!enabled || !botToken || !chatId) return;
 
-  return sendTelegramAuditNotification({ botToken, chatId }, payload);
+  waitUntil(
+    sendTelegramMessage({ botToken, chatId }, formatTelegramAIMessage(payload)).catch((error) =>
+      logWorkerBackgroundError(
+        error,
+        { job: 'telegram-ai-audit', operationId: payload.operationId, route: payload.route },
+        waitUntil,
+        env.ENVIRONMENT,
+      ),
+    ),
+  );
 };

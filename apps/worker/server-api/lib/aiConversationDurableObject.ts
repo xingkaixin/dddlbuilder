@@ -1,4 +1,5 @@
 import { createWorkerBackgroundLogger } from './logging.js';
+import { notifyAIOperation } from './telegramNotifier.js';
 import { readSessionAccess } from './auth.js';
 import { mergeReviewSuggestions } from './aiReviewProjection.js';
 import { DDLReviewSuggestionSchema } from '@ddlbuilder/shared-types/ddl-review';
@@ -314,7 +315,13 @@ export class AIConversationDurableObject {
 
   private async settle(operation: Operation) {
     await this.replayReceipts();
-    await settleAICalls(this.env, operation.id, operation.route, operation.status === 'succeeded');
+
+    const usage = await settleAICalls(
+      this.env,
+      operation.id,
+      operation.route,
+      operation.status === 'succeeded',
+    );
     await this.env.USER_DB.prepare('UPDATE ai_operations SET completed_at = ? WHERE id = ?')
       .bind(Date.now(), operation.id)
       .run();
@@ -329,6 +336,8 @@ export class AIConversationDurableObject {
       results.items.push({ id: operation.id, snapshot: JSON.parse(JSON.stringify(snapshot)) });
     }, context);
     await this.ctx.storage.setAlarm(Date.now() + AI_RETENTION_MS);
+
+    return usage;
   }
 
   private async latest(): Promise<SubmissionRecord | undefined> {
@@ -495,7 +504,23 @@ export class AIConversationDurableObject {
         throw new Error('AI operation changed during execution');
       Object.assign(state.operation, { text, result, status, error });
     }, context);
-    await this.settle({ ...operation, text, result, status, error });
+    const usage = await this.settle({ ...operation, text, result, status, error });
+
+    if (status === 'succeeded' || status === 'failed')
+      notifyAIOperation(
+        this.env,
+        {
+          operationId: operation.id,
+          route: operation.route,
+          outcome: status,
+          model: operation.model,
+          thinking: operation.thinking,
+          ...usage,
+          latencyMs: current?.submitted_at ? Date.now() - current.submitted_at : null,
+          error,
+        },
+        (promise) => this.ctx.waitUntil(promise),
+      );
 
     const log = createWorkerBackgroundLogger(
       {

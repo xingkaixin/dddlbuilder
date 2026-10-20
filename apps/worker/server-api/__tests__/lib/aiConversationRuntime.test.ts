@@ -108,6 +108,35 @@ const snapshot = async (test: Awaited<ReturnType<typeof createRuntime>>, id = 'o
     ).json(),
   );
 
+it('notifies Telegram once the operation is settled', async () => {
+  const messages: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init) => {
+      if (!String(url).startsWith('https://api.telegram.org/')) return response();
+      messages.push(JSON.parse(init.body).text);
+
+      return new Response('{}');
+    }),
+  );
+
+  const test = await createRuntime({
+    bindings: {
+      TELEGRAM_NOTIFY_ENABLED: 'true',
+      TELEGRAM_BOT_TOKEN: 'bot-token',
+      TELEGRAM_CHAT_ID: 'chat-id',
+    },
+  });
+  await submit(test);
+  await test.finish();
+  await submit(test);
+  await test.finish();
+  expect(messages).toHaveLength(1);
+  expect(messages[0]).toContain('[LLM Usage] explain');
+  expect(messages[0]).toContain('outcome: succeeded');
+  expect(messages[0]).toContain('chargedTokens: 30');
+});
+
 it('denies insufficient credits before dispatch and finishes without charging', async () => {
   const fetch = vi.fn();
   vi.stubGlobal('fetch', fetch);

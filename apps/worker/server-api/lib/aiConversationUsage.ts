@@ -91,8 +91,17 @@ export const settleAICalls = async (
   )
     .bind(operationId)
     .all<CallAttempt>();
+  const summary = { calls: 0, inputTokens: 0, outputTokens: 0, chargedTokens: 0 };
 
   for (const call of results) {
+    const charged = chargedCallTokens(call);
+
+    if (call.dispatched_at !== null) summary.calls += 1;
+    summary.inputTokens +=
+      (call.input_tokens ?? 0) + (call.cache_read_tokens ?? 0) + (call.cache_write_tokens ?? 0);
+    summary.outputTokens += call.output_tokens ?? 0;
+    summary.chargedTokens += charged;
+
     const usage = await env.USER_DB.prepare('SELECT status FROM usage_events WHERE id = ?')
       .bind(call.usage_id)
       .first<{ status: string }>();
@@ -113,7 +122,6 @@ export const settleAICalls = async (
       requestId: operationId,
       reservedTokens: call.estimated_tokens,
     };
-    const charged = chargedCallTokens(call);
     const succeeded = call.succeeded === 1 && successfulOutput !== false;
     const outcome = succeeded ? 'succeeded' : 'failed';
     const code = succeeded ? null : 'RESERVATION_ABANDONED';
@@ -135,6 +143,8 @@ export const settleAICalls = async (
       await finalizeAIUsageSettlement(env, reservation, outcome, code);
     await settleAIDailyBudget(env, call.usage_id, prepared.providerBudgetTokens);
   }
+
+  return summary;
 };
 
 export const admitAICall = async (
