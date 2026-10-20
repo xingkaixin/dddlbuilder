@@ -37,6 +37,7 @@ import {
 } from './aiConversationModels.js';
 import { loadAIConversationConfig, AI_RETENTION_MS } from './aiConversationConfig.js';
 import {
+  type AIOperation,
   type AIUsageReceipt,
   assertAIOperationAccess,
   readAIOperation,
@@ -322,9 +323,13 @@ export class AIConversationDurableObject {
       operation.route,
       operation.status === 'succeeded',
     );
-    await this.env.USER_DB.prepare('UPDATE ai_operations SET completed_at = ? WHERE id = ?')
+    const record = await this.env.USER_DB.prepare(
+      'UPDATE ai_operations SET completed_at = ? WHERE id = ? RETURNING user_id, submitted_at',
+    )
       .bind(Date.now(), operation.id)
-      .run();
+      .first<Pick<AIOperation, 'user_id' | 'submitted_at'>>();
+
+    if (!record) throw new Error('AI operation missing');
     const snapshot = { ...(await this.snapshot()), accountingPending: false };
     await this.runtime().harness.commit(async (tx) => {
       const state = await tx.doc(State);
@@ -336,8 +341,62 @@ export class AIConversationDurableObject {
       results.items.push({ id: operation.id, snapshot: JSON.parse(JSON.stringify(snapshot)) });
     }, context);
     await this.ctx.storage.setAlarm(Date.now() + AI_RETENTION_MS);
+    this.report(operation, usage, record);
+  }
 
-    return usage;
+  private report(
+    operation: Operation,
+    usage: Awaited<ReturnType<typeof settleAICalls>>,
+    record: Pick<AIOperation, 'user_id' | 'submitted_at'>,
+  ) {
+    const waitUntil = (promise: Promise<unknown>) => this.ctx.waitUntil(promise);
+
+    const log = createWorkerBackgroundLogger(
+      {
+        job: { name: 'ai-conversation' },
+        ai: {
+          operationId: operation.id,
+          conversationId: operation.conversationId,
+          route: operation.route,
+          model: operation.model,
+          thinkingEnabled: operation.thinking,
+          outcome: operation.status,
+          accountingFinalized: true,
+        },
+      },
+      waitUntil,
+      this.env.ENVIRONMENT,
+    );
+    log.audit({
+      action: 'ai.request',
+      actor: { type: 'user', id: record.user_id },
+      target: { type: 'ai_route', id: operation.route, model: operation.model },
+      outcome:
+        operation.status === 'succeeded'
+          ? 'success'
+          : operation.error === 'CREDIT_EXHAUSTED'
+            ? 'denied'
+            : 'failure',
+      ...(operation.error ? { reason: operation.error } : {}),
+      correlationId: operation.id,
+    });
+    log.emit();
+
+    if (operation.status === 'succeeded' || operation.status === 'failed')
+      notifyAIOperation(
+        this.env,
+        {
+          operationId: operation.id,
+          route: operation.route,
+          outcome: operation.status,
+          model: operation.model,
+          thinking: operation.thinking,
+          ...usage,
+          latencyMs: record.submitted_at ? Date.now() - record.submitted_at : null,
+          error: operation.error,
+        },
+        waitUntil,
+      );
   }
 
   private async latest(): Promise<SubmissionRecord | undefined> {
@@ -504,41 +563,7 @@ export class AIConversationDurableObject {
         throw new Error('AI operation changed during execution');
       Object.assign(state.operation, { text, result, status, error });
     }, context);
-    const usage = await this.settle({ ...operation, text, result, status, error });
-
-    if (status === 'succeeded' || status === 'failed')
-      notifyAIOperation(
-        this.env,
-        {
-          operationId: operation.id,
-          route: operation.route,
-          outcome: status,
-          model: operation.model,
-          thinking: operation.thinking,
-          ...usage,
-          latencyMs: current?.submitted_at ? Date.now() - current.submitted_at : null,
-          error,
-        },
-        (promise) => this.ctx.waitUntil(promise),
-      );
-
-    const log = createWorkerBackgroundLogger(
-      {
-        job: { name: 'ai-conversation' },
-        ai: {
-          operationId: operation.id,
-          conversationId: operation.conversationId,
-          route: operation.route,
-          model: operation.model,
-          thinkingEnabled: operation.thinking,
-          outcome: status,
-          accountingFinalized: true,
-        },
-      },
-      (promise) => this.ctx.waitUntil(promise),
-      this.env.ENVIRONMENT,
-    );
-    log.emit();
+    await this.settle({ ...operation, text, result, status, error });
   }
 
   private async finishCancelled(operation: Operation) {
@@ -558,7 +583,7 @@ export class AIConversationDurableObject {
         state.operation.error = 'AI operation cancelled';
       }
     }, context);
-    await this.settle({ ...operation, text, status: 'cancelled' });
+    await this.settle({ ...operation, text, status: 'cancelled', error: 'AI operation cancelled' });
   }
 
   private async snapshot(): Promise<AIConversationSnapshot> {

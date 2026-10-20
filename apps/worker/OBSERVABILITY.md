@@ -4,9 +4,9 @@ AI 业务阶段使用 Effect span，由 `server-api/lib/aiTracing.ts` 接到 Clo
 
 ## 请求与 Conversation
 
-`ai.request` 覆盖操作准备入口，`ai.authenticate` 标记鉴权。模型执行不属于这次 HTTP 响应的生命周期：DO 的模型调用、观察流和结算通过 `waitUntil` 继续运行，Alarm 可在另一 invocation 恢复。
+Trace 中的 `ai.request` span 覆盖操作准备入口，`ai.authenticate` 标记鉴权。模型执行不属于这次 HTTP 响应的生命周期：DO 的模型调用、观察流和结算通过 `waitUntil` 继续运行，Alarm 可在另一 invocation 恢复。
 
-后台 `ai-conversation` 日志按 `ai.operationId`、`ai.conversationId` 关联，包含场景、模型、thinking 开关、业务结果与结算状态。`ai-conversation-recovery` 的 `recovery_pending` 表示本轮执行或记账尚未完成，需结合持久化记录排查。日志不输出原始异常中的提示词或供应商响应。
+后台 `ai-conversation` 日志按 `ai.operationId`、`ai.conversationId` 关联，包含场景、模型、thinking 开关、业务结果与结算状态。每个结算完成的操作只写一条这样的日志，并附带 `audit`：action 为 `ai.request`，actor 为用户，outcome 为 `success`、`denied`（额度不足）或 `failure`，`reason` 为错误码，`correlationId` 为 operationId。开启 Telegram 通知时，成功和失败的操作在结算后各发一条用量消息，用户停止的操作不发。`ai-conversation-recovery` 的 `recovery_pending` 表示本轮执行或记账尚未完成，需结合持久化记录排查。日志不输出原始异常中的提示词或供应商响应。
 
 `ai_operations` 记录原始身份、输入哈希、期限、停止与完成时间；`ai_call_attempts` 关联独立的 `usage_events`。`dispatched_at` 表示调用可能已发送，`usage_complete` 区分完整用量和估算。一次 Operation 可以对应多次供应商调用，每次有自己的预留和结算。HTTP 200、观察流结束与账本结算完成是不同状态。
 
