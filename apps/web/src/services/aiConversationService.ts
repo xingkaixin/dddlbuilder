@@ -118,6 +118,20 @@ const stopOnCancel = (operationId: string, signal: AbortSignal) => {
   return () => signal.removeEventListener('abort', stop);
 };
 
+// Detaching only stops reading; the operation must still reach the server so it can be resumed.
+const ignoreDetach = (signal: AbortSignal) => {
+  const controller = new AbortController();
+
+  const forward = () => {
+    if (signal.reason !== 'detach') controller.abort(signal.reason);
+  };
+
+  if (signal.aborted) forward();
+  else signal.addEventListener('abort', forward, { once: true });
+
+  return controller.signal;
+};
+
 const streamAIOperation = (
   identity: { operationId: string; conversationId: string },
   signal: AbortSignal,
@@ -192,12 +206,13 @@ export const fetchAIConversation = async (
   { conversationId, resumeKey }: { conversationId?: string; resumeKey?: string } = {},
 ): Promise<Response> => {
   const signal = init.signal ?? new AbortController().signal;
+  const requestSignal = ignoreDetach(signal);
 
   const prepared = await fetch('/api/ai/operations', {
     method: 'POST',
     headers: buildAuthenticatedJsonHeaders(),
     credentials: 'include',
-    signal,
+    signal: requestSignal,
     body: JSON.stringify({ route, conversationId }),
   });
 
@@ -225,7 +240,7 @@ export const fetchAIConversation = async (
 
   const submitted = await fetch(`/api/ai/operations/${identity.operationId}`, {
     ...init,
-    signal,
+    signal: requestSignal,
     credentials: 'include',
   }).catch((error) => {
     abandon();
@@ -239,6 +254,7 @@ export const fetchAIConversation = async (
   }
 
   await submitted.body?.cancel();
+  signal.throwIfAborted();
 
   if (route === 'explain' || route === 'review' || route === 'generate-table')
     return streamAIOperation(identity, signal, release);

@@ -133,6 +133,35 @@ it.each(['stop', 'detach'])(
   },
 );
 
+it('still submits an operation detached mid-submit so it can be resumed', async () => {
+  const controller = new AbortController();
+  let submit = (_response: Response) => {};
+
+  let submitSignal: AbortSignal | null | undefined;
+
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json(identity))
+    .mockImplementationOnce((_url, init) => {
+      submitSignal = init?.signal;
+
+      return new Promise<Response>((resolve) => {
+        submit = resolve;
+      });
+    });
+
+  const request = fetchAIConversation(
+    'review',
+    { method: 'POST', body: '{}', signal: controller.signal },
+    { resumeKey: 'review' },
+  );
+  await vi.waitFor(() => expect(submitSignal).toBeDefined());
+  controller.abort('detach');
+  expect(submitSignal?.aborted).toBe(false);
+  submit(Response.json(snapshot('')));
+  await expect(request).rejects.toBe('detach');
+  expect(hasResumableAIOperation('review')).toBe(true);
+});
+
 it('resumes a detached operation from its events without submitting it again', async () => {
   const controller = new AbortController();
   let listening = () => {};
