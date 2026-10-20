@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
   fetchAIConversation,
+  hasResumableAIOperation,
   observeAIOperation,
-  readAIOperations,
+  resumeAIConversation,
 } from '@/services/aiConversationService';
 import { readTextStream } from '@/services/streamingText';
 import i18n from '@/i18n';
@@ -47,7 +48,6 @@ it('prepares once and reconnects observation without resubmitting the model oper
     '/api/ai/operations/op/events',
     '/api/ai/operations/op/events',
   ]);
-  expect(readAIOperations()).toEqual([]);
 });
 
 it.each(['explain', 'generate-comments'] as const)(
@@ -88,6 +88,20 @@ it('retries a transient network failure but rejects mismatched operation identit
   ).rejects.toThrow('identity mismatch');
 });
 
+const hangUntilAborted =
+  (onListen: () => void) => async (url: RequestInfo | URL, init?: RequestInit) => {
+    if (String(url).endsWith('/stop')) return Response.json({ stopped: true });
+    onListen();
+
+    return new Promise<Response>((_resolve, reject) =>
+      init?.signal?.addEventListener(
+        'abort',
+        () => reject(new DOMException('Aborted', 'AbortError')),
+        { once: true },
+      ),
+    );
+  };
+
 it.each(['stop', 'detach'])(
   'only sends a stop command for explicit cancellation: %s',
   async (reason) => {
@@ -102,23 +116,12 @@ it.each(['stop', 'detach'])(
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(Response.json(identity))
       .mockResolvedValueOnce(Response.json(snapshot('')))
-      .mockImplementation(async (url, init) => {
-        if (String(url).endsWith('/stop')) return Response.json({ stopped: true });
-        listening();
-
-        return new Promise<Response>((_resolve, reject) =>
-          init?.signal?.addEventListener(
-            'abort',
-            () => reject(new DOMException('Aborted', 'AbortError')),
-            { once: true },
-          ),
-        );
-      });
-    const response = await fetchAIConversation('explain', {
-      method: 'POST',
-      body: '{}',
-      signal: controller.signal,
-    });
+      .mockImplementation(hangUntilAborted(listening));
+    const response = await fetchAIConversation(
+      'review',
+      { method: 'POST', body: '{}', signal: controller.signal },
+      { resumeKey: 'review' },
+    );
 
     if (!response.body) throw new Error('Missing response body');
     const reading = readTextStream(response.body);
@@ -126,6 +129,45 @@ it.each(['stop', 'detach'])(
     controller.abort(reason);
     await expect(reading).rejects.toThrow('Aborted');
     expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/stop'))).toBe(reason === 'stop');
-    await vi.waitFor(() => expect(readAIOperations()).toHaveLength(reason === 'stop' ? 0 : 1));
+    await vi.waitFor(() => expect(hasResumableAIOperation('review')).toBe(reason === 'detach'));
   },
 );
+
+it('resumes a detached operation from its events without submitting it again', async () => {
+  const controller = new AbortController();
+  let listening = () => {};
+
+  const started = new Promise<void>((resolve) => {
+    listening = resolve;
+  });
+
+  const fetch = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json(identity))
+    .mockResolvedValueOnce(Response.json(snapshot('')))
+    .mockImplementationOnce(hangUntilAborted(listening))
+    .mockResolvedValueOnce(events(snapshot('complete', 'succeeded')));
+  const response = await fetchAIConversation(
+    'review',
+    { method: 'POST', body: '{}', signal: controller.signal },
+    { resumeKey: 'review' },
+  );
+
+  if (!response.body) throw new Error('Missing response body');
+  const reading = readTextStream(response.body);
+  await started;
+  controller.abort('detach');
+  await expect(reading).rejects.toThrow('Aborted');
+
+  const resumed = resumeAIConversation('review', new AbortController().signal);
+
+  if (!resumed?.body) throw new Error('Missing resumed body');
+  expect(await readTextStream(resumed.body)).toBe('complete');
+  expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+    '/api/ai/operations',
+    '/api/ai/operations/op',
+    '/api/ai/operations/op/events',
+    '/api/ai/operations/op/events',
+  ]);
+  expect(hasResumableAIOperation('review')).toBe(false);
+});

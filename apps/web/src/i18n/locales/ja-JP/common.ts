@@ -5,30 +5,6 @@ import { schemaTools } from './schemaTools';
 import { dataImport } from './dataImport';
 
 export const jaJPCommon = {
-  aiOperations: {
-    title: 'AI タスク',
-    description:
-      'ページを閉じても処理は続行します。復旧時にモデルを再呼び出しし、追加クレジットを消費する場合があります。',
-    failed: 'タスクを読み込めません',
-    accounting: 'クレジット精算中',
-    thinking: '思考の要約',
-    stop: '生成を停止',
-    dismiss: '一覧から削除',
-    copy: '結果をコピー',
-    routes: {
-      explain: 'SQL 解説',
-      review: 'DDL レビュー',
-      'generate-table': 'テーブル生成・変更',
-      'generate-comments': 'コメント生成',
-      'index-advisor': 'インデックス提案',
-    },
-    states: {
-      running: '生成中',
-      succeeded: '完了',
-      failed: '未完了',
-      cancelled: '停止済み',
-    },
-  },
   modelTools,
   dataImport,
   snapshot,
@@ -1233,6 +1209,7 @@ export const jaJPCommon = {
     selectedSnippet: '選択済み: 「{{text}}」',
   },
   review: {
+    thinking: '思考の要約',
     severe: '深刻な',
     warning: '警告',
     apply: '申し込む',

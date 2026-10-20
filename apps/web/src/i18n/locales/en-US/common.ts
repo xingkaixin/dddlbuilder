@@ -5,30 +5,6 @@ import { schemaTools } from './schemaTools';
 import { dataImport } from './dataImport';
 
 export const enUSCommon = {
-  aiOperations: {
-    title: 'AI operations',
-    description:
-      'Operations continue after you close the page. Recovery may call the model again and consume additional credits.',
-    failed: 'Unable to load operation',
-    accounting: 'Settling credits',
-    thinking: 'Thinking summary',
-    stop: 'Stop generation',
-    dismiss: 'Remove from list',
-    copy: 'Copy result',
-    routes: {
-      explain: 'SQL explanation',
-      review: 'DDL review',
-      'generate-table': 'Generate / modify table',
-      'generate-comments': 'Generate comments',
-      'index-advisor': 'Index advice',
-    },
-    states: {
-      running: 'Generating',
-      succeeded: 'Completed',
-      failed: 'Incomplete',
-      cancelled: 'Stopped',
-    },
-  },
   modelTools,
   dataImport,
   snapshot,
@@ -1223,6 +1199,7 @@ export const enUSCommon = {
     selectedSnippet: 'Selected: "{{text}}"',
   },
   review: {
+    thinking: 'Thinking summary',
     severe: 'Severe',
     warning: 'Warning',
     apply: 'Apply',

@@ -1,5 +1,5 @@
 import type { DDLReviewSuggestion } from '@ddlbuilder/shared-types/ddl-review';
-import { fetchAIConversation } from './aiConversationService';
+import { fetchAIConversation, resumeAIConversation } from './aiConversationService';
 import { readTextStream } from '@/services/streamingText';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
 import {
@@ -42,18 +42,10 @@ function extractJsonObject(text: string): string {
   return jsonMatch[0];
 }
 
-export async function requestDDLReview(
-  payload: ReviewRequestPayload,
+async function readReviewResponse(
+  response: Response,
   options: RequestDDLReviewOptions,
 ): Promise<ReviewServiceResult> {
-  const response = await fetchAIConversation('review', {
-    method: 'POST',
-    headers: buildAuthenticatedJsonHeaders(),
-    credentials: 'include',
-    body: JSON.stringify(payload),
-    signal: options.signal,
-  });
-
   if (!response.ok) {
     throw new Error(await readAIErrorMessage(response, 'reviewFailed'));
   }
@@ -77,4 +69,32 @@ export async function requestDDLReview(
   }
 
   return normalizeReviewPayload(parsed);
+}
+
+export async function requestDDLReview(
+  payload: ReviewRequestPayload,
+  options: RequestDDLReviewOptions & { resumeKey?: string },
+): Promise<ReviewServiceResult> {
+  const response = await fetchAIConversation(
+    'review',
+    {
+      method: 'POST',
+      headers: buildAuthenticatedJsonHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(payload),
+      signal: options.signal,
+    },
+    { resumeKey: options.resumeKey },
+  );
+
+  return readReviewResponse(response, options);
+}
+
+export async function resumeDDLReview(
+  resumeKey: string,
+  options: RequestDDLReviewOptions,
+): Promise<ReviewServiceResult | null> {
+  const response = resumeAIConversation(resumeKey, options.signal);
+
+  return response ? readReviewResponse(response, options) : null;
 }

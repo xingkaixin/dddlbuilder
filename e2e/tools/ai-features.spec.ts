@@ -1,7 +1,7 @@
 import { createAIConversationMock } from '../ai-conversations';
 import { openFieldTool } from '../utils';
 import { test, expect, type Locator } from '@playwright/test';
-import { setupHydratedState } from '../utils';
+import { selectWorkspaceView, setupHydratedState } from '../utils';
 import type { PersistedState } from '../../packages/shared-types/src/index';
 
 // oxlint-disable-next-line anti-slop/no-object-parameters -- Fixture responses intentionally include malformed domain objects to test UI validation.
@@ -583,19 +583,12 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('email VARCHAR(255)');
 });
 
-test('刷新后从 AI 任务入口恢复结果，切换账号不显示旧任务', async ({ page }) => {
-  let userId = 'resume-user';
+test('DDL 评审在刷新后回到原表继续显示结果，不另开任务入口', async ({ page }) => {
+  const operation = { operationId: 'review-operation', conversationId: 'review-conversation' };
+  const review = { score: 9, summary: '刷新后接上的评审', suggestions: [] };
+  let submissions = 0;
+  let settled = false;
 
-  const operation = {
-    operationId: 'resume-operation',
-    conversationId: 'resume-conversation',
-    userId,
-    route: 'explain',
-  };
-  await page.addInitScript(
-    (item) => sessionStorage.setItem('ddlbuilder.ai.operations', JSON.stringify([item])),
-    operation,
-  );
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
 
@@ -603,35 +596,53 @@ test('刷新后从 AI 任务入口恢复结果，切换账号不显示旧任务'
       await route.fulfill({
         json: {
           signedIn: true,
-          user: { userId, email: 'resume@example.test', name: 'Resume', emailVerified: true },
+          user: {
+            userId: 'review-user',
+            email: 'review@example.test',
+            name: 'Review',
+            emailVerified: true,
+          },
         },
       });
     else if (path === '/api/credits/balance')
-      await route.fulfill({ json: { balance: 1000, version: 1, userId } });
+      await route.fulfill({ json: { balance: 1000, version: 1, userId: 'review-user' } });
     else if (path === '/api/workspaces')
-      await route.fulfill({ json: { workspaceId: 'resume-workspace' } });
-    else if (path === '/api/ai/operations/resume-operation')
+      await route.fulfill({ json: { workspaceId: 'review-workspace' } });
+    else if (path === '/api/ai/operations')
+      await route.fulfill({ status: 201, json: { ...operation, userId: 'review-user' } });
+    else if (path === `/api/ai/operations/${operation.operationId}`) {
+      submissions += 1;
+      await route.fulfill({ status: 202, json: {} });
+    } else if (path === `/api/ai/operations/${operation.operationId}/events`) {
+      // An unanswered request keeps the event stream open while the review is still running.
+      if (!settled) return;
       await route.fulfill({
-        json: {
-          ...operation,
-          status: 'succeeded',
-          text: 'Recovered SQL explanation',
-          thinking: '',
-          suggestions: [],
-          result: 'Recovered SQL explanation',
-          error: null,
-          accountingPending: false,
-        },
+        contentType: 'application/x-ndjson',
+        body:
+          JSON.stringify({
+            ...operation,
+            status: 'succeeded',
+            text: JSON.stringify(review),
+            thinking: '',
+            suggestions: [],
+            result: review,
+            error: null,
+            accountingPending: false,
+          }) + '\n',
       });
-    else await route.fulfill({ status: 503, json: { error: 'Unavailable' } });
+    } else await route.fulfill({ status: 503, json: { error: 'Unavailable' } });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'AI 任务 (1)', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'AI 任务' });
-  await dialog.getByRole('button', { name: 'SQL 解释', exact: true }).click();
-  await expect(dialog.getByText('Recovered SQL explanation', { exact: true })).toBeVisible();
-  await page.screenshot({ path: '/tmp/ddl-ai-operations.png' });
-  userId = 'other-user';
+  await setupHydratedState(page);
+  await page.getByRole('button', { name: '大师评审', exact: true }).click();
+  await expect.poll(() => submissions).toBe(1);
+  await expect(page.getByRole('button', { name: /AI 任务/ })).toHaveCount(0);
+
+  settled = true;
   await page.reload();
-  await expect(page.getByRole('button', { name: 'AI 任务 (1)', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'HYDRATION_CHECK', exact: true }).click();
+  await selectWorkspaceView(page, 'split');
+  await expect(page.getByText(review.summary, { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /AI 任务/ })).toHaveCount(0);
+  expect(submissions).toBe(1);
 });

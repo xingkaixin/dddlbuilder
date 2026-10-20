@@ -1,10 +1,11 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { saveReview, type ReviewTarget } from '@/utils/reviewHistory';
 import { normalizeSavedTableName } from '@/utils/savedTablesDb';
 import { reportError } from '@/utils/errorReporter';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
+import type { DDLReviewResult } from '@ddlbuilder/shared-types/ddl-review';
 
 interface UseReviewActionsParams {
   documentKey: string;
@@ -31,8 +32,6 @@ export function useReviewActions({
   loadedTableNormalizedName,
   setIsReviewHistoryOpen,
 }: UseReviewActionsParams) {
-  const reviewState = useDDLReview(documentKey);
-  const { startReview } = reviewState;
   const normalizedName = loadedTableNormalizedName || normalizeSavedTableName(tableName);
 
   const reviewTarget = useMemo<ReviewTarget | null>(
@@ -47,37 +46,48 @@ export function useReviewActions({
         : null,
     [draftId, loadedTableId, normalizedName, workspaceScope],
   );
+  const reviewState = useDDLReview(documentKey, reviewTarget && JSON.stringify(reviewTarget));
+  const { startReview, resumeReview } = reviewState;
+
+  const persistReview = useCallback(
+    async (result: DDLReviewResult | undefined) => {
+      if (!result || !reviewTarget || getCurrentDocumentKey() !== documentKey) return;
+
+      try {
+        await saveReview(
+          reviewTarget,
+          tableName,
+          generatedSql,
+          dbType,
+          result,
+          () => getCurrentDocumentKey() === documentKey,
+        );
+      } catch (error) {
+        reportError(error, {
+          scope: 'App',
+          action: 'saveReview',
+          metadata: { dbType, tableName, normalizedName },
+        });
+      }
+    },
+    [
+      generatedSql,
+      tableName,
+      dbType,
+      reviewTarget,
+      normalizedName,
+      getCurrentDocumentKey,
+      documentKey,
+    ],
+  );
+
+  useEffect(() => {
+    void resumeReview(generatedSql, tableName, dbType).then(persistReview);
+  }, [resumeReview, persistReview, generatedSql, tableName, dbType]);
+
   const handleStartReview = useCallback(async () => {
-    const result = await startReview(generatedSql, tableName, dbType);
-
-    if (!result || !reviewTarget || getCurrentDocumentKey() !== documentKey) return;
-
-    try {
-      await saveReview(
-        reviewTarget,
-        tableName,
-        generatedSql,
-        dbType,
-        result,
-        () => getCurrentDocumentKey() === documentKey,
-      );
-    } catch (error) {
-      reportError(error, {
-        scope: 'App',
-        action: 'saveReview',
-        metadata: { dbType, tableName, normalizedName },
-      });
-    }
-  }, [
-    startReview,
-    generatedSql,
-    tableName,
-    dbType,
-    reviewTarget,
-    normalizedName,
-    getCurrentDocumentKey,
-    documentKey,
-  ]);
+    await persistReview(await startReview(generatedSql, tableName, dbType));
+  }, [startReview, persistReview, generatedSql, tableName, dbType]);
 
   const handleViewReviewHistory = useCallback(() => {
     setIsReviewHistoryOpen(true);

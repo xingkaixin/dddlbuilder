@@ -317,7 +317,7 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
       <div className="mt-4 rounded-lg border border-primary/10 bg-card/50 p-4 shadow-sm">
         {isLoading && thinking && (
           <div className="mb-4 border-b pb-3 text-sm text-muted-foreground">
-            <p className="mb-1 font-medium">{t('aiOperations.thinking')}</p>
+            <p className="mb-1 font-medium">{t('review.thinking')}</p>
             <p className="whitespace-pre-wrap">{thinking}</p>
           </div>
         )}
