@@ -1335,6 +1335,23 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     expect(logs.some((payload) => 'userId' in payload)).toBe(false);
   });
 
+  it('answers an abnormal closure with a sendable close code', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+
+    const durableObject = new WorkspaceYDocDurableObject(
+      createDurableObjectState().state,
+      createEnv(),
+    );
+    const socket = createWebSocket();
+
+    await durableObject.webSocketClose(socket, 1006, '', false);
+
+    expect(socket.close).toHaveBeenCalledWith(1000, '');
+    expect(readInfoLogs()).toContainEqual(
+      expect.objectContaining({ operation: 'close', closeCode: 1006, wasClean: false }),
+    );
+  });
+
   it('kick closes only the matching session and clears the authorization cache', async () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
