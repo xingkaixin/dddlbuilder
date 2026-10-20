@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.25.7] - 2026-10-20
+
+### Fixed
+- **AI usage notifications**: Since v0.25.5 moved AI operations to the server, deployments with Telegram notifications enabled no longer received AI usage messages. Notifications are restored: after an AI operation succeeds or fails and its credits are settled, one message is sent with the model, thinking mode, number of calls, input and output tokens, charged tokens and latency. Operations you stop are not reported.
+- **AI request audit log**: Since v0.25.5, background logs were missing AI request audit records (`ai.request`). Each AI operation now writes one audit record after its credits are settled, including operations you stop and operations settled by automatic recovery after an interruption.
+
 ## [0.25.6] - 2026-10-17
 
 ### Fixed
