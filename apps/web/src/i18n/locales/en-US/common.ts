@@ -361,9 +361,6 @@ export const enUSCommon = {
     deleteConfirmation:
       'Deleting this index may affect primary keys, unique constraints, and foreign key references. Continue?',
     inputPlaceholder: 'Type field name to match...',
-    configTitle: 'Index Config',
-    configDescription:
-      'Create index definitions for queries, unique constraints, and primary keys.',
     draftTitle: 'Pending index',
     emptyDraftMeta: 'Choose fields, then save',
     emptyList: 'No indexes yet. Create one from the buttons above.',
@@ -437,8 +434,6 @@ export const enUSCommon = {
     empty: 'No foreign keys yet',
   },
   authPanel: {
-    title: 'Privileges',
-    description: 'Manually enter a username or user ID to add a grantee',
     manualTitle: 'Add grantee manually',
     inputPlaceholder: 'Enter grantee name...',
     add: 'Add',
@@ -447,15 +442,10 @@ export const enUSCommon = {
     addedCount: 'Authorized grantees ({{count}})',
     objectTag: 'Grantee',
     removeTip: 'Remove grantee',
-    helpText: 'Enter an exact username or user ID. Grants take effect after adding.',
     empty: 'No grantees yet',
   },
   tableOptionsPanel: {
-    title: 'Table-level miscellaneous options',
-    noOptionsShort: 'No miscellaneous options are available for this database',
-    infoEnabled: 'Options will be emitted into DDL only when enabled',
     enable: 'Enable miscellaneous options',
-    enableDesc: 'Disabled options will not be written to DDL',
     noOptions:
       'Current database does not support engine, charset, collation, tablespace, FILLFACTOR, or STORAGE options.',
     engine: 'Engine',
@@ -467,7 +457,6 @@ export const enUSCommon = {
     tablespace: 'Tablespace',
     tablespacePlaceholder: 'e.g. ts_data',
     default: 'Default',
-    disabledHint: 'Options are disabled and will not be written into DDL.',
     fillfactor: 'FILLFACTOR',
     fillfactorPlaceholder: 'e.g. 70',
     pctfree: 'PCTFREE',
@@ -482,11 +471,7 @@ export const enUSCommon = {
     locationPlaceholder: 'e.g. /user/hive/warehouse/db/table',
   },
   hivePartitionPanel: {
-    title: 'Hive Partition Configuration',
-    description:
-      'Define partition columns via PARTITIONED BY. Data is organized by partition column values for improved query performance.',
     enable: 'Enable Partitions',
-    enableDesc: 'Add partition column definitions to the table',
     addColumn: 'Add Partition Column',
     addColumnTip: 'Add a partition column',
     columns: 'Partition Columns',
@@ -497,8 +482,6 @@ export const enUSCommon = {
     removeTip: 'Remove this partition column',
     clustering: {
       title: 'Bucketing Configuration',
-      description:
-        'Define bucketing columns via CLUSTERED BY. Data is distributed across buckets by hash, optimizing JOIN and aggregation queries.',
       columns: 'Bucketing Columns',
       addColumn: 'Add Bucket Column',
       columnPlaceholder: 'Enter bucket column name',
@@ -506,9 +489,6 @@ export const enUSCommon = {
     },
   },
   shardingPanel: {
-    title: 'Citus Distributed Table Configuration',
-    description:
-      'Configure sharding mode. Reference tables are copied to all nodes for small dimensions, while distributed tables are partitioned by the selected field for large datasets.',
     mode: 'Table Mode',
     reference: 'Reference Table',
     distributed: 'Distributed Table',
@@ -520,11 +500,7 @@ export const enUSCommon = {
       'Choose a column as data distribution key. Usually pick fields used in JOINs or frequent filtering, such as tenant_id or user_id.',
   },
   partitionPanel: {
-    title: 'MySQL Partition Table Configuration',
-    description:
-      'Partitioned tables split data into multiple physical partitions to improve large-table query performance. This configuration is optional.',
     enable: 'Enable partitioning',
-    enableDesc: 'Configure partition strategy after enabling',
     type: 'Partition Type',
     typePlaceholder: 'Select partition type...',
     typeDesc: {

@@ -349,8 +349,6 @@ export const zhCNCommon = {
     sourceRemoved: '原索引已被删除，编辑内容已保留为新索引草稿。再次保存即可创建。',
     deleteConfirmation: '删除索引可能影响主键、唯一约束和外键引用。确定删除吗？',
     inputPlaceholder: '输入字段名进行匹配...',
-    configTitle: '索引配置',
-    configDescription: '为查询、唯一约束和主键生成索引定义。',
     draftTitle: '待保存索引',
     emptyDraftMeta: '选择字段后保存',
     emptyList: '还没有索引，先点击上方按钮创建。',
@@ -423,8 +421,6 @@ export const zhCNCommon = {
     empty: '暂无外键约束',
   },
   authPanel: {
-    title: '授权配置',
-    description: '仅支持手动输入用户名或用户 ID 添加授权对象',
     manualTitle: '手动添加授权对象',
     inputPlaceholder: '输入授权对象名称...',
     add: '添加',
@@ -433,15 +429,10 @@ export const zhCNCommon = {
     addedCount: '已授权对象（{{count}}）',
     objectTag: '授权对象',
     removeTip: '移除授权对象',
-    helpText: '请输入准确的用户名或用户 ID，添加后生效',
     empty: '暂无授权对象',
   },
   tableOptionsPanel: {
-    title: '表级杂项配置',
-    noOptionsShort: '当前数据库暂无可配置的杂项项',
-    infoEnabled: '开启后才会在 DDL 中生成对应配置',
     enable: '启用杂项设置',
-    enableDesc: '未开启时不会写入 DDL',
     noOptions: '当前数据库暂不支持引擎、字符集、排序规则、表空间、FILLFACTOR 或 STORAGE 配置。',
     engine: '表引擎',
     enginePlaceholder: '选择引擎...',
@@ -452,7 +443,6 @@ export const zhCNCommon = {
     tablespace: '表空间',
     tablespacePlaceholder: '例如：ts_data',
     default: '默认',
-    disabledHint: '当前为关闭状态，配置不会写入 DDL。',
     fillfactor: 'FILLFACTOR',
     fillfactorPlaceholder: '例如：70',
     pctfree: 'PCTFREE',
@@ -467,10 +457,7 @@ export const zhCNCommon = {
     locationPlaceholder: '例如：/user/hive/warehouse/db/table',
   },
   hivePartitionPanel: {
-    title: 'Hive 分区配置',
-    description: '通过 PARTITIONED BY 定义分区列，数据按分区列值组织存储，提升查询效率。',
     enable: '启用分区',
-    enableDesc: '为表添加分区列定义',
     addColumn: '添加分区列',
     addColumnTip: '添加一个分区列',
     columns: '分区列',
@@ -481,8 +468,6 @@ export const zhCNCommon = {
     removeTip: '删除此分区列',
     clustering: {
       title: '分桶配置',
-      description:
-        '通过 CLUSTERED BY 定义分桶列，数据按哈希分布到指定数量的桶中，优化 JOIN 和聚合查询性能。',
       columns: '分桶列',
       addColumn: '添加分桶列',
       columnPlaceholder: '输入分桶列名',
@@ -490,9 +475,6 @@ export const zhCNCommon = {
     },
   },
   shardingPanel: {
-    title: 'Citus 分布式表配置',
-    description:
-      '配置表的分片模式。副本表会复制到所有节点，适用于小型维度表；分片表会按指定字段分布到各节点，适用于大型数据表。',
     mode: '表模式',
     reference: '副本表',
     distributed: '分片表',
@@ -504,10 +486,7 @@ export const zhCNCommon = {
       '选择一个字段作为数据分布的依据。通常选择用于 JOIN 操作或频繁过滤的字段，如 tenant_id、user_id 等。',
   },
   partitionPanel: {
-    title: 'MySQL 分区表配置',
-    description: '分区表将数据分散存储到多个物理分区中，可提升大表查询性能。此配置为可选项。',
     enable: '启用分区',
-    enableDesc: '开启后可配置表的分区策略',
     type: '分区类型',
     typePlaceholder: '选择分区类型...',
     typeDesc: {

@@ -365,8 +365,6 @@ export const jaJPCommon = {
     deleteConfirmation:
       'このインデックスを削除すると、主キー、一意制約、外部キー参照に影響する可能性があります。続行しますか？',
     inputPlaceholder: '一致するフィールド名を入力してください...',
-    configTitle: 'インデックス構成',
-    configDescription: 'クエリ、一意制約、および主キーのインデックス定義を作成します。',
     draftTitle: '保留中のインデックス',
     emptyDraftMeta: 'フィールドを選択して保存します',
     emptyList: 'まだインデックスがありません。上のボタンから作成してください。',
@@ -440,8 +438,6 @@ export const jaJPCommon = {
     empty: '外部キーはまだありません',
   },
   authPanel: {
-    title: '特権',
-    description: 'ユーザー名またはユーザー ID を手動で入力して被付与者を追加します',
     manualTitle: '被付与者を手動で追加する',
     inputPlaceholder: '被付与者の名前を入力してください...',
     add: '追加',
@@ -450,15 +446,10 @@ export const jaJPCommon = {
     addedCount: '認可された被付与者 ({{count}})',
     objectTag: '譲受人',
     removeTip: '被付与者の削除',
-    helpText: '正確なユーザー名またはユーザー ID を入力します。付与は追加後に有効になります。',
     empty: 'まだ付与者がいません',
   },
   tableOptionsPanel: {
-    title: 'テーブルレベルのその他のオプション',
-    noOptionsShort: 'このデータベースではその他のオプションは使用できません',
-    infoEnabled: 'オプションは有効な場合にのみ DDL に出力されます',
     enable: 'その他のオプションを有効にする',
-    enableDesc: '無効なオプションは DDL に書き込まれません',
     noOptions:
       '現在のデータベースは、エンジン、文字セット、照合順序、テーブルスペース、FILLFACTOR、または STORAGE オプションをサポートしていません。',
     engine: 'エンジン',
@@ -470,7 +461,6 @@ export const jaJPCommon = {
     tablespace: 'テーブルスペース',
     tablespacePlaceholder: '例: ts_data',
     default: 'デフォルト',
-    disabledHint: 'オプションは無効になっており、DDL に書き込まれません。',
     fillfactor: 'フィルファクター',
     fillfactorPlaceholder: '例: 70',
     pctfree: 'PCTフリー',
@@ -485,11 +475,7 @@ export const jaJPCommon = {
     locationPlaceholder: '例: /ユーザー/ハイブ/ウェアハウス/db/テーブル',
   },
   hivePartitionPanel: {
-    title: 'Hive パーティションの構成',
-    description:
-      'PARTITIONED BY を使用してパーティション列を定義します。クエリのパフォーマンスを向上させるために、データはパーティション列の値ごとに編成されます。',
     enable: 'パーティションを有効にする',
-    enableDesc: 'パーティション列定義をテーブルに追加する',
     addColumn: 'パーティション列の追加',
     addColumnTip: 'パーティション列を追加する',
     columns: 'パーティション列',
@@ -501,8 +487,6 @@ export const jaJPCommon = {
     removeTip: 'このパーティション列を削除します',
     clustering: {
       title: 'バケット構成',
-      description:
-        'CLUSTERED BY を使用してバケット列を定義します。データはハッシュによってバケット全体に分散され、JOIN クエリと集計クエリが最適化されます。',
       columns: '列のバケット化',
       addColumn: 'バケット列の追加',
       columnPlaceholder: 'バケット列名を入力してください',
@@ -510,9 +494,6 @@ export const jaJPCommon = {
     },
   },
   shardingPanel: {
-    title: 'Citus 分散テーブルの構成',
-    description:
-      'シャーディングモードを構成します。小さいディメンションの場合は参照テーブルがすべてのノードにコピーされますが、大規模なデータセットの場合は分散テーブルが選択されたフィールドによってパーティション化されます。',
     mode: 'テーブルモード',
     reference: '参照表',
     distributed: '分散テーブル',
@@ -524,11 +505,7 @@ export const jaJPCommon = {
       'データ分散キーとして列を選択します。通常は、結合または頻繁なフィルタリングで使用されるフィールド (tenant_id や user_id など) を選択します。',
   },
   partitionPanel: {
-    title: 'MySQL パーティション テーブルの構成',
-    description:
-      'パーティション化されたテーブルは、データを複数の物理パーティションに分割して、大きなテーブルのクエリのパフォーマンスを向上させます。この構成はオプションです。',
     enable: 'パーティショニングを有効にする',
-    enableDesc: '有効にした後にパーティション戦略を構成する',
     type: 'パーティションの種類',
     typePlaceholder: 'パーティションの種類を選択してください...',
     typeDesc: {

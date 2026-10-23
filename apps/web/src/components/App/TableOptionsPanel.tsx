@@ -1,5 +1,4 @@
-import { memo, useMemo } from 'react';
-import { Settings2, Info } from '@/components/icons';
+import { memo } from 'react';
 import type { DatabaseType, TableMiscConfig } from '@ddlbuilder/shared-types';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -92,33 +91,14 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
     const effectiveCollation = config.collation || DEFAULT_OPTION_VALUE;
     const effectiveStoredAs = config.storedAs || DEFAULT_OPTION_VALUE;
 
-    const infoText = useMemo(() => {
-      if (!hasAnyOption) {
-        return t('tableOptionsPanel.noOptionsShort');
-      }
-
-      return t('tableOptionsPanel.infoEnabled');
-    }, [hasAnyOption, t]);
-
     return (
       <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/30 to-transparent rounded-t-lg" />
 
         <div className="relative p-4 space-y-6">
-          <div className="flex items-start gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:bg-slate-950/50 dark:text-slate-300">
-            <Settings2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium">{t('tableOptionsPanel.title')}</p>
-              <p className="mt-1 text-xs opacity-80">{infoText}</p>
-            </div>
-          </div>
-
           <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
-            <div className="space-y-0.5">
-              <Label className="text-sm font-semibold">{t('tableOptionsPanel.enable')}</Label>
-              <p className="text-xs text-muted-foreground">{t('tableOptionsPanel.enableDesc')}</p>
-            </div>
+            <Label className="text-sm font-semibold">{t('tableOptionsPanel.enable')}</Label>
             <Switch checked={config.enabled} onCheckedChange={onEnabledChange} />
           </div>
 
@@ -407,13 +387,6 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                       className="font-mono text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
-                </div>
-              )}
-
-              {disabled && (
-                <div className="flex items-start gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                  <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                  <span>{t('tableOptionsPanel.disabledHint')}</span>
                 </div>
               )}
             </div>

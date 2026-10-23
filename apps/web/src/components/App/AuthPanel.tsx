@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Info, ShieldUser, UserRound, X } from '@/components/icons';
+import { UserRound, X } from '@/components/icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslation } from 'react-i18next';
 
@@ -21,29 +21,11 @@ export const AuthPanel = memo<AuthPanelProps>(
       <div className="relative rounded-lg border bg-card/95 shadow-sm">
         <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
 
-        <div className="relative border-b px-3 py-2.5">
-          <div className="flex items-start gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary shadow-inner">
-              <ShieldUser className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-foreground">{t('authPanel.title')}</h3>
-              <p className="text-xs text-muted-foreground">{t('authPanel.description')}</p>
-            </div>
-          </div>
-        </div>
-
         <div className="relative space-y-3 p-3">
           <section className="rounded-lg border bg-background/65 p-3 shadow-sm">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="h-4 w-1 rounded-full bg-primary" />
-              <h4 className="text-sm font-semibold text-foreground">
-                {t('authPanel.manualTitle')}
-              </h4>
-            </div>
-
             <div className="flex flex-col gap-2 lg:flex-row">
               <Input
+                aria-label={t('authPanel.manualTitle')}
                 placeholder={t('authPanel.inputPlaceholder')}
                 value={authInput}
                 onChange={(e) => {
@@ -76,11 +58,6 @@ export const AuthPanel = memo<AuthPanelProps>(
                 </TooltipContent>
               </Tooltip>
             </div>
-
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Info className="h-3.5 w-3.5" />
-              {t('authPanel.helpText')}
-            </p>
           </section>
 
           <section className="rounded-lg border bg-background/65 p-3 shadow-sm">

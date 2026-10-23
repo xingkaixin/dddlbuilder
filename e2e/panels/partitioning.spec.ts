@@ -42,7 +42,6 @@ test.describe('MySQL 分区配置验证 @panels', () => {
   test('场景：配置为 HASH 分区', async ({ page }) => {
     // 切换到“分区配置”面板
     const partitionPanel = await openPartitionPanel(page);
-    await expect(page.getByText('MySQL 分区表配置')).toBeVisible();
     await selectPartitionType(page, partitionPanel, 'HASH');
 
     // 输入分区表达式

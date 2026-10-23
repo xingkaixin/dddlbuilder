@@ -260,11 +260,7 @@ export const IndexPanel = memo<IndexPanelProps>(
         <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
 
         <div className="relative border-b px-3 py-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-semibold">{t('indexPanel.configTitle')}</h3>
-              <p className="text-xs text-muted-foreground">{t('indexPanel.configDescription')}</p>
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex flex-wrap gap-1.5">
               <Button
                 size="sm"

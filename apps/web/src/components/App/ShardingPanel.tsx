@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Share2, Database, GitBranch } from '@/components/icons';
+import { Database, GitBranch } from '@/components/icons';
 import type { CitusTableMode, CitusShardingConfig } from '@ddlbuilder/shared-types';
 import { useTranslation } from 'react-i18next';
 
@@ -32,15 +32,6 @@ export const ShardingPanel = memo<ShardingPanelProps>(
 
         <div className="relative p-4">
           <div className="space-y-6">
-            {/* Info Banner */}
-            <div className="flex items-start gap-3 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
-              <Share2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium">{t('shardingPanel.title')}</p>
-                <p className="mt-1 text-xs opacity-80">{t('shardingPanel.description')}</p>
-              </div>
-            </div>
-
             {/* Table Mode Selection */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold flex items-center gap-2">

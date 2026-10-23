@@ -159,21 +159,9 @@ export const PartitionPanel = memo<PartitionPanelProps>(
 
         <div className="relative p-4">
           <div className="space-y-6">
-            {/* Info Banner */}
-            <div className="flex items-start gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-              <Layers className="h-5 w-5 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium">{t('partitionPanel.title')}</p>
-                <p className="mt-1 text-xs opacity-80">{t('partitionPanel.description')}</p>
-              </div>
-            </div>
-
             {/* Enable Partition Switch */}
             <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
-              <div className="space-y-0.5">
-                <Label className="text-sm font-semibold">{t('partitionPanel.enable')}</Label>
-                <p className="text-xs text-muted-foreground">{t('partitionPanel.enableDesc')}</p>
-              </div>
+              <Label className="text-sm font-semibold">{t('partitionPanel.enable')}</Label>
               <Switch checked={config.enabled} onCheckedChange={onEnabledChange} />
             </div>
 
