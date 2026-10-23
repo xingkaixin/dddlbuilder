@@ -28,7 +28,7 @@ export const schemaTools = {
   fieldCount: '{{count}} フィールド',
   compare: {
     title: '構造比較',
-    hint: '同じデータベースの構造を比較し、変更内容と移行 SQL を確認します。',
+    hint: '2 つのスナップショットは同じデータベース種別である必要があります。',
     before: '現在の構造',
     after: '変更後の構造',
     emptySide: '片側が空の場合は空のデータベースとして扱います。',
@@ -58,7 +58,7 @@ export const schemaTools = {
   },
   seed: {
     title: '関連テストデータ',
-    hint: 'MySQL または PostgreSQL の関連テーブルに、外部キー・主キー・一意キーを満たすデータを生成します。',
+    hint: 'MySQL と PostgreSQL のみ対応しています。',
     seed: '固定シード',
     seedHint: '同じ定義・行数・シードで同じデータを再現できます。',
     logical: '論理リレーションも使用する',
@@ -79,7 +79,6 @@ export const schemaTools = {
     summary: '{{tables}} テーブル · {{fields}} フィールド',
     emptyTitle: 'テーブル構造から始める',
     title: 'データ辞書',
-    hint: 'テーブルを選択し、検索可能なドキュメントを作成してオフライン用にエクスポートします。',
     documentTitle: 'ドキュメント名',
     defaultTitle: 'データベース辞書',
     markdown: 'Markdown を出力',

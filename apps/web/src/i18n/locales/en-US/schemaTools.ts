@@ -27,7 +27,7 @@ export const schemaTools = {
   fieldCount: '{{count}} fields',
   compare: {
     title: 'Schema comparison',
-    hint: 'Compare two snapshots of the same database dialect and prepare migration SQL.',
+    hint: 'Both snapshots must use the same database dialect.',
     before: 'Current schema',
     after: 'Target schema',
     emptySide: 'An empty side represents an empty database.',
@@ -58,7 +58,7 @@ export const schemaTools = {
   },
   seed: {
     title: 'Relational test data',
-    hint: 'Generate repeatable MySQL or PostgreSQL data with foreign-key, primary-key and unique-key checks.',
+    hint: 'Supports MySQL and PostgreSQL only.',
     seed: 'Seed',
     seedHint: 'The same definitions, row counts and seed reproduce the same dataset.',
     logical: 'Also generate logical relationships',
@@ -79,7 +79,6 @@ export const schemaTools = {
     summary: '{{tables}} tables · {{fields}} fields',
     emptyTitle: 'Start with your schema',
     title: 'Data dictionary',
-    hint: 'Select tables to create searchable documentation and export it for offline use.',
     documentTitle: 'Document title',
     defaultTitle: 'Database dictionary',
     markdown: 'Export Markdown',

@@ -247,21 +247,16 @@ export const jaJPCommon = {
       'この端末にはクラウドのワークスペースがまだ取得されていません。ログインして接続を維持するか、先に作成・インポートして後で統合できます。',
     noTabOpenTitle: 'まだテーブルが開いていません',
     completelyEmptyTitle: 'まだテーブルもドラフトもありません',
-    description:
-      'MySQL、PostgreSQL、SQLite などのテーブルを設計し、CREATE TABLE 文を生成します。既存の SQL を取り込み、ER 図の表示や ORM モデルの出力もできます。',
     createNewTable: '新しいテーブルの作成',
     importDDL: 'DDLのインポート',
     useTemplate: 'テンプレートを使用する',
     quickExperience: 'クイックスタート',
     exampleTitle: 'ロード例: user_profile',
-    exampleDescription:
-      'すぐに使い始めるのに役立つ一般的なフィールド タイプ、インデックス、制約が含まれています。',
     loadExample: '負荷の例',
     recentDrafts: '最近の下書き',
     recentTables: '最近のプロジェクト',
     draftMeta: 'ドラフト · {{count}} フィールド',
     tableMeta: 'プロジェクト · {{count}} フィールド',
-    tip: '左側の既存のテーブルをクリックして、ここでその構造を表示および編集します。',
     exampleLoaded: 'ロードされたテーブルの例',
   },
   app: {

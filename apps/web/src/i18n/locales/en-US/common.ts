@@ -244,21 +244,16 @@ export const enUSCommon = {
       'This device has not downloaded the cloud workspace yet. Sign in and stay connected, or create or import content now to merge it later.',
     noTabOpenTitle: 'No table opened yet',
     completelyEmptyTitle: 'No tables or drafts yet',
-    description:
-      'Design MySQL, PostgreSQL, SQLite and other schemas visually and generate CREATE TABLE SQL. Import existing SQL to view ER diagrams or export ORM models.',
     createNewTable: 'Create New Table',
     importDDL: 'Import DDL',
     useTemplate: 'Use Template',
     quickExperience: 'Quick Start',
     exampleTitle: 'Load example: user_profile',
-    exampleDescription:
-      'Includes common field types, indexes, and constraints to help you get started quickly.',
     loadExample: 'Load Example',
     recentDrafts: 'Recent Drafts',
     recentTables: 'Recent Projects',
     draftMeta: 'Draft · {{count}} fields',
     tableMeta: 'Project · {{count}} fields',
-    tip: 'Click an existing table on the left to view and edit its structure here.',
     exampleLoaded: 'Example table loaded',
   },
   app: {

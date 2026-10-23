@@ -127,9 +127,8 @@ export function MainWorkspaceSkeleton() {
           </div>
         </div>
 
-        <div className="border-b border-primary/10 px-4 py-3.5">
-          <p className="text-xl font-bold">{t('ddlOutput.ddlTitle')}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{t('ddlOutput.ddlDesc')}</p>
+        <div className="border-b border-primary/10 px-4 py-2">
+          <p className="text-sm font-semibold">{t('ddlOutput.ddlTitle')}</p>
         </div>
 
         <div className="flex-1 space-y-2 p-4">

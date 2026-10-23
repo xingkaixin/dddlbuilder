@@ -26,7 +26,7 @@ export const schemaTools = {
   fieldCount: '{{count}} 个字段',
   compare: {
     title: '结构对比',
-    hint: '比较同一数据库的两份结构快照，检查变化并生成迁移 SQL。',
+    hint: '两份快照需来自同一数据库类型。',
     before: '当前结构',
     after: '目标结构',
     emptySide: '一侧留空表示空数据库。',
@@ -55,7 +55,7 @@ export const schemaTools = {
   },
   seed: {
     title: '关联测试数据',
-    hint: '为 MySQL 或 PostgreSQL 的关联表生成可重复的数据，检查外键、主键和唯一键。',
+    hint: '仅支持 MySQL 和 PostgreSQL。',
     seed: '固定种子',
     seedHint: '同样的表定义、行数和种子会得到同一批数据。',
     logical: '同时按逻辑关系生成关联',
@@ -76,7 +76,6 @@ export const schemaTools = {
     summary: '{{tables}} 张表 · {{fields}} 个字段',
     emptyTitle: '从表结构开始',
     title: '数据字典',
-    hint: '选择多张表，生成可搜索的阅读视图，并导出可离线交付的文档。',
     documentTitle: '文档标题',
     defaultTitle: '数据库数据字典',
     markdown: '导出 Markdown',

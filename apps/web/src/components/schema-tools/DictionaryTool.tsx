@@ -50,7 +50,6 @@ export function DictionaryTool() {
   return (
     <ToolLayout
       title={t('schemaTools.dictionary.title')}
-      description={t('schemaTools.dictionary.hint')}
       source={
         <TableSource value={tables} onChange={setTables} onStandardsChange={setImportedStandards} />
       }

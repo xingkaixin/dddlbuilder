@@ -1,5 +1,5 @@
 import { memo, type ReactNode } from 'react';
-import { FileEdit, Lightbulb, Plus, Table2 } from '@/components/icons';
+import { FileEdit, Plus, Table2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
@@ -59,17 +59,20 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
             <Table2 className="h-8 w-8 text-primary" />
           </div>
 
-          <h2 className="mb-2 text-center text-lg font-semibold tracking-tight text-foreground">
-            {awaitingCloud
-              ? t('emptyState.initialSyncTitle')
-              : hasContent
-                ? t('emptyState.noTabOpenTitle')
-                : t('emptyState.completelyEmptyTitle')}
-          </h2>
-
-          <p className="mb-6 max-w-md text-center text-sm leading-7 text-muted-foreground">
-            {t(awaitingCloud ? 'emptyState.initialSyncDescription' : 'emptyState.description')}
-          </p>
+          <div className="mb-6 space-y-2">
+            <h2 className="text-center text-lg font-semibold tracking-tight text-foreground">
+              {awaitingCloud
+                ? t('emptyState.initialSyncTitle')
+                : hasContent
+                  ? t('emptyState.noTabOpenTitle')
+                  : t('emptyState.completelyEmptyTitle')}
+            </h2>
+            {awaitingCloud && (
+              <p className="max-w-md text-center text-sm leading-7 text-muted-foreground">
+                {t('emptyState.initialSyncDescription')}
+              </p>
+            )}
+          </div>
 
           <div className="mb-8 flex flex-wrap justify-center gap-2">
             <button
@@ -130,10 +133,7 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
             </div>
 
             <div className="rounded-lg border bg-card p-4">
-              <h3 className="mb-1 text-sm font-medium">{t('emptyState.exampleTitle')}</h3>
-              <p className="mb-3 text-xs text-muted-foreground">
-                {t('emptyState.exampleDescription')}
-              </p>
+              <h3 className="mb-3 text-sm font-medium">{t('emptyState.exampleTitle')}</h3>
               <button
                 type="button"
                 onClick={onLoadExample}
@@ -167,13 +167,6 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
               {t('emptyState.diffGuide')}
             </a>
           </nav>
-
-          {hasContent && (
-            <div className="mt-6 flex max-w-sm gap-3 rounded-lg bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-              <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>{t('emptyState.tip')}</p>
-            </div>
-          )}
         </div>
       </div>
     );
