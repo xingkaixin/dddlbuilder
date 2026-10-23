@@ -143,7 +143,9 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                 <History className="h-5 w-5" />
                 {t('reviewHistory.title')}
               </DialogTitle>
-              <DialogDescription>{t('reviewHistory.description')}</DialogDescription>
+              <DialogDescription className="sr-only">
+                {t('reviewHistory.description')}
+              </DialogDescription>
             </DialogHeader>
 
             <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto overscroll-contain pr-1">

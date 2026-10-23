@@ -242,7 +242,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                 <History className="h-5 w-5" />
                 {t('versionHistory.title')}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className={tableName ? undefined : 'sr-only'}>
                 {tableName
                   ? t('versionHistory.descriptionWithName', { name: tableName })
                   : t('versionHistory.descriptionFallback')}

@@ -90,7 +90,7 @@ export const MockDataDialog = memo<MockDataDialogProps>(
               <TableProperties className="h-5 w-5 text-primary" />
               {t('mockData.title')}
             </DialogTitle>
-            <DialogDescription>{t('mockData.description')}</DialogDescription>
+            <DialogDescription className="sr-only">{t('mockData.description')}</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 min-h-0 flex-1">

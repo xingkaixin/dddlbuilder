@@ -367,7 +367,7 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
             <DialogTitle>
               {t('enumEditor.title')} — <span className="font-mono text-primary">{baseType}</span>
             </DialogTitle>
-            <DialogDescription>{t('enumEditor.subtitle')}</DialogDescription>
+            <DialogDescription className="sr-only">{t('enumEditor.subtitle')}</DialogDescription>
           </DialogHeader>
 
           <div className="max-h-[380px] overflow-y-auto pr-1">

@@ -134,7 +134,7 @@ export default function SchemaToolsDialog({ onClose }: { onClose: () => void }) 
           </div>
           <div className="space-y-1.5">
             <DialogTitle className="text-base">{t('schemaTools.title')}</DialogTitle>
-            <DialogDescription className="text-xs leading-relaxed">
+            <DialogDescription className="sr-only">
               {t('schemaTools.description')}
             </DialogDescription>
           </div>

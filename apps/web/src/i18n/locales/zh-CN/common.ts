@@ -184,7 +184,6 @@ export const zhCNCommon = {
     cancel: '取消',
     acknowledge: '知道了',
     syncRequiresLogin: '登录后才可以执行工作区同步。',
-    workspaceSyncHint: '工作区编辑会先保存在本地，并通过实时连接自动同步到云端。',
     workspaceSyncDescription: '无需手动上传或下载；离线编辑会在网络恢复后继续同步。',
     kind: {
       grant: '授予',
@@ -928,7 +927,6 @@ export const zhCNCommon = {
     closeWhileGenerating: '正在生成，请先取消生成或等待完成。',
     resetConfirmation: '重新开始将清除当前对话和未应用的修改，是否继续？',
     title: 'AI 修改当前表',
-    description: '基于当前表信息、字段、索引和数据库类型生成可审阅的结构变更',
     inputPlaceholder:
       '描述要调整的表结构，例如：增加 deleted_at 软删除字段，并把手机号唯一索引改成手机号加租户 ID',
     inputHint: '支持明确增删改，也支持描述调整方向。按 Command 或 Control 加 Enter 发送。',
@@ -1085,7 +1083,6 @@ export const zhCNCommon = {
       authCount: '授权对象数',
       database: '数据库',
       authObjects: '授权对象',
-      description: '点击确认后，表结构将导入到当前工作区。',
     },
     batch: {
       importFailed: '导入失败，请检查存储状态后重试。',
@@ -1234,7 +1231,6 @@ export const zhCNCommon = {
     emptyHint: '还没有表，点击上方「保存」按钮保存第一个表',
     searchPlaceholder: '搜索表名或数据库类型...',
     workspaceSearchPlaceholder: '搜索表名 / 文件夹',
-    searchDisabledHint: '暂无可搜索内容，先保存一个表即可使用搜索。',
     createFolder: '新建文件夹',
     createSubfolder: '新建子文件夹',
     close: '关闭',

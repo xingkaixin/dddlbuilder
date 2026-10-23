@@ -191,8 +191,6 @@ export const jaJPCommon = {
     cancel: 'キャンセル',
     acknowledge: 'OK',
     syncRequiresLogin: 'サインインしてワークスペースを同期します。',
-    workspaceSyncHint:
-      'ワークスペースの編集は、まずローカルに保存され、ライブ接続を通じてクラウドに同期されます。',
     workspaceSyncDescription:
       '手動でアップロードまたはダウンロードする必要はありません。ネットワークが復旧すると、オフライン編集の同期が再開されます。',
     kind: {
@@ -965,8 +963,6 @@ export const jaJPCommon = {
     resetConfirmation: '再起動すると、この会話と未適用の変更が消去されます。続行しますか？',
     staleResult: 'テーブル構造が変更されています。現在の内容から提案を再生成してください。',
     title: 'AI 現在のテーブルを編集',
-    description:
-      '現在のテーブル、フィールド、インデックス、データベース タイプからレビュー可能なスキーマ変更を生成します。',
     inputPlaceholder:
       'スキーマの変更について説明します。論理的な削除のためにdeleted_atを追加し、電話の一意のインデックスを電話とtenant_idに変更します。',
     inputHint:
@@ -1132,7 +1128,6 @@ export const jaJPCommon = {
       authCount: '助成対象者',
       database: 'データベース',
       authObjects: '助成対象者',
-      description: '確認後、テーブル構造が現在のワークスペースにインポートされます。',
     },
     batch: {
       importFailed: 'インポートに失敗しました。ストレージを確認して再試行してください。',
@@ -1288,7 +1283,6 @@ export const jaJPCommon = {
     emptyHint: 'まだテーブルがありません。上の「保存」をクリックして最初のファイルを追加します。',
     searchPlaceholder: 'テーブル名またはデータベースの種類で検索...',
     workspaceSearchPlaceholder: 'テーブル/フォルダーの検索',
-    searchDisabledHint: 'まだ検索するものはありません。テーブルを保存して検索を有効にします。',
     createFolder: 'フォルダーの作成',
     createSubfolder: 'サブフォルダーの作成',
     close: '閉じる',

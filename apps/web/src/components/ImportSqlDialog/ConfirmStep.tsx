@@ -44,7 +44,6 @@ export function ConfirmStep({ parsedResult, selectedDbType }: ConfirmStepProps) 
           </p>
         )}
       </div>
-      <p className="text-sm text-muted-foreground">{t('importSql.confirm.description')}</p>
     </div>
   );
 }

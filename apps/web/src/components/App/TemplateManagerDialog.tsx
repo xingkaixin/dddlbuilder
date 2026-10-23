@@ -218,7 +218,9 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{t('templateManager.title')}</DialogTitle>
-              <DialogDescription>{t('templateManager.description')}</DialogDescription>
+              <DialogDescription className="sr-only">
+                {t('templateManager.description')}
+              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
@@ -280,7 +282,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                   ? t('templateManager.editor.editTitle')
                   : t('templateManager.editor.createTitle')}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="sr-only">
                 {editingTemplate
                   ? t('templateManager.editor.editDescription')
                   : t('templateManager.editor.createDescription')}

@@ -78,7 +78,6 @@ describe('SavedTablesDrawer', () => {
     const searchInput = screen.getByTestId('saved-tables-search');
     expect(searchInput).toBeInTheDocument();
     expect(searchInput).toBeDisabled();
-    expect(screen.getByText('暂无可搜索内容，先保存一个表即可使用搜索。')).toBeInTheDocument();
   });
 
   it('非法文件夹循环拖拽应阻断移动并显示反馈', async () => {

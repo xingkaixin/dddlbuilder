@@ -225,7 +225,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
               <Sparkles className="h-5 w-5 text-primary" />
               {t('aiGenerate.title')}
             </DialogTitle>
-            <DialogDescription>{t('aiGenerate.description')}</DialogDescription>
+            <DialogDescription className="sr-only">{t('aiGenerate.description')}</DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">

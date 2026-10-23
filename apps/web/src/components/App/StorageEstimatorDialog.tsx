@@ -138,7 +138,9 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
               <HardDrive className="h-6 w-6 text-primary" />
               {t('storageEstimator.title')}
             </DialogTitle>
-            <DialogDescription>{t('storageEstimator.description')}</DialogDescription>
+            <DialogDescription className="sr-only">
+              {t('storageEstimator.description')}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-6 py-4">

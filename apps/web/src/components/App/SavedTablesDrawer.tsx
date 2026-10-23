@@ -247,11 +247,6 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                   data-testid="saved-tables-search"
                 />
               </div>
-              {!canSearch && (
-                <p className="mt-1 px-0.5 text-[11px] text-muted-foreground">
-                  {t('savedTables.searchDisabledHint')}
-                </p>
-              )}
             </div>
           )}
 

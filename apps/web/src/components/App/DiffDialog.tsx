@@ -190,7 +190,7 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
       <DialogContent className="max-h-[85vh] max-w-2xl overflow-hidden">
         <DialogHeader>
           <DialogTitle>{t('diffDialog.title')}</DialogTitle>
-          <DialogDescription>{t('diffDialog.description')}</DialogDescription>
+          <DialogDescription className="sr-only">{t('diffDialog.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">

@@ -293,7 +293,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
         >
           <DialogHeader className="gap-1 border-b px-6 py-3">
             <DialogTitle className="text-lg">{t('settings.title')}</DialogTitle>
-            <DialogDescription className="text-xs">{t('settings.description')}</DialogDescription>
+            <DialogDescription className="sr-only">{t('settings.description')}</DialogDescription>
           </DialogHeader>
           <Tabs
             value={settingsTab}
@@ -386,9 +386,6 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
               </TabsContent>
               <TabsContent value="workspace" className={`${settingsTabContentClass} space-y-5`}>
                 <section className="space-y-3">
-                  <div className="rounded-md border bg-muted/30 px-3 py-2.5 text-sm leading-6 text-muted-foreground">
-                    {t('settings.workspaceSyncHint')}
-                  </div>
                   <div className="rounded-md border bg-card px-3 py-2.5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="text-sm">

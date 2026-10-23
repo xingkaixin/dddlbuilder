@@ -277,10 +277,7 @@ export function AISchemaPatchPanel({
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
             <Bot className="h-5 w-5" />
           </div>
-          <div>
-            <h2 className="text-lg font-semibold leading-tight">{t('aiPatch.title')}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t('aiPatch.description')}</p>
-          </div>
+          <h2 className="text-lg font-semibold leading-tight">{t('aiPatch.title')}</h2>
         </div>
       </div>
 

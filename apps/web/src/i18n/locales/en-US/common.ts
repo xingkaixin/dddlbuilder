@@ -188,8 +188,6 @@ export const enUSCommon = {
     cancel: 'Cancel',
     acknowledge: 'OK',
     syncRequiresLogin: 'Sign in to sync your workspace.',
-    workspaceSyncHint:
-      'Workspace edits are saved locally first and synchronized to the cloud through a live connection.',
     workspaceSyncDescription:
       'No manual upload or download is needed. Offline edits resume syncing when the network returns.',
     kind: {
@@ -958,8 +956,6 @@ export const enUSCommon = {
     resetConfirmation: 'Restarting clears this conversation and unapplied changes. Continue?',
     staleResult: 'The table has changed. Generate new suggestions from the current schema.',
     title: 'AI Edit Current Table',
-    description:
-      'Generate reviewable schema changes from the current table, fields, indexes, and database type.',
     inputPlaceholder:
       'Describe the schema change, e.g. add deleted_at for soft delete and change the phone unique index to phone plus tenant_id',
     inputHint:
@@ -1122,7 +1118,6 @@ export const enUSCommon = {
       authCount: 'Grantees',
       database: 'Database',
       authObjects: 'Grantees',
-      description: 'After confirmation, table structure will be imported into current workspace.',
     },
     batch: {
       importFailed: 'Import failed. Check local storage and try again.',
@@ -1279,7 +1274,6 @@ export const enUSCommon = {
     emptyHint: 'No tables yet. Click "Save" above to add the first one.',
     searchPlaceholder: 'Search by table name or database type...',
     workspaceSearchPlaceholder: 'Search tables / folders',
-    searchDisabledHint: 'Nothing to search yet. Save a table to enable search.',
     createFolder: 'Create folder',
     createSubfolder: 'Create subfolder',
     close: 'Close',

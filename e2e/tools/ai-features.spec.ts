@@ -427,7 +427,7 @@ test.describe('AI 功能 UI 测试 @tools @ai', () => {
       // 检查对话框是否打开（通过检查是否有相关文本）
       const dialogText = page
         .getByText(/AI 智能建表/i)
-        .or(page.getByText(/用自然语言描述你需要的表结构/i));
+        .or(page.getByRole('dialog', { name: /大师智能建表/ }));
 
       if ((await dialogText.count()) > 0) {
         // 对话框已打开
