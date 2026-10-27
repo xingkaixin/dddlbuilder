@@ -695,6 +695,7 @@ export const zhCNCommon = {
       createFailed: '创建失败',
       applied: '已应用整表蓝本「{{name}}」',
       renamed: '已重命名整表蓝本「{{name}}」',
+      updateFailed: '更新失败',
       renameFailed: '重命名失败',
       duplicated: '已复制整表蓝本「{{name}}」',
       duplicateFailed: '复制失败',

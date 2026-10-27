@@ -107,7 +107,7 @@ export function useFieldTemplates() {
 
         return { ok: true, template };
       } catch (error) {
-        return failure(error, t('fieldTemplate.toast.createFailed'));
+        return failure(error, t('templateManager.toast.createFailed'));
       }
     },
     [createMutation, t],
@@ -128,7 +128,7 @@ export function useFieldTemplates() {
 
         return { ok: true, template };
       } catch (error) {
-        return failure(error, t('fieldTemplate.toast.createFailed'));
+        return failure(error, t('templateManager.toast.createFailed'));
       }
     },
     [createFromFieldsMutation, t],
@@ -144,9 +144,9 @@ export function useFieldTemplates() {
 
         return template
           ? { ok: true }
-          : { ok: false, reason: 'not_found', message: t('fieldTemplate.toast.notFound') };
+          : { ok: false, reason: 'not_found', message: t('templateManager.toast.notFound') };
       } catch (error) {
-        return failure(error, t('fieldTemplate.toast.updateFailed'));
+        return failure(error, t('templateManager.toast.updateFailed'));
       }
     },
     [updateMutation, t],
@@ -164,7 +164,7 @@ export function useFieldTemplates() {
 
         return { ok: true };
       } catch (error) {
-        return failure(error, t('fieldTemplate.toast.deleteFailed'));
+        return failure(error, t('templateManager.toast.deleteFailed'));
       }
     },
     [removeMutation, t],
@@ -180,9 +180,9 @@ export function useFieldTemplates() {
 
         return template
           ? { ok: true, template }
-          : { ok: false, reason: 'not_found', message: t('fieldTemplate.toast.notFound') };
+          : { ok: false, reason: 'not_found', message: t('templateManager.toast.notFound') };
       } catch (error) {
-        return failure(error, t('fieldTemplate.toast.duplicateFailed'));
+        return failure(error, t('templateManager.toast.duplicateFailed'));
       }
     },
     [duplicateMutation, t],

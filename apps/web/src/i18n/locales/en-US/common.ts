@@ -712,6 +712,7 @@ export const enUSCommon = {
       createFailed: 'Create failed',
       applied: 'Table blueprint "{{name}}" applied',
       renamed: 'Table blueprint "{{name}}" renamed',
+      updateFailed: 'Update failed',
       renameFailed: 'Rename failed',
       duplicated: 'Table blueprint "{{name}}" duplicated',
       duplicateFailed: 'Duplicate failed',

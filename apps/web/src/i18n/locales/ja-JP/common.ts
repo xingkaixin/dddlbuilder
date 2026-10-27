@@ -719,6 +719,7 @@ export const jaJPCommon = {
       createFailed: '作成に失敗しました',
       applied: 'テーブル ブループリント「{{name}}」が適用されました',
       renamed: 'テーブル ブループリント「{{name}}」の名前が変更されました',
+      updateFailed: '更新に失敗しました',
       renameFailed: '名前の変更に失敗しました',
       duplicated: 'テーブルのブループリント「{{name}}」が複製されました',
       duplicateFailed: '複製に失敗しました',
