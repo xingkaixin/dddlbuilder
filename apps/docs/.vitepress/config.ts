@@ -162,69 +162,69 @@ const zhSidebar = [
 
 const enSidebar = [
   {
-    text: 'Basic Guide',
+    text: 'Basic guide',
     items: [
-      { text: 'Quick Start', link: '/en/basic/getting-started' },
-      { text: 'Core Concepts', link: '/en/basic/core-concepts' },
+      { text: 'Quick start', link: '/en/basic/getting-started' },
+      { text: 'Core concepts', link: '/en/basic/core-concepts' },
       {
-        text: 'Table and Field Configuration',
+        text: 'Table and field configuration',
         link: '/en/basic/table-and-fields',
       },
       {
-        text: 'Indexes, Privileges, and Misc',
+        text: 'Indexes, privileges, and misc',
         link: '/en/basic/index-auth-misc',
       },
-      { text: 'DDL Output and Sharing', link: '/en/basic/ddl-and-share' },
-      { text: 'Saved Tables and Draft box', link: '/en/basic/saved-tables' },
+      { text: 'DDL output and sharing', link: '/en/basic/ddl-and-share' },
+      { text: 'Saved tables and drafts', link: '/en/basic/saved-tables' },
     ],
   },
   {
-    text: 'Advanced Guide',
+    text: 'Advanced guide',
     items: [
-      { text: 'Import and Parse SQL', link: '/en/advanced/import-and-parse' },
-      { text: 'Business Data Import', link: '/en/advanced/business-data-import' },
-      { text: 'Database Tools', link: '/en/advanced/database-tools' },
-      { text: 'Query Design and Modeling', link: '/en/advanced/modeling-workflows' },
-      { text: 'WebMCP Agent Workflow', link: '/en/advanced/webmcp' },
+      { text: 'Import and parse SQL', link: '/en/advanced/import-and-parse' },
+      { text: 'Business data import', link: '/en/advanced/business-data-import' },
+      { text: 'Database tools', link: '/en/advanced/database-tools' },
+      { text: 'Query design and modeling', link: '/en/advanced/modeling-workflows' },
+      { text: 'WebMCP agent workflow', link: '/en/advanced/webmcp' },
       {
-        text: 'AI-Assisted Table Design Workflow',
+        text: 'AI-assisted table design workflow',
         link: '/en/advanced/ai-workflow',
       },
       {
-        text: 'Review and Explain SQL',
+        text: 'Review and explain SQL',
         link: '/en/advanced/review-and-explain',
       },
       {
-        text: 'Partitioning and Sharding Configuration',
+        text: 'Partitioning and sharding configuration',
         link: '/en/advanced/partition-and-sharding',
       },
       {
-        text: 'Change Diff and Rollback',
+        text: 'Change diff and rollback',
         link: '/en/advanced/diff-and-rollback',
       },
       {
-        text: 'Foreign Key Configuration and ER Diagram',
+        text: 'Foreign key configuration and ER diagram',
         link: '/en/advanced/foreign-key-and-er',
       },
       {
-        text: 'ORM Model Generation',
+        text: 'ORM model generation',
         link: '/en/advanced/orm-generation',
       },
       {
-        text: 'View and Routine Configuration',
+        text: 'View and routine configuration',
         link: '/en/advanced/view-and-routine',
       },
       {
         text: 'Schema Lint',
         link: '/en/advanced/schema-lint',
       },
-      { text: 'Field Standards', link: '/en/advanced/field-standards' },
+      { text: 'Field standards', link: '/en/advanced/field-standards' },
       {
-        text: 'Mock Data and Logical Enums',
+        text: 'Mock data and logical enums',
         link: '/en/advanced/mock-data-and-enum',
       },
       {
-        text: 'Table Blueprint Templates',
+        text: 'Table blueprint templates',
         link: '/en/advanced/blueprint-templates',
       },
     ],
@@ -232,20 +232,20 @@ const enSidebar = [
   {
     text: 'FAQ',
     items: [
-      { text: 'Errors and Failure Handling', link: '/en/faq/common-errors' },
+      { text: 'Errors and failure handling', link: '/en/faq/common-errors' },
       {
-        text: 'Feature Entry and Visibility',
+        text: 'Feature entry and visibility',
         link: '/en/faq/feature-visibility',
       },
       {
-        text: 'Sharing and Collaboration',
+        text: 'Sharing and collaboration',
         link: '/en/faq/sharing-and-collaboration',
       },
     ],
   },
   {
     text: 'Changelog',
-    items: [{ text: 'Release Notes', link: '/en/changelog/changelog' }],
+    items: [{ text: 'Release notes', link: '/en/changelog/changelog' }],
   },
 ];
 
