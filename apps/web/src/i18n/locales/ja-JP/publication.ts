@@ -1,7 +1,7 @@
 export const publication = {
   publish: '公開と管理',
   hint: '選択した構造全体を公開します。再公開しても URL は変わりません。非公開にすると外部からの閲覧を停止します。',
-  login: 'ドキュメントと変更提案の公開にはログインが必要です。',
+  login: 'プロジェクトドキュメントと変更提案の公開にはサインインが必要です。',
   title: '公開タイトル',
   existing: '既存の公開',
   create: '新規公開',
@@ -22,7 +22,7 @@ export const publication = {
   unavailable: '閲覧できません。非公開、取り消し、削除の可能性があります。',
   invalidContent: '内容が無効です。作成者に再公開を依頼してください。',
   workspace: 'ワークスペースへ戻る',
-  document: 'プロジェクト文書',
+  document: 'プロジェクトドキュメント',
   proposal: '変更提案',
   comments: 'レビューコメント',
   commentsHint:
@@ -31,11 +31,11 @@ export const publication = {
   resolved: '解決済み',
   unresolved: '未解決',
   resolve: '解決済みにする',
-  reopen: '再開',
+  reopen: '未解決に戻す',
   target: '対象の場所（例 orders.amount、省略可）',
   comment: 'コメント',
   send: 'コメントを送信',
-  loginComment: 'ワークスペースでログインしてコメント',
+  loginComment: 'ワークスペースでサインインしてコメント',
   reason: '変更理由',
   manage: '公開管理',
 };

@@ -6,9 +6,9 @@ export const modelTools = {
   choose: '選択',
   joins: '結合',
   joinType: '結合 {{index}} の種類',
-  addJoin: '関連を追加',
+  addJoin: '結合を追加',
   removeJoin: 'この結合と後続の設定を削除',
-  logical: '論理関連',
+  logical: '論理リレーション',
   columns: '出力列',
   column: '出力列 {{index}}',
   aggregate: '集約 {{index}}',
@@ -47,11 +47,11 @@ export const modelTools = {
   rbacAssumptions:
     '基本的な RBAC。テナント分離、ロール継承、パスワード管理は含みません。認可はアプリで実行します。',
   bookingAssumptions:
-    '時枠ごとに予約記録は一つです。取消後は同じ記録を更新します。時間の重複や前後関係、同時実行はアプリで検証します。',
+    '時間枠ごとに予約記録は一つです。取消後は同じ記録を更新します。時間の重複や前後関係、同時実行はアプリで検証します。',
   inventoryAssumptions:
     '商品と倉庫の組み合わせごとに在庫記録を作ります。履歴と残高はアプリのトランザクションで更新します。在庫の非負制約はありません。',
   sqliteTarget: 'エクスポート先',
-  d1Limits: 'D1：1 テーブル最大 100 カラム、SQL 文あたり最大 100,000 バイト。',
+  d1Limits: 'D1：1 テーブル最大 100 列、SQL 文あたり最大 100,000 バイト。',
   sqlite: 'SQLite / D1 エクスポート',
   sqliteHint: 'エディターで SQLite / D1 を選択して保存し、関連テーブル全体を選択してください。',
   sqliteScope:
@@ -63,9 +63,9 @@ export const modelTools = {
     '# SQLite / D1 初期化\n\n空の DB で 0001_init.sql を実行します。SQLite 接続で PRAGMA foreign_keys = ON を有効にしてください。\n\nD1：migrations ディレクトリーに配置し、まず `wrangler d1 migrations apply <database-name> --local` で確認します。リモート実行は利用者が判断します。DDLBuilder は認証情報を受け取らず、SQL を実行しません。\n\nDrizzle：schema.ts を追加し drizzle-orm をインストールします。数値精度、日時、JSON はアプリで検証してください。\n\nSQL と Drizzle は同じ初期構造を表します。二重にテーブルを作らないよう移行元を一つ選びます。既存 DB は別途移行が必要です。',
   impact: '影響分析',
   impactHint:
-    '調査するテーブルと変更予定のカラムを選択します。複合キーとリレーションはカラムの組として表示します。',
+    '調査するテーブルと変更予定のフィールドを選択します。複合キーとリレーションはフィールドの組として表示します。',
   impactTable: '対象テーブル',
-  impactField: '対象カラム',
+  impactField: '対象フィールド',
   impactLimits:
     '選択したモデルの直接依存のみを調査します。ビュー SQL、アプリケーションコード、未取得のオブジェクトは対象外です。依存がないという結果は変更の安全性を保証しません。テーブルは変更しません。',
   impactScope:
@@ -74,15 +74,15 @@ export const modelTools = {
   excludedView: '対象外のビュー',
   externalRelation: '範囲外のリレーション',
   noImpact: '選択した範囲で既知の直接依存は見つかりませんでした。',
-  incoming: '他のカラムから参照',
-  outgoing: '他のカラムを参照',
+  incoming: '他のフィールドから参照',
+  outgoing: '他のフィールドを参照',
   self: '自己参照',
   impactKinds: {
     index: '主キー / インデックス',
     foreignKey: 'データベースの外部キー',
     logicalRelation: '業務上のリレーション',
     mysqlPartition: 'MySQL パーティション',
-    citusDistribution: 'Citus 分散カラム',
+    citusDistribution: 'Citus 分散フィールド',
     hivePartition: 'Hive パーティション列',
     hiveClustering: 'Hive クラスタ列',
   },
