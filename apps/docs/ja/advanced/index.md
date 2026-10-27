@@ -1,33 +1,33 @@
 # 上級ガイド概要
 
-DDLBuilder 上級ガイドへようこそ。このセクションでは、大規模システムのアーキテクチャ設計、開発プロセスの自動化、スキーマ統制、チーム共同作業などを深く実践するための高度な機能を網羅しています。
+このセクションでは、DDLBuilder の上級機能をテーマごとに説明します。下の表に、各テーマの内容と対応するページを示します。
 
 ---
 
-## トピック一覧
+## テーマ一覧
 
-| トピック | 主な機能と解決できる課題 | ガイドリンク |
+| テーマ | 内容 | ページ |
 |---|---|---|
-| **データベースの引き継ぎ** | 複数テーブルの辞書、SQL 構造比較、関連テストデータ | [データベースツール](/ja/advanced/database-tools) |
-| **SQL・データインポート** | 既存 SQL の逆解析、CSV / Excel / JSON Schema からの構造自動取り込み | [SQL のインポートと解析](/ja/advanced/import-and-parse) |
-| **WebMCP Agent 連携** | WebMCP による AI Agent からの構造読み込み・検証・安全なパッチ適用 | [WebMCP Agent ワークフロー](/ja/advanced/webmcp) |
-| **AI フルアシスト設計** | 対話型テーブル生成、段階的な変更パッチレビュー、スマートコメント付与 | [AI 支援テーブル設計](/ja/advanced/ai-workflow) |
-| **SQL レビューと解説** | アーキテクチャ品質スコアリング、潜在リスク診断、SQL 構文解説 | [SQL のレビューと説明](/ja/advanced/review-and-explain) |
-| **パーティションと分散設計** | MySQL/TiDB パーティション戦略および PostgreSQL Citus 分散テーブル設計 | [パーティションとシャーディング](/ja/advanced/partition-and-sharding) |
-| **スキーマ差分とロールバック** | 変更差分のビジュアル比較、正向 ALTER スクリプトおよび安全なロールバック DDL | [差分とロールバック](/ja/advanced/diff-and-rollback) |
-| **リレーション設計と ER 図** | 物理外部キーと論理リレーションを設計し、カーディナリティ、必須・任意、業務説明を記録 | [外部キーと ER 図](/ja/advanced/foreign-key-and-er) |
-| **フィールド標準と業務辞書** | 標準フィールドと業務概念の関連付け、保存済みテーブルの差異チェック、標準ライブラリの入出力 | [フィールド標準と業務辞書](/ja/advanced/field-standards) |
-| **ORM コード生成** | Prisma、TypeORM、SQLAlchemy、GORM、JPA 向けコードのワンクリック生成 | [ORM モデル生成](/ja/advanced/orm-generation) |
-| **高度な DB オブジェクト** | ビュー DDL（`CREATE VIEW`）およびプロシージャ・関数・トリガーの骨格生成 | [ビューと Routine の設定](/ja/advanced/view-and-routine) |
-| **Schema Lint 規約監査** | 命名規則、危険なデータ型、冗長インデックスを自動検出する Lint エンジン | [Schema Lint](/ja/advanced/schema-lint) |
-| **テストデータと論理列挙** | モックテストデータの自動生成とカラム値のカラーバッジ付き論理列挙管理 | [Mock データと論理列挙](/ja/advanced/mock-data-and-enum) |
-| **業務ブループリント** | ユーザー、注文、操作ログなどの業界標準テーブルテンプレートの即時活用 | [テーブル設計テンプレート](/ja/advanced/blueprint-templates) |
+| データベース納品ツール | 複数テーブルのデータ辞書、2 つの SQL の構造比較、関連テストデータ | [データベースツール](/ja/advanced/database-tools) |
+| データのインポートと解析 | 既存の SQL を解析し、CSV、Excel、JSON Schema からテーブル構造をインポート | [SQL のインポートと解析](/ja/advanced/import-and-parse) |
+| WebMCP Agent 連携 | ブラウザー内の AI Agent が WebMCP を通じてテーブルを読み取り、検査し、変更 | [WebMCP Agent 連携](/ja/advanced/webmcp) |
+| AI 支援テーブル設計 | 対話によるテーブル作成、AI が提案したテーブル変更の 1 件ずつの確認、AI によるコメント補完 | [AI 支援テーブル設計](/ja/advanced/ai-workflow) |
+| SQL のレビューと解説 | DDL の採点、リスクの洗い出し、改善提案、SQL の一部分の解説 | [SQL のレビューと説明](/ja/advanced/review-and-explain) |
+| パーティションとシャーディング | MySQL/TiDB のパーティションと PostgreSQL Citus のシャーディング | [パーティションとシャーディング](/ja/advanced/partition-and-sharding) |
+| 変更差分とロールバック | 構造の Diff、変更を反映する ALTER スクリプト、ロールバック DDL | [差分とロールバック](/ja/advanced/diff-and-rollback) |
+| リレーションのモデリングと ER 図 | 物理外部キーと論理リレーションをモデリングし、カーディナリティ、必須・任意、業務説明を記録 | [外部キーと ER 図](/ja/advanced/foreign-key-and-er) |
+| フィールド標準と業務辞書 | 標準フィールドの定義、業務概念との関連付け、保存済みテーブルのずれの検査、標準ライブラリのインポートとエクスポート | [フィールド標準ライブラリと業務辞書](/ja/advanced/field-standards) |
+| ORM モデル生成 | Prisma、TypeORM、SQLAlchemy、GORM、JPA のモデルを出力 | [ORM モデル生成](/ja/advanced/orm-generation) |
+| ビューとプログラム単位 | ビュー DDL（`CREATE VIEW`）と、ストアドプロシージャ・関数・トリガーのコードの雛形 | [ビューと Routine の設定](/ja/advanced/view-and-routine) |
+| Schema 規約チェック | 命名、主キー、フィールド型、インデックス、監査フィールドを検査 | [Schema 規約チェック](/ja/advanced/schema-lint) |
+| Mock データと論理列挙 | Mock テストデータを一括生成し、色付きの論理列挙をフィールドに設定 | [Mock データと論理列挙](/ja/advanced/mock-data-and-enum) |
+| テーブルブループリント | テーブルをテーブルブループリントとして保存し、新しい下書きでフィールド、インデックス、テーブルレベルの設定を再利用 | [テーブルブループリント](/ja/advanced/blueprint-templates) |
 
 ---
 
-## 目的別おすすめパス
+## 場面別の読み方
 
-- **既存システムの移行**: [SQL のインポートと解析](/ja/advanced/import-and-parse) から始め、手元の DDL を取り込みます。
-- **データモデリング**: [外部キーと ER 図](/ja/advanced/foreign-key-and-er) および [テーブル設計テンプレート](/ja/advanced/blueprint-templates) を活用して全体設計を構築します。
-- **品質と安全性の確保**: 本番反映前に [Schema Lint](/ja/advanced/schema-lint) と [SQL のレビューと説明](/ja/advanced/review-and-explain) を実行します。
-- **変更管理とリリース**: [差分とロールバック](/ja/advanced/diff-and-rollback) を利用して、移行用 ALTER スクリプトと切り戻し手順を準備します。
+- 既存のデータベースを移行するときは、まず [SQL のインポートと解析](/ja/advanced/import-and-parse) を読み、既存の DDL を編集できるテーブルに解析します。
+- 関連する複数のテーブルを設計するときは、[外部キーと ER 図](/ja/advanced/foreign-key-and-er) と [テーブルブループリント](/ja/advanced/blueprint-templates) を組み合わせて使います。
+- リリース前に、[Schema 規約チェック](/ja/advanced/schema-lint) と [SQL のレビューと説明](/ja/advanced/review-and-explain) でテーブル構造を確認します。
+- 本番反映前に、[差分とロールバック](/ja/advanced/diff-and-rollback) でリリース用のスクリプトとロールバック用のスクリプトを生成します。

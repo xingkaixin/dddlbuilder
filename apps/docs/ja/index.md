@@ -1,63 +1,63 @@
 ---
-title: "データベース設計・SQL から ER 図・DDL 生成ガイド"
-description: "DDLBuilder で MySQL、PostgreSQL、SQLite のテーブルを設計。SQL から ER 図や Prisma モデルへの変換、構造比較、データ辞書、CSV から INSERT SQL への変換手順を紹介します。"
+title: "オンラインデータベース設計・SQL から ER 図・DDL 生成ガイド"
+description: "DDLBuilder で MySQL、PostgreSQL、SQLite のテーブル構造をオンラインで設計します。SQL から ER 図、SQL から Prisma、データ辞書の出力、構造比較、CSV から INSERT SQL への変換について、作業別に操作ガイドを探せます。"
 ---
 
-# データベース設計・SQL から ER 図・DDL 生成ガイド
+# オンラインデータベース設計・SQL から ER 図・DDL 生成ガイド
 
-DDLBuilder はオンラインのデータベース設計・DDL 生成ツールです。カラムとインデックスを設定し、既存の SQL から ER 図を表示したり、ORM モデルを出力したりできます。目的に合ったガイドを選んでください。
+DDLBuilder は、オンラインでデータベースを設計し DDL を生成するツールです。フィールドとインデックスを設定する、既存の SQL を取り込んで ER 図を確認する、ORM モデルを出力する、といった作業ができます。以下の表から、作業に合ったガイドを選んでください。
 
-[DDLBuilder でデータベースの設計を始める](https://ddl.xingkaixin.me/)
+[DDLBuilder を開いてデータベースを設計する](https://ddl.xingkaixin.me/)
 
-## 目的からガイドを選ぶ
+## 作業別にガイドを選ぶ
 
-| 目的 | 操作と出力 |
+| やりたいこと | 操作と出力 |
 | --- | --- |
-| [MySQL・PostgreSQL の CREATE TABLE 文を生成](/ja/basic/getting-started) | カラム、主キー、インデックスを設定して DDL をコピー |
-| [SQL から ER 図を作成](/ja/advanced/foreign-key-and-er) | テーブルを取り込み・保存し、外部キーや論理リレーションを追加 |
-| [SQL から Prisma などの ORM モデルを生成](/ja/advanced/orm-generation) | Prisma、TypeORM、SQLAlchemy、GORM、JPA のコードを出力 |
-| [SQL のテーブル構造を比較](/ja/advanced/database-tools) | MySQL または PostgreSQL の差分を確認し、移行 SQL を出力 |
-| [SQL からデータ辞書を作成](/ja/advanced/database-tools) | Markdown や検索可能なオフライン HTML を出力 |
-| [CSV・Excel から INSERT SQL を生成](/ja/advanced/business-data-import) | カラムの対応付け、レコードの検証、SQL とエラー一覧の出力 |
-| [SQL クエリと業務テーブルを設計](/ja/advanced/modeling-workflows) | 関係から SELECT、業務モジュール、SQLite/D1 の初期化プロジェクトを生成 |
+| [MySQL・PostgreSQL の CREATE TABLE 文を生成する](/ja/basic/getting-started) | フィールド、主キー、インデックスを設定し、CREATE TABLE の SQL をコピーする |
+| [SQL から ER 図を作成する](/ja/advanced/foreign-key-and-er) | テーブル構造を取り込んで保存し、外部キーまたは論理リレーションを作成して、リレーション図を確認する |
+| [SQL から Prisma などの ORM モデルを生成する](/ja/advanced/orm-generation) | テーブル構造を Prisma、TypeORM、SQLAlchemy、GORM、JPA のコードに変換する |
+| [2 つの SQL のテーブル構造を比較する](/ja/advanced/database-tools#_2-つの-sql-の構造比較) | MySQL または PostgreSQL の構造の差分を確認し、移行 SQL を出力する |
+| [SQL からデータ辞書を生成する](/ja/advanced/database-tools#data-dictionary) | Markdown、または検索できるオフライン HTML の文書を出力する |
+| [CSV・Excel から INSERT SQL を生成する](/ja/advanced/business-data-import) | フィールドを対応付け、レコードを検証し、データの SQL とエラー一覧を出力する |
+| [SQL クエリと業務テーブルを設計する](/ja/advanced/modeling-workflows) | テーブルの関係から SELECT を生成し、業務モジュールと SQLite/D1 の初期化プロジェクトを作成する |
 
-手動設計、SQL の取り込み、ローカル出力はログインせずに始められます。同期や AI のアカウント要件は[入門ガイド](/ja/basic/getting-started)で確認してください。ツールは SQL を生成しますが、データベースに接続して実行することはありません。
+手動での設計、SQL の取り込み、ローカルへの出力は、サインインしなくても始められます。クラウド同期と AI 機能に必要なアカウントについては[クイックスタート](/ja/basic/getting-started)を参照してください。DDLBuilder は SQL を生成するだけで、データベースに接続して SQL を実行することはありません。
 
 ## クイックナビゲーション
 
 ### 基本ガイド
-- [クイックスタート](/ja/basic/getting-started) — 数分で最初のテーブル定義と DDL を生成する入門手順
-- [コアコンセプト](/ja/basic/core-concepts) — ワークスペース、下書き、保存済みテーブル、権限、データ同期の基本概念
-- [テーブルとフィールドの設定](/ja/basic/table-and-fields) — カラム型、制約ルール、論理列挙型、ストレージ容量の概算
-- [インデックス、権限、その他](/ja/basic/index-auth-misc) — 主キー/インデックス、AI インデックスアドバイザー、DCL 権限、エンジン設定
-- [DDL 出力と共有](/ja/basic/ddl-and-share) — 複数方言の SQL コピー、ORM モデル生成、読み取り専用リンクの共有
-- [保存済みテーブルと下書き](/ja/basic/saved-tables) — 複数下書き、フォルダー整理、ゴミ箱機能、クラウド同期の管理
+- [クイックスタート](/ja/basic/getting-started)：最初のテーブルを設定して DDL を生成する
+- [コアコンセプト](/ja/basic/core-concepts)：ワークスペース、下書きボックス、保存済みテーブル、読み取り専用の共有、クラウド同期
+- [テーブルとフィールドの設定](/ja/basic/table-and-fields)：フィールドの型、制約、論理列挙、容量の見積もり
+- [インデックス、権限、その他](/ja/basic/index-auth-misc)：主キーとインデックス、AIインデックスアドバイザー、権限付与の DCL、ストレージパラメーター
+- [DDL 出力と共有](/ja/basic/ddl-and-share)：SQL のコピー、ORM モデルの生成、読み取り専用の共有リンクの作成
+- [保存済みテーブルと下書き](/ja/basic/saved-tables)：下書き、フォルダー、ゴミ箱、複数デバイスでの同期
 
 ### 上級ガイド
-- [上級ガイド概要](/ja/advanced/) — 高度な設計機能やエンジニアリング効率化ツールの全体像
-- [SQL のインポートと解析](/ja/advanced/import-and-parse) — 既存 DDL の解析や CSV / Excel / JSON Schema からのインポート
-- [WebMCP Agent ワークフロー](/ja/advanced/webmcp) — AI Agent によるスキーマの読み込み・検証・安全なパッチ適用
-- [AI 支援テーブル設計](/ja/advanced/ai-workflow) — 対話型テーブル設計、差分パッチレビュー、スマートコメント生成
-- [SQL のレビューと説明](/ja/advanced/review-and-explain) — アーキテクチャ品質スコアリング、最適化提案、SQL 構文解説
-- [パーティションとシャーディング](/ja/advanced/partition-and-sharding) — MySQL/TiDB パーティションと PostgreSQL Citus 分散テーブル
-- [差分とロールバック](/ja/advanced/diff-and-rollback) — スキーマ差分比較、ALTER スクリプトおよびロールバック DDL 生成
-- [外部キーと ER 図](/ja/advanced/foreign-key-and-er) — ビジュアル接続モデリング、リレーションウィザード、関係トポロジー表示
-- [ORM モデル生成](/ja/advanced/orm-generation) — Prisma、TypeORM、SQLAlchemy、GORM、JPA 向けコードのワンクリック出力
-- [ビューと Routine の設定](/ja/advanced/view-and-routine) — ビュー DDL およびストアドプロシージャ・関数・トリガーの骨格生成
-- [Schema Lint](/ja/advanced/schema-lint) — 命名規則、データ型の選択リスク、不要インデックスの自動スキャン
-- [Mock データと論理列挙](/ja/advanced/mock-data-and-enum) — テストデータの自動生成とカラム値の業務ルール可視化
-- [テーブル設計テンプレート](/ja/advanced/blueprint-templates) — ユーザー、注文、ログなど標準業務テンプレートの即時適用
+- [上級ガイドの概要](/ja/advanced/)：上級機能のトピック一覧
+- [SQL のインポートと解析](/ja/advanced/import-and-parse)：既存の DDL を解析する、または CSV、Excel、JSON Schema からテーブル構造を取り込む
+- [WebMCP Agent 連携](/ja/advanced/webmcp)：ブラウザー内の AI Agent がテーブル構造を読み取って検査する。変更にはユーザーの確認が必要
+- [AI 支援テーブル設計](/ja/advanced/ai-workflow)：自然言語からテーブル構造を生成し、AI の変更を 1 件ずつ確認し、フィールドのコメントを補完する
+- [SQL のレビューと説明](/ja/advanced/review-and-explain)：DDL の採点と修正提案、SQL の断片の説明
+- [パーティションとシャーディング](/ja/advanced/partition-and-sharding)：MySQL/TiDB のパーティションと PostgreSQL Citus のシャーディング
+- [差分とロールバック](/ja/advanced/diff-and-rollback)：構造の差分を比較し、ALTER スクリプトとロールバック DDL を生成する
+- [外部キーと ER 図](/ja/advanced/foreign-key-and-er)：ER 図で外部キーまたは論理リレーションを作成し、テーブル間の関係を確認する
+- [ORM モデル生成](/ja/advanced/orm-generation)：Prisma、TypeORM、SQLAlchemy、GORM、JPA のモデルを出力する
+- [ビューと Routine の設定](/ja/advanced/view-and-routine)：ビューの DDL と、ストアドプロシージャ、関数、トリガーのコードの雛形
+- [Schema 規約チェック](/ja/advanced/schema-lint)：命名、主キー、フィールドの型、インデックスの問題をチェックする
+- [Mock データと論理列挙](/ja/advanced/mock-data-and-enum)：テストデータを生成し、フィールドに列挙値を設定する
+- [テーブルブループリント](/ja/advanced/blueprint-templates)：1 つのテーブルをテーブルブループリントとして保存し、新しい下書きで再利用する
 
-### よくある質問と変更履歴
-- [エラーと失敗への対処](/ja/faq/common-errors) — インポート失敗、コピー異常、リンク期限切れ、同期トラブルシューティング
-- [機能の場所と表示条件](/ja/faq/feature-visibility) — 特定方言の設定タブ、折りたたみパネル、機能エントリの見つけ方
-- [共有と共同作業](/ja/faq/sharing-and-collaboration) — 読み取り専用共有、編集用コピーへの分岐、バージョン管理の疑問
-- [変更履歴](/ja/changelog/changelog) — 最新機能のリリース情報とバージョンアップ記録
+### よくある質問とバージョン
+- [エラーと失敗への対処](/ja/faq/common-errors)：インポートの失敗、コピーの失敗、共有リンクの期限切れ、同期の異常
+- [機能の場所と表示条件](/ja/faq/feature-visibility)：一部のタブやボタンが表示されない理由
+- [共有と共同作業](/ja/faq/sharing-and-collaboration)：読み取り専用の共有、コピーの保存、下書きボックスの違い
+- [変更履歴](/ja/changelog/changelog)：各バージョンの更新内容
 
-## 主な機能と特徴
+## 主な機能
 
-- **多彩なデータベース方言に対応**: MySQL、PostgreSQL、SQL Server、Oracle、TiDB、MariaDB、OceanBase、Dameng、GaussDB、Kingbase、GBase、PolarDB などの主要データベースに対応し、各方言に最適化された DDL/DCL を出力します。
-- **モダンで直感的なビジュアルモデリング**: カラムのドラッグ並べ替え、コンパクト表示、列固定、複数タブの並行編集、インタラクティブな ER 図に対応しています。
-- **マルチ言語とクロスデバイス同期**: CRDT（Yjs）技術をベースにした安定した複数タブ管理、増分クラウド同期、日本語・英語・中国語のスムーズな切り替えを提供します。
-- **実用的な AI 支援機能**: AI テーブル設計工房、変更パッチ提案、AI インデックスアドバイザー、DDL アーキテクチャレビュー、コメント自動生成を統合しています。
-- **開発現場へのシームレスな連携**: 主要 ORM モデルコードの生成、モックテストデータの書き出し、SQL 逆インポート、Schema Lint による設計規範チェックを標準搭載しています。
+- 16 種類のデータベースに対応しています。MySQL、MariaDB、TiDB、PolarDB、OceanBase（MySQL モードと Oracle モード）、PostgreSQL、PostgreSQL（Citus）、GaussDB、Kingbase、GBase、SQL Server、Oracle、Dameng、SQLite / D1、Hive です。選択したデータベースに合わせて DDL と DCL を生成します。
+- フィールドはドラッグで並べ替えられ、先頭の数列を固定できます。複数のタブで別々のテーブルを同時に編集できます。ER 図で線をつなぐと、テーブルのリレーションを作成できます。
+- サインインすると、ワークスペースは Yjs（CRDT）で複数のデバイス間で差分同期されます。画面の表示言語は中国語、英語、日本語に対応しています。
+- AI 機能には、AIテーブルワークショップ、AI編集、AIインデックスアドバイザー、AIレビュー、AIのコメントがあります。
+- Prisma、TypeORM、SQLAlchemy、GORM、JPA のモデルコードと Mock テストデータを生成できます。SQL からテーブル構造を取り込み、構造の規約をチェックすることもできます。

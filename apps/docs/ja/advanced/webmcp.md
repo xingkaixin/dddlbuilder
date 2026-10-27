@@ -1,69 +1,72 @@
-# WebMCP Agent ワークフロー
+# WebMCP Agent 連携
 
-このガイドでは、**WebMCP（Web Model Context Protocol）** を活用して、ブラウザ内の AI Agent が DDLBuilder と直接構造化された通信を行い、テーブルの自動検査、リバースインポート、安全なパッチ適用を行う手順を解説します。
+このページでは、**WebMCP（Web Model Context Protocol）** を使って、ブラウザ内の AI Agent に DDLBuilder のツールを呼び出させる方法を説明します。Agent はテーブル構造の読み取り、スキーマリントの実行、SQL インポートのプレビューを行い、ユーザーが確認した後にテーブル構造を変更できます。
 
-## 概要
+## 利用場面
 
-WebMCP 対応ブラウザ（例: 実験的フラグを有効にした Chrome）上で動作する AI アシスタント（Gemini Nano、Claude 等のブラウザ Agent）が、DOM 解析やスクリーンショットに頼ることなく、現在のテーブル構造を正確に読み取り、規約チェックやユーザー承認付きの変更パッチを提案できます。
+WebMCP に対応したブラウザ（実験的機能を有効にした Chrome など）で AI Agent を使うと、Agent は設計中のテーブル構造を読み取り、チェックを実行し、変更を提案できます。変更はユーザーが確認した後に書き込まれます。
 
 ---
 
-## 提供ツールと機能一覧
+## プロトコルの機能とツール一覧
 
-DDLBuilder は主要なドメイン操作を型付けされた WebMCP ツールとして公開しています。
+DDLBuilder は次の操作を WebMCP ツールとして登録しています。Agent はページの DOM やスクリーンショットを解析せず、これらのツールを直接呼び出します。
 
-| ツール名 | 機能と動作説明 |
+| ツール名 | 役割 |
 |---|---|
-| `inspect_active_schema` | 現在のテーブルの概要、カラム一覧、インデックス、外部キー、ストレージ設定をページング取得 |
-| `lint_active_schema` | 現在のテーブルに対して決定論的な Schema Lint 規約チェックを実行し、問題一覧を返却 |
-| `read_generated_output` | 生成された DDL、DCL、ORM モデル、ALTER 移行文、ロールバック DDL を取得 |
-| `preview_schema_patch` | Agent が提案したカラム・インデックスの変更パッチを受け取り、差分プレビューを生成（即時反映はしない） |
-| `import_sql_preview` | 指定した方言で SQL を解析し、インポートプレビューを生成 |
-| `apply_schema_patch` | ユーザーが画面上で確認・承認した後に、パッチをアトミックに反映（署名による競合防止付き） |
-| `get_auth_status` | ログイン状態と利用可能機能を確認（プライバシー保護のため、メールアドレスや残高は非公開） |
-| `start_sign_in` | ログインダイアログを表示（パスワードや認証はユーザーが安全な画面内で完結） |
+| `inspect_active_schema` | 現在のテーブルの概要、フィールド、インデックス、リレーション、テーブルレベルのオプションを分割して読み取ります。1 回あたり最大 50 件で、`baseSignature` を返します |
+| `lint_active_schema` | 現在のテーブルにスキーマリントを実行し、問題の一覧を返します |
+| `read_generated_output` | 現在のテーブルから生成された DDL、DCL、ORM モデル、ALTER 文、ロールバックスクリプトを分割して読み取ります。1 回あたり最大 1200 文字です |
+| `preview_schema_patch` | Agent が提案したテーブル、フィールド、インデックスの変更を受け取り、変更プレビューを生成します。ワークスペースには書き込みません |
+| `import_sql_preview` | 指定したデータベースの種類で SQL を解析し、インポートプレビューを生成します。自動では適用しません |
+| `apply_schema_patch` | 確認ダイアログを表示し、ユーザーが「変更を適用」をクリックした後に、プレビュー済みの変更を書き込みます。その間に現在のテーブルが変更されていた場合は、書き込みを拒否します |
+| `get_auth_status` | サインイン状態と、利用できる機能グループを返します。メールアドレスとクレジットは返しません |
+| `start_sign_in` | サインインダイアログを開きます。パスワードと人間による確認は、ユーザーがページ内で行います。サインインしていないときだけ提供されます |
 
 ---
 
-## 安全な変更パッチの適用フロー
+## 安全な変更の流れ
 
-AI による予期しない改変や並行編集の競合を防ぐため、WebMCP は**バージョン署名（`baseSignature`）**を用いた楽観的排他制御を採用しています。
+Agent の変更は、まずプレビューし、その後ユーザーが確認します。DDLBuilder はテーブル構造の署名 `baseSignature` を使って、現在のテーブルが変更されたかどうかを判断します。
 
 ```mermaid
 sequenceDiagram
     participant Agent as ブラウザ AI Agent
     participant WebMCP as WebMCP ツール層
-    participant User as ユーザー承認 UI
+    participant User as ユーザー確認画面
     participant Workspace as DDLBuilder ワークスペース
 
     Agent->>WebMCP: inspect_active_schema()
-    WebMCP-->>Agent: 現在のテーブル構造 + baseSignature を返却
-    Agent->>WebMCP: preview_schema_patch(baseSignature, patch)
-    WebMCP->>User: 画面に変更差分と Lint 結果を表示
-    Agent->>WebMCP: apply_schema_patch(baseSignature, patchId)
-    User->>Workspace: ユーザーが手動で「適用を確認」をクリック
-    alt 署名が一致
+    WebMCP-->>Agent: 現在のテーブル構造 + baseSignature を返す
+    Agent->>WebMCP: preview_schema_patch(baseSignature, operations)
+    WebMCP->>User: 変更プレビューと Schema チェック結果を表示
+    WebMCP-->>Agent: changeSetId を返す
+    Agent->>WebMCP: apply_schema_patch(changeSetId)
+    WebMCP->>User: 確認ダイアログを表示
+    User->>Workspace: ユーザーが「変更を適用」をクリック
+    alt 現在のテーブルが変更されていない
         Workspace-->>Agent: 適用成功、ワークスペースを更新
-    else 編集競合が発生 (CONFLICT)
-        Workspace-->>Agent: 変更を拒否、最新署名の再取得を要求
+    else 現在のテーブルが変更されている (CONFLICT)
+        Workspace-->>Agent: 変更を拒否、テーブル構造の再読み取りが必要
     end
 ```
 
 ---
 
-## 完了のチェックリスト
+## 完了の確認
 
-- [ ] ブラウザ環境で `document.modelContext` が認識され、DDLBuilder のツールが登録されている。
-- [ ] Agent がツール経由で現在のテーブル定義や Lint 結果を正常に取得できる。
-- [ ] 変更パッチの適用時に、画面上でユーザーの手動確認ダイアログが必ず表示される。
-- [ ] 読み取り専用共有ページでは、Agent による閲覧は可能だが書き込みが拒否される。
+- [ ] ブラウザのコンソールで `document.modelContext` にアクセスでき、DDLBuilder が登録したツールが見える。
+- [ ] Agent がツールを使って、現在のテーブルのフィールドとインデックスを読み取れる。
+- [ ] 変更は、ページのダイアログでユーザーが「変更を適用」をクリックした後にだけ反映される。
+- [ ] 読み取り専用の共有ページでは、Agent は読み取りだけができ、変更はできない。
 
-## 注意事項と制約事項
+## 注意事項と制約
 
-::: warning ユーザーによる手動確認の必須性
-Agent が確認ダイアログを迂回してテーブルを直接変更することはできません。`apply_schema_patch` で送信された変更は、すべてユーザーの目視確認と承認を経て反映されます。
+::: warning 変更にはユーザーの確認が必要
+Agent は確認ダイアログを飛ばしてテーブル構造を直接変更できません。`apply_schema_patch` で送られた変更は、毎回ユーザーが「変更を適用」をクリックした後に書き込まれます。
 :::
 
-- **ブラウザの対応状況**: WebMCP は策定中の仕様です。有効化フラグや最新仕様については [Chrome WebMCP 公式ドキュメント](https://developer.chrome.com/docs/ai/webmcp) をご確認ください。
-- **セッションのライフサイクル**: WebMCP はアクティブなブラウザタブと連動します。タブを閉じるかリロードするとツールのコンテキストはリセットされます。
-- **ヘッドレス / CI 環境**: CI/CD パイプラインやサーバーサイド Agent など、ブラウザタブを伴わない環境では、WebMCP ではなくバックエンドの標準 MCP をご利用ください。
+- WebMCP はまだ標準化の途中です。ブラウザの対応状況とローカルでの有効化設定は、[Chrome WebMCP 公式ドキュメント](https://developer.chrome.com/docs/ai/webmcp)を参照してください。
+- WebMCP ツールは、現在開いている DDLBuilder のタブに登録されます。ページを閉じるか再読み込みすると、適用していない変更プレビューは失われます。
+- 読み取り専用の共有ページでは、`get_auth_status`、`inspect_active_schema`、`lint_active_schema`、`read_generated_output` の 4 つの読み取りツールだけが登録されます。
+- CLI、CI パイプライン、ブラウザのタブを持たないクラウド Agent は、これらのツールを使えません。

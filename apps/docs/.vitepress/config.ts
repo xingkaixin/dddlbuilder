@@ -268,7 +268,7 @@ const jaSidebar = [
       { text: '業務データのインポート', link: '/ja/advanced/business-data-import' },
       { text: 'データベースツール', link: '/ja/advanced/database-tools' },
       { text: 'クエリ設計と業務モデリング', link: '/ja/advanced/modeling-workflows' },
-      { text: 'WebMCP Agent ワークフロー', link: '/ja/advanced/webmcp' },
+      { text: 'WebMCP Agent 連携', link: '/ja/advanced/webmcp' },
       { text: 'AI 支援テーブル設計', link: '/ja/advanced/ai-workflow' },
       { text: 'SQL のレビューと説明', link: '/ja/advanced/review-and-explain' },
       {
@@ -279,10 +279,10 @@ const jaSidebar = [
       { text: '外部キーと ER 図', link: '/ja/advanced/foreign-key-and-er' },
       { text: 'ORM モデル生成', link: '/ja/advanced/orm-generation' },
       { text: 'ビューと Routine の設定', link: '/ja/advanced/view-and-routine' },
-      { text: 'フィールド標準ライブラリ', link: '/ja/advanced/field-standards' },
-      { text: 'Schema Lint', link: '/ja/advanced/schema-lint' },
+      { text: 'フィールド標準ライブラリと業務辞書', link: '/ja/advanced/field-standards' },
+      { text: 'Schema 規約チェック', link: '/ja/advanced/schema-lint' },
       { text: 'Mock データと論理列挙', link: '/ja/advanced/mock-data-and-enum' },
-      { text: 'テーブル設計テンプレート', link: '/ja/advanced/blueprint-templates' },
+      { text: 'テーブルブループリント', link: '/ja/advanced/blueprint-templates' },
     ],
   },
   {
