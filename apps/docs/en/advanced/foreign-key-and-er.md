@@ -1,13 +1,13 @@
 ---
-title: "SQL to ER Diagram: MySQL Foreign Key Guide"
+title: "SQL to ER diagram: MySQL foreign key guide"
 description: "Import MySQL CREATE TABLE SQL and model users and orders in an ER diagram. Follow a complete example and compare physical foreign keys, logical relationships and cascade rules."
 ---
 
-# SQL to ER Diagram: MySQL Foreign Key Guide
+# SQL to ER diagram: MySQL foreign key guide
 
 [Open DDLBuilder to model relationships](https://ddl.xingkaixin.me/). If you already have CREATE TABLE statements, [import your SQL](/en/advanced/import-and-parse) first. After modeling, continue with [ORM model generation](/en/advanced/orm-generation).
 
-This guide explains how to design relational constraints and visualize schema architecture using DDLBuilder's **Foreign Key Configuration Panel** and **Interactive ER Diagram Canvas**.
+This guide explains how to create table relationships and set foreign key constraints with DDLBuilder's foreign key panel and ER diagram.
 
 ## Example: a many-to-one relationship between orders and users
 
@@ -15,7 +15,7 @@ This example uses a **physical MySQL foreign key**. A user can have many orders,
 
 ### Prepare two tables
 
-Copy this SQL, open [DDLBuilder](https://ddl.xingkaixin.me/), select MySQL, and use **Import SQL**. Make sure both tables are saved to the workspace. See [SQL import and parsing](/en/advanced/import-and-parse) for the full steps.
+Copy this SQL, open [DDLBuilder](https://ddl.xingkaixin.me/), select MySQL, and use **Import Schema**. Make sure both tables are saved to the workspace. See [SQL import and parsing](/en/advanced/import-and-parse) for the full steps.
 
 ```sql
 CREATE TABLE users (
@@ -33,9 +33,9 @@ CREATE TABLE orders (
 
 ### Create the relationship and check the ER diagram
 
-1. Open **ER Diagram** and drag from `orders.user_id` to `users.id`.
-2. Select a physical foreign key, **Many-to-One (N:1)**, and **Required**. Set the delete action to `RESTRICT` and the update action to `CASCADE`.
-3. Set the relationship name to `fk_orders_user` and leave automatic query index creation unchecked. Create the relationship and save `orders`.
+1. In the table config area, click **More**, open **ER Diagram**, and drag from `orders.user_id` to `users.id`.
+2. Select **Physical foreign key**, **Many to one** and **Required**. Set the delete action to `RESTRICT` and the update action to `CASCADE`.
+3. Set **Foreign key name** to `fk_orders_user` and leave **Create an index for the foreign key** unchecked. Click **Create Relationship** and save `orders`.
 
 The arrow points from the foreign key column to the referenced primary key:
 
@@ -69,56 +69,56 @@ Systems without physical foreign keys can document business associations. Save b
 
 1. Drag from a source field handle to a target field handle in the ER diagram.
 2. Select **Logical relationship** in the wizard, confirm the fields, cardinality and optionality, and enter a business description.
-3. Select **Create relationship**. The target field does not need a primary or unique key.
+3. Click **Create Relationship**. The target field does not need a primary or unique key.
 
 Logical relationships use dashed lines with cardinality and optionality labels. Hover over the label for the business description. The foreign key panel also identifies logical relationships. Delete a relationship from the diagram or panel; rename it in the panel.
 
 These relationships document intent without creating constraints or indexes or changing nullability. DDL, ORM, ALTER and rollback output exclude them. They persist with tables, version history, shares and workspace sync. Physical foreign key uniqueness and cascade restrictions below do not apply to logical relationships.
 
-## Overview
+## When to use
 
-Establish referential integrity across domain entities (e.g., users, orders, departments, products), define cascading rules, and inspect the overall relational topology in an interactive canvas.
-
----
-
-## Operations Walkthrough
-
-### 1. Visual Relationship Wizard via ER Diagram (Recommended)
-1. Ensure both source and target tables are saved to the workspace.
-2. Click **ER Diagram** in the table header to open the interactive canvas.
-3. **Connect Nodes**: Drag the connection handle from the source column to the target column.
-4. **Configure in the Relationship Wizard**:
-   - **Column Verification**: Confirms source and target column references (target columns must be single-column primary or unique keys).
-   - **Select Cardinality**: Choose **Many-to-One (N:1)** or **One-to-One (1:1)**. One-to-One automatically enforces a unique constraint on the source column.
-   - **Select Optionality**: Choose **Required** (sets source column to `NOT NULL`) or **Optional** (sets source column to `NULL`).
-   - **Cascade Actions & Indexes**: Define `ON DELETE` and `ON UPDATE` actions (`NO ACTION`, `CASCADE`, `SET NULL`, etc.), and optionally create a secondary index on the foreign key column.
-5. Click **Create Relationship** to apply foreign key constraints, nullability adjustments, and supporting indexes atomically.
-
-### 2. Manual Configuration via Foreign Key Panel
-1. Switch to the **Foreign Keys** tab in the configuration area.
-2. Click **Add Foreign Key** to insert a new row.
-3. Specify the **Constraint Name**, select the local column, target table, and target column.
-4. Configure **ON UPDATE** and **ON DELETE** cascade rules.
-5. The DDL panel updates immediately with `CONSTRAINT ... FOREIGN KEY ... REFERENCES ...` clauses.
-
-### 3. Canvas Navigation and Organization
-- **Drag & Auto-Layout**: Drag table cards freely or use the toolbar's auto-layout button to organize complex graphs.
-- **Zoom & Pan**: Use the mouse wheel to zoom and drag to pan across large workspaces.
-- **Inspect / Delete Relations**: Click on edge badges to view cascade rules, or click the delete button on an edge to remove the foreign key constraint.
+Use this to create references between business tables (such as users and orders, or departments and employees), set cascade rules for updates and deletes, and view the relationships of all workspace tables in the ER diagram.
 
 ---
 
-## Verification Checklist
+## Steps
 
-- [ ] Foreign keys appear in both the configuration table and the ER diagram.
-- [ ] Valid foreign key constraint DDL renders in the output editor.
-- [ ] 1:1 relations enforce unique constraints; high-frequency join columns have supporting indexes.
+### 1. Create a relationship in the ER diagram (recommended)
+1. Make sure the source and target tables are saved to the current workspace.
+2. In the table config area, click **More** and select **ER Diagram**.
+3. Drag the handle on the left of the source field to the handle on the right of the target field.
+4. Set the following in the **Create Table Relationship** dialog:
+   - Check the source and target fields the dialog fills in. The target field must be a single-field primary or unique key.
+   - Under **Cardinality**, choose **Many to one** or **One to one**. For one to one, the dialog adds a unique index on the source field.
+   - Under **Relationship requirement**, choose **Required** (sets the source field to `NOT NULL`) or **Optional** (sets it to `NULL`).
+   - Choose the actions for **When referenced record is deleted** and **When referenced key is updated** (`NO ACTION`, `CASCADE`, `SET NULL` and others), and decide whether to check **Create an index for the foreign key**.
+5. Click **Create Relationship**. DDLBuilder writes the foreign key constraint, field nullability and index to the source table together, and the ER diagram draws the new line.
 
-## Tips and Common Traps
+### 2. Create a foreign key in the foreign key panel
+1. Switch to the **Foreign Keys** tab.
+2. Click **Add Foreign Key**.
+3. Enter **Constraint Name** and **Target Table**, select **Local Fields**, then type each of the **Target Fields** and press Enter to add it.
+4. Set **On Delete** and **On Update** as needed.
+5. Click **Add**. The DDL in the generated output now includes a `CONSTRAINT ... FOREIGN KEY ... REFERENCES ...` statement.
 
-::: warning Type Compatibility and Reference Rules
-Target columns **must be single-column primary keys or unique index columns**. Furthermore, data types and sign attributes (e.g., `UNSIGNED`) must match exactly between both sides.
+### 3. Browse and arrange the ER diagram
+- Drag table nodes to move them, or click **Auto Layout** in the toolbar.
+- Use the mouse wheel to zoom, and drag the canvas to pan.
+- The label on a physical foreign key line shows its delete and update actions. Hover over it to see the foreign key name. Click the delete button next to the label to remove the foreign key constraint.
+
+---
+
+## Verification checklist
+
+- [ ] The new relationship appears in both the foreign key list and the ER diagram.
+- [ ] The DDL in the generated output contains the foreign key constraint statement.
+- [ ] One-to-one source fields have a unique index, and foreign key fields often used in joins have a regular index.
+
+## Notes
+
+::: warning Type compatibility and reference rules
+The target field must be a single-column primary key or unique index column. The source and target fields must have the same data type and sign (`UNSIGNED`), or the database returns an error when you run the statement.
 :::
 
-- **SET NULL Nullability**: If `ON DELETE SET NULL` is chosen, the source column cannot be marked as `NOT NULL`.
-- **Exact Node Binding**: The ER canvas links tables by unique internal IDs rather than ambiguous name matching.
+- If the delete action is `SET NULL`, the source field must allow `NULL` and cannot be `NOT NULL`.
+- The ER diagram finds the referenced table by schema name and table name. If the workspace has more than one table with that name, the diagram does not draw the line.

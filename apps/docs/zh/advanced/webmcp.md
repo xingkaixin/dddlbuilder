@@ -1,33 +1,33 @@
 # WebMCP Agent 协作
 
-本指南介绍如何利用 **WebMCP（Web Model Context Protocol）** 协议，让浏览器端 AI Agent 直接与筑表师进行结构化交互，实现自动化表结构审查、逆向导入与安全变更。
+本页介绍如何通过 **WebMCP（Web Model Context Protocol）** 让浏览器中的 AI Agent 调用筑表师的工具：读取表结构、运行结构规范检查、预览 SQL 导入，并在你确认后修改表结构。
 
 ## 适用场景
 
-适用于在支持 WebMCP 的浏览器（如启用了 Experimental 特性的 Chrome）中使用 AI 助手（如 Gemini Nano、Claude 等浏览器 Agent），让 Agent 理解你正在设计的数据库表结构，并执行自动化检查或提出经你确认的修改建议。
+在支持 WebMCP 的浏览器（如启用了实验特性的 Chrome）中使用 AI Agent 时，Agent 可以读取你正在设计的表结构、执行检查或提出修改。修改经你确认后才会写入。
 
 ---
 
 ## 协议能力与工具清单
 
-筑表师将核心领域能力封装为结构化工具，Agent 无需解析 DOM 或依赖截图即可精准调用：
+筑表师把以下操作注册为 WebMCP 工具。Agent 直接调用这些工具，不需要解析页面 DOM 或截图：
 
-| 工具名称 | 工具作用与说明 |
+| 工具名称 | 作用 |
 |---|---|
-| `inspect_active_schema` | 分页读取当前活动表的概要信息、字段列表、索引、关系及表级存储参数 |
-| `lint_active_schema` | 对当前表结构执行确定性的 Schema Lint 规则审查，返回问题清单 |
-| `read_generated_output` | 分段读取当前表生成的 DDL、DCL、ORM 模型、ALTER 语句或回滚脚本 |
-| `preview_schema_patch` | 接收 Agent 提议的字段与索引修改，生成差异预览而不直接写入工作区 |
-| `import_sql_preview` | 传入 SQL 脚本并按指定方言生成逆向解析预览 |
-| `apply_schema_patch` | 在用户于界面中点击确认后，原子应用补丁（带版本签名防冲突校验） |
-| `get_auth_status` | 检查当前登录状态及可用能力组（出于隐私保护，不暴露邮箱与点数） |
-| `start_sign_in` | 唤起前端登录弹窗，密码与人机验证完全由用户在安全界面中完成 |
+| `inspect_active_schema` | 分段读取当前表的概要、字段、索引、关系或表级选项，每次最多 50 条，并返回 `baseSignature` |
+| `lint_active_schema` | 对当前表运行结构规范检查，返回问题清单 |
+| `read_generated_output` | 分段读取当前表生成的 DDL、DCL、ORM 模型、ALTER 语句或回滚脚本，每次最多 1200 个字符 |
+| `preview_schema_patch` | 接收 Agent 提出的表、字段和索引修改，生成变更预览，不写入工作区 |
+| `import_sql_preview` | 按指定数据库类型解析一段 SQL，生成导入预览，不会自动应用 |
+| `apply_schema_patch` | 弹出确认窗口，你点击“确认应用”后写入已预览的变更。若当前表在此期间被改动，则拒绝写入 |
+| `get_auth_status` | 返回登录状态和可用的能力分组，不返回邮箱和点数 |
+| `start_sign_in` | 打开登录弹窗，密码和人机验证由你在页面中完成。仅在未登录时提供 |
 
 ---
 
 ## 安全变更工作流
 
-为防止 Agent 产生非预期的幻觉修改或多端并发覆盖，WebMCP 采用基于**版本签名（`baseSignature`）**的乐观并发控制：
+Agent 的修改要先预览，再由你确认。筑表师用表结构签名 `baseSignature` 判断当前表是否已被改动：
 
 ```mermaid
 sequenceDiagram
@@ -38,14 +38,16 @@ sequenceDiagram
 
     Agent->>WebMCP: inspect_active_schema()
     WebMCP-->>Agent: 返回当前表结构 + baseSignature
-    Agent->>WebMCP: preview_schema_patch(baseSignature, patch)
-    WebMCP->>User: 界面弹出变更差异与 Lint 检查结果
-    Agent->>WebMCP: apply_schema_patch(baseSignature, patchId)
-    User->>Workspace: 用户人工点击「确认应用」
-    alt 签名一致
+    Agent->>WebMCP: preview_schema_patch(baseSignature, operations)
+    WebMCP->>User: 显示变更预览与 Schema 检查结果
+    WebMCP-->>Agent: 返回 changeSetId
+    Agent->>WebMCP: apply_schema_patch(changeSetId)
+    WebMCP->>User: 弹出确认窗口
+    User->>Workspace: 用户点击「确认应用」
+    alt 当前表未被改动
         Workspace-->>Agent: 应用成功，工作区更新
-    else 结构已被人工修改 (CONFLICT)
-        Workspace-->>Agent: 拒绝变更，提示重新读取最新签名
+    else 当前表已被改动 (CONFLICT)
+        Workspace-->>Agent: 拒绝变更，需重新读取表结构
     end
 ```
 
@@ -53,17 +55,18 @@ sequenceDiagram
 
 ## 校验与完成标志
 
-- [ ] 浏览器控制台中能识别 `document.modelContext` 及 DDLBuilder 注册的工具。
-- [ ] Agent 可通过工具顺利读取当前活动表的字段与索引。
-- [ ] 变更补丁需要用户在页面弹窗中人工点击确认方可生效。
-- [ ] 只读分享页面能被 Agent 读取，但会阻止任何写入尝试。
+- [ ] 浏览器控制台中能访问 `document.modelContext`，并能看到筑表师注册的工具。
+- [ ] Agent 能通过工具读取当前表的字段和索引。
+- [ ] 变更需要你在页面弹窗中点击“确认应用”后才生效。
+- [ ] 在只读分享页面，Agent 只能读取，不能修改。
 
 ## 常见注意事项与约束
 
-::: warning 安全与人工确认
-Agent 永远无法绕过前端确认窗口直接篡改你的表结构。所有通过 `apply_schema_patch` 提交的变更均需经过人工二次复核。
+::: warning 变更需要你确认
+Agent 不能跳过确认窗口直接修改表结构。通过 `apply_schema_patch` 提交的每次变更，都要你点击“确认应用”后才会写入。
 :::
 
-- **浏览器支持度**：WebMCP 目前处于 Web 标准演进阶段，具体支持情况与本地开关请参考 [Chrome WebMCP 官方文档](https://developer.chrome.com/docs/ai/webmcp)。
-- **页面生命周期**：WebMCP 依赖当前活跃的前端标签页，关闭或刷新页面后工具上下文会被重置。
-- **无头/服务端场景**：如果是 CLI、自动化 CI 管道或云端无头 Agent，请使用后端的标准 MCP 接口，而非依赖浏览器 WebMCP。
+- WebMCP 仍处于标准制定阶段。浏览器支持情况和本地开关见 [Chrome WebMCP 官方文档](https://developer.chrome.com/docs/ai/webmcp)。
+- WebMCP 工具注册在当前打开的筑表师标签页中。关闭或刷新页面后，未应用的变更预览会丢失。
+- 只读分享页面只注册 `get_auth_status`、`inspect_active_schema`、`lint_active_schema` 和 `read_generated_output` 四个读取工具。
+- CLI、CI 流水线或没有浏览器标签页的云端 Agent 无法使用这些工具。

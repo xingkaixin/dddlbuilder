@@ -1,61 +1,64 @@
 # Schema Lint
 
-This guide details how to use DDLBuilder's built-in **Schema Lint** rule engine to perform automated static audits and eliminate naming issues, type defects, and redundant indexes at design time.
+DDLBuilder has a fixed set of built-in structure rules, shown as **Schema Lint** in the app. It checks naming, primary keys, column types, indexes, and audit columns while you edit.
 
-## Overview
+## When to use
 
-Enforce team-wide database standards automatically, preventing naming mistakes, floating-point currency hazards, and orphaned indexes before DDL hits staging or production.
+When your team standardizes table design, use it to find inconsistent names, missing primary keys, floating-point types on monetary columns, and similar problems that manual reviews can miss.
 
 ---
 
-## Core Rule Dimensions
+## Rules
 
-The Schema Lint engine audits designs against industry best practices across four key dimensions:
+The built-in rules fall into four groups:
 
 ```mermaid
 graph TD
-    Lint[Schema Lint Audit] --> Naming[Naming Conventions]
-    Lint --> Types[Data Types & Precision]
-    Lint --> Indexes[Index Validity & Redundancy]
-    Lint --> Risks[Compatibility & Risks]
-    
-    Naming --> N1[Enforce snake_case naming]
-    Naming --> N2[Standard prefixes: idx_ / fk_]
-    
-    Types --> T1[Block FLOAT / DOUBLE for financial values]
-    Types --> T2[Audit large TEXT / BLOB storage]
-    Types --> T3[Match auto-increment types to dialect]
-    
-    Indexes --> I1[Flag duplicate or covered redundant indexes]
-    Indexes --> I2[Detect empty column index definitions]
+    Lint[Schema Lint] --> Naming[Naming]
+    Lint --> Keys[Primary key and column references]
+    Lint --> Types[Column types and indexes]
+    Lint --> Audit[Audit columns]
+
+    Naming --> N1[Lowercase snake_case table and column names]
+    Naming --> N2[Index name prefix idx_table_columns or uk_table_columns]
+
+    Keys --> K1[The table has a primary key]
+    Keys --> K2[Columns used by indexes, foreign keys, partitions, and sharding exist]
+
+    Types --> T1[No FLOAT / DOUBLE / REAL on monetary columns]
+    Types --> T2[VARCHAR / CHAR has an explicit length]
+    Types --> T3[No TEXT / BLOB / JSON columns directly in indexes]
+    Types --> T4[No zero-date default 0000-00-00]
+
+    Audit --> A1[created_at and updated_at exist]
+    Audit --> A2[Audit columns use time types and update automatically]
 ```
 
 ---
 
-## Operations Walkthrough
+## Steps
 
-1. Click the **Schema Lint** button in the table configuration header.
-2. **Review Diagnostic Reports**:
-   - Issues are categorized by severity: **Error**, **Warning**, and **Info**.
-   - Each item includes the violation cause, affected column/index, and recommended remediation.
-3. **Remediate Issues**:
-   - Address all **Error** level items first (such as imprecise `FLOAT` financial columns or missing primary keys).
-   - Adjust configurations in the field or index table; the diagnostic report refreshes in real time.
-4. **Dismiss & Acknowledge**: For valid domain exceptions (such as legacy columns), mark items as acknowledged to preserve the audit trail.
+1. The bottom bar of the editor shows **Schema Lint · N items** or **Schema Lint · Passed**. Click it to open the issue list. The **DDL** tab of the generated output shows the same results.
+2. Review the issues:
+   - Issues are sorted into three levels: **Error**, **Warning**, and **Suggestion**.
+   - Each issue shows the rule name, the affected table, column, or index, the reason, and a suggested fix.
+3. Fix the issues:
+   - Fix **Error** items first. These are a missing primary key, or an index, foreign key, or similar setting that references a column that does not exist.
+   - After you change a column or index, the results refresh immediately.
 
 ---
 
-## Verification Checklist
+## Verification checklist
 
-- [ ] The Schema Lint panel reports zero blocking Error-level issues.
-- [ ] Remaining Warnings have been reviewed and accepted by data architects.
-- [ ] Column names, index prefixes, and data types conform to team engineering guidelines.
+- [ ] Schema Lint shows no **Error** items.
+- [ ] You have checked every **Warning** and **Suggestion**.
+- [ ] Column names, index prefixes, and data types follow your team's conventions.
 
-## Tips and Best Practices
+## Notes
 
-::: tip Dialect-Aware Linting
-Rules adjust automatically to match active database dialects (e.g., Oracle `NUMBER` vs. MySQL `DECIMAL`). Changing dialects re-evaluates rules against the new engine's constraints.
+::: tip Rules do not depend on the database type
+All database types use the same rules. Switching the database type does not change them.
 :::
 
-- **Minimum Schema**: A table must have at least one column configured to run a valid Lint scan.
-- **Pairing with Master Review**: Static linting checks structural syntax; combine it with Master Review for comprehensive semantic and architecture feedback.
+- The check runs automatically as you edit. The missing primary key rule runs only after the table has at least one column.
+- Schema Lint runs fixed rules only. For business-specific problems, also run AI Review.

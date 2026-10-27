@@ -1,43 +1,45 @@
-# View and Routine Configuration
+# View and routine configuration
 
-This guide details how to define database **Views (`CREATE VIEW`)** and generate structured skeleton code for **Stored Procedures**, **Functions**, and **Triggers**.
+This page explains how to define a view (`CREATE VIEW`) in DDLBuilder, and how to generate code templates for stored procedures, functions, and triggers.
 
-## Overview
+## When to use
 
-Manage view abstractions alongside physical table definitions, and standardize backend procedural logic with scaffolded routine templates.
-
----
-
-## Operations Walkthrough
-
-### 1. View Definition and DDL Generation
-1. Locate the **View Definition** panel in the configuration area.
-2. Provide a **View Name** (e.g., `v_user_order_summary`) and a standard **SELECT Query Statement**.
-3. Use explicit `AS` aliases in the SELECT query to define clear outward column names.
-4. Switch to the **View/Routine** tab in the right-hand output panel to review the dialect-specific `CREATE VIEW ... AS SELECT ...` DDL.
-5. Click **Copy View DDL** to copy the statement to your clipboard.
-
-### 2. Routine Template Scaffolding (Procedures / Functions / Triggers)
-1. Select the **Routine Templates** tool in the Misc settings or dedicated panel.
-2. Choose your target routine object:
-   - **Stored Procedure**: Generates boilerplate with parameter lists (`IN` / `OUT`) and transaction blocks.
-   - **Function**: Scaffolds deterministic or scalar return signatures and body blocks.
-   - **Trigger**: Configures execution timing (`BEFORE` / `AFTER`) and events (`INSERT` / `UPDATE` / `DELETE`), producing compliant trigger headers.
-3. Switch to the **Routine** tab in the output panel, click **Copy Routine**, and populate your core business calculations in your database IDE.
+Use it when you need to manage views alongside regular tables, or need starting code for stored procedures, functions, or triggers.
 
 ---
 
-## Verification Checklist
+## Steps
 
-- [ ] View DDL complies with your target database dialect syntax.
-- [ ] Referenced tables and columns in the view query exist in the target schema.
-- [ ] Routine skeleton code compiles without syntax errors in the database client.
+### 1. Define a view and generate its DDL
+1. In the table configuration area, click **Properties** and set **Object Type** to **View**.
+2. Enter a **View Name**, for example `v_user_order_summary`.
+3. On the **View SQL** tab, enter a SELECT statement in **Query SQL**. To set the column names the view exposes, use `AS` aliases in the SELECT.
+4. **CREATE OR REPLACE** is selected by default and generates `CREATE OR REPLACE VIEW` (`CREATE OR ALTER VIEW` on SQL Server). Clear it to generate `CREATE VIEW`. SQLite / D1 always gets `CREATE VIEW`.
+5. The **DDL** tab of the generated output shows the `CREATE VIEW ... AS SELECT ...` statement. Click **Copy DDL** to copy it.
 
-## Tips and Common Traps
+### 2. Routine templates (procedures, functions, triggers)
+1. Click the **Routines** tab in the generated output. SQLite / D1 does not have this tab.
+2. In **Template**, choose what to generate:
+   - **Auto Updated Timestamp Trigger** sets the chosen timestamp column to the current time when a row is updated.
+   - **Audit Log Trigger** writes a row to the audit table after data changes.
+   - **Procedure** takes parameters (such as `IN p_user_id INT`) and a body.
+   - **Function** takes parameters, a return type, and a body.
+   - **Custom Trigger** takes a trigger table and a body, and generates a `BEFORE INSERT` trigger (`AFTER INSERT` on SQL Server).
+3. Click **Copy Routine** to copy the code, then finish the business logic in your database client.
 
-::: tip Populating Routine Logic
-Routine generators output structural skeletons and signature envelopes; procedural branches and transactional statements should be tailored to your application logic.
+---
+
+## Verification checklist
+
+- [ ] The view DDL follows your target database's syntax.
+- [ ] The tables and columns referenced in the view query are correct.
+- [ ] The routine code compiles in your database.
+
+## Notes
+
+::: tip Write the business logic yourself
+Routine templates generate the statement structure only. You write the body of procedures, functions, and custom triggers for your own business rules.
 :::
 
-- **View Dependency Order**: Ensure underlying physical tables are created before applying view DDL scripts in deployment pipelines.
-- **Dialect Discrepancies**: Procedural languages vary significantly across Oracle (PL/SQL), PostgreSQL (PL/pgSQL), and SQL Server (T-SQL). Always review syntax when switching dialects.
+- If the view query references a table or column that does not exist, running the view DDL fails. Create the tables the view depends on first.
+- Stored procedure and trigger syntax differs a lot between Oracle (PL/SQL), PostgreSQL (PL/pgSQL), and SQL Server (T-SQL). Templates follow the current database type, but the body you enter is not converted. Recheck it after you switch the database type.

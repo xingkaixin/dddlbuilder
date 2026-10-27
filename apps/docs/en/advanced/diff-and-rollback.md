@@ -1,48 +1,48 @@
-# Change Diff and Rollback
+# Change diff and rollback
 
-This guide explains how to use DDLBuilder's **Visual Schema Diffing**, **Forward ALTER Generation**, **Atomic Rollback DDL**, and **Version Timeline Replay** to manage safe database migrations.
+This guide explains how to compare table schema changes in DDLBuilder, generate ALTER and rollback scripts, and view or replay version history.
 
-## Overview
+## When to use
 
-Safely iterate on established production tables by reviewing visual schema diffs, generating forward migration scripts, and preparing rollback contingency plans before deployment.
-
----
-
-## Operations Walkthrough
-
-### 1. Triggering and Inspecting Schema Diffs
-1. Load an existing table from the "Saved Tables" drawer.
-2. Apply changes in the workspace (add/remove columns, modify data types, or reconfigure indexes).
-3. The table header will automatically display the **View Schema Changes** button.
-4. Click the button to inspect structured diffs across **Table Options**, **Columns** (with rename detection and attribute diffs), and **Indexes**.
-
-### 2. Exporting ALTER Scripts and Rollback DDL
-- **Forward Migration**: Click **Copy ALTER Script** in the diff modal to export DDL for production change tickets.
-- **Contingency Rollback**: Expand the rollback section and click **Copy Rollback Script** to obtain reverse DDL that safely undoes all applied changes.
-
-### 3. Version History and Rollback
-- Open the "Saved Tables" drawer and click **Version History** from a table card's menu.
-- Browse all recorded historical snapshots, timestamps, and modification summaries.
-- Select any past version and click **Rollback to This Version** to restore the workspace instantly.
-
-### 4. Schema Evolution Timeline Replay
-- In the Version History modal, click **Timeline Replay**.
-- The interactive player animates the sequential evolution of the schema from its initial version to the latest snapshot, perfect for architecture demos and team reviews.
+Use these tools when you change columns, types or indexes on an existing table and want the release script and rollback script ready before deployment.
 
 ---
 
-## Verification Checklist
+## Steps
 
-- [ ] The visual diff accurately reflects all intended changes, including detected renames.
-- [ ] The exported ALTER script matches your production database version syntax.
-- [ ] A matching rollback script is archived for change management safety.
-- [ ] Past versions can be audited and restored from the history drawer.
+### 1. View schema differences
+1. Load a saved table from **Workspace**.
+2. Add or remove columns, change types or adjust indexes in the editor.
+3. In the table config area, click **More** and select **View schema changes**.
+4. The **Table Structure Diff** dialog lists changes to table config, columns (added, removed, renamed and modified) and indexes.
 
-## Tips and Common Traps
+### 2. Copy the ALTER and rollback scripts
+- In the **Change Script** section, click **Copy** to get the ALTER statements for the release.
+- Expand **Rollback Script** and click **Copy Rollback**. The rollback script contains the reverse ALTER statements that undo the changes above.
 
-::: warning Production Data Compatibility
-Generated ALTER and rollback scripts operate on structural DDL. If your changes introduce non-null columns without defaults or truncate data types, evaluate existing row data compatibility before execution.
+### 3. Version history and rollback
+- With a saved table loaded, click **Version history** in the table config area.
+- Review each saved version with its save time and change summary.
+- Select a version and click **Rollback to this version**. The editor reverts to that version.
+
+### 4. Replay schema changes
+- In the **Version History** dialog, click **Play timeline**.
+- The player steps through the versions frame by frame, from the initial version to the latest.
+
+---
+
+## Verification checklist
+
+- [ ] The diff includes every change you made, and renamed columns appear as renames.
+- [ ] The ALTER script syntax matches your target database version.
+- [ ] You have kept the matching rollback script as the fallback plan for the release.
+- [ ] You can find past versions in the version history and roll back to them.
+
+## Notes
+
+::: warning Production data compatibility
+ALTER and rollback scripts change only the schema definition. If a change shortens a column, casts a type, or adds a NOT NULL column without a default, check how existing rows will migrate before you run it.
 :::
 
-- **Diff Button Visibility**: The diff button only appears when an established Saved Table is modified. Scratchpad drafts have no baseline and will not trigger diffing.
-- **Snapshot Retention**: Saving updates appends a new snapshot to the history ledger. Create named tables at major feature milestones to preserve clear audit trails.
+- **View schema changes** appears only after you load a saved table and change it. A draft that was never saved has no baseline version, so the entry does not appear.
+- Each save over an existing table adds a new version to the history.

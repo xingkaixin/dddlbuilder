@@ -1,47 +1,51 @@
-# Feature Entry and Visibility
+# Feature entry and visibility
 
-This page addresses common questions regarding dialect-specific tabs, advanced panel visibility, and prerequisite conditions for unlocking features.
+This page explains where some tabs, buttons, and entry points are, and when they appear.
 
 ---
 
 ## 1. Why don't I see the "Partitioning" or "Sharding" tabs?
 
-- **Partitioning Tab**: Engine-specific; visible only when the database dialect is set to **MySQL**, **MariaDB**, or **TiDB**. It is hidden automatically under PostgreSQL, Oracle, or SQL Server.
-- **Sharding Tab**: Exclusively visible when the database dialect is set to **PostgreSQL (Citus)** for configuring reference and distributed tables. Standard PostgreSQL does not display this tab.
+- **Partitioning** appears only when the database type is a MySQL-family database: MySQL, MariaDB, TiDB, OceanBase (MySQL), GBase, or PolarDB. It does not appear for PostgreSQL, Oracle, or other types.
+- **Sharding** appears only when the database type is **PostgreSQL (Citus)**. Use it to set up reference tables and distributed tables. Standard PostgreSQL does not show it.
+- Both are in the **Advanced** menu of the configuration area, not in the main tab bar.
 
 ---
 
 ## 2. Why don't I see "Foreign Keys" or the "ER Diagram"?
 
-- **Foreign Key Tab**: Available for all relational databases. Ensure your table has at least one column configured to activate the panel.
-- **ER Diagram**: Located in the top header toolbar. Ensure relevant source and target tables are saved in "Saved Tables" before drawing relationship edges.
+- The **Foreign Keys** tab is in the table configuration area. It does not appear when the database type is Hive or the object type is View. If the current table has no columns yet, the panel shows "Please add fields first".
+- **ER Diagram** is in the **More** menu of the table configuration area. The diagram shows saved tables only, so save the tables you want to connect first.
 
 ---
 
-## 3. Why are "ORM" or "View/Routine" tabs missing in the output panel?
+## 3. Why can't I find the "ORM" or "Routines" tabs in the generated output?
 
-- **ORM Models**: Located in the top tab strip of the right-hand output panel (alongside "Table DDL" and "Privilege DCL"). Ensure the output panel is not collapsed.
-- **View / Routine**: These tabs activate automatically once a view query is defined in the View panel or routine templates are enabled in Misc options.
-
----
-
-## 4. Why is the "View Schema Changes (Diff)" button missing?
-
-- **Prerequisites**:
-  1. The active tab must have an established **Saved Table** loaded (not a blank new draft).
-  2. You must make an **observable structural change** (e.g., adding/modifying columns or altering indexes).
-- The button only renders when differences exist against the saved snapshot baseline.
+- The tab bar at the top of the generated output contains **DDL**, **DCL**, **ORM**, and **Routines**. If you don't see the tab bar, check whether the output panel is collapsed.
+- When the database type is SQLite / D1, **DCL** and **Routines** are hidden.
+- View DDL appears in the **DDL** tab. There is no separate view tab.
 
 ---
 
-## 5. Why is "Master Review" disabled or AI features blocked?
+## 4. Why don't I see "View schema changes"?
 
-- **Master Review Grayed Out**: The right-hand DDL panel must contain a syntactically valid `CREATE TABLE` statement (table name and at least one column). The button is disabled when DDL is empty.
-- **AI Prompts for Login / Credits**: Master Workshop, AI Modify, AI Index Advisor, and Master Review require an authenticated account with a positive credit balance.
+**View schema changes** is in the **More** menu of the table configuration area. It appears only when both of these are true:
+
+1. The active tab has a **saved table** loaded, not a new blank draft.
+2. You made an **actual structural change** to that table, such as adding or removing columns, changing types, or editing indexes.
+
+Unchanged tables and drafts that were never saved have no version to compare against, so the item does not appear.
 
 ---
 
-## 6. Where is the "Trash Bin" located?
+## 5. Why is "AI Review" disabled or why can't I start AI features?
 
-- **Location**: Open the "Saved Tables" drawer via the top navigation bar. The **Trash** tab is located in the drawer's header tabs or bottom footer.
-- Soft-deleted tables remain stored here and can be restored with a single click before permanent purging.
+- **AI Review** is disabled while the **DDL** tab shows only a placeholder such as "-- Please fill in table information on the left". It is also disabled when the database type is SQLite / D1.
+- AI Table Workshop, AI Edit, AI Index Advisor, and AI Review call a language model service. You must be signed in and have a credit balance above 0.
+
+---
+
+## 6. Where is the "Trash"?
+
+- **Trash** is at the bottom of the **Workspace** sidebar on the left. If the sidebar is collapsed, expand it first.
+- Tables moved to the trash stay there. You can **Restore** or **Delete permanently** each one, or use **Empty Trash**.

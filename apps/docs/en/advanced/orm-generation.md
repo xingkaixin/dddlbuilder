@@ -1,15 +1,13 @@
 ---
-title: "SQL to Prisma, TypeORM and Other ORM Models"
+title: "SQL to Prisma, TypeORM and other ORM models"
 description: "Import MySQL table SQL and export Prisma, TypeORM, SQLAlchemy, GORM or JPA models. See input and output examples, type mappings and relationship limitations."
 ---
 
-# SQL to Prisma, TypeORM and Other ORM Models
+# SQL to Prisma, TypeORM and other ORM models
 
 [Generate ORM models in DDLBuilder](https://ddl.xingkaixin.me/). Start with the [getting started guide](/en/basic/getting-started) or [import existing SQL](/en/advanced/import-and-parse) if you do not have a table yet. For cross-table references, check the [foreign keys and ER diagram](/en/advanced/foreign-key-and-er) first.
 
-SQLite / D1 supports Drizzle output. Use the group export for cross-table foreign keys. See [Query Design and Modeling](/en/advanced/modeling-workflows) for type mapping and initialization limits.
-
-This guide details how to export schema designs directly into strongly typed model classes across industry-standard ORM frameworks.
+SQLite / D1 supports Drizzle output. Use the group export for cross-table foreign keys. See [query design and modeling](/en/advanced/modeling-workflows) for type mapping and initialization limits.
 
 ## Example: convert a MySQL users table to a Prisma model
 
@@ -23,7 +21,7 @@ CREATE TABLE users (
 );
 ```
 
-Select `users`, open the **ORM** tab on the right, and choose **Prisma**. The generated model is shown below; alignment spacing may differ.
+Select `users`, open the **ORM** tab in the generated output, and choose **Prisma**. The generated model is shown below. Alignment spacing may differ.
 
 ```prisma
 model Users {
@@ -37,56 +35,56 @@ The primary key on `id` maps to `@id`, `name` becomes a required `String`, and `
 
 This is a model fragment. Configure the MySQL datasource and client generator in your own Prisma project, validate the model, then generate the client or migrations according to your project's workflow. Model generation does not connect to or modify your database. For a users-and-orders relationship, continue with [foreign keys and ER diagrams](/en/advanced/foreign-key-and-er).
 
-## Overview
+## When to use
 
-Bridge database modeling and backend engineering by generating clean, typed, and annotated model code without manual transcription errors.
+Once the table structure is settled, generate ORM model classes and annotations instead of writing them by hand.
 
 ---
 
-## Operations Walkthrough
+## Steps
 
-### 1. Select Target Framework
-1. Switch to the **ORM** tab in the right-hand output panel.
-2. Select your framework from the dropdown:
+### 1. Select the target framework
+1. Click the **ORM** tab in the generated output.
+2. In the **ORM Framework** selector, choose a framework:
    - **Prisma** (Node.js / TypeScript)
    - **TypeORM** (TypeScript / NestJS)
-   - **SQLAlchemy** (Python / FastAPI / Django)
+   - **SQLAlchemy** (Python / FastAPI)
    - **GORM** (Go / Gin / Fiber)
-   - **JPA / Hibernate** (Java / Spring Boot)
-3. The editor immediately renders framework-compliant entity definitions.
+   - **JPA** (Java / Spring Boot)
+3. The code area shows the model code for the selected framework and updates when you change the table.
 
-### 2. Copy Code to Your Project
-Click **Copy ORM** to copy the generated class or schema to your clipboard, then paste it directly into your application codebase.
+### 2. Copy the code to your project
+Click **Copy ORM Code**, then paste the code into an entity or model file in your project.
 
 ---
 
-## Frameworks and Type Mapping Specifications
+## Frameworks and type mappings
 
-| Framework | Output Format | Common Annotations and Constructs |
+| Framework | Output format | Common annotations and constructs |
 |---|---|---|
-| **Prisma** | `.prisma` schema file | `@id`, `@default()`, `@map()`, `@unique`, `@@index`, `@@schema` |
-| **TypeORM** | TypeScript Entity class | `@Entity()`, `@PrimaryGeneratedColumn()`, `@Column({ type, precision })`, `@Index()` |
-| **SQLAlchemy** | Python Declarative class | `Column()`, `Integer()`, `String()`, `DECIMAL()`, `__table_args__` |
-| **GORM** | Go Struct | `gorm.Model`, `gorm:"column:xxx;type:xxx;primaryKey;uniqueIndex"` |
-| **JPA** | Java Entity class | `@Entity`, `@Table(name, schema)`, `@Id`, `@Column(name, nullable)`, `@Index` |
+| **Prisma** | `.prisma` schema file | `@id`, `@default()`, `@map()`, `@@unique`, `@@index`, `@@map`, `@@schema` |
+| **TypeORM** | TypeScript entity class | `@Entity()`, `@PrimaryGeneratedColumn()`, `@PrimaryColumn()`, `@Column({ type, precision })`, `@Index()` |
+| **SQLAlchemy** | Python declarative class | `Column()`, `Integer`, `String()`, `Numeric()`, `Index()`, `__table_args__` |
+| **GORM** | Go struct | `gorm:"column:xxx;primaryKey;autoIncrement;uniqueIndex"`, `TableName()` |
+| **JPA** | Java entity class | `@Entity`, `@Table(name, schema)`, `@Id`, `@Column(name, nullable)` |
 
 ---
 
-## Precision Safety & Schema Namespace Details
+## Precision and schema namespaces
 
-::: info Type Safety and Namespaces
-- **High-Precision Decimals & BigInt**: In TypeORM outputs, `bigint` and `decimal/numeric` types are mapped to `string` properties to prevent JavaScript float precision truncation.
-- **Schema Namespaces**:
-  - **Prisma**: Appends `@@schema("schemaName")` for PostgreSQL and SQL Server.
-  - **SQLAlchemy**: Declares `schema='schemaName'` in `__table_args__`.
-  - **JPA**: Binds `schema = "schemaName"` within `@Table`.
-  - **GORM**: Implements a custom `TableName()` method returning the qualified table name.
+::: info Precision and namespaces
+- TypeORM maps `bigint` to a `string` property. On MySQL-family and PostgreSQL-family databases, it also maps `decimal` and `numeric` to `string`, so the JavaScript `number` type does not lose precision.
+- When Schema Name is set:
+  - Prisma adds `@@schema("schemaName")` on PostgreSQL-family databases and SQL Server.
+  - SQLAlchemy adds `{"schema": "schemaName"}` to `__table_args__`.
+  - JPA adds `@Table(schema = "schemaName")`, or uses `catalog` on MySQL-family databases.
+  - GORM's `TableName()` method returns the table name with the schema prefix.
 :::
 
 ---
 
-## Verification Checklist
+## Verification checklist
 
-- [ ] Generated ORM fields, primary keys, and column attributes match table configurations.
-- [ ] Pasted model files compile and pass static type checks cleanly.
-- [ ] Schema namespaces are appropriately declared in framework-specific configurations.
+- [ ] Field names, type mappings, and primary keys in the ORM code match the table configuration.
+- [ ] The pasted code passes type checks and compiles in your project.
+- [ ] When Schema Name is set, the ORM code declares the namespace.

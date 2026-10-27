@@ -7,8 +7,6 @@ description: "Configure columns, primary keys and indexes visually in DDLBuilder
 
 [Start designing in DDLBuilder](https://ddl.xingkaixin.me/) and follow the steps below to create your first table. If you already have SQL, start with [SQL import and parsing](/en/advanced/import-and-parse).
 
-This guide helps first-time DDLBuilder users design their first database table in minutes and export production-ready SQL DDL, DCL, and ORM models.
-
 ## Example: generate a MySQL user table
 
 Create a user table with a primary key `id`, a required and unique `email`, and an optional `display_name`. Use this SQL as an import example.
@@ -23,9 +21,9 @@ CREATE TABLE user_account (
 CREATE UNIQUE INDEX uk_user_account_email ON user_account (email);
 ```
 
-1. Open [DDLBuilder](https://ddl.xingkaixin.me/), select MySQL, choose **Import SQL**, and paste the example.
+1. Open [DDLBuilder](https://ddl.xingkaixin.me/), click **Import Schema** at the top, set **Source Type** to SQL and **Source Database** to MySQL, then paste the example.
 2. Check the preview for three columns, the `id` primary key and the unique index on `email`, then import the table.
-3. Change the length of `display_name` to `150`. Check that the generated DDL contains `VARCHAR(150)`, then copy the SQL.
+3. Change the length of `display_name` to `150`. In **Generated output**, check that the **DDL** tab contains `VARCHAR(150)`, then copy the SQL.
 
 Formatting, identifier quoting and index statement placement may differ in the output. Check column types, nullability, the primary key and the unique index. When switching databases, review type and default-value compatibility. The tool does not connect to a database or execute SQL.
 
@@ -33,47 +31,49 @@ Continue with [SQL to ER diagrams](/en/advanced/foreign-key-and-er) for relation
 
 ## Overview
 
-Eliminate the tedium of handcrafting SQL for multiple database dialects. With DDLBuilder's visual interface, you can model table schemas, define constraints, and instantly obtain accurate DDL, DCL, ORM models, and routine skeletons.
+You configure the table structure in the interface, and DDLBuilder generates table DDL, privilege DCL, ORM model code, and SQL for views and routines for the selected database as you edit. You do not have to write SQL by hand for each database.
 
-## Step-by-Step Walkthrough
+## Step-by-step walkthrough
 
-### 1. Select Dialect and Basic Information
-- Select your target **Database Type** in the table configuration header (e.g., MySQL, PostgreSQL, Oracle, TiDB).
-- Enter the **Table Name** (e.g., `user_account`) and optional **Display Name** (e.g., `User Account Table`).
-- **Schema Name** (Optional): If your database supports namespaces (such as PostgreSQL, Oracle, or SQL Server), entering a schema name automatically formats SQL object identifiers as `schema.table`.
+### 1. Select the database and basic information
+- Select the **Database Type** in the table configuration area (for example MySQL, PostgreSQL, Oracle, or TiDB).
+- Enter the **Table Name** (for example `user_account`) and the **Table Comment** (for example `User accounts`).
+- If your database supports namespaces (such as PostgreSQL, Oracle, or SQL Server), you can enter a **Schema Name** under **Properties** (optional). The generated SQL then uses `schema.table` as the table name.
 
-::: tip Table Name Convention
-Enter only the bare table name into the `Table Name` field. When namespace scoping is required, use the dedicated `Schema Name` input rather than manually prefixing `schema.table`.
+::: tip Table name convention
+Enter only the table name in **Table Name**. When you need a namespace, fill in **Schema Name** instead of typing `schema.table` into the table name.
 :::
 
-### 2. Configure Columns and Constraints
-- Add columns in the **Field Configuration** table with column names, display labels, and data types.
-- Specify nullability (**Null / Not Null**), **Default Type** (such as constants, current timestamp, UUID), and default values.
-- The **Table DDL** panel on the right updates in real time with formatted SQL.
+### 2. Configure fields and constraints
+- In the **Fields** table, enter the **Field Name**, **Comment**, and **Type** for each row.
+- Set **Nullable** (`NOT NULL` / `NULL`), **Default Kind** (for example Constant, Current Time, or UUID), and **Default Value** as needed.
+- The **DDL** tab in **Generated output** updates as you type.
 
-### 3. Add Indexes, Privileges, and Options
-- **Indexes**: Quickly configure primary keys, unique constraints, and composite query indexes to ensure optimal query performance.
-- **Privileges**: Enter grantee roles or users to automatically generate standard `GRANT` (DCL) statements.
-- **Misc Options**: Configure storage engines, character sets, collations, or tablespace parameters as needed.
+### 3. Add indexes, privileges, and other options
+- On the **Indexes** tab, add a primary key, unique indexes, or normal indexes. One index can include several fields.
+- On the **Privileges** tab, add users or roles to generate `GRANT` statements (DCL).
+- On the **Misc** tab, set the storage engine, character set, collation, or tablespace.
 
-### 4. Kickstart with Table Blueprints (Optional)
-When modeling standard domain entities (such as user accounts, orders, or audit logs), click **Table Blueprint** in the top navigation to apply a pre-built template with one click, then customize it for your needs.
+### 4. Apply a table blueprint (optional)
+A table blueprint is a table structure you saved yourself. DDLBuilder has no built-in blueprints. Click **Table Blueprint** in the **Fields** toolbar, choose a blueprint, and click **Apply Blueprint**. DDLBuilder opens a new draft tab with the blueprint's fields, indexes, database type, and table-level options. The new tab keeps the current table name, table comment, schema name, and grantees, and does not include foreign keys.
 
-### 5. Reverse-Engineer Existing Schemas (Optional)
-If you already have SQL scripts or data files, click **Import SQL** or **Import Data** (CSV, Excel, JSON Schema) to automatically parse columns, types, and indexes into your workspace.
+If you have no blueprints yet, choose **Save current table as blueprint...** in the same menu. Blueprints are stored in the current browser.
 
-### 6. Copy and Export Artifacts
-- Click **Copy DDL** or **Copy DCL** in the output panel to copy SQL directly to your clipboard.
-- Switch to the **ORM** tab to export models for Prisma, TypeORM, SQLAlchemy, GORM, or JPA.
-- Switch to the **View/Routine** tab to generate view definitions or procedure/function/trigger templates.
+### 5. Import an existing schema (optional)
+If you already have SQL or a schema file, click **Import Schema** at the top. **Source Type** can be SQL, CSV / TSV, Excel, or JSON Schema / OpenAPI. DDLBuilder parses the fields, types, and indexes and loads them into the workspace.
 
-### 7. Save and Multi-Tab Management
-- Click the **Save icon** next to the table name to save the current table into your "Saved Tables" drawer.
-- The workspace supports **multiple tabs** simultaneously, letting you design separate tables in isolation.
+### 6. Copy and export the output
+- In **Generated output**, click **Copy DDL** or **Copy DCL**, then paste the SQL into your database client or change ticket.
+- Switch to the **ORM** tab to generate Prisma, TypeORM, SQLAlchemy, GORM, or JPA model code.
+- Switch to the **Routines** tab to generate skeleton code for stored procedures, functions, and triggers. When the object type is a view, the `CREATE VIEW` statement appears on the **DDL** tab.
+
+### 7. Save tables and work in tabs
+- Click the save icon (tooltip **Save current table**) in the table configuration area and enter a name. The table then appears under **Projects** in the left **Workspace** sidebar. You can open it from there later, or check its **Version history** in the table configuration area.
+- The workspace can keep several tabs open. Each tab edits one table.
 
 ---
 
-## Registration and Email Verification (Optional)
+## Registration and email verification (optional)
 
 Local modeling does not require an account. To sync an account workspace, open registration in the upper-right corner and enter your email and password.
 
@@ -81,20 +81,20 @@ Local modeling does not require an account. To sync an account workspace, open r
 2. The code is valid for 10 minutes. Successful verification signs you in automatically.
 3. If the email has not arrived, check your spam folder. You can resend after the 60-second countdown; use the latest code.
 
-Registration does not require a CAPTCHA. Existing accounts with unverified email addresses can also complete verification in the authentication dialog. See [Common Errors](/en/faq/common-errors) for troubleshooting.
+Registration does not require a CAPTCHA. Existing accounts with unverified email addresses can also complete verification in the authentication dialog. For more troubleshooting steps, see the account and sync section in [errors and failure handling](/en/faq/common-errors).
 
-## Verification Checklist
+## Verification checklist
 
-- [ ] The output panel shows a complete, syntactically valid `CREATE TABLE` statement.
-- [ ] If a `Schema Name` is specified, the DDL/DCL outputs reflect the fully qualified table name.
-- [ ] Clicking copy buttons triggers a successful "Copied" toast notification.
-- [ ] The newly saved table is visible in the "Saved Tables" drawer.
+- [ ] The **DDL** tab shows a complete `CREATE TABLE` statement that is valid for the target database.
+- [ ] If you entered a **Schema Name**, the table name in the DDL and DCL has the schema prefix.
+- [ ] Clicking a copy button shows **Copied**.
+- [ ] The table you just saved appears under **Projects** in the left **Workspace** sidebar.
 
-## Tips and Common Traps
+## Common issues
 
-::: warning Database Dialect Matching
-Switching the database type recalculates type mappings and syntax constraints. Always confirm the target database type before extensive editing.
+::: warning Database type matching
+If you switch the database type partway through, DDLBuilder adjusts type mappings and syntax for the new database. Confirm the target database type before you start designing.
 :::
 
-- **Account Sign-In & Cloud Sync**: In guest mode, data is kept in your local browser storage. Sign in with your email account to enable automatic real-time cloud synchronization across devices.
-- **Unsaved Changes**: Closing a tab with unsaved edits will trigger a confirmation dialog to safeguard your work against accidental loss.
+- Without an account, data is stored only in the current browser. After you click **Sign in** in the upper-right corner and sign in, the workspace syncs to the cloud automatically, and you can keep editing on another device signed in to the same account.
+- Closing a tab does not ask for confirmation. Current edits are saved as a draft automatically and do not overwrite the saved table.

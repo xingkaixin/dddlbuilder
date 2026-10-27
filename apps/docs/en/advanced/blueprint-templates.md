@@ -1,49 +1,55 @@
-# Table Blueprint Templates
+# Table blueprint templates
 
-This guide explains how to use DDLBuilder's built-in **Table Blueprint Templates** to bootstrap domain schemas rapidly using industry-standard architectures.
+A table blueprint stores a table's fields, indexes, database type, and table-level settings. When you apply a blueprint, DDLBuilder opens that structure in a new draft tab. Blueprints are stored in the current browser.
 
-## Overview
+## When to use
 
-Eliminate repetitive manual entry when modeling common business entities (such as user profiles, order headers, RBAC permissions, and audit logs) by starting from hardened baseline blueprints.
-
----
-
-## Standard Built-in Blueprints
-
-| Blueprint Domain | Typical Column Definitions | Standard Indexes & Keys |
-|---|---|---|
-| **User Account** (`user_account`) | `user_id`, `username`, `email`, `phone`, `password_hash`, `status`, `created_at` | Primary Key, `username` unique, `email` unique, `status` filter index |
-| **Order Master** (`order_master`) | `order_id`, `order_no`, `user_id`, `total_amount`, `pay_amount`, `status`, `paid_at`, `created_at` | Primary Key, `order_no` unique, `user_id` query index, `created_at` date-range index |
-| **Audit Log** (`sys_audit_log`) | `log_id`, `trace_id`, `operator_id`, `action`, `method`, `ip`, `status`, `duration_ms`, `created_at` | Primary Key, `trace_id` tracing index, `operator_id` index, `created_at` range/partition index |
+Use blueprints when you create several tables with similar structures, such as multiple order tables or log tables. Save one of them as a blueprint, then start the next table from it instead of entering fields and indexes row by row.
 
 ---
 
-## Operations Walkthrough
+## What a blueprint contains
 
-1. Click the **Table Blueprint** button in the top navigation bar.
-2. **Browse and Preview Templates**:
-   - Explore standard templates across domain categories.
-   - Click any template card to preview its columns, data types, nullability, primary keys, and index configurations.
-3. **Apply Blueprint**:
-   - Once satisfied with the preview, click **Apply Blueprint**.
-   - The system expands the schema into a **brand-new workspace tab**, keeping your existing tabs untouched.
-4. **Customize for Domain Needs**:
-   - Add/remove columns, modify string lengths, or change default constraints to fit your domain.
-   - Click the Save icon to persist the tailored schema as a named Saved Table.
+| Content | After you apply the blueprint |
+|---|---|
+| Fields and indexes | Copied into the new draft |
+| Database type | The new draft uses the blueprint's database type |
+| Table-level settings (such as MySQL partitions and Citus sharding) | Copied into the new draft |
+| Table name, table comment, schema name, and grants | Not stored in the blueprint. The new draft keeps the values from the current tab |
+| Foreign keys | Not stored in the blueprint. Configure them again after applying |
 
 ---
 
-## Verification Checklist
+## Steps
 
-- [ ] The blueprint schema loads cleanly into a new workspace tab.
-- [ ] Column lengths, precisions, and defaults reflect specific business rules.
-- [ ] The generated DDL complies with your target dialect standards.
+1. In the toolbar above the field table, click **Table Blueprint**.
+2. Save a blueprint:
+   - After you finish editing a table, choose **Save current table as blueprint...**.
+   - Enter a blueprint name and an optional description, then click **Save Blueprint**.
+3. Find and preview a blueprint:
+   - Search the list by blueprint name or field.
+   - Click a blueprint to open its preview, which shows the database type, field list, and index list.
+4. Apply the blueprint:
+   - In the preview, click **Apply Blueprint**.
+   - The structure opens in a new draft tab. The original tab does not change.
+5. Adjust it for your business:
+   - Add or remove fields, change VARCHAR lengths, or change default values.
+   - Click the Save icon to store it under a name in Saved Tables.
+6. To rename, duplicate, or delete blueprints, choose **Manage blueprints...**.
 
-## Tips and Common Traps
+---
 
-::: tip Customizing General Defaults
-Blueprint templates provide general domain baselines. Always tailor nullability, field lengths, and compliance policies (such as encrypted PII fields) to your specific production requirements.
+## Verification checklist
+
+- [ ] The blueprint structure opens in a new draft tab.
+- [ ] Column lengths, precision, and defaults match your business rules.
+- [ ] The generated DDL matches your target dialect.
+
+## Notes
+
+::: tip Adjust after applying
+A blueprint copies the structure as it was when you saved it. Before using it for a new table, adjust it for your concurrency, compliance requirements (such as masked or encrypted phone number fields), and dialect.
 :::
 
-- **Foreign Key Reconnection**: Blueprints are self-contained single-table definitions. Configure cross-table relations in the Foreign Keys tab or ER Diagram canvas after applying.
-- **Terminology Alignment**: Update generic display labels and comments to align with your organization's internal data dictionary.
+- Blueprints do not store foreign keys. After applying one, link the new table to other tables in **Foreign Keys** or **ER Diagram**.
+- A blueprint keeps the field comments it had when you saved it. When you use it for another business area, update the comments to match that area's terms.

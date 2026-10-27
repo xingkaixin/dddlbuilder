@@ -1,9 +1,9 @@
 ---
-title: "Database Design, SQL to ER Diagrams and DDL Guides"
+title: "Database design, SQL to ER diagrams and DDL guides"
 description: "Design MySQL, PostgreSQL and SQLite schemas with DDLBuilder. Find guides for SQL to ER diagrams, SQL to Prisma, schema comparison, data dictionaries and CSV to INSERT SQL."
 ---
 
-# Database Design, SQL to ER Diagrams and DDL Guides
+# Database design, SQL to ER diagrams and DDL guides
 
 DDLBuilder is an online database schema designer and DDL generator. Configure columns and indexes, import existing SQL to view ER diagrams, or export ORM models. Choose a guide for the task you need to complete.
 
@@ -23,41 +23,41 @@ DDLBuilder is an online database schema designer and DDL generator. Configure co
 
 Start manual design, SQL import and local exports without signing in. See [getting started](/en/basic/getting-started) for cloud sync and AI account requirements. The tool generates SQL; it does not connect to your database to execute it.
 
-## Quick Navigation
+## Quick navigation
 
-### Basic Guide
-- [Quick Start](/en/basic/getting-started) — Get started quickly and generate your first DDL in minutes
-- [Core Concepts](/en/basic/core-concepts) — Understand workspaces, drafts, saved tables, permissions, and sync mechanics
-- [Table and Field Configuration](/en/basic/table-and-fields) — Configure field types, constraints, logical enums, and estimate storage
-- [Indexes, Privileges, and Misc](/en/basic/index-auth-misc) — Set up primary keys, indexes, AI index advisor, DCL privileges, and engine options
-- [DDL Output and Sharing](/en/basic/ddl-and-share) — Copy multi-dialect SQL, generate ORM models, and create read-only share links
-- [Saved Tables and Drafts](/en/basic/saved-tables) — Manage multiple drafts, folder hierarchies, the trash bin, and cloud synchronization
+### Basic guide
+- [Quick start](/en/basic/getting-started): configure your first table and generate DDL
+- [Core concepts](/en/basic/core-concepts): workspace, draft box, saved tables, read-only sharing, and cloud sync
+- [Table and field configuration](/en/basic/table-and-fields): field types, constraints, logical enums, and size estimates
+- [Indexes, privileges, and misc](/en/basic/index-auth-misc): primary keys and indexes, AI Index Advisor, privilege DCL, and storage options
+- [DDL output and sharing](/en/basic/ddl-and-share): copy SQL, generate ORM models, and create read-only share links
+- [Saved tables and drafts](/en/basic/saved-tables): drafts, folders, trash, and multi-device sync
 
-### Advanced Guide
-- [Advanced Guide Overview](/en/advanced/) — Explore advanced modeling, tooling, and engineering features
-- [Import and Parse SQL](/en/advanced/import-and-parse) — Parse existing SQL DDL or import from CSV, Excel, and JSON Schema files
-- [WebMCP Agent Workflow](/en/advanced/webmcp) — Enable AI agents to inspect, lint, and safely patch schemas in your browser
-- [AI-Assisted Table Design Workflow](/en/advanced/ai-workflow) — Conversational table design, patch reviews, and smart comment generation
-- [Review and Explain SQL](/en/advanced/review-and-explain) — Architectural quality scoring, optimization suggestions, and SQL explanations
-- [Partitioning and Sharding](/en/advanced/partition-and-sharding) — MySQL/TiDB partitioning and PostgreSQL Citus distributed tables
-- [Change Diff and Rollback](/en/advanced/diff-and-rollback) — Compare schema versions, generate ALTER scripts, and create rollback DDL
-- [Foreign Key Configuration and ER Diagram](/en/advanced/foreign-key-and-er) — Visual canvas modeling, relationship wizards, and constraint topology
-- [ORM Model Generation](/en/advanced/orm-generation) — Export code for Prisma, TypeORM, SQLAlchemy, GORM, and JPA
-- [View and Routine Configuration](/en/advanced/view-and-routine) — Generate view definitions and skeleton code for procedures, functions, and triggers
-- [Schema Lint](/en/advanced/schema-lint) — Automatically scan for naming conventions, data type risks, and redundant indexes
-- [Mock Data and Logical Enums](/en/advanced/mock-data-and-enum) — Generate realistic test data and define visual enum rules
-- [Table Blueprint Templates](/en/advanced/blueprint-templates) — Apply industry-standard business templates (User, Order, Log, etc.) in seconds
+### Advanced guide
+- [Advanced guide overview](/en/advanced/): list of advanced topics
+- [Import and parse SQL](/en/advanced/import-and-parse): parse existing DDL, or import table structures from CSV, Excel, or JSON Schema
+- [WebMCP agent workflow](/en/advanced/webmcp): a browser AI agent reads and checks your schema, and changes need your confirmation
+- [AI-assisted table design workflow](/en/advanced/ai-workflow): generate a table from a description, review AI edits one by one, and fill in field comments
+- [Review and explain SQL](/en/advanced/review-and-explain): DDL scores and suggested changes, and explanations of SQL snippets
+- [Partitioning and sharding](/en/advanced/partition-and-sharding): MySQL/TiDB partitioning and PostgreSQL Citus sharding
+- [Change diff and rollback](/en/advanced/diff-and-rollback): compare schema changes, then generate ALTER scripts and rollback DDL
+- [Foreign key configuration and ER diagram](/en/advanced/foreign-key-and-er): create foreign keys or logical relationships in the ER diagram and see how tables relate
+- [ORM model generation](/en/advanced/orm-generation): export Prisma, TypeORM, SQLAlchemy, GORM, and JPA models
+- [View and routine configuration](/en/advanced/view-and-routine): view DDL and skeleton code for procedures, functions, and triggers
+- [Schema lint](/en/advanced/schema-lint): check naming, primary keys, field types, and index issues
+- [Mock data and logical enums](/en/advanced/mock-data-and-enum): generate test data and define enum values for fields
+- [Table blueprint templates](/en/advanced/blueprint-templates): save a whole table as a blueprint and reuse it in a new draft
 
-### FAQ & Changelog
-- [Errors and Failure Handling](/en/faq/common-errors) — Troubleshooting import errors, copy failures, expired shares, and sync issues
-- [Feature Entry and Visibility](/en/faq/feature-visibility) — Locate dialect-specific tabs, hidden panels, and feature entries
-- [Sharing and Collaboration](/en/faq/sharing-and-collaboration) — Read-only collaboration, branching editable copies, and version management
-- [Release Notes](/en/changelog/changelog) — Track feature releases and product evolution
+### FAQ and changelog
+- [Errors and failure handling](/en/faq/common-errors): import failures, copy failures, expired share links, and sync problems
+- [Feature entry and visibility](/en/faq/feature-visibility): why some tabs or buttons do not appear
+- [Sharing and collaboration](/en/faq/sharing-and-collaboration): read-only sharing, saving a copy, and how the draft box differs from saved tables
+- [Release notes](/en/changelog/changelog): changes in each release
 
-## Key Features
+## Main features
 
-- **Broad Multi-Dialect Support**: Accurately generates DDL and DCL for MySQL, PostgreSQL, SQL Server, Oracle, TiDB, MariaDB, OceanBase, Dameng, GaussDB, Kingbase, GBase, PolarDB, and more.
-- **Modern Visual Modeling**: Multi-tab parallel editing, column freezing, compact layout, drag-and-drop column reordering, and interactive ER diagrams.
-- **Cross-Device Sync & Multi-Language**: Built on CRDT (Yjs) technology for reliable multi-tab state management, incremental cloud sync, and full support for Chinese, English, and Japanese.
-- **Deep AI Integration**: Built-in AI table design workshop, patch review workflow, AI index advisor, architectural DDL reviews, and automated comments.
-- **Engineering-Ready Tooling**: Direct export to popular ORMs, mock data generation, reverse SQL parsing, and automated schema linting.
+- 16 database types: MySQL, MariaDB, TiDB, PolarDB, OceanBase (MySQL and Oracle modes), PostgreSQL, PostgreSQL (Citus), GaussDB, Kingbase, GBase, SQL Server, Oracle, Dameng, SQLite / D1, and Hive. DDL and DCL follow the selected database.
+- Drag fields to reorder them and freeze the leading columns. Edit different tables in separate tabs. Draw lines in the ER diagram to create table relationships.
+- After you sign in, the workspace syncs incrementally across devices through Yjs (CRDT). The interface is available in Chinese, English, and Japanese.
+- AI features include AI Table Workshop, AI Edit, AI Index Advisor, AI Review, and AI Comments.
+- Generate Prisma, TypeORM, SQLAlchemy, GORM, and JPA model code and mock test data, import table structures from SQL, and run schema lint.

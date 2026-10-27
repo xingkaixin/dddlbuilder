@@ -1,33 +1,33 @@
-# Advanced Guide Overview
+# Advanced guide overview
 
-Welcome to the DDLBuilder Advanced Guide. This section is designed for engineering leads, database architects, and power users tackling complex modeling, schema governance, workflow automation, and cross-team collaboration.
+This section covers DDLBuilder's advanced features by topic. The table below lists what each topic covers and links to its page.
 
 ---
 
-## Topic Directory
+## Topic directory
 
-| Topic | Core Capabilities & Key Benefits | Guide Link |
+| Topic | What it covers | Page |
 |---|---|---|
-| **Database delivery tools** | Multi-table dictionaries, SQL snapshot comparison, and related test rows | [Database Tools](/en/advanced/database-tools) |
-| **Import & Parsing** | Reverse-engineer existing SQL, CSV, Excel, or JSON Schema into editable structures | [Import and Parse SQL](/en/advanced/import-and-parse) |
-| **WebMCP Agent Integration** | Connect browser-based AI agents to safely inspect, lint, and patch active schemas | [WebMCP Agent Workflow](/en/advanced/webmcp) |
-| **AI-Assisted Modeling** | Conversational table generation, step-by-step patch reviews, and smart comments | [AI-Assisted Table Design Workflow](/en/advanced/ai-workflow) |
-| **SQL Review & Explanation** | Architectural quality audits, risk detection, actionable tips, and SQL explanations | [Review and Explain SQL](/en/advanced/review-and-explain) |
-| **Partitioning & Sharding** | Multi-strategy MySQL/TiDB partitioning and PostgreSQL Citus distributed tables | [Partitioning and Sharding](/en/advanced/partition-and-sharding) |
-| **Diff & Rollback** | Visual schema diffing, forward ALTER migration scripts, and rollback DDL | [Change Diff and Rollback](/en/advanced/diff-and-rollback) |
-| **Relational Modeling & ER** | Model physical foreign keys and logical relationships with cardinality, optionality, and business descriptions | [Foreign Key Configuration and ER Diagram](/en/advanced/foreign-key-and-er) |
-| **Field Standards & Business Dictionary** | Define standard fields, link business concepts, check saved tables for deviations, and import or export the library | [Field Standards and Business Dictionary](/en/advanced/field-standards) |
-| **ORM Generation** | One-click code generation for Prisma, TypeORM, SQLAlchemy, GORM, and JPA | [ORM Model Generation](/en/advanced/orm-generation) |
-| **Advanced Database Objects** | `CREATE VIEW` statements and skeleton code for procedures, functions, and triggers | [View and Routine Configuration](/en/advanced/view-and-routine) |
-| **Schema Governance & Linting** | Built-in linter detecting naming violations, type hazards, and redundant indexes | [Schema Lint](/en/advanced/schema-lint) |
-| **Testing & Metadata** | Realistic mock test data generation and visual color-badged logical enums | [Mock Data and Logical Enums](/en/advanced/mock-data-and-enum) |
-| **Domain Blueprints** | Production-grade business templates (User, Order, Audit Log, etc.) | [Table Blueprint Templates](/en/advanced/blueprint-templates) |
+| Database delivery tools | Multi-table dictionaries, SQL snapshot comparison, and related test rows | [Database Tools](/en/advanced/database-tools) |
+| Import and parsing | Parse existing SQL, and import table structures from CSV, Excel, or JSON Schema | [Import and Parse SQL](/en/advanced/import-and-parse) |
+| WebMCP agent workflow | Browser-based AI agents read, check, and edit tables through WebMCP | [WebMCP Agent Workflow](/en/advanced/webmcp) |
+| AI-assisted table design | Conversational table generation, AI-proposed table edits that you accept one by one, and AI comment filling | [AI-Assisted Table Design Workflow](/en/advanced/ai-workflow) |
+| SQL review and explanation | DDL scoring, risk checks, improvement suggestions, and explanations of selected SQL | [Review and Explain SQL](/en/advanced/review-and-explain) |
+| Partitioning and sharding | MySQL/TiDB partitioning and PostgreSQL Citus sharding | [Partitioning and Sharding](/en/advanced/partition-and-sharding) |
+| Diff and rollback | Schema diff, forward ALTER scripts, and rollback DDL | [Change Diff and Rollback](/en/advanced/diff-and-rollback) |
+| Relational modeling and ER | Model physical foreign keys and logical relationships with cardinality, optionality, and business descriptions | [Foreign Key Configuration and ER Diagram](/en/advanced/foreign-key-and-er) |
+| Field standards and business dictionary | Define standard fields, link business concepts, check saved tables for deviations, and import or export the library | [Field Standards and Business Dictionary](/en/advanced/field-standards) |
+| ORM generation | Export Prisma, TypeORM, SQLAlchemy, GORM, and JPA models | [ORM Model Generation](/en/advanced/orm-generation) |
+| Views and routines | View DDL (`CREATE VIEW`) and skeleton code for procedures, functions, and triggers | [View and Routine Configuration](/en/advanced/view-and-routine) |
+| Schema lint | Check naming, primary keys, column types, indexes, and audit columns | [Schema Lint](/en/advanced/schema-lint) |
+| Mock data and logical enums | Generate batches of mock test data, and configure logical enums with color badges | [Mock Data and Logical Enums](/en/advanced/mock-data-and-enum) |
+| Table blueprints | Save a table as a table blueprint, then reuse its fields, indexes, and table-level settings in a new draft | [Table Blueprint Templates](/en/advanced/blueprint-templates) |
 
 ---
 
-## Recommended Learning Paths
+## Reading by task
 
-- **Legacy Migration**: Start with [Import and Parse SQL](/en/advanced/import-and-parse) to bring existing DDL into your workspace.
-- **Data Architecture**: Combine [Foreign Key Configuration and ER Diagram](/en/advanced/foreign-key-and-er) with [Table Blueprint Templates](/en/advanced/blueprint-templates) to build cohesive domain models.
-- **Quality Assurance**: Run [Schema Lint](/en/advanced/schema-lint) and [Review and Explain SQL](/en/advanced/review-and-explain) prior to production rollout.
-- **Change Management**: Leverage [Change Diff and Rollback](/en/advanced/diff-and-rollback) to prepare rollout and contingency scripts.
+- To migrate an existing database, start with [Import and Parse SQL](/en/advanced/import-and-parse) to parse existing DDL into editable tables.
+- To design several related tables, combine [Foreign Key Configuration and ER Diagram](/en/advanced/foreign-key-and-er) with [Table Blueprint Templates](/en/advanced/blueprint-templates).
+- Before release, check table structures with [Schema Lint](/en/advanced/schema-lint) and [Review and Explain SQL](/en/advanced/review-and-explain).
+- Before deployment, use [Change Diff and Rollback](/en/advanced/diff-and-rollback) to generate release and rollback scripts.

@@ -1,69 +1,68 @@
 ---
-title: "Import CREATE TABLE SQL and Edit Database Schemas"
+title: "Import CREATE TABLE SQL and edit database schemas"
 description: "Import SQL into DDLBuilder, preview columns, keys and indexes, then edit and export DDL. Learn multi-table imports, conflict handling and CSV, Excel or JSON Schema imports."
 ---
 
-# Import CREATE TABLE SQL and Edit Database Schemas
+# Import CREATE TABLE SQL and edit database schemas
 
 Open the [DDLBuilder workspace](https://ddl.xingkaixin.me/) and follow the import steps below. After importing related tables, check their [foreign keys and ER diagram](/en/advanced/foreign-key-and-er), then [generate ORM models](/en/advanced/orm-generation).
 
-This guide explains how to reverse-engineer existing SQL scripts, batch DDL statements, or structured data files (CSV, Excel, JSON Schema) into editable schema models.
+This guide explains how to import existing SQL scripts or field-definition files (CSV, Excel, JSON Schema) as editable table schemas.
 
-## Overview
+## When to use
 
-Accelerate migrations, legacy system refactoring, and data dictionary ingestion by importing existing schemas rather than typing column definitions from scratch.
+Use this when you refactor a legacy system, migrate an old project's database, or create tables from third-party API definitions or an Excel data dictionary.
 
 ---
 
-## Operations Walkthrough
+## Steps
 
-### 1. Single and Multi-Table SQL Reverse-Engineering
-DDLBuilder uses a secure three-step **"Validate → Preview → Confirm"** workflow:
-1. Click the **Import SQL** button in the top navigation bar.
-2. **Select the Source Database Dialect** and paste your SQL script (supports single or multiple `CREATE TABLE`, `CREATE INDEX`, `ALTER TABLE`, and `GRANT` statements).
-3. Click "Next" to validate syntax and parse schema structures.
-4. **Inspect and Refine in the Preview Panel**:
-   - Verify extracted columns, data types, primary keys, indexes, and privilege grants.
-   - Reorder columns by dragging handles or delete unwanted columns directly within the preview modal.
-   - For multi-table imports, DDLBuilder detects name collisions and offers merge strategies: **Overwrite, Skip, or Auto-Rename**.
-5. Click "Confirm Import" to apply changes atomically to the workspace. If the source SQL contains namespace identifiers (e.g., `CREATE TABLE sales.orders`), the system splits `sales` into `Schema Name` and `orders` into `Table Name`.
+### 1. Import single-table or multi-table SQL
+1. Click **Import Schema** in the header. To save several tables at once, set **Import mode** to **Save as saved tables**.
+2. Set **Source Type** to SQL, choose the **Source Database**, and paste the SQL script. It can contain one or more `CREATE TABLE`, `CREATE INDEX`, `ALTER TABLE` and `GRANT` statements.
+3. Click **Next** to validate the syntax and parse the table structure.
+4. Review and adjust the result:
+   - Check the parsed columns, data types, primary keys, indexes and grantees.
+   - In the preview, edit column names, types and nullability, move columns up or down, or delete them.
+   - With **Save as saved tables**, select the tables to import, then choose a **Target Folder** and a **Conflict Strategy**: **Skip existing**, **Overwrite existing** or **Auto rename**.
+5. Click **Import** (or **Confirm Import** when saving as saved tables). If the SQL uses a schema prefix (for example `CREATE TABLE sales.orders`), `sales` goes into `Schema Name` and `orders` into `Table Name`.
 
-### 2. Structured Data File Imports (CSV / Excel / JSON Schema)
+### 2. Import field-definition files (CSV / Excel / JSON Schema)
 
 For actual order records or customer lists, use [Business Data Import](/en/advanced/business-data-import). CSV / Excel imports on this page read field-definition lists.
 
-1. Click **Import Data** in the top navigation and choose your file format:
-   - **CSV Files**: Reads field-definition lists: headers identify field name, SQL type and comment; each following row describes a field.
-   - **Excel Spreadsheets (.xlsx / .xls)**: Reads field definitions from each worksheet, including names, explicit SQL types and comments.
-   - **JSON Schema**: Extracts `properties` fields, types, formats, and descriptions.
-2. Upload your file, review inferred data types in the preview table, and manually adjust any column mappings if necessary.
-3. Confirm the import to populate your workspace with the extracted columns.
+1. Click **Import Schema** in the header and choose a **Source Type**:
+   - **CSV / TSV**: The first row is a header (field name, field type, field comment). Each following row describes one field.
+   - **Excel** (.xlsx / .xls): Each worksheet becomes one table, named after the sheet. Row 1 is the header (field name, field type, field comment), and each following row is one field.
+   - **JSON Schema / OpenAPI**: Reads the fields in `properties` with their types, formats and descriptions.
+2. Upload the file, click **Next**, check the fields and types in the preview, and edit them as needed.
+3. Click **Import** to write the fields to the current workspace.
 
 ---
 
-## Supported Formats and Parser Behavior
+## Supported formats and parser behavior
 
-| Source / Format | Supported Constructs & Specifications | Parser Behavior |
+| Source / format | Supported syntax and requirements | Parser behavior |
 |---|---|---|
-| **SQL Scripts** | `CREATE TABLE`, `CREATE INDEX`, `ALTER TABLE`, `GRANT` | Extracts constraints, defaults, comments, composite indexes, and grants |
-| **CSV Files** | UTF-8 encoded, comma-delimited, header row | Reads field names, explicit SQL types and comments |
-| **Excel Files** | Standard `.xlsx` and `.xls` workbooks | Reads field-definition lists from worksheets |
-| **JSON Schema** | Draft-07 / 2020-12 compliant schemas | Maps `properties` (`string`, `integer`, `boolean`, `number`) to database columns |
+| **SQL scripts** | `CREATE TABLE`, `CREATE INDEX`, `ALTER TABLE`, `GRANT` | Extracts column constraints, defaults, comments, composite indexes and grants |
+| **CSV files** | UTF-8 encoded, comma-delimited, header row | Reads field names, explicit SQL types and comments |
+| **Excel files** | `.xlsx` and `.xls` workbooks | Reads field-definition lists from each worksheet |
+| **JSON Schema** | JSON Schema, Swagger or OpenAPI documents | Extracts `properties` and maps field types from `type` and `format`; `object` and `array` map to `json` |
 
 ---
 
-## Verification Checklist
+## Verification checklist
 
-- [ ] Workspace accurately reflects imported table names, columns, constraints, and indexes.
-- [ ] Qualified schema prefixes are correctly separated into `Schema Name` and `Table Name`.
-- [ ] The output panel generates valid, clean DDL and DCL for your target dialect.
+- [ ] The workspace shows the parsed table names, columns, constraints and indexes.
+- [ ] If the source SQL has a schema prefix, `Schema Name` and `Table Name` hold the two parts.
+- [ ] The DDL and DCL in the generated output match the syntax of the target database.
 
-## Tips and Troubleshooting
+## Notes and troubleshooting
 
-::: tip Dialect Mismatch Check
-If the parser reports a syntax error, confirm that the **Source Database Dialect** in the import modal matches the SQL's actual syntax (e.g., using an Oracle script with a MySQL parser).
+::: tip Dialect mismatch
+If the import reports a syntax error, first check that **Source Database** in the import dialog matches the SQL's actual syntax, for example Oracle SQL with MySQL selected.
 :::
 
-- **Splitting Large Scripts**: For massive SQL dump files containing dozens of tables, split scripts by business domain to maintain optimal browser parsing responsiveness.
-- **Encoding and Protection**: Ensure CSV files are encoded in UTF-8. Remove password encryption on Excel spreadsheets prior to upload.
-- **Nested JSON Schemas**: Deeply nested JSON schemas should be simplified or flattened to reflect relational table entities before importing.
+- One SQL import accepts up to 50,000 characters. Split larger scripts by business module.
+- Save CSV files as UTF-8. Remove password protection from Excel files before uploading.
+- Nested `object` and `array` properties in a JSON Schema import as a single `json` field. To get separate tables, split the entities in the JSON Schema before importing.

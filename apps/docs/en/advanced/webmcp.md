@@ -1,69 +1,72 @@
-# WebMCP Agent Workflow
+# WebMCP agent workflow
 
-This guide details how to leverage the **WebMCP (Web Model Context Protocol)** to allow browser-based AI agents to interact directly and structurally with DDLBuilder for automated audits, schema imports, and verified patches.
+This page explains how browser AI agents can call DDLBuilder tools through **WebMCP (Web Model Context Protocol)** to read the table structure, run Schema Lint, preview SQL imports, and change the table structure after you confirm.
 
-## Overview
+## When to use
 
-Use browser agents (such as Gemini Nano or Chrome extension AI assistants) to read active table definitions, inspect DDL outputs, execute Schema Lint rules, and propose transactional modifications without fragile DOM parsing or screen scraping.
+When you use an AI agent in a browser that supports WebMCP (such as Chrome with experimental features turned on), the agent can read the table you are designing, run checks, or propose changes. Changes are written only after you confirm them.
 
 ---
 
-## Tool Capabilities and Directory
+## Tools
 
-DDLBuilder exposes core domain operations as strongly-typed, callable tools:
+DDLBuilder registers the following operations as WebMCP tools. The agent calls them directly, without parsing the page DOM or taking screenshots:
 
-| Tool Name | Scope and Behavior |
+| Tool name | What it does |
 |---|---|
-| `inspect_active_schema` | Paginates through the active table's metadata, columns, indexes, foreign keys, and storage options |
-| `lint_active_schema` | Executes deterministic Schema Lint rules against the active schema and returns structured diagnostic reports |
-| `read_generated_output` | Streams generated DDL, DCL, ORM models, ALTER migrations, or rollback scripts |
-| `preview_schema_patch` | Accepts proposed column/index diffs from the agent and renders a preview diff without writing to state |
-| `import_sql_preview` | Parses an input SQL string under a specified dialect and presents an import preview |
-| `apply_schema_patch` | Applies a validated patch atomically after user confirmation (guarded by signature concurrency checks) |
-| `get_auth_status` | Checks sign-in state and enabled capabilities (preserves privacy by omitting email and token data) |
-| `start_sign_in` | Triggers the sign-in modal, ensuring credentials and bot verification are handled securely by the user |
+| `inspect_active_schema` | Reads one section of the current table (overview, columns, indexes, relations, or table options), up to 50 items per call, and returns a `baseSignature` |
+| `lint_active_schema` | Runs Schema Lint on the current table and returns the issue list |
+| `read_generated_output` | Reads the current table's generated DDL, DCL, ORM model, ALTER statements, or rollback script in chunks of up to 1,200 characters |
+| `preview_schema_patch` | Takes table, column, and index changes proposed by the agent and builds a change preview without writing to the workspace |
+| `import_sql_preview` | Parses SQL as the given database type and builds an import preview. It never applies automatically |
+| `apply_schema_patch` | Opens a confirmation dialog and writes the previewed changes after you click **Apply changes**. If the current table changed in the meantime, it rejects the write |
+| `get_auth_status` | Returns the sign-in state and the available capability groups. It does not return your email or credits |
+| `start_sign_in` | Opens the sign-in dialog. You enter your password and complete human verification in the page. Only available when you are signed out |
 
 ---
 
-## Safe Patch Application Workflow
+## Change workflow
 
-To prevent unwanted AI hallucinations or race conditions, WebMCP enforces an optimistic concurrency model based on **`baseSignature`**:
+Agent changes are previewed first and then confirmed by you. DDLBuilder uses the table structure signature `baseSignature` to detect whether the current table has changed:
 
 ```mermaid
 sequenceDiagram
-    participant Agent as Browser AI Agent
-    participant WebMCP as WebMCP Tool Layer
-    participant User as User Review UI
-    participant Workspace as DDLBuilder Workspace
+    participant Agent as Browser AI agent
+    participant WebMCP as WebMCP tool layer
+    participant User as User confirmation UI
+    participant Workspace as DDLBuilder workspace
 
     Agent->>WebMCP: inspect_active_schema()
-    WebMCP-->>Agent: Returns active schema + baseSignature
-    Agent->>WebMCP: preview_schema_patch(baseSignature, patch)
-    WebMCP->>User: Displays diff modal and Lint validation
-    Agent->>WebMCP: apply_schema_patch(baseSignature, patchId)
-    User->>Workspace: User explicitly clicks "Apply Changes"
-    alt Signature Matches
-        Workspace-->>Agent: Changes applied; workspace updated
-    else Concurrently Modified (CONFLICT)
-        Workspace-->>Agent: Rejected; agent must re-read latest signature
+    WebMCP-->>Agent: Returns current schema + baseSignature
+    Agent->>WebMCP: preview_schema_patch(baseSignature, operations)
+    WebMCP->>User: Shows change preview and schema check results
+    WebMCP-->>Agent: Returns changeSetId
+    Agent->>WebMCP: apply_schema_patch(changeSetId)
+    WebMCP->>User: Opens confirmation dialog
+    User->>Workspace: User clicks "Apply changes"
+    alt Table unchanged
+        Workspace-->>Agent: Changes applied, workspace updated
+    else Table changed (CONFLICT)
+        Workspace-->>Agent: Rejected, agent must read the schema again
     end
 ```
 
 ---
 
-## Verification Checklist
+## Verification checklist
 
-- [ ] Browser environment exposes `document.modelContext` with DDLBuilder tools registered.
-- [ ] The agent can retrieve schema details and diagnostic reports without errors.
-- [ ] Applying schema patches requires an explicit click in the review dialog.
-- [ ] Read-only share links allow inspection while blocking all modification attempts.
+- [ ] The browser console can access `document.modelContext`, and the DDLBuilder tools are registered.
+- [ ] The agent can read the current table's columns and indexes through the tools.
+- [ ] Changes take effect only after you click **Apply changes** in the page dialog.
+- [ ] On a read-only share page, the agent can read but cannot modify.
 
-## Tips and Constraints
+## Notes
 
-::: warning Human-in-the-Loop Safeguard
-Agents cannot bypass the UI confirmation gate. Every modification proposed via `apply_schema_patch` requires explicit review and approval by the user.
+::: warning Changes need your confirmation
+Agents cannot skip the confirmation dialog to change the table structure. Every change submitted through `apply_schema_patch` is written only after you click **Apply changes**.
 :::
 
-- **Browser Compatibility**: WebMCP is an evolving standard. Check the [Chrome WebMCP Documentation](https://developer.chrome.com/docs/ai/webmcp) for experimental flag requirements and Origin Trial status.
-- **Session Lifecycle**: WebMCP operates within the context of the active browser tab. Closing or refreshing the page terminates the active tool session.
-- **Headless / Server Scenarios**: For CI/CD pipelines, CLI automation, or cloud-hosted agents lacking an active browser tab, use standard backend MCP endpoints rather than WebMCP.
+- WebMCP is still being standardized. See the [Chrome WebMCP documentation](https://developer.chrome.com/docs/ai/webmcp) for browser support and local flags.
+- WebMCP tools are registered in the open DDLBuilder tab. If you close or refresh the page, unapplied change previews are lost.
+- A read-only share page registers only four read tools: `get_auth_status`, `inspect_active_schema`, `lint_active_schema`, and `read_generated_output`.
+- CLI tools, CI pipelines, and cloud agents without a browser tab cannot use these tools.

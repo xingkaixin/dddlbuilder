@@ -1,42 +1,42 @@
-# Review and Explain SQL
+# Review and explain SQL
 
-This guide covers how to execute expert-grade schema quality audits using **Master Review** and decode complex dialect-specific clauses using the **SQL Explanation** tool.
+This page explains how to use **AI Review** to check the current table's DDL, and how to use **Explain selection** to have AI explain a piece of SQL.
 
-## Overview
+## When to use
 
-Perform pre-flight architecture reviews before submitting DDL to DBA approval boards, identify hidden performance bottlenecks, and rapidly understand legacy or unfamiliar database syntax.
-
----
-
-## Operations Walkthrough
-
-### 1. Master Review (Architect-Level Quality Audit)
-1. Ensure the active table has valid columns configured and renders valid DDL in the output panel.
-2. Click **Master Review** in the DDL header.
-3. **Inspect Multidimensional Quality Scoring**:
-   - The engine audits schemas across key pillars: **Naming Conventions**, **Data Type Choices**, **Index Efficiency**, **Integrity Constraints**, **Extensibility**, and **Performance Risks**, delivering a composite score (1–10).
-   - Issues are prioritized into high-risk bugs, optimization recommendations, and best-practice notices with detailed reasoning.
-4. **One-Click Remediation**: For structural recommendations (such as missing composite indexes or sub-optimal numeric types), click **Apply** on the suggestion card to write the fix directly back to your columns or index configuration.
-5. **Audit History**: Click the history icon to inspect previous review snapshots and track score improvements over time.
-
-### 2. Explain Selected SQL
-1. In the DDL output code editor, highlight any SQL snippet or complex clause (such as custom partitioning expressions, dialect-specific storage clauses, or index options).
-2. An **Explain Selected** tooltip will appear adjacent to your selection.
-3. Click "Explain Selected" to prompt the AI for an immediate breakdown of the clause's **execution semantics**, **engine behavior**, and **business context**.
+Check a table yourself before handing it to a DBA or releasing it. When you read unfamiliar SQL, look at what each clause does, one part at a time.
 
 ---
 
-## Verification Checklist
+## Steps
 
-- [ ] The schema has completed a Master Review cycle with all high-risk items resolved.
-- [ ] Accepted recommendations are accurately applied to the configuration table.
-- [ ] Complex SQL clauses have verified explanations ready for architecture reviews.
+### 1. AI Review
+1. Make sure the current table has columns and DDL has been generated.
+2. In the **DDL** tab of the generated output, click **AI Review**.
+3. Read the score and suggestions:
+   - AI reviews six areas: naming conventions, data type choices, index design, integrity constraints, extensibility, and performance. It returns a score from 1 to 10 and a short summary.
+   - Suggestions are listed one by one. Performance issues are marked **Severe** or **Warning**.
+4. Suggestions that add, change, or remove a column, or add or remove an index, have an **Apply** button. Clicking it writes the change to the column or index configuration. Performance notes and general suggestions are for reference only and cannot be applied automatically.
+5. Click the history icon next to **AI Review** to open **Review History**, which shows earlier scores and suggestions.
 
-## Tips and Best Practices
+### 2. Explain selected SQL
+1. In a SQL code area of the generated output, select a statement or clause with the mouse, such as an index option, a partition definition, or a storage parameter.
+2. An **Explain selection** button appears next to the selection. When you are signed out, it reads **Sign in to explain**.
+3. Click **Explain selection**. AI explains what the snippet does and its key points.
 
-::: tip Reviewing Suggestions in Domain Context
-Master Review suggestions are rooted in general database best practices. Always evaluate suggestions (such as normalizing a denormalized caching column) against your specific business requirements before applying.
+---
+
+## Verification checklist
+
+- [ ] The current table has an AI Review, and every issue marked **Severe** is fixed or confirmed.
+- [ ] Applied suggestions appear in the table configuration, and the DDL is updated.
+- [ ] Complex SQL snippets that you need to discuss in a review have explanations.
+
+## Notes
+
+::: tip Check business rules before applying
+AI Review gives general database design advice. For changes that touch specific business rules, such as a denormalized column you kept on purpose, decide based on your actual requirements.
 :::
 
-- **Valid DDL Requirement**: A schema must have a table name and at least one valid column to generate DDL before triggering a review.
-- **Accurate Selection**: When using "Explain Selected", highlight complete syntactic blocks for the most context-aware explanations.
+- **AI Review** is disabled when no DDL has been generated. It is also disabled when the database type is SQLite / D1.
+- When you use **Explain selection**, select a complete statement or clause.

@@ -1,55 +1,57 @@
-# Indexes, Privileges, and Misc
+# Indexes, privileges, and misc
 
-This guide explains how to design high-performance indexing strategies, configure access privileges (DCL), fine-tune storage engine options, and generate routine skeleton code.
+This page explains how to configure indexes, privilege statements (DCL), storage options under **Misc**, and routine skeleton code.
 
 ## Overview
 
-Once basic columns are configured, define indexing strategies for query optimization, declare access control grants, and set physical storage parameters to prepare schemas for production deployment.
+After you define the fields, add indexes, privileges, and storage options.
 
 ---
 
-## Configuration Walkthrough
+## Configuration walkthrough
 
-### 1. Index Configuration
-Open the **Indexes** tab to establish query acceleration and uniqueness constraints:
-- **Primary Key**: Designate one or more primary key columns (standard tables accept exactly one primary key).
-- **Unique Indexes**: Guarantee business uniqueness (such as phone numbers, emails, or tenant-scoped identifiers).
-- **Secondary Indexes**: Select columns from autocomplete recommendations to construct single or **composite indexes**.
-- **Custom Index Naming**: Edit or double-click index names to customize them. If left blank, DDLBuilder automatically generates compliant identifiers (e.g., `idx_table_columns`).
+### 1. Index configuration
+On the **Indexes** tab:
+- **Add Primary Key**: select the primary key fields. A table can have only one primary key.
+- **Add Unique Index**: use it for fields that must be unique, such as phone numbers, emails, or tenant codes.
+- **Add Index**: creates a normal index. Select one or more fields from **Field suggestions**. Selecting several fields creates a composite index.
+- **Index name**: if left empty, the name is generated as `idx_<table>_<fields>`. Unique indexes use the `uk_` prefix. Names longer than the database's identifier limit are truncated. Double-click an added index name to change it.
 
 ### 2. AI Index Advisor
-When fine-tuning indexes for complex or slow query workloads:
-1. Click the **AI Index Advisor** button.
-2. Paste typical business queries or slow query SQL snippets.
-3. The AI analyzes table columns, existing indexes, and query predicate structures to provide **missing index recommendations**, **redundant index detection**, **column ordering optimizations**, and **query rewrite tips**.
-4. Click **Add Index** on any recommended action to immediately incorporate it into your configuration and update your DDL.
+When you are not sure which indexes your common queries need:
+1. In the **Fields** toolbar, open the **AI tools** menu and click **AI Index Advisor**.
+2. Paste common queries or slow query snippets into **Typical query SQL**, one per line, then click **Analyze Indexes**.
+3. AI makes suggestions based on the current fields and existing indexes, grouped into categories such as **Missing Index**, **Redundant Index**, **Order Optimization**, and **Query Rewrite**.
+4. To accept a suggestion, click **Add Index**. The index is added to the **Indexes** tab and the DDL updates.
 
-### 3. Privilege Configuration (DCL)
-Open the **Privileges** tab to manage data access permissions:
-- Enter target **user or role identifiers** (e.g., `app_user`, `readonly_role`).
-- The right-hand **Privilege DCL** panel automatically outputs standard `GRANT SELECT, INSERT, UPDATE, DELETE ON table TO user;` statements.
-- If a `Schema Name` is defined, privilege statements automatically inherit the fully qualified table identifier.
+### 3. Privilege configuration (DCL)
+On the **Privileges** tab:
+- Enter a grantee (a user or role, such as `app_user` or `readonly_role`) and click **Add**.
+- The **DCL** tab in **Generated output** contains one `GRANT SELECT ON table TO grantee;` statement per grantee.
+- If **Schema Name** is filled in, the table name in the statement has the schema prefix.
 
-### 4. Miscellaneous Settings (Storage & Dialect Parameters)
-Open the **Misc** tab and toggle the switch to configure low-level engine parameters:
-- **Engine & Charset**: Set MySQL/MariaDB `ENGINE` (e.g., InnoDB), `CHARACTER SET` (e.g., `utf8mb4`), and `COLLATE`.
-- **Physical Storage**: Configure `TABLESPACE`, PostgreSQL `fillfactor`, Oracle `PCTFREE`, `INITRANS`, and other dialect-specific clauses.
-- **Routine Skeletons**: Select templates for Stored Procedures, Functions, or Triggers to generate structured code skeletons directly in the output panel.
+### 4. Misc settings (storage and database options)
+On the **Misc** tab, turn on **Enable miscellaneous options** to set the storage options supported by the current database:
+- **Engine and charset**: MySQL/MariaDB `ENGINE` (for example InnoDB), `CHARACTER SET` (for example `utf8mb4`), and `COLLATE`.
+- **Physical storage**: `TABLESPACE`, PostgreSQL `fillfactor`, Oracle `PCTFREE`, `INITRANS`, and other database-specific clauses.
+
+### 5. Routine skeleton code
+In **Generated output**, switch to the **Routines** tab and choose a template (Procedure, Function, Auto Updated Timestamp Trigger, Audit Log Trigger, or Custom Trigger). Fill in the name and other parameters to generate skeleton code, then add the business logic in your database.
 
 ---
 
-## Verification Checklist
+## Verification checklist
 
-- [ ] Critical filter and join columns are indexed, and business keys have unique constraints.
-- [ ] Index names follow naming conventions and have no duplicate or empty column sets.
-- [ ] Authorized roles are listed, and valid DCL statements appear in the output panel.
-- [ ] Enabled storage options correctly render at the end of the `CREATE TABLE` DDL.
+- [ ] Common query and filter fields have indexes, and fields that must be unique have unique indexes.
+- [ ] Index names are not duplicated, and no index is missing its fields.
+- [ ] All users or roles that need access are added, and the **DCL** tab has one `GRANT` statement for each.
+- [ ] With misc options enabled, the storage options appear at the end of the `CREATE TABLE` statement.
 
-## Tips and Common Traps
+## Common issues
 
-::: tip Activating Misc Parameters
-If parameter changes in the Misc tab do not appear in the DDL, ensure the master **Enable Misc Options** toggle at the top of the tab is switched on.
+::: tip Misc settings not applied
+If the parameters you set under **Misc** do not appear in the DDL, check that the **Enable miscellaneous options** switch at the top of the tab is on.
 :::
 
-- **Single Primary Key**: Relational databases enforce a single primary key per table. Do not attempt to add multiple independent primary key constraints.
-- **Empty DCL Output**: An empty DCL panel indicates that no grantee users or roles have been added. This is normal behavior and does not invalidate your DDL.
+- **Single primary key**: a table can have only one primary key. If one already exists, clicking **Add Primary Key** shows "Primary key already exists".
+- **No grantees**: when no grantees are added, the **DCL** tab shows `-- Please configure grantees`. The table DDL is not affected.

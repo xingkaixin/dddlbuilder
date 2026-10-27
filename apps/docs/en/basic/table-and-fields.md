@@ -1,54 +1,54 @@
-# Table and Field Configuration
+# Table and field configuration
 
-This guide details how to configure table-level metadata, column definitions, data types, business constraints, and advanced field features to generate reliable DDL.
+This page explains each setting in the table configuration area and the **Fields** table, plus the helper tools in the field table toolbar.
 
 ## Overview
 
-Use the visual editor to design greenfield database tables or evolve existing schemas while guaranteeing conformance to your chosen database dialect's syntax and type rules.
+Use this page when you create a new table, or add and change fields and constraints on an existing one.
 
 ---
 
-## Configuration Walkthrough
+## Configuration walkthrough
 
-### 1. Table-Level Metadata
-Configure table identifiers in the top configuration header:
-- **Database Type**: Select your target database dialect (e.g., MySQL, PostgreSQL, Oracle, SQL Server).
-- **Table Name & Display Name**: Enter the physical table name (e.g., `order_item`) and descriptive business label (e.g., `Order Item Details`).
-- **Schema Name (Optional)**: If your database uses namespace isolation (e.g., `sales.order_item`), enter the schema name in the dedicated input. Do not manually prefix the table name.
+### 1. Table-level metadata
+In the table configuration area at the top, fill in:
+- **Database Type**: select the target database, such as MySQL, PostgreSQL, or Oracle.
+- **Table Name** and **Table Comment**: for example `order_item` and `Order items`.
+- **Schema Name** (optional, under **Properties**): fill it in when the target database separates objects by schema. For example, entering `sales` outputs the table name as `sales.order_item`. Do not put the schema in the table name.
 
-### 2. Columns and Constraints
-Define column properties in the **Field Configuration** table:
-- **Field Name & Label**: Specify the column identifier and its business description.
-- **Data Type**: Select from dialect-aware data types (such as `BIGINT`, `VARCHAR(255)`, `DECIMAL(10,2)`, `JSON`).
-- **Nullability**: Explicitly mark columns as `NOT NULL` or `NULL`.
-- **Default Type & Default Value**: Choose from constant values, empty strings, current timestamp (`CURRENT_TIMESTAMP`), UUIDs, or dialect-specific expressions.
-- **Update Policy**: Configure automatic update triggers for timestamp columns (e.g., `ON UPDATE CURRENT_TIMESTAMP`).
+### 2. Fields and constraints
+In the **Fields** table, set the following for each field:
+- **Field Name** and **Comment**: the field identifier and its description.
+- **Type**: a type supported by the current database, such as `BIGINT`, `VARCHAR(255)`, `DECIMAL(10,2)`, or `JSON`.
+- **Nullable**: choose **No** to generate `NOT NULL`.
+- **Default Kind** and **Default Value**: **Default Kind** can be **None**, **Auto Increment**, **Constant**, **SQL expression**, **Current Time**, or **UUID**. Fill in **Default Value** when a specific value is needed.
+- **On Update**: choose **Current Time** to generate `ON UPDATE CURRENT_TIMESTAMP`.
 
-### 3. Productivity & Layout Features
-- **Batch Row Insertion & Reordering**: Click "Add Rows" to quickly insert multiple column rows. Drag rows by their left handles to reorder columns in the DDL.
-- **Frozen Columns & Compact Layout**: Pin key identifier columns with "Freeze Columns" when scrolling horizontally. Toggle "Compact Layout" on smaller displays to maximize visible information density.
-- **Field Templates**: Click "Apply Template" to insert standard audit column bundles (e.g., `created_at`, `updated_at`, `created_by`), or save current columns as a reusable team template.
+### 3. Editing tips
+- Click **Add Rows** in the toolbar to append empty rows to the end of the table. Use the plus and minus buttons next to it to change how many rows each click adds. Drag the handle at the start of a row to reorder fields.
+- When the table scrolls horizontally, turn on the **Freeze** switch to keep the leading columns visible. Use the plus and minus buttons to change how many columns stay frozen.
+- Click **Apply Template** to insert a saved field template, for example a set of `created_at`, `updated_at`, and `created_by` audit fields. Choose **Save current rows as template...** in the same menu to save the current fields as a template.
 
-### 4. Advanced Metadata & Tools
-- **Logical Enums**: For finite status columns, expand the inline enum editor to specify valid values, labels, and visual color badges. This metadata persists with the table to document business rules.
-- **Storage Capacity Estimation**: Click "Estimate Storage" and input projected row counts. The tool computes physical disk usage including row width and index overhead.
-- **Schema Lint**: Run the built-in Schema Lint checker to catch naming convention violations, problematic data types, or missing primary keys.
-- **Mock Data Generator**: Click "Mock Data" to generate realistic sample datasets based on column types, exportable as SQL INSERT statements, CSV, or JSON.
+### 4. Business metadata and helper tools
+- **Logical enums**: for a field with a limited set of values, such as a status code, click **Edit enum values** in the **Type** cell. In the dialog, enter the enum values, Chinese and English comments, and color tags. The enum data is saved with the table.
+- **Size estimate**: in the **Data tools** menu, click **Estimate Size** and enter the expected row count. The result is split into raw data, indexes, and overhead. Use it for capacity planning. It is not an exact measure of actual disk usage.
+- **Schema lint**: click **Schema Lint** at the bottom of the editor to see issues such as naming problems, risky field types, or a missing primary key.
+- **Mock test data**: in the **Data tools** menu, click **Mock Data** to generate test data from the field types. You can export it as INSERT SQL, CSV, or JSON.
 
 ---
 
-## Verification Checklist
+## Verification checklist
 
-- [ ] All core domain fields are accurately defined with appropriate types and lengths.
-- [ ] Primary key and non-null constraints are correctly applied.
-- [ ] The DDL output panel updates in real time with syntactically valid SQL.
-- [ ] The Schema Lint panel reports no critical errors.
+- [ ] All fields the business needs are present, with correct types and lengths.
+- [ ] The primary key and `NOT NULL` constraints are set, and fields that need a default have a **Default Kind**.
+- [ ] The SQL on the **DDL** tab is complete, with no syntax errors or blank placeholders.
+- [ ] **Schema Lint** shows no issues at the **Error** level.
 
-## Common Traps and Guidance
+## Common issues and troubleshooting
 
-::: warning Column Type Migrations
-Modifying data types on established tables may trigger compatibility warnings (such as truncation or precision loss). Carefully inspect warnings before applying changes.
+::: warning Field type and length changes
+When you change a field type or shorten a field length, DDLBuilder shows **Data Type Change Risk** or **Field Length Reduction Risk**, which explains possible conversion failures, truncation, or data loss. Check the change, then click **Change Anyway**, or click **Cancel** to discard it.
 :::
 
-- **Reserved Keywords**: When a column name matches a database reserved word (e.g., `order`, `status`, `group`), the system displays a warning and automatically quotes the identifier in generated DDL.
-- **Foreign Key Requirements**: When configuring foreign keys or drawing relationship lines in the ER diagram, target columns must be single-column primary keys or unique index targets with matching data types.
+- **Reserved keywords**: when a field name is a reserved keyword in the target database (for example `order` or `group`), the table shows "Field name is a reserved keyword", and the generated DDL quotes the field name using that database's rules.
+- **Foreign key requirements**: when you configure a foreign key or draw a relationship line in the ER diagram, the referenced field must be a single-field primary key or a unique index column, and the data types on both sides must be compatible.

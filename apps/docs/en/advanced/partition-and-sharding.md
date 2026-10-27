@@ -1,45 +1,45 @@
-# Partitioning and Sharding Configuration
+# Partitioning and sharding configuration
 
-This guide details how to configure table-level **Partitioning Strategies** and **Distributed Sharding** for high-volume and horizontally scalable data architectures.
+This page explains how to configure table partitioning for MySQL-family databases and distributed sharding for PostgreSQL (Citus).
 
-## Overview
+## When to use
 
-Optimize large-scale tables (e.g., audit logs, historical orders, IoT time-series data) for lifecycle retention and query pruning, or leverage PostgreSQL Citus for scale-out distributed processing.
-
----
-
-## Configuration Walkthrough
-
-### 1. MySQL / MariaDB / TiDB Table Partitioning
-When the target dialect is set to **MySQL**, **MariaDB**, or **TiDB**, the "Partitioning" tab becomes active:
-1. Toggle the **Enable Partitioning** switch.
-2. **Select Partitioning Strategy**:
-   - **RANGE / RANGE COLUMNS**: Ideal for numeric ranges or continuous date intervals (e.g., partitioning orders by year). Use the "By Year", "By Month", or "By Day" quick-generate helpers for rapid setup.
-   - **LIST / LIST COLUMNS**: Ideal for discrete enum value sets (e.g., partitioning by region or tenant tier).
-   - **HASH / KEY**: Distributes data uniformly across a specified partition count; requires a target column and partition count.
-3. **Define Partition Expression**: Enter column expressions (e.g., `YEAR(created_at)`) and specify bound values for each partition.
-4. The output panel immediately generates the complete `PARTITION BY ...` clause.
-
-### 2. PostgreSQL Citus Distributed Sharding
-When the target dialect is set to **PostgreSQL (Citus)**, the "Sharding" tab becomes available:
-1. **Choose Table Distribution Mode**:
-   - **Reference Table**: Replicates smaller dictionary/lookup tables across all worker nodes for efficient local joins.
-   - **Distributed Table**: Shards high-volume tables across the cluster; requires designating a primary **Distribution Column** (e.g., `tenant_id` or `user_id`).
-2. The output panel automatically appends standard Citus management statements: `SELECT create_reference_table('table_name');` or `SELECT create_distributed_table('table_name', 'shard_key');`.
+For large tables with tens of millions of rows, such as logs, historical orders, or time-series data, range partitioning lets you archive old data by partition and limits the partitions a query scans. If you scale out with PostgreSQL Citus, you can configure large tables as distributed tables.
 
 ---
 
-## Verification Checklist
+## Steps
 
-- [ ] Dialect-specific partitioning or sharding controls are properly configured.
-- [ ] Partition/sharding keys align directly with the most frequent query filters to maximize pruning efficiency.
-- [ ] The generated DDL script includes all necessary partitioning definitions and distribution commands.
+### 1. Table partitioning for MySQL-family databases
+When the database type is MySQL, MariaDB, TiDB, OceanBase (MySQL), GBase, or PolarDB, the **Advanced** menu in the configuration area includes **Partitioning**:
+1. Turn on the **Enable partitioning** switch.
+2. Choose a **Partition Type**:
+   - **RANGE / RANGE COLUMNS** partitions by numeric ranges or date intervals, for example orders by year. Click **By Year**, **By Month**, or **By Day** to generate partition definitions.
+   - **LIST / LIST COLUMNS** partitions by lists of discrete values, for example by region or business type.
+   - **HASH / KEY** spreads rows across a fixed number of partitions by hash value. It requires a partition column and a partition count.
+3. In **Partition Key**, enter a column name or an expression such as `YEAR(created_at)`, then enter the bound values for each partition.
+4. The DDL includes the matching `PARTITION BY ...` clause.
 
-## Tips and Common Traps
+### 2. PostgreSQL Citus distributed sharding
+When the database type is **PostgreSQL (Citus)**, the **Advanced** menu in the configuration area includes **Sharding**:
+1. Choose a **Table Mode**:
+   - A **Reference Table** keeps a full copy on every node. Use it for small tables such as dictionaries or settings, so joins with large tables can run on the local node.
+   - A **Distributed Table** is a large table split by its distribution column. You must choose a **Distribution Column**, such as `tenant_id` or `user_id`.
+2. The DDL ends with `SELECT create_reference_table('table_name');` or `SELECT create_distributed_table('table_name', 'shard_key');`.
 
-::: warning Primary and Unique Key Constraint Requirements
-In partitioned tables (e.g., MySQL, PostgreSQL), every primary key and unique constraint **must include the partition key columns**, otherwise table creation will fail at execution time.
+---
+
+## Verification checklist
+
+- [ ] **Partitioning** or **Sharding** appears for the current database type.
+- [ ] The partition key or distribution column matches your most frequent filter and JOIN conditions, so queries do not scan across partitions or shards.
+- [ ] The DDL contains a `PARTITION BY` clause or a Citus `create_*_table` statement.
+
+## Notes
+
+::: warning Primary key and unique index requirements
+In MySQL and PostgreSQL partitioned tables, every primary key and unique index **must include the partition key columns**. Otherwise the database returns an error when it creates the table.
 :::
 
-- **Tab Visibility**: If partitioning or sharding tabs do not appear, verify that your active database dialect is set to a supported engine.
-- **Avoid Over-Partitioning**: Partitioning introduces metadata overhead. For modest datasets (under millions of rows), start with standard indexed tables.
+- If **Partitioning** or **Sharding** does not appear, check that the database type at the top is one of the types listed above.
+- Partitioning adds metadata overhead. For tables under a million rows, start with a regular table.

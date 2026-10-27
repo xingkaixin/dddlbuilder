@@ -5,15 +5,15 @@ description: "Import CSV or Excel records, map columns or infer a table, validat
 
 # Convert CSV and Excel to INSERT SQL
 
-For real order records, customer lists or similar CSV / Excel data, open **Database Tools → Business data import**. Generate a new table and INSERT SQL, or validate records against an existing table and generate INSERT SQL. No account is required.
+For real order records, customer lists or similar CSV / Excel data, open **Database tools**, then **Business data import**. Generate a new table and INSERT SQL, or validate records against an existing table and generate INSERT SQL. No account is required.
 
-Records stay in browser background processing. They are not uploaded, written to the workspace or synchronized with an account. Closing the tool or switching accounts clears the current input and results. Structure SQL still uses the existing parsing service; do not paste INSERT statements containing records into the structure source.
+Records are processed only in a background thread in your browser. They are not uploaded, written to the workspace or synchronized with an account. Closing the tool or switching accounts clears the current input and results. Structure SQL still uses the existing parsing service; do not paste INSERT statements containing records into the structure source.
 
 ## 1. Read data
 
 Choose a `.csv`, `.tsv`, `.txt` or `.xlsx` file, or paste text. CSV / text must be UTF-8. Select comma, Tab or semicolon and click **Read data**. For Excel, select a worksheet from the list; an empty first worksheet does not prevent selecting another.
 
-The first record contains nonempty, unique headers. CSV supports quoted delimiters, line breaks and doubled quotes. Every record must match the header width. Fully empty records are skipped. Error positions preserve physical source rows, including headers and quoted line breaks.
+The first record is the header row. Each header must be nonempty and unique. CSV supports quoted delimiters, line breaks and doubled quotes. Every record must match the header width. Fully empty records are skipped. Error positions preserve physical source rows, including headers and quoted line breaks.
 
 ```csv
 order_code,amount,created_at
@@ -37,7 +37,7 @@ Oversized input is rejected, never silently truncated. Encrypted workbooks, merg
 
 ### Create a new table
 
-Select MySQL or PostgreSQL, a table name and an optional schema / database name. All records are scanned to infer integer, exact decimal, boolean, date or text columns. Mixed values use text. Edit names, types and nullability, or ignore fields. Primary keys, unique keys and business relationships are not inferred.
+Select MySQL or PostgreSQL, a table name and an optional schema / database name. The tool scans all records to infer integer, exact decimal, boolean, date or text columns. Mixed values use text. Edit names, types and nullability, or ignore fields. The tool does not guess primary keys, unique keys or business relationships.
 
 After changing format options, use **Infer fields again with current options (replace edits)** to regenerate definitions. This replaces edited fields. Review types again after changing the database.
 
@@ -51,7 +51,7 @@ Select one ordinary MySQL / PostgreSQL table from saved tables, a structure snap
 
 - Empty cells become NULL by default; disable this to preserve empty strings. Literal text `NULL` is not automatically converted.
 - Whitespace is preserved unless trimming is enabled.
-- Text dates accept ISO, DD/MM/YYYY or MM/DD/YYYY. Invalid dates are rejected. Times use `HH:mm:ss` and up to six fractional digits, subject to field precision.
+- Text dates accept ISO, DD/MM/YYYY or MM/DD/YYYY. The tool does not guess regional formats and rejects dates that do not exist. Times use `HH:mm:ss` and up to six fractional digits, subject to field precision.
 - Common integers, decimal/numeric, character types, booleans, dates / timestamps without time zones, JSON, PostgreSQL UUID and MySQL ENUM are supported. Unsupported types block output. Floating-point fields use approximate semantics; use decimal for money.
 
 ## 3. Validate and download
@@ -60,7 +60,7 @@ Click **Validate all data and generate SQL** to check required fields, types, in
 
 Any issue blocks the entire SQL export. The first 50 issues show source rows; download all errors and original values as JSON. Correct the file or mapping and validate again. Changing input, target, mappings or formats immediately clears old results.
 
-New-table output contains CREATE TABLE and INSERT; existing-table output contains INSERT only, in batches of up to 100 rows. Previews show five rows and 12,000 SQL characters, while downloads are complete. MySQL text uses UTF-8 hexadecimal literals and PostgreSQL uses E strings to avoid dependence on ordinary string escaping modes. Scripts are not executed automatically. The target schema / database must already exist.
+After validation passes, download the complete SQL. New-table output contains CREATE TABLE and INSERT; existing-table output contains INSERT only, in batches of up to 100 rows. Previews show five rows and 12,000 SQL characters, while downloads are complete. MySQL text uses UTF-8 hexadecimal literals and PostgreSQL uses E strings to avoid dependence on ordinary string escaping modes. Scripts are not executed automatically. The target schema / database must already exist.
 
 Offline checks do not inspect existing records, referenced rows, triggers, unmodeled CHECK constraints or database collation. Omitted default fields do not participate in file uniqueness checks. Review PostgreSQL sequence positions after inserting explicit generated IDs. Passing file checks does not guarantee execution in every database version or configuration.
 

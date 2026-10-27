@@ -1,46 +1,46 @@
-# Mock Data and Logical Enums
+# Mock data and logical enums
 
-This guide covers how to generate realistic **Mock Datasets** and configure color-badged **Logical Enums** to document valid domain values.
+This guide explains how to generate mock test data in DDLBuilder and how to configure logical enums for a field.
 
-## Overview
+## When to use
 
-Accelerate development, test query behaviors, and eliminate ambiguity around status codes and dictionary columns by standardizing domain metadata visually.
-
----
-
-## Operations Walkthrough
-
-### 1. Generating and Exporting Mock Test Data
-1. Ensure the active table has defined columns and types.
-2. Click the **Mock Data** button in the toolbar to open the generator modal.
-3. **Configure Generation Parameters**:
-   - Set the row count (1–100 rows).
-   - Inspect the generated preview. The generator populates type-accurate random data for integers, decimals, UUIDs, timestamps, emails, booleans, and more.
-4. **Export Dataset**:
-   - Choose your format: **SQL INSERT Statements**, **CSV File**, or **JSON Array**.
-   - Click export or copy to populate your test database or API mocks immediately.
-
-### 2. Configuring Logical Enums
-For discrete columns such as status codes, approval states, or account types:
-1. Locate the target field in the Field Configuration table and click to expand the **Inline Enum Editor**.
-2. Click "Add Item" and enter the **Value** (e.g., `10`, `PAID`) and **Display Label** (e.g., `Paid`).
-3. **Assign Color Badges**: Select distinct color badges (e.g., green for Success, red for Rejected, yellow for Pending) to make status values instantly identifiable in the UI.
-4. **Drag to Reorder**: Drag enum rows to arrange values according to business priority.
-5. Enum metadata persists with drafts and saved tables to document data dictionaries for the entire team.
+Use these tools to fill in test data during development and integration testing, to check SQL queries, and to record the values and meanings of status codes, type codes and similar fields.
 
 ---
 
-## Verification Checklist
+## Steps
 
-- [ ] Exported mock datasets import cleanly into local testing environments.
-- [ ] Logical enum items cover all domain branches with clear display names and color badges.
-- [ ] Enum configurations reload reliably from saved table records.
+### 1. Generate and export mock data
+1. Make sure the table's columns and data types are set.
+2. Click **Mock Data** in the field toolbar to open the **Mock Data Generator**.
+3. Set the generation options:
+   - Set the row count (1 to 100 rows).
+   - Check the preview. The generator creates values from each field's type. When a field name or comment contains keywords such as email, phone or address, it generates values in that format.
+4. Export the data:
+   - Switch between the **INSERT SQL**, **CSV** and **JSON** tabs.
+   - Click **Copy** or **Download**, then load the data into your local test database or API testing tool.
 
-## Tips and Common Traps
+### 2. Configure logical enums
+Use logical enums for fields with a fixed set of values, such as status codes, review states or user types:
+1. Find the field in the field table and click the edit icon in its type cell to open the **Edit Enum Values** dialog.
+2. Type a value (for example `10` or `PAID`) and press Enter or click **Add**. Enter its meaning under **Chinese** and **English** (for example `已支付` and `Paid`).
+3. Click an enum item's color swatch to pick a color, for example green for success, red for rejected and yellow for pending. The field type cell shows enum values in these colors.
+4. Drag an enum item by the handle on its left to reorder it.
+5. Click **Confirm**. Drafts and saved tables keep the enum settings.
 
-::: tip Synthetic Privacy Safety
-The Mock Data generator produces purely synthetic, randomized values. Never use unmasked production data in non-production environments.
+---
+
+## Verification checklist
+
+- [ ] The exported mock data imports into your test database.
+- [ ] The logical enum covers every business value of the field, and each value has comments and a color.
+- [ ] The enum settings are still there after you reload the saved table.
+
+## Notes
+
+::: tip Sensitive production data
+The mock data generator only produces random values and contains no real business data. Do not use unmasked real user data in test environments.
 :::
 
-- **Cross-Table Constraints**: Generated mock rows are created based on single-table types and do not automatically resolve cross-table foreign key dependencies.
-- **Physical vs. Logical Enums**: Logical enums serve as visual and documentation metadata within DDLBuilder. To enforce native database enum constraints, select the dialect's native `ENUM` data type.
+- The generator works on one table at a time and does not check foreign keys across tables. When inserting into a test database, insert rows into the referenced tables first.
+- A logical enum does not change the field type or create a database constraint. When DDLBuilder generates DDL, it appends the enum values and comments to the field comment. If you need a database `ENUM` type, select the target dialect's `ENUM` in the field type.
