@@ -888,6 +888,7 @@ export const zhCNCommon = {
     conversationHistory: '对话历史',
     restart: '重新开始',
     userPrefix: '你: ',
+    appliedToast: '大师建表工坊的表结构已应用',
     assistantPrefix: '大师: ',
     assistantGenerated: '已生成表结构',
     generating: '生成中...',

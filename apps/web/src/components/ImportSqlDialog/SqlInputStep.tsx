@@ -145,11 +145,11 @@ export function SqlInputStep({
               <SelectItem value="oracle">Oracle</SelectItem>
               <SelectItem value="mariadb">MariaDB</SelectItem>
               <SelectItem value="tidb">TiDB</SelectItem>
-              <SelectItem value="dm">达梦 (DM)</SelectItem>
+              <SelectItem value="dm">Dameng</SelectItem>
               <SelectItem value="oceanbase">OceanBase (MySQL)</SelectItem>
               <SelectItem value="oceanbase-oracle">OceanBase (Oracle)</SelectItem>
-              <SelectItem value="kingbase">人大金仓 (Kingbase)</SelectItem>
-              <SelectItem value="gbase">南大通用 (GBase)</SelectItem>
+              <SelectItem value="kingbase">Kingbase</SelectItem>
+              <SelectItem value="gbase">GBase</SelectItem>
               <SelectItem value="polardb">PolarDB</SelectItem>
               <SelectItem value="gaussdb">GaussDB</SelectItem>
             </SelectContent>

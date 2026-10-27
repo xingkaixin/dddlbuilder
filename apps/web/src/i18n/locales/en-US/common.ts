@@ -914,6 +914,7 @@ export const enUSCommon = {
     conversationHistory: 'Conversation',
     restart: 'Restart',
     userPrefix: 'You: ',
+    appliedToast: 'AI Table Workshop schema applied',
     assistantPrefix: 'AI: ',
     assistantGenerated: 'Schema generated',
     generating: 'Generating...',

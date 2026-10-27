@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import { createEntityId, type DatabaseType, type PersistedState } from '@ddlbuilder/shared-types';
 import type {
@@ -52,6 +53,7 @@ export function useSchemaApplyActions({
   triggerFieldTableHighlight,
   showToast,
 }: UseSchemaApplyActionsParams) {
+  const { t } = useTranslation();
   const currentStateRef = useRef(currentState);
   const reviewResultRef = useRef(reviewResult);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
@@ -280,9 +282,9 @@ export function useSchemaApplyActions({
           sqlFormatMode: currentState.sqlFormatMode,
         }),
       );
-      showToast('大师建表工坊的表结构已应用');
+      showToast(t('aiGenerate.appliedToast'));
     },
-    [currentState.dbType, currentState.sqlFormatMode, openGeneratedState, showToast],
+    [currentState.dbType, currentState.sqlFormatMode, openGeneratedState, showToast, t],
   );
 
   return {

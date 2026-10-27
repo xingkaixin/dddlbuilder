@@ -922,6 +922,7 @@ export const jaJPCommon = {
     conversationHistory: '会話',
     restart: '再起動',
     userPrefix: 'あなた:',
+    appliedToast: 'AIテーブルワークショップのテーブル構造を適用しました',
     assistantPrefix: 'AI:',
     assistantGenerated: '生成されたスキーマ',
     generating: '生成中...',
