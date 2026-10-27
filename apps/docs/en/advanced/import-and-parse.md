@@ -22,9 +22,8 @@ Use this when you refactor a legacy system, migrate an old project's database, o
 2. Set **Source Type** to SQL, choose the **Source Database**, and paste the SQL script. It can contain one or more `CREATE TABLE`, `CREATE INDEX`, `ALTER TABLE` and `GRANT` statements.
 3. Click **Next** to validate the syntax and parse the table structure.
 4. Review and adjust the result:
-   - Check the parsed columns, data types, primary keys, indexes and grantees.
-   - In the preview, edit column names, types and nullability, move columns up or down, or delete them.
-   - With **Save as saved tables**, select the tables to import, then choose a **Target Folder** and a **Conflict Strategy**: **Skip existing**, **Overwrite existing** or **Auto rename**.
+   - When importing into the workspace, the preview shows the parsed columns, data types, primary keys, indexes and grantees. You can edit column names, types and nullability, move columns up or down, or delete them. Then click **Next**.
+   - With **Save as saved tables**, there is no column preview. Select the tables to import, click **Next**, then choose a **Target Folder** and a **Conflict Strategy**: **Skip existing**, **Overwrite existing** or **Auto rename**.
 5. Click **Import** (or **Confirm Import** when saving as saved tables). If the SQL uses a schema prefix (for example `CREATE TABLE sales.orders`), `sales` goes into `Schema Name` and `orders` into `Table Name`.
 
 ### 2. Import field-definition files (CSV / Excel / JSON Schema)

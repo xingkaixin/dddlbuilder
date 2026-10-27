@@ -20,7 +20,7 @@ In the table configuration area at the top, fill in:
 In the **Fields** table, set the following for each field:
 - **Field Name** and **Comment**: the field identifier and its description.
 - **Type**: a type supported by the current database, such as `BIGINT`, `VARCHAR(255)`, `DECIMAL(10,2)`, or `JSON`.
-- **Nullable**: choose **No** to generate `NOT NULL`.
+- **Nullable**: clear the checkbox to generate `NOT NULL`.
 - **Default Kind** and **Default Value**: **Default Kind** can be **None**, **Auto Increment**, **Constant**, **SQL expression**, **Current Time**, or **UUID**. Fill in **Default Value** when a specific value is needed.
 - **On Update**: choose **Current Time** to generate `ON UPDATE CURRENT_TIMESTAMP`.
 
