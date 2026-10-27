@@ -1,43 +1,43 @@
 # DDLBuilder —— 多数据库建表语句生成器
 
-一个基于 React + TypeScript + Vite 的轻量工具：通过表单与表格输入，实时生成不同数据库的建表 DDL，并支持一键复制。
+DDLBuilder（筑表师）是在浏览器中使用的数据库表结构设计工具。用户通过表单和表格定义表结构，实时得到多种数据库的建表 DDL、授权 DCL 和 ORM 模型代码。
 
 ## 功能特性
 
 - 支持数据库：MySQL、PostgreSQL、PostgreSQL Citus、SQL Server、Oracle、MariaDB、TiDB、达梦 (Dameng)、OceanBase (MySQL/Oracle 模式)、Kingbase、GBase、PolarDB、GaussDB、Hive、SQLite / Cloudflare D1（建模与初始化导出）
-- **多标签页工作区**：同一工作区支持多个标签页，每张表独立管理草稿与保存状态；标签支持脏状态提示与关闭确认
-- **MySQL 分区配置**：支持 MySQL、MariaDB、TiDB 的分区表配置
+- 多标签页工作区：每张表在独立标签页中编辑；关闭标签页时，当前改动自动保存为草稿
+- MySQL、MariaDB、TiDB 分区表
   - 分区类型：RANGE、RANGE COLUMNS、LIST、LIST COLUMNS、HASH、KEY
   - 支持分区表达式（如 `YEAR(col)`、`dayofmonth(col)`）
-  - RANGE 分区快捷生成：按年/月/日一键生成分区定义
-- **PostgreSQL Citus 分片配置**：支持副本表 (Reference Table) 和分片表 (Distributed Table) 模式，自动生成对应 DDL
-- **字段标准库与业务词典**：定义业务名称、单位和标准字段属性，支持字段引用、偏差检查与 JSON 导入导出；标准库保存在当前浏览器，引用随表保存与同步
-- **逻辑关系建模**：在 ER 关系向导中记录业务关联、基数、可选性与说明，以虚线显示，不生成物理外键、索引或更改字段可空性
-- **外键管理与 ER 图**：可视化配置表间外键关联、级联规则与约束名；在 ER 图中拖动字段连接点后，可通过关系向导确认基数、可选性和必要索引
-- **ORM 模型代码生成**：除 DDL 外，支持生成 Prisma、TypeORM、SQLAlchemy、GORM、JPA，以及 SQLite 的 Drizzle 模型代码
-- 实时生成建表语句；支持表注释与列注释
-- 视图与 Routine DDL 生成：支持 CREATE VIEW 配置，以及存储过程、函数、触发器的骨架代码生成
-- 索引、主键与权限配置支持，可折叠面板管理
-- **Schema 规范检查（Lint）**：内置命名规范与类型规则检测，自动发现表结构、字段与索引设计中的潜在问题
-- 字段校检：重复字段名或使用数据库保留关键字高亮告警
-- 类型智能映射与别名识别（如 varchar/varchar2、json/jsonb、serial/identity 等）
-- 逻辑枚举编辑器：字段支持配置逻辑枚举值，可内联编辑枚举项、拖拽排序、设置颜色标识
-- 便捷表格编辑：序号自动维护、批量添加行、复制粘贴「是否为空」列（支持 YNyn 输入）；支持冻结列与紧凑布局模式
+  - RANGE 分区可按年、月、日批量生成分区定义
+- PostgreSQL Citus：支持副本表 (Reference Table) 和分片表 (Distributed Table)，生成对应 DDL
+- 字段标准库与业务词典：定义业务名称、单位和标准字段属性，支持字段引用、偏差检查与 JSON 导入导出；标准库保存在当前浏览器，引用随表保存与同步
+- 逻辑关系：在 ER 关系向导中记录业务关联、基数、可选性与说明，以虚线显示，不生成物理外键、索引，也不更改字段可空性
+- 外键与 ER 图：配置表间外键、级联规则与约束名；在 ER 图中拖动字段连接点后，通过关系向导确认基数、可选性和必要的索引
+- ORM 模型代码：Prisma、TypeORM、SQLAlchemy、GORM、JPA；SQLite 另有 Drizzle
+- 表注释与列注释
+- 视图与 Routine：生成 CREATE VIEW，以及存储过程、函数、触发器的骨架代码
+- 索引、主键与授权配置
+- Schema 规范检查（Lint）：按命名规范和类型规则检查表、字段与索引
+- 字段校验：重复字段名或数据库保留字会高亮告警
+- 类型别名识别与映射（如 varchar/varchar2、json/jsonb、serial/identity 等）
+- 逻辑枚举编辑器：字段可配置逻辑枚举值，支持内联编辑枚举项、拖拽排序、设置颜色
+- 表格编辑：序号自动维护、批量添加行、复制粘贴「是否为空」列（支持 YNyn 输入）；支持冻结列
 - 字段默认值与更新策略（如 UUID、当前时间戳）
 - 字段类型变更风险提示：修改已有字段类型时，若存在数据兼容性风险会弹出确认提示
-- **表结构导入**：支持 SQL（CREATE TABLE / INDEX / ALTER / GRANT）解析、CSV / Excel 字段定义清单与 JSON Schema 导入
-- **表蓝图模板**：提供常见业务场景（如用户、订单、日志）的 CRUD 表结构模板，一键生成并应用
-- **业务数据导入**：浏览器内读取真实 CSV／Excel 记录，推断新表或对照已有表校验，导出完整 INSERT SQL 与错误清单，并保存可复用的列映射配置；[使用指南](apps/docs/zh/advanced/business-data-import.md)
-- AI 辅助建模：支持 AI 建表、AI 修改当前表、AI 索引优化顾问、AI 智能注释、DDL 评审与 SQL 解释
-- AI 修改当前表：用自然语言描述改表方向，逐项确认字段、索引和表级变更后再应用
-- AI 索引优化顾问：粘贴典型查询 SQL 或慢查询片段，生成缺失索引、冗余索引、顺序优化和查询改写建议
-- **查询设计与业务建模**：按关系生成参数化 SELECT，整组创建 RBAC、预约和库存模块，导出 SQLite/D1 初始化项目与 Drizzle schema，分析字段依赖；[使用指南](apps/docs/zh/advanced/modeling-workflows.md)
-- **数据库工具**：支持多表数据字典导出（Markdown／离线 HTML）、MySQL／PostgreSQL 两份 SQL 结构对比与迁移 SQL、遵守外键和唯一键的可重复关联测试数据；新增固定链接项目文档、结构快照刷新、固定版本变更提案与评论、可保存业务测试场景，以及 MySQL → PostgreSQL 兼容性报告；[使用指南](apps/docs/zh/advanced/database-tools.md)
-- Mock 数据生成：按字段类型与约束自动生成测试数据，支持批量导出
-- 已保存表回收站：支持软删除、单条恢复与批量清空，减少误删风险
-- 登录后工作区实时同步：草稿、已保存表、文件夹和回收站会随账号自动同步，设置页显示同步状态并可重试
-- 一键清空与便捷操作按钮
-- 一键复制 SQL，代码高亮随明暗主题切换，便于阅读与评审
+- 表结构导入：解析 SQL（CREATE TABLE / INDEX / ALTER / GRANT），导入 CSV / Excel 字段定义清单、JSON Schema、Swagger 或 OpenAPI 定义
+- 整表蓝本：把当前表的字段、索引和表级配置保存为蓝本（存在当前浏览器），之后在新草稿标签页中套用
+- 业务数据导入：在浏览器内读取 CSV／Excel 业务记录，推断新表或对照已有表校验，导出完整 INSERT SQL 与错误清单，并保存列映射配置供复用；[使用指南](apps/docs/zh/advanced/business-data-import.md)
+- AI 辅助（需登录，按额度计费）：AI 建表、AI 修改当前表、AI 索引优化顾问、AI 注释、DDL 评审与 SQL 解释
+  - AI 修改当前表：用自然语言描述改动，逐项确认字段、索引和表级变更后再应用
+  - AI 索引优化顾问：粘贴典型查询或慢查询 SQL，生成缺失索引、冗余索引、列顺序和查询改写建议
+- 查询设计与业务建模：按关系生成参数化 SELECT，整组创建 RBAC、预约和库存模块，导出 SQLite/D1 初始化项目与 Drizzle schema，分析字段依赖；[使用指南](apps/docs/zh/advanced/modeling-workflows.md)
+- 数据库工具：多表数据字典导出（Markdown／离线 HTML）、MySQL／PostgreSQL 两份 SQL 的结构对比与迁移 SQL、遵守外键和唯一键的可重复关联测试数据、固定链接的项目文档、结构快照刷新、固定版本的变更提案与评论、可保存的测试数据场景，以及 MySQL 到 PostgreSQL 的兼容性报告；[使用指南](apps/docs/zh/advanced/database-tools.md)
+- Mock 数据生成：按字段类型与约束生成测试数据，支持批量导出
+- 已保存表回收站：软删除、单条恢复与批量清空
+- 登录后工作区自动同步：草稿、已保存表、文件夹和回收站随账号同步，设置页显示同步状态并可重试
+- 清空所有：一键清空当前配置并重置
+- 一键复制 DDL、DCL、ORM 代码；代码高亮随明暗主题切换
 - 帮助文档入口，按语言跳转对应文档并查看更新说明
 
 ## 开发与构建
@@ -86,7 +86,7 @@ pnpm deploy:cf
 
 通过 mise 提供全局 `cf`（版本见 `mise.toml`），项目不安装 cf npm 依赖。开发机首次使用时执行 `cf login`；已有登录可直接复用。CI 由 mise 安装同一版本。
 
-项目现在的部署方式是：
+部署步骤：
 
 1. 复制 `apps/worker/cloudflare.deploy.example.json` 为 `apps/worker/cloudflare.deploy.json`，填写生产 D1 / KV ID、`domain` 自定义域名和公开变量；生产配置关闭 `workers.dev` 与版本预览地址
 2. 复制 `.deploy.secrets.example` 为 `.deploy.secrets`
@@ -150,7 +150,7 @@ CF_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 - `CSP_MODE`：CSP 灰度模式（`off` / `report-only` / `enforce` / `both`）
 - `CSP_POLICY`：自定义 CSP 策略文本（可选，不配置则使用内置默认策略）
 
-说明：`CSP_*` 配置在本地 Node 服务端与 API 运行时生效。Cloudflare 静态页面的 CSP 由 `scripts/prepare-static-assets.ts` 在构建后写入 `_headers`，复用内置策略并加入构建产物中内联脚本的 SHA-256 哈希。修改脚本或策略后必须重新构建，静态页面不读取运行时的 `CSP_*` 变量。
+`CSP_*` 配置在本地 Node 服务端与 API 运行时生效。Cloudflare 静态页面的 CSP 由 `scripts/prepare-static-assets.ts` 在构建后写入 `_headers`，复用内置策略并加入构建产物中内联脚本的 SHA-256 哈希。修改脚本或策略后必须重新构建，静态页面不读取运行时的 `CSP_*` 变量。
 
 - `VITE_ENABLE_CNY_FIREWORKS`：是否启用春节烟花入口与节日动效（默认 `false`，设为 `true` 后恢复 Header 入口和烟花 overlay）
 - `VITE_ENABLE_AI_STREAM_DEBUG`：是否启用前端 AI streaming 调试日志（构建时变量，默认 `false`）
@@ -163,7 +163,7 @@ CF_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 - 前端所有需要登录态的请求都通过 `credentials: 'include'` 携带 cookie，不再发送 bearer token
 - 业务用户主键直接使用 Better Auth 的 `user.id`
 
-调试说明：
+AI 运行时：
 
 AI 使用 pi-durable 内置 Conversation 和 GenerationTask，状态持久化到独立的 SQLite Durable Object。建表、修改、审查、解释、注释和索引建议共用这条链路。关闭页面只停止观察；从“AI 任务”入口可重新查看当前浏览器标签页发起的结果，主动点击停止才取消执行。会话保留 30 天。服务端重启可能重新调用模型，不承诺从上一个 token 接着生成。
 
@@ -204,9 +204,9 @@ pnpm db:reset:local
 
 ## 使用说明
 
-1. 填写表名与表中文名，选择数据库类型；或点击右上角“导入 SQL”按钮，粘贴已有 DDL 语句进行快速导入。
+1. 填写表名与表中文名，选择数据库类型；或点击顶部的“导入结构”按钮，粘贴已有 DDL 导入。
 2. 在表格中按列填写：字段名、字段中文名、字段类型、是否为空。
-3. 右侧区域将实时生成对应数据库的建表 DDL，可点击“全部复制”。
+3. 右侧实时生成对应数据库的建表 DDL，点击“复制DDL”复制。
 
 ### 字段类型与空值规则
 
@@ -235,6 +235,3 @@ pnpm db:reset:local
 - UI 与交互：TanStack Table、Base UI、Hugeicons、Tailwind CSS
 - SQL 代码高亮：Shiki（支持明暗主题）
 
----
-
-本项目旨在快速生成可读、可复制的建表 DDL，适用于评审与落库前的沟通与对齐场景。

@@ -13,7 +13,7 @@ id. It is the unit of migration conflict detection and of the server-side projec
 _Avoid_: Snapshot record, Yjs item
 
 **Workspace Document**:
-The Yjs representation of a Workspace used for collaborative persistence and transport.
+The Yjs representation of a Workspace, used to persist it and sync it across one user's devices.
 _Avoid_: Snapshot
 
 **Editor Session**:
@@ -31,7 +31,7 @@ Editable schema state that has not become a Saved Table.
 _Avoid_: Temporary table
 
 **Saved Table**:
-A named schema state deliberately preserved by the user.
+A named schema state that the user has saved.
 _Avoid_: Snapshot
 
 **Saved-Table Draft**:
