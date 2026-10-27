@@ -786,6 +786,8 @@ export const jaJPCommon = {
     dclDesc: 'GRANT ステートメントを生成する',
     ormTitle: 'ORMモデルコード',
     ormDesc: '主流の ORM フレームワーク用のエンティティ クラス コードを生成する',
+    routineTitle: 'ルーチンテンプレート',
+    routineDesc: 'ストアドプロシージャ、関数、トリガーの雛形コードを生成する',
     ormFramework: 'ORM フレームワーク',
     review: 'AIレビュー',
     reviewTip: 'AIによるDDLの分析と最適化',

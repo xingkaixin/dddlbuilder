@@ -777,6 +777,8 @@ export const enUSCommon = {
     dclDesc: 'Generate GRANT statements',
     ormTitle: 'ORM Model Code',
     ormDesc: 'Generate entity class code for mainstream ORM frameworks',
+    routineTitle: 'Routine Templates',
+    routineDesc: 'Generate procedure, function, and trigger skeletons',
     ormFramework: 'ORM Framework',
     review: 'AI Review',
     reviewTip: 'Analyze and optimize DDL with AI',

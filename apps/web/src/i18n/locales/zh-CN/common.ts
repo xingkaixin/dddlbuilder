@@ -760,6 +760,8 @@ export const zhCNCommon = {
     dclDesc: '生成数据库授权语句（GRANT）',
     ormTitle: 'ORM 模型代码',
     ormDesc: '根据表结构生成主流 ORM 框架的实体类代码',
+    routineTitle: '程序单元模板',
+    routineDesc: '生成存储过程、函数和触发器的骨架代码',
     ormFramework: 'ORM 框架',
     review: '大师评审',
     reviewTip: '使用 AI 分析并优化建表语句',
