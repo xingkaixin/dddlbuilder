@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import { parseSharePath } from './storage';
 
+export const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
+
 const listeners = new Set<() => void>();
 
 const subscribe = (listener: () => void) => {

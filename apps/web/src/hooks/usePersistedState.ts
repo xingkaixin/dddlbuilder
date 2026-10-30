@@ -31,10 +31,7 @@ import {
   removeStorage,
   writeStorageJson,
 } from './workspacePersistence/storage';
-import {
-  usePersistenceQueue,
-  type PersistenceFailure,
-} from './workspacePersistence/usePersistenceQueue';
+import { usePersistenceQueue } from './workspacePersistence/usePersistenceQueue';
 import { useDraftRecords } from './workspacePersistence/useDraftRecords';
 import { useSavedTableDraftRecords } from './workspacePersistence/useSavedTableDraftRecords';
 import { useWorkspaceInitialHydration } from './workspacePersistence/useWorkspaceInitialHydration';
@@ -90,8 +87,6 @@ export interface WorkspacePersistenceStatus {
   hydrationFailed: boolean;
   retryHydration: () => void;
   isShareView: boolean;
-  persistenceFailure: PersistenceFailure | null;
-  retryPersistence: () => void;
 }
 
 export interface ActiveWorkspaceDocument {
@@ -146,11 +141,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     workspaceDocumentReducer,
     { persistedState: null, activeSource: DEFAULT_SOURCE },
   );
-  const {
-    enqueue: enqueuePersistence,
-    failure: persistenceFailure,
-    retryFailed: retryPersistence,
-  } = usePersistenceQueue();
+  const { enqueue: enqueuePersistence } = usePersistenceQueue();
 
   const activeSourceRef = useRef<WorkspaceSelection>(DEFAULT_SOURCE);
   const lastLocalSaveRef = useRef<PendingLocalSave | null>(null);
@@ -431,8 +422,6 @@ export function usePersistedState(): UsePersistedStateReturn {
       retryHydration,
       hydrated,
       isShareView: Boolean(shareId),
-      persistenceFailure,
-      retryPersistence,
     },
     document: {
       persistedState,

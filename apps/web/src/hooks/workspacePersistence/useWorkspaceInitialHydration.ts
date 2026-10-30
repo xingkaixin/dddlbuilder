@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from 'react';
+import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
@@ -29,7 +29,7 @@ import {
   type WorkspaceHydration,
 } from './hydration';
 import { normalizePersistedState, normalizeWorkspaceSession } from './normalize';
-import { leaveShareRoute } from './shareRoute';
+import { leaveShareRoute, SHARE_COPY_SAVED_TOAST_KEY } from './shareRoute';
 import { cacheShareJson, readStorageJson } from './storage';
 
 type HydrationState = { status: 'loading' | 'ready' | 'error'; attempt: number };
@@ -46,6 +46,19 @@ const hydrationReducer = (state: HydrationState, event: HydrationEvent): Hydrati
       return { status: 'loading', attempt: state.attempt + 1 };
   }
 };
+
+// 从分享页另存后会整页跳回工作区，提示要等新工作区加载完成后再显示。
+function announceSavedShareCopy() {
+  try {
+    const name = sessionStorage.getItem(SHARE_COPY_SAVED_TOAST_KEY);
+
+    if (!name) return;
+    sessionStorage.removeItem(SHARE_COPY_SAVED_TOAST_KEY);
+    toast(i18n.t('app.shareCopySaved', { name }));
+  } catch {
+    return;
+  }
+}
 
 interface UseWorkspaceInitialHydrationParams {
   pathInvalid: boolean;
@@ -85,6 +98,7 @@ export function useWorkspaceInitialHydration({
     attempt: 0,
   });
   const markHydrated = useCallback(() => dispatch({ type: 'hydrated' }), []);
+  const shareNoticeShownRef = useRef(false);
 
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected hydration work can throw any JavaScript value and is only reported.
   const failHydration = useCallback((error: unknown) => {
@@ -100,6 +114,13 @@ export function useWorkspaceInitialHydration({
       if (cancelled) return;
       setPersistedState(state);
       markHydrated();
+    };
+    const hydrateShare = (state: PersistedState) => {
+      hydrateWithState(state);
+
+      if (cancelled || shareNoticeShownRef.current) return;
+      shareNoticeShownRef.current = true;
+      toast(i18n.t('app.shareReadOnly'));
     };
     const applyHydration = ({ activeSource, state }: WorkspaceHydration) => {
       syncActiveSource(activeSource);
@@ -185,10 +206,15 @@ export function useWorkspaceInitialHydration({
         };
       }
 
-      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected async hydration can throw any JavaScript value.
-      void hydrateMainWorkspace().catch((error: unknown) => {
-        if (!cancelled) failHydration(error);
-      });
+      void hydrateMainWorkspace().then(
+        () => {
+          if (!cancelled) announceSavedShareCopy();
+        },
+        // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected async hydration can throw any JavaScript value.
+        (error: unknown) => {
+          if (!cancelled) failHydration(error);
+        },
+      );
 
       return () => {
         cancelled = true;
@@ -197,10 +223,10 @@ export function useWorkspaceInitialHydration({
 
     const cachedShareState = normalizePersistedState(readStorageJson(shareStorageKey));
 
-    if (cachedShareState) hydrateWithState(cachedShareState);
+    if (cachedShareState) hydrateShare(cachedShareState);
 
     if (shareQuery.isSuccess) {
-      hydrateWithState(shareQuery.data);
+      hydrateShare(shareQuery.data);
       cacheShareJson(shareStorageKey, shareQuery.data);
     } else if (shareQuery.isError) {
       const messageKey =

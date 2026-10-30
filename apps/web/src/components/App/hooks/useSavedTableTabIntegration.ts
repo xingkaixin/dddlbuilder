@@ -14,8 +14,7 @@ import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
 import type { useTabLifecycle } from './useTabLifecycle';
 import i18n from '@/i18n';
-
-export const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
+import { SHARE_COPY_SAVED_TOAST_KEY } from '@/hooks/workspacePersistence/shareRoute';
 
 interface UseSavedTableTabIntegrationParams {
   isShareView: boolean;

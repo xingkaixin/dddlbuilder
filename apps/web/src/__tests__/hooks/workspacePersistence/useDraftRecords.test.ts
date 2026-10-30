@@ -182,7 +182,6 @@ describe('draft persistence retry', () => {
       expect(result.current.drafts.trashedDrafts).toHaveLength(1);
       act(() => result.current.queue.retryFailed());
       await waitFor(() => {
-        expect(result.current.queue.failure).toBeNull();
         expect(result.current.drafts.trashedDrafts).toHaveLength(0);
         expect(result.current.drafts.draftSummaries).toHaveLength(operation === 'restore' ? 1 : 0);
       });

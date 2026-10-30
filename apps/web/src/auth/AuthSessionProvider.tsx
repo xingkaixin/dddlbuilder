@@ -9,7 +9,6 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import i18n from '@/i18n';
 import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import {
@@ -251,14 +250,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     }),
     [authDialogOpen],
   );
-
-  useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-
-    if (query.get('error')) {
-      toast.error(i18n.t('header.auth.verifyEmailFailed'));
-    }
-  }, []);
 
   return (
     <AuthIdentityContext.Provider value={identity}>

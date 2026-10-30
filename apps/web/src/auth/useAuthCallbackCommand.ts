@@ -1,4 +1,6 @@
 import { useCallback, useReducer, useRef } from 'react';
+import { toast } from 'sonner';
+import i18n from '@/i18n';
 
 type AuthCallbackCommand =
   | { type: 'verify-email' }
@@ -26,6 +28,12 @@ const clearAuthCallbackQuery = () => {
     document.title,
     `${url.pathname}${url.search}${url.hash}`,
   );
+};
+
+export const notifyAuthCallbackError = () => {
+  if (new URLSearchParams(window.location.search).get('error')) {
+    toast.error(i18n.t('header.auth.verifyEmailFailed'));
+  }
 };
 
 const commandReducer = (_command: AuthCallbackCommand | null, _event: 'consumed') => null;

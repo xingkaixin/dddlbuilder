@@ -12,6 +12,7 @@ import { LocaleProvider } from './i18n/LocaleContext';
 import { AuthSessionProvider } from './auth/AuthSessionProvider';
 import { WorkspaceYDocProvider } from './providers/WorkspaceYDocProvider';
 import { isAdminPath } from './admin/lib/adminPath';
+import { notifyAuthCallbackError } from './auth/useAuthCallbackCommand';
 import i18n from './i18n';
 
 const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
@@ -27,6 +28,9 @@ if (!rootElement) {
 }
 
 const isAdmin = isAdminPath();
+
+if (!isAdmin) notifyAuthCallbackError();
+
 const publicationId = /^\/publications\/([a-zA-Z0-9-]+)\/?$/.exec(location.pathname)?.[1];
 const PublicationPage = lazy(() => import('./components/publications/PublicationPage'));
 

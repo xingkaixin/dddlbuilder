@@ -1,10 +1,12 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { toast } from 'sonner';
 import { describe, expect, it, vi } from 'vitest';
 import { usePersistenceQueue } from '@/hooks/workspacePersistence/usePersistenceQueue';
 
 describe('usePersistenceQueue', () => {
-  it('失败后保留任务并允许重试', async () => {
+  it('失败后提示并可从提示重试', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const toastSpy = vi.spyOn(toast, 'error').mockImplementation(() => 'toast');
 
     const task = vi
       .fn<() => Promise<void>>()
@@ -19,9 +21,14 @@ describe('usePersistenceQueue', () => {
 
     await expect(completion).rejects.toThrow('quota');
 
-    await waitFor(() => {
-      expect(result.current.failure?.operation).toBe('save draft');
-    });
+    await waitFor(() =>
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          action: expect.objectContaining({ onClick: result.current.retryFailed }),
+        }),
+      ),
+    );
     expect(errorSpy).toHaveBeenCalledWith(
       '[workspace-persistence] save draft failed',
       expect.any(Error),
@@ -31,10 +38,7 @@ describe('usePersistenceQueue', () => {
       result.current.retryFailed();
     });
 
-    await waitFor(() => {
-      expect(task).toHaveBeenCalledTimes(2);
-      expect(result.current.failure).toBeNull();
-    });
+    await waitFor(() => expect(task).toHaveBeenCalledTimes(2));
   });
 
   it('同一实体的操作按提交顺序执行', async () => {
