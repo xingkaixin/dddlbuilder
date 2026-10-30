@@ -1,5 +1,5 @@
 import { ToolLayout } from './ToolLayout';
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { buildSqliteProject } from '@ddlbuilder/ddl-core';
@@ -7,10 +7,31 @@ import { TableSource } from './TableSource';
 import { Button } from '@/components/ui/button';
 import { downloadFile } from '@/utils/mockDataGenerator';
 
+type SqliteExportState = { target: 'sqlite' | 'd1'; tables: PersistedState[] };
+
+type SqliteExportEvent =
+  | { type: 'targetChosen'; target: SqliteExportState['target'] }
+  | { type: 'tablesSelected'; tables: PersistedState[] };
+
+function sqliteExportReducer(
+  state: SqliteExportState,
+  event: SqliteExportEvent,
+): SqliteExportState {
+  switch (event.type) {
+    case 'targetChosen':
+      return { ...state, target: event.target };
+    case 'tablesSelected':
+      return { ...state, tables: event.tables };
+  }
+}
+
 export function SqliteExportTool() {
   const { t } = useTranslation();
-  const [target, setTarget] = useState<'sqlite' | 'd1'>('d1');
-  const [tables, setTables] = useState<PersistedState[]>([]);
+
+  const [{ target, tables }, dispatch] = useReducer(sqliteExportReducer, {
+    target: 'd1',
+    tables: [],
+  });
   let result: ReturnType<typeof buildSqliteProject> | null = null;
   let error = '';
 
@@ -32,7 +53,12 @@ export function SqliteExportTool() {
               aria-label={t('modelTools.sqliteTarget')}
               className="h-9 rounded border bg-background px-2"
               value={target}
-              onChange={(event) => setTarget(event.target.value === 'sqlite' ? 'sqlite' : 'd1')}
+              onChange={(event) =>
+                dispatch({
+                  type: 'targetChosen',
+                  target: event.target.value === 'sqlite' ? 'sqlite' : 'd1',
+                })
+              }
             >
               <option value="d1">Cloudflare D1</option>
               <option value="sqlite">SQLite</option>
@@ -41,7 +67,10 @@ export function SqliteExportTool() {
           {target === 'd1' && (
             <p className="text-xs text-muted-foreground">{t('modelTools.d1Limits')}</p>
           )}
-          <TableSource value={tables} onChange={setTables} />
+          <TableSource
+            value={tables}
+            onChange={(next) => dispatch({ type: 'tablesSelected', tables: next })}
+          />
         </>
       }
     >

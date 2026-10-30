@@ -1,7 +1,8 @@
 import { ToolLayout } from './ToolLayout';
 import { PublishPanel } from '@/components/publications/PublishPanel';
 import { Input } from '@/components/ui/input';
-import { useMemo, useState } from 'react';
+import { useMemo, useReducer } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { compareSchemaSnapshots, type SnapshotFieldRename } from '@ddlbuilder/ddl-core';
@@ -11,20 +12,86 @@ import { SqlSnapshotInput } from './SqlSnapshotInput';
 import { parseSqlSnapshot } from './sqlSnapshot';
 import { comparisonDetails, comparisonMarkdown } from './comparisonReport';
 
+type CompareState = {
+  dbType: 'mysql' | 'postgresql';
+  beforeSql: string;
+  afterSql: string;
+  renames: SnapshotFieldRename[];
+  reason: string;
+};
+
+type CompareEvent =
+  | { type: 'dbTypeChosen'; dbType: CompareState['dbType'] }
+  | { type: 'beforeSqlChanged'; sql: string }
+  | { type: 'afterSqlChanged'; sql: string }
+  | { type: 'compareStarted' }
+  | { type: 'renameChosen'; tableKey: string; from: string; to: string }
+  | { type: 'reasonChanged'; reason: string };
+
+const initialCompareState: CompareState = {
+  dbType: 'mysql',
+  beforeSql: '',
+  afterSql: '',
+  renames: [],
+  reason: '',
+};
+
+function compareReducer(state: CompareState, event: CompareEvent): CompareState {
+  switch (event.type) {
+    case 'dbTypeChosen':
+      return { ...state, dbType: event.dbType, renames: [] };
+    case 'beforeSqlChanged':
+      return { ...state, beforeSql: event.sql, renames: [] };
+    case 'afterSqlChanged':
+      return { ...state, afterSql: event.sql, renames: [] };
+    case 'compareStarted':
+      return { ...state, renames: [] };
+    case 'renameChosen':
+      return {
+        ...state,
+        renames: [
+          ...state.renames.filter(
+            (rename) => rename.tableKey !== event.tableKey || rename.from !== event.from,
+          ),
+          ...(event.to ? [{ tableKey: event.tableKey, from: event.from, to: event.to }] : []),
+        ],
+      };
+    case 'reasonChanged':
+      return { ...state, reason: event.reason };
+  }
+}
+
+async function parseComparedSnapshots(request: {
+  beforeSql: string;
+  afterSql: string;
+  dbType: CompareState['dbType'];
+}): Promise<{ before: PersistedState[]; after: PersistedState[] }> {
+  const [before, after] = await Promise.all([
+    parseSqlSnapshot(request.beforeSql, request.dbType),
+    parseSqlSnapshot(request.afterSql, request.dbType),
+  ]);
+  compareSchemaSnapshots(before, after);
+
+  return { before, after };
+}
+
 export function SchemaCompareTool() {
   const { t } = useTranslation();
-  const [dbType, setDbType] = useState<'mysql' | 'postgresql'>('mysql');
-  const [beforeSql, setBeforeSql] = useState('');
-  const [afterSql, setAfterSql] = useState('');
 
-  const [snapshots, setSnapshots] = useState<{
-    before: PersistedState[];
-    after: PersistedState[];
-  } | null>(null);
-  const [renames, setRenames] = useState<SnapshotFieldRename[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [reason, setReason] = useState('');
+  const [{ dbType, beforeSql, afterSql, renames, reason }, dispatch] = useReducer(
+    compareReducer,
+    initialCompareState,
+  );
+
+  const compare = useMutation({ mutationFn: parseComparedSnapshots });
+  const snapshots = compare.data ?? null;
+  const busy = compare.isPending;
+
+  const error = !compare.error
+    ? ''
+    : compare.error instanceof Error
+      ? compare.error.message
+      : t('schemaTools.failed');
 
   const original = useMemo(
     () => (snapshots ? compareSchemaSnapshots(snapshots.before, snapshots.after) : null),
@@ -34,10 +101,9 @@ export function SchemaCompareTool() {
     () => (snapshots ? compareSchemaSnapshots(snapshots.before, snapshots.after, renames) : null),
     [snapshots, renames],
   );
-  const clear = () => {
-    setSnapshots(null);
-    setRenames([]);
-    setError('');
+  const change = (event: CompareEvent) => {
+    dispatch(event);
+    compare.reset();
   };
 
   return (
@@ -51,8 +117,7 @@ export function SchemaCompareTool() {
           disabled={busy}
           onChange={(event) => {
             if (event.target.value === 'mysql' || event.target.value === 'postgresql')
-              setDbType(event.target.value);
-            clear();
+              change({ type: 'dbTypeChosen', dbType: event.target.value });
           }}
         >
           <option value="mysql">MySQL</option>
@@ -64,19 +129,13 @@ export function SchemaCompareTool() {
           label={t('schemaTools.compare.before')}
           value={beforeSql}
           disabled={busy}
-          onChange={(sql) => {
-            clear();
-            setBeforeSql(sql);
-          }}
+          onChange={(sql) => change({ type: 'beforeSqlChanged', sql })}
         />
         <SqlSnapshotInput
           label={t('schemaTools.compare.after')}
           value={afterSql}
           disabled={busy}
-          onChange={(sql) => {
-            clear();
-            setAfterSql(sql);
-          }}
+          onChange={(sql) => change({ type: 'afterSqlChanged', sql })}
         />
       </div>
       <p className="text-xs text-muted-foreground">
@@ -85,22 +144,9 @@ export function SchemaCompareTool() {
       <div className="flex flex-wrap gap-2">
         <Button
           disabled={busy || (!beforeSql.trim() && !afterSql.trim())}
-          onClick={async () => {
-            clear();
-            setBusy(true);
-
-            try {
-              const [before, after] = await Promise.all([
-                parseSqlSnapshot(beforeSql, dbType),
-                parseSqlSnapshot(afterSql, dbType),
-              ]);
-              compareSchemaSnapshots(before, after);
-              setSnapshots({ before, after });
-            } catch (cause) {
-              setError(cause instanceof Error ? cause.message : t('schemaTools.failed'));
-            } finally {
-              setBusy(false);
-            }
+          onClick={() => {
+            dispatch({ type: 'compareStarted' });
+            compare.mutate({ beforeSql, afterSql, dbType });
           }}
         >
           {t(busy ? 'schemaTools.loading' : 'schemaTools.compare.run')}
@@ -145,7 +191,7 @@ export function SchemaCompareTool() {
             <Input
               value={reason}
               maxLength={4000}
-              onChange={(event) => setReason(event.target.value)}
+              onChange={(event) => dispatch({ type: 'reasonChanged', reason: event.target.value })}
             />
           </label>
           <PublishPanel
@@ -223,21 +269,12 @@ export function SchemaCompareTool() {
                             )?.to ?? ''
                           }
                           onChange={(event) =>
-                            setRenames((current) => [
-                              ...current.filter(
-                                (rename) =>
-                                  rename.tableKey !== table.key || rename.from !== field.fieldName,
-                              ),
-                              ...(event.target.value
-                                ? [
-                                    {
-                                      tableKey: table.key,
-                                      from: field.fieldName,
-                                      to: event.target.value,
-                                    },
-                                  ]
-                                : []),
-                            ])
+                            dispatch({
+                              type: 'renameChosen',
+                              tableKey: table.key,
+                              from: field.fieldName,
+                              to: event.target.value,
+                            })
                           }
                         >
                           <option value="">{t('schemaTools.compare.keepRemoval')}</option>

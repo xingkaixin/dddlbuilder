@@ -1,5 +1,5 @@
 import { ToolLayout } from '@/components/schema-tools/ToolLayout';
-import { useEffect, useRef, useState } from 'react';
+import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import {
@@ -14,6 +14,7 @@ import {
 } from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useLatestRequest } from '@/hooks/useLatestRequest';
 import { TableSource } from '@/components/schema-tools/TableSource';
 import { runBusinessDataTask } from '@/utils/business-data/runTask';
 import type { BusinessDataTask } from '@/utils/business-data/tasks';
@@ -24,22 +25,123 @@ import { DataImportMapping } from './DataImportMapping';
 import { DataImportProfiles } from './DataImportProfiles';
 import { DataImportResults } from './DataImportResults';
 
+type ImportState = {
+  source: BusinessDataSource | null;
+  separator: BusinessSeparator;
+  mode: 'new' | 'existing';
+  dbType: DataImportDialect;
+  tableName: string;
+  schemaName: string;
+  tables: PersistedState[];
+  columns: DataImportColumn[];
+  options: DataImportOptions;
+  result: DataImportResult | null;
+  error: string;
+};
+
+type ImportEvent =
+  | { type: 'separatorChosen'; separator: BusinessSeparator }
+  | { type: 'sourceReset' }
+  | { type: 'sourceReadStarted' }
+  | { type: 'validationStarted' }
+  | { type: 'sourceRead'; source: BusinessDataSource; columns: DataImportColumn[] }
+  | { type: 'validated'; result: DataImportResult }
+  | { type: 'failed'; error: string }
+  | { type: 'cancelled' }
+  | { type: 'modeChosen'; mode: ImportState['mode']; columns: DataImportColumn[] }
+  | { type: 'dbTypeChosen'; dbType: DataImportDialect }
+  | { type: 'tableNameChanged'; tableName: string }
+  | { type: 'schemaNameChanged'; schemaName: string }
+  | { type: 'tablesSelected'; tables: PersistedState[]; columns: DataImportColumn[] }
+  | { type: 'optionChanged'; patch: Partial<DataImportOptions> }
+  | { type: 'columnsChanged'; columns: DataImportColumn[] }
+  | { type: 'profileApplied'; profile: DataImportProfile; columns: DataImportColumn[] };
+
+const initialImportState: ImportState = {
+  source: null,
+  separator: ',',
+  mode: 'new',
+  dbType: 'mysql',
+  tableName: 'imported_data',
+  schemaName: '',
+  tables: [],
+  columns: [],
+  options: DEFAULT_DATA_IMPORT_OPTIONS,
+  result: null,
+  error: '',
+};
+
+function importReducer(state: ImportState, event: ImportEvent): ImportState {
+  const cleared = { ...state, result: null, error: '' };
+
+  switch (event.type) {
+    case 'separatorChosen':
+      return { ...cleared, separator: event.separator, source: null, columns: [] };
+    case 'sourceReset':
+      return { ...cleared, source: null, columns: [] };
+    case 'sourceReadStarted':
+      return {
+        ...cleared,
+        source: state.source ? { ...state.source, data: null } : null,
+        columns: [],
+      };
+    case 'validationStarted':
+    case 'cancelled':
+      return cleared;
+    case 'sourceRead':
+      return { ...state, source: event.source, columns: event.columns };
+    case 'validated':
+      return { ...state, result: event.result };
+    case 'failed':
+      return { ...state, error: event.error };
+    case 'modeChosen':
+      return { ...cleared, mode: event.mode, columns: event.columns };
+    case 'dbTypeChosen':
+      return { ...cleared, dbType: event.dbType };
+    case 'tableNameChanged':
+      return { ...cleared, tableName: event.tableName };
+    case 'schemaNameChanged':
+      return { ...cleared, schemaName: event.schemaName };
+    case 'tablesSelected':
+      return { ...cleared, tables: event.tables, columns: event.columns };
+    case 'optionChanged':
+      return { ...cleared, options: { ...state.options, ...event.patch } };
+    case 'columnsChanged':
+      return { ...cleared, columns: event.columns };
+    case 'profileApplied':
+      return {
+        ...cleared,
+        mode: event.profile.mode,
+        dbType: event.profile.dbType,
+        tableName: event.profile.tableName,
+        schemaName: event.profile.schemaName,
+        separator: event.profile.separator,
+        options: { ...event.profile.options },
+        columns: event.columns,
+      };
+  }
+}
+
 export function BusinessDataImportTool() {
   const { t } = useTranslation();
-  const [source, setSource] = useState<BusinessDataSource | null>(null);
-  const [separator, setSeparator] = useState<BusinessSeparator>(',');
-  const [mode, setMode] = useState<'new' | 'existing'>('new');
-  const [dbType, setDbType] = useState<DataImportDialect>('mysql');
-  const [tableName, setTableName] = useState('imported_data');
-  const [schemaName, setSchemaName] = useState('');
-  const [tables, setTables] = useState<PersistedState[]>([]);
-  const [columns, setColumns] = useState<DataImportColumn[]>([]);
-  const [options, setOptions] = useState<DataImportOptions>(DEFAULT_DATA_IMPORT_OPTIONS);
-  const [result, setResult] = useState<DataImportResult | null>(null);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const pending = useRef<AbortController | null>(null);
-  useEffect(() => () => pending.current?.abort(), []);
+
+  const [
+    {
+      source,
+      separator,
+      mode,
+      dbType,
+      tableName,
+      schemaName,
+      tables,
+      columns,
+      options,
+      result,
+      error,
+    },
+    dispatch,
+  ] = useReducer(importReducer, initialImportState);
+  const { run: runLatest, cancel, isPending: busy } = useLatestRequest();
 
   const selected =
     tables.length === 1 &&
@@ -52,18 +154,18 @@ export function BusinessDataImportTool() {
   const target =
     mode === 'new' ? newDataImportTarget(dbType, tableName, schemaName, columns) : existing;
 
-  const clearResult = () => {
-    pending.current?.abort();
-    pending.current = null;
-    setBusy(false);
-    setResult(null);
-    setError('');
+  const change = (event: ImportEvent) => {
+    cancel();
+    dispatch(event);
   };
 
   const reportError = (cause: unknown) => {
     const message = cause instanceof Error ? cause.message : 'dataImport.errors.read';
     const [key, address] = message.split('|');
-    setError(key.startsWith('dataImport.') ? t(key, { address }) : message);
+    dispatch({
+      type: 'failed',
+      error: key.startsWith('dataImport.') ? t(key, { address }) : message,
+    });
   };
   const mapExisting = (table: PersistedState, value: BusinessDataSource | null) =>
     existingDataImportTarget(table).fields.map((field) => ({
@@ -74,42 +176,28 @@ export function BusinessDataImportTool() {
     }));
 
   const run = async (task: BusinessDataTask) => {
-    clearResult();
-
-    if (task.kind !== 'validate') {
-      setSource((current) => (current ? { ...current, data: null } : null));
-      setColumns([]);
-    }
-
-    const controller = new AbortController();
-    pending.current = controller;
-    setBusy(true);
+    dispatch({ type: task.kind === 'validate' ? 'validationStarted' : 'sourceReadStarted' });
 
     try {
-      const output = await runBusinessDataTask(task, controller.signal);
+      const output = await runLatest(({ signal }) => runBusinessDataTask(task, signal));
 
-      if (controller.signal.aborted) return;
+      if (!output) return;
 
-      if ('result' in output) setResult(output.result);
-      else {
-        setSource(output.source);
-        setColumns(
-          !output.source.data
+      if ('result' in output) dispatch({ type: 'validated', result: output.result });
+      else
+        dispatch({
+          type: 'sourceRead',
+          source: output.source,
+          columns: !output.source.data
             ? []
             : mode === 'new'
               ? inferDataImportColumns(output.source.data, dbType, options)
               : selected
                 ? mapExisting(selected, output.source)
                 : [],
-        );
-      }
+        });
     } catch (cause) {
-      if (!controller.signal.aborted) reportError(cause);
-    } finally {
-      if (!controller.signal.aborted) {
-        pending.current = null;
-        setBusy(false);
-      }
+      reportError(cause);
     }
   };
 
@@ -133,17 +221,8 @@ export function BusinessDataImportTool() {
         source={source}
         separator={separator}
         busy={busy}
-        onSeparator={(value) => {
-          clearResult();
-          setSeparator(value);
-          setSource(null);
-          setColumns([]);
-        }}
-        onReset={() => {
-          clearResult();
-          setSource(null);
-          setColumns([]);
-        }}
+        onSeparator={(value) => change({ type: 'separatorChosen', separator: value })}
+        onReset={() => change({ type: 'sourceReset' })}
         onRead={run}
       />
       <section className="min-w-0 space-y-4 border-t pt-5">
@@ -157,15 +236,16 @@ export function BusinessDataImportTool() {
               const value = event.target.value;
 
               if (value !== 'new' && value !== 'existing') return;
-              clearResult();
-              setMode(value);
-              setColumns(
-                value === 'new' && source?.data
-                  ? inferDataImportColumns(source.data, dbType, options)
-                  : value === 'existing' && selected
-                    ? mapExisting(selected, source)
-                    : [],
-              );
+              change({
+                type: 'modeChosen',
+                mode: value,
+                columns:
+                  value === 'new' && source?.data
+                    ? inferDataImportColumns(source.data, dbType, options)
+                    : value === 'existing' && selected
+                      ? mapExisting(selected, source)
+                      : [],
+              });
             }}
           >
             <option value="new">{t('dataImport.newTable')}</option>
@@ -182,10 +262,8 @@ export function BusinessDataImportTool() {
                 onChange={(event) => {
                   const value = event.target.value;
 
-                  if (value === 'mysql' || value === 'postgresql') {
-                    clearResult();
-                    setDbType(value);
-                  }
+                  if (value === 'mysql' || value === 'postgresql')
+                    change({ type: 'dbTypeChosen', dbType: value });
                 }}
               >
                 <option value="mysql">MySQL</option>
@@ -197,10 +275,9 @@ export function BusinessDataImportTool() {
               <Input
                 value={tableName}
                 maxLength={64}
-                onChange={(event) => {
-                  clearResult();
-                  setTableName(event.target.value);
-                }}
+                onChange={(event) =>
+                  change({ type: 'tableNameChanged', tableName: event.target.value })
+                }
               />
             </label>
             <label className="space-y-2 text-sm">
@@ -208,10 +285,9 @@ export function BusinessDataImportTool() {
               <Input
                 value={schemaName}
                 maxLength={64}
-                onChange={(event) => {
-                  clearResult();
-                  setSchemaName(event.target.value);
-                }}
+                onChange={(event) =>
+                  change({ type: 'schemaNameChanged', schemaName: event.target.value })
+                }
               />
             </label>
           </div>
@@ -221,13 +297,14 @@ export function BusinessDataImportTool() {
             <TableSource
               value={tables}
               onChange={(value) => {
-                clearResult();
-                setTables(value);
-
                 try {
-                  setColumns(value.length === 1 ? mapExisting(value[0], source) : []);
+                  change({
+                    type: 'tablesSelected',
+                    tables: value,
+                    columns: value.length === 1 ? mapExisting(value[0], source) : [],
+                  });
                 } catch (cause) {
-                  setColumns([]);
+                  change({ type: 'tablesSelected', tables: value, columns: [] });
                   reportError(cause);
                 }
               }}
@@ -243,10 +320,8 @@ export function BusinessDataImportTool() {
               onChange={(event) => {
                 const value = event.target.value;
 
-                if (value === 'iso' || value === 'dmy' || value === 'mdy') {
-                  clearResult();
-                  setOptions({ ...options, dateFormat: value });
-                }
+                if (value === 'iso' || value === 'dmy' || value === 'mdy')
+                  change({ type: 'optionChanged', patch: { dateFormat: value } });
               }}
             >
               <option value="iso">YYYY-MM-DD</option>
@@ -258,10 +333,9 @@ export function BusinessDataImportTool() {
             <input
               type="checkbox"
               checked={options.emptyAsNull}
-              onChange={(event) => {
-                clearResult();
-                setOptions({ ...options, emptyAsNull: event.target.checked });
-              }}
+              onChange={(event) =>
+                change({ type: 'optionChanged', patch: { emptyAsNull: event.target.checked } })
+              }
             />
             {t('dataImport.emptyAsNull')}
           </label>
@@ -269,10 +343,9 @@ export function BusinessDataImportTool() {
             <input
               type="checkbox"
               checked={options.trim}
-              onChange={(event) => {
-                clearResult();
-                setOptions({ ...options, trim: event.target.checked });
-              }}
+              onChange={(event) =>
+                change({ type: 'optionChanged', patch: { trim: event.target.checked } })
+              }
             />
             {t('dataImport.trim')}
           </label>
@@ -282,9 +355,11 @@ export function BusinessDataImportTool() {
             size="sm"
             variant="outline"
             onClick={() => {
-              clearResult();
-
-              if (source.data) setColumns(inferDataImportColumns(source.data, dbType, options));
+              if (source.data)
+                change({
+                  type: 'columnsChanged',
+                  columns: inferDataImportColumns(source.data, dbType, options),
+                });
             }}
           >
             {t('dataImport.inferAgain')}
@@ -295,10 +370,7 @@ export function BusinessDataImportTool() {
             data={source.data}
             columns={columns}
             editable={mode === 'new'}
-            onChange={(value) => {
-              clearResult();
-              setColumns(value);
-            }}
+            onChange={(value) => change({ type: 'columnsChanged', columns: value })}
           />
         )}
       </section>
@@ -308,14 +380,7 @@ export function BusinessDataImportTool() {
         onApply={(value) => {
           if (!source?.data) throw new Error('dataImport.errors.empty');
           const mapped = applyDataImportProfile(value, source.data, existing);
-          clearResult();
-          setMode(value.mode);
-          setDbType(value.dbType);
-          setTableName(value.tableName);
-          setSchemaName(value.schemaName);
-          setSeparator(value.separator);
-          setOptions({ ...value.options });
-          setColumns(mapped);
+          change({ type: 'profileApplied', profile: value, columns: mapped });
         }}
       />
       <div className="flex flex-wrap items-center gap-3">
@@ -340,7 +405,7 @@ export function BusinessDataImportTool() {
             <span role="status" className="text-sm text-muted-foreground">
               {t('dataImport.processing')}
             </span>
-            <Button variant="ghost" onClick={clearResult}>
+            <Button variant="ghost" onClick={() => change({ type: 'cancelled' })}>
               {t('common.cancel')}
             </Button>
           </>

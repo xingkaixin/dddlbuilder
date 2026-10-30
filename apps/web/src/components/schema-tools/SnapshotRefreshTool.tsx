@@ -1,5 +1,5 @@
 import { ToolLayout } from './ToolLayout';
-import { useMemo, useState } from 'react';
+import { useMemo, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { refreshSchemaSnapshot, compareSchemaSnapshots } from '@ddlbuilder/ddl-core';
 import { encodeDeliverySnapshot, type DeliverySnapshot } from '@ddlbuilder/workspace-core';
@@ -14,10 +14,28 @@ import { DictionaryReader } from './DictionaryReader';
 import { buildDictionary } from './dictionary';
 import { PublishPanel } from '@/components/publications/PublishPanel';
 
+type RefreshState = { baseline: DeliverySnapshot | null; incoming: PersistedState[] };
+
+type RefreshEvent =
+  | { type: 'baselineLoaded'; baseline: DeliverySnapshot }
+  | { type: 'incomingSelected'; incoming: PersistedState[] };
+
+function refreshReducer(state: RefreshState, event: RefreshEvent): RefreshState {
+  switch (event.type) {
+    case 'baselineLoaded':
+      return { ...state, baseline: event.baseline };
+    case 'incomingSelected':
+      return { ...state, incoming: event.incoming };
+  }
+}
+
 export function SnapshotRefreshTool() {
   const { t, i18n } = useTranslation();
-  const [baseline, setBaseline] = useState<DeliverySnapshot | null>(null);
-  const [incoming, setIncoming] = useState<PersistedState[]>([]);
+
+  const [{ baseline, incoming }, dispatch] = useReducer(refreshReducer, {
+    baseline: null,
+    incoming: [],
+  });
 
   const result = useMemo(() => {
     if (!baseline || !incoming.length) return null;
@@ -46,7 +64,10 @@ export function SnapshotRefreshTool() {
     <ToolLayout title={t('snapshot.refresh')} description={t('snapshot.hint')}>
       <div className="grid gap-6 md:grid-cols-2">
         <div>
-          <SnapshotFileInput label={t('snapshot.baseline')} onChange={setBaseline} />
+          <SnapshotFileInput
+            label={t('snapshot.baseline')}
+            onChange={(snapshot) => dispatch({ type: 'baselineLoaded', baseline: snapshot })}
+          />
           {baseline && (
             <p role="status" className="mt-2 text-sm">
               {t('snapshot.tables', { count: baseline.tables.length })}
@@ -55,7 +76,10 @@ export function SnapshotRefreshTool() {
         </div>
         <section className="space-y-3">
           <h3 className="text-sm font-medium">{t('snapshot.incoming')}</h3>
-          <TableSource value={incoming} onChange={setIncoming} />
+          <TableSource
+            value={incoming}
+            onChange={(tables) => dispatch({ type: 'incomingSelected', incoming: tables })}
+          />
         </section>
       </div>
       {result?.error && (

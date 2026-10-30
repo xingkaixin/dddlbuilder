@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { decodeSeedScenario, type SeedRule, type SeedScenario } from '@ddlbuilder/shared-types/api';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -26,6 +26,64 @@ function describeRule(rule: SeedRule): string {
   }
 }
 
+type PanelState = {
+  tableKey: string;
+  field: string;
+  kind: SeedRule['kind'];
+  nullPercent: string;
+  first: string;
+  second: string;
+  saved: SeedScenario[];
+  error: string;
+  message: string;
+};
+
+type PanelEvent =
+  | { type: 'tableChosen'; tableKey: string }
+  | { type: 'fieldChosen'; field: string }
+  | { type: 'kindChosen'; kind: SeedRule['kind'] }
+  | { type: 'ruleInputChanged'; input: 'nullPercent' | 'first' | 'second'; value: string }
+  | { type: 'actionStarted' }
+  | { type: 'actionFailed'; error: string }
+  | { type: 'scenariosLoaded'; saved: SeedScenario[] }
+  | { type: 'scenarioStored'; saved: SeedScenario[]; message: string }
+  | { type: 'importStarted' };
+
+const initialPanelState: PanelState = {
+  tableKey: '',
+  field: '',
+  kind: 'default',
+  nullPercent: '0',
+  first: '',
+  second: '',
+  saved: [],
+  error: '',
+  message: '',
+};
+
+function panelReducer(state: PanelState, event: PanelEvent): PanelState {
+  switch (event.type) {
+    case 'tableChosen':
+      return { ...state, tableKey: event.tableKey, field: '' };
+    case 'fieldChosen':
+      return { ...state, field: event.field };
+    case 'kindChosen':
+      return { ...state, kind: event.kind, first: '', second: '' };
+    case 'ruleInputChanged':
+      return { ...state, [event.input]: event.value };
+    case 'actionStarted':
+      return { ...state, error: '', message: '' };
+    case 'actionFailed':
+      return { ...state, error: event.error };
+    case 'scenariosLoaded':
+      return { ...state, saved: event.saved };
+    case 'scenarioStored':
+      return { ...state, saved: event.saved, message: event.message };
+    case 'importStarted':
+      return { ...state, error: '' };
+  }
+}
+
 export function SeedScenarioPanel({
   tables,
   value,
@@ -36,30 +94,26 @@ export function SeedScenarioPanel({
   onChange: (value: SeedScenario) => void;
 }) {
   const { t } = useTranslation();
-  const [tableKey, setTableKey] = useState('');
+
+  const [{ tableKey, field, kind, nullPercent, first, second, saved, error, message }, dispatch] =
+    useReducer(panelReducer, initialPanelState);
   const table = tables.find((entry) => snapshotTableKey(entry) === tableKey) ?? tables[0];
-  const [field, setField] = useState('');
 
   const fields = table?.rows.filter((row) => row.fieldName.trim()) ?? [];
 
   const currentField =
     fields.find((entry) => entry.fieldName === field)?.fieldName ?? fields[0]?.fieldName ?? '';
-  const [kind, setKind] = useState<SeedRule['kind']>('default');
-  const [nullPercent, setNullPercent] = useState('0');
-  const [first, setFirst] = useState('');
-  const [second, setSecond] = useState('');
-  const [error, setError] = useState('');
-  const [saved, setSaved] = useState<SeedScenario[]>([]);
-  const [message, setMessage] = useState('');
 
   const run = (action: () => void) => {
-    setError('');
-    setMessage('');
+    dispatch({ type: 'actionStarted' });
 
     try {
       action();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t('schemaTools.failed'));
+      dispatch({
+        type: 'actionFailed',
+        error: cause instanceof Error ? cause.message : t('schemaTools.failed'),
+      });
     }
   };
 
@@ -90,8 +144,11 @@ export function SeedScenarioPanel({
               )
                 return;
               storeSeedScenario(value);
-              setSaved(readSeedScenarios());
-              setMessage(t('scenario.saved'));
+              dispatch({
+                type: 'scenarioStored',
+                saved: readSeedScenarios(),
+                message: t('scenario.saved'),
+              });
             })
           }
         >
@@ -100,7 +157,9 @@ export function SeedScenarioPanel({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => run(() => setSaved(readSeedScenarios()))}
+          onClick={() =>
+            run(() => dispatch({ type: 'scenariosLoaded', saved: readSeedScenarios() }))
+          }
         >
           {t('scenario.load')}
         </Button>
@@ -151,13 +210,16 @@ export function SeedScenarioPanel({
             event.target.value = '';
 
             if (!file) return;
-            setError('');
+            dispatch({ type: 'importStarted' });
 
             try {
               if (file.size > 512 * 1024) throw new Error(t('snapshot.limit'));
               onChange(decodeSeedScenario(JSON.parse(await file.text())));
             } catch (cause) {
-              setError(cause instanceof Error ? cause.message : t('schemaTools.failed'));
+              dispatch({
+                type: 'actionFailed',
+                error: cause instanceof Error ? cause.message : t('schemaTools.failed'),
+              });
             }
           }}
         />
@@ -171,10 +233,9 @@ export function SeedScenarioPanel({
               <select
                 className="h-10 w-full rounded-md border bg-background px-3"
                 value={snapshotTableKey(table)}
-                onChange={(event) => {
-                  setTableKey(event.target.value);
-                  setField('');
-                }}
+                onChange={(event) =>
+                  dispatch({ type: 'tableChosen', tableKey: event.target.value })
+                }
               >
                 {tables.map((entry) => (
                   <option key={snapshotTableKey(entry)} value={snapshotTableKey(entry)}>
@@ -188,7 +249,7 @@ export function SeedScenarioPanel({
               <select
                 className="h-10 w-full rounded-md border bg-background px-3"
                 value={currentField}
-                onChange={(event) => setField(event.target.value)}
+                onChange={(event) => dispatch({ type: 'fieldChosen', field: event.target.value })}
               >
                 {fields.map((row) => (
                   <option key={row.id} value={row.fieldName}>
@@ -205,9 +266,7 @@ export function SeedScenarioPanel({
                 onChange={(event) => {
                   const next = kinds.find((item) => item === event.target.value);
 
-                  if (next) setKind(next);
-                  setFirst('');
-                  setSecond('');
+                  if (next) dispatch({ type: 'kindChosen', kind: next });
                 }}
               >
                 {kinds.map((item) => (
@@ -224,7 +283,13 @@ export function SeedScenarioPanel({
                 min={0}
                 max={100}
                 value={nullPercent}
-                onChange={(event) => setNullPercent(event.target.value)}
+                onChange={(event) =>
+                  dispatch({
+                    type: 'ruleInputChanged',
+                    input: 'nullPercent',
+                    value: event.target.value,
+                  })
+                }
               />
             </label>
           </div>
@@ -233,7 +298,9 @@ export function SeedScenarioPanel({
               <span>{t('scenario.weights')}</span>
               <Textarea
                 value={first}
-                onChange={(event) => setFirst(event.target.value)}
+                onChange={(event) =>
+                  dispatch({ type: 'ruleInputChanged', input: 'first', value: event.target.value })
+                }
                 placeholder={'PAID=70\nPENDING=30'}
               />
             </label>
@@ -249,7 +316,13 @@ export function SeedScenarioPanel({
                   <Input
                     value={first}
                     type={kind === 'date' ? 'date' : 'text'}
-                    onChange={(event) => setFirst(event.target.value)}
+                    onChange={(event) =>
+                      dispatch({
+                        type: 'ruleInputChanged',
+                        input: 'first',
+                        value: event.target.value,
+                      })
+                    }
                   />
                 </label>
                 <label className="space-y-1 text-sm">
@@ -259,7 +332,13 @@ export function SeedScenarioPanel({
                   <Input
                     value={second}
                     type={kind === 'date' ? 'date' : 'text'}
-                    onChange={(event) => setSecond(event.target.value)}
+                    onChange={(event) =>
+                      dispatch({
+                        type: 'ruleInputChanged',
+                        input: 'second',
+                        value: event.target.value,
+                      })
+                    }
                   />
                 </label>
               </div>

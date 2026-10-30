@@ -1,7 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { decodeDeliverySnapshot, type DeliverySnapshot } from '@ddlbuilder/workspace-core';
 import { Input } from '@/components/ui/input';
+import { useLatestRequest } from '@/hooks/useLatestRequest';
+
+type ReadErrorEvent = { type: 'readStarted' } | { type: 'readFailed'; message: string };
+
+const readErrorReducer = (_error: string, event: ReadErrorEvent) =>
+  event.type === 'readFailed' ? event.message : '';
 
 export function SnapshotFileInput({
   label,
@@ -11,14 +17,8 @@ export function SnapshotFileInput({
   onChange: (snapshot: DeliverySnapshot) => void;
 }) {
   const { t } = useTranslation();
-  const [error, setError] = useState('');
-  const readVersion = useRef(0);
-  useEffect(
-    () => () => {
-      readVersion.current += 1;
-    },
-    [],
-  );
+  const [error, dispatchError] = useReducer(readErrorReducer, '');
+  const { run } = useLatestRequest();
 
   return (
     <div className="space-y-2">
@@ -32,17 +32,21 @@ export function SnapshotFileInput({
             event.target.value = '';
 
             if (!file) return;
-            const version = ++readVersion.current;
-            setError('');
+            dispatchError({ type: 'readStarted' });
 
             try {
-              if (file.size > 2 * 1024 * 1024) throw new Error(t('snapshot.limit'));
-              const snapshot = decodeDeliverySnapshot(JSON.parse(await file.text()));
+              const snapshot = await run(async () => {
+                if (file.size > 2 * 1024 * 1024) throw new Error(t('snapshot.limit'));
 
-              if (version === readVersion.current) onChange(snapshot);
+                return decodeDeliverySnapshot(JSON.parse(await file.text()));
+              });
+
+              if (snapshot) onChange(snapshot);
             } catch (cause) {
-              if (version === readVersion.current)
-                setError(cause instanceof Error ? cause.message : t('schemaTools.failed'));
+              dispatchError({
+                type: 'readFailed',
+                message: cause instanceof Error ? cause.message : t('schemaTools.failed'),
+              });
             }
           }}
         />

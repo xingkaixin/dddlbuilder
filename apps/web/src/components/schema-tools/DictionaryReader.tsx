@@ -1,12 +1,17 @@
 import { BookOpen, Search, Table2 } from '@/components/icons';
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import type { DictionaryDocument } from './dictionary';
 
+type SearchEvent = { type: 'searched'; query: string } | { type: 'linkFollowed' };
+
+const searchReducer = (_search: string, event: SearchEvent) =>
+  event.type === 'searched' ? event.query : '';
+
 export function DictionaryReader({ document }: { document: DictionaryDocument }) {
   const { t } = useTranslation();
-  const [search, setSearch] = useState('');
+  const [search, dispatchSearch] = useReducer(searchReducer, '');
 
   const visible = document.tables.filter((table) =>
     JSON.stringify(table).toLocaleLowerCase().includes(search.toLocaleLowerCase()),
@@ -23,7 +28,7 @@ export function DictionaryReader({ document }: { document: DictionaryDocument })
           <Input
             type="search"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => dispatchSearch({ type: 'searched', query: event.target.value })}
             aria-label={t('schemaTools.dictionary.search')}
             placeholder={t('schemaTools.dictionary.search')}
             className="h-10 bg-background pl-9 pr-3 text-sm shadow-none"
@@ -107,7 +112,7 @@ export function DictionaryReader({ document }: { document: DictionaryDocument })
                           key={index}
                           className="text-primary underline"
                           href={`#dictionary-${relation.targetId}`}
-                          onClick={() => setSearch('')}
+                          onClick={() => dispatchSearch({ type: 'linkFollowed' })}
                         >
                           {relation.values[2]}
                         </a>,

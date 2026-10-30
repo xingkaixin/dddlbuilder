@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,42 @@ import {
   type DataImportProfile,
 } from '@/utils/business-data/profiles';
 
+type ProfilesState = {
+  name: string;
+  saved: DataImportProfile[];
+  storageFailed: boolean;
+  selected: string;
+};
+
+type ProfilesEvent =
+  | { type: 'nameChanged'; name: string }
+  | { type: 'profileSelected'; name: string }
+  | { type: 'profileApplied'; name: string }
+  | { type: 'profilesStored'; saved: DataImportProfile[] }
+  | { type: 'profileDeleted'; saved: DataImportProfile[] };
+
+function readStoredProfiles(): ProfilesState {
+  try {
+    return { name: '', saved: readDataImportProfiles(), storageFailed: false, selected: '' };
+  } catch {
+    return { name: '', saved: [], storageFailed: true, selected: '' };
+  }
+}
+
+function profilesReducer(state: ProfilesState, event: ProfilesEvent): ProfilesState {
+  switch (event.type) {
+    case 'nameChanged':
+    case 'profileApplied':
+      return { ...state, name: event.name };
+    case 'profileSelected':
+      return { ...state, selected: event.name };
+    case 'profilesStored':
+      return { ...state, saved: event.saved, storageFailed: false };
+    case 'profileDeleted':
+      return { ...state, saved: event.saved, storageFailed: false, selected: '' };
+  }
+}
+
 export function DataImportProfiles({
   current,
   onApply,
@@ -22,19 +58,12 @@ export function DataImportProfiles({
   onError: (cause: unknown) => void;
 }) {
   const { t } = useTranslation();
-  const [name, setName] = useState('');
 
-  const [storage, setStorage] = useState(() => {
-    try {
-      return { profiles: readDataImportProfiles(), error: '' };
-    } catch {
-      const profiles: DataImportProfile[] = [];
-
-      return { profiles, error: 'dataImport.errors.storage' };
-    }
-  });
-  const { profiles: saved, error } = storage;
-  const [selected, setSelected] = useState('');
+  const [{ name, saved, storageFailed, selected }, dispatch] = useReducer(
+    profilesReducer,
+    undefined,
+    readStoredProfiles,
+  );
 
   const perform = (action: () => void) => {
     try {
@@ -56,14 +85,18 @@ export function DataImportProfiles({
         <p className="text-xs leading-relaxed text-muted-foreground">
           {t('dataImport.profilesHint')}
         </p>
-        {error && (
+        {storageFailed && (
           <p role="alert" className="text-xs text-destructive">
-            {t(error)}
+            {t('dataImport.errors.storage')}
           </p>
         )}
         <label className="block space-y-2 text-sm">
           <span>{t('dataImport.profileName')}</span>
-          <Input value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />
+          <Input
+            value={name}
+            maxLength={120}
+            onChange={(event) => dispatch({ type: 'nameChanged', name: event.target.value })}
+          />
         </label>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -73,7 +106,7 @@ export function DataImportProfiles({
             onClick={() =>
               perform(() => {
                 saveDataImportProfile(profile());
-                setStorage({ profiles: readDataImportProfiles(), error: '' });
+                dispatch({ type: 'profilesStored', saved: readDataImportProfiles() });
               })
             }
           >
@@ -101,7 +134,7 @@ export function DataImportProfiles({
           <select
             className="h-9 w-full rounded-md border bg-background px-3"
             value={selected}
-            onChange={(event) => setSelected(event.target.value)}
+            onChange={(event) => dispatch({ type: 'profileSelected', name: event.target.value })}
           >
             <option value="">{t('dataImport.chooseProfile')}</option>
             {saved.map((item) => (
@@ -122,7 +155,7 @@ export function DataImportProfiles({
 
                 if (item) {
                   onApply(item);
-                  setName(item.name);
+                  dispatch({ type: 'profileApplied', name: item.name });
                 }
               })
             }
@@ -136,8 +169,7 @@ export function DataImportProfiles({
             onClick={() =>
               perform(() => {
                 deleteDataImportProfile(selected);
-                setStorage({ profiles: readDataImportProfiles(), error: '' });
-                setSelected('');
+                dispatch({ type: 'profileDeleted', saved: readDataImportProfiles() });
               })
             }
           >
@@ -161,7 +193,7 @@ export function DataImportProfiles({
                   throw new Error('dataImport.errors.profile');
                 const imported = decodeDataImportProfile(await file.text());
                 onApply(imported);
-                setName(imported.name);
+                dispatch({ type: 'profileApplied', name: imported.name });
               } catch (cause) {
                 onError(cause);
               }

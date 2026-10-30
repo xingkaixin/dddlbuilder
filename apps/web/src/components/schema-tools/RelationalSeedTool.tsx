@@ -1,7 +1,7 @@
 import { ToolLayout } from './ToolLayout';
 import { SeedScenarioPanel } from './SeedScenarioPanel';
-import type { SeedRule } from '@ddlbuilder/shared-types/api';
-import { useState } from 'react';
+import type { SeedRule, SeedScenario } from '@ddlbuilder/shared-types/api';
+import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import {
@@ -15,22 +15,81 @@ import { Input } from '@/components/ui/input';
 import { downloadFile } from '@/utils/mockDataGenerator';
 import { TableSource } from './TableSource';
 
+type SeedOutcome =
+  | { status: 'idle' }
+  | { status: 'generated'; result: RelationalSeedResult }
+  | { status: 'failed'; error: string };
+
+type SeedState = {
+  tables: PersistedState[];
+  counts: Map<string, number>;
+  seed: string;
+  scenarioName: string;
+  rules: readonly SeedRule[];
+  includeLogical: boolean;
+  outcome: SeedOutcome;
+};
+
+type SeedEvent =
+  | { type: 'tablesSelected'; tables: PersistedState[] }
+  | { type: 'seedChanged'; seed: string }
+  | { type: 'includeLogicalChanged'; includeLogical: boolean }
+  | { type: 'rowCountChanged'; tableKey: string; count: number }
+  | { type: 'scenarioApplied'; scenario: SeedScenario }
+  | { type: 'generated'; result: RelationalSeedResult }
+  | { type: 'generationFailed'; error: string };
+
+const idle: SeedOutcome = { status: 'idle' };
+
+const initialSeedState: SeedState = {
+  tables: [],
+  counts: new Map(),
+  seed: 'ddlbuilder',
+  scenarioName: '',
+  rules: [],
+  includeLogical: false,
+  outcome: idle,
+};
+
+function seedReducer(state: SeedState, event: SeedEvent): SeedState {
+  switch (event.type) {
+    case 'tablesSelected':
+      return { ...state, tables: event.tables, outcome: idle };
+    case 'seedChanged':
+      return { ...state, seed: event.seed, outcome: idle };
+    case 'includeLogicalChanged':
+      return { ...state, includeLogical: event.includeLogical, outcome: idle };
+    case 'rowCountChanged':
+      return {
+        ...state,
+        counts: new Map(state.counts).set(event.tableKey, event.count),
+        outcome: idle,
+      };
+    case 'scenarioApplied':
+      return {
+        ...state,
+        scenarioName: event.scenario.name,
+        seed: event.scenario.seed,
+        includeLogical: event.scenario.includeLogical,
+        counts: new Map(event.scenario.rows.map((row) => [row.tableKey, row.count])),
+        rules: event.scenario.rules,
+        outcome: idle,
+      };
+    case 'generated':
+      return { ...state, outcome: { status: 'generated', result: event.result } };
+    case 'generationFailed':
+      return { ...state, outcome: { status: 'failed', error: event.error } };
+  }
+}
+
 export function RelationalSeedTool() {
   const { t } = useTranslation();
-  const [tables, setTables] = useState<PersistedState[]>([]);
-  const [counts, setCounts] = useState(new Map<string, number>());
-  const [seed, setSeed] = useState('ddlbuilder');
-  const [scenarioName, setScenarioName] = useState('');
-  const [rules, setRules] = useState<readonly SeedRule[]>([]);
-  const [includeLogical, setIncludeLogical] = useState(false);
-  const [result, setResult] = useState<RelationalSeedResult | null>(null);
-  const [error, setError] = useState('');
-  const total = tables.reduce((sum, table) => sum + (counts.get(snapshotTableKey(table)) ?? 10), 0);
 
-  const clear = () => {
-    setResult(null);
-    setError('');
-  };
+  const [{ tables, counts, seed, scenarioName, rules, includeLogical, outcome }, dispatch] =
+    useReducer(seedReducer, initialSeedState);
+  const result = outcome.status === 'generated' ? outcome.result : null;
+  const error = outcome.status === 'failed' ? outcome.error : '';
+  const total = tables.reduce((sum, table) => sum + (counts.get(snapshotTableKey(table)) ?? 10), 0);
 
   return (
     <ToolLayout
@@ -39,10 +98,7 @@ export function RelationalSeedTool() {
       source={
         <TableSource
           value={tables}
-          onChange={(value) => {
-            setTables(value);
-            clear();
-          }}
+          onChange={(value) => dispatch({ type: 'tablesSelected', tables: value })}
         />
       }
     >
@@ -51,10 +107,7 @@ export function RelationalSeedTool() {
         <Input
           value={seed}
           maxLength={200}
-          onChange={(event) => {
-            setSeed(event.target.value);
-            clear();
-          }}
+          onChange={(event) => dispatch({ type: 'seedChanged', seed: event.target.value })}
         />
       </label>
       <p className="text-xs text-muted-foreground">{t('schemaTools.seed.seedHint')}</p>
@@ -62,10 +115,9 @@ export function RelationalSeedTool() {
         <input
           type="checkbox"
           checked={includeLogical}
-          onChange={(event) => {
-            setIncludeLogical(event.target.checked);
-            clear();
-          }}
+          onChange={(event) =>
+            dispatch({ type: 'includeLogicalChanged', includeLogical: event.target.checked })
+          }
         />
         {t('schemaTools.seed.logical')}
       </label>
@@ -83,12 +135,13 @@ export function RelationalSeedTool() {
               className="w-24 shrink-0"
               aria-label={t('schemaTools.seed.rowsFor', { name: snapshotTableLabel(table) })}
               value={counts.get(snapshotTableKey(table)) ?? 10}
-              onChange={(event) => {
-                setCounts((current) =>
-                  new Map(current).set(snapshotTableKey(table), Number(event.target.value)),
-                );
-                clear();
-              }}
+              onChange={(event) =>
+                dispatch({
+                  type: 'rowCountChanged',
+                  tableKey: snapshotTableKey(table),
+                  count: Number(event.target.value),
+                })
+              }
             />
           </label>
         ))}
@@ -109,24 +162,16 @@ export function RelationalSeedTool() {
           })),
           rules,
         }}
-        onChange={(scenario) => {
-          setScenarioName(scenario.name);
-          setSeed(scenario.seed);
-          setIncludeLogical(scenario.includeLogical);
-          setCounts(new Map(scenario.rows.map((row) => [row.tableKey, row.count])));
-          setRules(scenario.rules);
-          clear();
-        }}
+        onChange={(scenario) => dispatch({ type: 'scenarioApplied', scenario })}
       />
       <div className="flex flex-wrap gap-2">
         <Button
           disabled={!tables.length || total > 10000}
           onClick={() => {
-            clear();
-
             try {
-              setResult(
-                generateRelationalSeed(
+              dispatch({
+                type: 'generated',
+                result: generateRelationalSeed(
                   tables.map((table) => ({
                     table,
                     rowCount: counts.get(snapshotTableKey(table)) ?? 10,
@@ -135,9 +180,12 @@ export function RelationalSeedTool() {
                   includeLogical,
                   rules,
                 ),
-              );
+              });
             } catch (cause) {
-              setError(cause instanceof Error ? cause.message : t('schemaTools.failed'));
+              dispatch({
+                type: 'generationFailed',
+                error: cause instanceof Error ? cause.message : t('schemaTools.failed'),
+              });
             }
           }}
         >
