@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { isValidElement } from 'react';
 import { Tooltip as TooltipPrimitive } from '@base-ui/react/tooltip';
 
 import { cn } from '@/lib/utils';
@@ -19,7 +19,7 @@ function TooltipTrigger({ asChild, children, ...props }: TooltipTriggerProps) {
   return (
     <TooltipPrimitive.Trigger
       data-slot="tooltip-trigger"
-      render={asChild && React.isValidElement(children) ? children : undefined}
+      render={asChild && isValidElement(children) ? children : undefined}
       {...props}
     >
       {asChild ? undefined : children}

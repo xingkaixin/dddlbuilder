@@ -1,4 +1,5 @@
-import * as React from 'react';
+import type * as React from 'react';
+import { isValidElement } from 'react';
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
 import { Check, ChevronRight, Circle } from '@/components/icons';
 
@@ -22,7 +23,7 @@ function DropdownMenuTrigger({ asChild, children, ...props }: DropdownMenuTrigge
   return (
     <MenuPrimitive.Trigger
       data-slot="dropdown-menu-trigger"
-      render={asChild && React.isValidElement(children) ? children : undefined}
+      render={asChild && isValidElement(children) ? children : undefined}
       {...props}
     >
       {asChild ? undefined : children}
@@ -148,7 +149,7 @@ function DropdownMenuItem({
     <MenuPrimitive.Item
       data-slot="dropdown-menu-item"
       data-inset={inset}
-      render={asChild && React.isValidElement(children) ? children : undefined}
+      render={asChild && isValidElement(children) ? children : undefined}
       className={cn(
         'relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-inset:pl-8 data-disabled:pointer-events-none data-disabled:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0',
         className,

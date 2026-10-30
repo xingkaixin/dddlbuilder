@@ -1,4 +1,5 @@
-import * as React from 'react';
+import type * as React from 'react';
+import { isValidElement } from 'react';
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { X } from '@/components/icons';
 
@@ -14,7 +15,7 @@ function DialogTrigger({ asChild, children, ...props }: DialogTriggerProps) {
   return (
     <DialogPrimitive.Trigger
       data-slot="dialog-trigger"
-      render={asChild && React.isValidElement(children) ? children : undefined}
+      render={asChild && isValidElement(children) ? children : undefined}
       {...props}
     >
       {asChild ? undefined : children}
