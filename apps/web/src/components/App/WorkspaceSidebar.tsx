@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useReducer } from 'react';
 import {
   ChevronLeft,
   FileEdit,
@@ -77,6 +77,9 @@ interface WorkspaceSidebarProps {
   onDeleteFolder?: (folder: FolderTreeNode) => void;
 }
 
+const trashViewReducer = (showTrash: boolean, event: 'toggled' | 'closed') =>
+  event === 'toggled' ? !showTrash : false;
+
 export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
   ({
     loading,
@@ -111,7 +114,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     onDeleteFolder,
   }) => {
     const { t } = useTranslation();
-    const [showTrash, setShowTrash] = useState(false);
+    const [showTrash, dispatchTrashView] = useReducer(trashViewReducer, false);
 
     const treeControls = useWorkspaceTreeControls({
       items,
@@ -329,7 +332,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                       <button
                         type="button"
                         className="text-primary"
-                        onClick={() => setShowTrash(false)}
+                        onClick={() => dispatchTrashView('closed')}
                       >
                         {t('savedTables.backToProjects')}
                       </button>
@@ -397,7 +400,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
               <button
                 type="button"
                 className="flex w-full items-center justify-between rounded-md px-2 py-2 text-[13px] leading-5 text-muted-foreground hover:bg-accent"
-                onClick={() => setShowTrash((value) => !value)}
+                onClick={() => dispatchTrashView('toggled')}
               >
                 <span className="inline-flex items-center gap-2">
                   <Trash2 className="h-4 w-4" />

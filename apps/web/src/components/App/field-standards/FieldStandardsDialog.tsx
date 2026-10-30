@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useReducer, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { type FieldRow } from '@ddlbuilder/shared-types';
@@ -40,6 +40,77 @@ function getStandardFieldKeys(field: StandardField): (keyof StandardField)[] {
   return Object.keys(field) as (keyof StandardField)[];
 }
 
+type WorkspaceScope = ReturnType<typeof useWorkspaceScope>;
+
+type StandardsState = {
+  search: string;
+  selectedId: string;
+  fieldId: string;
+  editing: FieldStandard | null;
+  operation: 'idle' | 'running' | 'failed';
+  pendingImport: FieldStandard[] | null;
+  scan: { scope: WorkspaceScope; tables: SavedTableRecord[] } | null;
+};
+
+type StandardsEvent =
+  | { type: 'searchChanged'; search: string }
+  | { type: 'standardSelected'; id: string }
+  | { type: 'fieldTargeted'; fieldId: string }
+  | { type: 'referenceInspected'; standardId: string; fieldId: string }
+  | { type: 'editorOpened'; standard: FieldStandard }
+  | { type: 'editorClosed' }
+  | { type: 'operationStarted' }
+  | { type: 'operationSucceeded' }
+  | { type: 'operationFailed' }
+  | { type: 'standardSaved'; id: string }
+  | { type: 'standardDeleted' }
+  | { type: 'importCleared' }
+  | { type: 'importDecoded'; standards: FieldStandard[] }
+  | { type: 'tablesScanned'; scope: WorkspaceScope; tables: SavedTableRecord[] };
+
+const initialStandardsState: StandardsState = {
+  search: '',
+  selectedId: '',
+  fieldId: '',
+  editing: null,
+  operation: 'idle',
+  pendingImport: null,
+  scan: null,
+};
+
+function standardsReducer(state: StandardsState, event: StandardsEvent): StandardsState {
+  switch (event.type) {
+    case 'searchChanged':
+      return { ...state, search: event.search };
+    case 'standardSelected':
+      return { ...state, selectedId: event.id };
+    case 'fieldTargeted':
+      return { ...state, fieldId: event.fieldId };
+    case 'referenceInspected':
+      return { ...state, selectedId: event.standardId, fieldId: event.fieldId };
+    case 'editorOpened':
+      return { ...state, editing: event.standard };
+    case 'editorClosed':
+      return { ...state, editing: null };
+    case 'operationStarted':
+      return { ...state, operation: 'running' };
+    case 'operationSucceeded':
+      return { ...state, operation: 'idle' };
+    case 'operationFailed':
+      return { ...state, operation: 'failed' };
+    case 'standardSaved':
+      return { ...state, selectedId: event.id, editing: null };
+    case 'standardDeleted':
+      return { ...state, selectedId: '' };
+    case 'importCleared':
+      return { ...state, pendingImport: null };
+    case 'importDecoded':
+      return { ...state, pendingImport: event.standards };
+    case 'tablesScanned':
+      return { ...state, scan: { scope: event.scope, tables: event.tables } };
+  }
+}
+
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- displayValue is a UI boundary for arbitrary JSON field values.
 function displayValue(value: unknown): string {
   if (value === undefined || value === '') return '—';
@@ -58,17 +129,10 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
   const standards = query.data ?? EMPTY_STANDARDS;
   const { loadTables } = useSavedTables();
   const scope = useWorkspaceScope();
-  const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState('');
-  const [fieldId, setFieldId] = useState('');
-  const [editing, setEditing] = useState<FieldStandard | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [pendingImport, setPendingImport] = useState<FieldStandard[] | null>(null);
 
-  const [scan, setScan] = useState<{ scope: typeof scope; tables: SavedTableRecord[] } | null>(
-    null,
-  );
+  const [{ search, selectedId, fieldId, editing, operation, pendingImport, scan }, dispatch] =
+    useReducer(standardsReducer, initialStandardsState);
+  const busy = operation === 'running';
   const fileInput = useRef<HTMLInputElement>(null);
   const selected = standards.find((standard) => standard.id === selectedId);
   const target = rows.find((row) => row.id === fieldId);
@@ -129,25 +193,22 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
     );
   }, [scan, scope, byId, standards]);
 
-  const run = async (operation: () => Promise<void>) => {
+  const run = async (task: () => Promise<void>) => {
     if (busy) return;
-    setBusy(true);
-    setError('');
+    dispatch({ type: 'operationStarted' });
 
     try {
-      await operation();
+      await task();
+      dispatch({ type: 'operationSucceeded' });
     } catch {
-      setError(t('fieldStandards.operationFailed'));
-    } finally {
-      setBusy(false);
+      dispatch({ type: 'operationFailed' });
     }
   };
   const save = (standard: FieldStandard) =>
     run(async () => {
       await saveFieldStandards([standard]);
       await queryClient.invalidateQueries({ queryKey });
-      setSelectedId(standard.id);
-      setEditing(null);
+      dispatch({ type: 'standardSaved', id: standard.id });
     });
   const apply = () => {
     if (!selected || !target || nameConflict) return;
@@ -177,9 +238,9 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
           <DialogTitle>{t('fieldStandards.title')}</DialogTitle>
           <DialogDescription>{t('fieldStandards.localHint')}</DialogDescription>
         </DialogHeader>
-        {(error || query.isError) && (
+        {(operation === 'failed' || query.isError) && (
           <p role="alert" className="text-sm text-destructive">
-            {error || t('fieldStandards.operationFailed')}{' '}
+            {t('fieldStandards.operationFailed')}{' '}
             <Button variant="ghost" size="sm" onClick={() => void query.refetch()}>
               {t('fieldStandards.retry')}
             </Button>
@@ -192,12 +253,19 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
             dbType={dbType}
             busy={busy}
             onSave={save}
-            onCancel={() => setEditing(null)}
+            onCancel={() => dispatch({ type: 'editorClosed' })}
           />
         ) : (
           <>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => setEditing(createFieldStandard(target ?? createEmptyRow()))}>
+              <Button
+                onClick={() =>
+                  dispatch({
+                    type: 'editorOpened',
+                    standard: createFieldStandard(target ?? createEmptyRow()),
+                  })
+                }
+              >
                 {t('fieldStandards.create')}
               </Button>
               <Button
@@ -227,10 +295,13 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                   event.target.value = '';
 
                   if (!file) return;
-                  setPendingImport(null);
+                  dispatch({ type: 'importCleared' });
                   void run(async () => {
                     if (file.size > 2 * 1024 * 1024) throw new Error('File too large');
-                    setPendingImport(decodeFieldStandards(JSON.parse(await file.text())));
+                    dispatch({
+                      type: 'importDecoded',
+                      standards: decodeFieldStandards(JSON.parse(await file.text())),
+                    });
                   });
                 }}
               />
@@ -252,13 +323,13 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                     void run(async () => {
                       await saveFieldStandards(pendingImport);
                       await queryClient.invalidateQueries({ queryKey });
-                      setPendingImport(null);
+                      dispatch({ type: 'importCleared' });
                     })
                   }
                 >
                   {t('fieldStandards.confirmImport')}
                 </Button>
-                <Button variant="ghost" onClick={() => setPendingImport(null)}>
+                <Button variant="ghost" onClick={() => dispatch({ type: 'importCleared' })}>
                   {t('fieldStandards.cancel')}
                 </Button>
               </div>
@@ -269,7 +340,9 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                   aria-label={t('fieldStandards.search')}
                   placeholder={t('fieldStandards.search')}
                   value={search}
-                  onChange={(event) => setSearch(event.target.value)}
+                  onChange={(event) =>
+                    dispatch({ type: 'searchChanged', search: event.target.value })
+                  }
                 />
                 <div className="max-h-80 overflow-y-auto space-y-1">
                   {filtered.map((standard) => (
@@ -278,7 +351,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                       type="button"
                       aria-pressed={selectedId === standard.id}
                       className={`w-full rounded-md border p-3 text-left text-sm ${selectedId === standard.id ? 'border-primary bg-primary/5' : 'hover:bg-muted'}`}
-                      onClick={() => setSelectedId(standard.id)}
+                      onClick={() => dispatch({ type: 'standardSelected', id: standard.id })}
                     >
                       <span className="block font-medium">{standard.name}</span>
                       <span className="font-mono text-xs text-muted-foreground">
@@ -301,7 +374,9 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                   id="standard-target"
                   className={selectClass}
                   value={fieldId}
-                  onChange={(event) => setFieldId(event.target.value)}
+                  onChange={(event) =>
+                    dispatch({ type: 'fieldTargeted', fieldId: event.target.value })
+                  }
                 >
                   <option value="">{t('fieldStandards.selectField')}</option>
                   {rows
@@ -316,7 +391,9 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setEditing(createFieldStandard(target))}
+                    onClick={() =>
+                      dispatch({ type: 'editorOpened', standard: createFieldStandard(target) })
+                    }
                   >
                     {t('fieldStandards.fromField')}
                   </Button>
@@ -400,12 +477,15 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
 
                             return [...current.slice(0, insertAt), row, ...current.slice(insertAt)];
                           });
-                          setFieldId(row.id);
+                          dispatch({ type: 'fieldTargeted', fieldId: row.id });
                         }}
                       >
                         {t('fieldStandards.append')}
                       </Button>
-                      <Button variant="ghost" onClick={() => setEditing(selected)}>
+                      <Button
+                        variant="ghost"
+                        onClick={() => dispatch({ type: 'editorOpened', standard: selected })}
+                      >
                         {t('fieldStandards.edit')}
                       </Button>
                     </div>
@@ -421,7 +501,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                           void run(async () => {
                             await deleteFieldStandard(selected.id);
                             await queryClient.invalidateQueries({ queryKey });
-                            setSelectedId('');
+                            dispatch({ type: 'standardDeleted' });
                           })
                         }
                       >
@@ -461,10 +541,13 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            setSelectedId(standard.id);
-                            setFieldId(row.id);
-                          }}
+                          onClick={() =>
+                            dispatch({
+                              type: 'referenceInspected',
+                              standardId: standard.id,
+                              fieldId: row.id,
+                            })
+                          }
                         >
                           {t('fieldStandards.inspect')}
                         </Button>
@@ -483,7 +566,7 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                 onClick={() =>
                   void run(async () => {
                     const tables = await loadTables();
-                    setScan({ scope, tables });
+                    dispatch({ type: 'tablesScanned', scope, tables });
                   })
                 }
               >

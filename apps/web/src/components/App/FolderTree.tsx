@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useMemo } from 'react';
+import { memo, useReducer, useCallback, useMemo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -288,8 +288,39 @@ export const FolderTree = memo<FolderTreeProps>(
 
 FolderTree.displayName = 'FolderTree';
 
+type FolderExpansionEvent =
+  | { type: 'folderToggled'; folderId: string }
+  | { type: 'folderExpanded'; folderId: string };
+
+function collapsedFoldersReducer(collapsed: Set<string>, event: FolderExpansionEvent): Set<string> {
+  switch (event.type) {
+    case 'folderToggled': {
+      const next = new Set(collapsed);
+
+      if (next.has(event.folderId)) next.delete(event.folderId);
+      else next.add(event.folderId);
+
+      return next;
+    }
+
+    case 'folderExpanded': {
+      if (!collapsed.has(event.folderId)) return collapsed;
+      const next = new Set(collapsed);
+      next.delete(event.folderId);
+
+      return next;
+    }
+  }
+}
+
+const createCollapsedFolders = () => new Set<string>();
+
 export function useFolderExpansion(folders: FolderTreeNode[]) {
-  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(() => new Set());
+  const [collapsedFolders, dispatch] = useReducer(
+    collapsedFoldersReducer,
+    undefined,
+    createCollapsedFolders,
+  );
 
   const expandedFolders = useMemo(() => {
     const expanded = new Set<string>();
@@ -305,26 +336,15 @@ export function useFolderExpansion(folders: FolderTreeNode[]) {
     return expanded;
   }, [folders, collapsedFolders]);
 
-  const toggleFolder = useCallback((folderId: string) => {
-    setCollapsedFolders((previous) => {
-      const next = new Set(previous);
+  const toggleFolder = useCallback(
+    (folderId: string) => dispatch({ type: 'folderToggled', folderId }),
+    [],
+  );
 
-      if (next.has(folderId)) next.delete(folderId);
-      else next.add(folderId);
-
-      return next;
-    });
-  }, []);
-
-  const expandFolder = useCallback((folderId: string) => {
-    setCollapsedFolders((previous) => {
-      if (!previous.has(folderId)) return previous;
-      const next = new Set(previous);
-      next.delete(folderId);
-
-      return next;
-    });
-  }, []);
+  const expandFolder = useCallback(
+    (folderId: string) => dispatch({ type: 'folderExpanded', folderId }),
+    [],
+  );
 
   return { expandedFolders, toggleFolder, expandFolder };
 }

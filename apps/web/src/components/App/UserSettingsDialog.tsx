@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Coins, RefreshCw, User2 } from '@/components/icons';
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useReducer } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuthActions, useAuthCredits, useAuthIdentity } from '@/auth/AuthSessionProvider';
 import {
@@ -143,6 +143,64 @@ const resolveLedgerTypeLabel = (
   return t(`settings.kind.${item.kind}`);
 };
 
+const accountNameReducer = (_name: string, event: { type: 'nameEdited'; name: string }) =>
+  event.name;
+
+type PasswordField = 'currentPassword' | 'newPassword' | 'confirmPassword';
+
+type SettingsState = Record<PasswordField, string> & {
+  ledgerPage: number;
+  ledgerStartDate: string;
+  ledgerEndDate: string;
+  rechargeOpen: boolean;
+  settingsTab: SettingsTab;
+};
+
+type SettingsEvent =
+  | { type: 'passwordFieldChanged'; field: PasswordField; value: string }
+  | { type: 'passwordChanged' }
+  | { type: 'ledgerStartDateChanged'; date: string }
+  | { type: 'ledgerEndDateChanged'; date: string }
+  | { type: 'ledgerFilterCleared' }
+  | { type: 'ledgerPreviousPageRequested' }
+  | { type: 'ledgerNextPageRequested'; pageCount: number }
+  | { type: 'rechargeOpenChanged'; open: boolean }
+  | { type: 'tabSelected'; tab: SettingsTab };
+
+const initialSettingsState: SettingsState = {
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+  ledgerPage: 1,
+  ledgerStartDate: '',
+  ledgerEndDate: '',
+  rechargeOpen: false,
+  settingsTab: 'account',
+};
+
+function settingsReducer(state: SettingsState, event: SettingsEvent): SettingsState {
+  switch (event.type) {
+    case 'passwordFieldChanged':
+      return { ...state, [event.field]: event.value };
+    case 'passwordChanged':
+      return { ...state, currentPassword: '', newPassword: '', confirmPassword: '' };
+    case 'ledgerStartDateChanged':
+      return { ...state, ledgerStartDate: event.date, ledgerPage: 1 };
+    case 'ledgerEndDateChanged':
+      return { ...state, ledgerEndDate: event.date, ledgerPage: 1 };
+    case 'ledgerFilterCleared':
+      return { ...state, ledgerStartDate: '', ledgerEndDate: '', ledgerPage: 1 };
+    case 'ledgerPreviousPageRequested':
+      return { ...state, ledgerPage: Math.max(1, state.ledgerPage - 1) };
+    case 'ledgerNextPageRequested':
+      return { ...state, ledgerPage: Math.min(event.pageCount, state.ledgerPage + 1) };
+    case 'rechargeOpenChanged':
+      return { ...state, rechargeOpen: event.open };
+    case 'tabSelected':
+      return { ...state, settingsTab: event.tab };
+  }
+}
+
 function AccountNameForm({
   initialName,
   updateUserName,
@@ -152,10 +210,15 @@ function AccountNameForm({
 }) {
   const { t } = useTranslation();
   const { success, error } = useToast();
-  const [name, setName] = useState(initialName);
-  const [saving, setSaving] = useState(false);
+  const [name, dispatch] = useReducer(accountNameReducer, initialName);
 
-  const handleSubmit = async () => {
+  const updateNameMutation = useMutation({
+    mutationFn: updateUserName,
+    onSuccess: () => success(t('settings.usernameSuccess')),
+    onError: (err) => error(err instanceof Error ? err.message : t('settings.usernameFailed')),
+  });
+
+  const handleSubmit = () => {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
@@ -164,15 +227,7 @@ function AccountNameForm({
       return;
     }
 
-    try {
-      setSaving(true);
-      await updateUserName(trimmedName);
-      success(t('settings.usernameSuccess'));
-    } catch (err) {
-      error(err instanceof Error ? err.message : t('settings.usernameFailed'));
-    } finally {
-      setSaving(false);
-    }
+    updateNameMutation.mutate(trimmedName);
   };
 
   return (
@@ -181,12 +236,12 @@ function AccountNameForm({
       <div className="space-y-2">
         <Input
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => dispatch({ type: 'nameEdited', name: event.target.value })}
           placeholder={t('settings.usernamePlaceholder')}
         />
         <div className="flex justify-end">
-          <Button type="button" onClick={handleSubmit} disabled={saving}>
-            {saving ? t('settings.saving') : t('settings.save')}
+          <Button type="button" onClick={handleSubmit} disabled={updateNameMutation.isPending}>
+            {updateNameMutation.isPending ? t('settings.saving') : t('settings.save')}
           </Button>
         </div>
       </div>
@@ -203,15 +258,20 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const authSession = { ...authIdentity, ...authActions, ...authCredits };
   const workspaceYDoc = useWorkspaceYDoc();
   const { success, error } = useToast();
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [savingPassword, setSavingPassword] = useState(false);
-  const [ledgerPage, setLedgerPage] = useState(1);
-  const [ledgerStartDate, setLedgerStartDate] = useState('');
-  const [ledgerEndDate, setLedgerEndDate] = useState('');
-  const [rechargeOpen, setRechargeOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>('account');
+
+  const [
+    {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+      ledgerPage,
+      ledgerStartDate,
+      ledgerEndDate,
+      rechargeOpen,
+      settingsTab,
+    },
+    dispatch,
+  ] = useReducer(settingsReducer, initialSettingsState);
   const compactCreditBalance = formatCompactCredits(authSession.creditBalance, locale);
 
   const ledgerFilters = useMemo(() => {
@@ -246,7 +306,18 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
     [ledgerTotal],
   );
 
-  const handleChangePassword = async () => {
+  const changePasswordMutation = useMutation({
+    mutationFn: (passwords: { current: string; next: string }) =>
+      authSession.changePassword(passwords.current, passwords.next),
+    onSuccess: () => {
+      dispatch({ type: 'passwordChanged' });
+      success(t('settings.passwordSuccess'));
+    },
+    onError: (err) => error(err instanceof Error ? err.message : t('settings.passwordFailed')),
+  });
+  const savingPassword = changePasswordMutation.isPending;
+
+  const handleChangePassword = () => {
     if (!currentPassword.trim() || !newPassword.trim()) {
       error(t('settings.passwordRequired'));
 
@@ -259,18 +330,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
       return;
     }
 
-    try {
-      setSavingPassword(true);
-      await authSession.changePassword(currentPassword, newPassword);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      success(t('settings.passwordSuccess'));
-    } catch (err) {
-      error(err instanceof Error ? err.message : t('settings.passwordFailed'));
-    } finally {
-      setSavingPassword(false);
-    }
+    changePasswordMutation.mutate({ current: currentPassword, next: newPassword });
   };
 
   const workspaceStatusKey =
@@ -299,7 +359,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
             value={settingsTab}
             orientation="vertical"
             // SAFETY: the ledger metadata is parsed as JSON and only the known reason field is read.
-            onValueChange={(value) => setSettingsTab(value as SettingsTab)}
+            onValueChange={(value) => dispatch({ type: 'tabSelected', tab: value as SettingsTab })}
             className="flex min-h-0 overflow-hidden"
           >
             <TabsList className="h-auto w-56 shrink-0 self-stretch flex-col justify-start gap-1 rounded-none border-r border-border/70 bg-transparent px-3 py-5">
@@ -354,21 +414,39 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                     <Input
                       type="password"
                       value={currentPassword}
-                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      onChange={(event) =>
+                        dispatch({
+                          type: 'passwordFieldChanged',
+                          field: 'currentPassword',
+                          value: event.target.value,
+                        })
+                      }
                       placeholder={t('settings.currentPassword')}
                       autoComplete="current-password"
                     />
                     <Input
                       type="password"
                       value={newPassword}
-                      onChange={(event) => setNewPassword(event.target.value)}
+                      onChange={(event) =>
+                        dispatch({
+                          type: 'passwordFieldChanged',
+                          field: 'newPassword',
+                          value: event.target.value,
+                        })
+                      }
                       placeholder={t('settings.newPassword')}
                       autoComplete="new-password"
                     />
                     <Input
                       type="password"
                       value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      onChange={(event) =>
+                        dispatch({
+                          type: 'passwordFieldChanged',
+                          field: 'confirmPassword',
+                          value: event.target.value,
+                        })
+                      }
                       placeholder={t('settings.confirmPassword')}
                       autoComplete="new-password"
                     />
@@ -422,7 +500,11 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                     </div>
                     <div className="text-2xl font-semibold">{authSession.creditBalance ?? 0}</div>
                   </div>
-                  <Button type="button" variant="outline" onClick={() => setRechargeOpen(true)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => dispatch({ type: 'rechargeOpenChanged', open: true })}
+                  >
                     {t('settings.recharge')}
                   </Button>
                 </section>
@@ -439,10 +521,9 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                           type="date"
                           value={ledgerStartDate}
                           max={ledgerEndDate || undefined}
-                          onChange={(event) => {
-                            setLedgerStartDate(event.target.value);
-                            setLedgerPage(1);
-                          }}
+                          onChange={(event) =>
+                            dispatch({ type: 'ledgerStartDateChanged', date: event.target.value })
+                          }
                           className="h-8 text-xs"
                         />
                       </label>
@@ -452,10 +533,9 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                           type="date"
                           value={ledgerEndDate}
                           min={ledgerStartDate || undefined}
-                          onChange={(event) => {
-                            setLedgerEndDate(event.target.value);
-                            setLedgerPage(1);
-                          }}
+                          onChange={(event) =>
+                            dispatch({ type: 'ledgerEndDateChanged', date: event.target.value })
+                          }
                           className="h-8 text-xs"
                         />
                       </label>
@@ -465,11 +545,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                         size="sm"
                         className="h-8 px-2 text-xs"
                         disabled={!ledgerStartDate && !ledgerEndDate}
-                        onClick={() => {
-                          setLedgerStartDate('');
-                          setLedgerEndDate('');
-                          setLedgerPage(1);
-                        }}
+                        onClick={() => dispatch({ type: 'ledgerFilterCleared' })}
                       >
                         {t('settings.clearFilter')}
                       </Button>
@@ -525,7 +601,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                           size="icon"
                           className="h-8 w-8"
                           disabled={ledgerPage <= 1 || loadingLedger}
-                          onClick={() => setLedgerPage((page) => Math.max(1, page - 1))}
+                          onClick={() => dispatch({ type: 'ledgerPreviousPageRequested' })}
                           aria-label={t('settings.previousPage')}
                         >
                           <ChevronLeft className="h-4 w-4" />
@@ -537,7 +613,10 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                           className="h-8 w-8"
                           disabled={ledgerPage >= ledgerPageCount || loadingLedger}
                           onClick={() =>
-                            setLedgerPage((page) => Math.min(ledgerPageCount, page + 1))
+                            dispatch({
+                              type: 'ledgerNextPageRequested',
+                              pageCount: ledgerPageCount,
+                            })
                           }
                           aria-label={t('settings.nextPage')}
                         >
@@ -552,7 +631,10 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
           </Tabs>
         </DialogContent>
       </Dialog>
-      <AlertDialog open={rechargeOpen} onOpenChange={setRechargeOpen}>
+      <AlertDialog
+        open={rechargeOpen}
+        onOpenChange={(open) => dispatch({ type: 'rechargeOpenChanged', open })}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('settings.recharge')}</AlertDialogTitle>

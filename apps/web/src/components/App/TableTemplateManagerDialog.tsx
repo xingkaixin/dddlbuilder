@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useReducer } from 'react';
 import { Copy, Pencil, Search, Trash2 } from '@/components/icons';
 import {
   AlertDialog,
@@ -35,6 +35,45 @@ interface TableTemplateManagerDialogProps {
   onDeleteTemplate: (id: string) => Promise<{ ok: boolean; message?: string }>;
 }
 
+type ManagerState = {
+  searchTerm: string;
+  editingTemplate: TableTemplate | null;
+  editName: string;
+  deleteTarget: TableTemplate | null;
+};
+
+type ManagerEvent =
+  | { type: 'searchChanged'; searchTerm: string }
+  | { type: 'renameOpened'; template: TableTemplate }
+  | { type: 'editNameChanged'; name: string }
+  | { type: 'renameClosed' }
+  | { type: 'deleteRequested'; template: TableTemplate }
+  | { type: 'deleteClosed' };
+
+const initialManagerState: ManagerState = {
+  searchTerm: '',
+  editingTemplate: null,
+  editName: '',
+  deleteTarget: null,
+};
+
+function managerReducer(state: ManagerState, event: ManagerEvent): ManagerState {
+  switch (event.type) {
+    case 'searchChanged':
+      return { ...state, searchTerm: event.searchTerm };
+    case 'renameOpened':
+      return { ...state, editingTemplate: event.template, editName: event.template.name };
+    case 'editNameChanged':
+      return { ...state, editName: event.name };
+    case 'renameClosed':
+      return { ...state, editingTemplate: null };
+    case 'deleteRequested':
+      return { ...state, deleteTarget: event.template };
+    case 'deleteClosed':
+      return { ...state, deleteTarget: null };
+  }
+}
+
 export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
   ({
     open,
@@ -47,10 +86,11 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
   }) => {
     const { t } = useTranslation();
     const { showToast } = useToast();
-    const [searchTerm, setSearchTerm] = useState('');
-    const [editingTemplate, setEditingTemplate] = useState<TableTemplate | null>(null);
-    const [editName, setEditName] = useState('');
-    const [deleteTarget, setDeleteTarget] = useState<TableTemplate | null>(null);
+
+    const [{ searchTerm, editingTemplate, editName, deleteTarget }, dispatch] = useReducer(
+      managerReducer,
+      initialManagerState,
+    );
 
     const filteredTemplates = useMemo(() => {
       const term = searchTerm.trim().toLowerCase();
@@ -65,10 +105,10 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
       );
     }, [searchTerm, templates]);
 
-    const handleOpenEdit = useCallback((template: TableTemplate) => {
-      setEditingTemplate(template);
-      setEditName(template.name);
-    }, []);
+    const handleOpenEdit = useCallback(
+      (template: TableTemplate) => dispatch({ type: 'renameOpened', template }),
+      [],
+    );
 
     const handleRename = useCallback(async () => {
       if (!editingTemplate) return;
@@ -79,7 +119,7 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
 
       if (result.ok) {
         showToast(t('tableTemplate.toast.renamed', { name: nextName }));
-        setEditingTemplate(null);
+        dispatch({ type: 'renameClosed' });
       } else {
         showToast(result.message ?? t('tableTemplate.toast.renameFailed'));
       }
@@ -105,7 +145,7 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
           ? t('tableTemplate.toast.deleted', { name: deleteTarget.name })
           : (result.message ?? t('tableTemplate.toast.deleteFailed')),
       );
-      setDeleteTarget(null);
+      dispatch({ type: 'deleteClosed' });
     }, [deleteTarget, onDeleteTemplate, showToast, t]);
 
     return (
@@ -122,7 +162,9 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
                 <Input
                   placeholder={t('tableTemplate.manager.searchPlaceholder')}
                   value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
+                  onChange={(event) =>
+                    dispatch({ type: 'searchChanged', searchTerm: event.target.value })
+                  }
                   className="pl-8"
                 />
               </div>
@@ -166,7 +208,7 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => setDeleteTarget(template)}
+                            onClick={() => dispatch({ type: 'deleteRequested', template })}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -189,7 +231,7 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
 
         <Dialog
           open={Boolean(editingTemplate)}
-          onOpenChange={(nextOpen) => !nextOpen && setEditingTemplate(null)}
+          onOpenChange={(nextOpen) => !nextOpen && dispatch({ type: 'renameClosed' })}
         >
           <DialogContent className="max-w-sm">
             <DialogHeader>
@@ -200,12 +242,14 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
               <Input
                 id="table-template-name"
                 value={editName}
-                onChange={(event) => setEditName(event.target.value)}
+                onChange={(event) =>
+                  dispatch({ type: 'editNameChanged', name: event.target.value })
+                }
                 autoFocus
               />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingTemplate(null)}>
+              <Button variant="outline" onClick={() => dispatch({ type: 'renameClosed' })}>
                 {t('tableTemplate.manager.cancel')}
               </Button>
               <Button onClick={() => void handleRename()} disabled={!editName.trim()}>
@@ -217,7 +261,7 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
 
         <AlertDialog
           open={Boolean(deleteTarget)}
-          onOpenChange={(nextOpen) => !nextOpen && setDeleteTarget(null)}
+          onOpenChange={(nextOpen) => !nextOpen && dispatch({ type: 'deleteClosed' })}
         >
           <AlertDialogContent>
             <AlertDialogHeader>

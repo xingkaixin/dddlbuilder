@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthIdentity } from '@/auth/AuthSessionProvider';
 import { GlobalDialogs } from './containers/GlobalDialogs';
@@ -27,6 +27,8 @@ interface AppDialogLayerProps {
   model: AppDialogLayerModel;
 }
 
+const aiPatchMountReducer = (_mounted: boolean, _event: 'opened') => true;
+
 export function AppDialogLayer({ model }: AppDialogLayerProps) {
   const { t } = useTranslation();
   const authSession = useAuthIdentity();
@@ -52,9 +54,9 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
   };
   const { visible: importVisible, ...importDialogProps } = importDialog;
   // AI 补丁会话在关闭后仍需保留，首次打开后才挂载，之后保持挂载。
-  const [aiPatchMounted, setAiPatchMounted] = useState(false);
+  const [aiPatchMounted, dispatchAiPatchMount] = useReducer(aiPatchMountReducer, false);
 
-  if (aiPatchProps.open && !aiPatchMounted) setAiPatchMounted(true);
+  if (aiPatchProps.open && !aiPatchMounted) dispatchAiPatchMount('opened');
 
   return (
     <>

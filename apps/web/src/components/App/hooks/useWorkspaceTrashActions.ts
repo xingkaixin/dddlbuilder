@@ -1,5 +1,5 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { useCallback, useState } from 'react';
+import { useCallback, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import type { FolderTreeNode } from '@/hooks/useFolders';
@@ -20,6 +20,8 @@ interface UseWorkspaceTrashActionsParams {
   permanentlyDeleteDraftById: (draftId: string) => Promise<void>;
 }
 
+const emptyTrashDialogReducer = (_open: boolean, event: 'opened' | 'closed') => event === 'opened';
+
 export function useWorkspaceTrashActions({
   folderTree,
   trashedTables,
@@ -31,7 +33,16 @@ export function useWorkspaceTrashActions({
 }: UseWorkspaceTrashActionsParams) {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] = useState(false);
+
+  const [isEmptyTrashDialogOpen, dispatchEmptyTrashDialog] = useReducer(
+    emptyTrashDialogReducer,
+    false,
+  );
+
+  const setIsEmptyTrashDialogOpen = useCallback(
+    (open: boolean) => dispatchEmptyTrashDialog(open ? 'opened' : 'closed'),
+    [],
+  );
 
   const showActionFailure = useCallback(
     // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
@@ -89,7 +100,7 @@ export function useWorkspaceTrashActions({
   );
 
   const handleConfirmEmptyTrash = useCallback(() => {
-    setIsEmptyTrashDialogOpen(false);
+    dispatchEmptyTrashDialog('closed');
     void Promise.allSettled([
       ...trashedTables.map((item) => deleteTablePermanently(item)),
       ...trashedDrafts.map((draft) =>
@@ -113,7 +124,7 @@ export function useWorkspaceTrashActions({
     trashedDrafts,
     trashedTables,
   ]);
-  const handleEmptyTrash = useCallback(() => setIsEmptyTrashDialogOpen(true), []);
+  const handleEmptyTrash = useCallback(() => dispatchEmptyTrashDialog('opened'), []);
 
   return {
     isEmptyTrashDialogOpen,

@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useReducer } from 'react';
 import { ChevronDown, LayoutTemplate, Plus, Search, Settings } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +37,39 @@ function matchesTemplate(template: TableTemplate, query: string): boolean {
   );
 }
 
+type PopoverState = {
+  open: boolean;
+  previewTemplate: TableTemplate | null;
+  searchQuery: string;
+};
+
+type PopoverEvent =
+  | { type: 'openChanged'; open: boolean }
+  | { type: 'menuActionChosen' }
+  | { type: 'searchChanged'; searchQuery: string }
+  | { type: 'previewOpened'; template: TableTemplate }
+  | { type: 'previewClosed' }
+  | { type: 'templateApplied' };
+
+const initialPopoverState: PopoverState = { open: false, previewTemplate: null, searchQuery: '' };
+
+function popoverReducer(state: PopoverState, event: PopoverEvent): PopoverState {
+  switch (event.type) {
+    case 'openChanged':
+      return event.open ? { ...state, open: true } : { ...state, open: false, searchQuery: '' };
+    case 'menuActionChosen':
+      return { ...state, open: false };
+    case 'searchChanged':
+      return { ...state, searchQuery: event.searchQuery };
+    case 'previewOpened':
+      return { ...state, previewTemplate: event.template };
+    case 'previewClosed':
+      return { ...state, previewTemplate: null };
+    case 'templateApplied':
+      return { ...state, open: false, previewTemplate: null };
+  }
+}
+
 export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
   ({
     templates,
@@ -47,9 +80,11 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
     triggerClassName,
   }) => {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
-    const [previewTemplate, setPreviewTemplate] = useState<TableTemplate | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
+
+    const [{ open, previewTemplate, searchQuery }, dispatch] = useReducer(
+      popoverReducer,
+      initialPopoverState,
+    );
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     const visibleTemplates = useMemo(
@@ -63,17 +98,15 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
     const handleApply = useCallback(
       (template: TableTemplate) => {
         onApplyTemplate(template);
-        setPreviewTemplate(null);
-        setOpen(false);
+        dispatch({ type: 'templateApplied' });
       },
       [onApplyTemplate],
     );
 
-    const handleOpenChange = useCallback((nextOpen: boolean) => {
-      setOpen(nextOpen);
-
-      if (!nextOpen) setSearchQuery('');
-    }, []);
+    const handleOpenChange = useCallback(
+      (nextOpen: boolean) => dispatch({ type: 'openChanged', open: nextOpen }),
+      [],
+    );
 
     return (
       <>
@@ -96,7 +129,9 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
                 <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onChange={(event) =>
+                    dispatch({ type: 'searchChanged', searchQuery: event.target.value })
+                  }
                   placeholder={t('tableTemplate.quickApply.searchPlaceholder')}
                   className="h-8 pl-7 text-xs"
                 />
@@ -118,7 +153,7 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
                     key={template.id}
                     type="button"
                     className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                    onClick={() => setPreviewTemplate(template)}
+                    onClick={() => dispatch({ type: 'previewOpened', template })}
                   >
                     <LayoutTemplate className="h-4 w-4 shrink-0 text-emerald-600" />
                     <div className="min-w-0 flex-1">
@@ -144,7 +179,7 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent"
                 onClick={() => {
                   onSaveAsTemplate();
-                  setOpen(false);
+                  dispatch({ type: 'menuActionChosen' });
                 }}
               >
                 <Plus className="h-4 w-4" />
@@ -155,7 +190,7 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent"
                 onClick={() => {
                   onManageTemplates();
-                  setOpen(false);
+                  dispatch({ type: 'menuActionChosen' });
                 }}
               >
                 <Settings className="h-4 w-4" />
@@ -167,7 +202,7 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
 
         <Dialog
           open={Boolean(previewTemplate)}
-          onOpenChange={(nextOpen) => !nextOpen && setPreviewTemplate(null)}
+          onOpenChange={(nextOpen) => !nextOpen && dispatch({ type: 'previewClosed' })}
         >
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
@@ -175,7 +210,7 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
             </DialogHeader>
             {previewTemplate && <TableTemplatePreview blueprint={previewTemplate.blueprint} />}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
+              <Button variant="outline" onClick={() => dispatch({ type: 'previewClosed' })}>
                 {t('tableTemplate.preview.cancel')}
               </Button>
               <Button onClick={() => previewTemplate && handleApply(previewTemplate)}>

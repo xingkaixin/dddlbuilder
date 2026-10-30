@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 
@@ -6,9 +6,11 @@ const FieldStandardsDialog = lazy(() =>
   import('./FieldStandardsDialog').then((module) => ({ default: module.FieldStandardsDialog })),
 );
 
+const dialogOpenReducer = (_open: boolean, event: 'opened' | 'closed') => event === 'opened';
+
 export function FieldStandardsButton() {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [open, dispatchDialog] = useReducer(dialogOpenReducer, false);
 
   return (
     <>
@@ -16,7 +18,7 @@ export function FieldStandardsButton() {
         variant="outline"
         size="sm"
         className="h-7 px-2 text-xs"
-        onClick={() => setOpen(true)}
+        onClick={() => dispatchDialog('opened')}
       >
         {t('fieldStandards.title')}
       </Button>
@@ -28,7 +30,7 @@ export function FieldStandardsButton() {
             </span>
           }
         >
-          <FieldStandardsDialog onClose={() => setOpen(false)} />
+          <FieldStandardsDialog onClose={() => dispatchDialog('closed')} />
         </Suspense>
       )}
     </>

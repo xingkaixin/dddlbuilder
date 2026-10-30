@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useReducer, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatabaseType, FieldRow } from '@ddlbuilder/shared-types';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,33 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { TemplateFieldTable } from '../TemplateFieldTable';
 import { standardField, type FieldStandard } from '@/utils/fieldStandards';
+
+type EditorState = { name: string; description: string; unit: string; rows: FieldRow[] };
+
+type EditorTextField = 'name' | 'description' | 'unit';
+
+type EditorEvent =
+  | { type: 'fieldChanged'; field: EditorTextField; value: string }
+  | { type: 'rowsChanged'; update: SetStateAction<FieldRow[]> };
+
+function editorReducer(state: EditorState, event: EditorEvent): EditorState {
+  switch (event.type) {
+    case 'fieldChanged':
+      return { ...state, [event.field]: event.value };
+    case 'rowsChanged':
+      return {
+        ...state,
+        rows: Array.isArray(event.update) ? event.update : event.update(state.rows),
+      };
+  }
+}
+
+const initEditorState = (standard: FieldStandard): EditorState => ({
+  name: standard.name,
+  description: standard.description,
+  unit: standard.unit,
+  rows: [{ ...standard.field, id: standard.id }],
+});
 
 export function FieldStandardEditor({
   standard,
@@ -21,10 +48,17 @@ export function FieldStandardEditor({
   busy: boolean;
 }) {
   const { t } = useTranslation();
-  const [name, setName] = useState(standard.name);
-  const [description, setDescription] = useState(standard.description);
-  const [unit, setUnit] = useState(standard.unit);
-  const [rows, setRows] = useState<FieldRow[]>([{ ...standard.field, id: standard.id }]);
+
+  const [{ name, description, unit, rows }, dispatch] = useReducer(
+    editorReducer,
+    standard,
+    initEditorState,
+  );
+
+  const setRows = useCallback(
+    (update: SetStateAction<FieldRow[]>) => dispatch({ type: 'rowsChanged', update }),
+    [],
+  );
   const field = rows[0];
 
   const canSave =
@@ -40,7 +74,9 @@ export function FieldStandardEditor({
           <Input
             id="standard-name"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) =>
+              dispatch({ type: 'fieldChanged', field: 'name', value: event.target.value })
+            }
           />
         </div>
         <div>
@@ -50,7 +86,9 @@ export function FieldStandardEditor({
           <Input
             id="standard-unit"
             value={unit}
-            onChange={(event) => setUnit(event.target.value)}
+            onChange={(event) =>
+              dispatch({ type: 'fieldChanged', field: 'unit', value: event.target.value })
+            }
           />
         </div>
       </div>
@@ -61,7 +99,9 @@ export function FieldStandardEditor({
         <Textarea
           id="standard-description"
           value={description}
-          onChange={(event) => setDescription(event.target.value)}
+          onChange={(event) =>
+            dispatch({ type: 'fieldChanged', field: 'description', value: event.target.value })
+          }
         />
       </div>
       <p className="text-sm text-muted-foreground">{t('fieldStandards.editorHint')}</p>

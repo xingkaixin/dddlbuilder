@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Upload } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
@@ -20,6 +20,23 @@ interface AppWorkspaceProps {
   model: AppWorkspaceModel;
 }
 
+type SurfaceViewState = { shareView: EditorContentView; splitPreview: boolean };
+
+type SurfaceViewEvent =
+  | { type: 'splitPreviewChanged'; checked: boolean }
+  | { type: 'shareViewSelected'; view: EditorContentView };
+
+const initialSurfaceViewState: SurfaceViewState = { shareView: 'output', splitPreview: false };
+
+function surfaceViewReducer(state: SurfaceViewState, event: SurfaceViewEvent): SurfaceViewState {
+  switch (event.type) {
+    case 'splitPreviewChanged':
+      return { ...state, splitPreview: event.checked };
+    case 'shareViewSelected':
+      return { ...state, shareView: event.view };
+  }
+}
+
 export function AppWorkspace({ model }: AppWorkspaceProps) {
   const {
     header,
@@ -33,18 +50,25 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
     celebration,
   } = model;
   const { t } = useTranslation();
-  const [shareView, setShareView] = useState<EditorContentView>('output');
-  const [splitPreview, setSplitPreview] = useState(false);
-  const contentView = view.isShareView ? shareView : editorSurface.editorView;
-  const selectContentView = view.isShareView ? setShareView : editorSurface.setEditorView;
+
+  const [{ shareView, splitPreview }, dispatch] = useReducer(
+    surfaceViewReducer,
+    initialSurfaceViewState,
+  );
+  const { isShareView } = view;
+  const { setEditorView } = editorSurface;
+  const contentView = isShareView ? shareView : editorSurface.editorView;
 
   const setSurfaceView = useCallback(
     (nextView: EditorView) => {
-      setSplitPreview(nextView === 'split');
+      dispatch({ type: 'splitPreviewChanged', checked: nextView === 'split' });
 
-      if (nextView !== 'split') selectContentView(nextView);
+      if (nextView === 'split') return;
+
+      if (isShareView) dispatch({ type: 'shareViewSelected', view: nextView });
+      else setEditorView(nextView);
     },
-    [selectContentView],
+    [isShareView, setEditorView],
   );
   const surfaceModel = {
     ...editorSurface,
@@ -56,7 +80,10 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
   const splitToggle = useMemo(
     () =>
       showSplitToggle ? (
-        <WorkspaceSplitToggle checked={splitPreview} onCheckedChange={setSplitPreview} />
+        <WorkspaceSplitToggle
+          checked={splitPreview}
+          onCheckedChange={(checked) => dispatch({ type: 'splitPreviewChanged', checked })}
+        />
       ) : null,
     [showSplitToggle, splitPreview],
   );
