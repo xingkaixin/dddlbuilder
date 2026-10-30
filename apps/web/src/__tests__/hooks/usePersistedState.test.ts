@@ -258,7 +258,6 @@ describe('usePersistedState', () => {
         );
 
         const tabId = useTabStore.getState().addTab({
-          title: base.tableName,
           source,
           stateSnapshot: base,
         });
@@ -290,7 +289,6 @@ describe('usePersistedState', () => {
 
             const tabs = useTabLifecycle({
               enabled: persistence.hydrated && !persistence.isShareView,
-              activeTableName: editor.tableName,
               getCurrentState,
               saveState: persistence.saveState,
               selectWorkspaceSnapshot: persistence.selectWorkspaceSnapshot,
@@ -411,7 +409,6 @@ describe('usePersistedState', () => {
       const tabs = useTabStore.getState();
 
       const removedTabId = tabs.addTab({
-        title: 'removed',
         source: { kind: 'draft', draftId: 'default' },
         stateSnapshot: base,
       });
@@ -419,7 +416,6 @@ describe('usePersistedState', () => {
       if (neighbor === 'draft') {
         upsertDraftInYDoc(doc, 'neighbor', { state: next, createdAt: 2, updatedAt: 2 });
         tabs.addTab({
-          title: 'neighbor',
           source: { kind: 'draft', draftId: 'neighbor' },
           stateSnapshot: next,
         });
@@ -434,7 +430,6 @@ describe('usePersistedState', () => {
         };
         upsertSavedTableInYDoc(doc, record);
         tabs.addTab({
-          title: 'neighbor',
           source: {
             kind: 'saved_table',
             tableId: record.tableId,
@@ -465,7 +460,7 @@ describe('usePersistedState', () => {
       expect(useTabStore.getState().getTabById(removedTabId)).toBeUndefined();
       const activeTab = useTabStore.getState().getActiveTab();
       const hasLoadedNeighbor = neighbor === 'draft' || neighbor === 'saved';
-      expect(activeTab?.title).toBe(neighbor === 'none' ? undefined : 'neighbor');
+      expect(activeTab === undefined).toBe(neighbor === 'none');
       expect(activeTab?.isLoading ?? false).toBe(neighbor === 'loading');
       expect(result.current.persistedState?.tableName ?? null).toBe(
         hasLoadedNeighbor ? 'neighbor' : null,
@@ -501,12 +496,10 @@ describe('usePersistedState', () => {
       const tabs = useTabStore.getState();
 
       const activeId = tabs.addTab({
-        title: 'active',
         source: { kind: 'draft', draftId: 'default' },
         stateSnapshot: active,
       });
       const backgroundId = tabs.addTab({
-        title: 'background',
         source: { kind: 'draft', draftId: 'background' },
         stateSnapshot: createState('background'),
       });

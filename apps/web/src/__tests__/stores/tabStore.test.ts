@@ -29,12 +29,15 @@ describe('tabStore', () => {
     const store = useTabStore.getState();
 
     const ids = sources.map((source) =>
-      store.addTab({ title: 'Shared', source, stateSnapshot: createSnapshot(source.tableId) }),
+      store.addTab({ source, stateSnapshot: createSnapshot(source.tableId) }),
     );
     expect(ids[0]).not.toBe(ids[1]);
     expect(store.findTabBySource(sources[1])?.id).toBe(ids[1]);
     store.renameSavedTableTabs(sources[0], 'renamed', 'Renamed');
-    expect(useTabStore.getState().tabs.map((tab) => tab.title)).toEqual(['Renamed', 'Shared']);
+    expect(useTabStore.getState().tabs.map((tab) => tab.source)).toMatchObject([
+      { tableName: 'Renamed' },
+      { tableName: 'Shared' },
+    ]);
     expect(store.findTabBySource(sources[0])?.id).toBe(ids[0]);
     store.closeTab(ids[0]);
     expect(store.findTabBySource(sources[1])?.stateSnapshot.tableName).toBe('second');
@@ -44,14 +47,12 @@ describe('tabStore', () => {
     const state = useTabStore.getState();
 
     const id = state.addTab({
-      title: '草稿 1',
       source: { kind: 'draft', draftId: 'draft-1' },
       stateSnapshot: createSnapshot('t1'),
     });
 
     const current = useTabStore.getState();
     expect(current.tabs).toHaveLength(1);
-    expect(current.tabs[0].title).toBe('草稿 1');
     expect(current.activeTabId).toBe(id);
   });
 
@@ -59,12 +60,10 @@ describe('tabStore', () => {
     const state = useTabStore.getState();
 
     const id1 = state.addTab({
-      title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
     });
     state.addTab({
-      title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
       stateSnapshot: createSnapshot('t2'),
     });
@@ -76,18 +75,15 @@ describe('tabStore', () => {
   it('closes a tab and activates the right neighbor', () => {
     const state = useTabStore.getState();
     state.addTab({
-      title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
     });
 
     const id2 = state.addTab({
-      title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
       stateSnapshot: createSnapshot('t2'),
     });
     const id3 = state.addTab({
-      title: 'Tab 3',
       source: { kind: 'draft', draftId: 'd3' },
       stateSnapshot: createSnapshot('t3'),
     });
@@ -102,12 +98,10 @@ describe('tabStore', () => {
     const state = useTabStore.getState();
 
     const id1 = state.addTab({
-      title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
     });
     state.addTab({
-      title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
       stateSnapshot: createSnapshot('t2'),
     });
@@ -122,12 +116,10 @@ describe('tabStore', () => {
     const state = useTabStore.getState();
 
     const id1 = state.addTab({
-      title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
     });
     state.addTab({
-      title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
       stateSnapshot: createSnapshot('t2'),
     });
@@ -142,7 +134,6 @@ describe('tabStore', () => {
     const state = useTabStore.getState();
 
     const id = state.addTab({
-      title: 'Tab 1',
       source: {
         kind: 'saved_table',
         normalizedName: 'old',
@@ -164,13 +155,11 @@ describe('tabStore', () => {
     const state = useTabStore.getState();
 
     const backgroundId = state.addTab({
-      title: 'Background',
       source: { kind: 'draft', draftId: 'loading' },
       stateSnapshot: createSnapshot('placeholder'),
       isLoading: true,
     });
     const activeId = state.addTab({
-      title: 'Active',
       source: { kind: 'draft', draftId: 'active' },
       stateSnapshot: createSnapshot('active'),
     });
@@ -198,45 +187,10 @@ describe('tabStore', () => {
     expect(useTabStore.getState().tabs).toHaveLength(0);
   });
 
-  it('updates active tab title', () => {
-    const state = useTabStore.getState();
-
-    const id = state.addTab({
-      title: 'Old',
-      source: { kind: 'draft', draftId: 'd1' },
-      stateSnapshot: createSnapshot('t1'),
-    });
-
-    useTabStore.getState().updateDraftTitle(id, 'New');
-    const tab = useTabStore.getState().tabs.find((t) => t.id === id);
-    expect(tab).toBeDefined();
-    expect(tab?.title).toBe('New');
-  });
-
-  it('does not derive a saved table title from draft edits', () => {
-    const state = useTabStore.getState();
-
-    const id = state.addTab({
-      title: 'Saved users',
-      source: {
-        kind: 'saved_table',
-        normalizedName: 'users',
-        tableName: 'Saved users',
-        baseSignature: 'base',
-      },
-      stateSnapshot: createSnapshot('users'),
-    });
-
-    useTabStore.getState().updateDraftTitle(id, 'Edited table name');
-
-    expect(useTabStore.getState().getTabById(id)?.title).toBe('Saved users');
-  });
-
   it('updates active tab source', () => {
     const state = useTabStore.getState();
 
     const id = state.addTab({
-      title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
     });
@@ -257,7 +211,6 @@ describe('tabStore', () => {
     const state = useTabStore.getState();
 
     const id = state.addTab({
-      title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
     });
@@ -272,7 +225,6 @@ describe('tabStore', () => {
   it('finds tab by source (saved)', () => {
     const state = useTabStore.getState();
     state.addTab({
-      title: 'Tab 1',
       source: {
         kind: 'saved_table',
         normalizedName: 'users',
@@ -299,7 +251,6 @@ describe('tabStore', () => {
     const state = useTabStore.getState();
 
     const id = state.addTab({
-      title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
     });
@@ -316,7 +267,6 @@ describe('tabStore', () => {
     const state = useTabStore.getState();
 
     const id = state.addTab({
-      title: 'Old',
       source: {
         kind: 'saved_table',
         normalizedName: 'old',
@@ -331,7 +281,6 @@ describe('tabStore', () => {
     const tab = useTabStore.getState().tabs[0];
     expect(tab).toMatchObject({
       id,
-      title: 'New',
       source: {
         kind: 'saved_table',
         normalizedName: 'new',
@@ -345,13 +294,11 @@ describe('tabStore', () => {
   it('renaming a saved table does not affect draft tabs', () => {
     const state = useTabStore.getState();
     state.addTab({
-      title: 'Old',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
     });
 
     useTabStore.getState().renameSavedTableTabs('d1', 'new', 'New');
-    const tab = useTabStore.getState().tabs[0];
-    expect(tab.title).toBe('Old');
+    expect(useTabStore.getState().tabs[0].source).toEqual({ kind: 'draft', draftId: 'd1' });
   });
 });

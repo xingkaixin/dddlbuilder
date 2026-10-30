@@ -168,22 +168,13 @@ export function useAppController() {
 
   const tabLifecycle = useTabLifecycle({
     enabled: hydrated && !isShareView,
-    activeTableName: tableName,
     getCurrentState: buildPersistedState,
     saveState,
     selectWorkspaceSnapshot,
     resolveWorkspaceSnapshot,
     resetWorkspaceSelection,
   });
-  const { tabs, activeTabId, activeWorkspaceTab, renameActiveDraft } = tabLifecycle;
-
-  const handleTableNameChange = useCallback(
-    (value: string) => {
-      setTableName(value);
-      renameActiveDraft(value);
-    },
-    [renameActiveDraft, setTableName],
-  );
+  const { tabs, activeTabId, activeWorkspaceTab } = tabLifecycle;
   const activeEditorSource = activeWorkspaceTab?.source ?? activeSource;
   const canSyncActiveTab = activeWorkspaceTab != null && !activeWorkspaceTab.isLoading;
 
@@ -292,7 +283,6 @@ export function useAppController() {
     setSavedTablesDrawerOpen,
     buildPersistedState,
     loadSavedTable: resolveSavedTable,
-    draftSummaries,
     getDraftState,
     selectWorkspaceSnapshot,
     setWorkspaceSnapshot,
@@ -413,6 +403,7 @@ export function useAppController() {
   const workspacePresentation = useWorkspacePresentation({
     activeSourceKind: activeEditorSource.kind,
     activeTabId,
+    activeTableName: tableName,
     activeWorkspaceTab,
     draftSummaries,
     hydrated,
@@ -435,7 +426,7 @@ export function useAppController() {
     loadedTableNormalizedName,
     workspaceLabel,
     dataTableToolbarLeft,
-    onTableNameChange: handleTableNameChange,
+    onTableNameChange: setTableName,
     onDbTypeChange: setDbType,
     onSaveCurrent: handleSaveCurrent,
     onViewCurrentVersionHistory: handleViewCurrentVersionHistory,

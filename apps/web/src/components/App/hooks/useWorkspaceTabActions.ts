@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createEntityId, type PersistedState } from '@ddlbuilder/shared-types';
-import type { DraftSummary, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
+import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import { useToast } from '@/hooks/useToast';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { useTabStore } from '@/stores';
@@ -46,7 +46,6 @@ interface UseWorkspaceTabActionsParams {
     state: PersistedState;
     version: number;
   } | null>;
-  draftSummaries: DraftSummary[];
   getDraftState: (draftId: string) => PersistedState | null;
   selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
   setWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
@@ -59,7 +58,6 @@ export function useWorkspaceTabActions({
   setSavedTablesDrawerOpen,
   buildPersistedState,
   loadSavedTable,
-  draftSummaries,
   getDraftState,
   selectWorkspaceSnapshot,
   setWorkspaceSnapshot,
@@ -101,7 +99,6 @@ export function useWorkspaceTabActions({
       if (openTabs.length > 0) flushActiveTab();
 
       const newTabId = addTab({
-        title: item.name,
         source: {
           kind: 'saved_table',
           normalizedName: item.normalizedName,
@@ -172,11 +169,7 @@ export function useWorkspaceTabActions({
       const existingState = getDraftState(draftId);
       const nextState = existingState ?? createEmptyDraftState();
 
-      const draftName =
-        draftSummaries.find((draft) => draft.draftId === draftId)?.name ??
-        t('app.workspace.globalDraft');
       const newTabId = addTab({
-        title: draftName,
         source: { kind: 'draft', draftId },
         stateSnapshot: nextState,
       });
@@ -188,7 +181,6 @@ export function useWorkspaceTabActions({
     [
       activateTab,
       addTab,
-      draftSummaries,
       findTabBySource,
       flushActiveTab,
       getDraftState,
@@ -212,7 +204,6 @@ export function useWorkspaceTabActions({
           ? initialState
           : { ...initialState, tableName: uniqueName };
       const newTabId = addTab({
-        title: uniqueName,
         source: { kind: 'draft', draftId },
         stateSnapshot: finalState,
       });

@@ -37,7 +37,6 @@ const createState = (tableName: string): PersistedState => ({
 const createParams = () => {
   const existingTab: WorkspaceTabActionsParams['tabs']['tabs'][number] = {
     id: 'tab-existing',
-    title: 'Alpha',
     source: {
       kind: 'saved_table' as const,
       normalizedName: 'alpha',
@@ -47,7 +46,6 @@ const createParams = () => {
     },
     stateSnapshot: createState('Alpha'),
   };
-  const draftSummaries: WorkspaceTabActionsParams['draftSummaries'] = [];
 
   const params = {
     tabs: {
@@ -71,7 +69,6 @@ const createParams = () => {
       createState('current'),
     ),
     loadSavedTable: vi.fn<WorkspaceTabActionsParams['loadSavedTable']>().mockResolvedValue(null),
-    draftSummaries,
     getDraftState: vi.fn<WorkspaceTabActionsParams['getDraftState']>().mockReturnValue(null),
     selectWorkspaceSnapshot: vi.fn<WorkspaceTabActionsParams['selectWorkspaceSnapshot']>(),
     setWorkspaceSnapshot: vi.fn<WorkspaceTabActionsParams['setWorkspaceSnapshot']>(),
@@ -153,20 +150,11 @@ describe('useWorkspaceTabActions', () => {
     const params = createParams();
     const draftState = createState('Draft A');
     params.getDraftState.mockReturnValue(draftState);
-    params.draftSummaries.push({
-      draftId: 'draft-a',
-      name: '草稿 A',
-      dbType: 'mysql',
-      fieldCount: 0,
-      createdAt: 1,
-      updatedAt: 2,
-    });
     const { result } = renderHook(() => useWorkspaceTabActions(params));
 
     act(() => result.current.handleSelectDraft('draft-a'));
 
     expect(params.tabs.addTab).toHaveBeenCalledWith({
-      title: '草稿 A',
       source: { kind: 'draft', draftId: 'draft-a' },
       stateSnapshot: draftState,
     });

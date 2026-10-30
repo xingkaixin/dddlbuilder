@@ -14,6 +14,7 @@ interface TabBarProps {
   leadingAction?: ReactNode;
   trailingAction?: ReactNode;
   tabs: WorkspaceTab[];
+  tabTitles: ReadonlyMap<string, string>;
   dirtyTabIds: ReadonlySet<string>;
   activeTabId: string | null;
   onActivateTab: (id: string) => void;
@@ -26,12 +27,14 @@ const MAX_VISIBLE_TABS = 6;
 const TabItem = memo(
   ({
     tab,
+    title,
     isActive,
     isDirty,
     onActivate,
     onClose,
   }: {
     tab: WorkspaceTab;
+    title: string;
     isActive: boolean;
     isDirty: boolean;
     onActivate: (id: string) => void;
@@ -65,7 +68,7 @@ const TabItem = memo(
 
         {/* 标题 */}
         <span className="min-w-0 flex-1 truncate select-none">
-          {tab.title}
+          {title}
           {isDirty ? ' *' : ''}
         </span>
 
@@ -101,6 +104,7 @@ export const TabBar = memo(
     leadingAction,
     trailingAction,
     tabs,
+    tabTitles,
     dirtyTabIds,
     activeTabId,
     onActivateTab,
@@ -132,6 +136,7 @@ export const TabBar = memo(
             <TabItem
               key={tab.id}
               tab={tab}
+              title={tabTitles.get(tab.id) ?? ''}
               isActive={tab.id === activeTabId}
               isDirty={dirtyTabIds.has(tab.id)}
               onActivate={onActivateTab}
@@ -172,7 +177,7 @@ export const TabBar = memo(
                       )}
                     />
                     <span className="min-w-0 flex-1 truncate">
-                      {tab.title}
+                      {tabTitles.get(tab.id)}
                       {dirtyTabIds.has(tab.id) ? ' *' : ''}
                     </span>
                     {tab.isLoading && (

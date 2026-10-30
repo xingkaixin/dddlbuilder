@@ -17,7 +17,6 @@ describe('useSavedTableTabIntegration', () => {
     const state = { ...toPersistedState(useEditorStore.getInitialState()), tableName: 'Users' };
 
     const tabId = useTabStore.getState().addTab({
-      title: 'Draft',
       source: { kind: 'draft', draftId: 'draft-a' },
       stateSnapshot: state,
     });
@@ -53,7 +52,6 @@ describe('useSavedTableTabIntegration', () => {
       expect.objectContaining({ normalizedName: 'users' }),
     );
     expect(tabs.getTabById(tabId)).toMatchObject({
-      title: 'Users',
       source: {
         kind: 'saved_table',
         normalizedName: 'users',
@@ -73,11 +71,9 @@ describe('useSavedTableTabIntegration', () => {
       tableName: 'Old',
       baseSignature: buildSchemaStateSignature(state),
     };
-    const savedTabId = useTabStore
-      .getState()
-      .addTab({ title: 'Old', source, stateSnapshot: state });
+    const savedTabId = useTabStore.getState().addTab({ source, stateSnapshot: state });
+
     const draftTabId = useTabStore.getState().addTab({
-      title: 'Draft',
       source: { kind: 'draft', draftId: 'draft-a' },
       stateSnapshot: state,
     });
@@ -88,7 +84,6 @@ describe('useSavedTableTabIntegration', () => {
     const { result, unmount } = renderHook(() => {
       const tabs = useTabLifecycle({
         enabled: true,
-        activeTableName: state.tableName,
         getCurrentState: () => state,
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
@@ -143,12 +138,10 @@ describe('useSavedTableTabIntegration', () => {
     const store = useTabStore.getState();
 
     const firstId = store.addTab({
-      title: 'users',
       source: { kind: 'draft', draftId: 'first' },
       stateSnapshot: original,
     });
     const secondId = store.addTab({
-      title: 'orders',
       source: { kind: 'draft', draftId: 'second' },
       stateSnapshot: other,
     });
@@ -174,7 +167,6 @@ describe('useSavedTableTabIntegration', () => {
     const { result, unmount } = renderHook(() => {
       const tabs = useTabLifecycle({
         enabled: true,
-        activeTableName: editorState.tableName,
         getCurrentState,
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
@@ -246,7 +238,6 @@ describe('useSavedTableTabIntegration', () => {
     );
     expect(refreshTableVersions).toHaveBeenCalledOnce();
     expect(store.getTabById(secondId)).toMatchObject({
-      title: 'orders',
       source: { kind: 'draft', draftId: 'second' },
       stateSnapshot: other,
     });
@@ -260,7 +251,6 @@ describe('useSavedTableTabIntegration', () => {
     };
     const expectedSavedTab = {
       id: firstId,
-      title: 'users',
       source: savedSource,
       isLoading: false,
       stateSnapshot: action === 'edit' ? editorState : original,

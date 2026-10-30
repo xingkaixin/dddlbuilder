@@ -149,6 +149,7 @@ export function buildAppWorkspaceModel({
     tabBar: {
       activeTabId: tabLifecycle.activeTabId,
       tabs: tabLifecycle.tabs,
+      tabTitles: workspacePresentation.tabTitles,
       dirtyTabIds: workspacePresentation.dirtyTabIds,
       onActivateTab: tabLifecycle.switchToTabById,
       onCloseTab: tabLifecycle.closeTab,

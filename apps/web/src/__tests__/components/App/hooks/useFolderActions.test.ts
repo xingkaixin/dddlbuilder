@@ -37,7 +37,6 @@ const savedTable: SavedTableSummary = {
 
 const addDraftTab = (draftId: string, isLoading = false) =>
   useTabStore.getState().addTab({
-    title: draftId,
     source: { kind: 'draft', draftId },
     stateSnapshot: toPersistedState(useEditorStore.getInitialState()),
     isLoading,

@@ -1,5 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useCallback, useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
   WorkspaceSavePayload,
@@ -13,7 +12,6 @@ import { applySavedState } from '../applySavedState';
 
 interface UseTabLifecycleParams {
   enabled: boolean;
-  activeTableName: string;
   getCurrentState: () => PersistedState;
   saveState: (payload: WorkspaceSavePayload) => void;
   selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
@@ -25,15 +23,12 @@ interface UseTabLifecycleParams {
 
 export function useTabLifecycle({
   enabled,
-  activeTableName,
   getCurrentState,
   saveState,
   selectWorkspaceSnapshot,
   resolveWorkspaceSnapshot,
   resetWorkspaceSelection,
 }: UseTabLifecycleParams) {
-  const { t } = useTranslation();
-
   const { tabs, activeTabId } = useTabStore(
     useShallow((state) => ({ tabs: state.tabs, activeTabId: state.activeTabId })),
   );
@@ -43,7 +38,6 @@ export function useTabLifecycle({
     closeTab: closeTabStore,
     hydrateTab,
     updateActiveTabSnapshot,
-    updateDraftTitle,
     updateActiveTabSource,
     findTabBySource,
     getActiveTab,
@@ -55,56 +49,6 @@ export function useTabLifecycle({
     () => tabs.find((tab) => tab.id === activeTabId) ?? null,
     [activeTabId, tabs],
   );
-  const resolveDraftTitle = useCallback(
-    (tableName: string) => tableName.trim() || t('app.workspace.unnamedDraft'),
-    [t],
-  );
-  // 标签会先激活、编辑器再替换；等待表名与目标快照对齐，避免写入上一标签的标题。
-  const previousActiveTabId = useRef(activeTabId);
-  const pendingDraftTitleId = useRef<string | null>(null);
-  const activeDraftId = activeWorkspaceTab?.source.kind === 'draft' ? activeWorkspaceTab.id : null;
-  const activeSnapshotTableName = activeWorkspaceTab?.stateSnapshot.tableName;
-  useLayoutEffect(() => {
-    const activeTabChanged = previousActiveTabId.current !== activeTabId;
-    previousActiveTabId.current = activeTabId;
-
-    if (activeTabChanged) pendingDraftTitleId.current = activeDraftId;
-
-    if (!enabled || !activeDraftId) return;
-
-    if (
-      pendingDraftTitleId.current === activeDraftId &&
-      activeTableName !== activeSnapshotTableName
-    ) {
-      return;
-    }
-
-    pendingDraftTitleId.current = null;
-    updateDraftTitle(activeDraftId, resolveDraftTitle(activeTableName));
-  }, [
-    activeDraftId,
-    activeSnapshotTableName,
-    activeTabId,
-    activeTableName,
-    enabled,
-    resolveDraftTitle,
-    updateDraftTitle,
-  ]);
-
-  // 输入表名时在同一事件里更新标题，与编辑器更新合并为一次渲染；上面的副作用只兜底其他改名来源。
-  const renameActiveDraft = useCallback(
-    (tableName: string) => {
-      const activeTab = getActiveTab();
-
-      if (!enabled || activeTab?.source.kind !== 'draft') return;
-
-      if (pendingDraftTitleId.current === activeTab.id) return;
-
-      updateDraftTitle(activeTab.id, resolveDraftTitle(tableName));
-    },
-    [enabled, getActiveTab, resolveDraftTitle, updateDraftTitle],
-  );
-
   // 编辑器是唯一真相源，标签快照只在冲刷点回写；内容没变时跳过，避免无谓的持久化。
   const flushActiveTab = useCallback(() => {
     if (!enabled || !activeWorkspaceTab || activeWorkspaceTab.isLoading) return;
@@ -206,6 +150,5 @@ export function useTabLifecycle({
     switchToTabById,
     closeTab,
     closeTabBySource,
-    renameActiveDraft,
   };
 }

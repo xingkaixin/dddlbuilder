@@ -32,10 +32,9 @@ describe('saved table rename integration', () => {
         baseSignature: buildSchemaStateSignature(original),
       };
       const store = useTabStore.getState();
-      const targetTabId = store.addTab({ title: 'Users', source, stateSnapshot: original });
+      const targetTabId = store.addTab({ source, stateSnapshot: original });
 
       const otherTabId = store.addTab({
-        title: 'Orders',
         source: { kind: 'draft', draftId: 'orders-draft' },
         stateSnapshot: other,
       });
@@ -51,7 +50,6 @@ describe('saved table rename integration', () => {
       const { result } = renderHook(() => {
         const tabs = useTabLifecycle({
           enabled: true,
-          activeTableName: useEditorStore((state) => state.tableName),
           getCurrentState,
           saveState: vi.fn(),
           selectWorkspaceSnapshot,
@@ -128,7 +126,6 @@ describe('saved table rename integration', () => {
         tableName: 'Renamed users',
       };
       expect(store.getTabById(targetTabId)).toMatchObject({
-        title: 'Renamed users',
         source: renamedSource,
         stateSnapshot: original,
       });
@@ -157,7 +154,6 @@ describe('saved table rename integration', () => {
       baseSignature: '',
     };
     const tabId = useTabStore.getState().addTab({
-      title: 'Loading',
       source,
       stateSnapshot: state,
       isLoading: true,

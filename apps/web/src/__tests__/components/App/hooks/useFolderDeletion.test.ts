@@ -59,11 +59,9 @@ const getCurrentState = () => toPersistedState(useEditorStore.getState());
 function useFolderWorkspace() {
   const persistence = usePersistedState();
   const folders = useFolders();
-  const tableName = useEditorStore((state) => state.tableName);
 
   const lifecycle = useTabLifecycle({
     enabled: persistence.status.hydrated,
-    activeTableName: tableName,
     getCurrentState,
     saveState: persistence.document.saveState,
     selectWorkspaceSnapshot: persistence.document.selectWorkspaceSnapshot,
@@ -171,7 +169,6 @@ describe('目录删除的草稿闭环', () => {
         if (doc) upsertDraftInYDoc(doc, draftId, record);
         else await writeDraft(draftId, record, anonymousScope);
         useTabStore.getState().addTab({
-          title: draft.state.tableName,
           source: { kind: 'draft', draftId },
           stateSnapshot: draftId === 'survivor' ? createState('stale_survivor') : draft.state,
         });

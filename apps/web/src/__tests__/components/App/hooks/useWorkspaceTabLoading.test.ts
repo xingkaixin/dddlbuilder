@@ -62,7 +62,6 @@ describe('workspace tab loading', () => {
       useEditorStore.getState().replaceDocument(alphaState);
 
       const alphaId = useTabStore.getState().addTab({
-        title: 'alpha',
         source: createSource('alpha'),
         stateSnapshot: alphaState,
       });
@@ -84,7 +83,6 @@ describe('workspace tab loading', () => {
       const { result, unmount } = renderHook(() => {
         const tabs = useTabLifecycle({
           enabled: true,
-          activeTableName: useEditorStore((state) => state.tableName),
           getCurrentState: () => toPersistedState(useEditorStore.getState()),
           saveState,
           selectWorkspaceSnapshot,
@@ -100,7 +98,6 @@ describe('workspace tab loading', () => {
 
             return loadedSnapshot;
           },
-          draftSummaries: [],
           getDraftState: () => null,
           selectWorkspaceSnapshot,
           setWorkspaceSnapshot: vi.fn(),
@@ -110,6 +107,7 @@ describe('workspace tab loading', () => {
         const presentation = useWorkspacePresentation({
           activeSourceKind: 'saved_table',
           activeTabId: tabs.activeTabId,
+          activeTableName: '',
           activeWorkspaceTab: tabs.activeWorkspaceTab,
           draftSummaries: [],
           hydrated: true,
