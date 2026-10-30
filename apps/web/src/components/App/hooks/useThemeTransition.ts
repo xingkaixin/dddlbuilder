@@ -1,10 +1,37 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useReducer } from 'react';
+import { useTimers } from '@/hooks/useTimers';
 
 type ThemeMode = 'system' | 'light' | 'dark';
 
 type EffectiveTheme = 'light' | 'dark';
 
 type TransitionPhase = 'idle' | 'view' | 'wipe' | 'fade';
+
+type TransitionState = {
+  phase: TransitionPhase;
+  targetEffectiveTheme: EffectiveTheme;
+};
+
+type TransitionEvent =
+  | { type: 'viewTransitionStarted' }
+  | { type: 'wipeStarted'; targetEffectiveTheme: EffectiveTheme }
+  | { type: 'fadeStarted' }
+  | { type: 'finished' };
+
+const initialTransitionState: TransitionState = { phase: 'idle', targetEffectiveTheme: 'dark' };
+
+function transitionReducer(state: TransitionState, event: TransitionEvent): TransitionState {
+  switch (event.type) {
+    case 'viewTransitionStarted':
+      return { ...state, phase: 'view' };
+    case 'wipeStarted':
+      return { phase: 'wipe', targetEffectiveTheme: event.targetEffectiveTheme };
+    case 'fadeStarted':
+      return { ...state, phase: 'fade' };
+    case 'finished':
+      return { ...state, phase: 'idle' };
+  }
+}
 
 const SWITCH_THEME_AT_MS = 470;
 const FADE_START_AT_MS = 520;
@@ -74,23 +101,11 @@ export function useThemeTransition({
   resolvedTheme?: string;
   setTheme: (theme: ThemeMode) => void;
 }) {
-  const [phase, setPhase] = useState<TransitionPhase>('idle');
-  const [targetEffectiveTheme, setTargetEffectiveTheme] = useState<EffectiveTheme>('dark');
-  const timersRef = useRef<number[]>([]);
-
-  const clearTimers = useCallback(() => {
-    for (const timer of timersRef.current) {
-      window.clearTimeout(timer);
-    }
-
-    timersRef.current = [];
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      clearTimers();
-    };
-  }, [clearTimers]);
+  const [{ phase, targetEffectiveTheme }, dispatch] = useReducer(
+    transitionReducer,
+    initialTransitionState,
+  );
+  const { schedule, clearAll: clearTimers } = useTimers();
 
   const runThemeTransition = useCallback(
     (nextTheme: ThemeMode) => {
@@ -128,7 +143,7 @@ export function useThemeTransition({
 
       if (startViewTransition) {
         clearTimers();
-        setPhase('view');
+        dispatch({ type: 'viewTransitionStarted' });
         const root = document.documentElement;
         root.classList.add('theme-view-transition-active');
 
@@ -138,31 +153,22 @@ export function useThemeTransition({
 
         void transition.finished.finally(() => {
           root.classList.remove('theme-view-transition-active');
-          setPhase('idle');
+          dispatch({ type: 'finished' });
         });
 
         return;
       }
 
       clearTimers();
-      setTargetEffectiveTheme(nextEffectiveTheme ?? currentEffectiveTheme ?? 'dark');
-      setPhase('wipe');
-
-      const switchTimer = window.setTimeout(() => {
-        setTheme(nextTheme);
-      }, SWITCH_THEME_AT_MS);
-
-      const fadeTimer = window.setTimeout(() => {
-        setPhase('fade');
-      }, FADE_START_AT_MS);
-
-      const finishTimer = window.setTimeout(() => {
-        setPhase('idle');
-      }, TOTAL_DURATION_MS);
-
-      timersRef.current = [switchTimer, fadeTimer, finishTimer];
+      dispatch({
+        type: 'wipeStarted',
+        targetEffectiveTheme: nextEffectiveTheme ?? currentEffectiveTheme ?? 'dark',
+      });
+      schedule(() => setTheme(nextTheme), SWITCH_THEME_AT_MS);
+      schedule(() => dispatch({ type: 'fadeStarted' }), FADE_START_AT_MS);
+      schedule(() => dispatch({ type: 'finished' }), TOTAL_DURATION_MS);
     },
-    [phase, theme, resolvedTheme, setTheme, clearTimers],
+    [phase, theme, resolvedTheme, setTheme, clearTimers, schedule],
   );
 
   return {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useReducer } from 'react';
 import { getForeignKeyActions } from '@ddlbuilder/ddl-core';
 import { AlertTriangle, ArrowRight, KeyRound, Link2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +38,60 @@ type RelationCreationDialogProps = {
   onCancel: () => void;
   onConfirm: (intent: TableRelationshipIntent) => Promise<void>;
 };
+
+type RelationFormState = {
+  intent: TableRelationshipIntent;
+  saving: boolean;
+};
+
+type IntentField = keyof TableRelationshipIntent;
+
+type RelationFormEvent =
+  | { type: 'fieldChanged'; field: IntentField; value: TableRelationshipIntent[IntentField] }
+  | { type: 'cardinalitySelected'; cardinality: RelationshipCardinality }
+  | { type: 'optionalitySelected'; optionality: RelationshipOptionality }
+  | { type: 'saveStarted' }
+  | { type: 'saveSettled' };
+
+function withOptionality(
+  intent: TableRelationshipIntent,
+  optionality: RelationshipOptionality,
+): TableRelationshipIntent {
+  const next = { ...intent, optionality };
+
+  if (optionality !== 'required') return next;
+
+  if (next.onDelete === 'SET NULL') next.onDelete = undefined;
+
+  if (next.onUpdate === 'SET NULL') next.onUpdate = undefined;
+
+  return next;
+}
+
+function relationFormReducer(
+  state: RelationFormState,
+  event: RelationFormEvent,
+): RelationFormState {
+  switch (event.type) {
+    case 'fieldChanged':
+      return { ...state, intent: { ...state.intent, [event.field]: event.value } };
+    case 'cardinalitySelected':
+      return {
+        ...state,
+        intent: {
+          ...state.intent,
+          cardinality: event.cardinality,
+          createIndex: event.cardinality === 'one-to-one' || state.intent.createIndex,
+        },
+      };
+    case 'optionalitySelected':
+      return { ...state, intent: withOptionality(state.intent, event.optionality) };
+    case 'saveStarted':
+      return { ...state, saving: true };
+    case 'saveSettled':
+      return { ...state, saving: false };
+  }
+}
 
 function fieldOptions(draft: TableRelationshipDraft, side: 'source' | 'target') {
   const keyFields = side === 'target' ? referencedKeyFields(draft.target) : null;
@@ -87,44 +141,26 @@ export function RelationCreationDialog({
 }: RelationCreationDialogProps) {
   const { t } = useTranslation();
 
-  const [intent, setIntent] = useState<TableRelationshipIntent>(() =>
-    defaultRelationshipIntent(draft, sourceField, targetField),
-  );
-  const [isSaving, setIsSaving] = useState(false);
+  const [{ intent, saving: isSaving }, dispatch] = useReducer(relationFormReducer, null, () => ({
+    intent: defaultRelationshipIntent(draft, sourceField, targetField),
+    saving: false,
+  }));
 
   const sourceFields = useMemo(() => fieldOptions(draft, 'source'), [draft]);
   const targetFields = useMemo(() => fieldOptions(draft, 'target'), [draft]);
   const result = useMemo(() => planTableRelationship(draft, intent), [draft, intent]);
 
-  const updateIntent = <Key extends keyof TableRelationshipIntent>(
-    key: Key,
-    value: TableRelationshipIntent[Key],
-  ) => setIntent((current) => (current ? { ...current, [key]: value } : current));
-
-  const selectCardinality = (cardinality: RelationshipCardinality) => {
-    updateIntent('cardinality', cardinality);
-
-    if (cardinality === 'one-to-one') updateIntent('createIndex', true);
-  };
-
-  const selectOptionality = (optionality: RelationshipOptionality) => {
-    updateIntent('optionality', optionality);
-
-    if (optionality === 'required') {
-      if (intent.onDelete === 'SET NULL') updateIntent('onDelete', undefined);
-
-      if (intent.onUpdate === 'SET NULL') updateIntent('onUpdate', undefined);
-    }
-  };
+  const updateIntent = <Key extends IntentField>(field: Key, value: TableRelationshipIntent[Key]) =>
+    dispatch({ type: 'fieldChanged', field, value });
 
   const handleConfirm = async () => {
     if (!result?.ok || isSaving) return;
-    setIsSaving(true);
+    dispatch({ type: 'saveStarted' });
 
     try {
       await onConfirm(intent);
     } finally {
-      setIsSaving(false);
+      dispatch({ type: 'saveSettled' });
     }
   };
 
@@ -242,7 +278,9 @@ export function RelationCreationDialog({
               <div className="flex gap-2">
                 <SelectionButton
                   active={intent.cardinality === 'many-to-one'}
-                  onClick={() => selectCardinality('many-to-one')}
+                  onClick={() =>
+                    dispatch({ type: 'cardinalitySelected', cardinality: 'many-to-one' })
+                  }
                 >
                   <span className="block text-sm font-medium">
                     {t('erDiagram.relationship.manyToOne')}
@@ -253,7 +291,9 @@ export function RelationCreationDialog({
                 </SelectionButton>
                 <SelectionButton
                   active={intent.cardinality === 'one-to-one'}
-                  onClick={() => selectCardinality('one-to-one')}
+                  onClick={() =>
+                    dispatch({ type: 'cardinalitySelected', cardinality: 'one-to-one' })
+                  }
                 >
                   <span className="block text-sm font-medium">
                     {t('erDiagram.relationship.oneToOne')}
@@ -276,7 +316,7 @@ export function RelationCreationDialog({
               <div className="flex gap-2">
                 <SelectionButton
                   active={intent.optionality === 'required'}
-                  onClick={() => selectOptionality('required')}
+                  onClick={() => dispatch({ type: 'optionalitySelected', optionality: 'required' })}
                 >
                   <span className="block text-sm font-medium">
                     {t('erDiagram.relationship.required')}
@@ -287,7 +327,7 @@ export function RelationCreationDialog({
                 </SelectionButton>
                 <SelectionButton
                   active={intent.optionality === 'optional'}
-                  onClick={() => selectOptionality('optional')}
+                  onClick={() => dispatch({ type: 'optionalitySelected', optionality: 'optional' })}
                 >
                   <span className="block text-sm font-medium">
                     {t('erDiagram.relationship.optional')}

@@ -1,5 +1,5 @@
 import { copyText } from '@/utils/clipboard';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import type { DatabaseType, RoutineTemplateKind } from '@ddlbuilder/shared-types';
 import { buildRoutineTemplateDDL } from '@ddlbuilder/ddl-core';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,36 @@ import { Textarea } from '@/components/ui/textarea';
 import { useTranslation } from 'react-i18next';
 import { CopyOutputButton, OutputCode, OutputHeading } from './OutputPrimitives';
 
+type RoutineForm = {
+  kind: RoutineTemplateKind;
+  name: string;
+  tableName: string;
+  parameters: string;
+  returnType: string;
+  timestampColumn: string;
+  auditTableName: string;
+  body: string;
+};
+
+type RoutineFormEvent = {
+  [Field in keyof RoutineForm]: { type: 'fieldChanged'; field: Field; value: RoutineForm[Field] };
+}[keyof RoutineForm];
+
+const initialRoutineForm: RoutineForm = {
+  kind: 'updated_at_trigger',
+  name: 'trg_set_updated_at',
+  tableName: '',
+  parameters: '',
+  returnType: 'INTEGER',
+  timestampColumn: 'updated_at',
+  auditTableName: '',
+  body: '',
+};
+
+function routineFormReducer(state: RoutineForm, event: RoutineFormEvent): RoutineForm {
+  return { ...state, [event.field]: event.value };
+}
+
 export function RoutineOutputPanel({
   dbType,
   tableNameDefault,
@@ -17,14 +47,11 @@ export function RoutineOutputPanel({
   tableNameDefault?: string;
 }) {
   const { t } = useTranslation();
-  const [kind, setKind] = useState<RoutineTemplateKind>('updated_at_trigger');
-  const [name, setName] = useState('trg_set_updated_at');
-  const [tableName, setTableName] = useState('');
-  const [parameters, setParameters] = useState('');
-  const [returnType, setReturnType] = useState('INTEGER');
-  const [timestampColumn, setTimestampColumn] = useState('updated_at');
-  const [auditTableName, setAuditTableName] = useState('');
-  const [body, setBody] = useState('');
+
+  const [
+    { kind, name, tableName, parameters, returnType, timestampColumn, auditTableName, body },
+    dispatch,
+  ] = useReducer(routineFormReducer, initialRoutineForm);
   const resolvedTableName = tableName || tableNameDefault || '';
 
   const code = useMemo(
@@ -83,7 +110,8 @@ export function RoutineOutputPanel({
               ];
               const selectedKind = allowedKinds.find((candidate) => candidate === value);
 
-              if (selectedKind) setKind(selectedKind);
+              if (selectedKind)
+                dispatch({ type: 'fieldChanged', field: 'kind', value: selectedKind });
             }}
             options={[
               { value: 'updated_at_trigger', label: t('ddlOutput.routineKinds.updatedAt') },
@@ -101,7 +129,9 @@ export function RoutineOutputPanel({
           <Input
             id="routine-name"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) =>
+              dispatch({ type: 'fieldChanged', field: 'name', value: event.target.value })
+            }
             placeholder={t('ddlOutput.routineNamePlaceholder')}
           />
         </div>
@@ -111,7 +141,9 @@ export function RoutineOutputPanel({
             <Input
               id="routine-table"
               value={resolvedTableName}
-              onChange={(event) => setTableName(event.target.value)}
+              onChange={(event) =>
+                dispatch({ type: 'fieldChanged', field: 'tableName', value: event.target.value })
+              }
               placeholder={t('ddlOutput.routineTablePlaceholder')}
             />
           </div>
@@ -121,7 +153,9 @@ export function RoutineOutputPanel({
             <Input
               id="routine-parameters"
               value={parameters}
-              onChange={(event) => setParameters(event.target.value)}
+              onChange={(event) =>
+                dispatch({ type: 'fieldChanged', field: 'parameters', value: event.target.value })
+              }
               placeholder={t('ddlOutput.routineParametersPlaceholder')}
             />
           </div>
@@ -132,7 +166,9 @@ export function RoutineOutputPanel({
             <Input
               id="routine-return-type"
               value={returnType}
-              onChange={(event) => setReturnType(event.target.value)}
+              onChange={(event) =>
+                dispatch({ type: 'fieldChanged', field: 'returnType', value: event.target.value })
+              }
               placeholder={t('ddlOutput.routineReturnTypePlaceholder')}
             />
           </div>
@@ -145,7 +181,13 @@ export function RoutineOutputPanel({
             <Input
               id="routine-timestamp-column"
               value={timestampColumn}
-              onChange={(event) => setTimestampColumn(event.target.value)}
+              onChange={(event) =>
+                dispatch({
+                  type: 'fieldChanged',
+                  field: 'timestampColumn',
+                  value: event.target.value,
+                })
+              }
               placeholder={t('ddlOutput.routineTimestampColumnPlaceholder')}
             />
           </div>
@@ -156,7 +198,13 @@ export function RoutineOutputPanel({
             <Input
               id="routine-audit-table"
               value={auditTableName}
-              onChange={(event) => setAuditTableName(event.target.value)}
+              onChange={(event) =>
+                dispatch({
+                  type: 'fieldChanged',
+                  field: 'auditTableName',
+                  value: event.target.value,
+                })
+              }
               placeholder={t('ddlOutput.routineAuditTablePlaceholder')}
             />
           </div>
@@ -167,7 +215,9 @@ export function RoutineOutputPanel({
             <Textarea
               id="routine-body"
               value={body}
-              onChange={(event) => setBody(event.target.value)}
+              onChange={(event) =>
+                dispatch({ type: 'fieldChanged', field: 'body', value: event.target.value })
+              }
               placeholder={t('ddlOutput.routineBodyPlaceholder')}
               className="min-h-24 font-mono text-sm"
             />

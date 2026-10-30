@@ -1,16 +1,18 @@
 import { savedTableKey, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useReducer } from 'react';
 import {
   ReactFlow,
   Background,
   MiniMap,
   ReactFlowProvider,
-  useNodesState,
-  useEdgesState,
+  applyEdgeChanges,
+  applyNodeChanges,
   useReactFlow,
   type Node,
   type Edge,
   type Connection,
+  type EdgeChange,
+  type NodeChange,
   type NodeTypes,
   type EdgeTypes,
   MarkerType,
@@ -21,6 +23,7 @@ import type { ErNodeData, ErEdgeData } from './types';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import type { SavedTableStateUpdate } from '@/utils/savedTableStateUpdate';
 import type { SaveTableResult } from '@/hooks/useSavedTables';
+import { useTimers } from '@/hooks/useTimers';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 import ErTableNode from './ErTableNode';
@@ -124,7 +127,7 @@ interface CanvasInnerProps {
   loading: boolean;
   onSelectTable: (state: PersistedState) => void;
   onRefresh: () => Promise<void>;
-  onAddTable: () => void;
+  onAddTable: () => Promise<boolean>;
   onUpdateTable: (
     normalizedName: SavedTableTarget,
     state: SavedTableStateUpdate,
@@ -138,6 +141,82 @@ type PendingRelationship = {
   targetField: string;
 };
 
+type CanvasState = {
+  sourceNodes: Node[];
+  sourceEdges: Edge[];
+  nodes: Node[];
+  edges: Edge[];
+  pendingRelationship: PendingRelationship | null;
+};
+
+type CanvasEvent =
+  | { type: 'graphSourceChanged'; nodes: Node[]; edges: Edge[] }
+  | { type: 'nodesChanged'; changes: NodeChange[] }
+  | { type: 'edgesChanged'; changes: EdgeChange[] }
+  | { type: 'autoLayoutApplied' }
+  | { type: 'relationshipProposed'; relationship: PendingRelationship }
+  | { type: 'relationshipClosed' };
+
+function createCanvasState(source: { nodes: Node[]; edges: Edge[] }): CanvasState {
+  return {
+    sourceNodes: source.nodes,
+    sourceEdges: source.edges,
+    nodes: source.nodes,
+    edges: source.edges,
+    pendingRelationship: null,
+  };
+}
+
+function keepNodePositions(previous: Node[], next: Node[]): Node[] {
+  const previousPositions = new Map(previous.map((node) => [node.id, node.position]));
+
+  return next.map((node) => {
+    const position = previousPositions.get(node.id);
+
+    return position ? { ...node, position } : node;
+  });
+}
+
+function gridLayout(nodes: Node[]): Node[] {
+  const cols = Math.ceil(Math.sqrt(nodes.length));
+
+  return nodes.map((node, index) => {
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+
+    return {
+      ...node,
+      position: { x: col * GRID_GAP_X + 50, y: row * GRID_GAP_Y + 50 },
+    };
+  });
+}
+
+function canvasReducer(state: CanvasState, event: CanvasEvent): CanvasState {
+  switch (event.type) {
+    case 'graphSourceChanged':
+      return {
+        ...state,
+        sourceNodes: event.nodes,
+        sourceEdges: event.edges,
+        nodes:
+          event.nodes === state.sourceNodes
+            ? state.nodes
+            : keepNodePositions(state.nodes, event.nodes),
+        edges: event.edges === state.sourceEdges ? state.edges : event.edges,
+      };
+    case 'nodesChanged':
+      return { ...state, nodes: applyNodeChanges(event.changes, state.nodes) };
+    case 'edgesChanged':
+      return { ...state, edges: applyEdgeChanges(event.changes, state.edges) };
+    case 'autoLayoutApplied':
+      return { ...state, nodes: gridLayout(state.nodes) };
+    case 'relationshipProposed':
+      return { ...state, pendingRelationship: event.relationship };
+    case 'relationshipClosed':
+      return { ...state, pendingRelationship: null };
+  }
+}
+
 function CanvasInner({
   tables,
   loading,
@@ -149,6 +228,7 @@ function CanvasInner({
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { fitView } = useReactFlow();
+  const { schedule } = useTimers();
 
   const handleDeleteForeignKey = useCallback(
     async (sourceRecord: SavedTableRecord, fkId: string) => {
@@ -178,37 +258,36 @@ function CanvasInner({
     [tables, handleDeleteForeignKey],
   );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
-  const [pendingRelationship, setPendingRelationship] = useState<PendingRelationship | null>(null);
+  const [state, dispatch] = useReducer(
+    canvasReducer,
+    { nodes: initialNodes, edges: initialEdges },
+    createCanvasState,
+  );
+  const { nodes, edges, pendingRelationship } = state;
 
-  useEffect(() => {
-    setNodes((prev: Node[]) => {
-      const prevPositions = new Map(prev.map((n: Node) => [n.id, n.position]));
+  // Syncing during render keeps dragged positions without committing a stale graph first.
+  if (state.sourceNodes !== initialNodes || state.sourceEdges !== initialEdges) {
+    dispatch({ type: 'graphSourceChanged', nodes: initialNodes, edges: initialEdges });
+  }
 
-      return initialNodes.map((n: Node) => {
-        const pos = prevPositions.get(n.id);
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => dispatch({ type: 'nodesChanged', changes }),
+    [],
+  );
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => dispatch({ type: 'edgesChanged', changes }),
+    [],
+  );
 
-        if (pos) {
-          return { ...n, position: pos };
-        }
+  const fitViewSoon = useCallback(() => {
+    schedule(() => fitView({ padding: 0.2 }), 100);
+  }, [fitView, schedule]);
 
-        return n;
-      });
+  const handleAddTable = useCallback(() => {
+    void onAddTable().then((added) => {
+      if (added) fitViewSoon();
     });
-  }, [initialNodes, setNodes]);
-
-  useEffect(() => {
-    setEdges(initialEdges);
-  }, [initialEdges, setEdges]);
-
-  useEffect(() => {
-    if (!loading && tables.length > 0) {
-      const timer = setTimeout(() => fitView({ padding: 0.2 }), 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [loading, tables.length, fitView]);
+  }, [fitViewSoon, onAddTable]);
 
   const handleConnect = useCallback(
     (connection: Connection) => {
@@ -230,11 +309,14 @@ function CanvasInner({
 
       if (!sourceRecord || !targetRecord) return;
 
-      setPendingRelationship({
-        sourceRecord,
-        targetRecord,
-        sourceField: connection.sourceHandle,
-        targetField: connection.targetHandle,
+      dispatch({
+        type: 'relationshipProposed',
+        relationship: {
+          sourceRecord,
+          targetRecord,
+          sourceField: connection.sourceHandle,
+          targetField: connection.targetHandle,
+        },
       });
     },
     [tables],
@@ -267,7 +349,7 @@ function CanvasInner({
         }
 
         await onRefresh();
-        setPendingRelationship(null);
+        dispatch({ type: 'relationshipClosed' });
         showToast(t('erDiagram.relationship.success'));
       } catch {
         showToast(t('erDiagram.relationship.saveFailed'));
@@ -277,21 +359,9 @@ function CanvasInner({
   );
 
   const handleAutoLayout = useCallback(() => {
-    setNodes((prev: Node[]) => {
-      const cols = Math.ceil(Math.sqrt(prev.length));
-
-      return prev.map((node: Node, index: number) => {
-        const col = index % cols;
-        const row = Math.floor(index / cols);
-
-        return {
-          ...node,
-          position: { x: col * GRID_GAP_X + 50, y: row * GRID_GAP_Y + 50 },
-        };
-      });
-    });
-    setTimeout(() => fitView({ padding: 0.2 }), 50);
-  }, [setNodes, fitView]);
+    dispatch({ type: 'autoLayoutApplied' });
+    schedule(() => fitView({ padding: 0.2 }), 50);
+  }, [fitView, schedule]);
 
   if (loading) {
     return (
@@ -321,6 +391,7 @@ function CanvasInner({
         edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
+        onInit={fitViewSoon}
         minZoom={0.2}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
@@ -331,7 +402,7 @@ function CanvasInner({
           nodeColor={() => 'hsl(var(--primary))'}
           maskColor="hsl(var(--background) / 0.8)"
         />
-        <ErDiagramToolbar onAddTable={onAddTable} onAutoLayout={handleAutoLayout} />
+        <ErDiagramToolbar onAddTable={handleAddTable} onAutoLayout={handleAutoLayout} />
       </ReactFlow>
       {pendingRelationship && (
         <RelationCreationDialog
@@ -342,7 +413,7 @@ function CanvasInner({
           }}
           sourceField={pendingRelationship.sourceField}
           targetField={pendingRelationship.targetField}
-          onCancel={() => setPendingRelationship(null)}
+          onCancel={() => dispatch({ type: 'relationshipClosed' })}
           onConfirm={handleCreateRelationship}
         />
       )}

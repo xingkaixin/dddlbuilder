@@ -1,24 +1,29 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useReducer } from 'react';
 import { Panel, useReactFlow } from '@xyflow/react';
 import { ZoomIn, ZoomOut, Maximize, Plus, LayoutGrid } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
+import { useTimers } from '@/hooks/useTimers';
 
 interface ErDiagramToolbarProps {
   onAddTable: () => void;
   onAutoLayout: () => void;
 }
 
+const addingReducer = (_adding: boolean, event: 'addStarted' | 'cooldownEnded') =>
+  event === 'addStarted';
+
 function ErDiagramToolbar({ onAddTable, onAutoLayout }: ErDiagramToolbarProps) {
   const { t } = useTranslation();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const [isAdding, setIsAdding] = useState(false);
+  const [isAdding, dispatchAdding] = useReducer(addingReducer, false);
+  const { schedule } = useTimers();
 
   const handleAddTable = useCallback(() => {
-    setIsAdding(true);
+    dispatchAdding('addStarted');
     onAddTable();
-    setTimeout(() => setIsAdding(false), 300);
-  }, [onAddTable]);
+    schedule(() => dispatchAdding('cooldownEnded'), 300);
+  }, [onAddTable, schedule]);
 
   return (
     <Panel position="top-left" className="flex items-center gap-2 m-2">

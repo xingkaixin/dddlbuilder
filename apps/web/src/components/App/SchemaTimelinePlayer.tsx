@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useReducer } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { tableVersionsOptions } from '@/queries/tableVersions';
 import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
@@ -24,6 +24,7 @@ import { type TableVersionTarget } from '@/utils/tableVersions';
 import { useTranslation } from 'react-i18next';
 import { getDefaultKindLabel, getNullableLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useLocale } from '@/i18n/LocaleContext';
+import { useInterval } from '@/hooks/useInterval';
 import type { TFunction } from 'i18next';
 
 interface SchemaTimelinePlayerProps {
@@ -51,6 +52,41 @@ const SPEED_INTERVAL_MS: Record<Speed, number> = {
   1: 1000,
   2: 500,
 };
+
+type PlaybackState = {
+  frame: number;
+  playing: boolean;
+  speed: Speed;
+};
+
+type PlaybackEvent =
+  | { type: 'playToggled' }
+  | { type: 'ticked'; lastFrame: number }
+  | { type: 'frameSelected'; frame: number }
+  | { type: 'previousStepped' }
+  | { type: 'nextStepped'; lastFrame: number }
+  | { type: 'speedCycled' };
+
+const initialPlaybackState: PlaybackState = { frame: 0, playing: false, speed: 1 };
+
+function playbackReducer(state: PlaybackState, event: PlaybackEvent): PlaybackState {
+  switch (event.type) {
+    case 'playToggled':
+      return { ...state, playing: !state.playing };
+    case 'ticked':
+      return state.frame >= event.lastFrame
+        ? { ...state, playing: false }
+        : { ...state, frame: state.frame + 1 };
+    case 'frameSelected':
+      return { ...state, playing: false, frame: event.frame };
+    case 'previousStepped':
+      return { ...state, playing: false, frame: Math.max(0, state.frame - 1) };
+    case 'nextStepped':
+      return { ...state, playing: false, frame: Math.min(event.lastFrame, state.frame + 1) };
+    case 'speedCycled':
+      return { ...state, speed: state.speed === 0.5 ? 1 : state.speed === 1 ? 2 : 0.5 };
+  }
+}
 
 function formatDateTime(timestamp: number, locale: string): string {
   const date = new Date(timestamp);
@@ -147,9 +183,11 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
       enabled: open && Boolean(target),
       select: chronological,
     });
-    const [currentFrame, setCurrentFrame] = useState(0);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [speed, setSpeed] = useState<Speed>(1);
+    const [{ frame: currentFrame, playing: isPlaying, speed }, dispatch] = useReducer(
+      playbackReducer,
+      initialPlaybackState,
+    );
+    const lastFrame = versions.length - 1;
 
     // Precompute diffs for each frame
     const frameDiffs = useMemo<(TableDiff | null)[]>(() => {
@@ -163,58 +201,28 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
       return diffs;
     }, [versions]);
 
-    // Auto-play timer
-    useEffect(() => {
-      if (!isPlaying || versions.length <= 1) return;
-      const intervalMs = SPEED_INTERVAL_MS[speed];
+    useInterval(
+      () => dispatch({ type: 'ticked', lastFrame }),
+      isPlaying && versions.length > 1 ? SPEED_INTERVAL_MS[speed] : null,
+    );
 
-      const timer = setInterval(() => {
-        setCurrentFrame((prev) => {
-          if (prev >= versions.length - 1) {
-            setIsPlaying(false);
+    const handlePlayPause = useCallback(() => dispatch({ type: 'playToggled' }), []);
 
-            return prev;
-          }
+    const handlePrev = useCallback(() => dispatch({ type: 'previousStepped' }), []);
 
-          return prev + 1;
-        });
-      }, intervalMs);
+    const handleNext = useCallback(() => dispatch({ type: 'nextStepped', lastFrame }), [lastFrame]);
 
-      return () => clearInterval(timer);
-    }, [isPlaying, speed, versions.length]);
+    const handleFirst = useCallback(() => dispatch({ type: 'frameSelected', frame: 0 }), []);
 
-    const handlePlayPause = useCallback(() => {
-      setIsPlaying((prev) => !prev);
-    }, []);
+    const handleLast = useCallback(
+      () => dispatch({ type: 'frameSelected', frame: lastFrame }),
+      [lastFrame],
+    );
 
-    const handlePrev = useCallback(() => {
-      setIsPlaying(false);
-      setCurrentFrame((prev) => Math.max(0, prev - 1));
-    }, []);
-
-    const handleNext = useCallback(() => {
-      setIsPlaying(false);
-      setCurrentFrame((prev) => Math.min(versions.length - 1, prev + 1));
-    }, [versions.length]);
-
-    const handleFirst = useCallback(() => {
-      setIsPlaying(false);
-      setCurrentFrame(0);
-    }, []);
-
-    const handleLast = useCallback(() => {
-      setIsPlaying(false);
-      setCurrentFrame(versions.length - 1);
-    }, [versions.length]);
-
-    const handleSpeedChange = useCallback(() => {
-      setSpeed((prev) => (prev === 0.5 ? 1 : prev === 1 ? 2 : 0.5));
-    }, []);
+    const handleSpeedChange = useCallback(() => dispatch({ type: 'speedCycled' }), []);
 
     const handleProgressChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      setIsPlaying(false);
-      const value = parseInt(e.target.value, 10);
-      setCurrentFrame(value);
+      dispatch({ type: 'frameSelected', frame: parseInt(e.target.value, 10) });
     }, []);
 
     const currentVersion = versions[currentFrame];
@@ -282,10 +290,7 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                       <button
                         key={v.id}
                         type="button"
-                        onClick={() => {
-                          setIsPlaying(false);
-                          setCurrentFrame(idx);
-                        }}
+                        onClick={() => dispatch({ type: 'frameSelected', frame: idx })}
                         className={cn(
                           'relative flex flex-1 flex-col items-center gap-1 rounded px-1 py-1.5 transition-colors',
                           isActive ? 'bg-primary/10' : 'hover:bg-muted',
