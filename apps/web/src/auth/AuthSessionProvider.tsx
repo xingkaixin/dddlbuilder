@@ -4,11 +4,11 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useReducer,
   useSyncExternalStore,
   type PropsWithChildren,
 } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
@@ -16,7 +16,6 @@ import {
   readWorkspaceIdentity,
   parseWorkspaceIdentity,
   subscribeWorkspaceIdentity,
-  writeWorkspaceIdentity,
   WORKSPACE_IDENTITY_KEY,
 } from '@/services/workspaceIdentity';
 import { currentUserOptions, authQueryKeys } from '@/queries/auth';
@@ -71,12 +70,13 @@ const AuthActionsContext = createContext<AuthActions | null>(null);
 const AuthCreditsContext = createContext<AuthCreditsContextValue | null>(null);
 const AuthDialogContext = createContext<AuthDialogContextValue | null>(null);
 
+const authDialogReducer = (_open: boolean, event: 'opened' | 'closed') => event === 'opened';
+
 export function AuthSessionProvider({ children }: PropsWithChildren) {
   const configured = isBetterAuthConfigured();
   const client = getBetterAuthClient();
   const queryClient = useQueryClient();
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
+  const [authDialogOpen, dispatchAuthDialog] = useReducer(authDialogReducer, false);
   const storedIdentity = useSyncExternalStore(subscribeWorkspaceIdentity, readWorkspaceIdentity);
   const localWorkspace = useMemo(() => parseWorkspaceIdentity(storedIdentity), [storedIdentity]);
 
@@ -108,16 +108,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         : null,
     [scopeUserId, scopeWorkspaceId],
   );
-
-  useEffect(() => {
-    if (userId && currentWorkspaceQuery.data?.workspaceId && !signingOut) {
-      writeWorkspaceIdentity({
-        kind: 'user',
-        userId,
-        workspaceId: currentWorkspaceQuery.data.workspaceId,
-      });
-    }
-  }, [currentWorkspaceQuery.data?.workspaceId, signingOut, userId]);
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
@@ -203,25 +193,21 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     await queryClient.invalidateQueries({ queryKey: creditQueryKeys.all(userId) });
   }, [queryClient, userId]);
 
-  useEffect(() => {
-    if (creditBalanceQuery.error) {
-      console.error('[auth] failed to load credit balance', creditBalanceQuery.error);
-    }
-  }, [creditBalanceQuery.error]);
-
-  useEffect(() => {
-    if (currentWorkspaceQuery.error) {
-      console.error('[auth] failed to resolve workspace', currentWorkspaceQuery.error);
-    }
-  }, [currentWorkspaceQuery.error]);
-
   const accountActions = useAuthAccountActions(client, configured, refreshSession);
+
+  const signOutMutation = useMutation({
+    mutationFn: executeWorkspaceSignOut,
+    // Run even offline: a paused mutation would keep the page inert with no error.
+    networkMode: 'always',
+  });
+  const signingOut = signOutMutation.isPending;
+  const runSignOut = signOutMutation.mutateAsync;
 
   const signOut = useCallback(async () => {
     if (signingOut) return;
 
     if (!client || !configured) {
-      setAuthDialogOpen(false);
+      dispatchAuthDialog('closed');
 
       return;
     }
@@ -234,26 +220,21 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
             workspaceId: identity.workspaceId,
           }
         : null;
-    setSigningOut(true);
 
-    try {
-      await executeWorkspaceSignOut({
-        scope,
-        userId: identity.userId,
-        queryClient,
-        remoteSignOut: async () => {
-          const result = await client.signOut();
+    await runSignOut({
+      scope,
+      userId: identity.userId,
+      queryClient,
+      remoteSignOut: async () => {
+        const result = await client.signOut();
 
-          if (result.error) {
-            throw new Error(translateAuthError(result.error, 'header.auth.signOutFailed'));
-          }
-        },
-      });
-      setAuthDialogOpen(false);
-    } finally {
-      setSigningOut(false);
-    }
-  }, [client, configured, identity, queryClient, signingOut]);
+        if (result.error) {
+          throw new Error(translateAuthError(result.error, 'header.auth.signOutFailed'));
+        }
+      },
+    });
+    dispatchAuthDialog('closed');
+  }, [client, configured, identity, queryClient, runSignOut, signingOut]);
   const actions = useMemo<AuthActions>(
     () => ({ ...accountActions, signOut, refreshSession }),
     [accountActions, refreshSession, signOut],
@@ -265,8 +246,8 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   const dialog = useMemo<AuthDialogContextValue>(
     () => ({
       authDialogOpen,
-      openAuthDialog: () => setAuthDialogOpen(true),
-      closeAuthDialog: () => setAuthDialogOpen(false),
+      openAuthDialog: () => dispatchAuthDialog('opened'),
+      closeAuthDialog: () => dispatchAuthDialog('closed'),
     }),
     [authDialogOpen],
   );

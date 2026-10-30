@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useReducer, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { Loader2 } from '@/components/icons';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useAuthActions } from '@/auth/AuthSessionProvider';
+import { useInterval } from '@/hooks/useInterval';
 
 type EmailVerificationFormProps = {
   email: string;
@@ -14,6 +15,57 @@ type EmailVerificationFormProps = {
   onVerified: () => void;
   onBack: () => void;
 };
+
+type VerificationState = {
+  otp: string;
+  now: number;
+  request:
+    | { status: 'idle' }
+    | { status: 'verifying' }
+    | { status: 'resending' }
+    | { status: 'failed'; error: string };
+};
+
+type VerificationEvent =
+  | { type: 'otpChanged'; otp: string }
+  | { type: 'ticked'; now: number }
+  | { type: 'verifyStarted' }
+  | { type: 'verified' }
+  | { type: 'resendStarted' }
+  | { type: 'resent'; now: number }
+  | { type: 'failed'; error: string };
+
+const createVerificationState = (): VerificationState => ({
+  otp: '',
+  now: Date.now(),
+  request: { status: 'idle' },
+});
+
+function verificationReducer(
+  state: VerificationState,
+  event: VerificationEvent,
+): VerificationState {
+  switch (event.type) {
+    case 'otpChanged':
+      return {
+        ...state,
+        otp: event.otp,
+        request: state.request.status === 'failed' ? { status: 'idle' } : state.request,
+      };
+    case 'ticked':
+      return { ...state, now: event.now };
+    case 'verifyStarted':
+      return { ...state, request: { status: 'verifying' } };
+    case 'verified':
+      return { ...state, request: { status: 'idle' } };
+    case 'resendStarted':
+      return { ...state, request: { status: 'resending' } };
+    case 'resent':
+      return { ...state, otp: '', now: event.now, request: { status: 'idle' } };
+    case 'failed':
+      return { ...state, request: { status: 'failed', error: event.error } };
+  }
+}
 
 export function EmailVerificationForm({
   email,
@@ -24,51 +76,51 @@ export function EmailVerificationForm({
 }: EmailVerificationFormProps) {
   const { t } = useTranslation();
   const { verifyEmail, sendVerificationEmail } = useAuthActions();
-  const [otp, setOtp] = useState('');
-  const [error, setError] = useState('');
-  const [pending, setPending] = useState<'verify' | 'resend' | null>(null);
-  const [now, setNow] = useState(Date.now);
+
+  const [{ otp, now, request }, dispatch] = useReducer(
+    verificationReducer,
+    undefined,
+    createVerificationState,
+  );
   const inputRef = useRef<HTMLInputElement>(null);
+  const pending = request.status === 'verifying' || request.status === 'resending';
+  const error = request.status === 'failed' ? request.error : '';
   const resendSeconds = Math.max(0, Math.ceil((sentAt + 60_000 - now) / 1000));
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-
-    return () => window.clearInterval(timer);
-  }, []);
+  useInterval(() => dispatch({ type: 'ticked', now: Date.now() }), 1000);
 
   const handleVerify = async () => {
     if (pending || otp.length !== 6) return;
-    setPending('verify');
-    setError('');
+    dispatch({ type: 'verifyStarted' });
 
     try {
       await verifyEmail(email, otp);
+      dispatch({ type: 'verified' });
       onVerified();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('header.auth.verifyCodeFailed'));
+      dispatch({
+        type: 'failed',
+        error: err instanceof Error ? err.message : t('header.auth.verifyCodeFailed'),
+      });
       inputRef.current?.focus();
       inputRef.current?.select();
-    } finally {
-      setPending(null);
     }
   };
 
   const handleResend = async () => {
     if (pending || resendSeconds > 0) return;
-    setPending('resend');
-    setError('');
+    dispatch({ type: 'resendStarted' });
 
     try {
       await sendVerificationEmail(email);
-      setOtp('');
-      setNow(Date.now());
+      dispatch({ type: 'resent', now: Date.now() });
       onSent();
       inputRef.current?.focus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('header.auth.sendCodeFailed'));
-    } finally {
-      setPending(null);
+      dispatch({
+        type: 'failed',
+        error: err instanceof Error ? err.message : t('header.auth.sendCodeFailed'),
+      });
     }
   };
 
@@ -99,11 +151,8 @@ export function EmailVerificationForm({
           autoComplete="one-time-code"
           autoFocus
           value={otp}
-          onChange={(value) => {
-            setOtp(value);
-            setError('');
-          }}
-          readOnly={pending !== null}
+          onChange={(value) => dispatch({ type: 'otpChanged', otp: value })}
+          readOnly={pending}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? 'auth-otp-error' : 'auth-otp-hint'}
         >
@@ -128,22 +177,26 @@ export function EmailVerificationForm({
         )}
       </div>
       <div className="grid gap-2">
-        <Button type="submit" disabled={pending !== null || otp.length !== 6}>
-          {pending === 'verify' && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+        <Button type="submit" disabled={pending || otp.length !== 6}>
+          {request.status === 'verifying' && (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          )}
           {t('header.auth.verifyCode')}
         </Button>
         <Button
           type="button"
           variant="ghost"
           onClick={handleResend}
-          disabled={pending !== null || resendSeconds > 0}
+          disabled={pending || resendSeconds > 0}
         >
-          {pending === 'resend' && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+          {request.status === 'resending' && (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          )}
           {resendSeconds > 0
             ? t('header.auth.resendCodeIn', { count: resendSeconds })
             : t('header.auth.resendVerification')}
         </Button>
-        <Button type="button" variant="link" onClick={onBack} disabled={pending !== null}>
+        <Button type="button" variant="link" onClick={onBack} disabled={pending}>
           {t('header.auth.switchBackToSignIn')}
         </Button>
       </div>

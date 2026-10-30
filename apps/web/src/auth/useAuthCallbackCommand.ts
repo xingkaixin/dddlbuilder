@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useReducer, useRef } from 'react';
 
 type AuthCallbackCommand =
   | { type: 'verify-email' }
@@ -28,8 +28,10 @@ const clearAuthCallbackQuery = () => {
   );
 };
 
+const commandReducer = (_command: AuthCallbackCommand | null, _event: 'consumed') => null;
+
 export const useAuthCallbackCommand = () => {
-  const [command, setCommand] = useState(readAuthCallbackCommand);
+  const [command, dispatch] = useReducer(commandReducer, null, readAuthCallbackCommand);
   const consumedRef = useRef(false);
   const initialResetToken = command?.type === 'reset-password' ? command.token : null;
 
@@ -37,7 +39,7 @@ export const useAuthCallbackCommand = () => {
     if (consumedRef.current || !command) return null;
 
     consumedRef.current = true;
-    setCommand(null);
+    dispatch('consumed');
     clearAuthCallbackQuery();
 
     return command;

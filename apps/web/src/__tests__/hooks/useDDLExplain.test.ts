@@ -4,8 +4,9 @@ import * as aiTransport from '@/services/aiConversationService';
 vi.mock('@/services/aiConversationService', () => ({ fetchAIConversation: vi.fn() }));
 
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
+import i18n from '@/i18n';
 import { useLocale } from '@/i18n/LocaleContext';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
@@ -70,6 +71,10 @@ function renderDDLExplainWithLocaleHook() {
 describe('useDDLExplain', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('zh-CN');
   });
 
   it('should set error when sql is empty', async () => {

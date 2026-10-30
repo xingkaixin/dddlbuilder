@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { PublicationWrite } from '@ddlbuilder/shared-types/api';
@@ -13,6 +13,57 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { copyText } from '@/utils/clipboard';
 
+type Visibility = PublicationWrite['visibility'];
+
+type PublishNotice = 'publication.saved' | 'publication.copied' | 'publication.copyFailed';
+
+type PublishState = {
+  title: string;
+  selected: string;
+  visibility: Visibility;
+  notice: PublishNotice | null;
+};
+
+type PublishEvent =
+  | { type: 'publicationSelected'; id: string; title: string; visibility: Visibility }
+  | { type: 'titleChanged'; title: string }
+  | { type: 'visibilityChanged'; visibility: Visibility }
+  | { type: 'operationStarted' }
+  | { type: 'publicationDeleted' }
+  | { type: 'publicationSaved'; id: string }
+  | { type: 'linkCopied'; copied: boolean };
+
+const initialPublishState: PublishState = {
+  title: '',
+  selected: '',
+  visibility: 'private',
+  notice: null,
+};
+
+function publishReducer(state: PublishState, event: PublishEvent): PublishState {
+  switch (event.type) {
+    case 'publicationSelected':
+      return {
+        title: event.title,
+        selected: event.id,
+        visibility: event.visibility,
+        notice: null,
+      };
+    case 'titleChanged':
+      return { ...state, title: event.title };
+    case 'visibilityChanged':
+      return { ...state, visibility: event.visibility };
+    case 'operationStarted':
+      return { ...state, notice: null };
+    case 'publicationDeleted':
+      return { ...state, selected: '' };
+    case 'publicationSaved':
+      return { ...state, selected: event.id, notice: 'publication.saved' };
+    case 'linkCopied':
+      return { ...state, notice: event.copied ? 'publication.copied' : 'publication.copyFailed' };
+  }
+}
+
 export function PublishPanel({
   content,
   title: suggestedTitle,
@@ -23,10 +74,11 @@ export function PublishPanel({
   const { t } = useTranslation();
   const { userId } = useAuthIdentity();
   const client = useQueryClient();
-  const [title, setTitle] = useState('');
-  const [selected, setSelected] = useState('');
-  const [visibility, setVisibility] = useState<'private' | 'link'>('private');
-  const [message, setMessage] = useState('');
+
+  const [{ title, selected, visibility, notice }, dispatch] = useReducer(
+    publishReducer,
+    initialPublishState,
+  );
 
   const list = useQuery({
     queryKey: ['publications', userId],
@@ -37,11 +89,11 @@ export function PublishPanel({
 
   const mutation = useMutation({
     mutationFn: async (operation: 'save' | 'visibility' | 'delete') => {
-      setMessage('');
+      dispatch({ type: 'operationStarted' });
 
       if (operation === 'delete') {
         await deletePublication(selected);
-        setSelected('');
+        dispatch({ type: 'publicationDeleted' });
 
         return;
       }
@@ -63,8 +115,7 @@ export function PublishPanel({
         },
         record?.id,
       );
-      setSelected(saved.id);
-      setMessage(t('publication.saved'));
+      dispatch({ type: 'publicationSaved', id: saved.id });
     },
     onSuccess: () => client.invalidateQueries({ queryKey: ['publications', userId] }),
   });
@@ -82,12 +133,14 @@ export function PublishPanel({
           value={selected}
           disabled={mutation.isPending}
           onChange={(event) => {
-            setSelected(event.target.value);
             const item = list.data?.find((entry) => entry.id === event.target.value);
-            setTitle(item?.title ?? '');
-            setVisibility(item?.visibility ?? 'private');
+            dispatch({
+              type: 'publicationSelected',
+              id: event.target.value,
+              title: item?.title ?? '',
+              visibility: item?.visibility ?? 'private',
+            });
             mutation.reset();
-            setMessage('');
           }}
         >
           <option value="">{t('publication.create')}</option>
@@ -116,7 +169,7 @@ export function PublishPanel({
             maxLength={120}
             placeholder={suggestedTitle}
             disabled={mutation.isPending}
-            onChange={(event) => setTitle(event.target.value)}
+            onChange={(event) => dispatch({ type: 'titleChanged', title: event.target.value })}
           />
         </label>
         <label className="space-y-1 text-sm">
@@ -125,7 +178,12 @@ export function PublishPanel({
             className="h-11 w-full rounded-md border bg-background px-3"
             value={visibility}
             disabled={mutation.isPending}
-            onChange={(event) => setVisibility(event.target.value === 'link' ? 'link' : 'private')}
+            onChange={(event) =>
+              dispatch({
+                type: 'visibilityChanged',
+                visibility: event.target.value === 'link' ? 'link' : 'private',
+              })
+            }
           >
             <option value="private">{t('publication.private')}</option>
             <option value="link">{t('publication.link')}</option>
@@ -151,13 +209,10 @@ export function PublishPanel({
             <Button
               variant="outline"
               onClick={async () =>
-                setMessage(
-                  t(
-                    (await copyText(`${location.origin}/publications/${record.id}`))
-                      ? 'publication.copied'
-                      : 'publication.copyFailed',
-                  ),
-                )
+                dispatch({
+                  type: 'linkCopied',
+                  copied: await copyText(`${location.origin}/publications/${record.id}`),
+                })
               }
             >
               {t('publication.copy')}
@@ -196,9 +251,9 @@ export function PublishPanel({
           </Button>
         </p>
       )}
-      {message && (
+      {notice && (
         <p role="status" className="text-sm">
-          {message}
+          {t(notice)}
         </p>
       )}
     </section>

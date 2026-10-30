@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useReducer, useRef, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -41,6 +41,48 @@ const isValidCreditAmount = (value: string) => {
 
 type CreditGrant = { amount: number; note?: string; idempotencyKey: string };
 
+type DetailFormField = 'disableReason' | 'creditAmount' | 'creditNote';
+
+type DetailState = Record<DetailFormField, string> & {
+  activeTab: string;
+  disableDialogOpen: boolean;
+  creditsDialogOpen: boolean;
+};
+
+type DetailEvent =
+  | { type: 'tabChanged'; tab: string }
+  | { type: 'disableDialogOpenChanged'; open: boolean }
+  | { type: 'creditsDialogOpenChanged'; open: boolean }
+  | { type: 'fieldChanged'; field: DetailFormField; value: string }
+  | { type: 'userDisabled' }
+  | { type: 'creditsGranted' };
+
+const initialDetailState: DetailState = {
+  activeTab: 'credits',
+  disableDialogOpen: false,
+  creditsDialogOpen: false,
+  disableReason: '',
+  creditAmount: '',
+  creditNote: '',
+};
+
+function detailReducer(state: DetailState, event: DetailEvent): DetailState {
+  switch (event.type) {
+    case 'tabChanged':
+      return { ...state, activeTab: event.tab };
+    case 'disableDialogOpenChanged':
+      return { ...state, disableDialogOpen: event.open };
+    case 'creditsDialogOpenChanged':
+      return { ...state, creditsDialogOpen: event.open };
+    case 'fieldChanged':
+      return { ...state, [event.field]: event.value };
+    case 'userDisabled':
+      return { ...state, disableDialogOpen: false, disableReason: '' };
+    case 'creditsGranted':
+      return { ...state, creditsDialogOpen: false, creditAmount: '', creditNote: '' };
+  }
+}
+
 type AdminUserDetailProps = {
   userId: string;
   onBack: () => void;
@@ -50,7 +92,11 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
   const { t } = useTranslation();
   const { resolvedLocale } = useLocale();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('credits');
+
+  const [
+    { activeTab, disableDialogOpen, creditsDialogOpen, disableReason, creditAmount, creditNote },
+    dispatch,
+  ] = useReducer(detailReducer, initialDetailState);
   const userQuery = useQuery(adminUserOptions(userId));
   const ledgerQuery = useQuery(adminLedgerOptions(userId, 50));
 
@@ -59,14 +105,6 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
     enabled: activeTab === 'usage',
   });
 
-  // Dialogs
-  const [disableDialogOpen, setDisableDialogOpen] = useState(false);
-  const [creditsDialogOpen, setCreditsDialogOpen] = useState(false);
-
-  // Forms
-  const [disableReason, setDisableReason] = useState('');
-  const [creditAmount, setCreditAmount] = useState('');
-  const [creditNote, setCreditNote] = useState('');
   const creditGrantRef = useRef<CreditGrant | null>(null);
 
   const resetPasswordMutation = useMutation({
@@ -104,8 +142,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
     try {
       await disableMutation.mutateAsync(disableReason || undefined);
       toast.success(t('admin.detail.disableSuccess'));
-      setDisableDialogOpen(false);
-      setDisableReason('');
+      dispatch({ type: 'userDisabled' });
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
     } catch {
       toast.error(t('admin.detail.errors.disable'));
@@ -155,9 +192,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       await grantCreditsMutation.mutateAsync({ amount, note, idempotencyKey });
       creditGrantRef.current = null;
       toast.success(t('admin.detail.creditsAdded', { amount }));
-      setCreditsDialogOpen(false);
-      setCreditAmount('');
-      setCreditNote('');
+      dispatch({ type: 'creditsGranted' });
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
     } catch {
       toast.error(t('admin.detail.errors.grantCredits'));
@@ -269,13 +304,21 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
                 {t('admin.detail.enableUser')}
               </Button>
             ) : (
-              <Button variant="destructive" size="sm" onClick={() => setDisableDialogOpen(true)}>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => dispatch({ type: 'disableDialogOpenChanged', open: true })}
+              >
                 <Ban className="mr-1.5 h-4 w-4" />
                 {t('admin.detail.disableUser')}
               </Button>
             )}
 
-            <Button variant="outline" size="sm" onClick={() => setCreditsDialogOpen(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => dispatch({ type: 'creditsDialogOpenChanged', open: true })}
+            >
               <PlusCircle className="mr-1.5 h-4 w-4" />
               {t('admin.detail.addCredits')}
             </Button>
@@ -284,7 +327,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       </div>
 
       {/* Tabs: Credits + Usage */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={(tab) => dispatch({ type: 'tabChanged', tab })}>
         <TabsList>
           <TabsTrigger value="credits">{t('admin.detail.tabs.credits')}</TabsTrigger>
           <TabsTrigger value="usage">{t('admin.detail.tabs.usage')}</TabsTrigger>
@@ -435,7 +478,10 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       </Tabs>
 
       {/* Disable User Dialog */}
-      <AlertDialog open={disableDialogOpen} onOpenChange={setDisableDialogOpen}>
+      <AlertDialog
+        open={disableDialogOpen}
+        onOpenChange={(open) => dispatch({ type: 'disableDialogOpenChanged', open })}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('admin.detail.disableUser')}</AlertDialogTitle>
@@ -443,7 +489,9 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
           </AlertDialogHeader>
           <Textarea
             value={disableReason}
-            onChange={(e) => setDisableReason(e.target.value)}
+            onChange={(e) =>
+              dispatch({ type: 'fieldChanged', field: 'disableReason', value: e.target.value })
+            }
             placeholder={t('admin.detail.disableReason')}
             rows={2}
           />
@@ -457,7 +505,10 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       </AlertDialog>
 
       {/* Add Credits Dialog */}
-      <AlertDialog open={creditsDialogOpen} onOpenChange={setCreditsDialogOpen}>
+      <AlertDialog
+        open={creditsDialogOpen}
+        onOpenChange={(open) => dispatch({ type: 'creditsDialogOpenChanged', open })}
+      >
         <AlertDialogContent>
           <form onSubmit={handleGrantCredits}>
             <AlertDialogHeader>
@@ -473,7 +524,9 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
                   max={Number.MAX_SAFE_INTEGER}
                   step={1}
                   value={creditAmount}
-                  onChange={(e) => setCreditAmount(e.target.value)}
+                  onChange={(e) =>
+                    dispatch({ type: 'fieldChanged', field: 'creditAmount', value: e.target.value })
+                  }
                   placeholder="100"
                   autoFocus
                 />
@@ -482,7 +535,9 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
                 <label className="text-sm font-medium">{t('admin.detail.note')}</label>
                 <Input
                   value={creditNote}
-                  onChange={(e) => setCreditNote(e.target.value)}
+                  onChange={(e) =>
+                    dispatch({ type: 'fieldChanged', field: 'creditNote', value: e.target.value })
+                  }
                   placeholder={t('admin.detail.notePlaceholder')}
                 />
               </div>

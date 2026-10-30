@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, LogIn, MailCheck } from '@/components/icons';
 import {
@@ -19,6 +19,80 @@ import { useToast } from '@/hooks/useToast';
 
 type AuthMode = 'sign_in' | 'sign_up' | 'forgot_password' | 'reset_password';
 
+type AuthFormField = 'name' | 'email' | 'password' | 'resetPassword';
+
+type AuthDialogsState = Record<AuthFormField, string> & {
+  authMode: AuthMode;
+  resetToken: string | null;
+  isSubmittingAuth: boolean;
+  verification: { email: string; sentAt: number } | null;
+  verifyEmailDialogOpen: boolean;
+};
+
+type AuthDialogsEvent =
+  | { type: 'fieldChanged'; field: AuthFormField; value: string }
+  | { type: 'modeSelected'; mode: AuthMode }
+  | { type: 'submitStarted' }
+  | { type: 'submitSettled' }
+  | { type: 'signedUp' }
+  | { type: 'passwordReset' }
+  | { type: 'dialogClosed' }
+  | { type: 'verificationSent'; email: string; sentAt: number }
+  | { type: 'verificationResent'; sentAt: number }
+  | { type: 'verificationClosed' }
+  | { type: 'emailVerifiedNoticeOpened' }
+  | { type: 'emailVerifiedNoticeClosed' };
+
+const createAuthDialogsState = (resetToken: string | null): AuthDialogsState => ({
+  authMode: resetToken ? 'reset_password' : 'sign_in',
+  name: '',
+  email: '',
+  password: '',
+  resetPassword: '',
+  resetToken,
+  isSubmittingAuth: false,
+  verification: null,
+  verifyEmailDialogOpen: false,
+});
+
+const leaveResetPassword = (state: AuthDialogsState): AuthDialogsState => ({
+  ...state,
+  authMode: 'sign_in',
+  resetPassword: '',
+  resetToken: null,
+});
+
+function authDialogsReducer(state: AuthDialogsState, event: AuthDialogsEvent): AuthDialogsState {
+  switch (event.type) {
+    case 'fieldChanged':
+      return { ...state, [event.field]: event.value };
+    case 'modeSelected':
+      return { ...state, authMode: event.mode };
+    case 'submitStarted':
+      return { ...state, isSubmittingAuth: true };
+    case 'submitSettled':
+      return { ...state, isSubmittingAuth: false };
+    case 'signedUp':
+      return { ...state, authMode: 'sign_in', password: '' };
+    case 'passwordReset':
+      return leaveResetPassword(state);
+    case 'dialogClosed':
+      return state.authMode === 'reset_password' ? leaveResetPassword(state) : state;
+    case 'verificationSent':
+      return { ...state, password: '', verification: { email: event.email, sentAt: event.sentAt } };
+    case 'verificationResent':
+      return state.verification
+        ? { ...state, verification: { ...state.verification, sentAt: event.sentAt } }
+        : state;
+    case 'verificationClosed':
+      return { ...state, verification: null };
+    case 'emailVerifiedNoticeOpened':
+      return { ...state, verifyEmailDialogOpen: true };
+    case 'emailVerifiedNoticeClosed':
+      return { ...state, verifyEmailDialogOpen: false };
+  }
+}
+
 export function AuthDialogs() {
   const { t } = useTranslation();
   const { success, error } = useToast();
@@ -27,17 +101,22 @@ export function AuthDialogs() {
   const authSession = useMemo(() => ({ ...authActions, ...authDialog }), [authActions, authDialog]);
   const { initialResetToken, consume: consumeAuthCallbackCommand } = useAuthCallbackCommand();
 
-  const [authMode, setAuthMode] = useState<AuthMode>(() =>
-    initialResetToken ? 'reset_password' : 'sign_in',
+  const [state, dispatch] = useReducer(
+    authDialogsReducer,
+    initialResetToken,
+    createAuthDialogsState,
   );
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [resetPassword, setResetPassword] = useState('');
-  const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
-  const [resetToken, setResetToken] = useState<string | null>(initialResetToken);
-  const [verifyEmailDialogOpen, setVerifyEmailDialogOpen] = useState(false);
-  const [verification, setVerification] = useState<{ email: string; sentAt: number } | null>(null);
+  const {
+    authMode,
+    name,
+    email,
+    password,
+    resetPassword,
+    resetToken,
+    isSubmittingAuth,
+    verification,
+    verifyEmailDialogOpen,
+  } = state;
 
   useEffect(() => {
     const command = consumeAuthCallbackCommand();
@@ -47,7 +126,7 @@ export function AuthDialogs() {
     if (command.type === 'verify-email') {
       void authSession.refreshSession().finally(() => {
         success(t('header.auth.verifyEmailSucceeded'));
-        setVerifyEmailDialogOpen(true);
+        dispatch({ type: 'emailVerifiedNoticeOpened' });
       });
 
       return;
@@ -71,8 +150,7 @@ export function AuthDialogs() {
   }, [authMode, t]);
 
   const showEmailVerification = (email: string) => {
-    setPassword('');
-    setVerification({ email, sentAt: Date.now() });
+    dispatch({ type: 'verificationSent', email, sentAt: Date.now() });
   };
 
   const handleSubmitAuth = async () => {
@@ -85,7 +163,7 @@ export function AuthDialogs() {
     }
 
     try {
-      setIsSubmittingAuth(true);
+      dispatch({ type: 'submitStarted' });
 
       if (authMode === 'sign_in') {
         if (!password.trim()) {
@@ -119,8 +197,7 @@ export function AuthDialogs() {
           email: trimmedEmail,
           password,
         });
-        setAuthMode('sign_in');
-        setPassword('');
+        dispatch({ type: 'signedUp' });
 
         if (result === 'signed_in') {
           success(t('header.auth.signedIn'));
@@ -135,7 +212,7 @@ export function AuthDialogs() {
       if (authMode === 'forgot_password') {
         await authSession.requestPasswordReset(trimmedEmail);
         success(t('header.auth.resetEmailSent', { email: trimmedEmail }));
-        setAuthMode('sign_in');
+        dispatch({ type: 'modeSelected', mode: 'sign_in' });
 
         return;
       }
@@ -154,9 +231,7 @@ export function AuthDialogs() {
 
       await authSession.resetPassword(resetToken, resetPassword);
       success(t('header.auth.passwordResetSucceeded'));
-      setResetPassword('');
-      setResetToken(null);
-      setAuthMode('sign_in');
+      dispatch({ type: 'passwordReset' });
       authSession.closeAuthDialog();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
@@ -167,7 +242,7 @@ export function AuthDialogs() {
 
       error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
     } finally {
-      setIsSubmittingAuth(false);
+      dispatch({ type: 'submitSettled' });
     }
   };
 
@@ -181,23 +256,18 @@ export function AuthDialogs() {
     }
 
     try {
-      setIsSubmittingAuth(true);
+      dispatch({ type: 'submitStarted' });
       await authSession.sendVerificationEmail(trimmedEmail);
       showEmailVerification(trimmedEmail);
     } catch (err) {
       error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
     } finally {
-      setIsSubmittingAuth(false);
+      dispatch({ type: 'submitSettled' });
     }
   };
 
   const closeAuthDialog = () => {
-    if (authMode === 'reset_password') {
-      setResetPassword('');
-      setResetToken(null);
-      setAuthMode('sign_in');
-    }
-
+    dispatch({ type: 'dialogClosed' });
     authSession.closeAuthDialog();
   };
 
@@ -212,13 +282,13 @@ export function AuthDialogs() {
             <EmailVerificationForm
               email={verification.email}
               sentAt={verification.sentAt}
-              onSent={() => setVerification({ ...verification, sentAt: Date.now() })}
+              onSent={() => dispatch({ type: 'verificationResent', sentAt: Date.now() })}
               onVerified={() => {
                 success(t('header.auth.otpVerified'));
-                setVerification(null);
+                dispatch({ type: 'verificationClosed' });
                 authSession.closeAuthDialog();
               }}
-              onBack={() => setVerification(null)}
+              onBack={() => dispatch({ type: 'verificationClosed' })}
             />
           ) : (
             <>
@@ -234,7 +304,9 @@ export function AuthDialogs() {
                   <Input
                     id="auth-name"
                     value={name}
-                    onChange={(event) => setName(event.target.value)}
+                    onChange={(event) =>
+                      dispatch({ type: 'fieldChanged', field: 'name', value: event.target.value })
+                    }
                     placeholder={t('header.auth.namePlaceholder')}
                     autoComplete="name"
                   />
@@ -248,7 +320,9 @@ export function AuthDialogs() {
                   id="auth-email"
                   type="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) =>
+                    dispatch({ type: 'fieldChanged', field: 'email', value: event.target.value })
+                  }
                   placeholder={t('header.auth.emailPlaceholder')}
                   autoComplete="email"
                 />
@@ -262,7 +336,13 @@ export function AuthDialogs() {
                     id="auth-password"
                     type="password"
                     value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    onChange={(event) =>
+                      dispatch({
+                        type: 'fieldChanged',
+                        field: 'password',
+                        value: event.target.value,
+                      })
+                    }
                     placeholder={t('header.auth.passwordPlaceholder')}
                     autoComplete={authMode === 'sign_in' ? 'current-password' : 'new-password'}
                   />
@@ -277,7 +357,13 @@ export function AuthDialogs() {
                     id="reset-password"
                     type="password"
                     value={resetPassword}
-                    onChange={(event) => setResetPassword(event.target.value)}
+                    onChange={(event) =>
+                      dispatch({
+                        type: 'fieldChanged',
+                        field: 'resetPassword',
+                        value: event.target.value,
+                      })
+                    }
                     placeholder={t('header.auth.passwordPlaceholder')}
                     autoComplete="new-password"
                   />
@@ -288,7 +374,12 @@ export function AuthDialogs() {
                   <button
                     type="button"
                     className="underline-offset-4 hover:underline"
-                    onClick={() => setAuthMode(authMode === 'sign_up' ? 'sign_in' : 'sign_up')}
+                    onClick={() =>
+                      dispatch({
+                        type: 'modeSelected',
+                        mode: authMode === 'sign_up' ? 'sign_in' : 'sign_up',
+                      })
+                    }
                   >
                     {authMode === 'sign_up'
                       ? t('header.auth.switchToSignIn')
@@ -299,7 +390,7 @@ export function AuthDialogs() {
                   <button
                     type="button"
                     className="underline-offset-4 hover:underline"
-                    onClick={() => setAuthMode('forgot_password')}
+                    onClick={() => dispatch({ type: 'modeSelected', mode: 'forgot_password' })}
                   >
                     {t('header.auth.switchToForgotPassword')}
                   </button>
@@ -308,7 +399,7 @@ export function AuthDialogs() {
                   <button
                     type="button"
                     className="underline-offset-4 hover:underline"
-                    onClick={() => setAuthMode('sign_in')}
+                    onClick={() => dispatch({ type: 'modeSelected', mode: 'sign_in' })}
                   >
                     {t('header.auth.switchBackToSignIn')}
                   </button>
@@ -348,14 +439,19 @@ export function AuthDialogs() {
           )}
         </DialogContent>
       </Dialog>
-      <Dialog open={verifyEmailDialogOpen} onOpenChange={setVerifyEmailDialogOpen}>
+      <Dialog
+        open={verifyEmailDialogOpen}
+        onOpenChange={(open) =>
+          dispatch({ type: open ? 'emailVerifiedNoticeOpened' : 'emailVerifiedNoticeClosed' })
+        }
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('header.auth.verifyEmailDialogTitle')}</DialogTitle>
             <DialogDescription>{t('header.auth.verifyEmailSucceeded')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" onClick={() => setVerifyEmailDialogOpen(false)}>
+            <Button type="button" onClick={() => dispatch({ type: 'emailVerifiedNoticeClosed' })}>
               {t('header.auth.verifyEmailDialogConfirm')}
             </Button>
           </DialogFooter>
