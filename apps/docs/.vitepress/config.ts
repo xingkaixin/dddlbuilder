@@ -382,8 +382,20 @@ export default defineConfig({
       });
     },
   },
-  transformHead({ page, siteConfig }) {
-    return canonicalHeadForPage(page, siteConfig.pages);
+  transformHead({ page, siteConfig, assets }) {
+    const robotoMonoCore = assets.find((asset) => /\/roboto-mono-core\.[\w-]+\.woff2$/.test(asset));
+
+    if (!robotoMonoCore) {
+      throw new Error('Roboto Mono core font is missing from the build assets');
+    }
+
+    return [
+      [
+        'link',
+        { rel: 'preload', href: robotoMonoCore, as: 'font', type: 'font/woff2', crossorigin: '' },
+      ],
+      ...canonicalHeadForPage(page, siteConfig.pages),
+    ];
   },
   async buildEnd(siteConfig) {
     const sitemapPath = join(siteConfig.outDir, 'sitemap.xml');
@@ -407,28 +419,12 @@ export default defineConfig({
     ],
     ['script', { defer: '', src: '/docs/analytics.js' }],
     ['meta', { name: 'theme-color', content: '#E07A5F' }],
-    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.cn' }],
-    [
-      'link',
-      {
-        rel: 'preconnect',
-        href: 'https://fonts.gstatic.cn',
-        crossorigin: '',
-      },
-    ],
     [
       'link',
       {
         rel: 'preconnect',
         href: 'https://cdn-font.hyperos.mi.com',
         crossorigin: '',
-      },
-    ],
-    [
-      'link',
-      {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.cn/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap',
       },
     ],
     [
