@@ -1,8 +1,21 @@
-import { useCallback, useState, type RefObject } from 'react';
+import { useCallback, useReducer, type RefObject } from 'react';
 
 interface SelectedCell {
   row: number;
   col: string;
+}
+
+type SelectionEvent = { type: 'cellActivated'; row: number; col: string } | { type: 'cleared' };
+
+function selectedCellReducer(
+  selected: SelectedCell | null,
+  event: SelectionEvent,
+): SelectedCell | null {
+  if (event.type === 'cleared') return null;
+
+  if (selected?.row === event.row && selected.col === event.col) return selected;
+
+  return { row: event.row, col: event.col };
 }
 
 const INTERACTIVE_SELECTOR = 'input:not([disabled]), div[tabindex="0"], button:not([disabled])';
@@ -12,17 +25,17 @@ export function useDataTableNavigation({
 }: {
   tableRef: RefObject<HTMLDivElement | null>;
 }) {
-  const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
+  const [selectedCell, dispatch] = useReducer(selectedCellReducer, null);
 
   const focusFirstInteractiveInCell = useCallback((cell: HTMLTableCellElement | null) => {
     cell?.querySelector<HTMLElement>(INTERACTIVE_SELECTOR)?.focus();
   }, []);
 
   const handleCellActivate = useCallback((row: number, col: string) => {
-    setSelectedCell((previous) =>
-      previous?.row === row && previous.col === col ? previous : { row, col },
-    );
+    dispatch({ type: 'cellActivated', row, col });
   }, []);
+
+  const clearSelection = useCallback(() => dispatch({ type: 'cleared' }), []);
 
   const focusEditableCell = useCallback(
     (row: number, col: string) => {
@@ -68,7 +81,7 @@ export function useDataTableNavigation({
 
   return {
     selectedCell,
-    setSelectedCell,
+    clearSelection,
     focusEditableCell,
     focusFirstInteractiveInCell,
     handleCellActivate,

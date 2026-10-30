@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { forwardRef, useReducer, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox';
 import { Select as SelectPrimitive } from '@base-ui/react/select';
 import { Check, ChevronDown, ChevronUp } from '@/components/icons';
@@ -33,14 +33,37 @@ interface SearchableSelectProps {
   options: SearchableSelectOption[];
   placeholder?: string;
   triggerClassName?: string;
-  renderTrigger?: (value: string, isOpen: boolean) => React.ReactNode;
-  renderItem?: (option: SearchableSelectOption) => React.ReactNode;
+  renderTrigger?: (value: string, isOpen: boolean) => ReactNode;
+  renderItem?: (option: SearchableSelectOption) => ReactNode;
   emptyMessage?: string;
 }
 
-const SearchableSelect = React.forwardRef<
+type SearchState = { open: boolean; inputValue: string };
+
+type SearchEvent =
+  | { type: 'opened' }
+  | { type: 'closed' }
+  | { type: 'inputChanged'; inputValue: string }
+  | { type: 'optionSelected' };
+
+function searchReducer(state: SearchState, event: SearchEvent): SearchState {
+  switch (event.type) {
+    case 'opened':
+      return { ...state, open: true };
+    case 'closed':
+      return { open: false, inputValue: '' };
+    case 'inputChanged':
+      return { ...state, inputValue: event.inputValue };
+    case 'optionSelected':
+      return { ...state, inputValue: '' };
+  }
+}
+
+const initialSearchState: SearchState = { open: false, inputValue: '' };
+
+const SearchableSelect = forwardRef<
   HTMLButtonElement,
-  SearchableSelectProps & React.ComponentPropsWithoutRef<'button'>
+  SearchableSelectProps & ComponentPropsWithoutRef<'button'>
 >(
   (
     {
@@ -57,16 +80,9 @@ const SearchableSelect = React.forwardRef<
     ref,
   ) => {
     const { t } = useTranslation();
-    const [open, setOpen] = React.useState(false);
-    const [inputValue, setInputValue] = React.useState('');
+    const [{ open, inputValue }, dispatch] = useReducer(searchReducer, initialSearchState);
     const selectedOption = options.find((option) => option.value === value) ?? null;
     const selectedLabel = selectedOption?.label ?? placeholder;
-
-    const handleOpenChange = (nextOpen: boolean) => {
-      setOpen(nextOpen);
-
-      if (!nextOpen) setInputValue('');
-    };
 
     return (
       <ComboboxPrimitive.Root
@@ -74,12 +90,14 @@ const SearchableSelect = React.forwardRef<
         value={selectedOption}
         inputValue={inputValue}
         open={open}
-        onOpenChange={handleOpenChange}
-        onInputValueChange={setInputValue}
+        onOpenChange={(nextOpen) => dispatch({ type: nextOpen ? 'opened' : 'closed' })}
+        onInputValueChange={(nextInputValue) =>
+          dispatch({ type: 'inputChanged', inputValue: nextInputValue })
+        }
         onValueChange={(option) => {
           if (!option) return;
           onValueChange(option.value);
-          setInputValue('');
+          dispatch({ type: 'optionSelected' });
         }}
         itemToStringLabel={(option) => option.label}
         isItemEqualToValue={(option, selected) => option.value === selected.value}

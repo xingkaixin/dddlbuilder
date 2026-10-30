@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useRef, useEffect } from 'react';
+import { memo, useCallback, useReducer, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +14,43 @@ interface EditableCellProps {
   placeholder?: string;
 }
 
+type TriggerSource = 'doubleClick' | 'keyboard' | 'replace' | 'focus';
+
+type CellState = {
+  uncontrolledIsEditing: boolean;
+  editValue: string;
+  initialValue: string;
+};
+
+type CellEvent =
+  | { type: 'editStarted'; initialValue: string; editValue: string }
+  | { type: 'editValueChanged'; editValue: string }
+  | { type: 'editFinished'; editValue: string }
+  | { type: 'valueSynced'; value: string };
+
+function cellReducer(state: CellState, event: CellEvent): CellState {
+  switch (event.type) {
+    case 'editStarted':
+      return {
+        uncontrolledIsEditing: true,
+        editValue: event.editValue,
+        initialValue: event.initialValue,
+      };
+    case 'editValueChanged':
+      return { ...state, editValue: event.editValue };
+    case 'editFinished':
+      return { ...state, uncontrolledIsEditing: false, editValue: event.editValue };
+    case 'valueSynced':
+      return { ...state, editValue: event.value, initialValue: event.value };
+  }
+}
+
+const createCellState = (value: string): CellState => ({
+  uncontrolledIsEditing: false,
+  editValue: value,
+  initialValue: value,
+});
+
 export const EditableCell = memo<EditableCellProps>(
   ({
     value,
@@ -26,56 +63,61 @@ export const EditableCell = memo<EditableCellProps>(
     className,
     placeholder,
   }) => {
-    const [uncontrolledIsEditing, setUncontrolledIsEditing] = useState(false);
+    const [{ uncontrolledIsEditing, editValue, initialValue }, dispatch] = useReducer(
+      cellReducer,
+      value,
+      createCellState,
+    );
     const isEditing = controlledIsEditing ?? uncontrolledIsEditing;
-    const [editValue, setEditValue] = useState(value);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLInputElement | null>(null);
     const cellRef = useRef<HTMLDivElement>(null);
     const pendingTabDirectionRef = useRef<1 | -1 | null>(null);
-    const triggerSourceRef = useRef<'doubleClick' | 'keyboard' | 'replace' | 'focus' | null>(null);
-    const initialEditValueRef = useRef(value);
-    const lastCommittedValueRef = useRef(value);
+    const triggerSourceRef = useRef<TriggerSource | null>(null);
+    // Enter commits and then blurs; the blur handler commits again and must not repeat onChange.
+    const lastCommittedValueRef = useRef<string | null>(null);
 
-    if (!isEditing && editValue !== value) {
-      setEditValue(value);
+    if (!isEditing && (editValue !== value || initialValue !== value)) {
+      dispatch({ type: 'valueSynced', value });
     }
-
-    useEffect(() => {
-      if (isEditing) return;
-      initialEditValueRef.current = value;
-      lastCommittedValueRef.current = value;
-    }, [isEditing, value]);
-
-    const setEditing = useCallback(
-      (nextIsEditing: boolean) => {
-        if (controlledIsEditing === undefined) {
-          setUncontrolledIsEditing(nextIsEditing);
-        }
-
-        onEditingChange?.(nextIsEditing);
-      },
-      [controlledIsEditing, onEditingChange],
-    );
 
     const commitValue = useCallback(
       (nextValue: string) => {
-        if (nextValue === lastCommittedValueRef.current) return;
+        if (nextValue === (lastCommittedValueRef.current ?? initialValue)) return;
         lastCommittedValueRef.current = nextValue;
         onChange(nextValue);
       },
-      [onChange],
+      [initialValue, onChange],
     );
+
+    // Stable so it only runs when the input mounts. StrictMode attaches refs twice, so it reads the
+    // trigger source without clearing it; finishEditing clears it instead.
+    const attachInput = useCallback((input: HTMLInputElement | null) => {
+      inputRef.current = input;
+
+      if (!input) return;
+
+      lastCommittedValueRef.current = null;
+      input.focus();
+
+      const source = triggerSourceRef.current;
+
+      if (source === 'keyboard' || source === 'focus') {
+        input.select();
+
+        return;
+      }
+
+      input.setSelectionRange(input.value.length, input.value.length);
+    }, []);
 
     const startEditingWithCurrentValue = useCallback(
       (source: 'doubleClick' | 'keyboard' | 'focus') => {
         if (disabled) return;
-        initialEditValueRef.current = value;
-        lastCommittedValueRef.current = value;
         triggerSourceRef.current = source;
-        setEditing(true);
-        setEditValue(value);
+        dispatch({ type: 'editStarted', initialValue: value, editValue: value });
+        onEditingChange?.(true);
       },
-      [disabled, setEditing, value],
+      [disabled, onEditingChange, value],
     );
 
     const handleDoubleClick = useCallback(() => {
@@ -90,22 +132,22 @@ export const EditableCell = memo<EditableCellProps>(
     const startEditingWithReplace = useCallback(
       (initialChar: string) => {
         if (disabled) return;
-        initialEditValueRef.current = value;
-        lastCommittedValueRef.current = value;
         triggerSourceRef.current = 'replace';
-        setEditing(true);
-        setEditValue(initialChar);
+        dispatch({ type: 'editStarted', initialValue: value, editValue: initialChar });
+        onEditingChange?.(true);
       },
-      [disabled, setEditing, value],
+      [disabled, onEditingChange, value],
     );
 
     const finishEditing = useCallback(
       (nextValue: string) => {
         commitValue(nextValue);
-        setEditing(false);
+        triggerSourceRef.current = null;
+        dispatch({ type: 'editFinished', editValue: nextValue });
+        onEditingChange?.(false);
         onEditingEnd?.();
       },
-      [commitValue, onEditingEnd, setEditing],
+      [commitValue, onEditingChange, onEditingEnd],
     );
 
     const handleBlur = useCallback(() => {
@@ -121,7 +163,7 @@ export const EditableCell = memo<EditableCellProps>(
     }, [editValue, finishEditing, onTabNavigate]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      setEditValue(e.target.value);
+      dispatch({ type: 'editValueChanged', editValue: e.target.value });
     }, []);
 
     const handleKeyDown = useCallback(
@@ -129,28 +171,22 @@ export const EditableCell = memo<EditableCellProps>(
         if (e.key === 'Tab') {
           e.preventDefault();
           pendingTabDirectionRef.current = e.shiftKey ? -1 : 1;
-          const currentValue = inputRef.current?.value ?? editValue;
-          setEditValue(currentValue);
-          finishEditing(currentValue);
+          finishEditing(inputRef.current?.value ?? editValue);
           inputRef.current?.blur();
 
           return;
         } else if (e.key === 'Enter') {
           e.preventDefault();
           pendingTabDirectionRef.current = null;
-          const currentValue = inputRef.current?.value ?? editValue;
-          setEditValue(currentValue);
-          finishEditing(currentValue);
+          finishEditing(inputRef.current?.value ?? editValue);
           inputRef.current?.blur();
         } else if (e.key === 'Escape') {
           e.preventDefault();
           pendingTabDirectionRef.current = null;
-          const initialValue = initialEditValueRef.current;
-          setEditValue(initialValue);
           finishEditing(initialValue);
         }
       },
-      [editValue, finishEditing],
+      [editValue, finishEditing, initialValue],
     );
 
     // Handle keyboard input when cell is focused (not editing)
@@ -183,29 +219,10 @@ export const EditableCell = memo<EditableCellProps>(
       [disabled, startEditingWithCurrentValue, startEditingWithReplace],
     );
 
-    // Focus input when editing starts
-    useEffect(() => {
-      if (isEditing && inputRef.current) {
-        inputRef.current.focus();
-
-        const shouldSelectAll =
-          triggerSourceRef.current === 'keyboard' || triggerSourceRef.current === 'focus';
-
-        if (shouldSelectAll) {
-          inputRef.current.select();
-        } else {
-          const len = inputRef.current.value.length;
-          inputRef.current.setSelectionRange(len, len);
-        }
-
-        triggerSourceRef.current = null;
-      }
-    }, [isEditing]);
-
     if (isEditing) {
       return (
         <Input
-          ref={inputRef}
+          ref={attachInput}
           value={editValue}
           onChange={handleInputChange}
           onBlur={handleBlur}

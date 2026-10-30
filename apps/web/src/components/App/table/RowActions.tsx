@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useReducer } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -21,14 +21,16 @@ interface RowActionsProps {
   onRemove: () => void;
 }
 
+const confirmOpenReducer = (_open: boolean, event: 'opened' | 'closed') => event === 'opened';
+
 export const RowActions = memo<RowActionsProps>(
   ({ hasContent, fieldName, fieldComment, onRemove }) => {
     const { t } = useTranslation();
-    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmOpen, dispatchConfirm] = useReducer(confirmOpenReducer, false);
 
     const handleDelete = () => {
       if (hasContent) {
-        setConfirmOpen(true);
+        dispatchConfirm('opened');
       } else {
         onRemove();
       }
@@ -52,7 +54,10 @@ export const RowActions = memo<RowActionsProps>(
           </TooltipContent>
         </Tooltip>
 
-        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialog
+          open={confirmOpen}
+          onOpenChange={(open) => dispatchConfirm(open ? 'opened' : 'closed')}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{t('dataTable.rowActions.removeFieldRow')}</AlertDialogTitle>
@@ -76,7 +81,7 @@ export const RowActions = memo<RowActionsProps>(
               <AlertDialogAction
                 onClick={() => {
                   onRemove();
-                  setConfirmOpen(false);
+                  dispatchConfirm('closed');
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >

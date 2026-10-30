@@ -1,4 +1,4 @@
-import { createContext, use, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { createContext, use, useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { CheckboxCell } from './CheckboxCell';
 import { EditableCell } from './EditableCell';
@@ -29,9 +29,7 @@ const EDITABLE_FIELD_KEYS = [
 ] as const;
 const NO_WARNINGS: string[] = [];
 
-type EditingCell = { row: number; col: string };
-
-type EditingCellChange = Dispatch<SetStateAction<EditingCell | null>>;
+type EditingCellChange = (rowIndex: number, columnId: string, isEditing: boolean) => void;
 
 type TabNavigation = (rowIndex: number, columnId: string, direction: 1 | -1) => void;
 
@@ -83,20 +81,8 @@ function TextColumnCell({
       onChange={onChange}
       onTabNavigate={(direction) => handleTabNavigation(rowIndex, columnId, direction)}
       isEditing={editingColumn === columnId}
-      onEditingChange={(isEditing) => {
-        onEditingCellChange?.((prev) =>
-          isEditing
-            ? { row: rowIndex, col: columnId }
-            : prev?.row === rowIndex && prev.col === columnId
-              ? null
-              : prev,
-        );
-      }}
-      onEditingEnd={() => {
-        onEditingCellChange?.((prev) =>
-          prev?.row === rowIndex && prev.col === columnId ? null : prev,
-        );
-      }}
+      onEditingChange={(isEditing) => onEditingCellChange?.(rowIndex, columnId, isEditing)}
+      onEditingEnd={() => onEditingCellChange?.(rowIndex, columnId, false)}
       disabled={disabled}
       placeholder={placeholder}
     />

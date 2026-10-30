@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useReducer, type ReactNode } from 'react';
 import { FieldStandardsButton } from '../field-standards/FieldStandardsButton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,8 @@ interface DataTableToolbarProps {
   onAddRowsClick: () => void;
 }
 
+const toolsOpenReducer = (open: boolean) => !open;
+
 export function DataTableToolbar({
   toolbarLeft,
   onOpenStorageEstimator,
@@ -65,7 +67,7 @@ export function DataTableToolbar({
   onAddRowsClick,
 }: DataTableToolbarProps) {
   const { t } = useTranslation();
-  const [toolsOpen, setToolsOpen] = useState(false);
+  const [toolsOpen, toggleTools] = useReducer(toolsOpenReducer, false);
   const toolsId = useId();
   const freezeId = useId();
 
@@ -76,7 +78,7 @@ export function DataTableToolbar({
           variant="outline"
           aria-expanded={toolsOpen}
           aria-controls={`${toolsId} ${freezeId}`}
-          onClick={() => setToolsOpen((open) => !open)}
+          onClick={toggleTools}
           className="h-11 gap-1.5 px-2 text-xs @min-[640px]/editor:hidden"
         >
           {t('dataTable.fieldTools')}

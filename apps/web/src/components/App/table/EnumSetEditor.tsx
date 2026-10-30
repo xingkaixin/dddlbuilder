@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useCallback, useReducer } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -247,6 +247,79 @@ const SortableItem = memo<SortableItemProps>(({ item, onUpdate, onDelete, duplic
 });
 SortableItem.displayName = 'SortableItem';
 
+type EditorState = {
+  items: EnumItem[];
+  newValue: string;
+  addError: 'emptyValue' | 'duplicateValue' | null;
+};
+
+type EditorEvent =
+  | { type: 'itemMoved'; activeId: string; overId: string }
+  | { type: 'itemUpdated'; id: string; patch: Partial<EnumItem> }
+  | { type: 'itemDeleted'; id: string }
+  | { type: 'newValueChanged'; value: string }
+  | { type: 'addSubmitted'; submittedAt: number };
+
+function editorReducer(state: EditorState, event: EditorEvent): EditorState {
+  switch (event.type) {
+    case 'itemMoved': {
+      const oldIdx = state.items.findIndex((i) => i.id === event.activeId);
+      const newIdx = state.items.findIndex((i) => i.id === event.overId);
+
+      if (oldIdx < 0 || newIdx < 0) return state;
+
+      return { ...state, items: arrayMove(state.items, oldIdx, newIdx) };
+    }
+
+    case 'itemUpdated':
+      return {
+        ...state,
+        items: state.items.map((item) =>
+          item.id === event.id ? { ...item, ...event.patch } : item,
+        ),
+      };
+    case 'itemDeleted':
+      return { ...state, items: state.items.filter((item) => item.id !== event.id) };
+    case 'newValueChanged':
+      return { ...state, newValue: event.value, addError: null };
+    case 'addSubmitted': {
+      const trimmed = state.newValue.trim();
+
+      if (!trimmed) return { ...state, addError: 'emptyValue' };
+
+      if (state.items.some((i) => i.value === trimmed)) {
+        return { ...state, addError: 'duplicateValue' };
+      }
+
+      const item: EnumItem = {
+        id: `${trimmed}-${event.submittedAt}`,
+        value: trimmed,
+        color: ENUM_COLORS[state.items.length % ENUM_COLORS.length],
+        zhComment: '',
+        enComment: '',
+      };
+
+      return { items: [...state.items, item], newValue: '', addError: null };
+    }
+  }
+}
+
+function initEditorState({
+  isLogical,
+  fieldType,
+  enumMeta,
+}: {
+  isLogical: boolean;
+  fieldType: string;
+  enumMeta: EnumValueMeta[] | undefined;
+}): EditorState {
+  const items = isLogical
+    ? metaToItems(enumMeta?.map((item) => item.value) ?? [], enumMeta)
+    : metaToItems(parseEnumValues(fieldType), enumMeta);
+
+  return { items, newValue: '', addError: null };
+}
+
 export interface EnumSetEditorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -264,13 +337,11 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
     const baseType = isLogical
       ? fieldType
       : (fieldType.match(/^(enum|set)\s*/i)?.[1]?.toUpperCase() ?? 'ENUM');
-    const [items, setItems] = useState<EnumItem[]>(() =>
-      isLogical
-        ? metaToItems(enumMeta?.map((item) => item.value) ?? [], enumMeta)
-        : metaToItems(parseEnumValues(fieldType), enumMeta),
+    const [{ items, newValue, addError }, dispatch] = useReducer(
+      editorReducer,
+      { isLogical, fieldType, enumMeta },
+      initEditorState,
     );
-    const [newValue, setNewValue] = useState('');
-    const [addError, setAddError] = useState('');
 
     const sensors = useSensors(
       useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -281,22 +352,15 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
       const { active, over } = event;
 
       if (!over || active.id === over.id) return;
-      setItems((prev) => {
-        const oldIdx = prev.findIndex((i) => i.id === active.id);
-        const newIdx = prev.findIndex((i) => i.id === over.id);
-
-        if (oldIdx < 0 || newIdx < 0) return prev;
-
-        return arrayMove(prev, oldIdx, newIdx);
-      });
+      dispatch({ type: 'itemMoved', activeId: String(active.id), overId: String(over.id) });
     }, []);
 
     const handleUpdate = useCallback((id: string, patch: Partial<EnumItem>) => {
-      setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+      dispatch({ type: 'itemUpdated', id, patch });
     }, []);
 
     const handleDelete = useCallback((id: string) => {
-      setItems((prev) => prev.filter((item) => item.id !== id));
+      dispatch({ type: 'itemDeleted', id });
     }, []);
 
     const duplicates = new Set<string>(
@@ -304,34 +368,8 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
     );
 
     const handleAdd = useCallback(() => {
-      const trimmed = newValue.trim();
-
-      if (!trimmed) {
-        setAddError(t('enumEditor.emptyValue'));
-
-        return;
-      }
-
-      if (items.some((i) => i.value === trimmed)) {
-        setAddError(t('enumEditor.duplicateValue'));
-
-        return;
-      }
-
-      const nextIdx = items.length;
-      setItems((prev) => [
-        ...prev,
-        {
-          id: `${trimmed}-${Date.now()}`,
-          value: trimmed,
-          color: ENUM_COLORS[nextIdx % ENUM_COLORS.length],
-          zhComment: '',
-          enComment: '',
-        },
-      ]);
-      setNewValue('');
-      setAddError('');
-    }, [newValue, items, t]);
+      dispatch({ type: 'addSubmitted', submittedAt: Date.now() });
+    }, []);
 
     const handleAddKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
@@ -404,10 +442,7 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
           <div className="flex gap-2 border-t border-border/30 pt-3">
             <Input
               value={newValue}
-              onChange={(e) => {
-                setNewValue(e.target.value);
-                setAddError('');
-              }}
+              onChange={(e) => dispatch({ type: 'newValueChanged', value: e.target.value })}
               onKeyDown={handleAddKeyDown}
               placeholder={t('enumEditor.addValuePlaceholder')}
               className={cn('h-8 flex-1 text-sm', addError && 'border-destructive')}
@@ -417,7 +452,13 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
               {t('enumEditor.addValue')}
             </Button>
           </div>
-          {addError && <p className="-mt-1 text-xs text-destructive">{addError}</p>}
+          {addError && (
+            <p className="-mt-1 text-xs text-destructive">
+              {addError === 'emptyValue'
+                ? t('enumEditor.emptyValue')
+                : t('enumEditor.duplicateValue')}
+            </p>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

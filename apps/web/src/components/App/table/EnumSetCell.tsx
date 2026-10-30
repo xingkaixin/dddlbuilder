@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useCallback, useReducer } from 'react';
 import { Pencil } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { EnumValueMeta } from '@ddlbuilder/shared-types';
@@ -15,10 +15,12 @@ interface EnumSetCellProps {
 
 const MAX_VISIBLE_CHIPS = 4;
 
+const editorOpenReducer = (_open: boolean, event: 'opened' | 'closed') => event === 'opened';
+
 export const EnumSetCell = memo<EnumSetCellProps>(
   ({ fieldType, enumMeta, onSave, onTabNavigate }) => {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
+    const [open, dispatchOpen] = useReducer(editorOpenReducer, false);
 
     const baseType = fieldType.match(/^(enum|set)\s*/i)?.[1]?.toUpperCase() ?? 'ENUM';
 
@@ -32,7 +34,7 @@ export const EnumSetCell = memo<EnumSetCellProps>(
       (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === 'F2') {
           e.preventDefault();
-          setOpen(true);
+          dispatchOpen('opened');
         } else if (e.key === 'Tab') {
           e.preventDefault();
           onTabNavigate?.(e.shiftKey ? -1 : 1);
@@ -48,7 +50,7 @@ export const EnumSetCell = memo<EnumSetCellProps>(
           role="button"
           aria-label={t('enumEditor.editTip')}
           onKeyDown={handleKeyDown}
-          onDoubleClick={() => setOpen(true)}
+          onDoubleClick={() => dispatchOpen('opened')}
           className={cn(
             'group flex h-7 w-full cursor-pointer items-center gap-1 truncate px-1.5 py-1 text-xs outline-none focus:ring-1 focus:ring-primary/30',
           )}
@@ -82,7 +84,7 @@ export const EnumSetCell = memo<EnumSetCellProps>(
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setOpen(true);
+              dispatchOpen('opened');
             }}
             className="ml-auto shrink-0 opacity-0 transition-opacity group-focus:opacity-100 group-hover:opacity-100 outline-none hover:text-primary"
             aria-label={t('enumEditor.editTip')}
@@ -94,7 +96,7 @@ export const EnumSetCell = memo<EnumSetCellProps>(
         {open && (
           <EnumSetEditor
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={(next) => dispatchOpen(next ? 'opened' : 'closed')}
             fieldType={fieldType}
             enumMeta={enumMeta}
             onSave={onSave}

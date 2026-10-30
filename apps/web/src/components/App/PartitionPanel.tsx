@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useReducer } from 'react';
 import { createEntityId, normalizeMysqlPartitionCount } from '@ddlbuilder/shared-types';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -80,6 +80,11 @@ const supportsExpression = (type: MysqlPartitionType): boolean => {
   return ['HASH', 'KEY', 'RANGE', 'LIST'].includes(type);
 };
 
+type CountInputEvent = { type: 'textChanged'; text: string } | { type: 'committed' };
+
+const countInputReducer = (_text: string | null, event: CountInputEvent) =>
+  event.type === 'textChanged' ? event.text : null;
+
 function PartitionCountInput({
   value,
   onChange,
@@ -87,12 +92,12 @@ function PartitionCountInput({
   value: number;
   onChange: (count: number) => void;
 }) {
-  const [input, setInput] = useState<string | null>(null);
+  const [input, dispatch] = useReducer(countInputReducer, null);
 
   const commit = () => {
     const text = input ?? String(value);
     const count = normalizeMysqlPartitionCount(text.trim() ? Number(text) : Number.NaN);
-    setInput(null);
+    dispatch({ type: 'committed' });
 
     if (count !== value) onChange(count);
   };
@@ -105,7 +110,7 @@ function PartitionCountInput({
       value={input ?? String(value)}
       onChange={(event) => {
         const text = event.target.value;
-        setInput(text);
+        dispatch({ type: 'textChanged', text });
         const count = Number(text);
 
         if (text && count !== value && count === normalizeMysqlPartitionCount(count)) {

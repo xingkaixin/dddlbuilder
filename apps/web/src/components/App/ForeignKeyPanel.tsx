@@ -1,4 +1,4 @@
-import { memo, useRef, useState, useEffect } from 'react';
+import { memo, useReducer } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X, Pencil, Link2, Plus } from '@/components/icons';
@@ -29,6 +29,93 @@ type ForeignKeyDraft = {
   onUpdate?: ForeignKeyAction;
 };
 
+type DraftTextField = 'name' | 'refSchema' | 'refTable' | 'refFieldInput';
+
+type PanelState = {
+  draft: ForeignKeyDraft | null;
+  editing: { id: string; name: string } | null;
+};
+
+type PanelEvent =
+  | { type: 'draftOpened' }
+  | { type: 'draftClosed' }
+  | { type: 'draftTextChanged'; field: DraftTextField; value: string }
+  | {
+      type: 'draftActionChanged';
+      field: 'onDelete' | 'onUpdate';
+      action: ForeignKeyAction | undefined;
+    }
+  | { type: 'localFieldToggled'; field: string }
+  | { type: 'refFieldRemoved'; field: string }
+  | { type: 'refFieldCommitted' }
+  | { type: 'nameEditStarted'; id: string; name: string }
+  | { type: 'nameEditChanged'; name: string }
+  | { type: 'nameEditEnded' };
+
+const EMPTY_DRAFT: ForeignKeyDraft = {
+  name: '',
+  fields: [],
+  refSchema: '',
+  refTable: '',
+  refFields: [],
+  refFieldInput: '',
+};
+
+const initialPanelState: PanelState = { draft: null, editing: null };
+
+function collectRefFields(draft: ForeignKeyDraft) {
+  return [...new Set([...draft.refFields, draft.refFieldInput.trim()].filter(Boolean))];
+}
+
+function updateDraft(
+  state: PanelState,
+  update: (draft: ForeignKeyDraft) => ForeignKeyDraft,
+): PanelState {
+  return state.draft ? { ...state, draft: update(state.draft) } : state;
+}
+
+function panelReducer(state: PanelState, event: PanelEvent): PanelState {
+  switch (event.type) {
+    case 'draftOpened':
+      return { ...state, draft: EMPTY_DRAFT };
+    case 'draftClosed':
+      return { ...state, draft: null };
+    case 'draftTextChanged':
+      return updateDraft(state, (draft) => ({ ...draft, [event.field]: event.value }));
+    case 'draftActionChanged':
+      return updateDraft(state, (draft) => ({ ...draft, [event.field]: event.action }));
+    case 'localFieldToggled':
+      return updateDraft(state, (draft) => ({
+        ...draft,
+        fields: draft.fields.includes(event.field)
+          ? draft.fields.filter((current) => current !== event.field)
+          : [...draft.fields, event.field],
+      }));
+    case 'refFieldRemoved':
+      return updateDraft(state, (draft) => ({
+        ...draft,
+        refFields: draft.refFields.filter((current) => current !== event.field),
+      }));
+    case 'refFieldCommitted':
+      return updateDraft(state, (draft) => ({
+        ...draft,
+        refFields: collectRefFields(draft),
+        refFieldInput: '',
+      }));
+    case 'nameEditStarted':
+      return { ...state, editing: { id: event.id, name: event.name } };
+    case 'nameEditChanged':
+      return state.editing ? { ...state, editing: { ...state.editing, name: event.name } } : state;
+    case 'nameEditEnded':
+      return { ...state, editing: null };
+  }
+}
+
+const focusAndSelect = (input: HTMLInputElement | null) => {
+  input?.focus();
+  input?.select();
+};
+
 export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) => {
   const { t } = useTranslation();
   const tableName = useEditorStore((state) => state.tableName);
@@ -38,10 +125,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
   const removeForeignKey = useEditorStore((state) => state.removeForeignKey);
   const updateForeignKey = useEditorStore((state) => state.updateForeignKey);
 
-  const [draft, setDraft] = useState<ForeignKeyDraft | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState('');
-  const editInputRef = useRef<HTMLInputElement>(null);
+  const [{ draft, editing }, dispatch] = useReducer(panelReducer, initialPanelState);
 
   const deleteActions = getForeignKeyActions(dbType, 'onDelete');
   const updateActions = getForeignKeyActions(dbType, 'onUpdate');
@@ -49,52 +133,20 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
   const pendingForeignKey = draft && {
     fields: draft.fields,
     refTable: draft.refTable.trim(),
-    refFields: [...new Set([...draft.refFields, draft.refFieldInput.trim()].filter(Boolean))],
+    refFields: collectRefFields(draft),
     onDelete: draft.onDelete,
     onUpdate: draft.onUpdate,
   };
   const pendingIssue = pendingForeignKey && getForeignKeyIssue(pendingForeignKey, dbType);
 
-  const updateDraft = (patch: Partial<ForeignKeyDraft>) =>
-    setDraft((current) => current && { ...current, ...patch });
-  const commitRefField = () => {
-    if (pendingForeignKey)
-      updateDraft({ refFields: pendingForeignKey.refFields, refFieldInput: '' });
-  };
-
-  useEffect(() => {
-    if (editingId && editInputRef.current) {
-      editInputRef.current.focus();
-      editInputRef.current.select();
-    }
-  }, [editingId]);
-
-  const handleStartEdit = (fk: (typeof foreignKeys)[number]) => {
-    setEditingId(fk.id);
-    setEditingName(fk.name);
-  };
+  const commitRefField = () => dispatch({ type: 'refFieldCommitted' });
 
   const handleConfirmEdit = () => {
-    if (editingId && editingName.trim()) {
-      updateForeignKey(editingId, { name: editingName.trim() });
+    if (editing && editing.name.trim()) {
+      updateForeignKey(editing.id, { name: editing.name.trim() });
     }
 
-    setEditingId(null);
-    setEditingName('');
-  };
-
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setEditingName('');
-  };
-
-  const handleToggleField = (field: string) => {
-    if (!draft) return;
-    updateDraft({
-      fields: draft.fields.includes(field)
-        ? draft.fields.filter((current) => current !== field)
-        : [...draft.fields, field],
-    });
+    dispatch({ type: 'nameEditEnded' });
   };
 
   const handleAdd = () => {
@@ -108,7 +160,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
       name,
       refSchema: draft.refSchema.trim() || undefined,
     });
-    setDraft(null);
+    dispatch({ type: 'draftClosed' });
   };
 
   return (
@@ -124,16 +176,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
               size="sm"
               variant="outline"
               className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
-              onClick={() =>
-                setDraft({
-                  name: '',
-                  fields: [],
-                  refSchema: '',
-                  refTable: '',
-                  refFields: [],
-                  refFieldInput: '',
-                })
-              }
+              onClick={() => dispatch({ type: 'draftOpened' })}
             >
               <Plus className="h-3.5 w-3.5" />
               {t('foreignKeyPanel.add')}
@@ -151,7 +194,9 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   <Input
                     placeholder={t('foreignKeyPanel.namePlaceholder')}
                     value={draft.name}
-                    onChange={(e) => updateDraft({ name: e.target.value })}
+                    onChange={(e) =>
+                      dispatch({ type: 'draftTextChanged', field: 'name', value: e.target.value })
+                    }
                     className="h-8 text-sm"
                   />
                 </div>
@@ -162,7 +207,13 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   <Input
                     placeholder={t('foreignKeyPanel.refSchemaPlaceholder')}
                     value={draft.refSchema}
-                    onChange={(e) => updateDraft({ refSchema: e.target.value })}
+                    onChange={(e) =>
+                      dispatch({
+                        type: 'draftTextChanged',
+                        field: 'refSchema',
+                        value: e.target.value,
+                      })
+                    }
                     className="h-8 text-sm"
                   />
                 </div>
@@ -175,7 +226,9 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                 <Input
                   placeholder={t('foreignKeyPanel.refTablePlaceholder')}
                   value={draft.refTable}
-                  onChange={(e) => updateDraft({ refTable: e.target.value })}
+                  onChange={(e) =>
+                    dispatch({ type: 'draftTextChanged', field: 'refTable', value: e.target.value })
+                  }
                   className="h-8 text-sm"
                 />
               </div>
@@ -191,7 +244,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                       <button
                         key={field}
                         type="button"
-                        onClick={() => handleToggleField(field)}
+                        onClick={() => dispatch({ type: 'localFieldToggled', field })}
                         className={cn(
                           'rounded-md border px-2.5 py-1 text-xs transition-all duration-200',
                           draft.fields.includes(field)
@@ -222,11 +275,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                       {field}
                       <button
                         type="button"
-                        onClick={() =>
-                          updateDraft({
-                            refFields: draft.refFields.filter((current) => current !== field),
-                          })
-                        }
+                        onClick={() => dispatch({ type: 'refFieldRemoved', field })}
                         className="rounded-full p-0.5 hover:bg-primary/20"
                       >
                         <X className="h-3 w-3" />
@@ -237,7 +286,13 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                     placeholder={t('foreignKeyPanel.refFieldPlaceholder')}
                     className="h-7 w-32 text-xs"
                     value={draft.refFieldInput}
-                    onChange={(event) => updateDraft({ refFieldInput: event.target.value })}
+                    onChange={(event) =>
+                      dispatch({
+                        type: 'draftTextChanged',
+                        field: 'refFieldInput',
+                        value: event.target.value,
+                      })
+                    }
                     onBlur={commitRefField}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
@@ -266,7 +321,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                         (candidate) => candidate === e.target.value,
                       );
 
-                      updateDraft({ onDelete: action });
+                      dispatch({ type: 'draftActionChanged', field: 'onDelete', action });
                     }}
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
@@ -298,7 +353,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                         (candidate) => candidate === e.target.value,
                       );
 
-                      updateDraft({ onUpdate: action });
+                      dispatch({ type: 'draftActionChanged', field: 'onUpdate', action });
                     }}
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
@@ -339,7 +394,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   size="sm"
                   variant="ghost"
                   className="h-7 text-xs"
-                  onClick={() => setDraft(null)}
+                  onClick={() => dispatch({ type: 'draftClosed' })}
                 >
                   {t('foreignKeyPanel.cancel')}
                 </Button>
@@ -376,18 +431,20 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                             <Link2 className="h-3.5 w-3.5" />
                             {fk.logical ? t('erDiagram.relationship.logical') : 'FK'}
                           </span>
-                          {editingId === fk.id ? (
+                          {editing?.id === fk.id ? (
                             <Input
-                              ref={editInputRef}
-                              value={editingName}
-                              onChange={(e) => setEditingName(e.target.value)}
+                              ref={focusAndSelect}
+                              value={editing.name}
+                              onChange={(e) =>
+                                dispatch({ type: 'nameEditChanged', name: e.target.value })
+                              }
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
                                   handleConfirmEdit();
                                 } else if (e.key === 'Escape') {
                                   e.preventDefault();
-                                  handleCancelEdit();
+                                  dispatch({ type: 'nameEditEnded' });
                                 }
                               }}
                               onBlur={handleConfirmEdit}
@@ -397,7 +454,9 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                           ) : (
                             <span
                               className="break-all text-base font-semibold leading-snug transition-colors duration-200 group-hover/item:text-primary cursor-pointer hover:underline hover:decoration-dashed hover:underline-offset-4"
-                              onDoubleClick={() => handleStartEdit(fk)}
+                              onDoubleClick={() =>
+                                dispatch({ type: 'nameEditStarted', id: fk.id, name: fk.name })
+                              }
                             >
                               {fk.name}
                               <Pencil className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover/item:opacity-50 transition-opacity" />

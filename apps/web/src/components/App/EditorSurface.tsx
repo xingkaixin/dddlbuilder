@@ -1,4 +1,4 @@
-import { useCallback, useId, useRef, useState, type ComponentProps } from 'react';
+import { useCallback, useId, useReducer, useRef, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { EditorView } from '@/stores/appUiStore';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,25 @@ export interface EditorSurfaceModel {
   outputProps: OutputContainerProps;
 }
 
+const SPLIT_KEYS = ['ArrowUp', 'ArrowDown', 'Home', 'End'] as const;
+
+type SplitEvent =
+  | { type: 'dragged'; percent: number }
+  | { type: 'keyPressed'; key: (typeof SPLIT_KEYS)[number] };
+
+function splitPercentReducer(percent: number, event: SplitEvent) {
+  const next =
+    event.type === 'dragged'
+      ? event.percent
+      : event.key === 'Home'
+        ? 30
+        : event.key === 'End'
+          ? 75
+          : percent + (event.key === 'ArrowUp' ? -5 : 5);
+
+  return Math.max(30, Math.min(75, next));
+}
+
 export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
   const {
     documentId,
@@ -35,11 +54,10 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
   const { t } = useTranslation();
   const view = editorView;
   const selectView = setEditorView;
-  const [splitPercent, setSplitPercent] = useState(55);
+  const [splitPercent, dispatchSplit] = useReducer(splitPercentReducer, 55);
   const panesRef = useRef<HTMLDivElement>(null);
   const builderId = useId();
   const issues = outputProps.ddlOutputProps.schemaLintIssues ?? [];
-  const resize = (value: number) => setSplitPercent(Math.max(30, Math.min(75, value)));
   const collapseOutput = useCallback(() => selectView('design'), [selectView]);
   const maximizeOutput = useCallback(() => selectView('output'), [selectView]);
 
@@ -120,19 +138,20 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
               if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
               const bounds = panesRef.current?.getBoundingClientRect();
 
-              if (bounds?.height) resize(((event.clientY - bounds.top) / bounds.height) * 100);
+              if (bounds?.height) {
+                dispatchSplit({
+                  type: 'dragged',
+                  percent: ((event.clientY - bounds.top) / bounds.height) * 100,
+                });
+              }
             }}
             onPointerUp={(event) => event.currentTarget.releasePointerCapture(event.pointerId)}
             onKeyDown={(event) => {
-              if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+              const key = SPLIT_KEYS.find((candidate) => candidate === event.key);
+
+              if (!key) return;
               event.preventDefault();
-              resize(
-                event.key === 'Home'
-                  ? 30
-                  : event.key === 'End'
-                    ? 75
-                    : splitPercent + (event.key === 'ArrowUp' ? -5 : 5),
-              );
+              dispatchSplit({ type: 'keyPressed', key });
             }}
           >
             <span className="h-0.5 w-8 rounded-full bg-muted-foreground/40" />

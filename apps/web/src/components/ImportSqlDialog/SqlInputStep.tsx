@@ -10,7 +10,7 @@ import { CheckCircle2, AlertCircle, Download } from '@/components/icons';
 import { isDatabaseType, type DatabaseType } from '@ddlbuilder/shared-types';
 import type { ImportMode, ImportSourceType, ValidationResult } from './types';
 import { useTranslation } from 'react-i18next';
-import { useLayoutEffect, useRef } from 'react';
+import { useReducer } from 'react';
 
 interface SqlInputStepProps {
   selectedDbType: DatabaseType;
@@ -26,6 +26,21 @@ interface SqlInputStepProps {
   onImportModeChange?: (mode: ImportMode) => void;
 }
 
+type FileInputState = { holdsFile: boolean; generation: number };
+
+type FileInputEvent = { type: 'filePicked'; hasFile: boolean } | { type: 'inputCleared' };
+
+function fileInputReducer(state: FileInputState, event: FileInputEvent): FileInputState {
+  switch (event.type) {
+    case 'filePicked':
+      return { ...state, holdsFile: event.hasFile };
+    case 'inputCleared':
+      return { holdsFile: false, generation: state.generation + 1 };
+  }
+}
+
+const initialFileInputState: FileInputState = { holdsFile: false, generation: 0 };
+
 export function SqlInputStep({
   selectedDbType,
   onDbTypeChange,
@@ -40,11 +55,10 @@ export function SqlInputStep({
   onImportModeChange,
 }: SqlInputStepProps) {
   const { t } = useTranslation();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileInput, dispatchFileInput] = useReducer(fileInputReducer, initialFileInputState);
 
-  useLayoutEffect(() => {
-    if (!file && fileInputRef.current) fileInputRef.current.value = '';
-  });
+  // A file input cannot be controlled, so a rejected or cleared file remounts it via `key`.
+  if (fileInput.holdsFile && !file) dispatchFileInput({ type: 'inputCleared' });
 
   const downloadExcelTemplate = async () => {
     const xlsx = await import('xlsx');
@@ -179,7 +193,7 @@ export function SqlInputStep({
             </div>
           )}
           <input
-            ref={fileInputRef}
+            key={fileInput.generation}
             id="import-file"
             type="file"
             accept={
@@ -189,7 +203,12 @@ export function SqlInputStep({
                   ? '.json'
                   : '.csv,.tsv,.txt'
             }
-            onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
+            onChange={(event) => {
+              const picked = event.target.files?.[0] ?? null;
+
+              dispatchFileInput({ type: 'filePicked', hasFile: picked !== null });
+              onFileChange(picked);
+            }}
             className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
           {file && <p className="text-xs text-muted-foreground">{file.name}</p>}

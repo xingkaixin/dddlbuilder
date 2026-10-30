@@ -166,8 +166,10 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
 
   const { updateCellValue } = useFieldRowMutations({ setRows });
 
+  const getRows = useCallback(() => rows, [rows]);
+
   const { guardedUpdateCellValue, pendingChange, handleConfirm, handleCancel } =
-    useFieldTypeChangeGuard(rows, updateCellValue);
+    useFieldTypeChangeGuard(getRows, updateCellValue);
 
   const updateEnumValues = useCallback(
     (rowIndex: number, fieldType: string, enumMeta: EnumValueMeta[]) => {
@@ -183,7 +185,7 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
 
   const {
     selectedCell,
-    setSelectedCell,
+    clearSelection,
     focusEditableCell,
     focusFirstInteractiveInCell,
     handleCellActivate,
@@ -191,10 +193,6 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
   } = useDataTableNavigation({
     tableRef,
   });
-
-  const clearSelection = useCallback(() => {
-    setSelectedCell(null);
-  }, [setSelectedCell]);
 
   const handleRemoveRow = useCallback(
     (index: number, amount: number) => {

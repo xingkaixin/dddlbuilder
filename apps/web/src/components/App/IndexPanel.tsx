@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useReducer } from 'react';
 import {
   createEntityId,
   type DatabaseType,
@@ -48,6 +48,156 @@ type PanelState = { kind: 'view'; id: string | null } | { kind: 'edit'; draft: D
 
 const EMPTY_DRAFT: DraftIndex = { id: null, name: '', type: 'index', fields: [] };
 
+type IndexPanelState = {
+  panel: PanelState;
+  deleteIndexId: string | null;
+  fieldQuery: string;
+  activeSuggestionIndex: number;
+  draggedFieldIndex: number | null;
+};
+
+type IndexPanelEvent =
+  | { type: 'createStarted'; kind: IndexKind }
+  | { type: 'editStarted'; index: IndexDefinition }
+  | { type: 'indexSelected'; id: string }
+  | { type: 'editCancelled'; fallbackIndexId: string | null }
+  | { type: 'draftSaved'; id: string }
+  | { type: 'draftSourceRemoved' }
+  | { type: 'draftNameChanged'; name: string }
+  | { type: 'fieldAdded'; name: string }
+  | { type: 'fieldRemoved'; fieldIndex: number }
+  | { type: 'fieldDirectionToggled'; fieldIndex: number }
+  | { type: 'fieldDragStarted'; fieldIndex: number }
+  | { type: 'fieldDraggedOver'; fieldIndex: number }
+  | { type: 'fieldDragEnded' }
+  | { type: 'fieldQueryChanged'; query: string }
+  | { type: 'fieldQueryCleared' }
+  | { type: 'suggestionHighlighted'; index: number }
+  | { type: 'deleteRequested'; id: string }
+  | { type: 'deleteDialogClosed' };
+
+function createIndexPanelState(indexes: IndexDefinition[]): IndexPanelState {
+  return {
+    panel: indexes.length
+      ? { kind: 'view', id: indexes[0].id }
+      : { kind: 'edit', draft: EMPTY_DRAFT },
+    deleteIndexId: null,
+    fieldQuery: '',
+    activeSuggestionIndex: -1,
+    draggedFieldIndex: null,
+  };
+}
+
+function updateDraft(
+  state: IndexPanelState,
+  update: (draft: DraftIndex) => DraftIndex,
+): IndexPanelState {
+  return state.panel.kind === 'edit'
+    ? { ...state, panel: { kind: 'edit', draft: update(state.panel.draft) } }
+    : state;
+}
+
+function moveField(fields: IndexField[], from: number, to: number) {
+  const nextFields = [...fields];
+  const [moved] = nextFields.splice(from, 1);
+  nextFields.splice(to, 0, moved);
+
+  return nextFields;
+}
+
+function indexPanelReducer(state: IndexPanelState, event: IndexPanelEvent): IndexPanelState {
+  switch (event.type) {
+    case 'createStarted':
+      return {
+        ...state,
+        panel: { kind: 'edit', draft: { id: null, name: '', type: event.kind, fields: [] } },
+        fieldQuery: '',
+      };
+    case 'editStarted':
+      return {
+        ...state,
+        panel: {
+          kind: 'edit',
+          draft: {
+            id: event.index.id,
+            name: event.index.name,
+            type: event.index.kind,
+            fields: [...event.index.fields],
+          },
+        },
+        fieldQuery: '',
+      };
+    case 'indexSelected':
+      return { ...state, panel: { kind: 'view', id: event.id } };
+    case 'editCancelled': {
+      if (event.fallbackIndexId) {
+        return { ...state, panel: { kind: 'view', id: event.fallbackIndexId } };
+      }
+
+      const type = state.panel.kind === 'edit' ? state.panel.draft.type : EMPTY_DRAFT.type;
+
+      return { ...state, panel: { kind: 'edit', draft: { ...EMPTY_DRAFT, type } } };
+    }
+
+    case 'draftSaved':
+      return { ...state, panel: { kind: 'view', id: event.id }, fieldQuery: '' };
+    case 'draftSourceRemoved':
+      return updateDraft(state, (draft) => ({ ...draft, id: null }));
+    case 'draftNameChanged':
+      return updateDraft(state, (draft) => ({ ...draft, name: event.name }));
+    case 'fieldAdded':
+      return {
+        ...updateDraft(state, (draft) => ({
+          ...draft,
+          fields: [...draft.fields, { name: event.name, direction: 'ASC' }],
+        })),
+        fieldQuery: '',
+      };
+    case 'fieldRemoved':
+      return updateDraft(state, (draft) => ({
+        ...draft,
+        fields: draft.fields.filter((_, index) => index !== event.fieldIndex),
+      }));
+    case 'fieldDirectionToggled':
+      return updateDraft(state, (draft) => ({
+        ...draft,
+        fields: draft.fields.map((field, index) =>
+          index === event.fieldIndex
+            ? { ...field, direction: field.direction === 'ASC' ? 'DESC' : 'ASC' }
+            : field,
+        ),
+      }));
+    case 'fieldDragStarted':
+      return { ...state, draggedFieldIndex: event.fieldIndex };
+    case 'fieldDraggedOver': {
+      const from = state.draggedFieldIndex;
+
+      if (from == null || from === event.fieldIndex) return state;
+
+      return {
+        ...updateDraft(state, (draft) => ({
+          ...draft,
+          fields: moveField(draft.fields, from, event.fieldIndex),
+        })),
+        draggedFieldIndex: event.fieldIndex,
+      };
+    }
+
+    case 'fieldDragEnded':
+      return { ...state, draggedFieldIndex: null };
+    case 'fieldQueryChanged':
+      return { ...state, fieldQuery: event.query, activeSuggestionIndex: 0 };
+    case 'fieldQueryCleared':
+      return { ...state, fieldQuery: '' };
+    case 'suggestionHighlighted':
+      return { ...state, activeSuggestionIndex: event.index };
+    case 'deleteRequested':
+      return { ...state, deleteIndexId: event.id };
+    case 'deleteDialogClosed':
+      return { ...state, deleteIndexId: null };
+  }
+}
+
 export const IndexPanel = memo<IndexPanelProps>(
   ({ availableFields, animatingIndexIds, removingIndexIds }) => {
     const { t } = useTranslation();
@@ -58,23 +208,12 @@ export const IndexPanel = memo<IndexPanelProps>(
     const setIndexes = useEditorStore((state) => state.setIndexes);
     const removeIndex = useEditorStore((state) => state.removeIndex);
 
-    const [panel, setPanel] = useState<PanelState>(() =>
-      indexes.length ? { kind: 'view', id: indexes[0].id } : { kind: 'edit', draft: EMPTY_DRAFT },
+    const [{ panel, deleteIndexId, fieldQuery, activeSuggestionIndex }, dispatch] = useReducer(
+      indexPanelReducer,
+      indexes,
+      createIndexPanelState,
     );
-    const [deleteIndexId, setDeleteIndexId] = useState<string | null>(null);
     const draft = panel.kind === 'edit' ? panel.draft : EMPTY_DRAFT;
-
-    const setDraft = (update: DraftIndex | ((draft: DraftIndex) => DraftIndex)) => {
-      setPanel((current) =>
-        current.kind === 'edit'
-          ? // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this updater-or-value prop requires runtime discrimination.
-            { kind: 'edit', draft: typeof update === 'function' ? update(current.draft) : update }
-          : current,
-      );
-    };
-    const [fieldQuery, setFieldQuery] = useState('');
-    const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(-1);
-    const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
 
     const selectedIndexId = panel.kind === 'view' ? panel.id : draft.id;
     const requestedIndex = indexes.find((index) => index.id === selectedIndexId) ?? null;
@@ -101,35 +240,12 @@ export const IndexPanel = memo<IndexPanelProps>(
         ? -1
         : Math.min(Math.max(activeSuggestionIndex, 0), fieldSuggestions.length - 1);
 
-    const startCreate = (type: IndexKind) => {
-      setPanel({
-        kind: 'edit',
-        draft: {
-          id: null,
-          name: '',
-          type,
-          fields: [],
-        },
-      });
-      setFieldQuery('');
-    };
+    const startCreate = (kind: IndexKind) => dispatch({ type: 'createStarted', kind });
 
-    const startEdit = (index: IndexDefinition) => {
-      setPanel({
-        kind: 'edit',
-        draft: {
-          id: index.id,
-          name: index.name,
-          type: index.kind,
-          fields: [...index.fields],
-        },
-      });
-      setFieldQuery('');
-    };
+    const startEdit = (index: IndexDefinition) => dispatch({ type: 'editStarted', index });
 
-    const selectIndex = (index: IndexDefinition) => {
-      setPanel({ kind: 'view', id: index.id });
-    };
+    const selectIndex = (index: IndexDefinition) =>
+      dispatch({ type: 'indexSelected', id: index.id });
 
     const buildDraftName = () => {
       const trimmedName = draft.name.trim();
@@ -163,7 +279,7 @@ export const IndexPanel = memo<IndexPanelProps>(
 
       if (!result.ok) {
         if (result.reason === 'not-found') {
-          setDraft({ ...draft, id: null });
+          dispatch({ type: 'draftSourceRemoved' });
           showToast(t('indexPanel.sourceRemoved'));
         } else if (result.reason === 'primary-exists') {
           showToast(t('indexPanel.primaryExists'));
@@ -175,49 +291,10 @@ export const IndexPanel = memo<IndexPanelProps>(
       }
 
       setIndexes(result.indexes);
-      setPanel({ kind: 'view', id: nextIndex.id });
-      setFieldQuery('');
+      dispatch({ type: 'draftSaved', id: nextIndex.id });
     };
 
-    const addField = (fieldName: string) => {
-      setDraft((prev) => ({
-        ...prev,
-        fields: [...prev.fields, { name: fieldName, direction: 'ASC' }],
-      }));
-      setFieldQuery('');
-    };
-
-    const removeField = (fieldIndex: number) => {
-      setDraft((prev) => ({
-        ...prev,
-        fields: prev.fields.filter((_, index) => index !== fieldIndex),
-      }));
-    };
-
-    const moveField = (from: number, to: number) => {
-      if (from === to) return;
-      setDraft((prev) => {
-        const nextFields = [...prev.fields];
-        const [moved] = nextFields.splice(from, 1);
-        nextFields.splice(to, 0, moved);
-
-        return { ...prev, fields: nextFields };
-      });
-    };
-
-    const toggleFieldDirection = (fieldIndex: number) => {
-      setDraft((prev) => ({
-        ...prev,
-        fields: prev.fields.map((field, index) =>
-          index === fieldIndex
-            ? {
-                ...field,
-                direction: field.direction === 'ASC' ? 'DESC' : 'ASC',
-              }
-            : field,
-        ),
-      }));
-    };
+    const addField = (name: string) => dispatch({ type: 'fieldAdded', name });
 
     const renderTypeBadge = (type: IndexKind) => {
       const Icon =
@@ -374,7 +451,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                       className="absolute right-3 bottom-2 h-6 w-6 text-destructive opacity-0 hover:text-destructive group-hover:opacity-100"
                       onClick={(event) => {
                         event.stopPropagation();
-                        setDeleteIndexId(index.id);
+                        dispatch({ type: 'deleteRequested', id: index.id });
                       }}
                       aria-label={t('indexPanel.deleteIndexTip')}
                     >
@@ -428,10 +505,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                       <Input
                         value={draft.name}
                         onChange={(event) =>
-                          setDraft((prev) => ({
-                            ...prev,
-                            name: event.target.value,
-                          }))
+                          dispatch({ type: 'draftNameChanged', name: event.target.value })
                         }
                         placeholder={t('indexPanel.namePlaceholder')}
                         className="h-8 text-sm"
@@ -470,32 +544,35 @@ export const IndexPanel = memo<IndexPanelProps>(
                         <div className="relative">
                           <Input
                             value={fieldQuery}
-                            onChange={(event) => {
-                              setFieldQuery(event.target.value);
-                              setActiveSuggestionIndex(0);
-                            }}
+                            onChange={(event) =>
+                              dispatch({ type: 'fieldQueryChanged', query: event.target.value })
+                            }
                             onKeyDown={(event) => {
                               if (fieldSuggestions.length === 0) return;
 
                               if (event.key === 'ArrowDown') {
                                 event.preventDefault();
-                                setActiveSuggestionIndex(
-                                  visibleSuggestionIndex < fieldSuggestions.length - 1
-                                    ? visibleSuggestionIndex + 1
-                                    : 0,
-                                );
+                                dispatch({
+                                  type: 'suggestionHighlighted',
+                                  index:
+                                    visibleSuggestionIndex < fieldSuggestions.length - 1
+                                      ? visibleSuggestionIndex + 1
+                                      : 0,
+                                });
                               } else if (event.key === 'ArrowUp') {
                                 event.preventDefault();
-                                setActiveSuggestionIndex(
-                                  visibleSuggestionIndex > 0
-                                    ? visibleSuggestionIndex - 1
-                                    : fieldSuggestions.length - 1,
-                                );
+                                dispatch({
+                                  type: 'suggestionHighlighted',
+                                  index:
+                                    visibleSuggestionIndex > 0
+                                      ? visibleSuggestionIndex - 1
+                                      : fieldSuggestions.length - 1,
+                                });
                               } else if (event.key === 'Enter') {
                                 event.preventDefault();
                                 addField(fieldSuggestions[visibleSuggestionIndex]);
                               } else if (event.key === 'Escape') {
-                                setFieldQuery('');
+                                dispatch({ type: 'fieldQueryCleared' });
                               }
                             }}
                             placeholder={t('indexPanel.inputPlaceholder')}
@@ -542,18 +619,15 @@ export const IndexPanel = memo<IndexPanelProps>(
                             <div
                               key={`${field.name}-${index}`}
                               draggable
-                              onDragStart={() => setDraggedFieldIndex(index)}
-                              onDragEnter={() => {
-                                if (draggedFieldIndex == null || draggedFieldIndex === index)
-                                  return;
-                                moveField(draggedFieldIndex, index);
-                                setDraggedFieldIndex(index);
-                              }}
+                              onDragStart={() =>
+                                dispatch({ type: 'fieldDragStarted', fieldIndex: index })
+                              }
+                              onDragEnter={() =>
+                                dispatch({ type: 'fieldDraggedOver', fieldIndex: index })
+                              }
                               onDragOver={(event) => event.preventDefault()}
-                              onDrop={() => {
-                                setDraggedFieldIndex(null);
-                              }}
-                              onDragEnd={() => setDraggedFieldIndex(null)}
+                              onDrop={() => dispatch({ type: 'fieldDragEnded' })}
+                              onDragEnd={() => dispatch({ type: 'fieldDragEnded' })}
                               className="inline-flex cursor-grab items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs shadow-sm active:cursor-grabbing"
                             >
                               <DragDropVerticalIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -561,11 +635,18 @@ export const IndexPanel = memo<IndexPanelProps>(
                               <button
                                 type="button"
                                 className="rounded border bg-background px-1 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground"
-                                onClick={() => toggleFieldDirection(index)}
+                                onClick={() =>
+                                  dispatch({ type: 'fieldDirectionToggled', fieldIndex: index })
+                                }
                               >
                                 {field.direction}
                               </button>
-                              <button type="button" onClick={() => removeField(index)}>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  dispatch({ type: 'fieldRemoved', fieldIndex: index })
+                                }
+                              >
                                 <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
                               </button>
                             </div>
@@ -599,14 +680,12 @@ export const IndexPanel = memo<IndexPanelProps>(
                   <div className="flex justify-end gap-2 pt-1">
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        const nextIndex = selectedIndex ?? indexes[0];
-                        setPanel(
-                          nextIndex
-                            ? { kind: 'view', id: nextIndex.id }
-                            : { kind: 'edit', draft: { ...EMPTY_DRAFT, type: draft.type } },
-                        );
-                      }}
+                      onClick={() =>
+                        dispatch({
+                          type: 'editCancelled',
+                          fallbackIndexId: (selectedIndex ?? indexes[0])?.id ?? null,
+                        })
+                      }
                     >
                       {t('indexPanel.cancel')}
                     </Button>
@@ -626,7 +705,7 @@ export const IndexPanel = memo<IndexPanelProps>(
         <AlertDialog
           open={deleteIndexId !== null}
           onOpenChange={(open) => {
-            if (!open) setDeleteIndexId(null);
+            if (!open) dispatch({ type: 'deleteDialogClosed' });
           }}
         >
           <AlertDialogContent>
