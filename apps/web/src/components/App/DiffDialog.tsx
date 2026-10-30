@@ -1,4 +1,4 @@
-import { memo, useMemo, useCallback, useState, lazy, Suspense } from 'react';
+import { memo, useMemo, useCallback, useReducer, lazy, Suspense } from 'react';
 import {
   Copy,
   Plus,
@@ -132,12 +132,14 @@ const IndexDiffRow = memo<{ diff: IndexDiff }>(({ diff }) => {
 });
 IndexDiffRow.displayName = 'IndexDiffRow';
 
+const rollbackVisibleReducer = (visible: boolean, _event: 'toggled') => !visible;
+
 /**
  * Diff 对话框组件
  */
 export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onCopy }) => {
   const { t } = useTranslation();
-  const [showRollback, setShowRollback] = useState(false);
+  const [showRollback, dispatchRollbackVisible] = useReducer(rollbackVisibleReducer, false);
 
   const alterDDL = useMemo(() => {
     if (!diff || !hasTableChanges(diff)) return '';
@@ -379,7 +381,7 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
               <button
                 type="button"
                 className="flex w-full items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setShowRollback(!showRollback)}
+                onClick={() => dispatchRollbackVisible('toggled')}
               >
                 {showRollback ? (
                   <ChevronDown className="h-4 w-4" />

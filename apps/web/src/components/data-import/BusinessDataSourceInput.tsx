@@ -1,10 +1,30 @@
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { BusinessDataSource, BusinessSeparator } from '@/utils/business-data/readBusinessData';
 import type { BusinessDataTask } from '@/utils/business-data/tasks';
+
+type InputState = { input: 'file' | 'text'; file: File | null; text: string };
+
+type InputEvent =
+  | { type: 'inputChosen'; input: InputState['input'] }
+  | { type: 'fileChosen'; file: File | null }
+  | { type: 'textChanged'; text: string };
+
+const initialInputState: InputState = { input: 'file', file: null, text: '' };
+
+function inputReducer(state: InputState, event: InputEvent): InputState {
+  switch (event.type) {
+    case 'inputChosen':
+      return { ...state, input: event.input };
+    case 'fileChosen':
+      return { ...state, file: event.file };
+    case 'textChanged':
+      return { ...state, text: event.text };
+  }
+}
 
 export function BusinessDataSourceInput({
   source,
@@ -22,9 +42,7 @@ export function BusinessDataSourceInput({
   onRead: (task: BusinessDataTask) => void;
 }) {
   const { t } = useTranslation();
-  const [input, setInput] = useState('file');
-  const [file, setFile] = useState<File | null>(null);
-  const [text, setText] = useState('');
+  const [{ input, file, text }, dispatch] = useReducer(inputReducer, initialInputState);
 
   return (
     <section className="space-y-4">
@@ -41,7 +59,10 @@ export function BusinessDataSourceInput({
             className="h-9 w-full rounded-md border bg-background px-3"
             value={input}
             onChange={(event) => {
-              setInput(event.target.value);
+              dispatch({
+                type: 'inputChosen',
+                input: event.target.value === 'text' ? 'text' : 'file',
+              });
               onReset();
             }}
           >
@@ -73,7 +94,7 @@ export function BusinessDataSourceInput({
             type="file"
             accept=".csv,.tsv,.txt,.xlsx"
             onChange={(event) => {
-              setFile(event.target.files?.[0] ?? null);
+              dispatch({ type: 'fileChosen', file: event.target.files?.[0] ?? null });
               onReset();
             }}
           />
@@ -86,7 +107,7 @@ export function BusinessDataSourceInput({
             value={text}
             placeholder={'order_code,amount\n00123,19.90\n00124,29.50'}
             onChange={(event) => {
-              setText(event.target.value);
+              dispatch({ type: 'textChanged', text: event.target.value });
               onReset();
             }}
           />

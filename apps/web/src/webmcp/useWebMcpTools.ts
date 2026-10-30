@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useReducer, useRef } from 'react';
 import {
   diffPersistedState,
   generateAlterDDL,
@@ -43,6 +43,38 @@ type ConfirmationResolver = {
   signal: AbortSignal;
   onAbort: () => void;
 };
+
+type WebMcpDialogState = {
+  changeSet: WebMcpChangeSet | null;
+  dialog: { mode: 'preview' | 'confirm'; request: WebMcpApplyRequest } | null;
+};
+
+type WebMcpDialogEvent =
+  | { type: 'changeSetStaged'; changeSet: WebMcpChangeSet }
+  | { type: 'confirmationRequested'; request: WebMcpApplyRequest }
+  | { type: 'dialogClosed' }
+  | { type: 'changeSetApplied' };
+
+const initialDialogState: WebMcpDialogState = { changeSet: null, dialog: null };
+
+function webMcpDialogReducer(
+  state: WebMcpDialogState,
+  event: WebMcpDialogEvent,
+): WebMcpDialogState {
+  switch (event.type) {
+    case 'changeSetStaged':
+      return {
+        changeSet: event.changeSet,
+        dialog: { mode: 'preview', request: { changeSet: event.changeSet } },
+      };
+    case 'confirmationRequested':
+      return { ...state, dialog: { mode: 'confirm', request: event.request } };
+    case 'dialogClosed':
+      return { ...state, dialog: null };
+    case 'changeSetApplied':
+      return { ...state, changeSet: null };
+  }
+}
 
 const MAX_PAGE_SIZE = 50;
 const MAX_OUTPUT_CHARS = 1200;
@@ -131,32 +163,127 @@ const page = <T>(values: T[], offset: number, limit: number) => ({
   nextOffset: offset + limit < values.length ? offset + limit : null,
 });
 
-export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
-  const snapshotRef = useRef<RuntimeSnapshot>(input);
-  useLayoutEffect(() => {
-    snapshotRef.current = input;
-  }, [input]);
-  const [changeSet, setChangeSet] = useState<WebMcpChangeSet | null>(null);
-  const changeSetRef = useRef<WebMcpChangeSet | null>(null);
-  const [dialogRequest, setDialogRequest] = useState<WebMcpApplyRequest | null>(null);
-  const [dialogMode, setDialogMode] = useState<'preview' | 'confirm' | null>(null);
-  const confirmationRef = useRef<ConfirmationResolver | null>(null);
+const inspectActiveSchema = (snapshot: RuntimeSnapshot, toolInput: ToolInput) => {
+  assertReady(snapshot);
+  // WebMCP input is an external JSON object; an omitted section defaults to overview.
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof
+  const section = typeof toolInput.section === 'string' ? toolInput.section : 'overview';
+  const offset = readInteger(toolInput, 'offset', 0, 0, Number.MAX_SAFE_INTEGER);
+  const limit = readInteger(toolInput, 'limit', 20, 1, MAX_PAGE_SIZE);
+  const state = snapshot.state;
+  const baseSignature = buildSchemaStateSignature(state);
+  const base = { ok: true, section, baseSignature };
 
-  const storeChangeSet = useCallback((next: WebMcpChangeSet) => {
-    changeSetRef.current = next;
-    setChangeSet(next);
-    setDialogRequest({ changeSet: next });
-    setDialogMode('preview');
-  }, []);
+  if (section === 'overview') {
+    return {
+      ...base,
+      document: {
+        source:
+          snapshot.source.kind === 'draft'
+            ? { kind: 'draft', draftId: snapshot.source.draftId }
+            : {
+                kind: 'saved_table',
+                normalizedName: snapshot.source.normalizedName,
+                tableId: snapshot.source.tableId,
+              },
+        readOnly: snapshot.isShareView,
+        objectType: state.objectType ?? 'table',
+        schemaName: state.schemaName,
+        tableName: state.tableName,
+        tableComment: state.tableComment,
+        dbType: state.dbType,
+        fieldCount: state.rows.filter((row) => row.fieldName.trim()).length,
+        indexCount: state.indexes.length,
+        foreignKeyCount: state.foreignKeys?.length ?? 0,
+      },
+    };
+  }
+
+  if (section === 'fields') {
+    const fields = state.rows
+      .filter((row) => row.fieldName.trim())
+      .map((row) => ({
+        id: row.id,
+        fieldName: row.fieldName,
+        fieldType: row.fieldType,
+        fieldComment: row.fieldComment,
+        nullable: row.nullable,
+        defaultKind: row.defaultKind ?? 'none',
+        defaultValue: row.defaultValue ?? '',
+        onUpdate: row.onUpdate ?? 'none',
+      }));
+
+    return { ...base, ...page(fields, offset, limit) };
+  }
+
+  if (section === 'indexes') return { ...base, ...page(state.indexes, offset, limit) };
+
+  if (section === 'relations') {
+    return {
+      ...base,
+      ...page(state.foreignKeys ?? [], offset, limit),
+      authObjects: state.authObjects,
+    };
+  }
+
+  if (section === 'options') {
+    return {
+      ...base,
+      mysqlPartitionConfig: state.mysqlPartitionConfig,
+      citusShardingConfig: state.citusShardingConfig,
+      tableMiscConfig: state.tableMiscConfig,
+    };
+  }
+
+  throw new WebMcpToolError('INVALID_INPUT', `Unsupported section: ${section}`);
+};
+
+const readActiveOutput = (
+  snapshot: RuntimeSnapshot,
+  pending: WebMcpChangeSet | null,
+  toolInput: ToolInput,
+) => {
+  assertReady(snapshot);
+  const kind = requireString(toolInput, 'kind');
+  const offset = readInteger(toolInput, 'offset', 0, 0, Number.MAX_SAFE_INTEGER);
+  const maxChars = readInteger(toolInput, 'maxChars', MAX_OUTPUT_CHARS, 1, MAX_OUTPUT_CHARS);
+  let content = '';
+
+  if (kind === 'ddl') content = snapshot.generatedSql;
+  else if (kind === 'dcl') content = snapshot.generatedDcl;
+  else if (kind === 'orm') content = snapshot.getGeneratedOrm();
+  else if (kind === 'alter' || kind === 'rollback') {
+    if (!pending) throw new WebMcpToolError('NOT_FOUND', 'No staged change set is available');
+    content = kind === 'alter' ? generateAlterDDL(pending.diff) : generateRollbackDDL(pending.diff);
+  } else {
+    throw new WebMcpToolError('INVALID_INPUT', `Unsupported output kind: ${kind}`);
+  }
+
+  return {
+    ok: true,
+    kind,
+    content: content.slice(offset, offset + maxChars),
+    offset,
+    totalChars: content.length,
+    nextOffset: offset + maxChars < content.length ? offset + maxChars : null,
+  };
+};
+
+export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
+  const readSnapshot = useEffectEvent((): RuntimeSnapshot => input);
+  const [{ changeSet, dialog }, dispatch] = useReducer(webMcpDialogReducer, initialDialogState);
+  const changeSetRef = useRef<WebMcpChangeSet | null>(null);
+  const confirmationRef = useRef<ConfirmationResolver | null>(null);
+  const { authStatus, isShareView } = input;
 
   const stageCandidate = useCallback(
     async (
+      snapshot: RuntimeSnapshot,
       source: WebMcpChangeSource,
       requestedSignature: string,
       candidateState: PersistedState,
       operations?: WebMcpChangeSet['operations'],
     ) => {
-      const snapshot = snapshotRef.current;
       assertMutable(snapshot);
 
       if (confirmationRef.current) {
@@ -194,7 +321,8 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         operations,
         createdAt: Date.now(),
       };
-      storeChangeSet(next);
+      changeSetRef.current = next;
+      dispatch({ type: 'changeSetStaged', changeSet: next });
 
       return {
         ok: true,
@@ -205,23 +333,17 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         operationIds: operations?.map((operation) => operation.id) ?? [],
       };
     },
-    [storeChangeSet],
+    [],
   );
 
   const settleConfirmation = useCallback((confirmed: boolean) => {
     const pending = confirmationRef.current;
+    dispatch({ type: 'dialogClosed' });
 
-    if (!pending) {
-      setDialogRequest(null);
-      setDialogMode(null);
-
-      return;
-    }
+    if (!pending) return;
 
     confirmationRef.current = null;
     pending.signal.removeEventListener('abort', pending.onAbort);
-    setDialogRequest(null);
-    setDialogMode(null);
     pending.resolve(confirmed);
   }, []);
 
@@ -231,8 +353,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         settleConfirmation(false);
       }
 
-      setDialogRequest(request);
-      setDialogMode('confirm');
+      dispatch({ type: 'confirmationRequested', request });
 
       return new Promise<boolean>((resolve) => {
         const onAbort = () => settleConfirmation(false);
@@ -245,137 +366,32 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     [settleConfirmation],
   );
 
-  const inspectSchema = useCallback(async (toolInput: ToolInput) => {
-    const snapshot = snapshotRef.current;
-    assertReady(snapshot);
-    // WebMCP input is an external JSON object; an omitted section defaults to overview.
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof
-    const section = typeof toolInput.section === 'string' ? toolInput.section : 'overview';
-    const offset = readInteger(toolInput, 'offset', 0, 0, Number.MAX_SAFE_INTEGER);
-    const limit = readInteger(toolInput, 'limit', 20, 1, MAX_PAGE_SIZE);
-    const state = snapshot.state;
-    const baseSignature = buildSchemaStateSignature(state);
-    const base = { ok: true, section, baseSignature };
+  useEffect(() => {
+    const modelContext = document.modelContext;
 
-    if (section === 'overview') {
-      return {
-        ...base,
-        document: {
-          source:
-            snapshot.source.kind === 'draft'
-              ? { kind: 'draft', draftId: snapshot.source.draftId }
-              : {
-                  kind: 'saved_table',
-                  normalizedName: snapshot.source.normalizedName,
-                  tableId: snapshot.source.tableId,
-                },
-          readOnly: snapshot.isShareView,
-          objectType: state.objectType ?? 'table',
-          schemaName: state.schemaName,
-          tableName: state.tableName,
-          tableComment: state.tableComment,
-          dbType: state.dbType,
-          fieldCount: state.rows.filter((row) => row.fieldName.trim()).length,
-          indexCount: state.indexes.length,
-          foreignKeyCount: state.foreignKeys?.length ?? 0,
-        },
-      };
-    }
+    if (!modelContext) return;
+    const controller = new AbortController();
 
-    if (section === 'fields') {
-      const fields = state.rows
-        .filter((row) => row.fieldName.trim())
-        .map((row) => ({
-          id: row.id,
-          fieldName: row.fieldName,
-          fieldType: row.fieldType,
-          fieldComment: row.fieldComment,
-          nullable: row.nullable,
-          defaultKind: row.defaultKind ?? 'none',
-          defaultValue: row.defaultValue ?? '',
-          onUpdate: row.onUpdate ?? 'none',
-        }));
-
-      return { ...base, ...page(fields, offset, limit) };
-    }
-
-    if (section === 'indexes') return { ...base, ...page(state.indexes, offset, limit) };
-
-    if (section === 'relations') {
-      return {
-        ...base,
-        ...page(state.foreignKeys ?? [], offset, limit),
-        authObjects: state.authObjects,
-      };
-    }
-
-    if (section === 'options') {
-      return {
-        ...base,
-        mysqlPartitionConfig: state.mysqlPartitionConfig,
-        citusShardingConfig: state.citusShardingConfig,
-        tableMiscConfig: state.tableMiscConfig,
-      };
-    }
-
-    throw new WebMcpToolError('INVALID_INPUT', `Unsupported section: ${section}`);
-  }, []);
-
-  const readOutput = useCallback((toolInput: ToolInput) => {
-    const snapshot = snapshotRef.current;
-    assertReady(snapshot);
-    const kind = requireString(toolInput, 'kind');
-    const offset = readInteger(toolInput, 'offset', 0, 0, Number.MAX_SAFE_INTEGER);
-    const maxChars = readInteger(toolInput, 'maxChars', MAX_OUTPUT_CHARS, 1, MAX_OUTPUT_CHARS);
-    const pending = changeSetRef.current;
-    let content = '';
-
-    if (kind === 'ddl') content = snapshot.generatedSql;
-    else if (kind === 'dcl') content = snapshot.generatedDcl;
-    else if (kind === 'orm') content = snapshot.getGeneratedOrm();
-    else if (kind === 'alter' || kind === 'rollback') {
-      if (!pending) throw new WebMcpToolError('NOT_FOUND', 'No staged change set is available');
-      content =
-        kind === 'alter' ? generateAlterDDL(pending.diff) : generateRollbackDDL(pending.diff);
-    } else {
-      throw new WebMcpToolError('INVALID_INPUT', `Unsupported output kind: ${kind}`);
-    }
-
-    return {
-      ok: true,
-      kind,
-      content: content.slice(offset, offset + maxChars),
-      offset,
-      totalChars: content.length,
-      nextOffset: offset + maxChars < content.length ? offset + maxChars : null,
-    };
-  }, []);
-
-  const dependencies = useMemo(
-    () => ({
-      authStatus: input.authStatus,
-      readOnly: input.isShareView,
-      getAuthStatus: () => {
-        const snapshot = snapshotRef.current;
-
-        return {
-          ok: true,
-          status: snapshot.authStatus,
-          anonymousCapabilities: ['edit_local_draft', 'import_sql', 'lint_schema', 'read_output'],
-          signedInCapabilities: ['cloud_sync', 'saved_tables', 'paid_ai'],
-        };
-      },
+    const definitions = createWebMcpTools({
+      authStatus,
+      readOnly: isShareView,
+      getAuthStatus: () => ({
+        ok: true,
+        status: readSnapshot().authStatus,
+        anonymousCapabilities: ['edit_local_draft', 'import_sql', 'lint_schema', 'read_output'],
+        signedInCapabilities: ['cloud_sync', 'saved_tables', 'paid_ai'],
+      }),
       startSignIn: () => {
-        const snapshot = snapshotRef.current;
+        const snapshot = readSnapshot();
 
         if (snapshot.authStatus === 'signed_in') return { ok: true, status: 'already_signed_in' };
         snapshot.openAuthDialog();
 
         return { ok: true, status: 'user_action_required' };
       },
-      inspectSchema,
+      inspectSchema: async (toolInput: ToolInput) => inspectActiveSchema(readSnapshot(), toolInput),
       lintSchema: () => {
-        const snapshot = snapshotRef.current;
+        const snapshot = readSnapshot();
         assertReady(snapshot);
         const issues = lintState(snapshot.state);
 
@@ -390,9 +406,10 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
           truncated: issues.length > 20,
         };
       },
-      readOutput,
+      readOutput: (toolInput: ToolInput) =>
+        readActiveOutput(readSnapshot(), changeSetRef.current, toolInput),
       previewPatch: async (toolInput: ToolInput) => {
-        const snapshot = snapshotRef.current;
+        const snapshot = readSnapshot();
         assertMutable(snapshot);
         const baseSignature = requireString(toolInput, 'baseSignature');
         let operations: WebMcpChangeSet['operations'];
@@ -409,10 +426,10 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
 
         const candidate = applyPatchOperations(snapshot.state, operations);
 
-        return stageCandidate('schema_patch', baseSignature, candidate, operations);
+        return stageCandidate(snapshot, 'schema_patch', baseSignature, candidate, operations);
       },
       previewSqlImport: async (toolInput: ToolInput) => {
-        const snapshot = snapshotRef.current;
+        const snapshot = readSnapshot();
         assertMutable(snapshot);
         const baseSignature = requireString(toolInput, 'baseSignature');
         const sql = requireString(toolInput, 'sql');
@@ -431,11 +448,10 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
           convertParsedResultToPersistedState(parsed, dbType),
         );
 
-        return stageCandidate('sql_import', baseSignature, candidate);
+        return stageCandidate(readSnapshot(), 'sql_import', baseSignature, candidate);
       },
       applyPatch: async (toolInput: ToolInput, signal: AbortSignal) => {
-        const snapshot = snapshotRef.current;
-        assertMutable(snapshot);
+        assertMutable(readSnapshot());
         const id = requireString(toolInput, 'changeSetId');
         const pending = changeSetRef.current;
 
@@ -496,38 +512,23 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
 
         if (!confirmed) return { ok: true, status: 'canceled_by_user' };
 
-        const currentSignature = buildSchemaStateSignature(snapshotRef.current.state);
+        const latest = readSnapshot();
 
-        if (currentSignature !== pending.baseSignature) {
+        if (buildSchemaStateSignature(latest.state) !== pending.baseSignature) {
           throw new WebMcpToolError(
             'CONFLICT',
             'The active document changed while confirmation was pending',
           );
         }
 
-        snapshotRef.current.replaceState(requestChangeSet.candidateState);
+        latest.replaceState(requestChangeSet.candidateState);
         changeSetRef.current = null;
-        setChangeSet(null);
+        dispatch({ type: 'changeSetApplied' });
 
         return { ok: true, status: 'applied', changeSetId: pending.id };
       },
-    }),
-    [
-      input.authStatus,
-      input.isShareView,
-      inspectSchema,
-      readOutput,
-      requestConfirmation,
-      stageCandidate,
-    ],
-  );
+    });
 
-  useEffect(() => {
-    const modelContext = document.modelContext;
-
-    if (!modelContext) return;
-    const controller = new AbortController();
-    const definitions = createWebMcpTools(dependencies);
     void Promise.allSettled(
       definitions.map((definition) =>
         modelContext.registerTool(definition, { signal: controller.signal }),
@@ -542,7 +543,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     });
 
     return () => controller.abort();
-  }, [dependencies]);
+  }, [authStatus, isShareView, requestConfirmation, stageCandidate]);
 
   useEffect(
     () => () => {
@@ -557,8 +558,8 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
   const onConfirm = useCallback(() => settleConfirmation(true), [settleConfirmation]);
 
   return {
-    request: dialogRequest ?? (changeSet ? { changeSet } : null),
-    mode: dialogMode,
+    request: dialog?.request ?? (changeSet ? { changeSet } : null),
+    mode: dialog?.mode ?? null,
     onConfirm,
     onCancel,
   };

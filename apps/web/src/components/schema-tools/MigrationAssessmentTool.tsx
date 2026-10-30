@@ -1,5 +1,5 @@
 import { ToolLayout } from './ToolLayout';
-import { useMemo, useState } from 'react';
+import { useMemo, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { assessMysqlToPostgres } from '@ddlbuilder/ddl-core';
@@ -8,9 +8,14 @@ import { markdownTable } from './dictionary';
 import { Button } from '@/components/ui/button';
 import { downloadFile } from '@/utils/mockDataGenerator';
 
+const tablesReducer = (
+  _tables: PersistedState[],
+  event: { type: 'tablesSelected'; tables: PersistedState[] },
+) => event.tables;
+
 export function MigrationAssessmentTool() {
   const { t } = useTranslation();
-  const [tables, setTables] = useState<PersistedState[]>([]);
+  const [tables, dispatch] = useReducer(tablesReducer, []);
 
   const result = useMemo(() => {
     if (!tables.length) return null;
@@ -40,7 +45,10 @@ export function MigrationAssessmentTool() {
       source={
         <>
           <p className="text-sm font-medium">MySQL → PostgreSQL</p>
-          <TableSource value={tables} onChange={setTables} />
+          <TableSource
+            value={tables}
+            onChange={(next) => dispatch({ type: 'tablesSelected', tables: next })}
+          />
         </>
       }
     >

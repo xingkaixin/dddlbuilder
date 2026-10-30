@@ -3,7 +3,7 @@
  * 提供模板的查看、创建、编辑、删除功能，包含字段编辑器
  */
 
-import { memo, useState, useCallback, useMemo } from 'react';
+import { memo, useReducer, useCallback, useMemo, type SetStateAction } from 'react';
 import { Plus, Search } from '@/components/icons';
 import {
   Dialog,
@@ -55,6 +55,97 @@ interface TemplateManagerDialogProps {
   onDeleteTemplate: (id: string) => Promise<{ ok: boolean; message?: string }>;
 }
 
+type EditStatus = { status: 'idle' } | { status: 'saving' } | { status: 'failed'; error: string };
+
+type ManagerState = {
+  searchTerm: string;
+  isEditDialogOpen: boolean;
+  editingTemplate: FieldTemplate | null;
+  editName: string;
+  editDescription: string;
+  editRows: FieldRow[];
+  editStatus: EditStatus;
+  isDeleteDialogOpen: boolean;
+  deleteTarget: FieldTemplate | null;
+};
+
+type ManagerEvent =
+  | { type: 'searchChanged'; searchTerm: string }
+  | { type: 'editorOpened'; template: FieldTemplate | null; rows: FieldRow[] }
+  | { type: 'editDialogOpenChanged'; open: boolean }
+  | { type: 'editNameChanged'; name: string }
+  | { type: 'editDescriptionChanged'; description: string }
+  | { type: 'editRowsChanged'; update: SetStateAction<FieldRow[]> }
+  | { type: 'saveStarted' }
+  | { type: 'saveFailed'; error: string }
+  | { type: 'saved' }
+  | { type: 'saveSettled' }
+  | { type: 'deleteRequested'; template: FieldTemplate }
+  | { type: 'deleteDialogOpenChanged'; open: boolean }
+  | { type: 'deleteFinished' };
+
+const idleEditStatus: EditStatus = { status: 'idle' };
+
+const initialManagerState: ManagerState = {
+  searchTerm: '',
+  isEditDialogOpen: false,
+  editingTemplate: null,
+  editName: '',
+  editDescription: '',
+  editRows: [],
+  editStatus: idleEditStatus,
+  isDeleteDialogOpen: false,
+  deleteTarget: null,
+};
+
+function managerReducer(state: ManagerState, event: ManagerEvent): ManagerState {
+  switch (event.type) {
+    case 'searchChanged':
+      return { ...state, searchTerm: event.searchTerm };
+    case 'editorOpened':
+      return {
+        ...state,
+        isEditDialogOpen: true,
+        editingTemplate: event.template,
+        editName: event.template?.name ?? '',
+        editDescription: event.template?.description || '',
+        editRows: event.rows,
+        editStatus: idleEditStatus,
+      };
+    case 'editDialogOpenChanged':
+      return { ...state, isEditDialogOpen: event.open };
+    case 'editNameChanged':
+      return {
+        ...state,
+        editName: event.name,
+        editStatus: state.editStatus.status === 'failed' ? idleEditStatus : state.editStatus,
+      };
+    case 'editDescriptionChanged':
+      return { ...state, editDescription: event.description };
+    case 'editRowsChanged':
+      return {
+        ...state,
+        editRows: Array.isArray(event.update) ? event.update : event.update(state.editRows),
+      };
+    case 'saveStarted':
+      return { ...state, editStatus: { status: 'saving' } };
+    case 'saveFailed':
+      return { ...state, editStatus: { status: 'failed', error: event.error } };
+    case 'saved':
+      return { ...state, isEditDialogOpen: false, editingTemplate: null };
+    case 'saveSettled':
+      return state.editStatus.status === 'saving'
+        ? { ...state, editStatus: idleEditStatus }
+        : state;
+    case 'deleteRequested':
+      return { ...state, deleteTarget: event.template, isDeleteDialogOpen: true };
+    case 'deleteDialogOpenChanged':
+      return { ...state, isDeleteDialogOpen: event.open };
+    case 'deleteFinished':
+      return { ...state, isDeleteDialogOpen: false, deleteTarget: null };
+  }
+}
+
 export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
   ({
     open,
@@ -70,17 +161,23 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     const { showToast } = useToast();
     // SAFETY: the template editor value is supplied by the typed field-row editor.
     const dbType = useEditorStore((state) => state.dbType) as DatabaseType;
-    const [searchTerm, setSearchTerm] = useState('');
-    const [editingTemplate, setEditingTemplate] = useState<FieldTemplate | null>(null);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [editName, setEditName] = useState('');
-    const [editDescription, setEditDescription] = useState('');
-    const [editRows, setEditRows] = useState<FieldRow[]>([]);
-    const [editError, setEditError] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
 
-    const [deleteTarget, setDeleteTarget] = useState<FieldTemplate | null>(null);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [
+      {
+        searchTerm,
+        isEditDialogOpen,
+        editingTemplate,
+        editName,
+        editDescription,
+        editRows,
+        editStatus,
+        isDeleteDialogOpen,
+        deleteTarget,
+      },
+      dispatch,
+    ] = useReducer(managerReducer, initialManagerState);
+    const isSaving = editStatus.status === 'saving';
+    const editError = editStatus.status === 'failed' ? editStatus.error : '';
 
     // 过滤模板
     const filteredTemplates = useMemo(() => {
@@ -94,45 +191,39 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
 
     // 打开新建/编辑对话框
     const handleOpenEditDialog = useCallback((template?: FieldTemplate) => {
-      if (template) {
-        setEditingTemplate(template);
-        setEditName(template.name);
-        setEditDescription(template.description || '');
-        setEditRows(
-          template.fields.length ? instantiateTemplateFields(template.fields) : [createEmptyRow()],
-        );
-      } else {
-        setEditingTemplate(null);
-        setEditName('');
-        setEditDescription('');
-        // 新建时提供一个空字段
-        setEditRows([createEmptyRow()]);
-      }
+      // 新建时提供一个空字段
+      const rows = template?.fields.length
+        ? instantiateTemplateFields(template.fields)
+        : [createEmptyRow()];
 
-      setEditError('');
-      setIsSaving(false);
-      setIsEditDialogOpen(true);
+      dispatch({ type: 'editorOpened', template: template ?? null, rows });
     }, []);
+
+    const setEditRows = useCallback(
+      (update: SetStateAction<FieldRow[]>) => dispatch({ type: 'editRowsChanged', update }),
+      [],
+    );
 
     // 添加字段
     const handleAddField = useCallback(() => {
-      setEditRows((prev) => [...prev, createEmptyRow()]);
-    }, []);
+      const row = createEmptyRow();
+
+      setEditRows((prev) => [...prev, row]);
+    }, [setEditRows]);
 
     // 保存模板
     const handleSaveTemplate = useCallback(async () => {
       const trimmedName = editName.trim();
 
       if (!trimmedName) {
-        setEditError(t('templateManager.editor.nameRequired'));
+        dispatch({ type: 'saveFailed', error: t('templateManager.editor.nameRequired') });
 
         return;
       }
 
       const validFields = toTemplateFields(editRows);
 
-      setIsSaving(true);
-      setEditError('');
+      dispatch({ type: 'saveStarted' });
 
       try {
         let result: { ok: boolean; message?: string };
@@ -152,19 +243,18 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         }
 
         if (result.ok) {
-          setIsEditDialogOpen(false);
-          setEditingTemplate(null);
+          dispatch({ type: 'saved' });
           showToast(
             editingTemplate
               ? t('templateManager.toast.updated', { name: trimmedName })
               : t('templateManager.toast.created', { name: trimmedName }),
           );
         } else {
-          setEditError(t('templateManager.toast.saveFailed'));
+          dispatch({ type: 'saveFailed', error: t('templateManager.toast.saveFailed') });
           showToast(result.message ?? t('templateManager.toast.saveFailedRetry'));
         }
       } finally {
-        setIsSaving(false);
+        dispatch({ type: 'saveSettled' });
       }
     }, [
       t,
@@ -192,10 +282,10 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     );
 
     // 打开删除确认
-    const handleOpenDeleteDialog = useCallback((template: FieldTemplate) => {
-      setDeleteTarget(template);
-      setIsDeleteDialogOpen(true);
-    }, []);
+    const handleOpenDeleteDialog = useCallback(
+      (template: FieldTemplate) => dispatch({ type: 'deleteRequested', template }),
+      [],
+    );
 
     // 确认删除
     const handleConfirmDelete = useCallback(async () => {
@@ -208,8 +298,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         showToast(result.message ?? t('templateManager.toast.deleteFailed'));
       }
 
-      setIsDeleteDialogOpen(false);
-      setDeleteTarget(null);
+      dispatch({ type: 'deleteFinished' });
     }, [deleteTarget, onDeleteTemplate, showToast, t]);
 
     return (
@@ -231,7 +320,9 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                   <Input
                     placeholder={t('templateManager.searchPlaceholder')}
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) =>
+                      dispatch({ type: 'searchChanged', searchTerm: e.target.value })
+                    }
                     className="pl-8"
                   />
                 </div>
@@ -274,7 +365,10 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         </Dialog>
 
         {/* 新建/编辑对话框 - 包含字段编辑器 */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <Dialog
+          open={isEditDialogOpen}
+          onOpenChange={(open) => dispatch({ type: 'editDialogOpenChanged', open })}
+        >
           <DialogContent className="sm:max-w-[90vw] md:max-w-4xl lg:max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>
@@ -297,10 +391,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                   <Input
                     id="template-name"
                     value={editName}
-                    onChange={(e) => {
-                      setEditName(e.target.value);
-                      setEditError('');
-                    }}
+                    onChange={(e) => dispatch({ type: 'editNameChanged', name: e.target.value })}
                     placeholder={t('templateManager.editor.namePlaceholder')}
                     autoFocus
                   />
@@ -312,7 +403,9 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                   <Input
                     id="template-desc"
                     value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
+                    onChange={(e) =>
+                      dispatch({ type: 'editDescriptionChanged', description: e.target.value })
+                    }
                     placeholder={t('templateManager.editor.descriptionPlaceholder')}
                   />
                 </div>
@@ -328,21 +421,17 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                   </Button>
                 </div>
 
-                <TemplateFieldTable
-                  rows={editRows}
-                  setRows={(next) => {
-                    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
-                    setEditRows((prev) => (typeof next === 'function' ? next(prev) : next));
-                  }}
-                  dbType={dbType}
-                />
+                <TemplateFieldTable rows={editRows} setRows={setEditRows} dbType={dbType} />
               </div>
 
               {editError && <p className="text-sm text-destructive">{editError}</p>}
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => dispatch({ type: 'editDialogOpenChanged', open: false })}
+              >
                 {t('templateManager.editor.cancel')}
               </Button>
               <Button onClick={handleSaveTemplate} disabled={isSaving}>
@@ -357,7 +446,10 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         </Dialog>
 
         {/* 删除确认 */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={(open) => dispatch({ type: 'deleteDialogOpenChanged', open })}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{t('templateManager.delete.title')}</AlertDialogTitle>

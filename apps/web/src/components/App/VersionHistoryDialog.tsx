@@ -1,5 +1,5 @@
-import { memo, useCallback, useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { memo, useCallback, useMemo, useReducer } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tableVersionsOptions } from '@/queries/tableVersions';
 import { History, RotateCcw, Trash2, Loader2, Play } from '@/components/icons';
 import {
@@ -120,6 +120,49 @@ function toDateInputValue(timestamp: number): string {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
 }
 
+type HistoryViewState = {
+  requestedSelectedId: string | null;
+  deleteConfirmId: string | null;
+  startTime: string;
+  endTime: string;
+};
+
+type HistoryViewEvent =
+  | { type: 'versionSelected'; id: string }
+  | { type: 'deleteRequested'; id: string }
+  | { type: 'deleteConfirmClosed' }
+  | { type: 'versionDeleted' }
+  | { type: 'startTimeChanged'; value: string }
+  | { type: 'endTimeChanged'; value: string }
+  | { type: 'filterCleared' };
+
+const initialHistoryViewState: HistoryViewState = {
+  requestedSelectedId: null,
+  deleteConfirmId: null,
+  startTime: '',
+  endTime: '',
+};
+
+function historyViewReducer(state: HistoryViewState, event: HistoryViewEvent): HistoryViewState {
+  switch (event.type) {
+    case 'versionSelected':
+      return { ...state, requestedSelectedId: event.id };
+    case 'deleteRequested':
+      return { ...state, deleteConfirmId: event.id };
+    case 'deleteConfirmClosed':
+    case 'versionDeleted':
+      return { ...state, deleteConfirmId: null };
+    case 'startTimeChanged':
+      return { ...state, startTime: event.value };
+    case 'endTimeChanged':
+      return { ...state, endTime: event.value };
+    case 'filterCleared':
+      return { ...state, startTime: '', endTime: '' };
+  }
+}
+
+type VersionAction = { id: string; target: TableVersionTarget };
+
 export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
   ({ open, onOpenChange, target, tableName, onRollback, onPlayTimeline }) => {
     const { t } = useTranslation();
@@ -131,11 +174,41 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       ...tableVersionsOptions(target),
       enabled: open && Boolean(target),
     });
-    const [requestedSelectedId, setSelectedId] = useState<string | null>(null);
-    const [actionLoading, setActionLoading] = useState(false);
-    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-    const [startTime, setStartTime] = useState('');
-    const [endTime, setEndTime] = useState('');
+    const [{ requestedSelectedId, deleteConfirmId, startTime, endTime }, dispatch] = useReducer(
+      historyViewReducer,
+      initialHistoryViewState,
+    );
+
+    const rollbackMutation = useMutation({
+      mutationFn: ({ id, target }: VersionAction) => getVersion(id, target),
+      onSuccess: async (version, { target }) => {
+        if (!version) {
+          showToast(t('versionHistory.versionMissing'));
+          await queryClient.invalidateQueries({ queryKey: tableVersionsOptions(target).queryKey });
+
+          return;
+        }
+
+        onRollback?.(version.state);
+        onOpenChange(false);
+      },
+      onError: (error) => {
+        console.error('[versions] rollback failed', error);
+        showToast(t('versionHistory.rollbackFailed'));
+      },
+    });
+
+    const deleteMutation = useMutation({
+      mutationFn: ({ id, target }: VersionAction) => deleteVersion(id, target),
+      onSuccess: async (_, { target }) => {
+        dispatch({ type: 'versionDeleted' });
+        await queryClient.invalidateQueries({ queryKey: tableVersionsOptions(target).queryKey });
+        showToast(t('versionHistory.deleteSuccess'));
+      },
+      onError: () => showToast(t('versionHistory.deleteFailed')),
+    });
+
+    const actionLoading = rollbackMutation.isPending || deleteMutation.isPending;
 
     const resolveVersionMessage = useCallback(
       (message?: string | null) => {
@@ -191,47 +264,20 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       ? requestedSelectedId
       : (filteredVersions[0]?.id ?? null);
 
+    const { mutate: rollback } = rollbackMutation;
+    const { mutate: removeVersion } = deleteMutation;
+
     // 回滚到选中版本
-    const handleRollback = useCallback(async () => {
+    const handleRollback = useCallback(() => {
       if (!selectedId || !onRollback || !target) return;
-      setActionLoading(true);
-
-      try {
-        const version = await getVersion(selectedId, target);
-
-        if (!version) {
-          showToast(t('versionHistory.versionMissing'));
-          await queryClient.invalidateQueries({ queryKey: tableVersionsOptions(target).queryKey });
-
-          return;
-        }
-
-        onRollback(version.state);
-        onOpenChange(false);
-      } catch (error) {
-        console.error('[versions] rollback failed', error);
-        showToast(t('versionHistory.rollbackFailed'));
-      } finally {
-        setActionLoading(false);
-      }
-    }, [selectedId, onRollback, onOpenChange, queryClient, showToast, t, target]);
+      rollback({ id: selectedId, target });
+    }, [selectedId, onRollback, rollback, target]);
 
     // 删除版本
-    const handleDelete = useCallback(async () => {
+    const handleDelete = useCallback(() => {
       if (!deleteConfirmId || !target) return;
-      setActionLoading(true);
-
-      try {
-        await deleteVersion(deleteConfirmId, target);
-        setDeleteConfirmId(null);
-        await queryClient.invalidateQueries({ queryKey: tableVersionsOptions(target).queryKey });
-        showToast(t('versionHistory.deleteSuccess'));
-      } catch {
-        showToast(t('versionHistory.deleteFailed'));
-      } finally {
-        setActionLoading(false);
-      }
-    }, [deleteConfirmId, queryClient, showToast, t, target]);
+      removeVersion({ id: deleteConfirmId, target });
+    }, [deleteConfirmId, removeVersion, target]);
 
     return (
       <>
@@ -265,7 +311,9 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                       endTime ||
                       (versions.length ? toDateInputValue(versions[0].createdAt) : undefined)
                     }
-                    onChange={(event) => setStartTime(event.target.value)}
+                    onChange={(event) =>
+                      dispatch({ type: 'startTimeChanged', value: event.target.value })
+                    }
                     className="h-8 text-xs"
                   />
                 </label>
@@ -281,7 +329,9 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                         : undefined)
                     }
                     max={versions.length ? toDateInputValue(versions[0].createdAt) : undefined}
-                    onChange={(event) => setEndTime(event.target.value)}
+                    onChange={(event) =>
+                      dispatch({ type: 'endTimeChanged', value: event.target.value })
+                    }
                     className="h-8 text-xs"
                   />
                 </label>
@@ -291,10 +341,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                   size="sm"
                   className="h-8 px-2 text-xs"
                   disabled={!startTime && !endTime}
-                  onClick={() => {
-                    setStartTime('');
-                    setEndTime('');
-                  }}
+                  onClick={() => dispatch({ type: 'filterCleared' })}
                 >
                   {t('versionHistory.clearFilter')}
                 </Button>
@@ -343,7 +390,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
 
                         <button
                           type="button"
-                          onClick={() => setSelectedId(v.id)}
+                          onClick={() => dispatch({ type: 'versionSelected', id: v.id })}
                           aria-pressed={isSelected}
                           className={cn(
                             'ml-5 flex w-[calc(100%-1.25rem)] flex-col gap-1 rounded-lg border p-3 pr-10 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -399,7 +446,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                           className="absolute right-1 top-2 h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setDeleteConfirmId(v.id);
+                            dispatch({ type: 'deleteRequested', id: v.id });
                           }}
                           aria-label={t('versionHistory.deleteAria', {
                             version: versions.length - index,
@@ -450,7 +497,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
 
         <AlertDialog
           open={!!deleteConfirmId}
-          onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+          onOpenChange={(open) => !open && dispatch({ type: 'deleteConfirmClosed' })}
         >
           <AlertDialogContent>
             <AlertDialogHeader>

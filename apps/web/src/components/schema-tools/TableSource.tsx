@@ -2,8 +2,8 @@ import { Database, RefreshCw, Table2 } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { StandardSummary } from '@ddlbuilder/shared-types/api';
 import { SnapshotFileInput } from './SnapshotFileInput';
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useReducer } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState, DatabaseType } from '@ddlbuilder/shared-types';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,44 @@ import { useSavedTablePersistence } from '@/hooks/workspacePersistence/useSavedT
 import { DATABASE_OPTIONS } from '@/components/App/databaseOptions';
 import { SqlSnapshotInput } from './SqlSnapshotInput';
 import { parseSqlSnapshot } from './sqlSnapshot';
+
+type SourceKind = 'saved' | 'sql' | 'snapshot';
+
+type TableSourceState = {
+  source: SourceKind;
+  sql: string;
+  dbType: DatabaseType;
+  snapshotTables: PersistedState[];
+};
+
+type TableSourceEvent =
+  | { type: 'sourceChosen'; source: SourceKind }
+  | { type: 'sqlChanged'; sql: string }
+  | { type: 'dbTypeChosen'; dbType: DatabaseType }
+  | { type: 'snapshotLoaded'; tables: PersistedState[] };
+
+const initialTableSourceState: TableSourceState = {
+  source: 'saved',
+  sql: '',
+  dbType: 'mysql',
+  snapshotTables: [],
+};
+
+function tableSourceReducer(state: TableSourceState, event: TableSourceEvent): TableSourceState {
+  switch (event.type) {
+    case 'sourceChosen':
+      return { ...state, source: event.source, snapshotTables: [] };
+    case 'sqlChanged':
+      return { ...state, sql: event.sql };
+    case 'dbTypeChosen':
+      return { ...state, dbType: event.dbType };
+    case 'snapshotLoaded':
+      return { ...state, snapshotTables: event.tables };
+  }
+}
+
+const isSourceKind = (value: string): value is SourceKind =>
+  value === 'saved' || value === 'sql' || value === 'snapshot';
 
 export function TableSource({
   value,
@@ -23,12 +61,24 @@ export function TableSource({
 }) {
   const { t } = useTranslation();
   const { scope, storage, readAllTables } = useSavedTablePersistence();
-  const [source, setSource] = useState('saved');
-  const [sql, setSql] = useState('');
-  const [dbType, setDbType] = useState<DatabaseType>('mysql');
-  const [parsed, setParsed] = useState<PersistedState[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+
+  const [{ source, sql, dbType, snapshotTables }, dispatch] = useReducer(
+    tableSourceReducer,
+    initialTableSourceState,
+  );
+
+  const parse = useMutation({
+    mutationFn: (request: { sql: string; dbType: DatabaseType }) =>
+      parseSqlSnapshot(request.sql, request.dbType),
+    onSuccess: (result) => onChange(result),
+  });
+  const busy = parse.isPending;
+
+  const error = !parse.error
+    ? ''
+    : parse.error instanceof Error
+      ? parse.error.message
+      : t('schemaTools.failed');
 
   const saved = useQuery({
     queryKey: ['schema-tools-tables', scope, storage.kind],
@@ -36,12 +86,16 @@ export function TableSource({
     enabled: storage.kind !== 'loading',
     refetchOnWindowFocus: false,
   });
-  const tables = source === 'saved' ? (saved.data ?? []) : parsed;
+  const tables =
+    source === 'saved'
+      ? (saved.data ?? [])
+      : source === 'sql'
+        ? (parse.data ?? [])
+        : snapshotTables;
 
   const resetSql = (text: string) => {
-    setSql(text);
-    setParsed([]);
-    setError('');
+    dispatch({ type: 'sqlChanged', sql: text });
+    parse.reset();
     onChange([]);
   };
 
@@ -55,10 +109,11 @@ export function TableSource({
           value={source}
           disabled={busy}
           onChange={(event) => {
-            setSource(event.target.value);
-            setParsed([]);
+            const next = event.target.value;
+
+            if (isSourceKind(next)) dispatch({ type: 'sourceChosen', source: next });
+            parse.reset();
             onStandardsChange?.([]);
-            setError('');
             onChange([]);
           }}
         >
@@ -111,7 +166,7 @@ export function TableSource({
           label={t('snapshot.file')}
           onChange={(snapshot) => {
             onStandardsChange?.(snapshot.standards);
-            setParsed(snapshot.tables);
+            dispatch({ type: 'snapshotLoaded', tables: snapshot.tables });
             onChange(snapshot.tables);
           }}
         />
@@ -127,7 +182,7 @@ export function TableSource({
               onChange={(event) => {
                 const option = DATABASE_OPTIONS.find((item) => item.value === event.target.value);
 
-                if (option) setDbType(option.value);
+                if (option) dispatch({ type: 'dbTypeChosen', dbType: option.value });
                 resetSql(sql);
               }}
             >
@@ -151,21 +206,9 @@ export function TableSource({
           </p>
           <Button
             disabled={busy || !sql.trim()}
-            onClick={async () => {
-              setBusy(true);
-              setError('');
+            onClick={() => {
               onChange([]);
-
-              try {
-                const result = await parseSqlSnapshot(sql, dbType);
-                setParsed(result);
-                onChange(result);
-              } catch (cause) {
-                setParsed([]);
-                setError(cause instanceof Error ? cause.message : t('schemaTools.failed'));
-              } finally {
-                setBusy(false);
-              }
+              parse.mutate({ sql, dbType });
             }}
           >
             {t(busy ? 'schemaTools.loading' : 'schemaTools.parse')}

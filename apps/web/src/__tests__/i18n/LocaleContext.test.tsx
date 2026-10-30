@@ -11,9 +11,10 @@ function Wrapper({ children }: PropsWithChildren) {
 }
 
 describe('i18n/LocaleContext', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
     vi.spyOn(window.localStorage, 'getItem').mockReturnValue(null);
+    await i18n.changeLanguage('zh-CN');
   });
 
   afterEach(() => {
@@ -25,20 +26,12 @@ describe('i18n/LocaleContext', () => {
     expect(localeTypes.normalizeLocale('ja-JP')).toBe('ja-JP');
   });
 
-  it('应根据 localStorage 初始化语言', async () => {
+  it('应根据 localStorage 初始化语言', () => {
     vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
       key === LOCAL_STORAGE_KEY ? 'en-US' : null,
     );
 
-    await i18n.changeLanguage('zh-CN');
-
-    const { result } = renderHook(() => useLocale(), { wrapper: Wrapper });
-
-    expect(result.current.locale).toBe('en-US');
-    expect(result.current.resolvedLocale).toBe('en-US');
-    await waitFor(() => {
-      expect(document.documentElement.lang).toBe('en-US');
-    });
+    expect(localeTypes.resolveInitialLocale()).toBe('en-US');
   });
 
   it('setLocale 应更新状态并写入 localStorage', async () => {
@@ -58,9 +51,7 @@ describe('i18n/LocaleContext', () => {
   });
 
   it('应支持日语环境和日语语言切换', async () => {
-    vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
-      key === LOCAL_STORAGE_KEY ? 'ja-JP' : null,
-    );
+    await i18n.changeLanguage('ja-JP');
 
     const { result } = renderHook(() => useLocale(), { wrapper: Wrapper });
 
@@ -71,8 +62,6 @@ describe('i18n/LocaleContext', () => {
   });
 
   it('切换语言后 resolvedLocale 应与当前 locale 保持一致', async () => {
-    await i18n.changeLanguage('zh-CN');
-
     const { result } = renderHook(() => useLocale(), { wrapper: Wrapper });
 
     act(() => {
@@ -105,9 +94,7 @@ describe('i18n/LocaleContext', () => {
   it('应响应 languageChanged 事件并同步 locale', async () => {
     const { result } = renderHook(() => useLocale(), { wrapper: Wrapper });
 
-    act(() => {
-      i18n.emit('languageChanged', 'en');
-    });
+    await act(() => i18n.changeLanguage('en'));
 
     await waitFor(() => {
       expect(result.current.locale).toBe('en-US');

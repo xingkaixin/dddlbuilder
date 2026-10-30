@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 import {
+  checkAdminSession,
   getUserCreditLedger,
   getUserDetail,
   getUserUsageEvents,
@@ -10,6 +11,7 @@ const ADMIN_STALE_TIME_MS = 15_000;
 
 export const adminQueryKeys = {
   all: ['admin'] as const,
+  session: ['admin', 'session'] as const,
   usersRoot: ['admin', 'users'] as const,
   users: (limit: number, offset: number) => ['admin', 'users', { limit, offset }] as const,
   user: (userId: string) => ['admin', 'users', userId] as const,
@@ -18,6 +20,13 @@ export const adminQueryKeys = {
   usage: (userId: string, limit: number, offset: number) =>
     ['admin', 'users', userId, 'usage', { limit, offset }] as const,
 };
+
+export function adminSessionOptions() {
+  return queryOptions({
+    queryKey: adminQueryKeys.session,
+    queryFn: checkAdminSession,
+  });
+}
 
 export function adminUsersOptions(limit: number, offset: number) {
   return queryOptions({

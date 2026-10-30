@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useReducer, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -32,34 +32,60 @@ interface FolderDialogProps {
   onConfirm: (name: string) => Promise<void>;
 }
 
+type FolderFormState = { name: string; error: string; loading: boolean };
+
+type FolderFormEvent =
+  | { type: 'nameChanged'; name: string }
+  | { type: 'submitStarted' }
+  | { type: 'submitFailed'; error: string }
+  | { type: 'submitSettled' };
+
+function folderFormReducer(state: FolderFormState, event: FolderFormEvent): FolderFormState {
+  switch (event.type) {
+    case 'nameChanged':
+      return { ...state, name: event.name, error: '' };
+    case 'submitStarted':
+      return { ...state, loading: true };
+    case 'submitFailed':
+      return { ...state, error: event.error };
+    case 'submitSettled':
+      return { ...state, loading: false };
+  }
+}
+
+const deletingReducer = (_deleting: boolean, event: 'started' | 'settled') => event === 'started';
+
 export const FolderDialog = memo<FolderDialogProps>(
   ({ open, onOpenChange, mode, parentFolder, targetFolder, onConfirm }) => {
     const { t } = useTranslation();
 
-    const [name, setName] = useState(() =>
+    const [{ name, error, loading }, dispatch] = useReducer(
+      folderFormReducer,
       mode === 'rename' && targetFolder ? targetFolder.name : '',
+      (initialName): FolderFormState => ({ name: initialName, error: '', loading: false }),
     );
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
 
     const handleConfirm = useCallback(async () => {
       const trimmed = name.trim();
 
       if (!trimmed) {
-        setError(t('savedTables.folderDialog.nameRequired'));
+        dispatch({ type: 'submitFailed', error: t('savedTables.folderDialog.nameRequired') });
 
         return;
       }
 
-      setLoading(true);
+      dispatch({ type: 'submitStarted' });
 
       try {
         await onConfirm(trimmed);
         onOpenChange(false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('savedTables.folderDialog.actionFailed'));
+        dispatch({
+          type: 'submitFailed',
+          error: err instanceof Error ? err.message : t('savedTables.folderDialog.actionFailed'),
+        });
       } finally {
-        setLoading(false);
+        dispatch({ type: 'submitSettled' });
       }
     }, [name, onConfirm, onOpenChange, t]);
 
@@ -91,10 +117,7 @@ export const FolderDialog = memo<FolderDialogProps>(
               <Input
                 id="folder-name"
                 value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setError('');
-                }}
+                onChange={(e) => dispatch({ type: 'nameChanged', name: e.target.value })}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     void handleConfirm();
@@ -135,10 +158,10 @@ interface DeleteFolderDialogProps {
 export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
   ({ open, onOpenChange, folder, tableCount, onConfirm }) => {
     const { t } = useTranslation();
-    const [loading, setLoading] = useState(false);
+    const [loading, dispatchDeleting] = useReducer(deletingReducer, false);
 
     const handleConfirm = useCallback(async () => {
-      setLoading(true);
+      dispatchDeleting('started');
 
       try {
         await onConfirm();
@@ -146,7 +169,7 @@ export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
       } catch {
         // Error handling is done in parent
       } finally {
-        setLoading(false);
+        dispatchDeleting('settled');
       }
     }, [onConfirm, onOpenChange]);
 

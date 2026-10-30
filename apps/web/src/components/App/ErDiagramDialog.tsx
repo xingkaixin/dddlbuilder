@@ -1,5 +1,6 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { lazy, memo, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, memo, Suspense, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SaveTableResult } from '@/hooks/useSavedTables';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
@@ -8,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/useToast';
 import { createEmptyRow } from '@/utils/helpers';
+import { erDiagramTablesOptions } from '@/queries/erDiagram';
 
 const ErDiagramCanvas = lazy(() => import('./er-diagram/ErDiagramCanvas'));
 
@@ -24,25 +26,25 @@ interface ErDiagramDialogProps {
 }
 
 const INITIAL_ROWS = Array.from({ length: 4 }, () => createEmptyRow());
+const EMPTY_TABLES: SavedTableRecord[] = [];
 
 export const ErDiagramDialog = memo<ErDiagramDialogProps>(
   ({ open, onOpenChange, onSelectTable, saveTable, overwriteTable, loadTables }) => {
     const { t } = useTranslation();
     const { showToast } = useToast();
-    const [tables, setTables] = useState<SavedTableRecord[]>([]);
-    const [loading, setLoading] = useState(open);
+
+    const {
+      data: tables = EMPTY_TABLES,
+      isLoading: loading,
+      refetch,
+    } = useQuery({
+      ...erDiagramTablesOptions(loadTables),
+      enabled: open,
+    });
 
     const refresh = useCallback(async () => {
-      const records = await loadTables();
-      setTables(records);
-    }, [loadTables]);
-
-    useEffect(() => {
-      if (!open) return;
-      void loadTables()
-        .then(setTables)
-        .finally(() => setLoading(false));
-    }, [loadTables, open]);
+      await refetch({ throwOnError: true });
+    }, [refetch]);
 
     const handleSelectTable = useCallback(
       (state: PersistedState) => {
@@ -52,10 +54,10 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
       [onSelectTable, onOpenChange],
     );
 
-    const handleAddTable = useCallback(() => {
+    const handleAddTable = useCallback(async () => {
       const name = window.prompt(t('erDiagram.addTablePrompt') || '请输入表名');
 
-      if (!name?.trim()) return;
+      if (!name?.trim()) return false;
 
       const trimmed = name.trim();
 
@@ -72,16 +74,22 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
         authObjects: [],
       };
 
-      void saveTable(trimmed, state).then((result) => {
-        if (result.ok) {
-          showToast(t('erDiagram.toast.tableSaved'));
-          void refresh();
-        } else if (result.reason === 'duplicate') {
-          showToast(t('erDiagram.toast.tableDuplicate'));
-        } else {
-          showToast(result.message || t('erDiagram.toast.tableSaveFailed'));
-        }
-      });
+      const result = await saveTable(trimmed, state);
+
+      if (result.ok) {
+        showToast(t('erDiagram.toast.tableSaved'));
+        await refresh();
+
+        return true;
+      }
+
+      if (result.reason === 'duplicate') {
+        showToast(t('erDiagram.toast.tableDuplicate'));
+      } else {
+        showToast(result.message || t('erDiagram.toast.tableSaveFailed'));
+      }
+
+      return false;
     }, [saveTable, refresh, showToast, t]);
 
     return (

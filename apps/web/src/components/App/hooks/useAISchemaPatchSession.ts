@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import type { TableTemplate } from '@/hooks/useTableTemplates';
-import { useAIGenerateTable } from '@/hooks/useAIGenerateTable';
+import { useAIGenerateTable, type GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 import { useTranslation } from 'react-i18next';
 import {
   buildAISchemaChanges,
@@ -13,6 +13,64 @@ import {
 
 export const MAX_PATCH_INPUT_LENGTH = 500;
 const EMPTY_CHANGE_STATUSES: Record<string, AISchemaChangeStatus> = {};
+
+interface PatchSessionState {
+  input: string;
+  // Statuses, expected state and apply error belong to this generated result only.
+  result: GeneratedTableSchema | null;
+  values: Record<string, AISchemaChangeStatus>;
+  expectedState: PersistedState | null;
+  error: string | null;
+}
+
+type PatchSessionEvent =
+  | { type: 'inputChanged'; input: string }
+  | { type: 'reset' }
+  | {
+      type: 'statusesChanged';
+      result: GeneratedTableSchema | null;
+      ids: readonly string[];
+      status: AISchemaChangeStatus;
+      expectedState?: PersistedState;
+    }
+  | { type: 'applyFailed'; result: GeneratedTableSchema | null; error: string };
+
+const createPatchSessionState = (result: GeneratedTableSchema | null): PatchSessionState => ({
+  input: '',
+  result,
+  values: {},
+  expectedState: null,
+  error: null,
+});
+
+function patchSessionReducer(
+  state: PatchSessionState,
+  event: PatchSessionEvent,
+): PatchSessionState {
+  switch (event.type) {
+    case 'inputChanged':
+      return { ...state, input: event.input };
+    case 'reset':
+      return createPatchSessionState(null);
+    case 'statusesChanged': {
+      const isSameResult = state.result === event.result;
+      const values: Record<string, AISchemaChangeStatus> = isSameResult ? { ...state.values } : {};
+
+      for (const id of event.ids) values[id] = event.status;
+
+      return {
+        ...state,
+        result: event.result,
+        values,
+        expectedState: event.expectedState ?? (isSameResult ? state.expectedState : null),
+        error: null,
+      };
+    }
+
+    case 'applyFailed':
+      return { ...state, result: event.result, error: event.error };
+  }
+}
 
 export interface AISchemaPatchSessionParams {
   currentState: PersistedState;
@@ -31,7 +89,6 @@ export function useAISchemaPatchSession({
 }: AISchemaPatchSessionParams) {
   const { t } = useTranslation();
   const dbType = currentState.dbType;
-  const [input, setInput] = useState('');
 
   const {
     isLoading,
@@ -45,36 +102,11 @@ export function useAISchemaPatchSession({
     clearConversation,
     cancelGeneration,
   } = useAIGenerateTable();
-  const [statusState, setStatusState] = useState(() => ({
-    result,
-    // SAFETY: the session fields are validated by the decoded schema patch response.
-    values: {} as Record<string, AISchemaChangeStatus>,
-    // SAFETY: the session fields are validated by the decoded schema patch response.
-    expectedState: null as PersistedState | null,
-    // SAFETY: the session fields are validated by the decoded schema patch response.
-    error: null as string | null,
-  }));
-  const statuses = statusState.result === result ? statusState.values : EMPTY_CHANGE_STATUSES;
-
-  const expectedState =
-    (statusState.result === result && statusState.expectedState) || resultBaseState;
-  const updateStatuses = useCallback(
-    (
-      update: (
-        current: Record<string, AISchemaChangeStatus>,
-      ) => Record<string, AISchemaChangeStatus>,
-      nextExpectedState?: PersistedState,
-    ) => {
-      setStatusState((current) => ({
-        result,
-        values: update(current.result === result ? current.values : {}),
-        expectedState:
-          nextExpectedState ?? (current.result === result ? current.expectedState : null),
-        error: null,
-      }));
-    },
-    [result],
-  );
+  const [session, dispatch] = useReducer(patchSessionReducer, result, createPatchSessionState);
+  const { input } = session;
+  const isSessionResult = session.result === result;
+  const statuses = isSessionResult ? session.values : EMPTY_CHANGE_STATUSES;
+  const expectedState = (isSessionResult && session.expectedState) || resultBaseState;
 
   const candidateState = useMemo(() => {
     if (!result || !resultBaseState) return null;
@@ -126,15 +158,14 @@ export function useAISchemaPatchSession({
   const handleReset = useCallback(() => {
     clearResult();
     clearConversation();
-    setStatusState({ result: null, values: {}, expectedState: null, error: null });
-    setInput('');
+    dispatch({ type: 'reset' });
   }, [clearConversation, clearResult]);
 
   const setChangeStatus = useCallback(
     (id: string, status: AISchemaChangeStatus) => {
-      updateStatuses((current) => ({ ...current, [id]: status }));
+      dispatch({ type: 'statusesChanged', result, ids: [id], status });
     },
-    [updateStatuses],
+    [result],
   );
 
   const handleAccept = useCallback(
@@ -151,53 +182,46 @@ export function useAISchemaPatchSession({
     try {
       appliedState = onApplyChanges(acceptedChanges, candidateState, expectedState);
     } catch (error) {
-      setStatusState((current) => ({
-        ...current,
+      dispatch({
+        type: 'applyFailed',
         result,
         error: t('aiPatch.applyFailed', {
           reason: error instanceof Error ? error.message : String(error),
         }),
-      }));
+      });
 
       return;
     }
 
-    const appliedIds = new Set(acceptedChanges.map((change) => change.id));
-    updateStatuses((current) => {
-      const next = { ...current };
-
-      for (const id of appliedIds) next[id] = 'applied';
-
-      return next;
-    }, appliedState);
-  }, [acceptedChanges, candidateState, expectedState, onApplyChanges, result, t, updateStatuses]);
+    dispatch({
+      type: 'statusesChanged',
+      result,
+      ids: acceptedChanges.map((change) => change.id),
+      status: 'applied',
+      expectedState: appliedState,
+    });
+  }, [acceptedChanges, candidateState, expectedState, onApplyChanges, result, t]);
 
   const handleSelectAll = useCallback(() => {
-    updateStatuses((current) => {
-      const next = { ...current };
-
-      for (const change of selectableChanges) {
-        next[change.id] = 'accepted';
-      }
-
-      return next;
+    dispatch({
+      type: 'statusesChanged',
+      result,
+      ids: selectableChanges.map((change) => change.id),
+      status: 'accepted',
     });
-  }, [selectableChanges, updateStatuses]);
+  }, [result, selectableChanges]);
 
   const handleUnselectAll = useCallback(() => {
-    updateStatuses((current) => {
-      const next = { ...current };
-
-      for (const change of selectableChanges) {
-        next[change.id] = 'rejected';
-      }
-
-      return next;
+    dispatch({
+      type: 'statusesChanged',
+      result,
+      ids: selectableChanges.map((change) => change.id),
+      status: 'rejected',
     });
-  }, [selectableChanges, updateStatuses]);
+  }, [result, selectableChanges]);
 
   const handleInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(event.target.value.slice(0, MAX_PATCH_INPUT_LENGTH));
+    dispatch({ type: 'inputChanged', input: event.target.value.slice(0, MAX_PATCH_INPUT_LENGTH) });
   }, []);
 
   const handleKeyDown = useCallback(
@@ -212,7 +236,7 @@ export function useAISchemaPatchSession({
   return {
     input,
     isLoading,
-    error: (statusState.result === result && statusState.error) || error,
+    error: (isSessionResult && session.error) || error,
     result,
     partialResult,
     changes,

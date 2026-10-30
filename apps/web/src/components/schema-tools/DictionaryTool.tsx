@@ -4,7 +4,7 @@ import type { StandardSummary } from '@ddlbuilder/shared-types/api';
 import { encodeDeliverySnapshot } from '@ddlbuilder/workspace-core';
 import { DictionaryReader } from './DictionaryReader';
 import { PublishPanel } from '@/components/publications/PublishPanel';
-import { useMemo, useState } from 'react';
+import { useMemo, useReducer } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -15,11 +15,37 @@ import { downloadFile } from '@/utils/mockDataGenerator';
 import { TableSource } from './TableSource';
 import { buildDictionary, dictionaryHtml, dictionaryMarkdown } from './dictionary';
 
+type DictionaryState = {
+  tables: PersistedState[];
+  title: string;
+  importedStandards: StandardSummary[];
+};
+
+type DictionaryEvent =
+  | { type: 'tablesSelected'; tables: PersistedState[] }
+  | { type: 'titleChanged'; title: string }
+  | { type: 'standardsImported'; standards: StandardSummary[] };
+
+const initialDictionaryState: DictionaryState = { tables: [], title: '', importedStandards: [] };
+
+function dictionaryReducer(state: DictionaryState, event: DictionaryEvent): DictionaryState {
+  switch (event.type) {
+    case 'tablesSelected':
+      return { ...state, tables: event.tables };
+    case 'titleChanged':
+      return { ...state, title: event.title };
+    case 'standardsImported':
+      return { ...state, importedStandards: event.standards };
+  }
+}
+
 export function DictionaryTool() {
   const { t, i18n } = useTranslation();
-  const [tables, setTables] = useState<PersistedState[]>([]);
-  const [title, setTitle] = useState('');
-  const [importedStandards, setImportedStandards] = useState<StandardSummary[]>([]);
+
+  const [{ tables, title, importedStandards }, dispatch] = useReducer(
+    dictionaryReducer,
+    initialDictionaryState,
+  );
 
   const standards = useQuery({
     queryKey: ['schema-tools-standards'],
@@ -51,7 +77,11 @@ export function DictionaryTool() {
     <ToolLayout
       title={t('schemaTools.dictionary.title')}
       source={
-        <TableSource value={tables} onChange={setTables} onStandardsChange={setImportedStandards} />
+        <TableSource
+          value={tables}
+          onChange={(next) => dispatch({ type: 'tablesSelected', tables: next })}
+          onStandardsChange={(standards) => dispatch({ type: 'standardsImported', standards })}
+        />
       }
     >
       <label className="block space-y-2 text-sm font-medium">
@@ -60,7 +90,7 @@ export function DictionaryTool() {
           value={title}
           placeholder={t('schemaTools.dictionary.defaultTitle')}
           className="h-10 bg-background px-3 text-sm shadow-none"
-          onChange={(event) => setTitle(event.target.value)}
+          onChange={(event) => dispatch({ type: 'titleChanged', title: event.target.value })}
         />
       </label>
       <div className="flex flex-wrap gap-2">

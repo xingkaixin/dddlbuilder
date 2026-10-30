@@ -1,4 +1,5 @@
-import * as React from 'react';
+import type * as React from 'react';
+import { isValidElement } from 'react';
 import { AlertDialog as AlertDialogPrimitive } from '@base-ui/react/alert-dialog';
 
 import { cn } from '@/lib/utils';
@@ -14,7 +15,7 @@ function AlertDialogTrigger({ asChild, children, ...props }: AlertDialogTriggerP
   return (
     <AlertDialogPrimitive.Trigger
       data-slot="alert-dialog-trigger"
-      render={asChild && React.isValidElement(children) ? children : undefined}
+      render={asChild && isValidElement(children) ? children : undefined}
       {...props}
     >
       {asChild ? undefined : children}

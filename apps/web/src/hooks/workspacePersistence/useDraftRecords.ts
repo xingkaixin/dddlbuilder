@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useReducer, useRef } from 'react';
 import type * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
@@ -29,6 +29,36 @@ const EMPTY_DRAFTS: DraftEntry[] = [];
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   drafts.sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
 
+type LocalDraftRecords = Map<string, GlobalDraftRecord>;
+
+type LocalDraftRecordsEvent =
+  | { type: 'recordChanged'; draftId: string; record: GlobalDraftRecord | null }
+  | { type: 'recordsLoaded'; drafts: DraftEntry[]; trashed: boolean };
+
+const localDraftRecordsReducer = (
+  records: LocalDraftRecords,
+  event: LocalDraftRecordsEvent,
+): LocalDraftRecords => {
+  if (event.type === 'recordChanged') {
+    const next = new Map(records);
+
+    if (event.record) next.set(event.draftId, event.record);
+    else next.delete(event.draftId);
+
+    return next;
+  }
+
+  const next = new Map(
+    [...records].filter(([, record]) => (record.trashedAt != null) !== event.trashed),
+  );
+
+  for (const { draftId, record } of event.drafts) next.set(draftId, record);
+
+  return next;
+};
+
+const createLocalDraftRecords = (): LocalDraftRecords => new Map();
+
 type UseDraftRecordsParams = {
   yDoc: Y.Doc | null;
   disabled: boolean;
@@ -42,7 +72,12 @@ export function useDraftRecords({
   storage,
   yDoc,
 }: UseDraftRecordsParams) {
-  const [localRecords, setLocalRecords] = useState<Map<string, GlobalDraftRecord>>(() => new Map());
+  const [localRecords, dispatchLocalRecords] = useReducer(
+    localDraftRecordsReducer,
+    undefined,
+    createLocalDraftRecords,
+  );
+  // 同一事件内的后续读取需要看到刚写入的记录，所以引用与 reducer 用同一个纯函数同步推进。
   const localRecordsRef = useRef(localRecords);
   const writingRecordsRef = useRef(new Map<string, GlobalDraftRecord>());
 
@@ -89,28 +124,24 @@ export function useDraftRecords({
     };
   }, [localRecords, yDoc, yDocDrafts]);
 
-  const updateLocalRecord = useCallback((draftId: string, record: GlobalDraftRecord | null) => {
-    const next = new Map(localRecordsRef.current);
-
-    if (record) next.set(draftId, record);
-    else next.delete(draftId);
-    localRecordsRef.current = next;
-    setLocalRecords(next);
+  const applyLocalRecords = useCallback((event: LocalDraftRecordsEvent) => {
+    localRecordsRef.current = localDraftRecordsReducer(localRecordsRef.current, event);
+    dispatchLocalRecords(event);
   }, []);
+
+  const updateLocalRecord = useCallback(
+    (draftId: string, record: GlobalDraftRecord | null) =>
+      applyLocalRecords({ type: 'recordChanged', draftId, record }),
+    [applyLocalRecords],
+  );
 
   const replaceLocalRecords = useCallback(
     (drafts: DraftEntry[], trashed: boolean) => {
       if (yDoc) return;
 
-      const next = new Map(
-        [...localRecordsRef.current].filter(([, record]) => (record.trashedAt != null) !== trashed),
-      );
-
-      for (const { draftId, record } of drafts) next.set(draftId, record);
-      localRecordsRef.current = next;
-      setLocalRecords(next);
+      applyLocalRecords({ type: 'recordsLoaded', drafts, trashed });
     },
-    [yDoc],
+    [applyLocalRecords, yDoc],
   );
   const replaceDrafts = useCallback(
     (drafts: DraftEntry[]) => replaceLocalRecords(drafts, false),

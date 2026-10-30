@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useReducer, useRef } from 'react';
 import type { ReactNode, SyntheticEvent } from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -16,7 +16,6 @@ import {
   type FieldTableRow,
 } from './table/tableFeatures';
 import { useFreezeColumns } from './table/useFreezeColumns';
-import { useRowHighlight } from './table/useRowHighlight';
 import { DataTableToolbar } from './table/DataTableToolbar';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
@@ -24,6 +23,7 @@ import { useFieldRowMutations } from './table/useFieldRowMutations';
 import { useFieldTypeChangeGuard } from './table/useFieldTypeChangeGuard';
 import { DangerousChangeDialog } from './table/DangerousChangeDialog';
 import { useSortableFieldRows } from './table/useSortableFieldRows';
+import { useTimers } from '@/hooks/useTimers';
 import { useTranslation } from 'react-i18next';
 import type { AICommentMode } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
@@ -53,13 +53,31 @@ const COLUMN_WIDTHS = {
 } satisfies Record<string, number>;
 const TABLE_MIN_WIDTH = Object.values(COLUMN_WIDTHS).reduce((a, b) => a + b, 0);
 
+type EditingCell = { row: number; col: string };
+
+type EditingCellEvent = { type: 'editStarted' | 'editEnded'; row: number; col: string };
+
+function editingCellReducer(
+  editing: EditingCell | null,
+  event: EditingCellEvent,
+): EditingCell | null {
+  if (event.type === 'editStarted') return { row: event.row, col: event.col };
+
+  return editing?.row === event.row && editing.col === event.col ? null : editing;
+}
+
+const reorderFeedbackReducer = (_visible: boolean, event: 'reordered' | 'expired') =>
+  event === 'reordered';
+
+const getEditorRows = () => useEditorStore.getState().rows;
+
 interface SortableDataRowProps {
   row: FieldTableRow;
   columns: FieldTableColumnDef[];
   warnings: string[];
   selectedColumn: string | null;
   editingColumn: string | null;
-  setEditingCell: (cell: { row: number; col: string } | null) => void;
+  onEditingCellChange: (rowIndex: number, columnId: string, isEditing: boolean) => void;
   handleCellActivate: (rowIndex: number, columnId: string) => void;
   focusEditableCell: (rowIndex: number, columnId: string) => void;
   focusFirstInteractiveInCell: (cellElement: HTMLTableCellElement | null) => void;
@@ -94,7 +112,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
   warnings,
   selectedColumn,
   editingColumn,
-  setEditingCell,
+  onEditingCellChange,
   handleCellActivate,
   focusEditableCell,
   focusFirstInteractiveInCell,
@@ -127,7 +145,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
         data-row-index={row.index}
         className={cn(
           'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
-          isRowHighlighted && 'bg-blue-500/10',
+          isRowHighlighted && 'bg-blue-500/10 animate-row-highlight',
           isDragging && 'opacity-80',
         )}
       >
@@ -169,7 +187,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
                 if (isTextEditableCell) {
                   commitActiveInputOutsideCell(event.currentTarget);
                   event.preventDefault();
-                  setEditingCell({ row: row.index, col: cell.column.id });
+                  onEditingCellChange(row.index, cell.column.id, true);
                   handleCellActivate(row.index, cell.column.id);
                   setTimeout(() => {
                     focusEditableCell(row.index, cell.column.id);
@@ -244,14 +262,30 @@ export const DataTable = memo<DataTableProps>(
 
     const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
     const tableRef = useRef<HTMLDivElement>(null);
-    const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const [dragFeedback, setDragFeedback] = useState<string | null>(null);
-    const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null);
+    const { schedule, clearAll } = useTimers();
+
+    const [reorderFeedbackVisible, dispatchReorderFeedback] = useReducer(
+      reorderFeedbackReducer,
+      false,
+    );
+
+    const [editingCell, dispatchEditingCell] = useReducer(editingCellReducer, null);
+
+    const handleEditingCellChange = useCallback(
+      (rowIndex: number, columnId: string, isEditing: boolean) => {
+        dispatchEditingCell({
+          type: isEditing ? 'editStarted' : 'editEnded',
+          row: rowIndex,
+          col: columnId,
+        });
+      },
+      [],
+    );
 
     const { updateCellValue } = useFieldRowMutations({ setRows });
 
     const { guardedUpdateCellValue, pendingChange, handleConfirm, handleCancel } =
-      useFieldTypeChangeGuard(rows, updateCellValue);
+      useFieldTypeChangeGuard(getEditorRows, updateCellValue);
 
     const updateEnumValues = useCallback(
       (rowIndex: number, fieldType: string, enumMeta: EnumValueMeta[]) => {
@@ -280,18 +314,9 @@ export const DataTable = memo<DataTableProps>(
       });
     }, [rows, duplicateNameSet, dbType, t]);
 
-    useEffect(
-      () => () => {
-        if (dragFeedbackTimerRef.current) {
-          clearTimeout(dragFeedbackTimerRef.current);
-        }
-      },
-      [],
-    );
-
     const {
       selectedCell,
-      setSelectedCell,
+      clearSelection,
       focusEditableCell,
       focusFirstInteractiveInCell,
       handleCellActivate,
@@ -300,13 +325,9 @@ export const DataTable = memo<DataTableProps>(
       tableRef,
     });
 
-    const clearSelection = useCallback(() => {
-      setSelectedCell(null);
-    }, [setSelectedCell]);
-
     const columns = useFieldColumns({
       columnWidths: COLUMN_WIDTHS,
-      onEditingCellChange: setEditingCell,
+      onEditingCellChange: handleEditingCellChange,
       dbType,
       updateCellValue: guardedUpdateCellValue,
       updateEnumValues,
@@ -334,17 +355,11 @@ export const DataTable = memo<DataTableProps>(
     const handleDragResult = useCallback(
       ({ moved }: { moved: boolean }) => {
         if (!moved) return;
-        setDragFeedback(t('dataTable.dragReordered'));
-
-        if (dragFeedbackTimerRef.current) {
-          clearTimeout(dragFeedbackTimerRef.current);
-        }
-
-        dragFeedbackTimerRef.current = setTimeout(() => {
-          setDragFeedback(null);
-        }, 1600);
+        clearAll();
+        dispatchReorderFeedback('reordered');
+        schedule(() => dispatchReorderFeedback('expired'), 1600);
       },
-      [t],
+      [clearAll, schedule],
     );
 
     const { sensors, rowIds, handleDragMove, handleDragEnd } = useSortableFieldRows({
@@ -358,8 +373,6 @@ export const DataTable = memo<DataTableProps>(
       freezeEnabled,
       freezeColumns,
     );
-
-    useRowHighlight(tableRef, highlightedRowIndex);
 
     const safeAddCount = normalizeAddCount(addCount);
 
@@ -395,13 +408,13 @@ export const DataTable = memo<DataTableProps>(
           onAddCountChange={onAddCountChange}
           onAddRowsClick={handleAddRowsClick}
         />
-        {dragFeedback && (
+        {reorderFeedbackVisible && (
           <output
             aria-live="polite"
             className="absolute right-4 top-3 z-20 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-[11px] text-primary"
             data-testid="field-drag-feedback"
           >
-            {dragFeedback}
+            {t('dataTable.dragReordered')}
           </output>
         )}
 
@@ -479,7 +492,7 @@ export const DataTable = memo<DataTableProps>(
                       selectedColumn={selectedCell?.row === row.index ? selectedCell.col : null}
                       editingColumn={editingCell?.row === row.index ? editingCell.col : null}
 
-                      setEditingCell={setEditingCell}
+                      onEditingCellChange={handleEditingCellChange}
                       handleCellActivate={handleCellActivate}
                       focusEditableCell={focusEditableCell}
                       focusFirstInteractiveInCell={focusFirstInteractiveInCell}

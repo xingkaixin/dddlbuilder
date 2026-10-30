@@ -1,8 +1,39 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useReducer } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { TableBlueprint, TableTemplate } from '@/hooks/useTableTemplates';
 import { applyBlueprintToState, createBlueprintFromState } from '@/utils/tableTemplates';
 import i18n from '@/i18n';
+
+type TableTemplateDialogsState = {
+  isManagerOpen: boolean;
+  isCreateDialogOpen: boolean;
+  pendingBlueprint: TableBlueprint | null;
+};
+
+type TableTemplateDialogsEvent =
+  | { type: 'managerOpenChanged'; open: boolean }
+  | { type: 'createDialogOpenChanged'; open: boolean }
+  | { type: 'saveAsTemplateRequested'; blueprint: TableBlueprint };
+
+const initialTableTemplateDialogsState: TableTemplateDialogsState = {
+  isManagerOpen: false,
+  isCreateDialogOpen: false,
+  pendingBlueprint: null,
+};
+
+function tableTemplateDialogsReducer(
+  state: TableTemplateDialogsState,
+  event: TableTemplateDialogsEvent,
+): TableTemplateDialogsState {
+  switch (event.type) {
+    case 'managerOpenChanged':
+      return { ...state, isManagerOpen: event.open };
+    case 'createDialogOpenChanged':
+      return { ...state, isCreateDialogOpen: event.open };
+    case 'saveAsTemplateRequested':
+      return { ...state, isCreateDialogOpen: true, pendingBlueprint: event.blueprint };
+  }
+}
 
 interface UseTableTemplateActionsParams {
   getCurrentState: () => PersistedState;
@@ -21,10 +52,21 @@ export function useTableTemplateActions({
   createTemplate,
   showToast,
 }: UseTableTemplateActionsParams) {
-  const [isManagerOpen, setIsManagerOpen] = useState(false);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [pendingBlueprint, setPendingBlueprint] = useState<TableBlueprint | null>(null);
-  const handleManageTemplates = useCallback(() => setIsManagerOpen(true), []);
+  const [{ isManagerOpen, isCreateDialogOpen, pendingBlueprint }, dispatch] = useReducer(
+    tableTemplateDialogsReducer,
+    initialTableTemplateDialogsState,
+  );
+
+  const setIsManagerOpen = useCallback(
+    (open: boolean) => dispatch({ type: 'managerOpenChanged', open }),
+    [],
+  );
+
+  const setIsCreateDialogOpen = useCallback(
+    (open: boolean) => dispatch({ type: 'createDialogOpenChanged', open }),
+    [],
+  );
+  const handleManageTemplates = useCallback(() => setIsManagerOpen(true), [setIsManagerOpen]);
 
   const handleSaveAsTemplate = useCallback(() => {
     const blueprint = createBlueprintFromState(getCurrentState());
@@ -35,8 +77,7 @@ export function useTableTemplateActions({
       return;
     }
 
-    setPendingBlueprint(blueprint);
-    setIsCreateDialogOpen(true);
+    dispatch({ type: 'saveAsTemplateRequested', blueprint });
   }, [getCurrentState, showToast]);
 
   const handleCreateTemplate = useCallback(

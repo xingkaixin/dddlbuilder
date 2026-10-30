@@ -14,6 +14,8 @@ const users = Array.from({ length: 51 }, (_, index) => ({
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate the admin API network boundary while testing list paging.
 vi.mock('@/admin/lib/adminApi', () => ({
+  adminLogin: async () => undefined,
+  adminLogout: async () => undefined,
   checkAdminSession: async () => true,
   listUsers: async (limit: number, offset: number) => users.slice(offset, offset + limit),
 }));

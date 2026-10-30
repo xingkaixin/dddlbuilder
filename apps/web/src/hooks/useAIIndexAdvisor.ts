@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useReducer } from 'react';
 import type { AIIndexAdvisorRequest, AIIndexAdvisorResult } from '@ddlbuilder/shared-types';
 import { assertAIIndexAdvisorTarget, requestAIIndexAdvice } from '@/services/aiIndexAdvisorService';
 import i18n from '@/i18n';
@@ -11,22 +11,46 @@ interface AIIndexAdvisorState {
   error: string | null;
 }
 
+type AIIndexAdvisorEvent =
+  | { type: 'documentChanged' | 'requested' | 'cleared'; documentKey: string }
+  | { type: 'succeeded'; documentKey: string; result: AIIndexAdvisorResult }
+  | { type: 'failed'; documentKey: string; error: string };
+
+const emptyAdvice = (documentKey: string): AIIndexAdvisorState => ({
+  documentKey,
+  result: null,
+  error: null,
+});
+
+function adviceReducer(
+  _state: AIIndexAdvisorState,
+  event: AIIndexAdvisorEvent,
+): AIIndexAdvisorState {
+  switch (event.type) {
+    case 'documentChanged':
+    case 'requested':
+    case 'cleared':
+      return emptyAdvice(event.documentKey);
+    case 'succeeded':
+      return { documentKey: event.documentKey, result: event.result, error: null };
+    case 'failed':
+      return { documentKey: event.documentKey, result: null, error: event.error };
+  }
+}
+
 export function useAIIndexAdvisor(documentKey: string) {
   const requestAccess = useAIRequestAccess();
+  const [state, dispatch] = useReducer(adviceReducer, documentKey, emptyAdvice);
+  const { isPending, run, cancel } = useLatestRequest(documentKey);
 
-  const [state, setState] = useState<AIIndexAdvisorState>({
-    documentKey,
-    result: null,
-    error: null,
-  });
-  const { isPending, run, cancel } = useLatestRequest();
+  if (state.documentKey !== documentKey) dispatch({ type: 'documentChanged', documentKey });
 
   const analyzeIndexes = useCallback(
     async (payload: AIIndexAdvisorRequest): Promise<AIIndexAdvisorResult | null> => {
       const accessError = requestAccess.getAccessError();
 
       if (accessError) {
-        setState({ documentKey, result: null, error: accessError });
+        dispatch({ type: 'failed', documentKey, error: accessError });
         throw new Error(accessError);
       }
 
@@ -35,17 +59,17 @@ export function useAIIndexAdvisor(documentKey: string) {
       } catch (error) {
         const message =
           error instanceof Error ? error.message : i18n.t('services.generationFailed');
-        setState({ documentKey, result: null, error: message });
+        dispatch({ type: 'failed', documentKey, error: message });
         throw new Error(message);
       }
 
-      setState({ documentKey, result: null, error: null });
+      dispatch({ type: 'requested', documentKey });
 
       return run(async ({ signal, isCurrent, commitIfCurrent }) => {
         try {
           const result = await requestAIIndexAdvice(payload, signal);
           commitIfCurrent(() => {
-            setState({ documentKey, result, error: null });
+            dispatch({ type: 'succeeded', documentKey, result });
             requestAccess.refreshCreditsAfterSuccess();
           });
 
@@ -57,7 +81,7 @@ export function useAIIndexAdvisor(documentKey: string) {
             error,
             i18n.t('services.generationFailed'),
           );
-          setState({ documentKey, result: null, error: message });
+          dispatch({ type: 'failed', documentKey, error: message });
           throw new Error(message);
         }
       });
@@ -67,17 +91,13 @@ export function useAIIndexAdvisor(documentKey: string) {
 
   const clearAdvice = useCallback(() => {
     cancel();
-    setState({ documentKey, result: null, error: null });
+    dispatch({ type: 'cleared', documentKey });
   }, [cancel, documentKey]);
 
-  useLayoutEffect(() => clearAdvice, [clearAdvice]);
-
-  const isCurrentDocument = state.documentKey === documentKey;
-
   return {
-    isLoading: isCurrentDocument && isPending,
-    result: isCurrentDocument ? state.result : null,
-    error: isCurrentDocument ? state.error : null,
+    isLoading: isPending,
+    result: state.result,
+    error: state.error,
     analyzeIndexes,
     clearAdvice,
   };

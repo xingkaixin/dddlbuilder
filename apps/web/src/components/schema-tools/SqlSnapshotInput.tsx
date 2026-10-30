@@ -1,8 +1,16 @@
-import { useId, useState } from 'react';
+import { useId, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { getImportCharacterLimit } from '@/utils/importLimits';
+
+type InputErrorEvent =
+  | { type: 'edited' }
+  | { type: 'uploadStarted' }
+  | { type: 'uploadFailed'; message: string };
+
+const inputErrorReducer = (_error: string, event: InputErrorEvent) =>
+  event.type === 'uploadFailed' ? event.message : '';
 
 export function SqlSnapshotInput({
   label,
@@ -17,7 +25,7 @@ export function SqlSnapshotInput({
 }) {
   const { t } = useTranslation();
   const id = useId();
-  const [error, setError] = useState('');
+  const [error, dispatchError] = useReducer(inputErrorReducer, '');
   const limit = getImportCharacterLimit('sql') ?? 50_000;
 
   return (
@@ -30,7 +38,7 @@ export function SqlSnapshotInput({
         value={value}
         disabled={disabled}
         onChange={(event) => {
-          setError('');
+          dispatchError({ type: 'edited' });
           onChange(event.target.value);
         }}
         className="min-h-44 rounded-lg bg-background font-mono text-xs leading-relaxed shadow-none md:text-xs"
@@ -47,7 +55,7 @@ export function SqlSnapshotInput({
           event.target.value = '';
 
           if (!file) return;
-          setError('');
+          dispatchError({ type: 'uploadStarted' });
           onChange('');
 
           try {
@@ -57,7 +65,10 @@ export function SqlSnapshotInput({
             if (sql.length > limit) throw new Error(t('schemaTools.inputLimit', { limit }));
             onChange(sql);
           } catch (cause) {
-            setError(cause instanceof Error ? cause.message : t('schemaTools.failed'));
+            dispatchError({
+              type: 'uploadFailed',
+              message: cause instanceof Error ? cause.message : t('schemaTools.failed'),
+            });
           }
         }}
       />

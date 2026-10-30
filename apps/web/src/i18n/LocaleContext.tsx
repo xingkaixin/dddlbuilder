@@ -1,14 +1,13 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import i18n from './index';
-import { LOCAL_STORAGE_KEY, type AppLocale, resolveInitialLocale, normalizeLocale } from './types';
+import { DEFAULT_LOCALE, LOCAL_STORAGE_KEY, type AppLocale, normalizeLocale } from './types';
 
 interface LocaleContextValue {
   locale: AppLocale;
@@ -18,51 +17,30 @@ interface LocaleContextValue {
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
+const subscribeLanguage = (onChange: () => void) => {
+  i18n.on('languageChanged', onChange);
+
+  return () => i18n.off('languageChanged', onChange);
+};
+
+const readLocale = () => normalizeLocale(i18n.language) ?? DEFAULT_LOCALE;
+
+const setLocale = (nextLocale: AppLocale) => {
+  try {
+    window.localStorage.setItem(LOCAL_STORAGE_KEY, nextLocale);
+  } catch {
+    // ignore storage errors
+  }
+
+  void i18n.changeLanguage(nextLocale);
+};
+
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<AppLocale>(() => resolveInitialLocale());
-
-  const setLocale = useCallback((nextLocale: AppLocale) => {
-    setLocaleState(nextLocale);
-
-    try {
-      window.localStorage.setItem(LOCAL_STORAGE_KEY, nextLocale);
-    } catch {
-      // ignore storage errors
-    }
-  }, []);
+  const locale = useSyncExternalStore(subscribeLanguage, readLocale);
 
   useEffect(() => {
-    void i18n.changeLanguage(locale);
     document.documentElement.lang = locale;
   }, [locale]);
-
-  useEffect(() => {
-    const handleLanguageChanged = (language: string) => {
-      const normalized = normalizeLocale(language);
-
-      if (!normalized) return;
-
-      setLocaleState((currentLocale) => {
-        if (currentLocale === normalized) {
-          return currentLocale;
-        }
-
-        try {
-          window.localStorage.setItem(LOCAL_STORAGE_KEY, normalized);
-        } catch {
-          // ignore storage errors
-        }
-
-        return normalized;
-      });
-    };
-
-    i18n.on('languageChanged', handleLanguageChanged);
-
-    return () => {
-      i18n.off('languageChanged', handleLanguageChanged);
-    };
-  }, []);
 
   const value = useMemo<LocaleContextValue>(
     () => ({
@@ -70,7 +48,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
       resolvedLocale: locale,
       setLocale,
     }),
-    [locale, setLocale],
+    [locale],
   );
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;

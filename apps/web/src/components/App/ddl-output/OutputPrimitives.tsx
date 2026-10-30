@@ -1,17 +1,10 @@
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
+import { lazy, Suspense, useCallback, useReducer, type CSSProperties } from 'react';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import { Check, Copy } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DATABASE_OPTIONS } from '../databaseOptions';
+import { useTimers } from '@/hooks/useTimers';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 
@@ -47,6 +40,8 @@ export function DatabaseBadge({ dbType }: { dbType: DatabaseType }) {
   );
 }
 
+const copiedReducer = (_copied: boolean, event: 'copied' | 'expired') => event === 'copied';
+
 export function CopyOutputButton({
   copy,
   label,
@@ -58,10 +53,8 @@ export function CopyOutputButton({
 }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<number | undefined>(undefined);
-
-  useEffect(() => () => window.clearTimeout(timerRef.current), []);
+  const [copied, dispatchCopied] = useReducer(copiedReducer, false);
+  const { schedule, clearAll } = useTimers();
 
   const handleCopy = useCallback(async () => {
     if (!(await copy())) {
@@ -70,10 +63,10 @@ export function CopyOutputButton({
       return;
     }
 
-    window.clearTimeout(timerRef.current);
-    setCopied(true);
-    timerRef.current = window.setTimeout(() => setCopied(false), 3000);
-  }, [copy, showToast, t]);
+    clearAll();
+    dispatchCopied('copied');
+    schedule(() => dispatchCopied('expired'), 3000);
+  }, [clearAll, copy, schedule, showToast, t]);
 
   return (
     <Tooltip>

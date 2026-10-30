@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useRef, useEffect } from 'react';
+import { memo, useCallback, useReducer } from 'react';
 import { Pencil } from '@/components/icons';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -17,28 +17,61 @@ interface LogicalEnumCellProps {
 
 const MAX_VISIBLE_CHIPS = 4;
 
+type CellState = { enumEditorOpen: boolean; isEditing: boolean; editValue: string };
+
+type CellEvent =
+  | { type: 'enumEditorOpened' }
+  | { type: 'enumEditorClosed' }
+  | { type: 'editStarted'; value: string }
+  | { type: 'editValueChanged'; value: string }
+  | { type: 'editFinished' }
+  | { type: 'editCancelled'; fieldType: string };
+
+function cellReducer(state: CellState, event: CellEvent): CellState {
+  switch (event.type) {
+    case 'enumEditorOpened':
+      return { ...state, enumEditorOpen: true };
+    case 'enumEditorClosed':
+      return { ...state, enumEditorOpen: false };
+    case 'editStarted':
+      return { ...state, isEditing: true, editValue: event.value };
+    case 'editValueChanged':
+      return { ...state, editValue: event.value };
+    case 'editFinished':
+      return { ...state, isEditing: false };
+    case 'editCancelled':
+      return { ...state, isEditing: false, editValue: event.fieldType };
+  }
+}
+
+const createCellState = (fieldType: string): CellState => ({
+  enumEditorOpen: false,
+  isEditing: false,
+  editValue: fieldType,
+});
+
+const focusAndSelect = (input: HTMLInputElement | null) => {
+  input?.focus();
+  input?.select();
+};
+
 export const LogicalEnumCell = memo<LogicalEnumCellProps>(
   ({ fieldType, enumMeta, onTypeChange, onEnumSave, onTabNavigate }) => {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editValue, setEditValue] = useState(fieldType);
-    const inputRef = useRef<HTMLInputElement>(null);
+
+    const [{ enumEditorOpen: open, isEditing, editValue }, dispatch] = useReducer(
+      cellReducer,
+      fieldType,
+      createCellState,
+    );
 
     const chips = enumMeta && enumMeta.length > 0 ? enumMeta : [];
     const visibleChips = chips.slice(0, MAX_VISIBLE_CHIPS);
     const hiddenCount = chips.length - MAX_VISIBLE_CHIPS;
 
-    useEffect(() => {
-      if (isEditing && inputRef.current) {
-        inputRef.current.focus();
-        inputRef.current.select();
-      }
-    }, [isEditing]);
-
     const finishEditing = useCallback(
       (value: string) => {
-        setIsEditing(false);
+        dispatch({ type: 'editFinished' });
 
         if (value !== fieldType) {
           onTypeChange(value);
@@ -53,7 +86,7 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
 
         if (e.key === 'Enter' || e.key === 'F2') {
           e.preventDefault();
-          setOpen(true);
+          dispatch({ type: 'enumEditorOpened' });
 
           return;
         }
@@ -67,16 +100,14 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
 
         if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault();
-          setIsEditing(true);
-          setEditValue('');
+          dispatch({ type: 'editStarted', value: '' });
 
           return;
         }
 
         if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
           e.preventDefault();
-          setIsEditing(true);
-          setEditValue(e.key);
+          dispatch({ type: 'editStarted', value: e.key });
         }
       },
       [isEditing, onTabNavigate],
@@ -101,24 +132,22 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
 
         if (e.key === 'Escape') {
           e.preventDefault();
-          setIsEditing(false);
-          setEditValue(fieldType);
+          dispatch({ type: 'editCancelled', fieldType });
         }
       },
       [editValue, fieldType, finishEditing, onTabNavigate],
     );
 
     const handleDoubleClick = useCallback(() => {
-      setIsEditing(true);
-      setEditValue(fieldType);
+      dispatch({ type: 'editStarted', value: fieldType });
     }, [fieldType]);
 
     if (isEditing) {
       return (
         <Input
-          ref={inputRef}
+          ref={focusAndSelect}
           value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
+          onChange={(e) => dispatch({ type: 'editValueChanged', value: e.target.value })}
           onBlur={() => finishEditing(editValue)}
           onKeyDown={handleInputKeyDown}
           className="h-7 w-full border-primary/50 bg-background px-2 py-1 text-xs any-pointer-coarse:text-base focus:ring-1 focus:ring-primary/30"
@@ -170,7 +199,7 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setOpen(true);
+              dispatch({ type: 'enumEditorOpened' });
             }}
             className="ml-auto shrink-0 opacity-0 transition-opacity group-focus:opacity-100 group-hover:opacity-100 outline-none hover:text-primary"
             aria-label={t('enumEditor.editTip')}
@@ -182,7 +211,9 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
         {open && (
           <EnumSetEditor
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={(next) =>
+              dispatch({ type: next ? 'enumEditorOpened' : 'enumEditorClosed' })
+            }
             fieldType={fieldType}
             enumMeta={enumMeta}
             onSave={onEnumSave}

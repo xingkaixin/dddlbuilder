@@ -26,8 +26,10 @@ describe('SqlInputStep file input', () => {
       <SqlInputStep {...baseProps} validationResult={{ success: false, error: 'too large' }} />,
     );
 
-    expect(input.files).toHaveLength(0);
-    expect(input.value).toBe('');
+    const clearedInput = screen.getByLabelText<HTMLInputElement>('上传文件');
+
+    expect(clearedInput.files).toHaveLength(0);
+    expect(clearedInput.value).toBe('');
   });
 
   it('clears the browser input when the source type changes', async () => {

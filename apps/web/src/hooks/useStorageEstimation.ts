@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import type { DatabaseType, IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types';
 import {
   estimateStorage,
@@ -27,13 +27,21 @@ function formatSizeDisplay(bytes: number): SizeDisplay {
   };
 }
 
+const estimateRowsReducer = (_rows: number, event: { type: 'rowsChanged'; rows: number }) =>
+  event.rows;
+
 export function useStorageEstimation(
   dbType: DatabaseType,
   fields: NormalizedField[],
   indexes: IndexDefinition[] = [],
   storageFormat?: string,
 ) {
-  const [estimateRows, setEstimateRows] = useState<number>(10000);
+  const [estimateRows, dispatchRows] = useReducer(estimateRowsReducer, 10000);
+
+  const setEstimateRows = useCallback(
+    (rows: number) => dispatchRows({ type: 'rowsChanged', rows }),
+    [],
+  );
 
   // Legacy result kept for backward compatibility
   const result = useMemo<StorageResult>(() => {

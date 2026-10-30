@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { isValidElement } from 'react';
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 
 import { cn } from '@/lib/utils';
@@ -21,7 +21,7 @@ function DrawerClose({ asChild, children, ...props }: DrawerCloseProps) {
   return (
     <DialogPrimitive.Close
       data-slot="drawer-close"
-      render={asChild && React.isValidElement(children) ? children : undefined}
+      render={asChild && isValidElement(children) ? children : undefined}
       {...props}
     >
       {asChild ? undefined : children}

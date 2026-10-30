@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useReducer } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,6 +40,11 @@ const CATEGORY_BADGE_CLASS: Record<AIIndexAdvisorRecommendationCategory, string>
   general: 'border-muted-foreground/30 bg-muted text-muted-foreground',
 };
 
+const queryPatternsReducer = (
+  _queryPatterns: string,
+  event: { type: 'queryEdited'; queryPatterns: string },
+) => event.queryPatterns;
+
 export const AIIndexAdvisorDialog = memo<AIIndexAdvisorDialogProps>(
   ({
     open,
@@ -53,7 +58,7 @@ export const AIIndexAdvisorDialog = memo<AIIndexAdvisorDialogProps>(
     onApplyIndex,
   }) => {
     const { t } = useTranslation();
-    const [queryPatterns, setQueryPatterns] = useState(suggestedQuery);
+    const [queryPatterns, dispatch] = useReducer(queryPatternsReducer, suggestedQuery);
 
     const canAnalyze = queryPatterns.trim().length > 0 && !isLoading && !blockingMessage;
     const recommendations = useMemo(() => result?.recommendations ?? [], [result]);
@@ -83,7 +88,9 @@ export const AIIndexAdvisorDialog = memo<AIIndexAdvisorDialogProps>(
               <Textarea
                 id="ai-index-query-patterns"
                 value={queryPatterns}
-                onChange={(event) => setQueryPatterns(event.target.value)}
+                onChange={(event) =>
+                  dispatch({ type: 'queryEdited', queryPatterns: event.target.value })
+                }
                 placeholder={t('aiIndexAdvisor.placeholder')}
                 disabled={Boolean(blockingMessage)}
                 className="min-h-36 resize-y font-mono text-xs"

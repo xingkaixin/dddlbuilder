@@ -1,4 +1,4 @@
-import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useReducer, type Dispatch, type SetStateAction } from 'react';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import { instantiateTemplateFields } from '@/utils/fieldTemplates';
@@ -7,6 +7,41 @@ import i18n from '@/i18n';
 interface CreateTemplateResult {
   ok: boolean;
   message?: string;
+}
+
+type TemplateDialogsState = {
+  isTemplateManagerOpen: boolean;
+  isCreateTemplateDialogOpen: boolean;
+  selectedFieldsForTemplate: FieldRow[];
+};
+
+type TemplateDialogsEvent =
+  | { type: 'managerOpenChanged'; open: boolean }
+  | { type: 'createDialogOpenChanged'; open: boolean }
+  | { type: 'saveAsTemplateRequested'; fields: FieldRow[] };
+
+const initialTemplateDialogsState: TemplateDialogsState = {
+  isTemplateManagerOpen: false,
+  isCreateTemplateDialogOpen: false,
+  selectedFieldsForTemplate: [],
+};
+
+function templateDialogsReducer(
+  state: TemplateDialogsState,
+  event: TemplateDialogsEvent,
+): TemplateDialogsState {
+  switch (event.type) {
+    case 'managerOpenChanged':
+      return { ...state, isTemplateManagerOpen: event.open };
+    case 'createDialogOpenChanged':
+      return { ...state, isCreateTemplateDialogOpen: event.open };
+    case 'saveAsTemplateRequested':
+      return {
+        ...state,
+        isCreateTemplateDialogOpen: true,
+        selectedFieldsForTemplate: event.fields,
+      };
+  }
 }
 
 interface UseTemplateActionsParams {
@@ -26,13 +61,24 @@ export function useTemplateActions({
   createTemplateFromFields,
   showToast,
 }: UseTemplateActionsParams) {
-  const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
-  const [isCreateTemplateDialogOpen, setIsCreateTemplateDialogOpen] = useState(false);
-  const [selectedFieldsForTemplate, setSelectedFieldsForTemplate] = useState<FieldRow[]>([]);
+  const [
+    { isTemplateManagerOpen, isCreateTemplateDialogOpen, selectedFieldsForTemplate },
+    dispatch,
+  ] = useReducer(templateDialogsReducer, initialTemplateDialogsState);
+
+  const setIsTemplateManagerOpen = useCallback(
+    (open: boolean) => dispatch({ type: 'managerOpenChanged', open }),
+    [],
+  );
+
+  const setIsCreateTemplateDialogOpen = useCallback(
+    (open: boolean) => dispatch({ type: 'createDialogOpenChanged', open }),
+    [],
+  );
 
   const handleManageTemplates = useCallback(() => {
     setIsTemplateManagerOpen(true);
-  }, []);
+  }, [setIsTemplateManagerOpen]);
 
   const handleApplyTemplate = useCallback(
     (template: FieldTemplate) => {
@@ -91,8 +137,7 @@ export function useTemplateActions({
       return;
     }
 
-    setSelectedFieldsForTemplate(validRows);
-    setIsCreateTemplateDialogOpen(true);
+    dispatch({ type: 'saveAsTemplateRequested', fields: validRows });
   }, [rows, showToast]);
 
   return {

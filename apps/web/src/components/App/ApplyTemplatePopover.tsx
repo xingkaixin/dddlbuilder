@@ -3,7 +3,7 @@
  * 在字段表格上方显示，用于快速应用模板字段
  */
 
-import { memo, useState, useMemo, useCallback } from 'react';
+import { memo, useReducer, useMemo, useCallback } from 'react';
 import { FileText, ChevronDown, Settings, Plus, Search } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -45,6 +45,23 @@ function matchesTemplate(template: FieldTemplate, normalizedQuery: string): bool
   );
 }
 
+type PopoverState = { open: boolean; searchQuery: string };
+
+type PopoverEvent =
+  | { type: 'openChanged'; open: boolean }
+  | { type: 'searchChanged'; searchQuery: string };
+
+const initialPopoverState: PopoverState = { open: false, searchQuery: '' };
+
+function popoverReducer(state: PopoverState, event: PopoverEvent): PopoverState {
+  switch (event.type) {
+    case 'openChanged':
+      return event.open ? { ...state, open: true } : { open: false, searchQuery: '' };
+    case 'searchChanged':
+      return { ...state, searchQuery: event.searchQuery };
+  }
+}
+
 export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
   ({
     templates,
@@ -56,8 +73,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     onSaveAsTemplate,
   }) => {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [{ open, searchQuery }, dispatch] = useReducer(popoverReducer, initialPopoverState);
 
     const normalizedQuery = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery]);
 
@@ -86,13 +102,10 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
       [recentTemplateIds, visibleTemplates],
     );
 
-    const handleOpenChange = useCallback((nextOpen: boolean) => {
-      setOpen(nextOpen);
-
-      if (!nextOpen) {
-        setSearchQuery('');
-      }
-    }, []);
+    const handleOpenChange = useCallback(
+      (nextOpen: boolean) => dispatch({ type: 'openChanged', open: nextOpen }),
+      [],
+    );
 
     const handleApply = useCallback(
       (template: FieldTemplate) => {
@@ -154,7 +167,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
                 <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => dispatch({ type: 'searchChanged', searchQuery: e.target.value })}
                   placeholder={t('templateManager.quickApply.searchPlaceholder')}
                   className="h-8 pl-7 text-xs"
                   data-testid="quick-apply-search"

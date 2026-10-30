@@ -1,5 +1,5 @@
 import { ToolLayout } from './ToolLayout';
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import {
@@ -12,11 +12,29 @@ import { TableSource } from './TableSource';
 import { Button } from '@/components/ui/button';
 import { downloadFile } from '@/utils/mockDataGenerator';
 
+type ImpactState = { tables: PersistedState[]; tableKey: string; field: string };
+
+type ImpactEvent =
+  | { type: 'tablesSelected'; tables: PersistedState[] }
+  | { type: 'tableChosen'; tableKey: string }
+  | { type: 'fieldChosen'; field: string };
+
+const initialImpactState: ImpactState = { tables: [], tableKey: '', field: '' };
+
+function impactReducer(state: ImpactState, event: ImpactEvent): ImpactState {
+  switch (event.type) {
+    case 'tablesSelected':
+      return { tables: event.tables, tableKey: '', field: '' };
+    case 'tableChosen':
+      return { ...state, tableKey: event.tableKey, field: '' };
+    case 'fieldChosen':
+      return { ...state, field: event.field };
+  }
+}
+
 export function FieldImpactTool() {
   const { t } = useTranslation();
-  const [tables, setTables] = useState<PersistedState[]>([]);
-  const [tableKey, setTableKey] = useState('');
-  const [field, setField] = useState('');
+  const [{ tables, tableKey, field }, dispatch] = useReducer(impactReducer, initialImpactState);
   const selected = tables.find((table) => snapshotTableKey(table) === tableKey);
   let report: ReturnType<typeof analyzeFieldImpact> | null = null;
   let error = '';
@@ -66,11 +84,7 @@ export function FieldImpactTool() {
       source={
         <TableSource
           value={tables}
-          onChange={(next) => {
-            setTables(next);
-            setTableKey('');
-            setField('');
-          }}
+          onChange={(next) => dispatch({ type: 'tablesSelected', tables: next })}
         />
       }
     >
@@ -80,10 +94,7 @@ export function FieldImpactTool() {
           <select
             className="h-9 w-full rounded-md border bg-background px-3"
             value={tableKey}
-            onChange={(event) => {
-              setTableKey(event.target.value);
-              setField('');
-            }}
+            onChange={(event) => dispatch({ type: 'tableChosen', tableKey: event.target.value })}
           >
             <option value="">{t('modelTools.choose')}</option>
             {tables.flatMap((table, index) =>
@@ -103,7 +114,7 @@ export function FieldImpactTool() {
             className="h-9 w-full rounded-md border bg-background px-3"
             value={field}
             disabled={!selected}
-            onChange={(event) => setField(event.target.value)}
+            onChange={(event) => dispatch({ type: 'fieldChosen', field: event.target.value })}
           >
             <option value="">{t('modelTools.choose')}</option>
             {selected &&

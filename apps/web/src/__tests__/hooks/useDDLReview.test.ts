@@ -12,6 +12,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+import i18n from '@/i18n';
 import { useLocale } from '@/i18n/LocaleContext';
 import { createAITextStream as createStream } from '@/__tests__/utils/aiStream';
 import { encodeAIStreamEvent } from '@ddlbuilder/shared-types';
@@ -65,8 +66,9 @@ describe('useDDLReview', () => {
     vi.restoreAllMocks();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.restoreAllMocks();
+    await i18n.changeLanguage('zh-CN');
   });
 
   it('should return error when ddl is empty', async () => {

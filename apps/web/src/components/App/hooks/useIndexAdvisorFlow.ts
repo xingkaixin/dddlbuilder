@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import {
   createEntityId,
   type AIIndexAdvisorRecommendation,
@@ -37,6 +37,11 @@ const hasSameIndexFields = (left: IndexField[], right: IndexField[], dbType: Dat
       field.direction === right[index]?.direction,
   );
 
+type DialogEvent = { type: 'opened'; documentKey: string } | { type: 'closed' };
+
+const openDocumentReducer = (_openDocumentKey: string | null, event: DialogEvent) =>
+  event.type === 'opened' ? event.documentKey : null;
+
 export const buildSuggestedIndexQuery = (
   schemaName: string,
   tableName: string,
@@ -72,10 +77,12 @@ export function useIndexAdvisorFlow({
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { isLoading, result, error, analyzeIndexes, clearAdvice } = useAIIndexAdvisor(documentKey);
-  const [open, setOpen] = useState(false);
-  const openDialog = useCallback(() => setOpen(true), []);
+  const [openDocumentKey, dispatch] = useReducer(openDocumentReducer, null);
+  const open = openDocumentKey === documentKey;
 
-  useLayoutEffect(() => () => setOpen(false), [documentKey]);
+  if (openDocumentKey !== null && !open) dispatch({ type: 'closed' });
+
+  const openDialog = useCallback(() => dispatch({ type: 'opened', documentKey }), [documentKey]);
 
   const blockingMessage = useMemo(() => {
     if (!tableName.trim()) return t('aiIndexAdvisor.tableNameRequired');
@@ -91,11 +98,11 @@ export function useIndexAdvisorFlow({
 
   const setDialogOpen = useCallback(
     (nextOpen: boolean) => {
-      setOpen(nextOpen);
+      dispatch(nextOpen ? { type: 'opened', documentKey } : { type: 'closed' });
 
       if (!nextOpen) clearAdvice();
     },
-    [clearAdvice],
+    [clearAdvice, documentKey],
   );
 
   const analyze = useCallback(

@@ -1,5 +1,5 @@
 import type React from 'react';
-import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useReducer, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Lightbulb, Loader2, X, Check } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -15,71 +15,87 @@ interface ExplainPopoverProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
+interface SelectionAnchor {
+  text: string;
+  x: number;
+  y: number;
+  bottom: number;
+}
+
+interface PopoverState {
+  selection: SelectionAnchor | null;
+  showResult: boolean;
+}
+
+type PopoverEvent =
+  | { type: 'selectionChanged'; selection: SelectionAnchor | null }
+  | { type: 'explainRequested' | 'closed' };
+
+const initialPopoverState: PopoverState = { selection: null, showResult: false };
+
+function popoverReducer(state: PopoverState, event: PopoverEvent): PopoverState {
+  switch (event.type) {
+    case 'selectionChanged':
+      if (event.selection) return { ...state, selection: event.selection };
+
+      return state.showResult || !state.selection ? state : { ...state, selection: null };
+    case 'explainRequested':
+      return { ...state, showResult: true };
+    case 'closed':
+      return initialPopoverState;
+  }
+}
+
+function readSelectionAnchor(container: HTMLDivElement | null): SelectionAnchor | null {
+  const sel = window.getSelection();
+
+  if (!sel || sel.isCollapsed || !container) return null;
+
+  const range = sel.getRangeAt(0);
+
+  const isInside =
+    container.contains(sel.anchorNode) ||
+    container.contains(sel.focusNode) ||
+    container.contains(range.commonAncestorContainer);
+
+  if (!isInside) return null;
+
+  const rect = range.getBoundingClientRect();
+  const text = sel.toString().trim();
+
+  return text.length > 0
+    ? { text, x: rect.left + rect.width / 2, y: rect.top, bottom: rect.bottom }
+    : null;
+}
+
 export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) {
   const { t } = useTranslation();
   const authSession = useAuthIdentity();
-
-  const [selection, setSelection] = useState<{
-    text: string;
-    x: number;
-    y: number;
-    bottom: number;
-  } | null>(null);
-  const [showResult, setShowResult] = useState(false);
+  const [{ selection, showResult }, dispatch] = useReducer(popoverReducer, initialPopoverState);
 
   const { isLoading, isStreaming, isComplete, explanation, error, startExplain, clearExplain } =
     useDDLExplain();
   const popoverRef = useRef<HTMLDivElement>(null);
   const isInteractingRef = useRef(false);
 
-  const handleSelectionChange = useCallback(() => {
-    if (isInteractingRef.current) return;
-
-    const sel = window.getSelection();
-
-    if (!sel || sel.isCollapsed || !containerRef.current) {
-      if (!showResult) setSelection(null);
-
-      return;
-    }
-
-    try {
-      const range = sel.getRangeAt(0);
-
-      const isInside =
-        containerRef.current.contains(sel.anchorNode) ||
-        containerRef.current.contains(sel.focusNode) ||
-        containerRef.current.contains(range.commonAncestorContainer);
-
-      if (!isInside) {
-        if (!showResult) setSelection(null);
-
-        return;
-      }
-
-      const rect = range.getBoundingClientRect();
-      const text = sel.toString().trim();
-
-      if (text.length > 0) {
-        setSelection({
-          text,
-          x: rect.left + rect.width / 2,
-          y: rect.top,
-          bottom: rect.bottom,
-        });
-      } else {
-        if (!showResult) setSelection(null);
-      }
-    } catch (_e) {
-      // Ignore range errors
-    }
-  }, [containerRef, showResult]);
-
   useEffect(() => {
+    const handleSelectionChange = () => {
+      if (isInteractingRef.current) return;
+
+      try {
+        dispatch({
+          type: 'selectionChanged',
+          selection: readSelectionAnchor(containerRef.current),
+        });
+      } catch (_e) {
+        // Ignore range errors
+      }
+    };
+
     document.addEventListener('selectionchange', handleSelectionChange);
 
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, [handleSelectionChange]);
+  }, [containerRef]);
 
   const handleExplain = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -87,7 +103,7 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
 
     if (selection) {
       void startExplain(selection.text);
-      setShowResult(true);
+      dispatch({ type: 'explainRequested' });
     }
   };
 
@@ -95,20 +111,20 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
     (e?: React.MouseEvent) => {
       e?.preventDefault();
       e?.stopPropagation();
-      setShowResult(false);
-      setSelection(null);
+      dispatch({ type: 'closed' });
       clearExplain();
     },
     [clearExplain],
   );
 
   useEffect(() => {
+    if (!showResult) return;
+
     const handleClickOutside = (e: MouseEvent) => {
       if (
         popoverRef.current &&
         e.target instanceof Node &&
-        !popoverRef.current.contains(e.target) &&
-        showResult
+        !popoverRef.current.contains(e.target)
       ) {
         handleClose();
       }

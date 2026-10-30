@@ -1,4 +1,4 @@
-import { useState, useCallback, useLayoutEffect, useMemo } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartialJson';
 import { requestDDLReview, resumeDDLReview } from '@/services/reviewService';
 import { hasResumableAIOperation } from '@/services/aiConversationService';
@@ -25,34 +25,71 @@ type ReviewStreamOptions = Parameters<typeof resumeDDLReview>[1];
 
 interface ReviewState {
   documentKey: string;
+  thinking: string;
+  suggestions: readonly DDLReviewSuggestion[];
   streamingText: string;
   result: ReviewResult | null;
   error: string | null;
 }
 
-export function useDDLReview(documentKey: string, resumeScope: string | null) {
-  const [thinking, setThinking] = useState('');
+type ReviewEvent =
+  | { type: 'requested' | 'cleared'; documentKey: string }
+  | { type: 'thinkingStreamed'; thinking: string }
+  | { type: 'suggestionsStreamed'; suggestions: readonly DDLReviewSuggestion[] }
+  | { type: 'textStreamed'; streamingText: string }
+  | { type: 'succeeded'; documentKey: string; result: ReviewResult }
+  | { type: 'failed'; documentKey: string; error: string }
+  | {
+      type: 'resultReplaced';
+      documentKey: string;
+      nextDocumentKey: string;
+      result: ReviewResult | null;
+    };
 
-  const [suggestions, setSuggestions] = useState<readonly DDLReviewSuggestion[]>([]);
+const emptyReview = (documentKey: string): ReviewState => ({
+  documentKey,
+  thinking: '',
+  suggestions: [],
+  streamingText: '',
+  result: null,
+  error: null,
+});
+
+function reviewReducer(state: ReviewState, event: ReviewEvent): ReviewState {
+  switch (event.type) {
+    case 'requested':
+    case 'cleared':
+      return emptyReview(event.documentKey);
+    case 'thinkingStreamed':
+      return { ...state, thinking: event.thinking };
+    case 'suggestionsStreamed':
+      return { ...state, suggestions: event.suggestions };
+    case 'textStreamed':
+      return { ...state, streamingText: event.streamingText };
+    case 'succeeded':
+      return {
+        ...state,
+        documentKey: event.documentKey,
+        streamingText: '',
+        result: event.result,
+        error: null,
+      };
+    case 'failed':
+      return { ...emptyReview(event.documentKey), error: event.error };
+    case 'resultReplaced':
+      return state.documentKey === event.documentKey
+        ? { ...state, result: event.result, documentKey: event.nextDocumentKey }
+        : state;
+  }
+}
+
+export function useDDLReview(documentKey: string, resumeScope: string | null) {
   const { resolvedLocale } = useLocale();
   const requestAccess = useAIRequestAccess();
-
-  const [state, setState] = useState<ReviewState>({
-    documentKey,
-    streamingText: '',
-    result: null,
-    error: null,
-  });
-  const { isPending, run, cancel } = useLatestRequest();
+  const [state, dispatch] = useReducer(reviewReducer, documentKey, emptyReview);
+  const { isPending, run, cancel } = useLatestRequest(documentKey, 'detach');
   const isCurrentDocument = state.documentKey === documentKey;
   const isLoading = isCurrentDocument && isPending;
-
-  useLayoutEffect(
-    () => () => {
-      cancel('detach');
-    },
-    [cancel, documentKey],
-  );
 
   // Parse partial result from streaming text for progressive rendering
   const partialResult: PartialReviewResult | null = useMemo(() => {
@@ -64,9 +101,9 @@ export function useDDLReview(documentKey: string, resumeScope: string | null) {
 
     return {
       ...partial,
-      suggestions: suggestions.length ? [...suggestions] : partial?.suggestions,
+      suggestions: state.suggestions.length ? [...state.suggestions] : partial?.suggestions,
     };
-  }, [isLoading, state.streamingText, suggestions]);
+  }, [isLoading, state.streamingText, state.suggestions]);
 
   const runReview = useCallback(
     async (
@@ -76,22 +113,13 @@ export function useDDLReview(documentKey: string, resumeScope: string | null) {
       const requestKey = JSON.stringify([documentKey, requestPayload]);
 
       const result = await run(async ({ signal, isCurrent, commitIfCurrent }) => {
-        setThinking('');
-        setSuggestions([]);
-        setState({
-          documentKey,
-          streamingText: '',
-          result: null,
-          error: null,
-        });
+        dispatch({ type: 'requested', documentKey });
 
         let pendingText: string | null = null;
         let flushTimer: ReturnType<typeof setTimeout> | undefined;
 
         const commitStreamingText = (streamingText: string) =>
-          commitIfCurrent(() => {
-            setState((previous) => ({ ...previous, streamingText }));
-          });
+          commitIfCurrent(() => dispatch({ type: 'textStreamed', streamingText }));
         const flushStreamingText = () => {
           flushTimer = undefined;
 
@@ -105,8 +133,10 @@ export function useDDLReview(documentKey: string, resumeScope: string | null) {
         try {
           const reviewResult = await request({
             signal,
-            onThinking: (text) => commitIfCurrent(() => setThinking(text)),
-            onSuggestions: (items) => commitIfCurrent(() => setSuggestions(items)),
+            onThinking: (thinking) =>
+              commitIfCurrent(() => dispatch({ type: 'thinkingStreamed', thinking })),
+            onSuggestions: (suggestions) =>
+              commitIfCurrent(() => dispatch({ type: 'suggestionsStreamed', suggestions })),
             onStreamingText: (streamingText) => {
               pendingText = streamingText;
 
@@ -117,12 +147,7 @@ export function useDDLReview(documentKey: string, resumeScope: string | null) {
           if (!reviewResult) return undefined;
 
           commitIfCurrent(() => {
-            setState({
-              documentKey,
-              streamingText: '',
-              result: reviewResult,
-              error: null,
-            });
+            dispatch({ type: 'succeeded', documentKey, result: reviewResult });
             requestAccess.refreshCreditsAfterSuccess();
           });
 
@@ -130,10 +155,9 @@ export function useDDLReview(documentKey: string, resumeScope: string | null) {
         } catch (error) {
           if (!isCurrent() || (error instanceof Error && error.name === 'AbortError')) throw error;
 
-          setState({
+          dispatch({
+            type: 'failed',
             documentKey,
-            streamingText: '',
-            result: null,
             error: requestAccess.resolveRequestError(error, i18n.t('services.reviewFailed')),
           });
 
@@ -163,14 +187,7 @@ export function useDDLReview(documentKey: string, resumeScope: string | null) {
   const startReview = useCallback(
     async (ddl: string, tableName: string, dbType: DatabaseType) => {
       if (!ddl || ddl.trim().length === 0) {
-        setThinking('');
-        setSuggestions([]);
-        setState({
-          documentKey,
-          streamingText: '',
-          result: null,
-          error: i18n.t('services.ddlRequired'),
-        });
+        dispatch({ type: 'failed', documentKey, error: i18n.t('services.ddlRequired') });
 
         return;
       }
@@ -178,14 +195,7 @@ export function useDDLReview(documentKey: string, resumeScope: string | null) {
       const accessError = requestAccess.getAccessError();
 
       if (accessError) {
-        setThinking('');
-        setSuggestions([]);
-        setState({
-          documentKey,
-          streamingText: '',
-          result: null,
-          error: accessError,
-        });
+        dispatch({ type: 'failed', documentKey, error: accessError });
 
         return;
       }
@@ -210,28 +220,19 @@ export function useDDLReview(documentKey: string, resumeScope: string | null) {
 
   const clearReview = useCallback(() => {
     cancel();
-    setThinking('');
-    setSuggestions([]);
-    setState({
-      documentKey,
-      streamingText: '',
-      result: null,
-      error: null,
-    });
+    dispatch({ type: 'cleared', documentKey });
   }, [cancel, documentKey]);
 
   const setReviewResult = useCallback(
     (result: ReviewResult | null, nextDocumentKey = documentKey) => {
-      setState((prev) =>
-        prev.documentKey === documentKey ? { ...prev, result, documentKey: nextDocumentKey } : prev,
-      );
+      dispatch({ type: 'resultReplaced', documentKey, nextDocumentKey, result });
     },
     [documentKey],
   );
 
   return {
     isLoading,
-    thinking: isLoading ? thinking : '',
+    thinking: isLoading ? state.thinking : '',
     streamingText: isCurrentDocument ? state.streamingText : '',
     partialResult,
     result: isCurrentDocument ? state.result : null,

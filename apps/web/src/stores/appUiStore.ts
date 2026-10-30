@@ -1,10 +1,12 @@
 import { create } from 'zustand';
+import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
 export type EditorContentView = 'design' | 'output';
 
 export type EditorView = EditorContentView | 'split';
 
 const editorViewKey = 'ddlbuilder:editor-view';
+const cnyFireworksShownKey = 'ddlbuilder:fireworks:cny:shown:2026:v1';
 
 function readEditorView(): EditorContentView {
   try {
@@ -16,6 +18,20 @@ function readEditorView(): EditorContentView {
   }
 
   return 'design';
+}
+
+function readCnyFireworksPending(): boolean {
+  if (!isCnyFireworksEnabled) return false;
+
+  try {
+    return !localStorage.getItem(cnyFireworksShownKey);
+  } catch {
+    return false;
+  }
+}
+
+export function markCnyFireworksShown() {
+  localStorage.setItem(cnyFireworksShownKey, 'true');
 }
 
 export interface VersionHistoryTarget {
@@ -91,7 +107,7 @@ export const useAppUiStore = create<AppUiState>((set) => {
     editorView: readEditorView(),
     savedTablesDrawerOpen: false,
     activeDialog: noDialog,
-    showFireworks: false,
+    showFireworks: readCnyFireworksPending(),
     setWorkspaceSidebarOpen: (workspaceSidebarOpen) => set({ workspaceSidebarOpen }),
     setEditorView: (editorView) => {
       set({ editorView });

@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -30,6 +29,10 @@ interface NamePromptDialogProps {
   onConfirm: () => void;
 }
 
+const focusOnMount = (element: HTMLElement | null) => {
+  element?.focus();
+};
+
 export function NamePromptDialog({
   open,
   onOpenChange,
@@ -47,20 +50,9 @@ export function NamePromptDialog({
   confirmDisabled,
   onConfirm,
 }: NamePromptDialogProps) {
-  const errorRef = useRef<HTMLParagraphElement>(null);
   const inputId = `${idPrefix}-name`;
   const hintId = `${inputId}-hint`;
   const errorId = `${inputId}-error`;
-
-  useEffect(() => {
-    if (open && error) {
-      const timer = window.setTimeout(() => {
-        errorRef.current?.focus();
-      }, 0);
-
-      return () => window.clearTimeout(timer);
-    }
-  }, [open, error]);
 
   const describedBy = [disabledHint ? hintId : null, error ? errorId : null]
     .filter(Boolean)
@@ -92,8 +84,10 @@ export function NamePromptDialog({
           )}
           {error && (
             <p
+              // Remount on a new message so the error takes focus again.
+              key={error}
               id={errorId}
-              ref={errorRef}
+              ref={focusOnMount}
               tabIndex={-1}
               role="alert"
               aria-live="assertive"

@@ -1,5 +1,5 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { TableFolder } from '@/utils/workspaceStorageTypes';
@@ -7,6 +7,61 @@ import type { WorkspaceDraftCatalog } from '@/hooks/usePersistedState';
 import { useTabStore } from '@/stores';
 import { findFolderTreeNode, getFolderTreeNodeIds } from '@/utils/folderModel';
 import i18n from '@/i18n';
+
+type FolderDialogsState = {
+  isFolderDialogOpen: boolean;
+  folderDialogMode: 'create' | 'rename';
+  folderDialogParent: FolderTreeNode | null;
+  folderDialogTarget: FolderTreeNode | null;
+  isDeleteFolderDialogOpen: boolean;
+  deleteFolderTarget: FolderTreeNode | null;
+};
+
+type FolderDialogsEvent =
+  | { type: 'createRequested'; parent: FolderTreeNode | null }
+  | { type: 'renameRequested'; folder: FolderTreeNode }
+  | { type: 'folderDialogOpenChanged'; open: boolean }
+  | { type: 'deleteRequested'; folder: FolderTreeNode }
+  | { type: 'deleteDialogOpenChanged'; open: boolean };
+
+const initialFolderDialogsState: FolderDialogsState = {
+  isFolderDialogOpen: false,
+  folderDialogMode: 'create',
+  folderDialogParent: null,
+  folderDialogTarget: null,
+  isDeleteFolderDialogOpen: false,
+  deleteFolderTarget: null,
+};
+
+function folderDialogsReducer(
+  state: FolderDialogsState,
+  event: FolderDialogsEvent,
+): FolderDialogsState {
+  switch (event.type) {
+    case 'createRequested':
+      return {
+        ...state,
+        isFolderDialogOpen: true,
+        folderDialogMode: 'create',
+        folderDialogParent: event.parent,
+        folderDialogTarget: null,
+      };
+    case 'renameRequested':
+      return {
+        ...state,
+        isFolderDialogOpen: true,
+        folderDialogMode: 'rename',
+        folderDialogParent: null,
+        folderDialogTarget: event.folder,
+      };
+    case 'folderDialogOpenChanged':
+      return { ...state, isFolderDialogOpen: event.open };
+    case 'deleteRequested':
+      return { ...state, isDeleteFolderDialogOpen: true, deleteFolderTarget: event.folder };
+    case 'deleteDialogOpenChanged':
+      return { ...state, isDeleteFolderDialogOpen: event.open };
+  }
+}
 
 interface UseFolderActionsParams {
   folderTree: FolderTreeNode[];
@@ -36,36 +91,46 @@ export function useFolderActions({
   moveTableToFolder,
   showToast,
 }: UseFolderActionsParams) {
-  const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
-  const [folderDialogMode, setFolderDialogMode] = useState<'create' | 'rename'>('create');
-  const [folderDialogParent, setFolderDialogParent] = useState<FolderTreeNode | null>(null);
-  const [folderDialogTarget, setFolderDialogTarget] = useState<FolderTreeNode | null>(null);
+  const [
+    {
+      isFolderDialogOpen,
+      folderDialogMode,
+      folderDialogParent,
+      folderDialogTarget,
+      isDeleteFolderDialogOpen,
+      deleteFolderTarget,
+    },
+    dispatch,
+  ] = useReducer(folderDialogsReducer, initialFolderDialogsState);
 
-  const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] = useState(false);
-  const [deleteFolderTarget, setDeleteFolderTarget] = useState<FolderTreeNode | null>(null);
+  const setIsFolderDialogOpen = useCallback(
+    (open: boolean) => dispatch({ type: 'folderDialogOpenChanged', open }),
+    [],
+  );
+
+  const setIsDeleteFolderDialogOpen = useCallback(
+    (open: boolean) => dispatch({ type: 'deleteDialogOpenChanged', open }),
+    [],
+  );
 
   const handleOpenCreateFolderDialog = useCallback(
     (parentId?: string) => {
       const parent = parentId ? findFolderTreeNode(folderTree, parentId) : null;
-      setFolderDialogParent(parent);
-      setFolderDialogTarget(null);
-      setFolderDialogMode('create');
-      setIsFolderDialogOpen(true);
+
+      dispatch({ type: 'createRequested', parent });
     },
     [folderTree],
   );
 
-  const handleOpenRenameFolderDialog = useCallback((folder: FolderTreeNode) => {
-    setFolderDialogParent(null);
-    setFolderDialogTarget(folder);
-    setFolderDialogMode('rename');
-    setIsFolderDialogOpen(true);
-  }, []);
+  const handleOpenRenameFolderDialog = useCallback(
+    (folder: FolderTreeNode) => dispatch({ type: 'renameRequested', folder }),
+    [],
+  );
 
-  const handleOpenDeleteFolderDialog = useCallback((folder: FolderTreeNode) => {
-    setDeleteFolderTarget(folder);
-    setIsDeleteFolderDialogOpen(true);
-  }, []);
+  const handleOpenDeleteFolderDialog = useCallback(
+    (folder: FolderTreeNode) => dispatch({ type: 'deleteRequested', folder }),
+    [],
+  );
 
   const handleFolderDialogConfirm = useCallback(
     async (name: string) => {

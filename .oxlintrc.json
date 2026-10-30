@@ -100,6 +100,70 @@
         "anti-slop-effect/prefer-effect-match": "error",
         "anti-slop-effect/no-service-constructor-imports": "error"
       }
+    },
+    {
+      "files": ["apps/web/src/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "importNames": ["useState", "useEffect", "useLayoutEffect"],
+                "allowTypeImports": true,
+                "message": "See docs/adr/0004-web-state-has-one-owner-per-source.md: component state uses useReducer; async data uses TanStack Query; shared state uses zustand; effects live only in external-system adapters."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "apps/web/src/auth/AuthDialogs.tsx",
+        "apps/web/src/auth/AuthSessionProvider.tsx",
+        "apps/web/src/components/App/ExplainPopover.tsx",
+        "apps/web/src/components/App/hooks/useLoadedTablePresentation.ts",
+        "apps/web/src/components/App/hooks/usePersistedSync.ts",
+        "apps/web/src/components/App/hooks/useReviewActions.ts",
+        "apps/web/src/components/App/hooks/useSchemaApplyActions.ts",
+        "apps/web/src/components/App/hooks/useTabLifecycle.ts",
+        "apps/web/src/components/App/hooks/useWorkspaceNotifications.ts",
+        "apps/web/src/components/FireworksOverlay.tsx",
+        "apps/web/src/components/ui/fluid-hover.tsx",
+        "apps/web/src/hooks/useInterval.ts",
+        "apps/web/src/hooks/useLatestRequest.ts",
+        "apps/web/src/hooks/useTimers.ts",
+        "apps/web/src/hooks/workspacePersistence/useWorkspaceInitialHydration.ts",
+        "apps/web/src/hooks/workspacePersistence/useWorkspaceQuerySync.ts",
+        "apps/web/src/hooks/workspacePersistence/useWorkspaceSnapshotRefresh.ts",
+        "apps/web/src/hooks/workspacePersistence/useWorkspaceYDocSubscription.ts",
+        "apps/web/src/i18n/LocaleContext.tsx",
+        "apps/web/src/providers/WorkspaceYDocProvider.tsx",
+        "apps/web/src/webmcp/useWebMcpTools.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "importNames": ["useState"],
+                "allowTypeImports": true,
+                "message": "See docs/adr/0004-web-state-has-one-owner-per-source.md: component state uses useReducer; async data uses TanStack Query; shared state uses zustand; effects live only in external-system adapters."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/web/src/__tests__/**"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
     }
   ],
   "settings": {
@@ -151,5 +215,7 @@
     ".temp/**",
     "tools/oxlint/anti-slop/**"
   ],
-  "options": { "reportUnusedDisableDirectives": "error" }
+  "options": {
+    "reportUnusedDisableDirectives": "error"
+  }
 }

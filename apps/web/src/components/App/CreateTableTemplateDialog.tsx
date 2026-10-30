@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useReducer } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,27 +25,57 @@ interface CreateTableTemplateDialogProps {
   ) => Promise<{ ok: boolean; message?: string }>;
 }
 
+type TemplateFormState = { name: string; description: string; saving: boolean };
+
+type TemplateFormEvent =
+  | { type: 'nameChanged'; name: string }
+  | { type: 'descriptionChanged'; description: string }
+  | { type: 'saveStarted' }
+  | { type: 'saved' }
+  | { type: 'saveSettled' };
+
+const initialTemplateFormState: TemplateFormState = { name: '', description: '', saving: false };
+
+function templateFormReducer(
+  state: TemplateFormState,
+  event: TemplateFormEvent,
+): TemplateFormState {
+  switch (event.type) {
+    case 'nameChanged':
+      return { ...state, name: event.name };
+    case 'descriptionChanged':
+      return { ...state, description: event.description };
+    case 'saveStarted':
+      return { ...state, saving: true };
+    case 'saved':
+      return { ...state, name: '', description: '' };
+    case 'saveSettled':
+      return { ...state, saving: false };
+  }
+}
+
 export const CreateTableTemplateDialog = memo<CreateTableTemplateDialogProps>(
   ({ open, onOpenChange, blueprint, onConfirm }) => {
     const { t } = useTranslation();
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [saving, setSaving] = useState(false);
+
+    const [{ name, description, saving }, dispatch] = useReducer(
+      templateFormReducer,
+      initialTemplateFormState,
+    );
 
     const handleConfirm = useCallback(async () => {
       if (!blueprint || !name.trim()) return;
-      setSaving(true);
+      dispatch({ type: 'saveStarted' });
 
       try {
         const result = await onConfirm(name, blueprint, description.trim() || undefined);
 
         if (result.ok) {
-          setName('');
-          setDescription('');
+          dispatch({ type: 'saved' });
           onOpenChange(false);
         }
       } finally {
-        setSaving(false);
+        dispatch({ type: 'saveSettled' });
       }
     }, [blueprint, description, name, onConfirm, onOpenChange]);
 
@@ -61,7 +91,7 @@ export const CreateTableTemplateDialog = memo<CreateTableTemplateDialogProps>(
               <Input
                 id="create-table-template-name"
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => dispatch({ type: 'nameChanged', name: event.target.value })}
                 placeholder={t('tableTemplate.create.namePlaceholder')}
                 autoFocus
               />
@@ -73,7 +103,9 @@ export const CreateTableTemplateDialog = memo<CreateTableTemplateDialogProps>(
               <Textarea
                 id="create-table-template-description"
                 value={description}
-                onChange={(event) => setDescription(event.target.value)}
+                onChange={(event) =>
+                  dispatch({ type: 'descriptionChanged', description: event.target.value })
+                }
                 placeholder={t('tableTemplate.create.descriptionPlaceholder')}
               />
             </div>

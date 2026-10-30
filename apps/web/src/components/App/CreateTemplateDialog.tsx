@@ -3,7 +3,7 @@
  * 将用户选中的字段保存为可复用的模板
  */
 
-import { memo, useState, useCallback, useMemo } from 'react';
+import { memo, useReducer, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -29,13 +29,48 @@ interface CreateTemplateDialogProps {
   ) => Promise<{ ok: boolean }>;
 }
 
+type TemplateFormState = { name: string; description: string; error: string; loading: boolean };
+
+type TemplateFormEvent =
+  | { type: 'nameChanged'; name: string }
+  | { type: 'descriptionChanged'; description: string }
+  | { type: 'submitStarted' }
+  | { type: 'submitFailed'; error: string }
+  | { type: 'submitSettled' };
+
+const initialTemplateFormState: TemplateFormState = {
+  name: '',
+  description: '',
+  error: '',
+  loading: false,
+};
+
+function templateFormReducer(
+  state: TemplateFormState,
+  event: TemplateFormEvent,
+): TemplateFormState {
+  switch (event.type) {
+    case 'nameChanged':
+      return { ...state, name: event.name, error: '' };
+    case 'descriptionChanged':
+      return { ...state, description: event.description };
+    case 'submitStarted':
+      return { ...state, loading: true };
+    case 'submitFailed':
+      return { ...state, error: event.error };
+    case 'submitSettled':
+      return { ...state, loading: false };
+  }
+}
+
 export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
   ({ open, onOpenChange, selectedFields, onConfirm }) => {
     const { t } = useTranslation();
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+
+    const [{ name, description, error, loading }, dispatch] = useReducer(
+      templateFormReducer,
+      initialTemplateFormState,
+    );
 
     // 过滤有效字段
     const validFields = useMemo(
@@ -47,12 +82,15 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
       const trimmedName = name.trim();
 
       if (!trimmedName) {
-        setError(t('templateManager.createFromFieldsDialog.nameRequired'));
+        dispatch({
+          type: 'submitFailed',
+          error: t('templateManager.createFromFieldsDialog.nameRequired'),
+        });
 
         return;
       }
 
-      setLoading(true);
+      dispatch({ type: 'submitStarted' });
 
       try {
         const result = await onConfirm(trimmedName, validFields, description.trim() || undefined);
@@ -60,10 +98,13 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
         if (result.ok) {
           onOpenChange(false);
         } else {
-          setError(t('templateManager.createFromFieldsDialog.createFailed'));
+          dispatch({
+            type: 'submitFailed',
+            error: t('templateManager.createFromFieldsDialog.createFailed'),
+          });
         }
       } finally {
-        setLoading(false);
+        dispatch({ type: 'submitSettled' });
       }
     }, [name, description, validFields, onConfirm, onOpenChange, t]);
 
@@ -104,10 +145,7 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
               <Input
                 id="new-template-name"
                 value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setError('');
-                }}
+                onChange={(e) => dispatch({ type: 'nameChanged', name: e.target.value })}
                 placeholder={t('templateManager.createFromFieldsDialog.namePlaceholder')}
                 autoFocus
               />
@@ -119,7 +157,9 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
               <Input
                 id="new-template-desc"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) =>
+                  dispatch({ type: 'descriptionChanged', description: e.target.value })
+                }
                 placeholder={t('templateManager.createFromFieldsDialog.descriptionPlaceholder')}
               />
             </div>

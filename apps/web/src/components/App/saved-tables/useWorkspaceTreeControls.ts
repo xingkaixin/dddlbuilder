@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import { PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
+import { useTimers } from '@/hooks/useTimers';
 import { useFolderExpansion } from '../FolderTree';
 import { buildFolderParentMap, resolveDropAction } from './dnd';
 import { useSavedTablesFilter } from './useSavedTablesFilter';
@@ -13,6 +14,40 @@ type DragFeedback = {
   type: 'success' | 'blocked' | 'error';
   message: string;
 };
+
+type TreeControlsState = {
+  searchQuery: string;
+  selectedFolderId: string | undefined;
+  dragFeedback: DragFeedback | null;
+};
+
+type TreeControlsEvent =
+  | { type: 'searchChanged'; searchQuery: string }
+  | { type: 'folderSelected'; folderId: string | undefined }
+  | { type: 'dragFeedbackShown'; feedback: DragFeedback }
+  | { type: 'dragFeedbackExpired' };
+
+const initialTreeControlsState: TreeControlsState = {
+  searchQuery: '',
+  selectedFolderId: undefined,
+  dragFeedback: null,
+};
+
+function treeControlsReducer(
+  state: TreeControlsState,
+  event: TreeControlsEvent,
+): TreeControlsState {
+  switch (event.type) {
+    case 'searchChanged':
+      return { ...state, searchQuery: event.searchQuery };
+    case 'folderSelected':
+      return { ...state, selectedFolderId: event.folderId };
+    case 'dragFeedbackShown':
+      return { ...state, dragFeedback: event.feedback };
+    case 'dragFeedbackExpired':
+      return { ...state, dragFeedback: null };
+  }
+}
 
 interface UseWorkspaceTreeControlsParams {
   items: SavedTableSummary[];
@@ -34,10 +69,12 @@ export function useWorkspaceTreeControls({
   onMoveFolder,
 }: UseWorkspaceTreeControlsParams) {
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFolderId, setSelectedFolderId] = useState<string>();
-  const [dragFeedback, setDragFeedback] = useState<DragFeedback | null>(null);
-  const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [{ searchQuery, selectedFolderId, dragFeedback }, dispatch] = useReducer(
+    treeControlsReducer,
+    initialTreeControlsState,
+  );
+  const { schedule, clearAll } = useTimers();
   const { expandedFolders, toggleFolder, expandFolder } = useFolderExpansion(folders);
 
   const sensors = useSensors(
@@ -79,24 +116,24 @@ export function useWorkspaceTreeControls({
     return map;
   }, [foldersWithCount]);
 
-  useEffect(
-    () => () => {
-      if (dragFeedbackTimerRef.current) {
-        clearTimeout(dragFeedbackTimerRef.current);
-      }
-    },
+  const setSearchQuery = useCallback(
+    (query: string) => dispatch({ type: 'searchChanged', searchQuery: query }),
     [],
   );
 
-  const showDragFeedback = useCallback((feedback: DragFeedback) => {
-    setDragFeedback(feedback);
+  const setSelectedFolderId = useCallback(
+    (folderId: string | undefined) => dispatch({ type: 'folderSelected', folderId }),
+    [],
+  );
 
-    if (dragFeedbackTimerRef.current) {
-      clearTimeout(dragFeedbackTimerRef.current);
-    }
-
-    dragFeedbackTimerRef.current = setTimeout(() => setDragFeedback(null), 2400);
-  }, []);
+  const showDragFeedback = useCallback(
+    (feedback: DragFeedback) => {
+      dispatch({ type: 'dragFeedbackShown', feedback });
+      clearAll();
+      schedule(() => dispatch({ type: 'dragFeedbackExpired' }), 2400);
+    },
+    [clearAll, schedule],
+  );
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {

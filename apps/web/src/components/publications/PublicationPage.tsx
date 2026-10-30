@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useReducer } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { decodeDeliveryTables } from '@ddlbuilder/workspace-core';
@@ -130,12 +130,26 @@ export default function PublicationPage({ id }: { id: string }) {
   );
 }
 
+type CommentDraft = { target: string; body: string };
+
+type CommentDraftEvent =
+  | { type: 'fieldChanged'; field: keyof CommentDraft; value: string }
+  | { type: 'commentAdded' };
+
+function commentDraftReducer(draft: CommentDraft, event: CommentDraftEvent): CommentDraft {
+  switch (event.type) {
+    case 'fieldChanged':
+      return { ...draft, [event.field]: event.value };
+    case 'commentAdded':
+      return { ...draft, body: '' };
+  }
+}
+
 function ProposalComments({ id, isOwner }: { id: string; isOwner: boolean }) {
   const { t } = useTranslation();
   const { userId } = useAuthIdentity();
   const client = useQueryClient();
-  const [target, setTarget] = useState('');
-  const [body, setBody] = useState('');
+  const [{ target, body }, dispatch] = useReducer(commentDraftReducer, { target: '', body: '' });
   const key = ['publication-comments', id, userId];
   const query = useQuery({ queryKey: key, queryFn: () => getPublicationComments(id) });
 
@@ -144,7 +158,7 @@ function ProposalComments({ id, isOwner }: { id: string; isOwner: boolean }) {
       if (comment) await resolvePublicationComment(id, comment.id, !comment.resolved);
       else {
         await addPublicationComment(id, { target, body });
-        setBody('');
+        dispatch({ type: 'commentAdded' });
       }
     },
     onSuccess: () => client.invalidateQueries({ queryKey: key }),
@@ -194,7 +208,9 @@ function ProposalComments({ id, isOwner }: { id: string; isOwner: boolean }) {
             <Input
               value={target}
               maxLength={200}
-              onChange={(event) => setTarget(event.target.value)}
+              onChange={(event) =>
+                dispatch({ type: 'fieldChanged', field: 'target', value: event.target.value })
+              }
             />
           </label>
           <label className="block space-y-1 text-sm">
@@ -202,7 +218,9 @@ function ProposalComments({ id, isOwner }: { id: string; isOwner: boolean }) {
             <Textarea
               value={body}
               maxLength={4000}
-              onChange={(event) => setBody(event.target.value)}
+              onChange={(event) =>
+                dispatch({ type: 'fieldChanged', field: 'body', value: event.target.value })
+              }
             />
           </label>
           <Button type="submit" disabled={!body.trim() || mutation.isPending}>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useReducer } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
@@ -13,6 +13,22 @@ import {
   workspaceMigrationQueryKeys,
 } from '@/queries/workspaceMigration';
 
+type MigrationDialogState = { fingerprint: string | null; open: boolean };
+
+type MigrationDialogEvent =
+  | { type: 'openChanged'; fingerprint: string | null; open: boolean }
+  | { type: 'closed'; fingerprint: string | null };
+
+const migrationDialogReducer = (
+  _state: MigrationDialogState,
+  event: MigrationDialogEvent,
+): MigrationDialogState => ({
+  fingerprint: event.fingerprint,
+  open: event.type === 'openChanged' && event.open,
+});
+
+type CommitVariables = { workspaceKey: string; payload: WorkspaceMigrationPayload };
+
 export const useWorkspaceMigration = (authState: {
   status: 'loading' | 'signed_out' | 'signed_in';
   userId: string | null;
@@ -21,10 +37,10 @@ export const useWorkspaceMigration = (authState: {
   const { doc, localSynced, synced } = useWorkspaceYDoc();
   const queryClient = useQueryClient();
 
-  const [dialogState, setDialogState] = useState<{
-    fingerprint: string | null;
-    open: boolean;
-  }>({ fingerprint: null, open: false });
+  const [dialogState, dispatchDialog] = useReducer(migrationDialogReducer, {
+    fingerprint: null,
+    open: false,
+  });
   const ready = Boolean(
     authState.status === 'signed_in' &&
     authState.userId &&
@@ -35,6 +51,7 @@ export const useWorkspaceMigration = (authState: {
   );
   const userId = authState.userId ?? '';
   const workspaceId = authState.workspaceId ?? '';
+  const workspaceKey = `${userId}:${workspaceId}`;
 
   const proposalQuery = useQuery({
     ...workspaceMigrationProposalOptions(userId, workspaceId, doc),
@@ -43,24 +60,25 @@ export const useWorkspaceMigration = (authState: {
   const {
     mutateAsync: commitMigration,
     reset: resetCommitMutation,
-    isPending: running,
-    error: commitError,
-  } = useMutation<WorkspaceMigrationResponse, unknown, WorkspaceMigrationPayload>({
-    mutationFn: (payload) => commitWorkspaceMigration(payload),
+    isPending,
+    error: mutationError,
+    variables: commitVariables,
+  } = useMutation<WorkspaceMigrationResponse, unknown, CommitVariables>({
+    mutationFn: ({ payload }) => commitWorkspaceMigration(payload),
     retry: false,
   });
+  // 提交状态只属于发起它的账号与工作区；切换后不展示上一个工作区的进行中或失败状态。
+  const commitIsCurrent = commitVariables?.workspaceKey === workspaceKey;
+  const running = commitIsCurrent && isPending;
+  const commitError = commitIsCurrent ? mutationError : null;
   const pending = proposalQuery.data ?? null;
   const fingerprint = pending?.payload.localFingerprint ?? null;
 
   const open =
     ready && (dialogState.fingerprint === fingerprint ? dialogState.open : Boolean(pending));
 
-  useEffect(() => {
-    resetCommitMutation();
-  }, [resetCommitMutation, userId, workspaceId]);
-
   const setOpen = useCallback(
-    (nextOpen: boolean) => setDialogState({ fingerprint, open: nextOpen }),
+    (nextOpen: boolean) => dispatchDialog({ type: 'openChanged', fingerprint, open: nextOpen }),
     [fingerprint],
   );
 
@@ -69,7 +87,7 @@ export const useWorkspaceMigration = (authState: {
       dismissWorkspaceMigration(authState.userId, pending.payload.localFingerprint);
     }
 
-    setDialogState({ fingerprint, open: false });
+    dispatchDialog({ type: 'closed', fingerprint });
   }, [authState.userId, fingerprint, pending]);
 
   const runMigration = useCallback(async () => {
@@ -77,12 +95,12 @@ export const useWorkspaceMigration = (authState: {
 
     resetCommitMutation();
     clearWorkspaceMigrationDismissed(authState.userId, pending.payload.localFingerprint);
-    const result = await commitMigration(pending.payload);
+    const result = await commitMigration({ workspaceKey, payload: pending.payload });
     queryClient.setQueryData(
       workspaceMigrationQueryKeys.proposal(authState.userId, authState.workspaceId),
       null,
     );
-    setDialogState({ fingerprint, open: false });
+    dispatchDialog({ type: 'closed', fingerprint });
 
     return result;
   }, [
@@ -93,6 +111,7 @@ export const useWorkspaceMigration = (authState: {
     pending,
     queryClient,
     resetCommitMutation,
+    workspaceKey,
   ]);
 
   const error = proposalQuery.error

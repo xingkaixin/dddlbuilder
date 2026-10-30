@@ -1,5 +1,5 @@
 import { copyText } from '@/utils/clipboard';
-import { useCallback, useState } from 'react';
+import { useCallback, useReducer } from 'react';
 import { buildORM } from '@ddlbuilder/ddl-core';
 import type { ORMModelInput, ORMTarget } from '@ddlbuilder/ddl-core';
 
@@ -11,6 +11,11 @@ export const ORM_TARGET_OPTIONS: { value: ORMTarget; label: string }[] = [
   { value: 'gorm', label: 'GORM' },
   { value: 'jpa', label: 'JPA' },
 ];
+
+const ormTargetReducer = (
+  _target: ORMTarget,
+  event: { type: 'targetSelected'; target: ORMTarget },
+) => event.target;
 
 export interface UseOrmGenerationReturn {
   getGeneratedOrm: () => string;
@@ -29,7 +34,7 @@ export function useOrmGeneration({
   foreignKeys,
   referencedModels,
 }: ORMModelInput): UseOrmGenerationReturn {
-  const [selectedTarget, setOrmTarget] = useState<ORMTarget>('prisma');
+  const [selectedTarget, dispatch] = useReducer(ormTargetReducer, 'prisma');
 
   const ormTarget =
     dbType === 'sqlite' ? 'drizzle' : selectedTarget === 'drizzle' ? 'prisma' : selectedTarget;
@@ -63,6 +68,11 @@ export function useOrmGeneration({
   const copyOrm = useCallback(
     () => copyText(getGeneratedOrm() || '-- 请选择 ORM 框架'),
     [getGeneratedOrm],
+  );
+
+  const setOrmTarget = useCallback(
+    (target: ORMTarget) => dispatch({ type: 'targetSelected', target }),
+    [],
   );
 
   return {

@@ -1,5 +1,5 @@
 import { copyText } from '@/utils/clipboard';
-import { memo, useState, useMemo, useCallback } from 'react';
+import { memo, useReducer, useMemo, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -30,13 +30,62 @@ const MIN_ROWS = 1;
 const MAX_ROWS = 100;
 const DEFAULT_ROWS = 10;
 
+type MockDataState = {
+  rowCount: number;
+  format: MockExportFormat;
+  copied: boolean;
+  seed: number;
+};
+
+type MockDataEvent =
+  | { type: 'rowCountEntered'; raw: string }
+  | { type: 'rowCountDecremented' }
+  | { type: 'rowCountIncremented' }
+  | { type: 'formatSelected'; format: MockExportFormat }
+  | { type: 'regenerated' }
+  | { type: 'copyFinished'; copied: boolean }
+  | { type: 'copyExpired' };
+
+const initialMockDataState: MockDataState = {
+  rowCount: DEFAULT_ROWS,
+  format: 'insert-sql',
+  copied: false,
+  seed: 0,
+};
+
+function mockDataReducer(state: MockDataState, event: MockDataEvent): MockDataState {
+  switch (event.type) {
+    case 'rowCountEntered': {
+      const n = parseInt(event.raw, 10);
+
+      if (Number.isNaN(n)) return state;
+
+      return { ...state, rowCount: Math.min(MAX_ROWS, Math.max(MIN_ROWS, n)) };
+    }
+
+    case 'rowCountDecremented':
+      return { ...state, rowCount: Math.max(MIN_ROWS, state.rowCount - 1) };
+    case 'rowCountIncremented':
+      return { ...state, rowCount: Math.min(MAX_ROWS, state.rowCount + 1) };
+    case 'formatSelected':
+      return { ...state, format: event.format };
+    case 'regenerated':
+      return { ...state, seed: state.seed + 1 };
+    case 'copyFinished':
+      return { ...state, copied: event.copied };
+    case 'copyExpired':
+      return { ...state, copied: false };
+  }
+}
+
 export const MockDataDialog = memo<MockDataDialogProps>(
   ({ open, onOpenChange, tableName, schemaName, dbType, fields }) => {
     const { t } = useTranslation();
-    const [rowCount, setRowCount] = useState(DEFAULT_ROWS);
-    const [format, setFormat] = useState<MockExportFormat>('insert-sql');
-    const [copied, setCopied] = useState(false);
-    const [seed, setSeed] = useState(0);
+
+    const [{ rowCount, format, copied, seed }, dispatch] = useReducer(
+      mockDataReducer,
+      initialMockDataState,
+    );
 
     const output = useMemo(() => {
       if (!open) return null;
@@ -54,20 +103,12 @@ export const MockDataDialog = memo<MockDataDialogProps>(
       return output.json;
     }, [output, format]);
 
-    const handleRowCountChange = useCallback((raw: string) => {
-      const n = parseInt(raw, 10);
-
-      if (!Number.isNaN(n)) {
-        setRowCount(Math.min(MAX_ROWS, Math.max(MIN_ROWS, n)));
-      }
-    }, []);
-
     const handleCopy = useCallback(async () => {
       const copied = await copyText(currentContent);
-      setCopied(copied);
+      dispatch({ type: 'copyFinished', copied });
 
       if (!copied) return;
-      window.setTimeout(() => setCopied(false), 2000);
+      window.setTimeout(() => dispatch({ type: 'copyExpired' }), 2000);
     }, [currentContent]);
 
     const handleDownload = useCallback(() => {
@@ -105,7 +146,7 @@ export const MockDataDialog = memo<MockDataDialogProps>(
                       size="icon"
                       className="h-7 w-7 rounded-none rounded-l-md border-r text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
                       disabled={rowCount <= MIN_ROWS}
-                      onClick={() => setRowCount((c) => Math.max(MIN_ROWS, c - 1))}
+                      onClick={() => dispatch({ type: 'rowCountDecremented' })}
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -119,7 +160,7 @@ export const MockDataDialog = memo<MockDataDialogProps>(
                   min={MIN_ROWS}
                   max={MAX_ROWS}
                   value={rowCount}
-                  onChange={(e) => handleRowCountChange(e.target.value)}
+                  onChange={(e) => dispatch({ type: 'rowCountEntered', raw: e.target.value })}
                   className="h-7 w-16 rounded-none border-0 text-center text-sm font-mono shadow-none focus-visible:ring-0"
                 />
                 <Tooltip>
@@ -129,7 +170,7 @@ export const MockDataDialog = memo<MockDataDialogProps>(
                       size="icon"
                       className="h-7 w-7 rounded-none rounded-r-md border-l text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
                       disabled={rowCount >= MAX_ROWS}
-                      onClick={() => setRowCount((c) => Math.min(MAX_ROWS, c + 1))}
+                      onClick={() => dispatch({ type: 'rowCountIncremented' })}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
@@ -148,7 +189,9 @@ export const MockDataDialog = memo<MockDataDialogProps>(
             <Tabs
               value={format}
               // SAFETY: the mock-data option is selected from the typed dialog option list.
-              onValueChange={(v) => setFormat(v as MockExportFormat)}
+              onValueChange={(v) =>
+                dispatch({ type: 'formatSelected', format: v as MockExportFormat })
+              }
               className="flex flex-col min-h-0 flex-1"
             >
               <div className="flex items-center justify-between">
@@ -171,7 +214,7 @@ export const MockDataDialog = memo<MockDataDialogProps>(
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 px-0 text-muted-foreground hover:text-foreground"
-                        onClick={() => setSeed((s) => s + 1)}
+                        onClick={() => dispatch({ type: 'regenerated' })}
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
                       </Button>

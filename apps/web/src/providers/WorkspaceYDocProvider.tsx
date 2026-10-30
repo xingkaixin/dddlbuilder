@@ -6,8 +6,8 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
-  useState,
   type PropsWithChildren,
 } from 'react';
 import * as Y from 'yjs';
@@ -29,6 +29,7 @@ import {
 import {
   WorkspaceYDocSyncClient,
   type WorkspaceYDocConnectionState,
+  type WorkspaceYDocConnectionStatus,
   type WorkspaceYDocFailureReason,
 } from '@/services/workspaceYDocSyncClient';
 import {
@@ -94,31 +95,150 @@ const WorkspaceYDocStatusContext = createContext<WorkspaceYDocStatus>({
   connectionState: 'idle',
 });
 
+type WorkspaceYDocValue = Omit<WorkspaceYDocContextValue, 'retry'>;
+
+type BootstrapCleanup = { attempt: number; status: 'ready' | 'error' };
+
+type WorkspaceYDocProviderState = {
+  bootstrapAttempt: number;
+  cleanup: BootstrapCleanup | null;
+  timedOutAttempt: number | null;
+  value: WorkspaceYDocValue;
+};
+
+type WorkspaceYDocValueEvent =
+  | { type: 'scopeCleared' }
+  | { type: 'cacheRegistrationFailed'; scope: UserWorkspaceScope }
+  | { type: 'docOpened'; doc: Y.Doc; scope: UserWorkspaceScope }
+  | {
+      type: 'docDisposed';
+      doc: Y.Doc;
+      scope: UserWorkspaceScope;
+      connectionState: 'idle' | 'error';
+    }
+  | { type: 'localLoaded'; doc: Y.Doc; remoteLoaded: boolean }
+  | { type: 'initializeFailed' }
+  | { type: 'syncDisabled' }
+  | { type: 'syncStatusChanged'; status: WorkspaceYDocConnectionStatus };
+
+type WorkspaceYDocProviderEvent =
+  | { type: 'bootstrapRetried' }
+  | ({ type: 'cleanupSettled' } & BootstrapCleanup)
+  | { type: 'bootstrapTimedOut'; attempt: number }
+  | WorkspaceYDocValueEvent;
+
+const EMPTY_VALUE: WorkspaceYDocValue = {
+  doc: null,
+  scope: null,
+  synced: false,
+  localSynced: false,
+  remoteLoaded: false,
+  connectionState: 'idle',
+};
+
+const INITIAL_PROVIDER_STATE: WorkspaceYDocProviderState = {
+  bootstrapAttempt: 0,
+  cleanup: null,
+  timedOutAttempt: null,
+  value: EMPTY_VALUE,
+};
+
+const reduceValue = (
+  value: WorkspaceYDocValue,
+  event: WorkspaceYDocValueEvent,
+): WorkspaceYDocValue => {
+  switch (event.type) {
+    case 'scopeCleared':
+      return EMPTY_VALUE;
+    case 'cacheRegistrationFailed':
+      return {
+        ...value,
+        doc: null,
+        scope: event.scope,
+        localSynced: false,
+        connectionState: 'error',
+        failureReason: 'unknown',
+      };
+    case 'docOpened':
+      return { ...EMPTY_VALUE, doc: event.doc, scope: event.scope };
+    case 'docDisposed':
+      if (value.doc !== event.doc) return value;
+
+      return {
+        ...EMPTY_VALUE,
+        scope: event.scope,
+        connectionState: event.connectionState,
+        failureReason: event.connectionState === 'error' ? 'unknown' : undefined,
+      };
+    case 'localLoaded':
+      return { ...value, doc: event.doc, localSynced: true, remoteLoaded: event.remoteLoaded };
+    case 'initializeFailed':
+      return { ...value, connectionState: 'error', failureReason: 'unknown' };
+    case 'syncDisabled':
+      return { ...value, synced: false, connectionState: 'idle', failureReason: undefined };
+    case 'syncStatusChanged':
+      if (
+        value.connectionState === event.status.state &&
+        value.failureReason === event.status.failureReason &&
+        value.synced === event.status.synced
+      )
+        return value;
+
+      return {
+        ...value,
+        connectionState: event.status.state,
+        failureReason: event.status.failureReason,
+        synced: event.status.synced,
+        remoteLoaded: value.remoteLoaded || event.status.synced,
+      };
+  }
+};
+
+const workspaceYDocProviderReducer = (
+  state: WorkspaceYDocProviderState,
+  event: WorkspaceYDocProviderEvent,
+): WorkspaceYDocProviderState => {
+  switch (event.type) {
+    case 'bootstrapRetried':
+      return { ...state, bootstrapAttempt: state.bootstrapAttempt + 1 };
+    case 'cleanupSettled':
+      return { ...state, cleanup: { attempt: event.attempt, status: event.status } };
+    case 'bootstrapTimedOut':
+      return { ...state, timedOutAttempt: event.attempt };
+    default: {
+      const value = reduceValue(state.value, event);
+
+      return value === state.value ? state : { ...state, value };
+    }
+  }
+};
+
 export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   const authSession = useAuthIdentity();
   const { refreshSession } = useAuthActions();
   const { shareId } = useShareRoute();
   const clientRef = useRef<WorkspaceYDocSyncClient | null>(null);
   const persistenceRef = useRef<IndexeddbPersistence | null>(null);
-  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
 
-  const [cleanupResult, setCleanupResult] = useState<{
-    attempt: number;
-    status: 'ready' | 'error';
-  } | null>(null);
-  const cleanupReady =
-    cleanupResult?.attempt === bootstrapAttempt && cleanupResult.status === 'ready';
+  const [{ bootstrapAttempt, cleanup, timedOutAttempt, value }, dispatch] = useReducer(
+    workspaceYDocProviderReducer,
+    INITIAL_PROVIDER_STATE,
+  );
+
+  const cleanupReady = cleanup?.attempt === bootstrapAttempt && cleanup.status === 'ready';
   useEffect(() => {
     let cancelled = false;
     void retryPendingWorkspaceCleanup().then(
       () => {
-        if (!cancelled) setCleanupResult({ attempt: bootstrapAttempt, status: 'ready' });
+        if (!cancelled)
+          dispatch({ type: 'cleanupSettled', attempt: bootstrapAttempt, status: 'ready' });
       },
       // oxlint-disable-next-line anti-slop/no-unknown-parameters -- cleanup promises can reject with any JavaScript value.
       (error: unknown) => {
         console.error('[workspace] pending cleanup failed', error);
 
-        if (!cancelled) setCleanupResult({ attempt: bootstrapAttempt, status: 'error' });
+        if (!cancelled)
+          dispatch({ type: 'cleanupSettled', attempt: bootstrapAttempt, status: 'error' });
       },
     );
 
@@ -126,7 +246,6 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       cancelled = true;
     };
   }, [bootstrapAttempt]);
-  const [timedOutAttempt, setTimedOutAttempt] = useState<number | null>(null);
 
   const retry = useCallback(() => {
     const client = clientRef.current;
@@ -139,14 +258,6 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
         console.error('[workspace-yjs] failed to refresh session before retry', error);
       });
   }, [refreshSession]);
-  const [value, setValue] = useState<Omit<WorkspaceYDocContextValue, 'retry'>>({
-    doc: null,
-    scope: null,
-    synced: false,
-    localSynced: false,
-    remoteLoaded: false,
-    connectionState: 'idle',
-  });
 
   const workspaceUserId = authSession.workspaceScope?.userId ?? null;
   const workspaceId = authSession.workspaceScope?.workspaceId ?? null;
@@ -162,15 +273,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     if (!cleanupReady) return;
 
     if (!workspaceUserId || !workspaceId) {
-      // oxlint-disable-next-line react/set-state-in-effect -- reset provider state when the authenticated scope changes.
-      setValue({
-        doc: null,
-        scope: null,
-        synced: false,
-        localSynced: false,
-        remoteLoaded: false,
-        connectionState: 'idle',
-      });
+      dispatch({ type: 'scopeCleared' });
 
       return;
     }
@@ -182,14 +285,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       rememberWorkspaceCache(scope);
     } catch (error) {
       console.error('[workspace] failed to register offline cache', error);
-      setValue((previous) => ({
-        ...previous,
-        doc: null,
-        scope,
-        localSynced: false,
-        connectionState: 'error',
-        failureReason: 'unknown',
-      }));
+      dispatch({ type: 'cacheRegistrationFailed', scope });
 
       return;
     }
@@ -206,19 +302,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       clientRef.current = null;
       persistenceRef.current = null;
       doc.destroy();
-      setValue((previous) =>
-        previous.doc === doc
-          ? {
-              doc: null,
-              scope,
-              synced: false,
-              localSynced: false,
-              remoteLoaded: false,
-              connectionState,
-              failureReason: connectionState === 'error' ? 'unknown' : undefined,
-            }
-          : previous,
-      );
+      dispatch({ type: 'docDisposed', doc, scope, connectionState });
       disposal = persistence.destroy().finally(unregister);
 
       return disposal;
@@ -236,14 +320,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       },
     });
 
-    setValue({
-      doc,
-      scope,
-      synced: false,
-      localSynced: false,
-      remoteLoaded: false,
-      connectionState: 'idle',
-    });
+    dispatch({ type: 'docOpened', doc, scope });
 
     const initialize = async () => {
       await persistence.whenSynced;
@@ -283,15 +360,13 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       const remoteLoaded = (await persistence.get(REMOTE_LOADED)) === 1;
 
       if (cancelled) return;
-      setValue((prev) => ({ ...prev, doc, localSynced: true, remoteLoaded }));
+      dispatch({ type: 'localLoaded', doc, remoteLoaded });
     };
 
     void initialize().catch((error) => {
       console.error('[workspace-yjs] initialize failed', error);
 
-      if (!cancelled) {
-        setValue((prev) => ({ ...prev, connectionState: 'error', failureReason: 'unknown' }));
-      }
+      if (!cancelled) dispatch({ type: 'initializeFailed' });
     });
 
     return () => {
@@ -316,13 +391,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     if (!doc || !localSynced || !workspaceId) return;
 
     if (!canSync) {
-      // oxlint-disable-next-line react/set-state-in-effect
-      setValue((prev) => ({
-        ...prev,
-        synced: false,
-        connectionState: 'idle',
-        failureReason: undefined,
-      }));
+      dispatch({ type: 'syncDisabled' });
 
       return;
     }
@@ -333,22 +402,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
 
     const client = new WorkspaceYDocSyncClient(workspaceId, doc, (status) => {
       if (cancelled) return;
-      setValue((prev) => {
-        if (
-          prev.connectionState === status.state &&
-          prev.failureReason === status.failureReason &&
-          prev.synced === status.synced
-        )
-          return prev;
-
-        return {
-          ...prev,
-          connectionState: status.state,
-          failureReason: status.failureReason,
-          synced: status.synced,
-          remoteLoaded: prev.remoteLoaded || status.synced,
-        };
-      });
+      dispatch({ type: 'syncStatusChanged', status });
 
       if (status.synced && !rememberedRemote) {
         rememberedRemote = true;
@@ -397,7 +451,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     if (!blocked) return;
 
     const timer = setTimeout(
-      () => setTimedOutAttempt(bootstrapAttempt),
+      () => dispatch({ type: 'bootstrapTimedOut', attempt: bootstrapAttempt }),
       WORKSPACE_BOOTSTRAP_TIMEOUT_MS,
     );
 
@@ -409,7 +463,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   // 门禁期可能卡在两处：Y.Doc 本地加载，或 workspaceId 还没落地。前者要重跑启动流程，
   // 后者只有重新解析会话才能拿到 workspaceId，所以两件事都做。
   const retryBootstrap = useCallback(() => {
-    setBootstrapAttempt((attempt) => attempt + 1);
+    dispatch({ type: 'bootstrapRetried' });
     void refreshSession();
   }, [refreshSession]);
 
@@ -421,7 +475,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
             failed={
               bootstrapTimedOut ||
               value.connectionState === 'error' ||
-              (cleanupResult?.attempt === bootstrapAttempt && cleanupResult.status === 'error')
+              (cleanup?.attempt === bootstrapAttempt && cleanup.status === 'error')
             }
             onRetry={retryBootstrap}
           />

@@ -26,7 +26,15 @@ export function creditLedgerOptions(userId: string, filters: CreditLedgerFilters
 export function creditBalanceOptions(userId: string) {
   return queryOptions({
     queryKey: creditQueryKeys.balance(userId),
-    queryFn: ({ signal }) => fetchCreditBalance(signal),
+    queryFn: async ({ signal }) => {
+      try {
+        return await fetchCreditBalance(signal);
+      } catch (error) {
+        if (!signal.aborted) console.error('[auth] failed to load credit balance', error);
+
+        throw error;
+      }
+    },
     staleTime: CREDIT_BALANCE_STALE_TIME_MS,
     refetchOnWindowFocus: true,
   });

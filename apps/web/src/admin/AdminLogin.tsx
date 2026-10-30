@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useReducer, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -8,24 +8,43 @@ type AdminLoginProps = {
   onLogin: (password: string) => Promise<void>;
 };
 
+type LoginState = { password: string; submitting: boolean };
+
+type LoginEvent =
+  | { type: 'passwordChanged'; password: string }
+  | { type: 'submitted' }
+  | { type: 'settled' };
+
+const initialLoginState: LoginState = { password: '', submitting: false };
+
+function loginReducer(state: LoginState, event: LoginEvent): LoginState {
+  switch (event.type) {
+    case 'passwordChanged':
+      return { ...state, password: event.password };
+    case 'submitted':
+      return { ...state, submitting: true };
+    case 'settled':
+      return { ...state, submitting: false };
+  }
+}
+
 export function AdminLogin({ onLogin }: AdminLoginProps) {
   const { t } = useTranslation();
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [{ password, submitting }, dispatch] = useReducer(loginReducer, initialLoginState);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!password.trim()) return;
 
-    setLoading(true);
+    dispatch({ type: 'submitted' });
 
     try {
       await onLogin(password.trim());
     } catch {
       toast.error(t('admin.login.error'));
     } finally {
-      setLoading(false);
+      dispatch({ type: 'settled' });
     }
   };
 
@@ -48,15 +67,15 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
             id="admin-password"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => dispatch({ type: 'passwordChanged', password: e.target.value })}
             placeholder={t('admin.login.passwordPlaceholder')}
             autoFocus
             autoComplete="current-password"
           />
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading || !password.trim()}>
-          {loading ? '...' : t('admin.login.submit')}
+        <Button type="submit" className="w-full" disabled={submitting || !password.trim()}>
+          {submitting ? '...' : t('admin.login.submit')}
         </Button>
       </form>
     </div>

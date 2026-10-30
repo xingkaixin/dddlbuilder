@@ -1,4 +1,4 @@
-import { memo, useId, useState } from 'react';
+import { memo, useId, useReducer } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,6 +53,8 @@ interface TableConfigProps {
   workspaceLabel?: string | null;
 }
 
+const detailsOpenReducer = (open: boolean) => !open;
+
 export const TableConfig = memo<TableConfigProps>(
   ({
     schemaName,
@@ -78,7 +80,7 @@ export const TableConfig = memo<TableConfigProps>(
     loadedTableName,
   }) => {
     const { t } = useTranslation();
-    const [detailsOpen, setDetailsOpen] = useState(false);
+    const [detailsOpen, toggleDetails] = useReducer(detailsOpenReducer, false);
     const detailsId = useId();
     const selectedDbOption = DATABASE_OPTIONS.find((option) => option.value === dbType);
 
@@ -90,7 +92,7 @@ export const TableConfig = memo<TableConfigProps>(
             aria-label={t('tableConfig.editDetails')}
             aria-expanded={detailsOpen}
             aria-controls={detailsId}
-            onClick={() => setDetailsOpen((open) => !open)}
+            onClick={toggleDetails}
             className="h-11 w-full justify-start gap-2 px-1 @min-[640px]/editor:hidden"
           >
             <span className="min-w-0 flex-1 text-left">

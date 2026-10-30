@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from '@/components/icons';
 import {
@@ -20,27 +20,53 @@ interface FireworksOverlayProps {
   onComplete: () => void;
 }
 
+type OverlayState = {
+  stars: Star[];
+  fireworkCount: number;
+  showClose: boolean;
+};
+
+type OverlayEvent =
+  | { type: 'showStarted' }
+  | { type: 'resized'; stars: Star[] }
+  | { type: 'fireworkBurst' }
+  | { type: 'closeRevealed' };
+
+const initialOverlayState: OverlayState = { stars: [], fireworkCount: 0, showClose: false };
+
+function overlayReducer(state: OverlayState, event: OverlayEvent): OverlayState {
+  switch (event.type) {
+    case 'showStarted':
+      return { ...state, fireworkCount: 0, showClose: false };
+    case 'resized':
+      return { ...state, stars: event.stars };
+    case 'fireworkBurst':
+      return { ...state, fireworkCount: state.fireworkCount + 1 };
+    case 'closeRevealed':
+      return { ...state, showClose: true };
+  }
+}
+
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
+const subscribeReducedMotion = (onChange: () => void) => {
+  const mediaQuery = window.matchMedia(REDUCED_MOTION_QUERY);
+
+  mediaQuery.addEventListener('change', onChange);
+
+  return () => mediaQuery.removeEventListener('change', onChange);
+};
+
+const getReducedMotion = () => window.matchMedia(REDUCED_MOTION_QUERY).matches;
+
 export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stars, setStars] = useState<Star[]>([]);
-  const [fireworkCount, setFireworkCount] = useState(0);
-  const [showClose, setShowClose] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-    const updatePreference = () => {
-      setPrefersReducedMotion(mediaQuery.matches);
-    };
-
-    updatePreference();
-    mediaQuery.addEventListener('change', updatePreference);
-
-    return () => {
-      mediaQuery.removeEventListener('change', updatePreference);
-    };
-  }, []);
+  const [{ stars, fireworkCount, showClose }, dispatch] = useReducer(
+    overlayReducer,
+    initialOverlayState,
+  );
+  const prefersReducedMotion = useSyncExternalStore(subscribeReducedMotion, getReducedMotion);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -73,7 +99,7 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
     const resize = () => {
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
-      setStars(createStars(width, height));
+      dispatch({ type: 'resized', stars: createStars(width, height) });
     };
 
     const launchAtPosition = (x: number, y: number) => {
@@ -84,9 +110,7 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
           height,
           x,
           y,
-          () => {
-            setFireworkCount((current) => current + 1);
-          },
+          () => dispatch({ type: 'fireworkBurst' }),
           scheduleTimeout,
         ),
       );
@@ -112,9 +136,7 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
               height,
               targetX,
               targetY,
-              () => {
-                setFireworkCount((current) => current + 1);
-              },
+              () => dispatch({ type: 'fireworkBurst' }),
               scheduleTimeout,
             ),
           );
@@ -139,7 +161,7 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
         );
       }
 
-      setFireworkCount((current) => current + 1);
+      dispatch({ type: 'fireworkBurst' });
     };
 
     const launchOpeningShow = () => {
@@ -243,17 +265,14 @@ export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) 
 
     resize();
     animate();
-    setFireworkCount(0);
-    setShowClose(false);
+    dispatch({ type: 'showStarted' });
 
     launchOpeningShow();
 
     scheduleTimeout(autoLaunch, prefersReducedMotion ? 1500 : 900);
     scheduleNextAutoLaunch();
 
-    scheduleTimeout(() => {
-      setShowClose(true);
-    }, 1200);
+    scheduleTimeout(() => dispatch({ type: 'closeRevealed' }), 1200);
 
     canvas.addEventListener('click', handleCanvasClick);
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });

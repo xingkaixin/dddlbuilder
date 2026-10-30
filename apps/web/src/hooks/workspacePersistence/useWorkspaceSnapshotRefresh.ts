@@ -24,7 +24,7 @@ interface UseWorkspaceSnapshotRefreshParams {
   replaceSavedTableDrafts: (records: Map<string, SavedTableDraftRecord>) => void;
   syncActiveSource: (source: WorkspaceSelection) => void;
   setPersistedStateIfChanged: (state: PersistedState | null) => void;
-  setHydrated: (hydrated: boolean) => void;
+  markHydrated: () => void;
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected hydration work can throw any JavaScript value and is only reported.
   failHydration: (error: unknown) => void;
 }
@@ -36,7 +36,7 @@ export function useWorkspaceSnapshotRefresh({
   replaceSavedTableDrafts,
   syncActiveSource,
   setPersistedStateIfChanged,
-  setHydrated,
+  markHydrated,
   failHydration,
 }: UseWorkspaceSnapshotRefreshParams) {
   useEffect(() => {
@@ -77,7 +77,7 @@ export function useWorkspaceSnapshotRefresh({
             baseSignature: buildSchemaStateSignature(savedTable.state),
           });
           setPersistedStateIfChanged(savedTable.draftState ?? savedTable.state);
-          setHydrated(true);
+          markHydrated();
 
           return;
         }
@@ -88,7 +88,7 @@ export function useWorkspaceSnapshotRefresh({
           drafts.find((draft) => draft.draftId === sessionDraftId) ?? pickInitialDraft(drafts);
         syncActiveSource({ kind: 'draft', draftId: resolvedDraft?.draftId ?? sessionDraftId });
         setPersistedStateIfChanged(resolvedDraft?.record.state ?? null);
-        setHydrated(true);
+        markHydrated();
         // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected async hydration can throw any JavaScript value.
       })().catch((error: unknown) => {
         if (!isStale()) failHydration(error);
@@ -107,7 +107,7 @@ export function useWorkspaceSnapshotRefresh({
     disabled,
     replaceDrafts,
     replaceSavedTableDrafts,
-    setHydrated,
+    markHydrated,
     setPersistedStateIfChanged,
     syncActiveSource,
   ]);

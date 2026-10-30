@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BookOpen } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -7,10 +7,12 @@ import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 
 const SchemaToolsDialog = lazy(() => import('./SchemaToolsDialog'));
 
+const openReducer = (_open: boolean, event: 'opened' | 'closed') => event === 'opened';
+
 export function SchemaToolsButton({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   const scope = useWorkspaceScope();
-  const [open, setOpen] = useState(false);
+  const [open, dispatchOpen] = useReducer(openReducer, false);
 
   return (
     <>
@@ -18,7 +20,7 @@ export function SchemaToolsButton({ compact = false }: { compact?: boolean }) {
         variant="outline"
         size="sm"
         className={compact ? 'px-2.5 sm:px-4' : undefined}
-        onClick={() => setOpen(true)}
+        onClick={() => dispatchOpen('opened')}
       >
         <BookOpen className="h-4 w-4" aria-hidden />
         <span className={compact ? 'sr-only sm:not-sr-only' : undefined}>
@@ -29,7 +31,7 @@ export function SchemaToolsButton({ compact = false }: { compact?: boolean }) {
         <Suspense fallback={<span role="status">{t('schemaTools.loading')}</span>}>
           <SchemaToolsDialog
             key={scope ? getWorkspaceScopeStorageKey(scope) : 'loading'}
-            onClose={() => setOpen(false)}
+            onClose={() => dispatchOpen('closed')}
           />
         </Suspense>
       )}

@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AICommentMode } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
@@ -17,9 +17,7 @@ export function useAICommentActions({
 }: UseAICommentActionsParams) {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { isLoading, generateComments, cancelComments } = useAIComments();
-
-  useLayoutEffect(() => cancelComments, [cancelComments, documentKey]);
+  const { isLoading, generateComments } = useAIComments(documentKey);
 
   const generateFieldComments = useCallback(
     (mode: AICommentMode, targetLocale?: AppLocale) => {

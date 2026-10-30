@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { isValidElement } from 'react';
 import { Popover as PopoverPrimitive } from '@base-ui/react/popover';
 
 import { cn } from '@/lib/utils';
@@ -15,7 +15,7 @@ function PopoverTrigger({ asChild, children, ...props }: PopoverTriggerProps) {
   return (
     <PopoverPrimitive.Trigger
       data-slot="popover-trigger"
-      render={asChild && React.isValidElement(children) ? children : undefined}
+      render={asChild && isValidElement(children) ? children : undefined}
       {...props}
     >
       {asChild ? undefined : children}

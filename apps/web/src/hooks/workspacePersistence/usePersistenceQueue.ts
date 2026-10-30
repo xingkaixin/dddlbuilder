@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useReducer, useRef } from 'react';
 
 interface PersistenceTask {
   key: string;
@@ -17,14 +17,30 @@ export interface PersistenceFailure {
   operation: string;
 }
 
+type FailureState = { failure: PersistenceFailure | null; lastFailureId: number };
+
+type FailureEvent = { type: 'taskFailed'; operation: string } | { type: 'allTasksRecovered' };
+
+const failureReducer = (state: FailureState, event: FailureEvent): FailureState => {
+  if (event.type === 'allTasksRecovered') return { ...state, failure: null };
+
+  const id = state.lastFailureId + 1;
+
+  return { failure: { id, operation: event.operation }, lastFailureId: id };
+};
+
 export function usePersistenceQueue() {
   const chainsRef = useRef(new Map<string, Promise<unknown>>());
   const pendingRef = useRef(new Map<string, PendingTask>());
   const versionsRef = useRef(new Map<string, number>());
   const failedTasksRef = useRef(new Map<string, PersistenceTask>());
-  const failureIdRef = useRef(0);
-  const [failure, setFailure] = useState<PersistenceFailure | null>(null);
-  const failureRef = useRef<PersistenceFailure | null>(null);
+
+  const [{ failure }, dispatchFailure] = useReducer(failureReducer, {
+    failure: null,
+    lastFailureId: 0,
+  });
+  // useReducer 没有 eager bailout；只在确有失败时派发恢复事件，避免每次成功写入都重渲染宿主组件。
+  const hasFailureRef = useRef(false);
 
   const enqueue = useCallback(
     (
@@ -72,9 +88,9 @@ export function usePersistenceQueue() {
           if (versionsRef.current.get(key) !== version) return;
           failedTasksRef.current.delete(key);
 
-          if (failedTasksRef.current.size === 0 && failureRef.current) {
-            failureRef.current = null;
-            setFailure(null);
+          if (failedTasksRef.current.size === 0 && hasFailureRef.current) {
+            hasFailureRef.current = false;
+            dispatchFailure({ type: 'allTasksRecovered' });
           }
         },
         // oxlint-disable-next-line anti-slop/no-unknown-parameters -- queued work can reject with any JavaScript value.
@@ -87,10 +103,8 @@ export function usePersistenceQueue() {
 
           if (versionsRef.current.get(key) !== version) return;
           failedTasksRef.current.set(key, { ...task });
-          failureIdRef.current += 1;
-          const nextFailure = { id: failureIdRef.current, operation: task.operation };
-          failureRef.current = nextFailure;
-          setFailure(nextFailure);
+          hasFailureRef.current = true;
+          dispatchFailure({ type: 'taskFailed', operation: task.operation });
         },
       );
 

@@ -1,25 +1,12 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
+import { markCnyFireworksShown } from '@/stores/appUiStore';
 
 interface UseFireworksIntroParams {
   enabled: boolean;
   setShowFireworks: (show: boolean) => void;
 }
 
-const CNY_FIREWORKS_FLAG_KEY = 'ddlbuilder:fireworks:cny:shown:2026:v1';
-
 export function useFireworksIntro({ enabled, setShowFireworks }: UseFireworksIntroParams) {
-  useEffect(() => {
-    if (!enabled) {
-      return;
-    }
-
-    const hasShown = localStorage.getItem(CNY_FIREWORKS_FLAG_KEY);
-
-    if (!hasShown) {
-      setShowFireworks(true);
-    }
-  }, [enabled, setShowFireworks]);
-
   const handleFireworksComplete = useCallback(() => {
     setShowFireworks(false);
 
@@ -27,7 +14,7 @@ export function useFireworksIntro({ enabled, setShowFireworks }: UseFireworksInt
       return;
     }
 
-    localStorage.setItem(CNY_FIREWORKS_FLAG_KEY, 'true');
+    markCnyFireworksShown();
   }, [enabled, setShowFireworks]);
 
   return { handleFireworksComplete };

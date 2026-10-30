@@ -1,26 +1,26 @@
-import { useCallback, useEffect, useState } from 'react';
-import { adminLogin, adminLogout, checkAdminSession } from '../lib/adminApi';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { adminQueryKeys, adminSessionOptions } from '@/queries/admin';
+import { adminLogin, adminLogout } from '../lib/adminApi';
 
 export const useAdminSession = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const session = useQuery(adminSessionOptions());
 
-  useEffect(() => {
-    checkAdminSession()
-      .then(setIsAuthenticated)
-      .catch(() => setIsAuthenticated(false))
-      .finally(() => setIsLoading(false));
-  }, []);
+  const setAuthenticated = (authenticated: boolean) =>
+    queryClient.setQueryData(adminQueryKeys.session, authenticated);
+  const login = useMutation({
+    mutationFn: adminLogin,
+    onSuccess: () => setAuthenticated(true),
+  });
+  const logout = useMutation({
+    mutationFn: adminLogout,
+    onSuccess: () => setAuthenticated(false),
+  });
 
-  const login = useCallback(async (password: string) => {
-    await adminLogin(password);
-    setIsAuthenticated(true);
-  }, []);
-
-  const logout = useCallback(async () => {
-    await adminLogout();
-    setIsAuthenticated(false);
-  }, []);
-
-  return { isAuthenticated, isLoading, login, logout };
+  return {
+    isAuthenticated: session.data ?? false,
+    isLoading: session.isPending,
+    login: login.mutateAsync,
+    logout: logout.mutateAsync,
+  };
 };
