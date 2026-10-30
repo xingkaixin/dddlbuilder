@@ -124,7 +124,6 @@
         "apps/web/src/auth/AuthDialogs.tsx",
         "apps/web/src/auth/AuthSessionProvider.tsx",
         "apps/web/src/components/App/ExplainPopover.tsx",
-        "apps/web/src/components/App/hooks/useLoadedTablePresentation.ts",
         "apps/web/src/components/App/hooks/usePersistedSync.ts",
         "apps/web/src/components/App/hooks/useReviewActions.ts",
         "apps/web/src/components/App/hooks/useSchemaApplyActions.ts",

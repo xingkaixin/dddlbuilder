@@ -11,7 +11,7 @@ vi.mock('@/utils/tableVersions', () => ({
 
 describe('useSaveLoadActions', () => {
   let saveDialog: any;
-  let setLoadedTableVersion: any;
+  let refreshTableVersions: any;
   let loadTable: any;
   let saveTable: any;
   let overwriteTable: any;
@@ -34,7 +34,7 @@ describe('useSaveLoadActions', () => {
       closeDialog: vi.fn(),
       setError: vi.fn(),
     };
-    setLoadedTableVersion = vi.fn();
+    refreshTableVersions = vi.fn();
     loadTable = vi.fn();
     saveTable = vi.fn();
     overwriteTable = vi.fn();
@@ -65,7 +65,7 @@ describe('useSaveLoadActions', () => {
         hasLoadedTable: false,
         canSaveCurrent: true,
         loadedTableSource: null,
-        setLoadedTableVersion,
+        refreshTableVersions,
         saveDialog,
         buildPersistedState,
         loadTable,
@@ -208,7 +208,7 @@ describe('useSaveLoadActions', () => {
       source: { normalizedName: 'background', tableName: 'Background' },
       state: savedState,
     });
-    expect(setLoadedTableVersion).not.toHaveBeenCalled();
+    expect(refreshTableVersions).not.toHaveBeenCalled();
   });
 
   describe('跨版本升级后的已保存表草稿', () => {
@@ -416,10 +416,7 @@ describe('useSaveLoadActions', () => {
 
     expect(showToast).toHaveBeenCalledWith('已保存：new_name');
     expect(saveTable).toHaveBeenCalledWith('   new_name   ', persistedState, 'active-draft-id');
-    expect(setLoadedTableVersion).toHaveBeenCalledWith(1, {
-      normalizedName: 'new_norm',
-      tableId: undefined,
-    });
+    expect(refreshTableVersions).toHaveBeenCalledOnce();
     expect(saveDialog.closeDialog).toHaveBeenCalled();
     expect(onSaveSuccess).toHaveBeenCalledWith({
       normalizedName: 'new_norm',

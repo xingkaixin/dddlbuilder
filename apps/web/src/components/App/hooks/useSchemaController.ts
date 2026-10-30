@@ -136,6 +136,7 @@ export function useSchemaController({
   const loadedPresentation = useLoadedTablePresentation({
     hydrated,
     isShareView,
+    workspaceScope,
     normalizedName: loadedTableNormalizedName,
     tableId: loadedTableId,
     tableName: loadedTableName,

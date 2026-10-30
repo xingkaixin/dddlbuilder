@@ -169,7 +169,7 @@ describe('useSavedTableTabIntegration', () => {
     const selectWorkspaceSnapshot = vi.fn();
     const persistSavedTableDraft = vi.fn();
     const removeSavedTableDraft = vi.fn();
-    const setLoadedTableVersion = vi.fn();
+    const refreshTableVersions = vi.fn();
 
     const { result, unmount } = renderHook(() => {
       const tabs = useTabLifecycle({
@@ -202,7 +202,7 @@ describe('useSavedTableTabIntegration', () => {
         hasLoadedTable: false,
         canSaveCurrent: true,
         loadedTableSource: null,
-        setLoadedTableVersion,
+        refreshTableVersions,
         saveDialog,
         buildPersistedState: getCurrentState,
         loadTable: vi.fn(),
@@ -244,10 +244,7 @@ describe('useSavedTableTabIntegration', () => {
       original,
       expect.any(String),
     );
-    expect(setLoadedTableVersion).toHaveBeenCalledWith(1, {
-      normalizedName: 'users',
-      tableId: 'table-users',
-    });
+    expect(refreshTableVersions).toHaveBeenCalledOnce();
     expect(store.getTabById(secondId)).toMatchObject({
       title: 'orders',
       source: { kind: 'draft', draftId: 'second' },

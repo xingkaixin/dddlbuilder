@@ -1,14 +1,22 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useLoadedTablePresentation } from '@/components/App/hooks/useLoadedTablePresentation';
+import i18n from '@/i18n';
+import { createQueryClientWrapper } from '../../../utils/queryClient';
 
-const countTableVersions = vi.fn();
+const versionLabel = (name: string, version: number) =>
+  i18n.t('app.workspace.currentTable', {
+    name,
+    version: i18n.t('app.workspace.version', { version }),
+    dirty: '',
+  });
 
 describe('useLoadedTablePresentation', () => {
   it('切换表时不展示上一张表尚未完成的版本查询结果', async () => {
     let resolveAlpha: (count: number) => void = () => {};
 
-    countTableVersions
+    const countTableVersions = vi
+      .fn<() => Promise<number>>()
       .mockImplementationOnce(
         () =>
           new Promise<number>((resolve) => {
@@ -16,44 +24,25 @@ describe('useLoadedTablePresentation', () => {
           }),
       )
       .mockResolvedValueOnce(2);
+    const { wrapper } = createQueryClientWrapper();
 
     const { result, rerender } = renderHook(
       ({ normalizedName, tableName }) =>
         useLoadedTablePresentation({
           hydrated: true,
           isShareView: false,
+          workspaceScope: { kind: 'anonymous' },
           normalizedName,
           tableName,
           isDirty: false,
           countTableVersions,
         }),
-      { initialProps: { normalizedName: 'alpha', tableName: 'Alpha' } },
+      { initialProps: { normalizedName: 'alpha', tableName: 'Alpha' }, wrapper },
     );
 
     rerender({ normalizedName: 'beta', tableName: 'Beta' });
-    expect(result.current.loadedTableVersion).toBe(0);
-
     await act(async () => resolveAlpha(9));
-    expect(result.current.loadedTableVersion).toBe(2);
-  });
 
-  it('外部加载结果应关联到指定表名', () => {
-    const { result, rerender } = renderHook(
-      ({ normalizedName, tableName }) =>
-        useLoadedTablePresentation({
-          hydrated: false,
-          isShareView: false,
-          normalizedName,
-          tableName,
-          isDirty: false,
-          countTableVersions,
-        }),
-      { initialProps: { normalizedName: 'alpha', tableName: 'Alpha' } },
-    );
-
-    act(() => result.current.setLoadedTableVersion(4, 'beta'));
-    rerender({ normalizedName: 'beta', tableName: 'Beta' });
-
-    expect(result.current.loadedTableVersion).toBe(4);
+    await waitFor(() => expect(result.current.workspaceLabel).toBe(versionLabel('Beta', 2)));
   });
 });

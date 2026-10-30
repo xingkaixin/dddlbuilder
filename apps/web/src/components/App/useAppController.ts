@@ -162,7 +162,7 @@ export function useAppController() {
     isLoadedDirty,
     canSaveCurrent,
   } = schemaController.derived;
-  const { setLoadedTableVersion, workspaceLabel } = schemaController.loadedPresentation;
+  const { refreshTableVersions, workspaceLabel } = schemaController.loadedPresentation;
   const { reviewState, showToast } = schemaController;
   const { result: reviewResult, setReviewResult } = reviewState;
 
@@ -257,7 +257,7 @@ export function useAppController() {
     canSaveCurrent,
     loadedTableSource,
     sourceDraftId: activeEditorSource.kind === 'draft' ? activeEditorSource.draftId : undefined,
-    setLoadedTableVersion,
+    refreshTableVersions,
     saveDialog,
     renameDialog,
     deleteDialog,

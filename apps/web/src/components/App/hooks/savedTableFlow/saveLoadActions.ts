@@ -20,7 +20,7 @@ interface UseSaveLoadActionsParams {
   canSaveCurrent: boolean;
   loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
   sourceDraftId?: string;
-  setLoadedTableVersion: (version: number, normalizedName?: SavedTableTarget) => void;
+  refreshTableVersions: () => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   buildPersistedState: () => PersistedState;
   loadTable: (normalizedName: SavedTableTarget) => Promise<{
@@ -60,7 +60,7 @@ export function useSaveLoadActions({
   canSaveCurrent,
   loadedTableSource,
   sourceDraftId,
-  setLoadedTableVersion,
+  refreshTableVersions,
   saveDialog,
   buildPersistedState,
   loadTable,
@@ -186,23 +186,15 @@ export function useSaveLoadActions({
           { normalizedName: savedNormalizedName, tableId: savedTableId },
           nextState,
         );
-
-        const versionCount = await countTableVersions({
-          normalizedName: savedNormalizedName,
-          tableId: savedTableId,
-        });
-        setLoadedTableVersion(versionCount > 0 ? versionCount : 1, {
-          normalizedName: savedNormalizedName,
-          tableId: savedTableId,
-        });
       } else if (saveMode === 'create' && savedNormalizedName) {
         await createTableVersion(
           { normalizedName: savedNormalizedName, tableId: savedTableId },
           nextState,
           INITIAL_VERSION_MESSAGE_KEY,
         );
-        setLoadedTableVersion(1, { normalizedName: savedNormalizedName, tableId: savedTableId });
       }
+
+      refreshTableVersions();
     } catch (versionError) {
       console.error('[saved-table] failed to create version', versionError);
     }
@@ -225,11 +217,10 @@ export function useSaveLoadActions({
     overwriteTable,
     loadedTableName,
     saveName,
-    setLoadedTableVersion,
+    refreshTableVersions,
     saveTable,
     saveDialog,
     onSaveSuccess,
-    countTableVersions,
     createTableVersion,
     t,
   ]);

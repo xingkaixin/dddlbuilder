@@ -1,28 +1,13 @@
-import { savedTableKey, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { useCallback, useEffect, useMemo, useReducer } from 'react';
+import type { SavedTableTarget, WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-
-type LoadedVersion = { identityKey: string | null; value: number };
-
-type LoadedVersionEvent =
-  | { type: 'versionsCounted'; identityKey: string | null; count: number }
-  | { type: 'versionCountFailed'; identityKey: string | null }
-  | { type: 'versionSet'; identityKey: string | null; version: number };
-
-const loadedVersionReducer = (_state: LoadedVersion, event: LoadedVersionEvent): LoadedVersion => {
-  switch (event.type) {
-    case 'versionsCounted':
-      return { identityKey: event.identityKey, value: event.count > 0 ? event.count : 1 };
-    case 'versionCountFailed':
-      return { identityKey: event.identityKey, value: 1 };
-    case 'versionSet':
-      return { identityKey: event.identityKey, value: event.version };
-  }
-};
+import { tableVersionCountOptions, tableVersionsRootKey } from '@/queries/tableVersions';
 
 interface UseLoadedTablePresentationParams {
   hydrated: boolean;
   isShareView: boolean;
+  workspaceScope: WorkspaceScope | null;
   normalizedName: string | null;
   tableId?: string | null;
   tableName: string | null;
@@ -33,6 +18,7 @@ interface UseLoadedTablePresentationParams {
 export function useLoadedTablePresentation({
   hydrated,
   isShareView,
+  workspaceScope,
   normalizedName,
   tableId,
   tableName,
@@ -40,37 +26,20 @@ export function useLoadedTablePresentation({
   countTableVersions,
 }: UseLoadedTablePresentationParams) {
   const { t } = useTranslation();
-  const identityKey = tableId ?? normalizedName;
-  const [versionState, dispatch] = useReducer(loadedVersionReducer, { identityKey, value: 0 });
-  const version = versionState.identityKey === identityKey ? versionState.value : 0;
+  const queryClient = useQueryClient();
+  const loadedTarget = normalizedName && tableId ? { normalizedName, tableId } : normalizedName;
+  const target = hydrated && !isShareView ? loadedTarget : null;
 
-  const setVersion = useCallback(
-    (value: number, target?: SavedTableTarget) =>
-      dispatch({
-        type: 'versionSet',
-        identityKey: target ? savedTableKey(target) : identityKey,
-        version: value,
-      }),
-    [identityKey],
+  const versionCount = useQuery(
+    tableVersionCountOptions(workspaceScope, target, countTableVersions),
   );
+  const countedVersion = versionCount.isSuccess ? Math.max(versionCount.data, 1) : 0;
+  const version = versionCount.isError ? 1 : countedVersion;
 
-  useEffect(() => {
-    if (!hydrated || isShareView) return;
-    if (!normalizedName) return;
-
-    let cancelled = false;
-    void countTableVersions(tableId ? { normalizedName, tableId } : normalizedName)
-      .then((count) => {
-        if (!cancelled) dispatch({ type: 'versionsCounted', identityKey, count });
-      })
-      .catch(() => {
-        if (!cancelled) dispatch({ type: 'versionCountFailed', identityKey });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [countTableVersions, hydrated, isShareView, normalizedName, tableId, identityKey]);
+  const refreshTableVersions = useCallback(
+    () => void queryClient.invalidateQueries({ queryKey: tableVersionsRootKey }),
+    [queryClient],
+  );
 
   const label = useMemo(() => {
     if (isShareView) return t('app.workspace.shareReadonly');
@@ -83,5 +52,5 @@ export function useLoadedTablePresentation({
     });
   }, [isDirty, isShareView, t, tableName, version]);
 
-  return { loadedTableVersion: version, setLoadedTableVersion: setVersion, workspaceLabel: label };
+  return { refreshTableVersions, workspaceLabel: label };
 }

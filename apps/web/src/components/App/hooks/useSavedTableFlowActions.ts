@@ -25,7 +25,7 @@ interface UseSavedTableFlowActionsParams {
   canSaveCurrent: boolean;
   loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
   sourceDraftId?: string;
-  setLoadedTableVersion: (version: number, normalizedName?: SavedTableTarget) => void;
+  refreshTableVersions: () => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   renameDialog: UseDialogStateReturn<RenameDialogData>;
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
@@ -80,7 +80,7 @@ export function useSavedTableFlowActions({
   canSaveCurrent,
   loadedTableSource,
   sourceDraftId,
-  setLoadedTableVersion,
+  refreshTableVersions,
   saveDialog,
   renameDialog,
   deleteDialog,
@@ -107,7 +107,7 @@ export function useSavedTableFlowActions({
     canSaveCurrent,
     loadedTableSource,
     sourceDraftId,
-    setLoadedTableVersion,
+    refreshTableVersions,
     saveDialog,
     buildPersistedState,
     loadTable,
