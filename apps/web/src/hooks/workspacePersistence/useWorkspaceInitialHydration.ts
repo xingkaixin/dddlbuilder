@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useReducer } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
@@ -31,6 +31,21 @@ import {
 import { normalizePersistedState, normalizeWorkspaceSession } from './normalize';
 import { leaveShareRoute } from './shareRoute';
 import { cacheShareJson, readStorageJson } from './storage';
+
+type HydrationState = { status: 'loading' | 'ready' | 'error'; attempt: number };
+
+type HydrationEvent = { type: 'hydrated' } | { type: 'failed' } | { type: 'retried' };
+
+const hydrationReducer = (state: HydrationState, event: HydrationEvent): HydrationState => {
+  switch (event.type) {
+    case 'hydrated':
+      return state.status === 'ready' ? state : { ...state, status: 'ready' };
+    case 'failed':
+      return state.status === 'error' ? state : { ...state, status: 'error' };
+    case 'retried':
+      return { status: 'loading', attempt: state.attempt + 1 };
+  }
+};
 
 interface UseWorkspaceInitialHydrationParams {
   pathInvalid: boolean;
@@ -65,19 +80,18 @@ export function useWorkspaceInitialHydration({
     ...shareStateOptions(shareId ?? ''),
     enabled: Boolean(shareId && shareStorageKey && !pathInvalid),
   });
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [attempt, setAttempt] = useState(0);
-  const setHydrated = useCallback((ready: boolean) => setStatus(ready ? 'ready' : 'loading'), []);
+  const [{ status, attempt }, dispatch] = useReducer(hydrationReducer, {
+    status: 'loading',
+    attempt: 0,
+  });
+  const markHydrated = useCallback(() => dispatch({ type: 'hydrated' }), []);
 
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected hydration work can throw any JavaScript value and is only reported.
   const failHydration = useCallback((error: unknown) => {
     console.error('[workspace] local hydration failed', error);
-    setStatus('error');
+    dispatch({ type: 'failed' });
   }, []);
-  const retryHydration = useCallback(() => {
-    setStatus('loading');
-    setAttempt((previous) => previous + 1);
-  }, []);
+  const retryHydration = useCallback(() => dispatch({ type: 'retried' }), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +99,7 @@ export function useWorkspaceInitialHydration({
     const hydrateWithState = (state: PersistedState | null) => {
       if (cancelled) return;
       setPersistedState(state);
-      setHydrated(true);
+      markHydrated();
     };
     const applyHydration = ({ activeSource, state }: WorkspaceHydration) => {
       syncActiveSource(activeSource);
@@ -203,7 +217,7 @@ export function useWorkspaceInitialHydration({
   }, [
     attempt,
     failHydration,
-    setHydrated,
+    markHydrated,
     currentScope,
     pathInvalid,
     replaceDrafts,
@@ -227,6 +241,6 @@ export function useWorkspaceInitialHydration({
     hydrationFailed: status === 'error',
     retryHydration,
     failHydration,
-    setHydrated,
+    markHydrated,
   };
 }

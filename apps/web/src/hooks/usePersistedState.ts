@@ -1,5 +1,5 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useReducer, useRef } from 'react';
 import { withEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import { getWorkspaceSnapshotFromYDoc } from '@/services/workspaceYDocAdapter';
 import type {
@@ -49,6 +49,41 @@ import { toEditorSessionSnapshot } from '@/stores/editorDocumentCodec';
 
 const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
   buildPersistedStateSignature(left) === buildPersistedStateSignature(right);
+
+const isSameOptionalPersistedState = (left: PersistedState | null, right: PersistedState | null) =>
+  left && right ? isSamePersistedState(left, right) : left === right;
+
+const DEFAULT_SOURCE: WorkspaceSelection = { kind: 'draft', draftId: DEFAULT_DRAFT_ID };
+
+type WorkspaceDocumentState = {
+  persistedState: PersistedState | null;
+  activeSource: WorkspaceSelection;
+};
+
+type WorkspaceDocumentEvent =
+  | { type: 'stateLoaded'; state: PersistedState | null }
+  | { type: 'stateRefreshed'; state: PersistedState | null }
+  | { type: 'sourceSelected'; source: WorkspaceSelection };
+
+const workspaceDocumentReducer = (
+  current: WorkspaceDocumentState,
+  event: WorkspaceDocumentEvent,
+): WorkspaceDocumentState => {
+  switch (event.type) {
+    case 'stateLoaded':
+      return current.persistedState === event.state
+        ? current
+        : { ...current, persistedState: event.state };
+    case 'stateRefreshed':
+      return isSameOptionalPersistedState(current.persistedState, event.state)
+        ? current
+        : { ...current, persistedState: event.state };
+    case 'sourceSelected':
+      return isSameWorkspaceSelection(current.activeSource, event.source)
+        ? current
+        : { ...current, activeSource: event.source };
+  }
+};
 
 export interface WorkspacePersistenceStatus {
   hydrated: boolean;
@@ -106,23 +141,18 @@ export function usePersistedState(): UsePersistedStateReturn {
   const pathInfo = useShareRoute();
   const shareId = pathInfo.shareId;
   const shareStorageKey = shareId ? buildShareStorageKey(shareId) : null;
-  const [persistedState, setPersistedState] = useState<PersistedState | null>(null);
 
-  const [activeSource, setActiveSource] = useState<WorkspaceSelection>({
-    kind: 'draft',
-    draftId: DEFAULT_DRAFT_ID,
-  });
+  const [{ persistedState, activeSource }, dispatchDocument] = useReducer(
+    workspaceDocumentReducer,
+    { persistedState: null, activeSource: DEFAULT_SOURCE },
+  );
   const {
     enqueue: enqueuePersistence,
     failure: persistenceFailure,
     retryFailed: retryPersistence,
   } = usePersistenceQueue();
 
-  const activeSourceRef = useRef<WorkspaceSelection>({
-    kind: 'draft',
-    draftId: DEFAULT_DRAFT_ID,
-  });
-  const persistedStateRef = useRef<PersistedState | null>(null);
+  const activeSourceRef = useRef<WorkspaceSelection>(DEFAULT_SOURCE);
   const lastLocalSaveRef = useRef<PendingLocalSave | null>(null);
   const writtenSessionRef = useRef<{ scopeKey: string; source: WorkspaceSelection } | null>(null);
 
@@ -174,30 +204,26 @@ export function usePersistedState(): UsePersistedStateReturn {
     renameSavedTableDraft,
   } = savedTableDraftRecords;
 
+  // useReducer 不会像 useState 那样提前跳过相同状态；引用与 reducer 中的来源等价，
+  // 相同时不派发，避免每次自动保存都让宿主组件多渲染一轮。
   const syncActiveSource = useCallback((source: WorkspaceSelection) => {
+    const unchanged = isSameWorkspaceSelection(activeSourceRef.current, source);
     activeSourceRef.current = source;
-    setActiveSource((prev) => (isSameWorkspaceSelection(prev, source) ? prev : source));
+
+    if (!unchanged) dispatchDocument({ type: 'sourceSelected', source });
   }, []);
 
-  const setPersistedStateIfChanged = useCallback((nextState: PersistedState | null) => {
-    setPersistedState((prevState) => {
-      if (!prevState || !nextState) {
-        return prevState === nextState ? prevState : nextState;
-      }
+  const setPersistedState = useCallback(
+    (state: PersistedState | null) => dispatchDocument({ type: 'stateLoaded', state }),
+    [],
+  );
 
-      return isSamePersistedState(prevState, nextState) ? prevState : nextState;
-    });
-  }, []);
+  const setPersistedStateIfChanged = useCallback(
+    (state: PersistedState | null) => dispatchDocument({ type: 'stateRefreshed', state }),
+    [],
+  );
 
-  const applyYDocState = useCallback((nextState: PersistedState) => {
-    setPersistedState(nextState);
-  }, []);
-
-  useEffect(() => {
-    persistedStateRef.current = persistedState;
-  }, [persistedState]);
-
-  const { hydrated, hydrationFailed, retryHydration, failHydration, setHydrated } =
+  const { hydrated, hydrationFailed, retryHydration, failHydration, markHydrated } =
     useWorkspaceInitialHydration({
       pathInvalid: pathInfo.invalid,
       shareId,
@@ -217,10 +243,10 @@ export function usePersistedState(): UsePersistedStateReturn {
     yDoc,
     runInYDoc,
     activeSourceRef,
-    persistedStateRef,
+    persistedState,
     lastLocalSaveRef,
     replaceSavedTableDrafts,
-    applyYDocState,
+    applyYDocState: setPersistedState,
     setPersistedStateIfChanged,
     syncActiveSource,
   });
@@ -232,7 +258,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     replaceSavedTableDrafts,
     syncActiveSource,
     setPersistedStateIfChanged,
-    setHydrated,
+    markHydrated,
     failHydration,
   });
 
@@ -265,7 +291,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       clearWorkspaceSession(currentScope),
     );
     setPersistedState(null);
-  }, [currentScope, enqueuePersistence, syncActiveSource]);
+  }, [currentScope, enqueuePersistence, setPersistedState, syncActiveSource]);
 
   const setWorkspaceSnapshot = useCallback(
     (source: WorkspaceSelection, state: PersistedState) => {
@@ -280,7 +306,7 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       writeSession(source);
     },
-    [saveDraftState, shareId, syncActiveSource, writeSession],
+    [saveDraftState, setPersistedState, shareId, syncActiveSource, writeSession],
   );
 
   const selectWorkspaceSnapshot = useCallback(
@@ -329,10 +355,10 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (payload.source.kind === 'draft') {
         if (!saveDraftState(payload.source.draftId, payload.state, { activeOnly: true })) return;
       } else {
-        if (persistedStateRef.current) {
+        if (persistedState) {
           lastLocalSaveRef.current = {
             source: payload.source,
-            baseState: persistedStateRef.current,
+            baseState: persistedState,
             localState: payload.state,
           };
         }
@@ -365,7 +391,9 @@ export function usePersistedState(): UsePersistedStateReturn {
       getSavedTableDraft,
       hydrated,
       persistSavedTableDraft,
+      persistedState,
       saveDraftState,
+      setPersistedState,
       shareStorageKey,
       syncActiveSource,
       writeSession,
@@ -383,7 +411,7 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       saveState({ source: activeSourceRef.current, state });
     },
-    [saveState, shareStorageKey],
+    [saveState, setPersistedState, shareStorageKey],
   );
 
   const deleteDraftById = useCallback(

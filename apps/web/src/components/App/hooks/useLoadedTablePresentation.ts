@@ -1,6 +1,24 @@
 import { savedTableKey, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
+
+type LoadedVersion = { identityKey: string | null; value: number };
+
+type LoadedVersionEvent =
+  | { type: 'versionsCounted'; identityKey: string | null; count: number }
+  | { type: 'versionCountFailed'; identityKey: string | null }
+  | { type: 'versionSet'; identityKey: string | null; version: number };
+
+const loadedVersionReducer = (_state: LoadedVersion, event: LoadedVersionEvent): LoadedVersion => {
+  switch (event.type) {
+    case 'versionsCounted':
+      return { identityKey: event.identityKey, value: event.count > 0 ? event.count : 1 };
+    case 'versionCountFailed':
+      return { identityKey: event.identityKey, value: 1 };
+    case 'versionSet':
+      return { identityKey: event.identityKey, value: event.version };
+  }
+};
 
 interface UseLoadedTablePresentationParams {
   hydrated: boolean;
@@ -23,12 +41,16 @@ export function useLoadedTablePresentation({
 }: UseLoadedTablePresentationParams) {
   const { t } = useTranslation();
   const identityKey = tableId ?? normalizedName;
-  const [versionState, setVersionState] = useState({ identityKey, value: 0 });
+  const [versionState, dispatch] = useReducer(loadedVersionReducer, { identityKey, value: 0 });
   const version = versionState.identityKey === identityKey ? versionState.value : 0;
 
   const setVersion = useCallback(
     (value: number, target?: SavedTableTarget) =>
-      setVersionState({ identityKey: target ? savedTableKey(target) : identityKey, value }),
+      dispatch({
+        type: 'versionSet',
+        identityKey: target ? savedTableKey(target) : identityKey,
+        version: value,
+      }),
     [identityKey],
   );
 
@@ -39,10 +61,10 @@ export function useLoadedTablePresentation({
     let cancelled = false;
     void countTableVersions(tableId ? { normalizedName, tableId } : normalizedName)
       .then((count) => {
-        if (!cancelled) setVersionState({ identityKey, value: count > 0 ? count : 1 });
+        if (!cancelled) dispatch({ type: 'versionsCounted', identityKey, count });
       })
       .catch(() => {
-        if (!cancelled) setVersionState({ identityKey, value: 1 });
+        if (!cancelled) dispatch({ type: 'versionCountFailed', identityKey });
       });
 
     return () => {

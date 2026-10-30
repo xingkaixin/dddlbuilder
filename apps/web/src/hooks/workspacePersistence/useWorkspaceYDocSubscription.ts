@@ -1,5 +1,5 @@
 import { isSameSavedTable, savedTableKey } from '@ddlbuilder/shared-types/workspace';
-import { useEffect } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 import { useTabStore } from '@/stores/tabStore';
 import type * as Y from 'yjs';
 import {
@@ -44,7 +44,7 @@ interface UseWorkspaceYDocSubscriptionParams {
   yDoc: Y.Doc | null;
   runInYDoc: ReturnType<typeof useWorkspaceYDocGateway>['runInYDoc'];
   activeSourceRef: MutableValue<WorkspaceSelection>;
-  persistedStateRef: MutableValue<PersistedState | null>;
+  persistedState: PersistedState | null;
   lastLocalSaveRef: MutableValue<PendingLocalSave | null>;
   replaceSavedTableDrafts: (
     records: Map<string, SavedTableDraftRecord>,
@@ -62,13 +62,15 @@ export function useWorkspaceYDocSubscription({
   yDoc,
   runInYDoc,
   activeSourceRef,
-  persistedStateRef,
+  persistedState,
   lastLocalSaveRef,
   replaceSavedTableDrafts,
   applyYDocState,
   setPersistedStateIfChanged,
   syncActiveSource,
 }: UseWorkspaceYDocSubscriptionParams) {
+  const hasPersistedState = useEffectEvent(() => persistedState !== null);
+
   useEffect(() => {
     if (!yDoc) return;
 
@@ -249,7 +251,7 @@ export function useWorkspaceYDocSubscription({
         }
       }
 
-      if (!persistedStateRef.current) {
+      if (!hasPersistedState()) {
         const initialDraft = pickInitialDraft(listDraftRecordsFromYDoc(yDoc));
 
         if (initialDraft) {
@@ -275,7 +277,6 @@ export function useWorkspaceYDocSubscription({
     activeSourceRef,
     applyYDocState,
     lastLocalSaveRef,
-    persistedStateRef,
     replaceSavedTableDrafts,
     runInYDoc,
     setPersistedStateIfChanged,
