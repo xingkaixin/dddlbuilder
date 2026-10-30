@@ -1,5 +1,5 @@
 import { AIAccessNotice } from './AIAccessNotice';
-import { memo, useState, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useReducer } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,57 @@ function getFieldChangeKey(diff: FieldDiff) {
     : `${diff.type}:${diff.fieldName}`;
 }
 
+interface GenerateDialogState {
+  input: string;
+  templateSelection: Set<string> | null;
+  showTemplateSelection: boolean;
+}
+
+type GenerateDialogEvent =
+  | { type: 'inputChanged'; input: string }
+  | { type: 'generationSucceeded'; submittedInput: string }
+  | { type: 'reset' | 'templateListToggled' | 'allTemplatesUnselected' }
+  | { type: 'templateToggled'; id: string; defaultSelection: ReadonlySet<string> }
+  | { type: 'allTemplatesSelected'; ids: string[] };
+
+const initialDialogState: GenerateDialogState = {
+  input: '',
+  templateSelection: null,
+  showTemplateSelection: false,
+};
+
+function generateDialogReducer(
+  state: GenerateDialogState,
+  event: GenerateDialogEvent,
+): GenerateDialogState {
+  switch (event.type) {
+    case 'inputChanged':
+      return { ...state, input: event.input };
+    case 'generationSucceeded':
+      return state.input === event.submittedInput ? { ...state, input: '' } : state;
+    case 'reset':
+      return { ...state, input: '' };
+    case 'templateListToggled':
+      return { ...state, showTemplateSelection: !state.showTemplateSelection };
+    case 'templateToggled': {
+      const next = new Set(state.templateSelection ?? event.defaultSelection);
+
+      if (next.has(event.id)) {
+        next.delete(event.id);
+      } else {
+        next.add(event.id);
+      }
+
+      return { ...state, templateSelection: next };
+    }
+
+    case 'allTemplatesSelected':
+      return { ...state, templateSelection: new Set(event.ids) };
+    case 'allTemplatesUnselected':
+      return { ...state, templateSelection: new Set() };
+  }
+}
+
 interface AIGenerateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -57,14 +108,16 @@ interface AIGenerateDialogProps {
 export const AIGenerateDialog = memo<AIGenerateDialogProps>(
   ({ open, onOpenChange, dbType, existingConfig, templates, onApply }) => {
     const { t } = useTranslation();
-    const [input, setInput] = useState('');
-    const [templateSelection, setTemplateSelection] = useState<Set<string> | null>(null);
+
+    const [{ input, templateSelection, showTemplateSelection }, dispatch] = useReducer(
+      generateDialogReducer,
+      initialDialogState,
+    );
 
     const selectedTemplateIds = useMemo(
       () => templateSelection ?? new Set(templates?.map((template) => template.id) ?? []),
       [templateSelection, templates],
     );
-    const [showTemplateSelection, setShowTemplateSelection] = useState(false);
 
     const {
       isLoading,
@@ -99,7 +152,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
         continueConversation: conversationHistory.length > 0,
       });
 
-      if (succeeded) setInput((current) => (current === input ? '' : current));
+      if (succeeded) dispatch({ type: 'generationSucceeded', submittedInput: input });
     }, [
       input,
       dbType,
@@ -113,18 +166,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
 
     const toggleTemplate = useCallback(
       (id: string) => {
-        setTemplateSelection((selection) => {
-          const previous = selection ?? selectedTemplateIds;
-          const next = new Set(previous);
-
-          if (next.has(id)) {
-            next.delete(id);
-          } else {
-            next.add(id);
-          }
-
-          return next;
-        });
+        dispatch({ type: 'templateToggled', id, defaultSelection: selectedTemplateIds });
       },
       [selectedTemplateIds],
     );
@@ -133,9 +175,9 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
       if (!templates) return;
 
       if (selectedTemplateIds.size === templates.length) {
-        setTemplateSelection(new Set());
+        dispatch({ type: 'allTemplatesUnselected' });
       } else {
-        setTemplateSelection(new Set(templates.map((t) => t.id)));
+        dispatch({ type: 'allTemplatesSelected', ids: templates.map((t) => t.id) });
       }
     }, [templates, selectedTemplateIds.size]);
 
@@ -151,7 +193,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     const handleReset = useCallback(() => {
       clearResult();
       clearConversation();
-      setInput('');
+      dispatch({ type: 'reset' });
     }, [clearResult, clearConversation]);
 
     const getTemplateFieldCount = useCallback((template: FieldTemplate | TableTemplate) => {
@@ -170,8 +212,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     );
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = e.target.value;
-      setInput(value.slice(0, MAX_INPUT_LENGTH));
+      dispatch({ type: 'inputChanged', input: e.target.value.slice(0, MAX_INPUT_LENGTH) });
     }, []);
 
     const generatedFieldCount = displayResult?.fields?.length ?? 0;
@@ -444,7 +485,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   <button
                     type="button"
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => setShowTemplateSelection(!showTemplateSelection)}
+                    onClick={() => dispatch({ type: 'templateListToggled' })}
                   >
                     {showTemplateSelection ? (
                       <ChevronDown className="h-3.5 w-3.5" />

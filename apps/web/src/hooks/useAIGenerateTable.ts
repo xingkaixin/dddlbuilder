@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useCallback, useMemo, useReducer, useRef } from 'react';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import {
   requestGenerateTable,
@@ -29,6 +29,61 @@ interface GenerateState {
   resultBaseState: PersistedState | null;
   previousResult: GeneratedTableSchema | null;
   error: string | null;
+  conversationHistory: ConversationMessage[];
+}
+
+type GenerateEvent =
+  | { type: 'inputRejected'; error: string }
+  | { type: 'requested' | 'resultCleared' | 'conversationCleared' | 'cancelled' }
+  | { type: 'textStreamed'; streamingText: string }
+  | {
+      type: 'succeeded';
+      result: GeneratedTableSchema;
+      resultBaseState: PersistedState | null;
+      previousResult: GeneratedTableSchema | null;
+      conversationHistory: ConversationMessage[];
+    }
+  | { type: 'failed'; error: string };
+
+const initialGenerateState: GenerateState = {
+  streamingText: '',
+  result: null,
+  resultBaseState: null,
+  previousResult: null,
+  error: null,
+  conversationHistory: [],
+};
+
+const clearedResult = (state: GenerateState): GenerateState => ({
+  ...initialGenerateState,
+  conversationHistory: state.conversationHistory,
+});
+
+function generateReducer(state: GenerateState, event: GenerateEvent): GenerateState {
+  switch (event.type) {
+    case 'inputRejected':
+      return { ...state, error: event.error };
+    case 'requested':
+    case 'resultCleared':
+      return clearedResult(state);
+    case 'conversationCleared':
+      return { ...state, conversationHistory: [] };
+    case 'cancelled':
+      return { ...state, streamingText: '' };
+    case 'textStreamed':
+      return { ...state, streamingText: event.streamingText };
+    case 'succeeded':
+      return {
+        streamingText: '',
+        result: event.result,
+        resultBaseState: event.resultBaseState,
+        previousResult: event.previousResult,
+        error: null,
+        conversationHistory: event.conversationHistory,
+      };
+    case 'failed':
+      return { ...clearedResult(state), error: event.error };
+  }
 }
 
 type GenerateTableOptions = Omit<
@@ -60,14 +115,8 @@ export function useAIGenerateTable() {
   const { resolvedLocale } = useLocale();
   const requestAccess = useAIRequestAccess();
 
-  const [state, setState] = useState<GenerateState>({
-    streamingText: '',
-    result: null,
-    resultBaseState: null,
-    previousResult: null,
-    error: null,
-  });
-  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
+  const [state, dispatch] = useReducer(generateReducer, initialGenerateState);
+  const { conversationHistory } = state;
   const conversationIdRef = useRef<string | undefined>(undefined);
   const previousSchemaRef = useRef<GeneratedTableSchema | null>(null);
   const { isPending, run, cancel } = useLatestRequest();
@@ -83,10 +132,7 @@ export function useAIGenerateTable() {
   const generateTable = useCallback(
     async (description: string, dbType: DatabaseType, options?: GenerateTableOptions) => {
       if (!description.trim()) {
-        setState((prev) => ({
-          ...prev,
-          error: i18n.t('services.inputDescribeRequired'),
-        }));
+        dispatch({ type: 'inputRejected', error: i18n.t('services.inputDescribeRequired') });
 
         return false;
       }
@@ -94,10 +140,7 @@ export function useAIGenerateTable() {
       const accessError = requestAccess.getAccessError();
 
       if (accessError) {
-        setState((prev) => ({
-          ...prev,
-          error: accessError,
-        }));
+        dispatch({ type: 'inputRejected', error: accessError });
 
         return false;
       }
@@ -132,13 +175,7 @@ export function useAIGenerateTable() {
       const requestKey = JSON.stringify(requestPayload);
 
       const succeeded = await run(async ({ signal, isCurrent, commitIfCurrent }) => {
-        setState({
-          streamingText: '',
-          result: null,
-          resultBaseState: null,
-          previousResult: null,
-          error: null,
-        });
+        dispatch({ type: 'requested' });
 
         try {
           const { fullText, result } = await requestGenerateTable(requestPayload, {
@@ -147,27 +184,23 @@ export function useAIGenerateTable() {
               conversationIdRef.current = id;
             },
             onStreamingText: (streamingText) => {
-              commitIfCurrent(() => {
-                setState((previous) => ({
-                  ...previous,
-                  streamingText,
-                }));
-              });
+              commitIfCurrent(() => dispatch({ type: 'textStreamed', streamingText }));
             },
           });
 
           commitIfCurrent(() => {
-            setState({
-              streamingText: '',
+            dispatch({
+              type: 'succeeded',
               result,
               resultBaseState: baseState,
               previousResult: previousSchema,
-              error: null,
+              conversationHistory: appendConversation(
+                baseConversation,
+                normalizedDescription,
+                fullText,
+              ),
             });
             previousSchemaRef.current = result;
-            setConversationHistory(
-              appendConversation(baseConversation, normalizedDescription, fullText),
-            );
             requestAccess.refreshCreditsAfterSuccess();
           });
 
@@ -175,11 +208,8 @@ export function useAIGenerateTable() {
         } catch (error) {
           if (!isCurrent() || (error instanceof Error && error.name === 'AbortError')) throw error;
 
-          setState({
-            streamingText: '',
-            result: null,
-            resultBaseState: null,
-            previousResult: null,
+          dispatch({
+            type: 'failed',
             error: requestAccess.resolveRequestError(error, i18n.t('services.generationFailed')),
           });
 
@@ -193,24 +223,16 @@ export function useAIGenerateTable() {
   );
 
   const clearResult = useCallback(() => {
-    setState({
-      streamingText: '',
-      result: null,
-      resultBaseState: null,
-      previousResult: null,
-      error: null,
-    });
+    dispatch({ type: 'resultCleared' });
   }, []);
 
   const clearConversation = useCallback(() => {
-    setConversationHistory([]);
+    dispatch({ type: 'conversationCleared' });
     previousSchemaRef.current = null;
   }, []);
 
   const cancelGeneration = useCallback(() => {
-    if (cancel()) {
-      setState((previous) => ({ ...previous, streamingText: '' }));
-    }
+    if (cancel()) dispatch({ type: 'cancelled' });
   }, [cancel]);
 
   return {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import { createEntityId, type DatabaseType, type PersistedState } from '@ddlbuilder/shared-types';
@@ -14,6 +14,7 @@ import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import type { BuilderTab } from '@/utils/tabUtils';
 import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
 import { validateDocumentFields } from '@/stores/editorDocumentValidation';
+import { useTimers } from '@/hooks/useTimers';
 
 interface UseSchemaApplyActionsParams {
   currentState: PersistedState;
@@ -56,30 +57,27 @@ export function useSchemaApplyActions({
   const { t } = useTranslation();
   const currentStateRef = useRef(currentState);
   const reviewResultRef = useRef(reviewResult);
-  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const { schedule } = useTimers();
+
+  // Delayed suggestion actions and handlers captured before a re-render must see the latest
+  // committed document and review; reviewResult has no store to read from.
   useLayoutEffect(() => {
     currentStateRef.current = currentState;
     reviewResultRef.current = reviewResult;
   }, [currentState, reviewResult]);
-  useEffect(
-    () => () => {
-      for (const timer of timers.current) clearTimeout(timer);
+
+  const scheduleReviewAction = useCallback(
+    (action: () => void, delay: number) => {
+      const state = currentStateRef.current;
+      const review = reviewResultRef.current;
+
+      schedule(() => {
+        if (currentStateRef.current !== state || reviewResultRef.current !== review) return;
+        action();
+      }, delay);
     },
-    [],
+    [schedule],
   );
-
-  const scheduleReviewAction = useCallback((action: () => void, delay: number) => {
-    const state = currentStateRef.current;
-    const review = reviewResultRef.current;
-
-    const timer = setTimeout(() => {
-      timers.current.delete(timer);
-
-      if (currentStateRef.current !== state || reviewResultRef.current !== review) return;
-      action();
-    }, delay);
-    timers.current.add(timer);
-  }, []);
 
   const replaceLatestState = useCallback(
     (update: (state: PersistedState) => PersistedState) => {

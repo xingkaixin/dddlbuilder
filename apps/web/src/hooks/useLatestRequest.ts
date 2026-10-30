@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useReducer, useRef } from 'react';
+
+type CancelReason = 'stop' | 'detach';
 
 interface ActiveRequest {
   key?: string;
@@ -16,30 +18,60 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
-export function useLatestRequest() {
+interface PendingState {
+  resetKey: string | undefined;
+  isPending: boolean;
+}
+
+type PendingEvent =
+  | { type: 'started' | 'settled' }
+  | { type: 'resetKeyChanged'; resetKey: string | undefined };
+
+const idlePending = (resetKey: string | undefined): PendingState => ({
+  resetKey,
+  isPending: false,
+});
+
+function pendingReducer(state: PendingState, event: PendingEvent): PendingState {
+  switch (event.type) {
+    case 'started':
+      return state.isPending ? state : { ...state, isPending: true };
+    case 'settled':
+      return state.isPending ? { ...state, isPending: false } : state;
+    case 'resetKeyChanged':
+      return idlePending(event.resetKey);
+  }
+}
+
+/**
+ * Runs one abortable request at a time. The active request is aborted with `resetReason` on
+ * unmount and whenever `resetKey` changes.
+ */
+export function useLatestRequest(resetKey?: string, resetReason: CancelReason = 'stop') {
   const activeRequestRef = useRef<ActiveRequest | null>(null);
-  const [isPending, setIsPending] = useState(false);
+  const [pending, dispatchPending] = useReducer(pendingReducer, resetKey, idlePending);
 
-  useEffect(
-    () => () => {
-      const activeRequest = activeRequestRef.current;
-      activeRequestRef.current = null;
-      activeRequest?.controller.abort('stop');
-    },
-    [],
-  );
+  if (pending.resetKey !== resetKey) dispatchPending({ type: 'resetKeyChanged', resetKey });
 
-  const cancel = useCallback((reason: 'stop' | 'detach' = 'stop') => {
+  const cancel = useCallback((reason: CancelReason = 'stop') => {
     const activeRequest = activeRequestRef.current;
 
     if (!activeRequest) return false;
 
     activeRequestRef.current = null;
     activeRequest.controller.abort(reason);
-    setIsPending(false);
+    dispatchPending({ type: 'settled' });
 
     return true;
   }, []);
+
+  // Layout timing aborts the previous key's request before the next document is painted.
+  useLayoutEffect(
+    () => () => {
+      cancel(resetReason);
+    },
+    [cancel, resetKey, resetReason],
+  );
 
   const run = useCallback(
     async <Result>(
@@ -59,7 +91,7 @@ export function useLatestRequest() {
         controller: new AbortController(),
       };
       activeRequestRef.current = activeRequest;
-      setIsPending(true);
+      dispatchPending({ type: 'started' });
 
       const isCurrent = () => activeRequestRef.current === activeRequest;
 
@@ -81,12 +113,12 @@ export function useLatestRequest() {
       } finally {
         if (isCurrent()) {
           activeRequestRef.current = null;
-          setIsPending(false);
+          dispatchPending({ type: 'settled' });
         }
       }
     },
     [],
   );
 
-  return { isPending, run, cancel };
+  return { isPending: pending.isPending, run, cancel };
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -25,6 +25,9 @@ interface AISchemaPatchDialogProps extends AISchemaPatchSessionParams {
   onFocusChange?: (change: AISchemaChange) => void;
 }
 
+const confirmResetReducer = (_open: boolean, event: 'requested' | 'dismissed') =>
+  event === 'requested';
+
 export function AISchemaPatchDialog({
   open,
   onOpenChange,
@@ -34,7 +37,7 @@ export function AISchemaPatchDialog({
   const { t } = useTranslation();
   const { showToast } = useToast();
   const session = useAISchemaPatchSession(params);
-  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmReset, dispatchConfirmReset] = useReducer(confirmResetReducer, false);
 
   const handleOpenChange = (next: boolean) => {
     if (!next && session.isLoading) {
@@ -56,12 +59,17 @@ export function AISchemaPatchDialog({
             currentState={params.currentState}
             onFocusChange={onFocusChange}
             onReset={() =>
-              session.result || session.input ? setConfirmReset(true) : session.handleReset()
+              session.result || session.input
+                ? dispatchConfirmReset('requested')
+                : session.handleReset()
             }
           />
         </DialogContent>
       </Dialog>
-      <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
+      <AlertDialog
+        open={confirmReset}
+        onOpenChange={(next) => dispatchConfirmReset(next ? 'requested' : 'dismissed')}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('aiPatch.reset')}</AlertDialogTitle>

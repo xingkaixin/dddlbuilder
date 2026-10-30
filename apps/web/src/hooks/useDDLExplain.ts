@@ -1,5 +1,5 @@
 import { fetchAIConversation } from '@/services/aiConversationService';
-import { useCallback, useState } from 'react';
+import { useCallback, useReducer } from 'react';
 import { readTextStream } from '@/services/streamingText';
 import i18n from '@/i18n';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -7,34 +7,43 @@ import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/ai
 import { useAIRequestAccess } from './useAIRequestAccess';
 import { useLatestRequest } from './useLatestRequest';
 
-type ExplainPhase = 'idle' | 'loading' | 'streaming' | 'complete' | 'error';
+type ExplainState =
+  | { phase: 'idle' | 'loading' }
+  | { phase: 'streaming' | 'complete'; explanation: string }
+  | { phase: 'error'; error: string };
 
-interface ExplainState {
-  phase: ExplainPhase;
-  explanation: string | null;
-  error: string | null;
+type ExplainEvent =
+  | { type: 'requested' | 'cleared' }
+  | { type: 'streamed' | 'completed'; explanation: string }
+  | { type: 'failed'; error: string };
+
+const INITIAL_STATE: ExplainState = { phase: 'idle' };
+
+function explainReducer(_state: ExplainState, event: ExplainEvent): ExplainState {
+  switch (event.type) {
+    case 'requested':
+      return { phase: 'loading' };
+    case 'cleared':
+      return INITIAL_STATE;
+    case 'streamed':
+      return { phase: 'streaming', explanation: event.explanation };
+    case 'completed':
+      return { phase: 'complete', explanation: event.explanation };
+    case 'failed':
+      return { phase: 'error', error: event.error };
+  }
 }
-
-const INITIAL_STATE: ExplainState = {
-  phase: 'idle',
-  explanation: null,
-  error: null,
-};
 
 export function useDDLExplain() {
   const { resolvedLocale } = useLocale();
   const requestAccess = useAIRequestAccess();
-  const [state, setState] = useState<ExplainState>(INITIAL_STATE);
+  const [state, dispatch] = useReducer(explainReducer, INITIAL_STATE);
   const { run, cancel } = useLatestRequest();
 
   const startExplain = useCallback(
     async (sql: string, context?: string) => {
       if (!sql.trim()) {
-        setState({
-          phase: 'error',
-          explanation: null,
-          error: i18n.t('services.explainInvalidSql'),
-        });
+        dispatch({ type: 'failed', error: i18n.t('services.explainInvalidSql') });
 
         return;
       }
@@ -42,13 +51,13 @@ export function useDDLExplain() {
       const accessError = requestAccess.getAccessError();
 
       if (accessError) {
-        setState({ phase: 'error', explanation: null, error: accessError });
+        dispatch({ type: 'failed', error: accessError });
 
         return;
       }
 
       await run(async ({ signal, isCurrent, commitIfCurrent }) => {
-        setState({ phase: 'loading', explanation: null, error: null });
+        dispatch({ type: 'requested' });
 
         try {
           const response = await fetchAIConversation('explain', {
@@ -70,29 +79,24 @@ export function useDDLExplain() {
           const requestId = response.headers?.get?.('X-Request-Id') ?? null;
           const forceDebug = response.headers?.get?.('X-AI-Stream-Debug') === '1';
 
-          commitIfCurrent(() => {
-            setState({ phase: 'streaming', explanation: '', error: null });
-          });
+          commitIfCurrent(() => dispatch({ type: 'streamed', explanation: '' }));
 
           const explanation = await readTextStream(response.body, {
             debugContext: { route: 'explain', requestId, forceDebug },
             onUpdate: (nextExplanation) => {
-              commitIfCurrent(() => {
-                setState((previous) => ({ ...previous, explanation: nextExplanation }));
-              });
+              commitIfCurrent(() => dispatch({ type: 'streamed', explanation: nextExplanation }));
             },
           });
 
           commitIfCurrent(() => {
-            setState({ phase: 'complete', explanation, error: null });
+            dispatch({ type: 'completed', explanation });
             requestAccess.refreshCreditsAfterSuccess();
           });
         } catch (error) {
           if (!isCurrent() || (error instanceof Error && error.name === 'AbortError')) throw error;
 
-          setState({
-            phase: 'error',
-            explanation: null,
+          dispatch({
+            type: 'failed',
             error: requestAccess.resolveRequestError(error, i18n.t('services.explainFailed')),
           });
         }
@@ -103,15 +107,16 @@ export function useDDLExplain() {
 
   const clearExplain = useCallback(() => {
     cancel();
-    setState(INITIAL_STATE);
+    dispatch({ type: 'cleared' });
   }, [cancel]);
 
   return {
     isLoading: state.phase === 'loading',
     isStreaming: state.phase === 'streaming',
     isComplete: state.phase === 'complete',
-    explanation: state.explanation,
-    error: state.error,
+    explanation:
+      state.phase === 'streaming' || state.phase === 'complete' ? state.explanation : null,
+    error: state.phase === 'error' ? state.error : null,
     startExplain,
     clearExplain,
   };

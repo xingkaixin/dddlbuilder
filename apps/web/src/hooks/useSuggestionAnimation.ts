@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useCallback, useReducer, useRef } from 'react';
 
 export type IndexAnimationType = 'add' | 'remove';
 
@@ -20,38 +20,66 @@ const INDEX_ANIMATION_KEYS = {
   remove: 'removingIndexIds',
 } as const;
 
+type AnimationEvent =
+  | {
+      type: 'indexAnimationStarted' | 'indexAnimationEnded';
+      indexId: string;
+      kind: IndexAnimationType;
+    }
+  | { type: 'fieldTableHighlighted'; rowIndex: number | null }
+  | { type: 'fieldTableHighlightEnded' };
+
+const initialAnimationState: AnimationState = {
+  animatingIndexIds: new Set(),
+  removingIndexIds: new Set(),
+  isFieldTableHighlighted: false,
+  highlightedRowIndex: null,
+};
+
+function animationReducer(state: AnimationState, event: AnimationEvent): AnimationState {
+  switch (event.type) {
+    case 'indexAnimationStarted': {
+      const stateKey = INDEX_ANIMATION_KEYS[event.kind];
+
+      return { ...state, [stateKey]: new Set(state[stateKey]).add(event.indexId) };
+    }
+
+    case 'indexAnimationEnded': {
+      const stateKey = INDEX_ANIMATION_KEYS[event.kind];
+      const next = new Set(state[stateKey]);
+      next.delete(event.indexId);
+
+      return { ...state, [stateKey]: next };
+    }
+
+    case 'fieldTableHighlighted':
+      return { ...state, isFieldTableHighlighted: true, highlightedRowIndex: event.rowIndex };
+    case 'fieldTableHighlightEnded':
+      return { ...state, isFieldTableHighlighted: false, highlightedRowIndex: null };
+  }
+}
+
 /**
  * Hook for managing suggestion application animations.
  * Provides state and methods to animate indexes and highlight the field table
  * when applying review suggestions.
  */
 export function useSuggestionAnimation() {
-  const [state, setState] = useState<AnimationState>({
-    animatingIndexIds: new Set(),
-    removingIndexIds: new Set(),
-    isFieldTableHighlighted: false,
-    highlightedRowIndex: null,
-  });
+  const [state, dispatch] = useReducer(animationReducer, initialAnimationState);
 
   // Use refs to track pending timeouts for cleanup
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  const triggerIndexAnimation = useCallback((indexId: string, type: IndexAnimationType) => {
+  const triggerIndexAnimation = useCallback((indexId: string, kind: IndexAnimationType) => {
     const timeoutKey = `index-${indexId}`;
-    const stateKey = INDEX_ANIMATION_KEYS[type];
     clearTimeout(timeoutsRef.current.get(timeoutKey));
 
-    setState((prev) => ({ ...prev, [stateKey]: new Set(prev[stateKey]).add(indexId) }));
+    dispatch({ type: 'indexAnimationStarted', indexId, kind });
 
     const timeout = setTimeout(() => {
-      setState((prev) => {
-        const next = new Set(prev[stateKey]);
-        next.delete(indexId);
-
-        return { ...prev, [stateKey]: next };
-      });
+      dispatch({ type: 'indexAnimationEnded', indexId, kind });
       timeoutsRef.current.delete(timeoutKey);
-    }, ANIMATION_DURATIONS[type]);
+    }, ANIMATION_DURATIONS[kind]);
 
     timeoutsRef.current.set(timeoutKey, timeout);
   }, []);
@@ -69,19 +97,11 @@ export function useSuggestionAnimation() {
     }
 
     // Set highlight state
-    setState((prev) => ({
-      ...prev,
-      isFieldTableHighlighted: true,
-      highlightedRowIndex: rowIndex ?? null,
-    }));
+    dispatch({ type: 'fieldTableHighlighted', rowIndex: rowIndex ?? null });
 
     // Schedule cleanup after animation duration
     const timeout = setTimeout(() => {
-      setState((prev) => ({
-        ...prev,
-        isFieldTableHighlighted: false,
-        highlightedRowIndex: null,
-      }));
+      dispatch({ type: 'fieldTableHighlightEnded' });
       timeoutsRef.current.delete('field-table-highlight');
     }, ANIMATION_DURATIONS.fieldTableHighlight);
 

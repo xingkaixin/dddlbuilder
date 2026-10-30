@@ -81,6 +81,8 @@ export function useReviewActions({
     ],
   );
 
+  // Reattaches to a review still running on the server (after a reload or a document switch);
+  // resuming only observes that operation and never submits a new, charged one.
   useEffect(() => {
     void resumeReview(generatedSql, tableName, dbType).then(persistReview);
   }, [resumeReview, persistReview, generatedSql, tableName, dbType]);

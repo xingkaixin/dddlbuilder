@@ -1,4 +1,5 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useReducer } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { History, Trash2, Loader2, Star, ChevronDown, ChevronUp } from '@/components/icons';
 import {
   Dialog,
@@ -19,8 +20,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import type { ReviewRecordMetadata, ReviewRecord, ReviewTarget } from '@/utils/reviewHistory';
-import { listReviewMetadata, getReview, deleteReview } from '@/utils/reviewHistory';
+import { deleteReview, type ReviewTarget } from '@/utils/reviewHistory';
+import {
+  reviewDetailOptions,
+  reviewHistoryQueryKeys,
+  reviewListOptions,
+} from '@/queries/reviewHistory';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -62,6 +67,31 @@ function formatDate(
   });
 }
 
+interface HistoryDialogState {
+  expandedId: string | null;
+  deleteConfirmId: string | null;
+}
+
+type HistoryDialogEvent =
+  | { type: 'reviewToggled' | 'deleteRequested'; id: string }
+  | { type: 'deleteDismissed' };
+
+const initialHistoryDialogState: HistoryDialogState = { expandedId: null, deleteConfirmId: null };
+
+function historyDialogReducer(
+  state: HistoryDialogState,
+  event: HistoryDialogEvent,
+): HistoryDialogState {
+  switch (event.type) {
+    case 'reviewToggled':
+      return { ...state, expandedId: state.expandedId === event.id ? null : event.id };
+    case 'deleteRequested':
+      return { ...state, deleteConfirmId: event.id };
+    case 'deleteDismissed':
+      return { ...state, deleteConfirmId: null };
+  }
+}
+
 function getScoreColor(score: number): string {
   if (score >= 8) return 'text-green-600';
   if (score >= 6) return 'text-yellow-600';
@@ -74,65 +104,35 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
-    const [reviews, setReviews] = useState<ReviewRecordMetadata[]>([]);
-    const [loading, setLoading] = useState(open);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [expandedDetail, setExpandedDetail] = useState<ReviewRecord | null>(null);
-    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-    const [actionLoading, setActionLoading] = useState(false);
+    const queryClient = useQueryClient();
 
-    // 加载评审列表
-    const loadReviews = useCallback(async () => {
-      if (!target) {
-        return;
-      }
-
-      try {
-        const list = await listReviewMetadata(target);
-        setReviews(list);
-      } finally {
-        setLoading(false);
-      }
-    }, [target]);
-
-    useEffect(() => {
-      if (open && target) void loadReviews();
-    }, [open, loadReviews, target]);
-
-    const visibleReviews = target ? reviews : [];
-    const isLoading = Boolean(target && loading);
-
-    // 展开/折叠详情
-    const handleToggleExpand = useCallback(
-      async (id: string) => {
-        if (expandedId === id) {
-          setExpandedId(null);
-          setExpandedDetail(null);
-        } else {
-          setExpandedId(id);
-          const detail = target ? await getReview(id, target) : null;
-          setExpandedDetail(detail);
-        }
-      },
-      [expandedId, target],
+    const [{ expandedId, deleteConfirmId }, dispatch] = useReducer(
+      historyDialogReducer,
+      initialHistoryDialogState,
     );
+    const reviewsQuery = useQuery({ ...reviewListOptions(target), enabled: open });
+    const expandedDetail = useQuery(reviewDetailOptions(target, expandedId)).data ?? null;
+
+    const { mutateAsync: removeReview, isPending: isDeleting } = useMutation({
+      mutationFn: ({ id, reviewTarget }: { id: string; reviewTarget: ReviewTarget }) =>
+        deleteReview(id, reviewTarget),
+    });
+
+    const visibleReviews = reviewsQuery.data ?? [];
 
     // 删除记录
     const handleDelete = useCallback(async () => {
       if (!deleteConfirmId || !target) return;
-      setActionLoading(true);
 
       try {
-        await deleteReview(deleteConfirmId, target);
-        setDeleteConfirmId(null);
-        await loadReviews();
+        await removeReview({ id: deleteConfirmId, reviewTarget: target });
+        dispatch({ type: 'deleteDismissed' });
+        await queryClient.invalidateQueries({ queryKey: reviewHistoryQueryKeys.list(target) });
         showToast(t('reviewHistory.deleteSuccess'));
       } catch {
         showToast(t('reviewHistory.deleteFailed'));
-      } finally {
-        setActionLoading(false);
       }
-    }, [deleteConfirmId, loadReviews, showToast, t, target]);
+    }, [deleteConfirmId, queryClient, removeReview, showToast, t, target]);
 
     return (
       <>
@@ -149,7 +149,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
             </DialogHeader>
 
             <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto overscroll-contain pr-1">
-              {isLoading ? (
+              {reviewsQuery.isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
@@ -166,7 +166,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                     <div className="relative">
                       <button
                         type="button"
-                        onClick={() => handleToggleExpand(r.id)}
+                        onClick={() => dispatch({ type: 'reviewToggled', id: r.id })}
                         className="flex w-full cursor-pointer items-start gap-3 rounded-lg p-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -207,7 +207,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                         className="absolute right-3 top-3 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setDeleteConfirmId(r.id);
+                          dispatch({ type: 'deleteRequested', id: r.id });
                         }}
                         aria-label={t('reviewHistory.deleteAria', {
                           tableName: r.tableName,
@@ -247,7 +247,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
 
         <AlertDialog
           open={!!deleteConfirmId}
-          onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+          onOpenChange={(open) => !open && dispatch({ type: 'deleteDismissed' })}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -260,7 +260,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
               <AlertDialogCancel>{t('dialogs.delete.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
-                disabled={actionLoading}
+                disabled={isDeleting}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {t('dialogs.delete.confirm')}
