@@ -319,9 +319,7 @@ export const watchWorkspaceHistory = (doc: Y.Doc, scope: WorkspaceScope) => {
       tableIds: new Set(tables.flatMap((table) => (table.tableId ? [table.tableId] : []))),
     };
   };
-  const toTarget = (
-    table: ReturnType<typeof readTables>[number],
-  ): SavedTableHistoryTarget | null =>
+  const toTarget = (table: ReturnType<typeof readTables>[number]): SavedTableHistoryTarget | null =>
     table.tableId
       ? {
           scope,

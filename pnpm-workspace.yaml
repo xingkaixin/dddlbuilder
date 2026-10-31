@@ -14,15 +14,15 @@ overrides:
   'zod@<4.6.6': '^4.6.6'
 catalog:
   '@cloudflare/config': 0.24.1
-  '@types/node': ^26.6.5
-  '@vitest/coverage-v8': '^5.0.3'
+  '@types/node': ^26.6.6
+  '@vitest/coverage-v8': ^5.0.5
   'better-auth': '^1.7.7'
   'drizzle-orm': ^0.45.4
   'effect': 4.0.3
   'hono': '^4.13.13'
   'lib0': '^0.2.119'
   'typescript': '~7.0.2'
-  'vite': ^8.3.4
-  'vitest': '^5.0.3'
+  'vite': ^8.3.5
+  'vitest': ^5.0.5
   'y-protocols': '^1.0.7'
   'yjs': '^13.6.33'
