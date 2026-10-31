@@ -18,7 +18,7 @@ catalog:
   '@vitest/coverage-v8': ^5.0.5
   'better-auth': '^1.7.7'
   'drizzle-orm': ^0.45.4
-  'effect': 4.0.3
+  'effect': 4.1.1
   'hono': '^4.13.13'
   'lib0': '^0.2.119'
   'typescript': '~7.0.2'

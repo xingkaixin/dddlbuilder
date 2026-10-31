@@ -21,7 +21,7 @@
     "@earendil-works/chord": "1.4.0",
     "@earendil-works/pi-ai": "1.4.0",
     "@earendil-works/pi-durable": "1.4.0",
-    "@effect/sql-d1": "4.0.3",
+    "@effect/sql-d1": "4.1.1",
     "@streamparser/json": "0.0.26",
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",

@@ -180,8 +180,8 @@ catalogs:
       specifier: ^0.45.4
       version: 0.45.4
     effect:
-      specifier: 4.0.3
-      version: 4.0.3
+      specifier: 4.1.1
+      version: 4.1.1
     hono:
       specifier: ^4.13.13
       version: 4.13.13
@@ -345,7 +345,7 @@ importers:
         version: 2.1.1
       effect:
         specifier: 'catalog:'
-        version: 4.0.3
+        version: 4.1.1
       fflate:
         specifier: 0.8.3
         version: 0.8.3
@@ -477,8 +477,8 @@ importers:
         specifier: 1.4.0
         version: 1.4.0(@aws-sdk/credential-provider-node@3.972.86)(@smithy/signature-v4@5.7.4)(supports-color@10.2.2)(undici@8.12.3)(ws@8.21.0)(zod@4.6.7)
       '@effect/sql-d1':
-        specifier: 4.0.3
-        version: 4.0.3(effect@4.0.3)
+        specifier: 4.1.1
+        version: 4.1.1(effect@4.1.1)
       '@streamparser/json':
         specifier: 0.0.26
         version: 0.0.26
@@ -490,7 +490,7 @@ importers:
         version: 0.45.4(@cloudflare/workers-types@5.20261012.1)(kysely@0.29.6)
       effect:
         specifier: 'catalog:'
-        version: 4.0.3
+        version: 4.1.1
       evlog:
         specifier: 2.31.0
         version: 2.31.0(hono@4.13.13)(react@19.3.0)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
@@ -565,7 +565,7 @@ importers:
     dependencies:
       effect:
         specifier: 'catalog:'
-        version: 4.0.3
+        version: 4.1.1
     devDependencies:
       '@ddlbuilder/tsconfig':
         specifier: workspace:*
@@ -977,6 +977,9 @@ packages:
   '@cloudflare/workers-types@5.20261012.1':
     resolution: {integrity: sha512-5Y0NrKXG9CZaNUZ6Dt3TLRE4UQe2/DGuxIhTEVYHUl0jAlv1TpQtI59YBAszRpSaZAMzbM8nqGc1n9Z2q4TVyA==}
 
+  '@cloudflare/workers-types@5.20261031.1':
+    resolution: {integrity: sha512-2BR1pUhsivjMcqncHjbK1+v/HtOyiUAzMcf3jHt1ZOIiDOktnoeEoBuiEgyJOJ6iFgVLt4Zj7HzPrBjq5zLqQQ==}
+
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
     engines: {node: '>=12'}
@@ -1083,10 +1086,10 @@ packages:
     resolution: {integrity: sha512-MLIfowwUYIY65jSjMX82paZOrX/NTvLk6D08h+3Jq42a99RzUOewzuCR0zOlPul3D6UBfddat76VT6LvsHEs1w==}
     engines: {node: '>=22.19.0'}
 
-  '@effect/sql-d1@4.0.3':
-    resolution: {integrity: sha512-PPItxp9aAmJTRIfZtyJMuQCB7d1ExFvIRkGWnfQuWZlPxjtYfQT+V2kS9AUqf0OC1/nZnAFwLlFKCDgumLmy6A==}
+  '@effect/sql-d1@4.1.1':
+    resolution: {integrity: sha512-CQMOiw9bmj4ifsUA4KLwIgBJBMpPHaF3OYdXnA9oOxeEmD61+XDLkJUSA2mG7BWCIEZc7MquGxl3HuUVOeqtSA==}
     peerDependencies:
-      effect: ^4.0.3
+      effect: ^4.1.1
 
   '@emnapi/runtime@1.11.3':
     resolution: {integrity: sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==}
@@ -3246,8 +3249,8 @@ packages:
   ecdsa-sig-formatter@1.0.11:
     resolution: {integrity: sha512-nagl3RYrbNv6kQkeJIpt6NJZy8twLB/2vtz6yN9Z4vRKHN4/QZJIEbqohALSgwKdnksuY3k5Addp5lg8sVoVcQ==}
 
-  effect@4.0.3:
-    resolution: {integrity: sha512-LoWn/Uwwx0JjHSDmBAAahx8sB+klzM6vsZovnbYowBNw6B4QScJLRLBByO61plvNiycx7HPN8FnsWUCu0eXW5w==}
+  effect@4.1.1:
+    resolution: {integrity: sha512-XYu65BrcmNqu5i7PPvP4dqL+R5ma37zIsfuSPjcn78mog+6e5PkilNg7Xo+pBpjXJYlWEIpH4j91tMrfW05CMw==}
 
   electron-to-chromium@1.5.448:
     resolution: {integrity: sha512-c3DEaf2iJbLz7XvmYGZQrzaxy6Azt2/NcWAV1r3GkibEyRNkVer6t3JevvwAQ6gW2JBGGY2N/MGMS/QV+77Ldw==}
@@ -5119,6 +5122,8 @@ snapshots:
 
   '@cloudflare/workers-types@5.20261012.1': {}
 
+  '@cloudflare/workers-types@5.20261031.1': {}
+
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
@@ -5255,10 +5260,10 @@ snapshots:
 
   '@earendil-works/pi-telemetry@1.4.0': {}
 
-  '@effect/sql-d1@4.0.3(effect@4.0.3)':
+  '@effect/sql-d1@4.1.1(effect@4.1.1)':
     dependencies:
-      '@cloudflare/workers-types': 5.20261012.1
-      effect: 4.0.3
+      '@cloudflare/workers-types': 5.20261031.1
+      effect: 4.1.1
 
   '@emnapi/runtime@1.11.3':
     dependencies:
@@ -6405,7 +6410,7 @@ snapshots:
       '@vue/shared': 3.5.44
       estree-walker: 2.0.2
       magic-string: 0.30.21
-      postcss: 8.5.29
+      postcss: 8.5.32
       source-map-js: 1.2.2
 
   '@vue/compiler-ssr@3.5.44':
@@ -6745,7 +6750,7 @@ snapshots:
     dependencies:
       safe-buffer: 5.2.1
 
-  effect@4.0.3: {}
+  effect@4.1.1: {}
 
   electron-to-chromium@1.5.448: {}
 
