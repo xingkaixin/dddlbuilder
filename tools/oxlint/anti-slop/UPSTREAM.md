@@ -1,12 +1,12 @@
 # Vendored anti-slop
 
 - Source repository: https://github.com/dmmulroy/anti-slop
-- Source commit: `c44ef22ca116d0ba62a3ff663a0bd13a3f3fa40b`
+- Source commit: `13909c9e07590f5a85d93c62712259fe14a883f7`
 - Source directory: `skills/install-anti-slop/assets/anti-slop/`
 - Installed directory: `tools/oxlint/anti-slop/`
 - Plugin entry points: `index.ts` and `effect/index.ts`.
 
-The initial installed assets matched this upstream snapshot recursively. The root
+Installed assets are reconciled with this upstream snapshot. The root
 MIT license and the nested ESLint Stylistic license and provenance are retained.
 Local changes below must be preserved and reviewed when updating upstream.
 
@@ -38,6 +38,8 @@ The repository retains 22 of the 24 rules, including the native
 - `require-readable-spacing` keeps import, declaration, and control-flow boundaries
   while allowing cohesive exports, declarations, consecutive single-line terminal
   guards without an `else`, and immediately consumed bindings. Its regression tests specify the exact syntactic grouping policy.
+  Upstream's `singleline-binding` group is not adopted: these selectors already allow
+  it, and they do not require a blank line before a documented module-level binding.
 - `no-known-value-widening` does not treat an unresolved generic return type as
   evidence of a known call result.
 - `require-safety-comment-for-type-assertion` reports one missing justification per
@@ -49,7 +51,7 @@ rewrite the vendored source.
 
 ## Integration and limitations
 
-`@oxlint/plugins` is pinned to `1.81.0`, matching installed and locked Oxlint.
+`@oxlint/plugins` is pinned to `1.90.0`, matching installed and locked Oxlint.
 The existing Oxlint dependency range is preserved; upgrade both packages together.
 Existing lint policies remain in place. Vendored rules, installed agent assets, and
 temporary audit files are excluded from application linting. Turbo lint inputs
