@@ -70,6 +70,7 @@ const State = defineDoc<{ conversation: number | null; operation: Operation | nu
   version: 1,
   scope: 'session',
   initial: () => ({ conversation: null, operation: null }),
+  checkpointWhen: () => false,
 });
 const Receipts = defineDoc<{
   items: ({ id: string; tokens: number; outputChars: number } & AIUsageReceipt)[];
@@ -78,6 +79,7 @@ const Receipts = defineDoc<{
   version: 1,
   scope: 'session',
   initial: () => ({ items: [] }),
+  checkpointWhen: () => false,
 });
 
 const Results = defineDoc<{ items: { id: string; snapshot: JsonValue }[] }>({
@@ -85,6 +87,7 @@ const Results = defineDoc<{ items: { id: string; snapshot: JsonValue }[] }>({
   version: 1,
   scope: 'session',
   initial: () => ({ items: [] }),
+  checkpointWhen: () => false,
 });
 
 const ReviewProjection = defineDoc<{ text: string; operationId: string; suggestions: string }>({
@@ -92,6 +95,7 @@ const ReviewProjection = defineDoc<{ text: string; operationId: string; suggesti
   version: 1,
   scope: 'session',
   initial: () => ({ text: '', operationId: '', suggestions: '[]' }),
+  checkpointWhen: () => false,
 });
 
 const failure = (

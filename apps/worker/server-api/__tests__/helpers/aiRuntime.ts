@@ -39,8 +39,9 @@ export const createAIRuntimeFixture = async (
       exec(query: string, ...bindings: (string | number | null)[]) {
         const statement = sqlite.prepare(query);
         const rows = statement.all(...bindings);
+        const cursor = rows.values();
 
-        return { toArray: () => rows };
+        return { next: () => cursor.next(), toArray: () => rows };
       },
     },
     async transaction<T>(callback: () => Promise<T>) {
