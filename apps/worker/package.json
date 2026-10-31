@@ -26,10 +26,10 @@
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "effect": "catalog:",
-    "evlog": "2.31.0",
+    "evlog": "2.34.0",
     "hono": "catalog:",
     "lib0": "catalog:",
-    "resend": "^6.32.1",
+    "resend": "^6.37.0",
     "y-protocols": "catalog:",
     "yjs": "catalog:"
   },

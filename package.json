@@ -44,7 +44,7 @@
     "test:lint": "node --test --import tsx tools/oxlint/anti-slop/rules/*.test.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.4",
+    "@hono/node-server": "^2.1.5",
     "hono": "catalog:"
   },
   "devDependencies": {
