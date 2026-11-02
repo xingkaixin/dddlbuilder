@@ -12,7 +12,7 @@ export default defineConfig({
       '/docs': {
         target: 'http://127.0.0.1:5174',
         changeOrigin: true,
-        // VitePress base is /docs/, normalize /docs -> /docs/
+        // The docs site lives under /docs/, normalize /docs -> /docs/
         rewrite: (path) => (path === '/docs' ? '/docs/' : path),
       },
       '/api': {

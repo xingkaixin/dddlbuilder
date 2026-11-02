@@ -5,7 +5,7 @@ import { DEFAULT_CSP_POLICY } from '../apps/worker/server-api/lib/csp.js';
 
 const assetsDirectory = 'apps/web/dist/client';
 
-await cp('apps/docs/.vitepress/dist', join(assetsDirectory, 'docs'), { recursive: true });
+await cp('apps/docs/dist', join(assetsDirectory, 'docs'), { recursive: true });
 
 const scriptHashes = new Set<string>();
 const files = await readdir(assetsDirectory, { recursive: true });

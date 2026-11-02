@@ -4,7 +4,7 @@
 
 其他文档：
 
-- 功能使用说明：`apps/docs`（VitePress 用户文档）
+- 功能使用说明：`apps/docs`（Astro 用户文档）
 - 开发命令与部署步骤：根目录 `README.md`
 - 编码与验证约定：`AGENTS.md`
 

@@ -23,7 +23,7 @@ app.use('/api/*', async (c, next) => {
 // Mount API routes
 app.route('/api', apiRouter);
 
-// Keep docs base path canonical for VitePress
+// Keep docs base path canonical for the docs site
 app.get('/docs', (c) => c.redirect('/docs/', 301));
 
 app.use('/*', async (c, next) => {

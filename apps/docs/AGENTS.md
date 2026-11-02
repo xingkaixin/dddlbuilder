@@ -1,6 +1,6 @@
 # Documentation Agent Guide
 
-This repository uses VitePress for the documentation site.
+This repository uses Astro for the documentation site. The site has no docs framework on top: layout, sidebar, outline and search live in `src/`.
 
 
 ## Structure
@@ -15,8 +15,10 @@ This repository uses VitePress for the documentation site.
   - 高级技巧 (advanced)
   - FAQ (faq)
   - 更新说明 (changelog)
-- Navigation and sidebar are defined in `docs/.vitepress/config.ts`.
-- Any new or renamed page must be wired in `config.ts`, and locale routes must stay consistent.
+- Navigation and sidebar are defined in `src/lib/site.ts`.
+- Any new or renamed page must be wired in `src/lib/site.ts`, and locale routes must stay consistent.
+- Heading ids and URLs are public: `src/lib/slugify.ts` must keep producing the same ids, and `astro build` fails on a dead internal link or anchor.
+- Markdown stays plain: `::: info|tip|warning Title` containers and `{#custom-id}` headings are the only extensions.
 
 
 ## Source of truth

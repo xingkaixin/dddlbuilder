@@ -1,0 +1,60 @@
+---
+import { render } from 'astro:content';
+import { alternatesFor, canonicalHref, pageTitle, type DocEntry } from '../lib/docs';
+import { lastUpdated } from '../lib/git';
+import { adjacentPages, docsHref, localeOf, LOCALES, routeOf } from '../lib/site';
+import DocsLayout from '../layouts/DocsLayout.astro';
+
+interface Props {
+  entry: DocEntry;
+  routes: Set<string>;
+}
+
+const { entry, routes } = Astro.props;
+const { Content, headings } = await render(entry);
+const locale = localeOf(entry.id);
+const copy = LOCALES[locale];
+const route = routeOf(entry.id);
+const [minDepth, maxDepth] = entry.data.outline ?? [2, 3];
+const outline = headings.filter((heading) => heading.depth >= minDepth && heading.depth <= maxDepth);
+const alternates = alternatesFor(route, routes);
+const { previous, next } = adjacentPages(route, locale);
+const updated = lastUpdated(entry.filePath ?? entry.id);
+---
+
+<DocsLayout
+  locale={locale}
+  route={route}
+  title={`${pageTitle(entry)} | ${copy.title}`}
+  description={entry.data.description ?? copy.description}
+  alternates={alternates}
+>
+  <Fragment slot="head">
+    <link rel="canonical" href={canonicalHref(route)} />
+    {alternates.map((link) => <link rel="alternate" hreflang={link.lang} href={link.href} />)}
+  </Fragment>
+  <main class="doc">
+    <article class="prose"><Content /></article>
+    <footer class="doc-footer">
+      <p>
+        Last updated: <time datetime={updated.toISOString()}>{updated.toLocaleString(copy.lang)}</time>
+      </p>
+      <nav>
+        {previous && <a href={docsHref(previous.link)}>{copy.previous}: {previous.text}</a>}
+        {next && <a href={docsHref(next.link)}>{copy.next}: {next.text}</a>}
+      </nav>
+    </footer>
+  </main>
+  {
+    outline.length > 0 && (
+      <nav class="doc-outline" aria-label={copy.outlineLabel}>
+        <p>{copy.outlineLabel}</p>
+        {outline.map((heading) => (
+          <a class={`depth-${heading.depth}`} href={`#${heading.slug}`}>
+            {heading.text}
+          </a>
+        ))}
+      </nav>
+    )
+  }
+</DocsLayout>

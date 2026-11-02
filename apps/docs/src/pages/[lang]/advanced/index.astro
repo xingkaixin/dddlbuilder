@@ -1,0 +1,19 @@
+---
+import type { GetStaticPaths } from 'astro';
+import DocPage from '../../../components/DocPage.astro';
+import { getDocs } from '../../../lib/docs';
+import { localeOf, routeOf } from '../../../lib/site';
+
+export const getStaticPaths = (async () => {
+  const docs = await getDocs();
+  const routes = new Set(docs.map((entry) => routeOf(entry.id)));
+
+  return docs
+    .filter((entry) => entry.id.endsWith('/advanced/index'))
+    .map((entry) => ({ params: { lang: localeOf(entry.id) }, props: { entry, routes } }));
+}) satisfies GetStaticPaths;
+
+const { entry, routes } = Astro.props;
+---
+
+<DocPage entry={entry} routes={routes} />

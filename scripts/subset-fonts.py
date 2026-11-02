@@ -56,7 +56,7 @@ class Target:
 
 TARGETS = [
     Target(ROOT / "apps/web/src/assets/fonts/roboto-mono", 400, keep_prep=False),
-    Target(ROOT / "apps/docs/.vitepress/theme/fonts/roboto-mono", (400, 700), keep_prep=True),
+    Target(ROOT / "apps/docs/src/fonts/roboto-mono", (400, 700), keep_prep=True),
 ]
 
 PARTS = {"core": CORE, "ext": EXT}

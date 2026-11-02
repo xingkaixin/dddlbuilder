@@ -1,0 +1,27 @@
+---
+import DocsHead from '../layouts/DocsHead.astro';
+import { canonicalHref } from '../lib/docs';
+import { docsHref } from '../lib/site';
+---
+
+<!doctype html>
+<html lang="zh-CN" dir="ltr">
+  <head>
+    <DocsHead title="Redirecting... | 筑表师文档" description="筑表师使用文档与常见问题">
+      <meta name="robots" content="noindex,follow" />
+      <link rel="canonical" href={canonicalHref('/zh/')} />
+    </DocsHead>
+  </head>
+  <body>
+    <h1>DDLBuilder Docs</h1>
+    <p>Redirecting by browser language...</p>
+    <ul>
+      <li><a href={docsHref('/zh/')}>中文文档</a></li>
+      <li><a href={docsHref('/en/')}>English</a></li>
+      <li><a href={docsHref('/ja/')}>日本語</a></li>
+    </ul>
+    <script>
+      import '../scripts/language-redirect';
+    </script>
+  </body>
+</html>

@@ -137,8 +137,8 @@ test.describe('Cloudflare runtime bindings', () => {
       expect(policy).not.toContain("'unsafe-eval'");
 
       if (path.startsWith('/docs/')) {
-        await expect(page.locator('.VPDoc h1')).toBeVisible();
-        await page.getByRole('switch').click();
+        await expect(page.locator('.prose h1')).toBeVisible();
+        await page.locator('[data-theme-toggle]').click();
       } else {
         await expect(page.locator('#root')).not.toBeEmpty();
       }

@@ -2,7 +2,7 @@
 
 Roboto Mono 3.001 from [google/fonts](https://github.com/google/fonts/tree/main/ofl/robotomono), licensed under the [SIL Open Font License 1.1](./OFL.txt) with no Reserved Font Name, so subsets keep the original name.
 
-The `.woff2` files and `fonts.css` here and in `apps/docs/.vitepress/theme/fonts/roboto-mono/` are generated. Do not edit them; re-run the script and commit its output:
+The `.woff2` files and `fonts.css` here and in `apps/docs/src/fonts/roboto-mono/` are generated. Do not edit them; re-run the script and commit its output:
 
 ```bash
 uv run scripts/subset-fonts.py

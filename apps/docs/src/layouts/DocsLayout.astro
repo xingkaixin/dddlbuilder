@@ -1,0 +1,74 @@
+---
+import '@ddlbuilder/design/tokens.css';
+import '../fonts/roboto-mono/fonts.css';
+import '../styles/docs.css';
+import { docsHref, LOCALE_KEYS, LOCALES, type LocaleKey } from '../lib/site';
+import DocsHead from './DocsHead.astro';
+
+interface Props {
+  locale: LocaleKey;
+  title: string;
+  description: string;
+  route?: string;
+  alternates?: { lang: string; route: string }[];
+}
+
+const { locale, title, description, route = '', alternates = [] } = Astro.props;
+const copy = LOCALES[locale];
+const languages = LOCALE_KEYS.map((key) => {
+  const alternate = alternates.find((entry) => entry.lang === LOCALES[key].lang);
+
+  return { key, label: LOCALES[key].label, href: docsHref(alternate?.route ?? `/${key}/`) };
+});
+---
+
+<!doctype html>
+<html lang={copy.lang} dir="ltr">
+  <head>
+    <DocsHead title={title} description={description}><slot name="head" /></DocsHead>
+  </head>
+  <body data-lang={locale} data-copy={copy.copyCode} data-copied={copy.copied}>
+    <header class="site-header">
+      <a class="site-title" href={docsHref(`/${locale}/`)}>{copy.title}</a>
+      <nav class="site-nav">
+        {copy.nav.map((link) => <a href={docsHref(link.link)}>{link.text}</a>)}
+      </nav>
+      <button class="site-action" type="button" data-search-open>{copy.search}</button>
+      <div class="site-languages">
+        {
+          languages.map((language) => (
+            <a href={language.href} aria-current={language.key === locale ? 'true' : undefined}>
+              {language.label}
+            </a>
+          ))
+        }
+      </div>
+      <button class="site-action" type="button" data-theme-toggle>{copy.themeToggle}</button>
+    </header>
+    <div class="site-body">
+      <details class="site-sidebar" open>
+        <summary>{copy.nav[1]?.text}</summary>
+        {
+          copy.sidebar.map((group) => (
+            <section>
+              <h2>{group.text}</h2>
+              {group.items.map((item) => (
+                <a href={docsHref(item.link)} aria-current={item.link === route ? 'page' : undefined}>
+                  {item.text}
+                </a>
+              ))}
+            </section>
+          ))
+        }
+      </details>
+      <slot />
+    </div>
+    <dialog class="search" data-search-dialog data-empty={copy.searchEmpty} data-failed={copy.searchFailed}>
+      <input type="search" aria-label={copy.search} placeholder={copy.searchPlaceholder} />
+      <ul></ul>
+    </dialog>
+    <script>
+      import '../scripts/site';
+    </script>
+  </body>
+</html>

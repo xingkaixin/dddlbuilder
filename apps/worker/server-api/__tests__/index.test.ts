@@ -54,7 +54,7 @@ describe('api security guards', () => {
     expect(response.headers.get('location')).toBe('/docs/');
   });
 
-  it('应在 localhost 下代理 /docs/* 到 VitePress 开发服务', async () => {
+  it('应在 localhost 下代理 /docs/* 到文档站开发服务', async () => {
     const env = createEnv({ ENVIRONMENT: 'development' });
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(

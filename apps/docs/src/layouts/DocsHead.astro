@@ -1,0 +1,32 @@
+---
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>{title}</title>
+<meta name="description" content={description} />
+<script is:inline src="/docs/theme-init.js"></script>
+<script is:inline defer src="/analytics.js"></script>
+<script
+  is:inline
+  defer
+  src="https://umami.xingkaixin.me/script.js"
+  data-website-id="2e57c1f0-7a46-4cd7-a542-87c39b4b373f"
+  data-domains="ddl.xingkaixin.me"
+  data-before-send="ddlBeforeSend"
+  data-exclude-hash="true"
+  data-performance="true"></script>
+<script is:inline defer src="/docs/analytics.js"></script>
+<meta name="theme-color" content="#E07A5F" />
+<link rel="preconnect" href="https://cdn-font.hyperos.mi.com" crossorigin="" />
+<link
+  rel="stylesheet"
+  href="https://cdn-font.hyperos.mi.com/font/css?family=MiSans_VF:VF:Chinese_Simplify,Latin&display=swap"
+/>
+<slot />

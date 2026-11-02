@@ -3,15 +3,29 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vitepress dev . --host 127.0.0.1 --port 5174 --strictPort",
-    "build": "vitepress build .",
-    "preview": "vitepress preview . --host 127.0.0.1 --port 5174 --strictPort",
-    "docs:dev": "vitepress dev . --host 127.0.0.1 --port 5174 --strictPort",
-    "docs:build": "vitepress build .",
-    "docs:preview": "vitepress preview . --host 127.0.0.1 --port 5174 --strictPort"
+    "dev": "astro dev --host 127.0.0.1 --port 5174",
+    "build": "astro build",
+    "preview": "astro preview --host 127.0.0.1 --port 5174",
+    "typecheck": "astro sync && tsc --noEmit -p tsconfig.json",
+    "docs:dev": "astro dev --host 127.0.0.1 --port 5174",
+    "docs:build": "astro build",
+    "docs:preview": "astro preview --host 127.0.0.1 --port 5174",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json src/ astro.config.ts && oxfmt --config ../../.oxfmtrc.json --check src/ astro.config.ts",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix src/ astro.config.ts && oxfmt --config ../../.oxfmtrc.json --write src/ astro.config.ts",
+    "format": "oxfmt --config ../../.oxfmtrc.json --write src/ astro.config.ts"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "^7.3.5",
+    "@ddlbuilder/design": "workspace:*",
+    "astro": "^7.4.4",
+    "minisearch": "^7.2.0",
+    "unist-util-visit": "^5.2.0"
   },
   "devDependencies": {
-    "vitepress": "^1.6.4",
-    "vue": "^3.5.44"
+    "@ddlbuilder/tsconfig": "workspace:*",
+    "@types/hast": "^3.0.5",
+    "typescript": "catalog:",
+    "unified": "^11.0.5",
+    "vfile": "^6.0.3"
   }
 }
