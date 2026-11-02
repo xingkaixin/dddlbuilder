@@ -135,9 +135,11 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
       onMoveToFolder,
       onMoveFolder,
     });
-    const { searchQuery, setSearchQuery, filteredItems, isSearching } = treeControls;
+    const { searchQuery, setSearchQuery, filteredItems, foldersWithCount, isSearching } =
+      treeControls;
 
     const normalizedQuery = searchQuery.trim().toLowerCase();
+    const showTree = filteredItems.length > 0 || (!normalizedQuery && foldersWithCount.length > 0);
 
     const visibleDrafts = useMemo(
       () =>
@@ -425,7 +427,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                   <div className="px-2 text-xs font-medium text-muted-foreground">
                     {t('savedTables.projectsSection')}
                   </div>
-                  {filteredItems.length > 0 && (
+                  {showTree && (
                     <WorkspaceTreeView
                       controls={treeControls}
                       folderActions={{
@@ -438,7 +440,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                       dragFeedbackTestId="workspace-drag-feedback"
                     />
                   )}
-                  {filteredItems.length === 0 &&
+                  {!showTree &&
                     (normalizedQuery ? (
                       <EmptyTile
                         scene="search"

@@ -139,6 +139,16 @@ test.describe('文件夹管理验证 @storage', () => {
     await expect(page.getByRole('button', { name: /MyProject/i })).toBeVisible();
   });
 
+  test('场景：没有已保存表时，侧边栏显示新建的文件夹', async ({ page }) => {
+    const sidebar = page.getByRole('complementary');
+
+    await sidebar.getByRole('button', { name: /新建文件夹/i }).click();
+    await page.getByLabel('文件夹名称').fill('EmptyProject');
+    await page.getByRole('button', { name: /确定/i }).click();
+
+    await expect(sidebar.getByRole('button', { name: /EmptyProject/i })).toBeVisible();
+  });
+
   test('场景：根级文件夹与根级表图标应对齐', async ({ page }) => {
     const tableNameA = `align_root_a_${Date.now()}`;
     const tableNameB = `align_root_b_${Date.now()}`;
