@@ -20,7 +20,7 @@ const CODE_FALLBACK_STYLE: CSSProperties = {
 
 export function OutputCode({ code }: { code: string }) {
   return (
-    <div className="relative flex-1 overflow-auto px-4 py-3.5">
+    <div data-testid="ddl-output" className="relative flex-1 overflow-auto px-4 py-3.5">
       <Suspense fallback={<pre style={CODE_FALLBACK_STYLE}>{code}</pre>}>
         <SqlCodeBlock code={code} />
       </Suspense>

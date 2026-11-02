@@ -4,6 +4,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import './index.css';
 import './assets/fonts/roboto-mono/fonts.css';
+import './assets/fonts/xiaolai/fonts.css';
+import './assets/fonts/klee-one/fonts.css';
 import App from './App.tsx';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { appQueryClient } from './lib/queryClient';
@@ -33,6 +35,8 @@ if (!isAdmin) notifyAuthCallbackError();
 
 const publicationId = /^\/publications\/([a-zA-Z0-9-]+)\/?$/.exec(location.pathname)?.[1];
 const PublicationPage = lazy(() => import('./components/publications/PublicationPage'));
+
+if (!isAdmin && !publicationId) document.documentElement.dataset.surface = 'app';
 
 // Keep remote font CSS non-blocking until it has loaded.
 const fontStylesheet = document.querySelector<HTMLLinkElement>('#misans-font');

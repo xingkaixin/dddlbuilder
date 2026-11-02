@@ -41,7 +41,7 @@ test.describe('索引管理验证 @panels', () => {
     // 等待索引名称出现在列表中
     await expect(page.getByText('idx_index_test_id').first()).toBeVisible();
 
-    const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
+    const sqlOutput = page.getByTestId('ddl-output').locator('pre');
     await expect(sqlOutput).toContainText(/INDEX idx_index_test_id \(id ASC\)/i);
   });
 
@@ -54,7 +54,7 @@ test.describe('索引管理验证 @panels', () => {
 
     await expect(page.getByText('uk_index_test_id').first()).toBeVisible();
 
-    const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
+    const sqlOutput = page.getByTestId('ddl-output').locator('pre');
     await expect(sqlOutput).toContainText(/UNIQUE INDEX uk_index_test_id \(id ASC\)/i);
   });
 
@@ -67,7 +67,7 @@ test.describe('索引管理验证 @panels', () => {
 
     await expect(page.getByText('pk_index_test').first()).toBeVisible();
 
-    const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
+    const sqlOutput = page.getByTestId('ddl-output').locator('pre');
     await expect(sqlOutput).toContainText(/PRIMARY KEY \(id ASC\)/i);
     await expect(sqlOutput).not.toContainText(/ALTER TABLE/i);
   });
@@ -92,7 +92,7 @@ test.describe('索引管理验证 @panels', () => {
       .getByRole('button', { name: '删除索引', exact: true })
       .click();
 
-    const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
+    const sqlOutput = page.getByTestId('ddl-output').locator('pre');
     await expect(sqlOutput).not.toContainText(/INDEX idx_index_test_id/i);
   });
 });

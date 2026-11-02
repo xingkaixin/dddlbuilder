@@ -109,7 +109,7 @@ const SearchableSelect = forwardRef<
               type="button"
               {...triggerProps}
               className={cn(
-                't-ui-button flex h-9 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                'lm-field t-ui-button flex h-9 w-full items-center justify-between rounded-lg border border-transparent bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
                 triggerClassName,
                 triggerProps.className,
               )}
@@ -186,7 +186,7 @@ function SelectTrigger({ className, children, ...props }: SelectPrimitive.Trigge
   return (
     <SelectPrimitive.Trigger
       className={cn(
-        't-ui-button flex h-9 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+        'lm-field t-ui-button flex h-9 w-full items-center justify-between rounded-lg border border-transparent bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
       {...props}

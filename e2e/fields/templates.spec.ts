@@ -47,7 +47,7 @@ test.describe('字段模板应用验证 @fields', () => {
       await templateBtn.click();
       await templateDialog.getByRole('button', { name: /MyCustomTemplate/i }).click();
 
-      const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
+      const sqlOutput = page.getByTestId('ddl-output').locator('pre');
       await expect(sqlOutput).toContainText(/custom_f1/i);
     }
   });

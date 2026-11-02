@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+@import '@ddlbuilder/design/tokens.css' layer(base);
+@import '@ddlbuilder/design/sketch.css' layer(base);
+@import './styles/lanmo.css' layer(components);
 @config "../tailwind.config.js";
 
 @theme {
@@ -14,6 +17,23 @@
       opacity: 0;
     }
   }
+}
+
+@utility font-ui {
+  font-family: var(--font-ui);
+}
+
+@utility font-text {
+  font-family: var(--font-text);
+}
+
+@utility lm-hatch {
+  background-color: color-mix(in srgb, var(--blue-wash) 22%, transparent);
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--blue-wash) 0 1.4px,
+    transparent 1.4px 3.4px
+  );
 }
 
 /* transitions-dev — copy this :root block into your project once.
@@ -83,69 +103,70 @@
 
 @layer base {
   :root {
-    --font-sans: 'MiSans VF', 'PingFang SC', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --font-sans: var(--font-text);
+    --font-ui: var(--font-text);
 
-    --background: 0 0% 100%;
-    --foreground: 220 14% 16%;
+    --background: 220 17.6% 96.7%;
+    --foreground: 220 39.1% 18%;
 
-    --muted: 220 12% 96%;
-    --muted-foreground: 220 8% 44%;
+    --muted: 217.5 26.7% 94.1%;
+    --muted-foreground: 221.1 17.4% 42.7%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 50.7692 19.403% 13.1373%;
+    --popover: 240 20% 99%;
+    --popover-foreground: 220 39.1% 18%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 60 2.5641% 7.6471%;
+    --card: 240 20% 99%;
+    --card-foreground: 220 39.1% 18%;
 
-    --border: 220 10% 89%;
-    --input: 220 10% 80%;
+    --border: 217.9 21.3% 82.5%;
+    --input: 219.5 17.1% 56.5%;
 
-    --primary: 15.1111 55.5556% 52.3529%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 220.6 59.1% 45.1%;
+    --primary-foreground: 240 20% 99%;
 
-    --secondary: 220 12% 95%;
-    --secondary-foreground: 50.7692 8.4967% 30%;
+    --secondary: 217.5 26.7% 94.1%;
+    --secondary-foreground: 220 23.6% 32.4%;
 
-    --accent: 220 12% 94%;
-    --accent-foreground: 50.7692 19.403% 13.1373%;
+    --accent: 217.5 26.7% 94.1%;
+    --accent-foreground: 220 39.1% 18%;
 
-    --destructive: 0 72% 45%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 8.3 68.8% 39%;
+    --destructive-foreground: 240 20% 99%;
 
-    --ring: 15.1111 55.5556% 52.3529%;
+    --ring: 220.6 59.1% 45.1%;
 
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 24 18.3673% 9.6078%;
-    --foreground: 42.8571 22.807% 88.8235%;
+    --background: 222 20% 9.8%;
+    --foreground: 220 31.6% 92.5%;
 
-    --muted: 24 13.0435% 13.5294%;
-    --muted-foreground: 42 11.1111% 72.9412%;
+    --muted: 223.3 20.9% 16.9%;
+    --muted-foreground: 218.7 15.9% 61.8%;
 
-    --popover: 24 18.1818% 12.9412%;
-    --popover-foreground: 42.8571 22.807% 88.8235%;
+    --popover: 221.5 19.4% 13.1%;
+    --popover-foreground: 220 31.6% 92.5%;
 
-    --card: 24 17.0732% 10.5882%;
-    --card-foreground: 42.8571 22.807% 88.8235%;
+    --card: 221.5 19.4% 13.1%;
+    --card-foreground: 220 31.6% 92.5%;
 
-    --border: 24.7059 12.2302% 22.3529%;
-    --input: 24.8276 10.9489% 30.5882%;
+    --border: 220.9 17.5% 24.7%;
+    --input: 219.4 13.8% 50.4%;
 
-    --primary: 14.7692 63.1068% 59.6078%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 219.6 76.4% 75.1%;
+    --primary-foreground: 221.5 19.4% 13.1%;
 
-    --secondary: 24 14.6341% 16.0784%;
-    --secondary-foreground: 42.8571 22.807% 88.8235%;
+    --secondary: 223.3 20.9% 16.9%;
+    --secondary-foreground: 218.4 20.7% 76.3%;
 
-    --accent: 24 18.6047% 16.8627%;
-    --accent-foreground: 42.8571 22.807% 88.8235%;
+    --accent: 223.3 20.9% 16.9%;
+    --accent-foreground: 220 31.6% 92.5%;
 
-    --destructive: 0 84.2365% 60.1961%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 9.6 81% 77.3%;
+    --destructive-foreground: 221.5 19.4% 13.1%;
 
-    --ring: 14.7692 63.1068% 59.6078%;
+    --ring: 219.6 76.4% 75.1%;
 
     /* React Flow dark mode overrides */
     --xy-edge-stroke: hsl(var(--muted-foreground) / 0.5);
@@ -170,8 +191,13 @@
     @apply border-border;
   }
 
+  [data-surface='app'] {
+    --font-ui: var(--font-hand);
+  }
+
   body {
-    font-family: var(--font-sans);
+    font-family: var(--font-ui);
+    font-synthesis-weight: none;
     @apply min-h-screen bg-background text-foreground antialiased text-base leading-relaxed;
   }
 
