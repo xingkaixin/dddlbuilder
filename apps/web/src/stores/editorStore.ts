@@ -6,6 +6,7 @@ import { createFieldSlice } from './fieldStore';
 import { createForeignKeySlice } from './foreignKeyStore';
 import { createIndexSlice } from './indexStore';
 import { createPartitionSlice } from './partitionStore';
+import { usePreferencesStore } from './preferencesStore';
 import { createShardingSlice } from './shardingStore';
 import { createTableOptionsSlice } from './tableOptionsStore';
 import type { EditorStoreState } from './editorStoreTypes';
@@ -24,7 +25,15 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
   ...createTableOptionsSlice(set),
   resetDocument: () => {
     const initial = useEditorStore.getInitialState();
-    set({ ...initial, rows: initial.rows.map(() => createEmptyRow()) });
+    const { defaultDatabase, sqlFormatMode, addRowCount } = usePreferencesStore.getState();
+
+    set({
+      ...initial,
+      dbType: defaultDatabase,
+      sqlFormatMode,
+      addCount: addRowCount,
+      rows: initial.rows.map(() => createEmptyRow()),
+    });
   },
   handleRemoveRow: (index, amount) =>
     set((state) =>

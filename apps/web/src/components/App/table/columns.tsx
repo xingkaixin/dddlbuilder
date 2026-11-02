@@ -13,6 +13,7 @@ import { toStringSafe, getUiDefaultKindOptions, getUiOnUpdateOptions } from '@/u
 import { getCanonicalBaseType } from '@ddlbuilder/ddl-core';
 import { getDefaultKindLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useTranslation } from 'react-i18next';
+import type { FieldColumn } from '@/stores/preferencesStore';
 import type { EditableFieldKey, UpdateEditableField } from './useFieldRowMutations';
 
 const columnHelper = createColumnHelper<FieldTableFeatures, FieldRow>();
@@ -358,6 +359,25 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
       onRemoveRow,
     ],
   );
+}
+
+const HIDEABLE_COLUMNS = new Map<string, FieldColumn>([
+  ['fieldComment', 'fieldComment'],
+  ['fieldType', 'fieldType'],
+  ['nullable', 'nullable'],
+  ['defaultKind', 'default'],
+  ['defaultValue', 'default'],
+  ['onUpdate', 'onUpdate'],
+]);
+
+export function getFieldColumnKey(column: FieldTableColumnDef) {
+  return column.id ?? ('accessorKey' in column ? String(column.accessorKey) : '');
+}
+
+export function isFieldColumnVisible(column: FieldTableColumnDef, hidden: FieldColumn[]) {
+  const group = HIDEABLE_COLUMNS.get(getFieldColumnKey(column));
+
+  return !group || !hidden.includes(group);
 }
 
 export function getEditableColumnKeys(columns: FieldTableColumnDef[]) {

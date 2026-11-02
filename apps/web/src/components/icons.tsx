@@ -95,6 +95,8 @@ import {
   Sparkles as SparklesData,
   Star as StarData,
   Sun as SunData,
+  LayoutTwoColumnIcon as LayoutTwoColumnData,
+  LayoutTwoRowIcon as LayoutTwoRowData,
   Table as TableData,
   Table2 as Table2Data,
   Table03Icon as TablePropertiesData,
@@ -221,6 +223,8 @@ export const SlidersHorizontal = createAppIcon(SlidersHorizontalData, 'SlidersHo
 export const Sparkles = createAppIcon(SparklesData, 'Sparkles');
 export const Star = createAppIcon(StarData, 'Star');
 export const Sun = createAppIcon(SunData, 'Sun');
+export const LayoutTwoColumn = createAppIcon(LayoutTwoColumnData, 'LayoutTwoColumn');
+export const LayoutTwoRow = createAppIcon(LayoutTwoRowData, 'LayoutTwoRow');
 export const Table = createAppIcon(TableData, 'Table');
 export const Table2 = createAppIcon(Table2Data, 'Table2');
 export const TableProperties = createAppIcon(TablePropertiesData, 'TableProperties');

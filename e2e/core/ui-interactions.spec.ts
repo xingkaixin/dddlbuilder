@@ -203,11 +203,6 @@ test.describe('核心 UI 交互功能测试 @core', () => {
   test('场景：设计、结果和分屏视图共享同一份编辑内容', async ({ page }) => {
     const outputPanel = page.getByTestId('output-panel');
 
-    const viewButton = page
-      .getByTestId('workspace-tab-bar')
-      .getByRole('switch', { name: '分屏预览' });
-    await expect(viewButton).toBeChecked();
-    await expect(page.getByRole('group', { name: '工作视图' })).toBeHidden();
     const status = page.getByTestId('editor-surface').locator('footer');
     await expect(status).toBeInViewport();
     await status.getByRole('button').click();
@@ -223,13 +218,6 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await selectWorkspaceView(page, 'split');
     await expect(page.getByTestId('data-table')).toBeVisible();
     await expect(outputPanel).toBeVisible();
-    await viewButton.click();
-    await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'output');
-    await expect(page.getByRole('button', { name: '生成结果', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    await viewButton.click();
     const separator = page.getByRole('separator', { name: '调整设计与结果的高度' });
     await separator.focus();
     await page.keyboard.press('ArrowUp');
@@ -255,16 +243,14 @@ test('编辑器测试页面不依赖外部字体和统计服务完成加载', as
   }
 });
 
-test('小窗口默认展示字段，刷新后分屏默认关闭', async ({ page }) => {
+test('默认左右分屏，刷新后保留所选布局', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/');
   await page.getByRole('button', { name: '创建新表', exact: true }).click();
-  await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'design');
+  await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'side');
   await expect(page.getByTestId('workspace-sidebar')).toBeVisible();
   const firstRow = page.getByTestId('data-table').locator('tbody tr').first();
   await expect(firstRow).toBeInViewport();
-  const lastColumn = firstRow.locator('td').last();
-  await expect(lastColumn).toBeInViewport();
   await page.locator('#table-name').fill('layout_preference');
   await selectWorkspaceView(page, 'split');
   const editor = await page.getByTestId('design-panel').boundingBox();
@@ -278,6 +264,5 @@ test('小窗口默认展示字段，刷新后分屏默认关闭', async ({ page 
     .getByTestId('workspace-sidebar')
     .getByRole('button', { name: 'layout_preference', exact: true })
     .click();
-  await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'design');
-  await expect(page.getByRole('switch', { name: '分屏预览' })).not.toBeChecked();
+  await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'split');
 });

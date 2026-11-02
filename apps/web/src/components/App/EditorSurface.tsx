@@ -1,6 +1,6 @@
 import { useCallback, useId, useReducer, useRef, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { EditorView } from '@/stores/appUiStore';
+import type { EditorLayout } from '@/stores/preferencesStore';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -15,14 +15,12 @@ import {
 export interface EditorSurfaceModel {
   documentId: string;
   isShareView: boolean;
-  editorView: EditorView;
-  setEditorView: (view: EditorView) => void;
   tableConfigProps: ComponentProps<typeof TableConfig>;
   tableBuilderProps: TableBuilderContainerProps;
   outputProps: OutputContainerProps;
 }
 
-const SPLIT_KEYS = ['ArrowUp', 'ArrowDown', 'Home', 'End'] as const;
+const SPLIT_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'] as const;
 
 type SplitEvent =
   | { type: 'dragged'; percent: number }
@@ -36,30 +34,29 @@ function splitPercentReducer(percent: number, event: SplitEvent) {
         ? 30
         : event.key === 'End'
           ? 75
-          : percent + (event.key === 'ArrowUp' ? -5 : 5);
+          : percent + (event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -5 : 5);
 
   return Math.max(30, Math.min(75, next));
 }
 
-export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
-  const {
-    documentId,
-    isShareView,
-    editorView,
-    setEditorView,
-    tableConfigProps,
-    tableBuilderProps,
-    outputProps,
-  } = model;
+export function EditorSurface({
+  model,
+  layout: view,
+  onLayoutChange,
+}: {
+  model: EditorSurfaceModel;
+  layout: EditorLayout;
+  onLayoutChange: (layout: EditorLayout) => void;
+}) {
+  const { documentId, isShareView, tableConfigProps, tableBuilderProps, outputProps } = model;
   const { t } = useTranslation();
-  const view = editorView;
-  const selectView = setEditorView;
   const [splitPercent, dispatchSplit] = useReducer(splitPercentReducer, 55);
+  const paired = view === 'side' || view === 'split';
   const panesRef = useRef<HTMLDivElement>(null);
   const builderId = useId();
   const issues = outputProps.ddlOutputProps.schemaLintIssues ?? [];
-  const collapseOutput = useCallback(() => selectView('design'), [selectView]);
-  const maximizeOutput = useCallback(() => selectView('output'), [selectView]);
+  const collapseOutput = useCallback(() => onLayoutChange('design'), [onLayoutChange]);
+  const maximizeOutput = useCallback(() => onLayoutChange('output'), [onLayoutChange]);
 
   return (
     <section
@@ -75,40 +72,25 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
           <TableConfig key={documentId} {...tableConfigProps} />
         </div>
       </div>
-      {view !== 'split' && (
-        <div className="flex shrink-0 justify-end border-b px-4 py-2">
-          <div
-            className="inline-flex rounded-md border p-0.5"
-            role="group"
-            aria-label={t('editorLayout.label')}
-          >
-            {(['design', 'output'] as const).map((mode) => (
-              <Button
-                key={mode}
-                variant="ghost"
-                size="sm"
-                aria-pressed={view === mode}
-                onClick={() => selectView(mode)}
-                className={cn(
-                  'h-7 rounded-sm px-3 text-xs',
-                  view === mode && 'bg-primary/10 text-primary',
-                )}
-              >
-                {t(`editorLayout.${mode}`)}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
-      <div ref={panesRef} className="flex min-h-0 flex-1 flex-col overflow-auto sm:overflow-hidden">
+      <div
+        ref={panesRef}
+        className={cn(
+          'flex min-h-0 flex-1 flex-col overflow-auto',
+          view === 'side'
+            ? '@min-[980px]/editor:flex-row @min-[980px]/editor:overflow-hidden'
+            : 'sm:overflow-hidden',
+        )}
+      >
         <div
           id={builderId}
           hidden={view === 'output'}
           className={cn(
-            'min-h-0 overflow-auto px-4 py-3',
-            view === 'design' ? 'flex-1' : 'min-h-[26rem] shrink-0 sm:min-h-0',
+            'min-h-0 min-w-0 overflow-auto px-4 py-3',
+            view === 'design' && 'flex-1',
+            view === 'split' && 'min-h-[26rem] shrink-0 sm:min-h-0',
+            view === 'side' && 'min-h-[26rem] shrink-0 @min-[980px]/editor:min-h-0',
           )}
-          style={view === 'split' ? { height: `${splitPercent}%` } : undefined}
+          style={paired ? { flexBasis: `${splitPercent}%` } : undefined}
           data-testid="design-panel"
         >
           <div
@@ -118,17 +100,22 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
             <TableBuilderContainer key={documentId} {...tableBuilderProps} />
           </div>
         </div>
-        {view === 'split' && (
+        {paired && (
           <div
             role="separator"
             tabIndex={0}
             aria-label={t('editorLayout.resize')}
-            aria-orientation="horizontal"
+            aria-orientation={view === 'side' ? 'vertical' : 'horizontal'}
             aria-controls={builderId}
             aria-valuemin={30}
             aria-valuemax={75}
             aria-valuenow={Math.round(splitPercent)}
-            className="hidden h-3 shrink-0 touch-none cursor-row-resize items-center justify-center border-y sm:flex bg-muted/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className={cn(
+              'hidden shrink-0 touch-none items-center justify-center bg-muted/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+              view === 'side'
+                ? 'w-3 cursor-col-resize border-x @min-[980px]/editor:flex'
+                : 'h-3 cursor-row-resize border-y sm:flex',
+            )}
             onPointerDown={(event) => {
               event.preventDefault();
               event.currentTarget.focus();
@@ -141,7 +128,10 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
               if (bounds?.height) {
                 dispatchSplit({
                   type: 'dragged',
-                  percent: ((event.clientY - bounds.top) / bounds.height) * 100,
+                  percent:
+                    view === 'side'
+                      ? ((event.clientX - bounds.left) / bounds.width) * 100
+                      : ((event.clientY - bounds.top) / bounds.height) * 100,
                 });
               }
             }}
@@ -154,21 +144,28 @@ export function EditorSurface({ model }: { model: EditorSurfaceModel }) {
               dispatchSplit({ type: 'keyPressed', key });
             }}
           >
-            <span className="h-0.5 w-8 rounded-full bg-muted-foreground/40" />
+            <span
+              className={cn(
+                'rounded-full bg-muted-foreground/40',
+                view === 'side' ? 'h-8 w-0.5' : 'h-0.5 w-8',
+              )}
+            />
           </div>
         )}
         <div
           hidden={view === 'design'}
           className={cn(
-            'min-h-0 flex-1 overflow-auto',
+            'min-h-0 min-w-0 flex-1 overflow-auto',
             view === 'split' && 'min-h-[20rem] shrink-0 sm:min-h-0 sm:shrink',
+            view === 'side' &&
+              'min-h-[20rem] shrink-0 @min-[980px]/editor:min-h-0 @min-[980px]/editor:shrink',
           )}
           data-testid="generated-results"
         >
           <OutputContainer
             {...outputProps}
             onCollapse={collapseOutput}
-            onMaximize={view === 'split' ? maximizeOutput : undefined}
+            onMaximize={paired ? maximizeOutput : undefined}
             frozen={view === 'design'}
           />
         </div>

@@ -2,6 +2,7 @@ import { lazy, StrictMode, Suspense, type ComponentType, type PropsWithChildren 
 import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
+import { syncPreferencesToDocument } from './stores/preferencesStore';
 import './index.css';
 import './assets/fonts/roboto-mono/fonts.css';
 import './assets/fonts/xiaolai/fonts.css';
@@ -36,7 +37,10 @@ if (!isAdmin) notifyAuthCallbackError();
 const publicationId = /^\/publications\/([a-zA-Z0-9-]+)\/?$/.exec(location.pathname)?.[1];
 const PublicationPage = lazy(() => import('./components/publications/PublicationPage'));
 
-if (!isAdmin && !publicationId) document.documentElement.dataset.surface = 'app';
+if (!isAdmin && !publicationId) {
+  document.documentElement.dataset.surface = 'app';
+  syncPreferencesToDocument();
+}
 
 // Keep remote font CSS non-blocking until it has loaded.
 const fontStylesheet = document.querySelector<HTMLLinkElement>('#misans-font');

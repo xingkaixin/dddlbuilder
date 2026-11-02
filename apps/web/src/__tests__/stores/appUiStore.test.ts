@@ -4,7 +4,6 @@ import { useAppUiStore } from '@/stores';
 function resetUiStore() {
   const state = useAppUiStore.getState();
   state.setWorkspaceSidebarOpen(true);
-  state.setEditorView('output');
   state.setSavedTablesDrawerOpen(false);
   useAppUiStore.setState({ activeDialog: { kind: 'none' } });
   state.setShowFireworks(false);
@@ -25,7 +24,6 @@ describe('appUiStore', () => {
     const state = useAppUiStore.getState();
 
     state.setWorkspaceSidebarOpen(false);
-    state.setEditorView('design');
     state.setSavedTablesDrawerOpen(true);
     state.setIsImportDialogOpen(true);
     state.setIsSaveDialogOpen(true);
@@ -34,7 +32,6 @@ describe('appUiStore', () => {
 
     expect(useAppUiStore.getState()).toMatchObject({
       workspaceSidebarOpen: false,
-      editorView: 'design',
       savedTablesDrawerOpen: true,
       activeDialog: { kind: 'delete' },
     });

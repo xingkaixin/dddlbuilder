@@ -10,7 +10,6 @@ export function useAppUiSelectors() {
 
       return {
         workspaceSidebarOpen: current.workspaceSidebarOpen,
-        editorView: current.editorView,
         savedTablesDrawerOpen: current.savedTablesDrawerOpen,
         isImportDialogOpen: activeDialog.kind === 'import',
         isUserSettingsOpen: activeDialog.kind === 'user-settings',
@@ -35,7 +34,6 @@ export function useAppUiSelectors() {
   return {
     ...state,
     setWorkspaceSidebarOpen: actions.setWorkspaceSidebarOpen,
-    setEditorView: actions.setEditorView,
     setSavedTablesDrawerOpen: actions.setSavedTablesDrawerOpen,
     setIsImportDialogOpen: actions.setIsImportDialogOpen,
     setIsUserSettingsOpen: actions.setIsUserSettingsOpen,

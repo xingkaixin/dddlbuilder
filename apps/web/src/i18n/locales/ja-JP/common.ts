@@ -288,9 +288,10 @@ export const jaJPCommon = {
   },
   editorLayout: {
     label: '作業ビュー',
-    design: '設計',
-    output: '生成結果',
-    split: '分割プレビュー',
+    side: '左右に分割',
+    split: '上下に分割',
+    design: '設計のみ',
+    output: '結果のみ',
     resize: '設計と結果の高さを調整',
     maximize: '生成結果を最大化',
   },
@@ -544,6 +545,7 @@ export const jaJPCommon = {
     listHint: 'LIST パーティション化の場合、パーティション間の値リストが重複してはなりません',
   },
   dataTable: {
+    columns: '列',
     fieldTools: 'フィールドツール',
     aiTools: 'AI ツール',
     dataTools: 'データツール',

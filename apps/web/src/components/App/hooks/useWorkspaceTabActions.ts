@@ -7,21 +7,26 @@ import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { useTabStore } from '@/stores';
 import { createEmptyRow } from '@/utils/helpers';
 import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
+import { usePreferencesStore } from '@/stores/preferencesStore';
 import { applySavedState } from '../applySavedState';
 import type { useTabLifecycle } from './useTabLifecycle';
 
-const createEmptyDraftState = (): PersistedState => ({
-  schemaName: '',
-  tableName: '',
-  tableComment: '',
-  dbType: 'mysql',
-  sqlFormatMode: 'compact',
-  rows: Array.from({ length: 12 }, () => createEmptyRow()),
-  addCount: 10,
-  indexes: [],
-  authInput: '',
-  authObjects: [],
-});
+const createEmptyDraftState = (): PersistedState => {
+  const { defaultDatabase, sqlFormatMode, addRowCount } = usePreferencesStore.getState();
+
+  return {
+    schemaName: '',
+    tableName: '',
+    tableComment: '',
+    dbType: defaultDatabase,
+    sqlFormatMode,
+    rows: Array.from({ length: 12 }, () => createEmptyRow()),
+    addCount: addRowCount,
+    indexes: [],
+    authInput: '',
+    authObjects: [],
+  };
+};
 
 type TabLifecycle = Pick<
   ReturnType<typeof useTabLifecycle>,

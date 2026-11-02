@@ -1,6 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
 import type { HivePartitionConfig } from '@ddlbuilder/shared-types';
-import type { EditorContentView } from '@/stores/appUiStore';
 import { useTranslation } from 'react-i18next';
 import type { EditorSurfaceModel } from '../EditorSurface';
 import type { useEditorDomains } from './useEditorDomains';
@@ -24,8 +23,6 @@ interface UseEditorSurfaceModelInput {
   navigationActions: ReturnType<typeof useNavigationActions>;
   schemaActions: ReturnType<typeof useSchemaApplyActions>;
   isShareView: boolean;
-  editorView: EditorContentView;
-  setEditorView: (view: EditorContentView) => void;
   isLoadedDirty: boolean;
   loadedTableName: string | null;
   loadedTableNormalizedName: string | null;
@@ -47,8 +44,6 @@ export function useEditorSurfaceModel({
   navigationActions,
   schemaActions,
   isShareView,
-  editorView,
-  setEditorView,
   isLoadedDirty,
   loadedTableName,
   loadedTableNormalizedName,
@@ -60,8 +55,7 @@ export function useEditorSurfaceModel({
   onViewCurrentVersionHistory,
   onOpenErDiagram,
   onOpenAISchemaPatch,
-}: UseEditorSurfaceModelInput): Omit<EditorSurfaceModel, 'editorView' | 'setEditorView'> &
-  Pick<UseEditorSurfaceModelInput, 'editorView' | 'setEditorView'> {
+}: UseEditorSurfaceModelInput): EditorSurfaceModel {
   const { t } = useTranslation();
   const { editor, auth, sharding, animations, partition, tableOptions } = domains;
 
@@ -373,8 +367,6 @@ export function useEditorSurfaceModel({
   return {
     documentId,
     isShareView,
-    editorView,
-    setEditorView,
     tableConfigProps,
     tableBuilderProps,
     outputProps,

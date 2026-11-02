@@ -1,5 +1,4 @@
-import { useCallback, useMemo } from 'react';
-import { COLUMN_HEADERS } from '@/utils/constants';
+import { useCallback } from 'react';
 
 const FREEZE_COLUMN_KEYS = [
   'order',
@@ -24,24 +23,23 @@ export function useFreezeColumns(
   columnWidths: Record<string, number>,
   freezeEnabled: boolean,
   freezeColumns: number,
+  columnKeys: readonly string[] = FREEZE_COLUMN_KEYS,
 ): UseFreezeColumnsReturn {
   const safeFreezeColumns =
     Number.isFinite(freezeColumns) && freezeColumns > 0 ? Math.floor(freezeColumns) : 1;
-  const effectiveFreezeColumns = Math.min(safeFreezeColumns, COLUMN_HEADERS.length);
-
-  const freezeColumnKeys = useMemo(() => FREEZE_COLUMN_KEYS, []);
+  const effectiveFreezeColumns = Math.min(safeFreezeColumns, columnKeys.length - 1);
 
   const getColumnLeftOffset = useCallback(
     (colIndex: number): number => {
       let left = 0;
 
-      for (let i = 0; i < Math.min(colIndex, freezeColumnKeys.length); i++) {
-        left += columnWidths[freezeColumnKeys[i]] || 100;
+      for (let i = 0; i < Math.min(colIndex, columnKeys.length); i++) {
+        left += columnWidths[columnKeys[i]] || 100;
       }
 
       return left;
     },
-    [columnWidths, freezeColumnKeys],
+    [columnWidths, columnKeys],
   );
 
   const getStickyLeft = useCallback(
@@ -60,6 +58,6 @@ export function useFreezeColumns(
     getStickyLeft,
     frozenAreaWidth,
     effectiveFreezeColumns,
-    freezeColumnKeys,
+    freezeColumnKeys: columnKeys,
   };
 }

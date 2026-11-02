@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -17,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   ChevronDown,
+  Columns3Cog,
   HardDrive,
   WandSparkles,
   Minus,
@@ -26,6 +28,7 @@ import {
   TableProperties,
 } from '@/components/icons';
 import { COLUMN_HEADERS } from '@/utils/constants';
+import { FIELD_COLUMNS, usePreferencesStore, type FieldColumn } from '@/stores/preferencesStore';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import type { AICommentMode } from '@ddlbuilder/shared-types';
@@ -49,6 +52,52 @@ interface DataTableToolbarProps {
 }
 
 const toolsOpenReducer = (open: boolean) => !open;
+
+const FIELD_COLUMN_LABELS = {
+  fieldComment: 'fieldComment',
+  fieldType: 'fieldType',
+  nullable: 'nullable',
+  default: 'defaultValue',
+  onUpdate: 'onUpdate',
+} as const satisfies Record<FieldColumn, string>;
+
+function FieldColumnsMenu() {
+  const { t } = useTranslation();
+  const hidden = usePreferencesStore((state) => state.hiddenFieldColumns);
+  const setPreference = usePreferencesStore((state) => state.setPreference);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 gap-1.5 px-2 text-xs @min-[640px]/editor:h-7"
+        >
+          <Columns3Cog className="h-3.5 w-3.5" />
+          {t('dataTable.columns')}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        {FIELD_COLUMNS.map((column) => (
+          <DropdownMenuCheckboxItem
+            key={column}
+            checked={!hidden.includes(column)}
+            closeOnClick={false}
+            onCheckedChange={(visible) =>
+              setPreference(
+                'hiddenFieldColumns',
+                visible ? hidden.filter((item) => item !== column) : [...hidden, column],
+              )
+            }
+          >
+            {t(`dataTable.headers.${FIELD_COLUMN_LABELS[column]}`)}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function DataTableToolbar({
   toolbarLeft,
@@ -176,6 +225,7 @@ export function DataTableToolbar({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          <FieldColumnsMenu />
         </div>
 
         <div className="contents @min-[640px]/editor:flex @min-[640px]/editor:flex-wrap @min-[640px]/editor:items-center @min-[640px]/editor:gap-2">

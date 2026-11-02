@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { selectWorkspaceView } from '../utils';
 
 test.use({ viewport: { width: 382, height: 582 } });
 
@@ -47,9 +48,9 @@ test('窄屏直接显示字段，配置和编辑内容在窗口展开后保留',
   await configuration.selectOption('fields');
   await expect(table.locator('tbody tr').first()).toContainText('id');
 
-  await page.getByRole('button', { name: '生成结果', exact: true }).click();
+  await page.getByRole('button', { name: '只看结果', exact: true }).click();
   await expect(page.getByTestId('output-panel').locator('pre')).toContainText('duo_profile');
-  await page.getByRole('button', { name: '设计', exact: true }).click();
+  await page.getByRole('button', { name: '只看设计', exact: true }).click();
   const lastCell = table.locator('tbody tr').first().locator('td').last();
   await lastCell.scrollIntoViewIfNeeded();
   await expect(lastCell).toBeInViewport();
@@ -82,6 +83,7 @@ test.describe('触屏字段编辑', () => {
   test('内外屏编辑字号为 16px，失焦后字段内容和表格宽度保持不变', async ({ page }) => {
     const table = page.getByTestId('data-table');
     const firstRow = table.locator('tbody tr').first();
+    await selectWorkspaceView(page, 'design');
 
     for (const width of [382, 951]) {
       await page.setViewportSize({ width, height: 582 });
@@ -97,7 +99,7 @@ test.describe('触屏字段编辑', () => {
         await expect(input).toBeFocused();
         await expect(input).toHaveCSS('font-size', '16px');
         await expect(input).toHaveValue(initialValue);
-        await page.getByRole('button', { name: '设计', exact: true }).tap();
+        await page.getByRole('button', { name: '只看设计', exact: true }).tap();
         await expect(input).toBeHidden();
         await expect(cell).toHaveText(initialValue);
         expect(await table.evaluate((element) => element.getBoundingClientRect().width)).toBe(

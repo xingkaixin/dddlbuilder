@@ -1,9 +1,9 @@
-import { lazy, Suspense, useCallback, useMemo, useReducer } from 'react';
+import { lazy, Suspense, useMemo, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Upload } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
-import type { EditorContentView, EditorView } from '@/stores/appUiStore';
-import { WorkspaceSplitToggle } from './WorkspaceSplitToggle';
+import { usePreferencesStore, type EditorLayout } from '@/stores/preferencesStore';
+import { EditorLayoutControl } from './EditorLayoutControl';
 import { EditorSurface } from './EditorSurface';
 import { Header } from './Header';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
@@ -20,22 +20,7 @@ interface AppWorkspaceProps {
   model: AppWorkspaceModel;
 }
 
-type SurfaceViewState = { shareView: EditorContentView; splitPreview: boolean };
-
-type SurfaceViewEvent =
-  | { type: 'splitPreviewChanged'; checked: boolean }
-  | { type: 'shareViewSelected'; view: EditorContentView };
-
-const initialSurfaceViewState: SurfaceViewState = { shareView: 'output', splitPreview: false };
-
-function surfaceViewReducer(state: SurfaceViewState, event: SurfaceViewEvent): SurfaceViewState {
-  switch (event.type) {
-    case 'splitPreviewChanged':
-      return { ...state, splitPreview: event.checked };
-    case 'shareViewSelected':
-      return { ...state, shareView: event.view };
-  }
-}
+const shareLayoutReducer = (_layout: EditorLayout, next: EditorLayout) => next;
 
 export function AppWorkspace({ model }: AppWorkspaceProps) {
   const {
@@ -51,41 +36,21 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
   } = model;
   const { t } = useTranslation();
 
-  const [{ shareView, splitPreview }, dispatch] = useReducer(
-    surfaceViewReducer,
-    initialSurfaceViewState,
-  );
   const { isShareView } = view;
-  const { setEditorView } = editorSurface;
-  const contentView = isShareView ? shareView : editorSurface.editorView;
+  const savedLayout = usePreferencesStore((state) => state.layout);
+  const setPreference = usePreferencesStore((state) => state.setPreference);
+  const [shareLayout, setShareLayout] = useReducer(shareLayoutReducer, 'output');
+  const layout = isShareView ? shareLayout : savedLayout;
+  const showLayoutControl = !view.shouldShowWorkspaceSkeleton && (view.hasTabs || view.isShareView);
 
-  const setSurfaceView = useCallback(
-    (nextView: EditorView) => {
-      dispatch({ type: 'splitPreviewChanged', checked: nextView === 'split' });
-
-      if (nextView === 'split') return;
-
-      if (isShareView) dispatch({ type: 'shareViewSelected', view: nextView });
-      else setEditorView(nextView);
-    },
-    [isShareView, setEditorView],
+  const setLayout = useMemo(
+    () => (isShareView ? setShareLayout : (next: EditorLayout) => setPreference('layout', next)),
+    [isShareView, setPreference],
   );
-  const surfaceModel = {
-    ...editorSurface,
-    editorView: splitPreview ? ('split' as const) : contentView,
-    setEditorView: setSurfaceView,
-  };
-  const showSplitToggle = !view.shouldShowWorkspaceSkeleton && (view.hasTabs || view.isShareView);
 
-  const splitToggle = useMemo(
-    () =>
-      showSplitToggle ? (
-        <WorkspaceSplitToggle
-          checked={splitPreview}
-          onCheckedChange={(checked) => dispatch({ type: 'splitPreviewChanged', checked })}
-        />
-      ) : null,
-    [showSplitToggle, splitPreview],
+  const layoutControl = useMemo(
+    () => (showLayoutControl ? <EditorLayoutControl value={layout} onChange={setLayout} /> : null),
+    [layout, setLayout, showLayoutControl],
   );
   const expandSidebarLabel = t('savedTables.expand');
 
@@ -137,11 +102,15 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="workspace-content">
           {!view.isShareView && (
-            <TabBar leadingAction={expandSidebarButton} trailingAction={splitToggle} {...tabBar} />
+            <TabBar
+              leadingAction={expandSidebarButton}
+              trailingAction={layoutControl}
+              {...tabBar}
+            />
           )}
-          {view.isShareView && splitToggle && (
+          {view.isShareView && layoutControl && (
             <div className="flex shrink-0 justify-end border-b bg-muted/20 px-2 py-1">
-              {splitToggle}
+              {layoutControl}
             </div>
           )}
           <div className="flex min-h-0 flex-1 flex-col overflow-auto">
@@ -171,7 +140,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
               />
             ) : (
               <div className="flex min-h-0 flex-1 flex-col">
-                <EditorSurface model={surfaceModel} />
+                <EditorSurface model={editorSurface} layout={layout} onLayoutChange={setLayout} />
               </div>
             )}
           </div>

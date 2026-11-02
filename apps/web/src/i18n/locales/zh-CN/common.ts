@@ -276,9 +276,10 @@ export const zhCNCommon = {
   },
   editorLayout: {
     label: '工作视图',
-    design: '设计',
-    output: '生成结果',
-    split: '分屏预览',
+    side: '左右分屏',
+    split: '上下分屏',
+    design: '只看设计',
+    output: '只看结果',
     resize: '调整设计与结果的高度',
     maximize: '最大化生成结果',
   },
@@ -523,6 +524,7 @@ export const zhCNCommon = {
     listHint: '对于 LIST 分区，每个分区的值列表不能重叠',
   },
   dataTable: {
+    columns: '列',
     fieldTools: '字段工具',
     aiTools: 'AI 工具',
     dataTools: '数据工具',

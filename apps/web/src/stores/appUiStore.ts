@@ -1,24 +1,7 @@
 import { create } from 'zustand';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
-export type EditorContentView = 'design' | 'output';
-
-export type EditorView = EditorContentView | 'split';
-
-const editorViewKey = 'ddlbuilder:editor-view';
 const cnyFireworksShownKey = 'ddlbuilder:fireworks:cny:shown:2026:v1';
-
-function readEditorView(): EditorContentView {
-  try {
-    const value = localStorage.getItem(editorViewKey);
-
-    if (value === 'output') return value;
-  } catch {
-    // Layout preferences are optional when browser storage is unavailable.
-  }
-
-  return 'design';
-}
 
 function readCnyFireworksPending(): boolean {
   if (!isCnyFireworksEnabled) return false;
@@ -63,12 +46,10 @@ export type ActiveAppDialog =
 
 interface AppUiState {
   workspaceSidebarOpen: boolean;
-  editorView: EditorContentView;
   savedTablesDrawerOpen: boolean;
   activeDialog: ActiveAppDialog;
   showFireworks: boolean;
   setWorkspaceSidebarOpen: (open: boolean) => void;
-  setEditorView: (view: EditorContentView) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   setIsImportDialogOpen: (open: boolean) => void;
   setIsUserSettingsOpen: (open: boolean) => void;
@@ -104,20 +85,10 @@ export const useAppUiStore = create<AppUiState>((set) => {
       typeof window === 'undefined' ||
       !window.matchMedia ||
       window.matchMedia('(min-width: 640px)').matches,
-    editorView: readEditorView(),
     savedTablesDrawerOpen: false,
     activeDialog: noDialog,
     showFireworks: readCnyFireworksPending(),
     setWorkspaceSidebarOpen: (workspaceSidebarOpen) => set({ workspaceSidebarOpen }),
-    setEditorView: (editorView) => {
-      set({ editorView });
-
-      try {
-        localStorage.setItem(editorViewKey, editorView);
-      } catch {
-        // Keep the selected layout usable without persistence.
-      }
-    },
     setSavedTablesDrawerOpen: (savedTablesDrawerOpen) => set({ savedTablesDrawerOpen }),
     setIsImportDialogOpen: setDialogOpen('import'),
     setIsUserSettingsOpen: setDialogOpen('user-settings'),

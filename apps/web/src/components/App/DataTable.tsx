@@ -9,7 +9,13 @@ import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import { normalizeAddCount, type EnumValueMeta } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet, useEditorStore } from '@/stores';
-import { FieldRowStateContext, useFieldColumns, getEditableColumnKeys } from './table/columns';
+import {
+  FieldRowStateContext,
+  useFieldColumns,
+  getEditableColumnKeys,
+  getFieldColumnKey,
+  isFieldColumnVisible,
+} from './table/columns';
 import {
   fieldTableFeatures,
   type FieldTableColumnDef,
@@ -24,6 +30,7 @@ import { useFieldTypeChangeGuard } from './table/useFieldTypeChangeGuard';
 import { DangerousChangeDialog } from './table/DangerousChangeDialog';
 import { useSortableFieldRows } from './table/useSortableFieldRows';
 import { useTimers } from '@/hooks/useTimers';
+import { usePreferencesStore } from '@/stores/preferencesStore';
 import { useTranslation } from 'react-i18next';
 import type { AICommentMode } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
@@ -51,7 +58,6 @@ const COLUMN_WIDTHS = {
   onUpdate: 100,
   actions: 50,
 } satisfies Record<string, number>;
-const TABLE_MIN_WIDTH = Object.values(COLUMN_WIDTHS).reduce((a, b) => a + b, 0);
 
 type EditingCell = { row: number; col: string };
 
@@ -325,7 +331,9 @@ export const DataTable = memo<DataTableProps>(
       tableRef,
     });
 
-    const columns = useFieldColumns({
+    const hiddenColumns = usePreferencesStore((state) => state.hiddenFieldColumns);
+
+    const allColumns = useFieldColumns({
       columnWidths: COLUMN_WIDTHS,
       onEditingCellChange: handleEditingCellChange,
       dbType,
@@ -335,6 +343,11 @@ export const DataTable = memo<DataTableProps>(
       onRemoveRow,
     });
 
+    const columns = useMemo(
+      () => allColumns.filter((column) => isFieldColumnVisible(column, hiddenColumns)),
+      [allColumns, hiddenColumns],
+    );
+    const columnKeys = useMemo(() => columns.map(getFieldColumnKey), [columns]);
     const editableColumnKeys = useMemo(() => getEditableColumnKeys(columns), [columns]);
 
     const { handlePaste } = useDataTableClipboard({
@@ -372,6 +385,7 @@ export const DataTable = memo<DataTableProps>(
       COLUMN_WIDTHS,
       freezeEnabled,
       freezeColumns,
+      columnKeys,
     );
 
     const safeAddCount = normalizeAddCount(addCount);
@@ -442,7 +456,7 @@ export const DataTable = memo<DataTableProps>(
             <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
               <table
                 className="border-separate border-spacing-0 table-fixed text-xs"
-                style={{ minWidth: TABLE_MIN_WIDTH }}
+                style={{ minWidth: table.getTotalSize() }}
                 data-testid="data-table"
                 aria-label={t('dataTable.ariaLabel')}
                 aria-describedby="field-config-table-description"

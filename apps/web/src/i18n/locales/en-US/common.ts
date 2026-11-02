@@ -284,9 +284,10 @@ export const enUSCommon = {
   },
   editorLayout: {
     label: 'Workspace view',
-    design: 'Design',
-    output: 'Generated output',
-    split: 'Split preview',
+    side: 'Side by side',
+    split: 'Top and bottom',
+    design: 'Design only',
+    output: 'Output only',
     resize: 'Resize design and output',
     maximize: 'Maximize output',
   },
@@ -538,6 +539,7 @@ export const enUSCommon = {
     listHint: 'For LIST partitioning, value lists across partitions must not overlap',
   },
   dataTable: {
+    columns: 'Columns',
     fieldTools: 'Field tools',
     aiTools: 'AI tools',
     dataTools: 'Data tools',

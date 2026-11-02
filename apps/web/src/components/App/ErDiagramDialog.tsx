@@ -8,6 +8,7 @@ import type { SavedTableStateUpdate } from '@/utils/savedTableStateUpdate';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/useToast';
+import { usePreferencesStore } from '@/stores/preferencesStore';
 import { createEmptyRow } from '@/utils/helpers';
 import { erDiagramTablesOptions } from '@/queries/erDiagram';
 
@@ -61,12 +62,14 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
 
       const trimmed = name.trim();
 
+      const { defaultDatabase, sqlFormatMode } = usePreferencesStore.getState();
+
       const state: PersistedState = {
         schemaName: '',
         tableName: trimmed,
         tableComment: '',
-        dbType: 'mysql',
-        sqlFormatMode: 'compact',
+        dbType: defaultDatabase,
+        sqlFormatMode,
         rows: INITIAL_ROWS,
         addCount: 4,
         indexes: [],
