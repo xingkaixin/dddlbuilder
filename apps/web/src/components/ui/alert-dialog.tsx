@@ -31,7 +31,7 @@ function AlertDialogOverlay({ className, ...props }: AlertDialogPrimitive.Backdr
   return (
     <AlertDialogPrimitive.Backdrop
       data-slot="alert-dialog-overlay"
-      className={cn('t-base-overlay fixed inset-0 z-50 bg-black/80', className)}
+      className={cn('t-base-overlay fixed inset-0 z-50 bg-black/20 dark:bg-black/40', className)}
       {...props}
     />
   );

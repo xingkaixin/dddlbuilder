@@ -51,7 +51,7 @@ function DrawerOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) 
   return (
     <DialogPrimitive.Backdrop
       data-slot="drawer-overlay"
-      className={cn('t-base-overlay fixed inset-0 z-50 bg-black/60', className)}
+      className={cn('t-base-overlay fixed inset-0 z-50 bg-black/20 dark:bg-black/40', className)}
       {...props}
     />
   );
