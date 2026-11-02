@@ -1,0 +1,91 @@
+/* Lanmo's --accent is named --blue here: the web app's shadcn theme owns --accent as an HSL triple. */
+:root {
+  --paper: #f5f6f8;
+  --surface: #fcfcfd;
+  --surface-muted: #eceff4;
+  --ink: #1c2840;
+  --ink-muted: #3f4c66;
+  --ink-subtle: #5a6680;
+  --line-strong: #24345a;
+  --line: #7d8aa3;
+  --line-faint: #c9d0dc;
+  --blue: #2f5bb7;
+  --blue-strong: #1e3f8a;
+  --blue-wash: #7d9be0;
+  --vermilion: #b8402c;
+  --vermilion-wash: #e89a8a;
+  --focus: #2f5bb7;
+  --success: #1f6b45;
+  --success-wash: #7cc49c;
+  --warning: #7a5208;
+  --warning-wash: #f0c766;
+  --danger: #a8321f;
+  --danger-wash: #ec9a8a;
+  --mark: #c7d6f6;
+  --overlay: #1c284033;
+  --shadow-overlay: 0 3px 12px #1c284033;
+
+  --font-hand: 'Xiaolai SC', 'Kaiti SC', STKaiti, cursive;
+  --font-text:
+    'MiSans VF', 'PingFang SC', 'Hiragino Sans', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    'Roboto Mono', 'MiSans VF', 'PingFang SC', 'Hiragino Sans', Menlo, Consolas, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  --stroke-main: 1.8px;
+  --stroke-echo: 1px;
+  --stroke-bold: 2.6px;
+  --stroke-quiet: 1.1px;
+
+  --wash-rest: 0.6;
+  --wash-hover: 0.85;
+  --wash-ghost: 0.32;
+}
+
+.dark {
+  --paper: #14171e;
+  --surface: #1b1f28;
+  --surface-muted: #222734;
+  --ink: #e6eaf2;
+  --ink-muted: #b6bfcf;
+  --ink-subtle: #8e99ad;
+  --line-strong: #c8d2e6;
+  --line: #6f7b92;
+  --line-faint: #343b4a;
+  --blue: #8fb0f0;
+  --blue-strong: #c6d6fa;
+  --blue-wash: #3f5f9e;
+  --vermilion: #f2937f;
+  --vermilion-wash: #7a3a2e;
+  --focus: #8fb0f0;
+  --success: #9ad7b4;
+  --success-wash: #2f6a4c;
+  --warning: #f2cf86;
+  --warning-wash: #7a5d22;
+  --danger: #f4a596;
+  --danger-wash: #7f3a2e;
+  --mark: #2d4170;
+  --overlay: #000000a0;
+  --shadow-overlay: 0 8px 28px #00000066;
+}
+
+:lang(ja) {
+  --font-hand: 'Klee One', 'Xiaolai SC', 'Hiragino Maru Gothic ProN', cursive;
+}
+
+[data-font='plain'] {
+  --font-hand: var(--font-text);
+}
