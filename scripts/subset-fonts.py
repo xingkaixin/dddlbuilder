@@ -3,14 +3,15 @@
 # requires-python = ">=3.11"
 # dependencies = ["fonttools[woff]==4.63.0"]
 # ///
-"""Subset Roboto Mono for the web app and the docs site.
+"""Subset Roboto Mono for the web app and the docs site, and the hand fonts for the web app.
 
 Run from anywhere with `uv run scripts/subset-fonts.py`, then commit the files it writes.
-When to re-run is documented in apps/web/src/assets/fonts/roboto-mono/README.md.
+When to re-run is documented in the README files under apps/web/src/assets/fonts/.
 """
 
 import hashlib
 import io
+import re
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -60,12 +61,76 @@ TARGETS = [
 
 PARTS = {"core": CORE, "ext": EXT}
 
+FONTS_DIR = ROOT / "apps/web/src/assets/fonts"
+LOCALES_DIR = ROOT / "apps/web/src/i18n/locales"
+COMPONENTS_DIR = ROOT / "apps/web/src/components"
 
-def load_source() -> bytes:
-    with urllib.request.urlopen(SOURCE_URL) as response:
+ASCII = set(range(0x20, 0x7F))
+HAND_PUNCTUATION = set(map(ord, "“”‘’–—…·"))
+COMMENT = re.compile(r"/\*[\s\S]*?\*/|//.*")
+
+
+@dataclass(frozen=True)
+class HandFont:
+    family: str
+    url: str
+    sha256: str
+    out_dir: Path
+    prefix: str
+    # Only features that change how UI copy renders: calt and dlig change no Xiaolai string; Chromium's
+    # text-spacing-trim applies halt to fullwidth punctuation by default.
+    features: tuple[str, ...]
+    # Chrome on macOS rasterizes Klee One differently at 1x without glyph names; Xiaolai renders the same either way.
+    glyph_names: bool
+
+
+XIAOLAI = HandFont(
+    family="Xiaolai SC",
+    url="https://github.com/lxgw/kose-font/releases/download/v3.126/Xiaolai-Regular.ttf",
+    sha256="e2f68daf0e72777a8cf58bc83de1b98634b251e537ddbfca24b0ae50d1802da2",
+    out_dir=FONTS_DIR / "xiaolai",
+    prefix="xiaolai",
+    features=(),
+    glyph_names=False,
+)
+KLEE_ONE = HandFont(
+    family="Klee One",
+    url=(
+        "https://raw.githubusercontent.com/google/fonts/130fcfb0ff422fec96b335616b2ca99f91914792"
+        "/ofl/kleeone/KleeOne-Regular.ttf"
+    ),
+    sha256="bf4063f030cc2ae6adf0a11424a1888e5c0eb4438f1f6d02f52294af868e9b3a",
+    out_dir=FONTS_DIR / "klee-one",
+    prefix="klee-one",
+    features=("kern", "liga", "halt"),
+    glyph_names=True,
+)
+
+
+def ui_characters(*roots: Path) -> set[int]:
+    characters: set[int] = set()
+    for root in roots:
+        for path in root.rglob("*.ts*"):
+            if ".test." not in path.name and "__tests__" not in path.parts:
+                characters |= set(map(ord, COMMENT.sub("", path.read_text())))
+    return {codepoint for codepoint in characters if codepoint >= 0x20}
+
+
+def hand_parts() -> list[tuple[HandFont, dict[str, set[int]]]]:
+    english = ui_characters(LOCALES_DIR / "en-US")
+    chinese = ui_characters(LOCALES_DIR / "zh-CN", COMPONENTS_DIR)
+    core = ASCII | HAND_PUNCTUATION | english
+    return [
+        (XIAOLAI, {"core": core, "zh": chinese - core}),
+        (KLEE_ONE, {"ja": ASCII | ui_characters(LOCALES_DIR / "ja-JP")}),
+    ]
+
+
+def load_source(url: str = SOURCE_URL, sha256: str = SOURCE_SHA256) -> bytes:
+    with urllib.request.urlopen(url) as response:
         data = response.read()
-    if hashlib.sha256(data).hexdigest() != SOURCE_SHA256:
-        raise SystemExit(f"Unexpected checksum for {SOURCE_URL}")
+    if hashlib.sha256(data).hexdigest() != sha256:
+        raise SystemExit(f"Unexpected checksum for {url}")
     return data
 
 
@@ -88,18 +153,26 @@ def instantiate(source: bytes, weight: int | tuple[int, int]) -> TTFont:
     return font
 
 
-def subset(font: TTFont, unicodes: set[int], keep_prep: bool) -> bytes:
+def subset(
+    font: TTFont,
+    unicodes: set[int],
+    keep_prep: bool,
+    features: tuple[str, ...] = (),
+    glyph_names: bool = False,
+) -> bytes:
     options = Options()
     options.flavor = "woff2"
-    options.layout_features = []
-    options.drop_tables += ["GSUB", "GPOS", "GDEF"]
+    options.layout_features = list(features)
+    options.drop_tables += ["vhea", "vmtx", "BASE", "DSIG"]
+    if not features:
+        options.drop_tables += ["GSUB", "GPOS", "GDEF"]
     options.hinting = keep_prep
     options.name_IDs = [0, 1, 2, 3, 4, 5, 6, 13, 14]
     options.ignore_missing_unicodes = False
     # Chrome on macOS renders a variable font lighter at small sizes unless it can find a glyph named "X",
     # so variable fonts keep glyph names and always carry "X", unmapped when it is not in the requested set.
     variable = "fvar" in font
-    options.glyph_names = variable
+    options.glyph_names = variable or glyph_names
 
     subsetter = Subsetter(options)
     subsetter.populate(unicodes=unicodes, glyphs=["X"] if variable else [])
@@ -128,21 +201,14 @@ def glyph_shape(font: TTFont, codepoint: int) -> tuple:
     return outline, font["hmtx"][name]
 
 
-def verify(data: bytes, source: bytes, target: Target, unicodes: set[int]) -> None:
-    font = TTFont(io.BytesIO(data))
-    reference = TTFont(io.BytesIO(source))
+def shared_problems(font: TTFont, reference: TTFont, unicodes: set[int]) -> list[str]:
     problems = []
-
     if set(font.getBestCmap()) != unicodes:
         problems.append("cmap differs from the requested characters")
-    for table in ("GSUB", "GPOS", "GDEF", "fpgm", "cvt "):
+    for table in ("fpgm", "cvt "):
         if table in font:
             problems.append(f"unexpected {table} table")
-    if "fvar" in font and "X" not in font.getGlyphOrder():
-        problems.append('variable font lost the glyph named "X"')
-    if ("prep" in font) != target.keep_prep:
-        problems.append("prep table presence is wrong")
-    if font["name"].getDebugName(1) != "Roboto Mono":
+    if font["name"].getDebugName(1) != reference["name"].getDebugName(1):
         problems.append("family name changed")
     for table, fields in {
         "head": ("unitsPerEm", "xMin", "yMin", "xMax", "yMax"),
@@ -160,6 +226,20 @@ def verify(data: bytes, source: bytes, target: Target, unicodes: set[int]) -> No
         for field in fields:
             if getattr(font[table], field) != getattr(reference[table], field):
                 problems.append(f"{table}.{field} changed")
+    return problems
+
+
+def verify(data: bytes, source: bytes, target: Target, unicodes: set[int]) -> None:
+    font = TTFont(io.BytesIO(data))
+    problems = shared_problems(font, TTFont(io.BytesIO(source)), unicodes)
+
+    for table in ("GSUB", "GPOS", "GDEF"):
+        if table in font:
+            problems.append(f"unexpected {table} table")
+    if "fvar" in font and "X" not in font.getGlyphOrder():
+        problems.append('variable font lost the glyph named "X"')
+    if ("prep" in font) != target.keep_prep:
+        problems.append("prep table presence is wrong")
 
     if isinstance(target.weight, int):
         weights = [target.weight]
@@ -180,6 +260,18 @@ def verify(data: bytes, source: bytes, target: Target, unicodes: set[int]) -> No
 
     if problems:
         raise SystemExit(f"{target.out_dir}: " + "; ".join(problems))
+
+
+def verify_hand(data: bytes, source: TTFont, unicodes: set[int], name: str) -> None:
+    font = TTFont(io.BytesIO(data))
+    problems = shared_problems(font, source, unicodes)
+    if "prep" in font:
+        problems.append("unexpected prep table")
+    for codepoint in unicodes:
+        if glyph_shape(font, codepoint) != glyph_shape(source, codepoint):
+            problems.append(f"U+{codepoint:04X} differs")
+    if problems:
+        raise SystemExit(f"{name}: " + "; ".join(problems))
 
 
 def unicode_range(codepoints: set[int]) -> list[str]:
@@ -207,11 +299,11 @@ def css_declaration(name: str, values: list[str]) -> str:
     return f"  {name}:\n" + ",\n".join(f"    {r}" for r in rows) + ";"
 
 
-def font_face(file: str, weight: str, codepoints: set[int]) -> str:
+def font_face(family: str, file: str, weight: str, codepoints: set[int]) -> str:
     return "\n".join(
         [
             "@font-face {",
-            "  font-family: 'Roboto Mono';",
+            f"  font-family: '{family}';",
             "  font-style: normal;",
             f"  font-weight: {weight};",
             "  font-display: swap;",
@@ -222,7 +314,28 @@ def font_face(file: str, weight: str, codepoints: set[int]) -> str:
     )
 
 
+def write_css(out_dir: Path, faces: list[str]) -> None:
+    css = "/* Generated by scripts/subset-fonts.py. Do not edit. */\n" + "\n".join(faces) + "\n"
+    (out_dir / "fonts.css").write_text(css)
+
+
+def build_hand_font(font: HandFont, parts: dict[str, set[int]]) -> None:
+    source = TTFont(io.BytesIO(load_source(font.url, font.sha256)))
+    font.out_dir.mkdir(exist_ok=True)
+    faces = []
+    for part, unicodes in parts.items():
+        file = f"{font.prefix}-{part}.woff2"
+        data = subset(source, unicodes, False, font.features, font.glyph_names)
+        verify_hand(data, source, unicodes, file)
+        (font.out_dir / file).write_bytes(data)
+        faces.append(font_face(font.family, file, "400", unicodes))
+        print(f"{font.out_dir.relative_to(ROOT)}/{file}: {len(data)} bytes, {len(unicodes)} characters")
+    write_css(font.out_dir, faces)
+
+
 def main() -> None:
+    for font, parts in hand_parts():
+        build_hand_font(font, parts)
     source = load_source()
     for target in TARGETS:
         font = instantiate(source, target.weight)
@@ -233,10 +346,9 @@ def main() -> None:
             verify(data, source, target, unicodes)
             file = f"roboto-mono-{part}.woff2"
             (target.out_dir / file).write_bytes(data)
-            faces.append(font_face(file, weight, unicodes))
+            faces.append(font_face("Roboto Mono", file, weight, unicodes))
             print(f"{target.out_dir.relative_to(ROOT)}/{file}: {len(data)} bytes, {len(unicodes)} characters")
-        css = "/* Generated by scripts/subset-fonts.py. Do not edit. */\n" + "\n".join(faces) + "\n"
-        (target.out_dir / "fonts.css").write_text(css)
+        write_css(target.out_dir, faces)
 
 
 if __name__ == "__main__":
