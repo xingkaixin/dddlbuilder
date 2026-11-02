@@ -1,9 +1,10 @@
 ---
 import { render } from 'astro:content';
-import { alternatesFor, canonicalHref, pageTitle, type DocEntry } from '../lib/docs';
+import { alternatesFor, canonicalHref, pageTitle, splitHeading, type DocEntry } from '../lib/docs';
 import { lastUpdated } from '../lib/git';
-import { adjacentPages, docsHref, localeOf, LOCALES, routeOf } from '../lib/site';
+import { adjacentPages, docsHref, FEEDBACK_URL, localeOf, LOCALES, routeOf, sectionOf } from '../lib/site';
 import DocsLayout from '../layouts/DocsLayout.astro';
+import PageList from './PageList.astro';
 
 interface Props {
   entry: DocEntry;
@@ -11,15 +12,17 @@ interface Props {
 }
 
 const { entry, routes } = Astro.props;
-const { Content, headings } = await render(entry);
+const { headings } = await render(entry);
+const { heading, body } = splitHeading(entry);
 const locale = localeOf(entry.id);
 const copy = LOCALES[locale];
 const route = routeOf(entry.id);
 const [minDepth, maxDepth] = entry.data.outline ?? [2, 3];
-const outline = headings.filter((heading) => heading.depth >= minDepth && heading.depth <= maxDepth);
+const outline = headings.filter((item) => item.depth >= minDepth && item.depth <= maxDepth);
 const alternates = alternatesFor(route, routes);
 const { previous, next } = adjacentPages(route, locale);
 const updated = lastUpdated(entry.filePath ?? entry.id);
+const section = sectionOf(route, locale);
 ---
 
 <DocsLayout
@@ -33,28 +36,116 @@ const updated = lastUpdated(entry.filePath ?? entry.id);
     <link rel="canonical" href={canonicalHref(route)} />
     {alternates.map((link) => <link rel="alternate" hreflang={link.lang} href={link.href} />)}
   </Fragment>
-  <main class="doc">
-    <article class="prose"><Content /></article>
-    <footer class="doc-footer">
-      <p>
+  <div class="doc__intro" slot="banner">
+    <div class="crumb">{section ? `${copy.docs} / ${section}` : copy.docs}</div>
+    <Fragment set:html={heading} />
+  </div>
+  <div class="doc__layout">
+    <nav class="doc__list" aria-label={copy.pagesLabel}>
+      <button class="field-search" type="button" data-search-open data-sketch data-seed="search">
+        <i class="i i-search" aria-hidden="true"></i>
+        <span>{copy.searchPlaceholder}</span>
+        <kbd>/</kbd>
+      </button>
+      <div class="list-wrap">
+        <div class="list-scroll"><PageList locale={locale} route={route} /></div>
+        <button class="list-arrow list-arrow--up" type="button" tabindex="-1" aria-hidden="true">
+          <i class="i i-up"></i>
+        </button>
+        <button class="list-arrow list-arrow--down" type="button" tabindex="-1" aria-hidden="true">
+          <i class="i i-down"></i>
+        </button>
+      </div>
+    </nav>
+    <main class="article">
+      <article class:list={['prose', { 'prose--changelog': entry.data.outline !== undefined }]} set:html={body} />
+      <p class="updated">
         Last updated: <time datetime={updated.toISOString()}>{updated.toLocaleString(copy.lang)}</time>
       </p>
-      <nav>
-        {previous && <a href={docsHref(previous.link)}>{copy.previous}: {previous.text}</a>}
-        {next && <a href={docsHref(next.link)}>{copy.next}: {next.text}</a>}
+      <section class="endcard" data-sketch data-radius="8" data-seed="help">
+        <div>
+          <h2>{copy.helpTitle}</h2>
+          <p>{copy.helpBody}</p>
+        </div>
+        <div class="endcard__actions">
+          <a class="lm-btn lm-btn--secondary lm-btn--sm" href={docsHref(`/${locale}/faq/common-errors`)} data-sketch="wash">
+            {copy.faq}
+          </a>
+          <a class="lm-btn lm-btn--secondary lm-btn--sm" href={FEEDBACK_URL} target="_blank" rel="noreferrer" data-sketch="wash">
+            {copy.feedback}
+          </a>
+        </div>
+      </section>
+      <nav class="pager" aria-label={copy.pagerLabel}>
+        <a href={docsHref(previous.link)} data-sketch>
+          <span>{copy.previous}</span>
+          {previous.text}
+        </a>
+        {
+          next && (
+            <a class="next" href={docsHref(next.link)} data-sketch>
+              <span>{copy.next}</span>
+              {next.text}
+            </a>
+          )
+        }
       </nav>
-    </footer>
-  </main>
+    </main>
+    {
+      outline.length > 0 && (
+        <aside class="doc__toc">
+          <nav class="toc" aria-label={copy.outlineLabel}>
+            {outline.map((item) => (
+              <a class={item.depth > minDepth ? 'lv3' : undefined} href={`#${item.slug}`} data-outline-link>
+                {item.text}
+              </a>
+            ))}
+          </nav>
+        </aside>
+      )
+    }
+  </div>
+  <div class="bottombar">
+    <button type="button" data-open="pages">
+      <i class="i i-list" aria-hidden="true"></i>
+      <span class="lbl">{copy.pages}</span>
+    </button>
+    {
+      outline.length > 0 && (
+        <button type="button" data-open="outline" aria-label={copy.outlineLabel}>
+          <i class="i i-doc" aria-hidden="true"></i>
+          <span class="lbl" data-section />
+        </button>
+      )
+    }
+  </div>
+  <dialog class="sheet" data-sheet="pages" aria-label={copy.pagesLabel}>
+    <div class="sheet__head">
+      <span>{copy.pages}</span>
+      <button class="icon-btn" type="button" data-close aria-label={copy.close}>
+        <i class="i i-x" aria-hidden="true"></i>
+      </button>
+    </div>
+    <PageList locale={locale} route={route} />
+  </dialog>
   {
     outline.length > 0 && (
-      <nav class="doc-outline" aria-label={copy.outlineLabel}>
-        <p>{copy.outlineLabel}</p>
-        {outline.map((heading) => (
-          <a class={`depth-${heading.depth}`} href={`#${heading.slug}`}>
-            {heading.text}
+      <dialog class="sheet" data-sheet="outline" aria-label={copy.outlineLabel}>
+        <div class="sheet__head">
+          <span>{copy.outlineLabel}</span>
+          <button class="icon-btn" type="button" data-close aria-label={copy.close}>
+            <i class="i i-x" aria-hidden="true" />
+          </button>
+        </div>
+        {outline.map((item) => (
+          <a href={`#${item.slug}`} data-outline-link>
+            {item.text}
           </a>
         ))}
-      </nav>
+      </dialog>
     )
   }
+  <script>
+    import '../scripts/doc-nav';
+  </script>
 </DocsLayout>

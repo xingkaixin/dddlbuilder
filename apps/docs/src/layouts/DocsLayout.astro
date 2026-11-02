@@ -1,8 +1,11 @@
 ---
 import '@ddlbuilder/design/tokens.css';
+import '@ddlbuilder/design/sketch.css';
 import '../fonts/roboto-mono/fonts.css';
+import '../styles/icons.css';
 import '../styles/docs.css';
-import { docsHref, LOCALE_KEYS, LOCALES, type LocaleKey } from '../lib/site';
+import Brand from '../components/Brand.astro';
+import { APP_URL, docsHref, FEEDBACK_URL, LOCALE_KEYS, LOCALES, type LocaleKey } from '../lib/site';
 import DocsHead from './DocsHead.astro';
 
 interface Props {
@@ -15,6 +18,7 @@ interface Props {
 
 const { locale, title, description, route = '', alternates = [] } = Astro.props;
 const copy = LOCALES[locale];
+const changelogRoute = `/${locale}/changelog/changelog`;
 const languages = LOCALE_KEYS.map((key) => {
   const alternate = alternates.find((entry) => entry.lang === LOCALES[key].lang);
 
@@ -28,47 +32,67 @@ const languages = LOCALE_KEYS.map((key) => {
     <DocsHead title={title} description={description}><slot name="head" /></DocsHead>
   </head>
   <body data-lang={locale} data-copy={copy.copyCode} data-copied={copy.copied}>
-    <header class="site-header">
-      <a class="site-title" href={docsHref(`/${locale}/`)}>{copy.title}</a>
-      <nav class="site-nav">
-        {copy.nav.map((link) => <a href={docsHref(link.link)}>{link.text}</a>)}
-      </nav>
-      <button class="site-action" type="button" data-search-open>{copy.search}</button>
-      <div class="site-languages">
-        {
-          languages.map((language) => (
-            <a href={language.href} aria-current={language.key === locale ? 'true' : undefined}>
-              {language.label}
-            </a>
-          ))
-        }
+    <div class="float">
+      <div class="float__in">
+        <Brand locale={locale} />
+        <span class="spacer"></span>
+        <button class="icon-btn search-icon" type="button" aria-label={copy.search} data-search-open>
+          <i class="i i-search" aria-hidden="true"></i>
+        </button>
+        <a class="lm-btn lm-btn--primary lm-btn--sm" href={APP_URL} data-sketch="wash">{copy.open}</a>
       </div>
-      <button class="site-action" type="button" data-theme-toggle>{copy.themeToggle}</button>
-    </header>
-    <div class="site-body">
-      <details class="site-sidebar" open>
-        <summary>{copy.nav[1]?.text}</summary>
-        {
-          copy.sidebar.map((group) => (
-            <section>
-              <h2>{group.text}</h2>
-              {group.items.map((item) => (
-                <a href={docsHref(item.link)} aria-current={item.link === route ? 'page' : undefined}>
-                  {item.text}
-                </a>
-              ))}
-            </section>
-          ))
-        }
-      </details>
-      <slot />
     </div>
+    <header class="doc__banner">
+      <div class="doc__top">
+        <Brand locale={locale} />
+        <nav class="nav" aria-label={copy.navLabel}>
+          <a href={docsHref(`/${locale}/`)} aria-current={route && route !== changelogRoute ? 'page' : undefined}>
+            {copy.docs}
+          </a>
+          <a href={docsHref(changelogRoute)} aria-current={route === changelogRoute ? 'page' : undefined}>
+            {copy.changelog}
+          </a>
+        </nav>
+        <span class="spacer"></span>
+        <button class="icon-btn search-icon" type="button" aria-label={copy.search} data-search-open>
+          <i class="i i-search" aria-hidden="true"></i>
+        </button>
+        <details class="lang">
+          <summary class="icon-btn" aria-label={copy.language}>
+            <i class="i i-globe" aria-hidden="true"></i>
+          </summary>
+          <div class="lang__menu">
+            {
+              languages.map((language) => (
+                <a href={language.href} aria-current={language.key === locale ? 'true' : undefined}>
+                  {language.label}
+                </a>
+              ))
+            }
+          </div>
+        </details>
+        <button class="icon-btn" type="button" aria-label={copy.themeToggle} data-theme-toggle>
+          <i class="i i-moon" aria-hidden="true"></i>
+          <i class="i i-sun" aria-hidden="true"></i>
+        </button>
+        <a class="lm-btn lm-btn--primary lm-btn--sm hide-phone" href={APP_URL} data-sketch="wash">{copy.open}</a>
+      </div>
+      <slot name="banner" />
+    </header>
+    <slot />
+    <footer class="foot">
+      <div class="foot__in">
+        <span>{copy.brand}</span>
+        <a href={FEEDBACK_URL} target="_blank" rel="noreferrer">{copy.feedback}</a>
+      </div>
+    </footer>
     <dialog class="search" data-search-dialog data-empty={copy.searchEmpty} data-failed={copy.searchFailed}>
       <input type="search" aria-label={copy.search} placeholder={copy.searchPlaceholder} />
       <ul></ul>
     </dialog>
     <script>
       import '../scripts/site';
+      import '../scripts/sketch';
     </script>
   </body>
 </html>

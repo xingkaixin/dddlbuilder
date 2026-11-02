@@ -1,0 +1,23 @@
+---
+import { docsHref, LOCALES, type LocaleKey } from '../lib/site';
+
+interface Props {
+  locale: LocaleKey;
+  route: string;
+}
+
+const { locale, route } = Astro.props;
+---
+
+{
+  LOCALES[locale].sidebar.map((group) => (
+    <div>
+      <div class="doc-group">{group.text}</div>
+      {group.items.map((item) => (
+        <a class="doc-link" href={docsHref(item.link)} aria-current={item.link === route ? 'page' : undefined}>
+          {item.text}
+        </a>
+      ))}
+    </div>
+  ))
+}

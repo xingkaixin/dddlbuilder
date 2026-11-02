@@ -19,6 +19,13 @@ export function pageTitle(entry: DocEntry): string {
   return entry.data.title ?? firstHeading(entry) ?? LOCALES[localeOf(entry.id)].title;
 }
 
+export function splitHeading(entry: DocEntry) {
+  const html = entry.rendered?.html ?? '';
+  const heading = /<h1[\s\S]*?<\/h1>/.exec(html)?.[0] ?? '';
+
+  return { heading, body: html.replace(heading, '') };
+}
+
 function siteHref(route: string): string {
   return `${SITE_URL}${DOCS_BASE}${route}`;
 }

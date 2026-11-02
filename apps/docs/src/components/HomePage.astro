@@ -1,0 +1,85 @@
+---
+import '@ddlbuilder/design/tiles.css';
+import { TILE_SCENES } from '@ddlbuilder/design/tile-scenes';
+import { alternatesFor, canonicalHref, pageTitle, splitHeading, type DocEntry } from '../lib/docs';
+import { APP_URL, docsHref, HOME_TILES, localeOf, LOCALES, routeOf } from '../lib/site';
+import DocsLayout from '../layouts/DocsLayout.astro';
+
+interface Props {
+  entry: DocEntry;
+  routes: Set<string>;
+}
+
+const COLUMNS = 3;
+const { entry, routes } = Astro.props;
+const { heading, body } = splitHeading(entry);
+const [lead = '', appLink = ''] = body.match(/<p>[\s\S]*?<\/p>/g) ?? [];
+const rest = body.replace(lead, '').replace(appLink, '');
+const locale = localeOf(entry.id);
+const copy = LOCALES[locale];
+const route = routeOf(entry.id);
+const alternates = alternatesFor(route, routes);
+const tiles = HOME_TILES.flatMap((tile, index) => {
+  const text = copy.tiles[index];
+
+  return text ? [{ ...tile, ...text, ...TILE_SCENES[tile.scene], order: index % COLUMNS }] : [];
+});
+---
+
+<DocsLayout
+  locale={locale}
+  route={route}
+  title={`${pageTitle(entry)} | ${copy.title}`}
+  description={entry.data.description ?? copy.description}
+  alternates={alternates}
+>
+  <Fragment slot="head">
+    <link rel="canonical" href={canonicalHref(route)} />
+    {alternates.map((link) => <link rel="alternate" hreflang={link.lang} href={link.href} />)}
+  </Fragment>
+  <div class="hero" slot="banner">
+    <Fragment set:html={heading} />
+    <Fragment set:html={lead} />
+    <div class="hero__cta">
+      <a class="lm-btn lm-btn--primary" href={APP_URL} data-sketch="wash">
+        {copy.open}
+        <i class="i i-arrow" aria-hidden="true"></i>
+      </a>
+      <a class="lm-btn lm-btn--secondary" href={docsHref(`/${locale}/basic/getting-started`)} data-sketch="wash">
+        {copy.start}
+      </a>
+    </div>
+  </div>
+  <main>
+    <section class="site-sec" aria-label={copy.features}>
+      <div class="tile-frame" data-sketch data-radius="8" data-seed="site-grid">
+        <div class="tile-grid">
+          {
+            tiles.map((tile) => (
+              <a class="tile" href={docsHref(`/${locale}${tile.path}`)} data-order={tile.order}>
+                <span class="tile__chip" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path pathLength="1" d={tile.glyph} />
+                  </svg>
+                </span>
+                <span class="tile__art" aria-hidden="true" set:html={tile.art} />
+                <span class="tile__text">
+                  <span class="tile__title">{tile.title}</span>
+                  <span class="tile__desc">{tile.desc}</span>
+                </span>
+              </a>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+    <article class="prose home" set:html={rest} />
+  </main>
+  <script>
+    import { attachTilePlayer } from '@ddlbuilder/design/tile-player';
+
+    for (const tile of document.querySelectorAll<HTMLElement>('.tile')) {
+      attachTilePlayer(tile, Number(tile.dataset.order));
+    }
+  </script>
+</DocsLayout>

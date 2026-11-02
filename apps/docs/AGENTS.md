@@ -10,12 +10,12 @@ This repository uses Astro for the documentation site. The site has no docs fram
   - English: `docs/en/`
   - Japanese: `docs/ja/`
 - Locale sources live under `docs/zh/`, `docs/en/`, and `docs/ja/`.
-- Main sections (nav + sidebar) are:
+- Main sections (sidebar) are:
   - 基础指南 (basic)
   - 高级技巧 (advanced)
   - FAQ (faq)
   - 更新说明 (changelog)
-- Navigation and sidebar are defined in `src/lib/site.ts`.
+- The sidebar and interface copy are defined in `src/lib/site.ts`.
 - Any new or renamed page must be wired in `src/lib/site.ts`, and locale routes must stay consistent.
 - Heading ids and URLs are public: `src/lib/slugify.ts` must keep producing the same ids, and `astro build` fails on a dead internal link or anchor.
 - Markdown stays plain: `::: info|tip|warning Title` containers and `{#custom-id}` headings are the only extensions.

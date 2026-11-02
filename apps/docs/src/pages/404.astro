@@ -6,11 +6,11 @@ const copy = LOCALES.zh;
 ---
 
 <DocsLayout locale="zh" title={`404 | ${copy.title}`} description="Not Found">
-  <main class="doc">
-    <article class="prose">
-      <h1>{copy.notFoundTitle}</h1>
-      <p>{copy.notFoundBody}</p>
-      <p><a href={docsHref('/zh/')}>{copy.notFoundLink}</a></p>
-    </article>
+  <div class="hero" slot="banner">
+    <h1>{copy.notFoundTitle}</h1>
+    <p>{copy.notFoundBody}</p>
+  </div>
+  <main class="prose home">
+    <p><a href={docsHref('/zh/')}>{copy.notFoundLink}</a></p>
   </main>
 </DocsLayout>

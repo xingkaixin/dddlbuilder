@@ -1,5 +1,15 @@
 export const SITE_URL = 'https://ddl.xingkaixin.me';
 export const DOCS_BASE = '/docs';
+export const APP_URL = `${SITE_URL}/`;
+export const FEEDBACK_URL = 'https://my.feishu.cn/share/base/form/shrcnqGnCdcvgRomQ5syagGW2He';
+export const HOME_TILES = [
+  { scene: 'ddl', path: '/basic/getting-started' },
+  { scene: 'import', path: '/advanced/import-and-parse' },
+  { scene: 'er', path: '/advanced/foreign-key-and-er' },
+  { scene: 'compare', path: '/advanced/diff-and-rollback' },
+  { scene: 'publish', path: '/advanced/database-tools' },
+  { scene: 'ai', path: '/advanced/ai-workflow' },
+] as const;
 
 export const LOCALE_KEYS = ['zh', 'en', 'ja'] as const;
 
@@ -20,7 +30,24 @@ interface Locale {
   label: string;
   title: string;
   description: string;
-  nav: SidebarLink[];
+  brand: string;
+  navLabel: string;
+  docs: string;
+  changelog: string;
+  open: string;
+  start: string;
+  home: string;
+  features: string;
+  language: string;
+  feedback: string;
+  faq: string;
+  helpTitle: string;
+  helpBody: string;
+  pages: string;
+  pagesLabel: string;
+  pagerLabel: string;
+  close: string;
+  tiles: { title: string; desc: string }[];
   sidebar: SidebarGroup[];
   outlineLabel: string;
   previous: string;
@@ -223,37 +250,37 @@ const jaSidebar: SidebarGroup[] = [
   },
 ];
 
-const zhNav: SidebarLink[] = [
-  { text: '打开 DDLBuilder', link: `${SITE_URL}/` },
-  { text: '基础指南', link: '/zh/basic/getting-started' },
-  { text: '高级技巧', link: '/zh/advanced/' },
-  { text: '常见问题', link: '/zh/faq/common-errors' },
-  { text: '更新说明', link: '/zh/changelog/changelog' },
-];
-
-const enNav: SidebarLink[] = [
-  { text: 'Open DDLBuilder', link: `${SITE_URL}/` },
-  { text: 'Basic Guide', link: '/en/basic/getting-started' },
-  { text: 'Advanced Guide', link: '/en/advanced/' },
-  { text: 'FAQ', link: '/en/faq/common-errors' },
-  { text: 'Changelog', link: '/en/changelog/changelog' },
-];
-
-const jaNav: SidebarLink[] = [
-  { text: 'DDLBuilder を開く', link: `${SITE_URL}/` },
-  { text: '基本ガイド', link: '/ja/basic/getting-started' },
-  { text: '上級ガイド', link: '/ja/advanced/' },
-  { text: 'よくある質問', link: '/ja/faq/common-errors' },
-  { text: '更新情報', link: '/ja/changelog/changelog' },
-];
-
 export const LOCALES: Record<LocaleKey, Locale> = {
   zh: {
     lang: 'zh-CN',
     label: '中文',
     title: '筑表师文档',
     description: '筑表师使用文档与常见问题',
-    nav: zhNav,
+    brand: '筑表师',
+    navLabel: '文档导航',
+    docs: '文档',
+    changelog: '更新日志',
+    open: '打开筑表师',
+    start: '快速开始',
+    home: '文档首页',
+    features: '主要功能',
+    language: '语言',
+    feedback: '问题反馈',
+    faq: '常见问题',
+    helpTitle: '还需要帮助？',
+    helpBody: '先看常见问题，没有解决再告诉我们。',
+    pages: '页面',
+    pagesLabel: '文档页面',
+    pagerLabel: '翻页',
+    close: '关闭',
+    tiles: [
+      { title: '实时生成 DDL', desc: '改字段，SQL 跟着变。' },
+      { title: '导入已有结构', desc: 'SQL、CSV、Excel、JSON Schema。' },
+      { title: '查看表关系', desc: '在 ER 图里连线建立关系。' },
+      { title: '对比两份结构', desc: '查看差异，导出迁移 SQL。' },
+      { title: '发布数据字典', desc: '生成一个固定链接给团队。' },
+      { title: 'AI 建表', desc: '说出业务，逐项确认结果。' },
+    ],
     sidebar: zhSidebar,
     outlineLabel: '目录',
     previous: '上一页',
@@ -274,7 +301,31 @@ export const LOCALES: Record<LocaleKey, Locale> = {
     label: 'English',
     title: 'DDLBuilder Docs',
     description: 'DDLBuilder usage docs and FAQs',
-    nav: enNav,
+    brand: 'DDLBuilder',
+    navLabel: 'Docs navigation',
+    docs: 'Docs',
+    changelog: 'Changelog',
+    open: 'Open DDLBuilder',
+    start: 'Get started',
+    home: 'Docs home',
+    features: 'Main features',
+    language: 'Language',
+    feedback: 'Feedback',
+    faq: 'FAQ',
+    helpTitle: 'Need more help?',
+    helpBody: 'Start with the FAQ. If that does not solve it, tell us.',
+    pages: 'Pages',
+    pagesLabel: 'Docs pages',
+    pagerLabel: 'Pagination',
+    close: 'Close',
+    tiles: [
+      { title: 'Live DDL', desc: 'Edit a field and the SQL follows.' },
+      { title: 'Import a schema', desc: 'SQL, CSV, Excel, JSON Schema.' },
+      { title: 'See relationships', desc: 'Draw a line in the ER diagram.' },
+      { title: 'Compare schemas', desc: 'Inspect changes, export migration SQL.' },
+      { title: 'Publish a data dictionary', desc: 'One stable link for your team.' },
+      { title: 'AI table design', desc: 'Describe the business, confirm each change.' },
+    ],
     sidebar: enSidebar,
     outlineLabel: 'On this page',
     previous: 'Previous page',
@@ -295,7 +346,31 @@ export const LOCALES: Record<LocaleKey, Locale> = {
     label: '日本語',
     title: 'DDLBuilder ドキュメント',
     description: 'DDLBuilder の使い方とよくある質問',
-    nav: jaNav,
+    brand: 'DDLBuilder',
+    navLabel: 'ドキュメントナビゲーション',
+    docs: 'ドキュメント',
+    changelog: '更新情報',
+    open: 'DDLBuilder を開く',
+    start: 'はじめる',
+    home: 'ドキュメントホーム',
+    features: '主な機能',
+    language: '言語',
+    feedback: 'フィードバック',
+    faq: 'よくある質問',
+    helpTitle: 'さらにサポートが必要ですか？',
+    helpBody: 'まずよくある質問をご覧ください。解決しない場合はお知らせください。',
+    pages: 'ページ',
+    pagesLabel: 'ドキュメントのページ',
+    pagerLabel: 'ページ移動',
+    close: '閉じる',
+    tiles: [
+      { title: 'DDL をその場で生成', desc: 'フィールドを変えると SQL も変わります。' },
+      { title: '既存の構造を取り込む', desc: 'SQL、CSV、Excel、JSON Schema。' },
+      { title: 'テーブルの関係を見る', desc: 'ER 図で線を引いて関係を作ります。' },
+      { title: '2 つの構造を比較', desc: '差分を確認し、移行 SQL を出力します。' },
+      { title: 'データ辞書を公開', desc: 'チームに固定リンクを共有します。' },
+      { title: 'AI でテーブル作成', desc: '業務を伝え、結果を項目ごとに確認します。' },
+    ],
     sidebar: jaSidebar,
     outlineLabel: 'このページの内容',
     previous: '前のページ',
@@ -333,6 +408,15 @@ export function docsHref(route: string): string {
 export function adjacentPages(route: string, locale: LocaleKey) {
   const links = LOCALES[locale].sidebar.flatMap((group) => group.items);
   const index = links.findIndex((link) => link.link === route);
+  const home = { text: LOCALES[locale].home, link: `/${locale}/` };
 
-  return { previous: links[index - 1], next: index < 0 ? undefined : links[index + 1] };
+  return {
+    previous: index > 0 ? (links[index - 1] ?? home) : home,
+    next: index < 0 ? undefined : links[index + 1],
+  };
+}
+
+export function sectionOf(route: string, locale: LocaleKey): string | undefined {
+  return LOCALES[locale].sidebar.find((group) => group.items.some((item) => item.link === route))
+    ?.text;
 }

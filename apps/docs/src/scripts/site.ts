@@ -1,5 +1,6 @@
 import type MiniSearch from 'minisearch';
 import { createTokenizer, SEARCH_FIELDS, SEARCH_STORE_FIELDS } from '../lib/tokenize';
+import { perFrame } from './per-frame';
 
 const THEME_KEY = 'ddlbuilder:theme:v1';
 const MAX_RESULTS = 12;
@@ -100,10 +101,18 @@ function openSearch() {
   input?.select();
 }
 
-document.querySelector('[data-search-open]')?.addEventListener('click', openSearch);
+for (const button of document.querySelectorAll('[data-search-open]')) {
+  button.addEventListener('click', openSearch);
+}
+
+function isTyping(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest('input, textarea') !== null;
+}
 
 document.addEventListener('keydown', (event) => {
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+  const shortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
+
+  if (shortcut || (event.key === '/' && !isTyping(event.target))) {
     event.preventDefault();
     openSearch();
   }
@@ -115,3 +124,53 @@ input?.addEventListener('input', () => {
     showMessage(dialog?.dataset.failed ?? '');
   });
 });
+
+for (const panel of document.querySelectorAll('dialog')) {
+  panel.addEventListener('click', (event) => {
+    const box = panel.getBoundingClientRect();
+
+    const inside =
+      event.clientX >= box.left &&
+      event.clientX <= box.right &&
+      event.clientY >= box.top &&
+      event.clientY <= box.bottom;
+
+    if (!inside) panel.close();
+  });
+}
+
+const languages = document.querySelector<HTMLDetailsElement>('.lang');
+
+document.addEventListener('click', (event) => {
+  if (languages && event.target instanceof Node && !languages.contains(event.target)) {
+    languages.open = false;
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (languages && event.key === 'Escape') languages.open = false;
+});
+
+const banner = document.querySelector('.doc__banner');
+const float = document.querySelector<HTMLElement>('.float');
+
+function syncFloat() {
+  if (!banner || !float) return;
+
+  const past = banner.getBoundingClientRect().bottom <= 0;
+  const { state } = float.dataset;
+
+  if (past && state !== 'in' && state !== 'hold') {
+    float.dataset.state = state === 'out' ? 'hold' : 'in';
+  }
+
+  if (!past && (state === 'in' || state === 'hold')) float.dataset.state = 'out';
+}
+
+float?.addEventListener('animationend', (event) => {
+  if (event.animationName === 'float-out') delete float.dataset.state;
+});
+
+window.addEventListener('scroll', perFrame(syncFloat), { passive: true });
+
+syncFloat();
