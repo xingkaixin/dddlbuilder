@@ -27,6 +27,7 @@ export interface BuildDDLInput {
 }
 
 import { buildSqliteTable } from './sqliteSchema';
+import { DDL_NOTICES } from './ddlNotices';
 
 export const buildDDL = ({
   dbType,
@@ -41,11 +42,11 @@ export const buildDDL = ({
   foreignKeys = [],
 }: BuildDDLInput) => {
   if (!tableName.trim()) {
-    return '-- 请填写表名';
+    return DDL_NOTICES.tableNameRequired;
   }
 
   if (fields.length === 0) {
-    return '-- 请补充字段信息';
+    return DDL_NOTICES.fieldsRequired;
   }
 
   if (dbType === 'sqlite') {
@@ -110,11 +111,11 @@ export const buildViewDDL = (
   const cleanDefinition = definition.trim().replace(/;+\s*$/, '');
 
   if (!cleanViewName) {
-    return '-- 请填写视图名';
+    return DDL_NOTICES.viewNameRequired;
   }
 
   if (!cleanDefinition) {
-    return '-- 请填写视图 SQL';
+    return DDL_NOTICES.viewSqlRequired;
   }
 
   const strategy = DDLStrategyFactory.create(dbType);

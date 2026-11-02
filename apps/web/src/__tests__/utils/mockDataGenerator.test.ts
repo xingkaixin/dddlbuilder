@@ -16,7 +16,7 @@ const createField = (overrides: Partial<NormalizedField> = {}): NormalizedField 
 describe('generateMockData', () => {
   it('returns prompt when no valid fields', () => {
     const result = generateMockData('users', '', [], 'mysql', { rowCount: 3 });
-    expect(result.insertSql).toBe('-- 暂无有效字段');
+    expect(result.insertSql).toBe('');
     expect(result.csv).toBe('');
     expect(result.json).toBe('[]');
   });
@@ -27,7 +27,7 @@ describe('generateMockData', () => {
       createField({ name: '  ', type: 'int' }),
     ];
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 2 });
-    expect(result.insertSql).toBe('-- 暂无有效字段');
+    expect(result.insertSql).toBe('');
   });
 
   it('generates INSERT SQL for MySQL', () => {

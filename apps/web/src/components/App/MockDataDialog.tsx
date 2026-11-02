@@ -97,11 +97,11 @@ export const MockDataDialog = memo<MockDataDialogProps>(
 
     const currentContent = useMemo(() => {
       if (!output) return '';
-      if (format === 'insert-sql') return output.insertSql;
+      if (format === 'insert-sql') return output.insertSql || t('mockData.noValidFields');
       if (format === 'csv') return output.csv;
 
       return output.json;
-    }, [output, format]);
+    }, [output, format, t]);
 
     const handleCopy = useCallback(async () => {
       const copied = await copyText(currentContent);

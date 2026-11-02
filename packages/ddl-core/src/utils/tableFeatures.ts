@@ -5,6 +5,7 @@ import {
   type MysqlPartitionConfig,
 } from '@ddlbuilder/shared-types';
 import { escapeSingleQuotes, formatSqlTableName } from './databaseTypeMapping';
+import { DDL_NOTICES } from './ddlNotices';
 
 export const buildCitusShardingDDL = (tableName: string, config: CitusShardingConfig): string => {
   const cleanTableName = escapeSingleQuotes(formatSqlTableName(tableName, 'postgresql-citus'));
@@ -17,7 +18,7 @@ export const buildCitusShardingDDL = (tableName: string, config: CitusShardingCo
     return `SELECT create_distributed_table('${cleanTableName}', '${escapeSingleQuotes(config.distributionColumn)}');`;
   }
 
-  return '-- 请选择分片字段';
+  return DDL_NOTICES.shardKeyRequired;
 };
 
 export const buildMysqlPartitionClause = (config: MysqlPartitionConfig): string => {

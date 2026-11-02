@@ -912,6 +912,19 @@ export const enUSCommon = {
     emptyDdl: '-- Please fill in table information on the left',
     emptyDcl: '-- Please configure grantees',
     emptyOrm: '-- Please fill in table information on the left',
+    notices: {
+      tableNameRequired: '-- Enter a table name',
+      fieldsRequired: '-- Add at least one field',
+      viewNameRequired: '-- Enter a view name',
+      viewSqlRequired: '-- Enter the view SQL',
+      shardKeyRequired: '-- Select a distribution column',
+      routineNameRequired: '-- Enter a routine name',
+      triggerTableRequired: '-- Enter the trigger table name',
+      hiveRoutineUnsupported: '-- Hive does not support procedure, function or trigger templates',
+      sqliteRoutineUnsupported: '-- SQLite / D1 routine templates are not supported.',
+      procedureBody: '-- Write the procedure logic here',
+      triggerBody: '-- Write the trigger logic here',
+    },
     copyFailed: 'Copy failed, please try again',
     routineKind: 'Template',
     routineName: 'Name',
@@ -1789,6 +1802,7 @@ export const enUSCommon = {
     },
   },
   mockData: {
+    noValidFields: '-- No valid fields',
     title: 'Mock Data Generator',
     description:
       'Intelligently generate test data based on field types and comments. Export as INSERT SQL, CSV, or JSON.',

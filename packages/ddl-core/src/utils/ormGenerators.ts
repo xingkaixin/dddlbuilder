@@ -2,17 +2,18 @@ import type { ORMModelInput, ORMTarget } from '../interfaces/ORMGenerator.js';
 import { ORMGeneratorFactory } from '../factories/ORMGeneratorFactory.js';
 import { mapCanonicalToORMType } from './ormTypeResolver.js';
 import { getForeignKeyIssue } from './foreignKeys.js';
+import { DDL_NOTICES } from './ddlNotices.js';
 
 export const buildORM = (target: ORMTarget, input: ORMModelInput): string => {
   input = { ...input, foreignKeys: input.foreignKeys?.filter((fk) => !fk.logical) };
   const { tableName, fields } = input;
 
   if (!tableName.trim()) {
-    return '-- 请填写表名';
+    return DDL_NOTICES.tableNameRequired;
   }
 
   if (fields.length === 0) {
-    return '-- 请补充字段信息';
+    return DDL_NOTICES.fieldsRequired;
   }
 
   const generator = ORMGeneratorFactory.create(target);

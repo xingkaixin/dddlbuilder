@@ -533,7 +533,7 @@ export function generateMockData(
   const validFields = fields.filter((f) => f.name.trim() !== '');
 
   if (validFields.length === 0) {
-    return { insertSql: '-- 暂无有效字段', csv: '', json: '[]' };
+    return { insertSql: '', csv: '', json: '[]' };
   }
 
   // 生成 rowCount 行数据

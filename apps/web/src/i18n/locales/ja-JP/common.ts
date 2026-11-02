@@ -923,6 +923,20 @@ export const jaJPCommon = {
     emptyDdl: '-- 左側にテーブル情報を入力してください',
     emptyDcl: '-- 被付与者を設定してください',
     emptyOrm: '-- 左側にテーブル情報を入力してください',
+    notices: {
+      tableNameRequired: '-- テーブル名を入力してください',
+      fieldsRequired: '-- フィールドを追加してください',
+      viewNameRequired: '-- ビュー名を入力してください',
+      viewSqlRequired: '-- ビューの SQL を入力してください',
+      shardKeyRequired: '-- 分散列を選択してください',
+      routineNameRequired: '-- ルーチン名を入力してください',
+      triggerTableRequired: '-- トリガー対象のテーブル名を入力してください',
+      hiveRoutineUnsupported:
+        '-- Hive はプロシージャ、関数、トリガーのテンプレートに対応していません',
+      sqliteRoutineUnsupported: '-- SQLite / D1 はルーチンテンプレートに対応していません',
+      procedureBody: '-- ここにプロシージャのロジックを記述します',
+      triggerBody: '-- ここにトリガーのロジックを記述します',
+    },
     copyFailed: 'コピーに失敗しました。もう一度お試しください',
     routineKind: 'テンプレート',
     routineName: '名前',
@@ -1803,6 +1817,7 @@ export const jaJPCommon = {
     },
   },
   mockData: {
+    noValidFields: '-- 有効なフィールドがありません',
     title: 'モックデータジェネレーター',
     description:
       'フィールドタイプとコメントに基づいてテストデータをインテリジェントに生成します。 INSERT SQL、CSV、または JSON としてエクスポートします。',

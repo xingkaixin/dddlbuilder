@@ -1,6 +1,7 @@
 import type { DatabaseType, RoutineTemplateConfig } from '@ddlbuilder/shared-types';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
 import { getDatabaseFamily } from './databaseFamily';
+import { DDL_NOTICES } from './ddlNotices';
 
 const cleanSqlBody = (body: string | undefined, fallback: string) =>
   (body?.trim() || fallback).replace(/;+\s*$/, '');
@@ -11,14 +12,14 @@ export function buildRoutineTemplateDDL(dbType: DatabaseType, config: RoutineTem
   const tableName = cleanName(config.tableName);
   const routineName = cleanName(config.routineName);
 
-  if (dbType === 'sqlite') return '-- SQLite / D1 routine templates are not supported.';
+  if (dbType === 'sqlite') return DDL_NOTICES.sqliteRoutineUnsupported;
 
   if (dbType === 'hive') {
-    return '-- Hive 不支持通用存储过程、函数或触发器模板';
+    return DDL_NOTICES.hiveRoutineUnsupported;
   }
 
   if (!routineName) {
-    return '-- 请填写程序单元名称';
+    return DDL_NOTICES.routineNameRequired;
   }
 
   switch (config.kind) {
@@ -27,15 +28,15 @@ export function buildRoutineTemplateDDL(dbType: DatabaseType, config: RoutineTem
     case 'function':
       return buildFunctionDDL(dbType, routineName, config);
     case 'updated_at_trigger':
-      if (!tableName) return '-- 请填写触发表名';
+      if (!tableName) return DDL_NOTICES.triggerTableRequired;
 
       return buildUpdatedAtTriggerDDL(dbType, routineName, tableName, config.timestampColumn);
     case 'audit_trigger':
-      if (!tableName) return '-- 请填写触发表名';
+      if (!tableName) return DDL_NOTICES.triggerTableRequired;
 
       return buildAuditTriggerDDL(dbType, routineName, tableName, config.auditTableName);
     case 'custom_trigger':
-      if (!tableName) return '-- 请填写触发表名';
+      if (!tableName) return DDL_NOTICES.triggerTableRequired;
 
       return buildCustomTriggerDDL(dbType, routineName, tableName, config.body);
   }
@@ -48,7 +49,7 @@ function buildProcedureDDL(
 ) {
   const family = getDatabaseFamily(dbType);
   const params = cleanName(config.parameters);
-  const body = cleanSqlBody(config.body, '-- 在这里编写过程逻辑');
+  const body = cleanSqlBody(config.body, DDL_NOTICES.procedureBody);
 
   if (family === 'mysql') {
     return `DELIMITER //\nCREATE PROCEDURE ${routineName}(${params})\nBEGIN\n  ${body}\nEND//\nDELIMITER ;`;
@@ -167,7 +168,7 @@ function buildCustomTriggerDDL(
   const family = getDatabaseFamily(dbType);
   const strategy = DDLStrategyFactory.create(dbType);
   const table = strategy.formatTableName(tableName);
-  const triggerBody = cleanSqlBody(body, '-- 在这里编写触发器逻辑');
+  const triggerBody = cleanSqlBody(body, DDL_NOTICES.triggerBody);
 
   if (family === 'mysql') {
     return `DELIMITER //\nCREATE TRIGGER ${routineName}\nBEFORE INSERT ON ${table}\nFOR EACH ROW\nBEGIN\n  ${triggerBody};\nEND//\nDELIMITER ;`;

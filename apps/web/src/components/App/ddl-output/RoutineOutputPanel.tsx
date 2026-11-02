@@ -2,6 +2,7 @@ import { copyText } from '@/utils/clipboard';
 import { useCallback, useMemo, useReducer } from 'react';
 import type { DatabaseType, RoutineTemplateKind } from '@ddlbuilder/shared-types';
 import { buildRoutineTemplateDDL } from '@ddlbuilder/ddl-core';
+import { localizeDdlNotices } from '@/utils/ddlNotices';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/select';
@@ -56,16 +57,19 @@ export function RoutineOutputPanel({
 
   const code = useMemo(
     () =>
-      buildRoutineTemplateDDL(dbType, {
-        kind,
-        routineName: name,
-        tableName: resolvedTableName,
-        parameters,
-        returnType,
-        body,
-        timestampColumn,
-        auditTableName,
-      }),
+      localizeDdlNotices(
+        buildRoutineTemplateDDL(dbType, {
+          kind,
+          routineName: name,
+          tableName: resolvedTableName,
+          parameters,
+          returnType,
+          body,
+          timestampColumn,
+          auditTableName,
+        }),
+        t,
+      ),
     [
       auditTableName,
       body,
@@ -75,6 +79,7 @@ export function RoutineOutputPanel({
       parameters,
       resolvedTableName,
       returnType,
+      t,
       timestampColumn,
     ],
   );

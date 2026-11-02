@@ -1,5 +1,6 @@
 import { copyText } from '@/utils/clipboard';
 import { useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import type {
   DatabaseType,
   NormalizedField,
@@ -12,6 +13,7 @@ import type {
   SchemaObjectType,
 } from '@ddlbuilder/shared-types';
 import { buildDDL, buildDCL, buildViewDDL } from '@ddlbuilder/ddl-core';
+import { localizeDdlNotices } from '@/utils/ddlNotices';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 
 export interface UseSqlGenerationReturn {
@@ -38,6 +40,8 @@ export function useSqlGeneration(
   tableMiscConfig?: TableMiscConfig,
   foreignKeys?: ForeignKeyDefinition[],
 ): UseSqlGenerationReturn {
+  const { t } = useTranslation();
+
   const qualifiedTableName = useMemo(
     () => buildQualifiedTableName(schemaName, tableName, dbType),
     [schemaName, tableName, dbType],
@@ -45,20 +49,23 @@ export function useSqlGeneration(
 
   const generatedSql = useMemo(
     () =>
-      objectType === 'view'
-        ? buildViewDDL(dbType, qualifiedTableName, viewDefinition, viewCreateOrReplace)
-        : buildDDL({
-            dbType,
-            tableName: qualifiedTableName,
-            tableComment,
-            fields: normalizedFields,
-            indexes,
-            citusShardingConfig,
-            mysqlPartitionConfig,
-            tableMiscConfig,
-            sqlFormatMode,
-            foreignKeys,
-          }),
+      localizeDdlNotices(
+        objectType === 'view'
+          ? buildViewDDL(dbType, qualifiedTableName, viewDefinition, viewCreateOrReplace)
+          : buildDDL({
+              dbType,
+              tableName: qualifiedTableName,
+              tableComment,
+              fields: normalizedFields,
+              indexes,
+              citusShardingConfig,
+              mysqlPartitionConfig,
+              tableMiscConfig,
+              sqlFormatMode,
+              foreignKeys,
+            }),
+        t,
+      ),
     [
       objectType,
       dbType,
@@ -73,6 +80,7 @@ export function useSqlGeneration(
       mysqlPartitionConfig,
       tableMiscConfig,
       foreignKeys,
+      t,
     ],
   );
 
@@ -82,13 +90,13 @@ export function useSqlGeneration(
   );
 
   const copySql = useCallback(
-    () => copyText(generatedSql || '-- 请在左侧填写表信息'),
-    [generatedSql],
+    () => copyText(generatedSql || t('ddlOutput.emptyDdl')),
+    [generatedSql, t],
   );
 
   const copyDcl = useCallback(
-    () => copyText(generatedDcl || '-- 请在下方配置授权对象'),
-    [generatedDcl],
+    () => copyText(generatedDcl || t('ddlOutput.emptyDcl')),
+    [generatedDcl, t],
   );
 
   return {

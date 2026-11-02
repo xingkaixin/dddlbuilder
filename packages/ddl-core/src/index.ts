@@ -1,5 +1,6 @@
 export { buildDDL, buildDCL, buildViewDDL, type BuildDDLInput } from './utils/ddlGenerators.js';
 export { buildRoutineTemplateDDL } from './utils/routineTemplates.js';
+export { DDL_NOTICES } from './utils/ddlNotices.js';
 export {
   getDatabaseFamily,
   quoteIdentifier,
