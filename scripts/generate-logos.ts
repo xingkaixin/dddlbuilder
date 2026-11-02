@@ -1,85 +1,48 @@
 import sharp from 'sharp';
-import fs from 'node:fs';
 import path from 'node:path';
 
-// SVG 文件路径
-const svgPath = path.join(process.cwd(), 'public/logo.svg');
-const publicDir = path.join(process.cwd(), 'public');
+const sourcePath = path.join(process.cwd(), 'apps/web/src/assets/brand/logo.webp');
+const publicDir = path.join(process.cwd(), 'apps/web/public');
+const docsPublicDir = path.join(process.cwd(), 'apps/docs/public');
 
-// 需要生成的尺寸
-const sizes = [
-  { name: 'logo.png', size: 120 },
-  { name: 'favicon-16x16.png', size: 16 },
-  { name: 'favicon-32x32.png', size: 32 },
-  { name: 'favicon-192.png', size: 192 },
-  { name: 'favicon-512.png', size: 512 },
-  { name: 'apple-touch-icon.png', size: 180 },
+// 16/32 像素放不下整幅图，只保留鲸鱼的脸。
+const faceCrop = { left: 300, top: 300, width: 954, height: 954 };
+
+const icons = [
+  { dir: publicDir, name: 'logo.png', size: 120, rounded: true },
+  { dir: docsPublicDir, name: 'logo.png', size: 120, rounded: true },
+  { dir: publicDir, name: 'favicon-16x16.png', size: 16, rounded: true, crop: faceCrop },
+  { dir: publicDir, name: 'favicon-32x32.png', size: 32, rounded: true, crop: faceCrop },
+  { dir: publicDir, name: 'favicon-192.png', size: 192 },
+  { dir: publicDir, name: 'favicon-512.png', size: 512 },
+  { dir: publicDir, name: 'apple-touch-icon.png', size: 180 },
 ];
 
-const ogImage = {
-  name: 'og-image.png',
-  width: 1200,
-  height: 630,
-  logoSize: 280,
-  background: '#F8F6F0',
-};
+function roundedMask(size: number) {
+  const radius = Math.round(size * 0.2);
+
+  return Buffer.from(
+    `<svg width="${size}" height="${size}"><rect width="${size}" height="${size}" rx="${radius}" /></svg>`,
+  );
+}
 
 async function generateLogos() {
   try {
-    // 确保读取 SVG 文件
-    const svgBuffer = fs.readFileSync(svgPath);
+    for (const { dir, name, size, rounded, crop } of icons) {
+      const image = sharp(sourcePath);
 
-    // 为每个尺寸生成 PNG
-    for (const { name, size } of sizes) {
-      await sharp(svgBuffer)
-        .resize(size, size)
-        .png({
-          quality: 100,
-          compressionLevel: 9,
-          adaptiveFiltering: true,
-        })
-        .toFile(path.join(publicDir, name));
+      if (crop) image.extract(crop);
 
-      console.log(`✅ 生成 ${name} (${size}x${size})`);
+      image.resize(size, size);
+
+      if (rounded) image.composite([{ input: roundedMask(size), blend: 'dest-in' }]);
+
+      await image
+        .png({ compressionLevel: 9, adaptiveFiltering: true })
+        .toFile(path.join(dir, name));
+
+      console.log(`✅ 生成 ${path.relative(process.cwd(), path.join(dir, name))}`);
     }
-
-    const logoBuffer = await sharp(svgBuffer)
-      .resize(ogImage.logoSize, ogImage.logoSize, {
-        fit: 'contain',
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      })
-      .png({
-        quality: 100,
-        compressionLevel: 9,
-        adaptiveFiltering: true,
-      })
-      .toBuffer();
-
-    await sharp({
-      create: {
-        width: ogImage.width,
-        height: ogImage.height,
-        channels: 4,
-        background: ogImage.background,
-      },
-    })
-      .composite([
-        {
-          input: logoBuffer,
-          left: Math.round((ogImage.width - ogImage.logoSize) / 2),
-          top: Math.round((ogImage.height - ogImage.logoSize) / 2),
-        },
-      ])
-      .png({
-        quality: 100,
-        compressionLevel: 9,
-        adaptiveFiltering: true,
-      })
-      .toFile(path.join(publicDir, ogImage.name));
-
-    console.log(`✅ 生成 ${ogImage.name} (${ogImage.width}x${ogImage.height})`);
-
-    console.log('🎉 所有 logo 文件生成完成！');
   } catch (error) {
     console.error('❌ 生成 logo 时出错:', error);
     process.exit(1);

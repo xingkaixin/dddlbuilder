@@ -101,7 +101,7 @@ export const Header = memo<HeaderProps>(({ onPlayFireworks }) => {
       <header className="@container/header relative isolate flex h-16 shrink-0 items-center gap-2 bg-background px-3 @min-[720px]/header:gap-4 @min-[720px]/header:px-5">
         <div className="flex shrink-0 items-center gap-2">
           <img
-            src="/logo.svg"
+            src="/logo.png"
             alt={`${t('header.appName')} Logo`}
             width={32}
             height={32}

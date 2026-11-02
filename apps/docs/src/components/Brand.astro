@@ -9,17 +9,6 @@ const { locale } = Astro.props;
 ---
 
 <a class="brand" href={docsHref(`/${locale}/`)}>
-  <svg viewBox="0 0 120 120" aria-hidden="true">
-    <g transform="translate(0 -2)" fill="var(--vermilion)">
-      <path d="M22 56 58 77v30L22 86Z" opacity=".95"></path>
-      <path d="M62 77 98 56v8L62 85Z" opacity=".9"></path>
-      <path d="M62 88 98 67v8L62 96Z" opacity=".65"></path>
-      <path d="M62 99 98 78v8l-36 21Z" opacity=".4"></path>
-      <path d="M60 25 98 47 60 69 22 47Z" opacity=".15"></path>
-      <path d="M47.33 31 60 38.33v16L47.33 47Z" opacity=".9"></path>
-      <path d="M60 38.33 72.66 31v16L60 54.33Z" opacity=".6"></path>
-      <path d="M60 23.66 72.66 31 60 38.33 47.33 31Z"></path>
-    </g>
-  </svg>
+  <img src={docsHref('/logo.png')} alt="" width="32" height="32" />
   <span>{LOCALES[locale].brand}</span>
 </a>
