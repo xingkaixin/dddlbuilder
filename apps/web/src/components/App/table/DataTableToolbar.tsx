@@ -28,7 +28,8 @@ import {
   TableProperties,
 } from '@/components/icons';
 import { COLUMN_HEADERS } from '@/utils/constants';
-import { FIELD_COLUMNS, usePreferencesStore, type FieldColumn } from '@/stores/preferencesStore';
+import { FIELD_COLUMNS, usePreferencesStore } from '@/stores/preferencesStore';
+import { FIELD_COLUMN_LABELS } from './fieldColumnLabels';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import type { AICommentMode } from '@ddlbuilder/shared-types';
@@ -52,14 +53,6 @@ interface DataTableToolbarProps {
 }
 
 const toolsOpenReducer = (open: boolean) => !open;
-
-const FIELD_COLUMN_LABELS = {
-  fieldComment: 'fieldComment',
-  fieldType: 'fieldType',
-  nullable: 'nullable',
-  default: 'defaultValue',
-  onUpdate: 'onUpdate',
-} as const satisfies Record<FieldColumn, string>;
 
 function FieldColumnsMenu() {
   const { t } = useTranslation();

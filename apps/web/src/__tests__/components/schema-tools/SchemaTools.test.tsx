@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, cleanup, screen, waitFor, within } from '@/__tests__/utils/test-utils';
-import { SchemaToolsButton } from '@/components/schema-tools/SchemaToolsButton';
+import { fireEvent, cleanup, screen, waitFor } from '@/__tests__/utils/test-utils';
+import ToolsPage from '@/components/schema-tools/ToolsPage';
 import { DictionaryTool } from '@/components/schema-tools/DictionaryTool';
 import { SchemaCompareTool } from '@/components/schema-tools/SchemaCompareTool';
 import { RelationalSeedTool } from '@/components/schema-tools/RelationalSeedTool';
@@ -34,14 +34,20 @@ afterEach(() => {
 });
 
 describe('database tool workflows', () => {
-  it('opens tools from an empty workspace and closes the dialog', async () => {
-    render(<SchemaToolsButton />);
-    fireEvent.click(screen.getByRole('button', { name: '数据库工具' }));
-    const dialog = await screen.findByRole('dialog', { name: '数据库工具' });
-    fireEvent.click(within(dialog).getByRole('tab', { name: '结构对比' }));
-    expect(screen.getByLabelText('当前结构')).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole('button', { name: /close/i }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  it('opens the routed tool and falls back to the list for an unknown tool', async () => {
+    const actions = {
+      onOpenFieldTemplates: vi.fn(),
+      onOpenTableTemplates: vi.fn(),
+      onOpenAIGenerate: vi.fn(),
+    };
+    render(<ToolsPage toolId="compare" actions={actions} />);
+    expect(await screen.findByLabelText('当前结构')).toBeInTheDocument();
+    cleanup();
+    render(<ToolsPage toolId="missing" actions={actions} />);
+    expect(screen.getByRole('link', { name: /结构对比/ })).toHaveAttribute(
+      'href',
+      '/tools/compare',
+    );
   });
 
   it('exports all selected tables even when the dictionary is filtered', async () => {

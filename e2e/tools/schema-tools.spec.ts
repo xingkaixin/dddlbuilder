@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { SqlParser } from '../../packages/ddl-core/src/parser/SqlParser';
+import { openTool } from '../utils';
 
 const sql = `CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(30) COMMENT '用户名');
 CREATE TABLE orders (id INT PRIMARY KEY, user_id INT NOT NULL, amount DECIMAL(10,2), CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id));`;
@@ -19,29 +20,26 @@ async function openTools(page: Page) {
     await route.fulfill({ json: result });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: '数据库工具', exact: true }).first().click();
 
-  return page.getByRole('dialog', { name: '数据库工具', exact: true });
+  return openTool(page, '数据字典');
 }
 
-test('窄屏切换工具从顶部开始，并支持键盘导航 @tools', async ({ page }) => {
+test('窄屏工具页可用键盘打开工具，内容不横向溢出 @tools', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const dialog = await openTools(page);
-  await expect(dialog.getByRole('tab')).toHaveCount(11);
-  await dialog.getByText('从表结构开始', { exact: true }).scrollIntoViewIfNeeded();
-  await expect(dialog.getByRole('heading', { name: '数据字典', exact: true })).not.toBeInViewport();
-  await dialog.getByRole('tab', { name: '关联测试数据', exact: true }).click();
-  await expect(dialog.getByRole('heading', { name: '关联测试数据', exact: true })).toBeInViewport();
-  await dialog.getByRole('tab', { name: '关联测试数据', exact: true }).press('ArrowDown');
-  await expect(dialog.getByRole('tab', { name: '业务数据导入', exact: true })).toBeFocused();
-  await dialog.getByRole('tab', { name: '业务数据导入', exact: true }).press('Enter');
-  await expect(dialog.getByRole('heading', { name: '业务数据导入', exact: true })).toBeInViewport();
+  await page.goto('/tools');
+  const main = page.getByRole('main');
+  await expect(main.getByRole('link')).toHaveCount(11);
+  await main.getByRole('link', { name: /^关联测试数据/ }).press('Enter');
+  await expect(main.getByRole('heading', { name: '关联测试数据', exact: true })).toBeInViewport();
+  await expect(page).toHaveURL(/\/tools\/seed$/);
 
-  const width = await dialog.evaluate((element) => ({
+  const width = await main.evaluate((element) => ({
     content: element.scrollWidth,
     viewport: element.clientWidth,
   }));
   expect(width.content).toBe(width.viewport);
+  await page.goBack();
+  await expect(main.getByRole('heading', { name: '数据库工具', exact: true })).toBeVisible();
 });
 
 test('数据字典可直接从 SQL 导出并离线搜索 @tools', async ({ page, context }, testInfo) => {
@@ -77,7 +75,7 @@ test('数据字典可直接从 SQL 导出并离线搜索 @tools', async ({ page,
 
 test('两份 SQL 支持重命名确认，并在输入变化后清除结果 @tools', async ({ page }) => {
   const dialog = await openTools(page);
-  await dialog.getByRole('tab', { name: '结构对比', exact: true }).click();
+  await openTool(page, '结构对比');
   await dialog
     .getByLabel('当前结构', { exact: true })
     .fill('CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(30));');
@@ -98,9 +96,8 @@ test('两份 SQL 支持重命名确认，并在输入变化后清除结果 @tool
 });
 
 test('关联测试数据可重复导出，缺少父表时阻止生成 @tools', async ({ page }) => {
-  const tools = await openTools(page);
-  await tools.getByRole('tab', { name: '关联测试数据', exact: true }).click();
-  const dialog = tools.getByRole('tabpanel', { name: '关联测试数据', exact: true });
+  await openTools(page);
+  const dialog = await openTool(page, '关联测试数据');
   await dialog.getByLabel('数据来源', { exact: true }).selectOption('sql');
   await dialog.getByLabel('表结构 SQL', { exact: true }).fill(sql);
   await dialog.getByRole('button', { name: '解析 SQL', exact: true }).click();
@@ -131,7 +128,7 @@ test('结构快照可刷新并带出变化报告 @tools', async ({ page }, testI
   await dialog.getByRole('button', { name: '导出结构快照', exact: true }).click();
   const path = testInfo.outputPath('baseline.json');
   await (await downloadPromise).saveAs(path);
-  await dialog.getByRole('tab', { name: '结构刷新', exact: true }).click();
+  await openTool(page, '结构刷新');
   await dialog.getByLabel('原有结构快照文件', { exact: true }).setInputFiles(path);
   await dialog.getByLabel('数据来源', { exact: true }).selectOption('sql');
   await dialog
@@ -144,10 +141,9 @@ test('结构快照可刷新并带出变化报告 @tools', async ({ page }, testI
   expect(await readFile(await (await refreshed).path(), 'utf8')).toContain('BIGINT');
   await page.screenshot({ path: testInfo.outputPath('refresh-desktop.png') });
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(dialog.getByRole('tab', { name: '迁移兼容性' })).toBeVisible();
+  await expect(dialog).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('refresh-mobile.png') });
-  await dialog.getByRole('tab', { name: '迁移兼容性' }).click();
-  const assessment = dialog.getByRole('tabpanel', { name: '迁移兼容性' });
+  const assessment = await openTool(page, '迁移兼容性');
   await assessment.getByLabel('数据来源', { exact: true }).selectOption('sql');
   await assessment
     .getByLabel('表结构 SQL', { exact: true })
@@ -159,9 +155,8 @@ test('结构快照可刷新并带出变化报告 @tools', async ({ page }, testI
 });
 
 test('业务测试场景保存后可导入并重复生成 @tools', async ({ page }) => {
-  const dialog = await openTools(page);
-  await dialog.getByRole('tab', { name: '关联测试数据', exact: true }).click();
-  const seed = dialog.getByRole('tabpanel', { name: '关联测试数据', exact: true });
+  await openTools(page);
+  const seed = await openTool(page, '关联测试数据');
   await seed.getByLabel('数据来源', { exact: true }).selectOption('sql');
   await seed.getByLabel('表结构 SQL', { exact: true }).fill(sql);
   await seed.getByRole('button', { name: '解析 SQL', exact: true }).click();

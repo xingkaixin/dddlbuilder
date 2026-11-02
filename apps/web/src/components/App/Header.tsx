@@ -1,19 +1,13 @@
 import { memo } from 'react';
-import { createPortal } from 'react-dom';
-import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import packageInfo from '../../../package.json';
 import {
   CircleHelp,
   Loader2,
   BookOpen,
+  LayoutGrid,
   LogIn,
-  LogOut,
   Settings,
   MessageCircle,
-  Languages,
-  Laptop,
-  Moon,
-  Sun,
   Table,
   Waypoints,
 } from '@/components/icons';
@@ -27,70 +21,50 @@ import {
   useAuthDialog,
   useAuthIdentity,
 } from '@/auth/AuthSessionProvider';
+import { followAppLink } from '@/lib/appNavigation';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/useToast';
+import { useAppRoute } from '@/hooks/useAppRoute';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useTheme } from 'next-themes';
-import { useThemeTransition } from './hooks/useThemeTransition';
 import { WorkspaceYDocStatus } from './WorkspaceYDocStatus';
-import { SchemaToolsButton } from '@/components/schema-tools/SchemaToolsButton';
 
 const navItemClass =
-  'inline-flex h-[38px] items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm text-muted-foreground transition-colors hover:text-foreground';
+  'inline-flex h-[38px] items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+const NAV_ITEMS = [
+  { view: 'tables', href: '/', label: 'header.nav.tables', icon: Table },
+  { view: 'er', href: '/er', label: 'header.nav.er', icon: Waypoints },
+  { view: 'tools', href: '/tools', label: 'header.nav.tools', icon: LayoutGrid },
+] as const;
 
 const FEEDBACK_URL = 'https://my.feishu.cn/share/base/form/shrcnqGnCdcvgRomQ5syagGW2He';
 
 interface HeaderProps {
-  onOpenSettings: () => void;
-  onOpenErDiagram?: () => void;
   onPlayFireworks?: () => void;
 }
 
-export const Header = memo<HeaderProps>(({ onOpenSettings, onOpenErDiagram, onPlayFireworks }) => {
+export const Header = memo<HeaderProps>(({ onPlayFireworks }) => {
   const { t } = useTranslation();
-  const { locale, setLocale } = useLocale();
-  const { success, error } = useToast();
+  const { locale } = useLocale();
+  const { view } = useAppRoute();
   const docsUrl = getDocsUrl(locale);
   const authIdentity = useAuthIdentity();
   const authActions = useAuthActions();
   const authDialog = useAuthDialog();
   const authSession = { ...authIdentity, ...authActions, ...authDialog };
   const authCredits = useAuthCredits();
-  const { theme, resolvedTheme, setTheme } = useTheme();
 
-  const selectedTheme: 'system' | 'light' | 'dark' =
-    theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system';
-  const { phase, isTransitioning, targetEffectiveTheme, runThemeTransition } = useThemeTransition({
-    theme: selectedTheme,
-    resolvedTheme,
-    setTheme,
-  });
   const actionBtnClass =
-    'group inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:bg-primary/10 hover:text-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
+    'group inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-primary transition-all duration-200 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
   const ghostIconBtnClass =
-    'inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-60';
-  const localeLabels: Record<AppLocale, string> = {
-    'zh-CN': t('locale.zhCN'),
-    'en-US': t('locale.enUS'),
-    'ja-JP': t('locale.jaJP'),
-  };
-  const themeLabels = {
-    system: t('theme.system'),
-    light: t('theme.light'),
-    dark: t('theme.dark'),
-  };
+    'inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+  const accountLabel = authSession.name ?? authSession.email ?? t('header.auth.account');
+
   const userInitials = (
     authSession.name?.trim() ||
     authSession.email?.trim() ||
@@ -98,29 +72,6 @@ export const Header = memo<HeaderProps>(({ onOpenSettings, onOpenErDiagram, onPl
   )
     .slice(0, 2)
     .toUpperCase();
-  const themeOverlay =
-    phase === 'wipe' || phase === 'fade' ? (
-      <div
-        aria-hidden
-        data-testid="theme-transition-overlay"
-        className={`theme-transition-overlay ${
-          phase === 'wipe' ? 'theme-transition-overlay--wipe' : 'theme-transition-overlay--fade'
-        } ${
-          targetEffectiveTheme === 'dark'
-            ? 'theme-transition-overlay--to-dark'
-            : 'theme-transition-overlay--to-light'
-        }`}
-      />
-    ) : null;
-
-  const handleSignOut = async () => {
-    try {
-      await authSession.signOut();
-      success(t('header.auth.signedOut'));
-    } catch (err) {
-      error(err instanceof Error ? err.message : t('header.auth.signOutFailed'));
-    }
-  };
 
   return (
     <>
@@ -158,15 +109,19 @@ export const Header = memo<HeaderProps>(({ onOpenSettings, onOpenErDiagram, onPl
         </div>
         <span aria-hidden className="h-7 w-px shrink-0 bg-border" />
         <nav className="flex min-w-0 items-center gap-1" aria-label={t('header.navLabel')}>
-          <span aria-current="page" className={cn(navItemClass, 'lm-hatch text-foreground')}>
-            <Table className="h-4 w-4" aria-hidden />
-            <span className="hidden @min-[860px]/header:inline">{t('header.nav.tables')}</span>
-          </span>
-          <button type="button" className={navItemClass} onClick={onOpenErDiagram}>
-            <Waypoints className="h-4 w-4" aria-hidden />
-            <span className="hidden @min-[860px]/header:inline">{t('header.nav.er')}</span>
-          </button>
-          <SchemaToolsButton compact />
+          {NAV_ITEMS.map(({ view: itemView, href, label, icon: Icon }) => (
+            <a
+              key={itemView}
+              href={href}
+              aria-label={t(label)}
+              aria-current={view === itemView ? 'page' : undefined}
+              className={cn(navItemClass, view === itemView && 'lm-hatch text-foreground')}
+              onClick={(event) => followAppLink(event, href)}
+            >
+              <Icon className="h-4 w-4" aria-hidden />
+              <span className="hidden @min-[860px]/header:inline">{t(label)}</span>
+            </a>
+          ))}
         </nav>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
           {authSession.workspaceScope ? <WorkspaceYDocStatus /> : null}
@@ -180,85 +135,16 @@ export const Header = memo<HeaderProps>(({ onOpenSettings, onOpenErDiagram, onPl
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className={ghostIconBtnClass}
-                    aria-label={t('header.moreActions')}
-                  >
+                  <button type="button" className={ghostIconBtnClass} aria-label={t('header.help')}>
                     <CircleHelp className="h-5 w-5" aria-hidden />
                   </button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{t('header.moreActions')}</p>
+                <p>{t('header.help')}</p>
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" className="w-52" finalFocus={false}>
-              <DropdownMenuGroup fluidHover>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Languages className="h-4 w-4" aria-hidden />
-                    <span className="min-w-0 flex-1">{t('locale.label')}</span>
-                    <span className="text-xs text-muted-foreground">{localeLabels[locale]}</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-36">
-                    <DropdownMenuRadioGroup
-                      value={locale}
-                      onValueChange={(value) => {
-                        if (value === 'zh-CN' || value === 'en-US' || value === 'ja-JP') {
-                          setLocale(value);
-                        }
-                      }}
-                    >
-                      <DropdownMenuRadioItem value="zh-CN">
-                        {t('locale.zhCN')}
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="en-US">
-                        {t('locale.enUS')}
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="ja-JP">
-                        {t('locale.jaJP')}
-                      </DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    {selectedTheme === 'dark' ? (
-                      <Moon className="h-4 w-4" aria-hidden />
-                    ) : selectedTheme === 'light' ? (
-                      <Sun className="h-4 w-4" aria-hidden />
-                    ) : (
-                      <Laptop className="h-4 w-4" aria-hidden />
-                    )}
-                    <span className="min-w-0 flex-1">{t('theme.label')}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {themeLabels[selectedTheme]}
-                    </span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-36">
-                    <DropdownMenuRadioGroup
-                      value={selectedTheme}
-                      onValueChange={(value) => {
-                        if (value === 'system' || value === 'light' || value === 'dark') {
-                          runThemeTransition(value);
-                        }
-                      }}
-                    >
-                      <DropdownMenuRadioItem value="system" disabled={isTransitioning}>
-                        {t('theme.system')}
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="light" disabled={isTransitioning}>
-                        {t('theme.light')}
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="dark" disabled={isTransitioning}>
-                        {t('theme.dark')}
-                      </DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
               <DropdownMenuGroup fluidHover>
                 <DropdownMenuItem asChild>
                   <a href={docsUrl} target="_blank" rel="noopener noreferrer">
@@ -278,31 +164,25 @@ export const Header = memo<HeaderProps>(({ onOpenSettings, onOpenErDiagram, onPl
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
+          <a
+            href="/settings"
+            className={cn(ghostIconBtnClass, view === 'settings' && 'text-foreground')}
+            aria-label={t('header.auth.settings')}
+            aria-current={view === 'settings' ? 'page' : undefined}
+            title={t('header.auth.settings')}
+            onClick={(event) => followAppLink(event, '/settings')}
+          >
+            <Settings className="h-5 w-5" aria-hidden />
+          </a>
           {authSession.status === 'signed_in' ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  title={authSession.name ?? authSession.email ?? t('header.auth.account')}
-                >
-                  {userInitials}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-48">
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                  {authSession.name ?? authSession.email ?? t('header.auth.account')}
-                </div>
-                <DropdownMenuItem onClick={onOpenSettings}>
-                  <Settings className="h-4 w-4" aria-hidden />
-                  {t('header.auth.settings')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4" aria-hidden />
-                  {t('header.auth.signOut')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <a
+              href="/settings"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              title={accountLabel}
+              onClick={(event) => followAppLink(event, '/settings')}
+            >
+              {userInitials}
+            </a>
           ) : (
             <button
               type="button"
@@ -321,9 +201,6 @@ export const Header = memo<HeaderProps>(({ onOpenSettings, onOpenErDiagram, onPl
         </div>
         <span aria-hidden className="lm-rule" />
       </header>
-      {themeOverlay && typeof document !== 'undefined'
-        ? createPortal(themeOverlay, document.body)
-        : null}
     </>
   );
 });

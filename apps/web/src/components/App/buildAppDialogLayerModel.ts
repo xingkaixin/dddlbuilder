@@ -52,7 +52,6 @@ interface BuildAppDialogLayerModelParams {
   handleCopyDiff: () => void;
   onBatchImportComplete: () => void;
   handleRollbackVersion: (state: PersistedState) => void;
-  handleSelectTableFromEr: (state: PersistedState) => void;
 }
 
 export function buildAppDialogLayerModel({
@@ -77,7 +76,6 @@ export function buildAppDialogLayerModel({
   onBatchImportComplete,
   handleCopyDiff,
   handleRollbackVersion,
-  handleSelectTableFromEr,
 }: BuildAppDialogLayerModelParams) {
   const { editor, ui, tableOptions } = domains;
   const { persistenceStatus, tables, folders, scope: workspaceScope } = workspaceController;
@@ -102,7 +100,6 @@ export function buildAppDialogLayerModel({
 
   return {
     webMcpDialog,
-    userSettings: { open: ui.isUserSettingsOpen, onOpenChange: ui.setIsUserSettingsOpen },
     saveObjectType: editor.objectType,
     saveDialogIsUpdate: derived.hasLoadedTable,
     globalDialogs: {
@@ -240,14 +237,6 @@ export function buildAppDialogLayerModel({
         schemaName: editor.schemaName,
         dbType: editor.dbType,
         fields: schemaController.normalizedFields,
-      },
-      erDiagramDialogProps: {
-        open: ui.isErDialogOpen,
-        onOpenChange: ui.setIsErDialogOpen,
-        onSelectTable: handleSelectTableFromEr,
-        saveTable: tables.saveTable,
-        overwriteTable: tables.overwriteTable,
-        loadTables: tables.loadTables,
       },
       emptyTrashDialog: {
         open: trashActions.isEmptyTrashDialogOpen,

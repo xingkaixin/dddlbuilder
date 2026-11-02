@@ -18,7 +18,7 @@ test('Logical relationships persist without adding SQL constraints @panels', asy
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByLabel('保存名称')).toBeHidden();
   await openTableAction(page, 'ER 关系图');
-  const diagram = page.getByRole('dialog', { name: 'ER 关系图' });
+  const diagram = page.getByRole('main');
   const node = diagram.locator('.react-flow__node').filter({ hasText: 'HYDRATION_CHECK' });
   await node
     .locator('.react-flow__handle.source[data-handleid="parent_id"]')
@@ -36,8 +36,9 @@ test('Logical relationships persist without adding SQL constraints @panels', asy
     'stroke-dasharray',
     '6px, 4px',
   );
-  await page.keyboard.press('Escape');
   await page.reload();
+  await expect(diagram.getByText(/逻辑关系 · N:1/)).toBeVisible();
+  await page.goBack();
   await page
     .getByTestId('workspace-sidebar')
     .getByRole('button', { name: /^Business links(?: \*)?$/ })

@@ -76,6 +76,25 @@ export async function openTableAction(page: Page, name: string | RegExp): Promis
   await page.getByRole('menuitem', { name, exact: !(name instanceof RegExp) }).click();
 }
 
+export async function openTool(page: Page, name: string) {
+  await page
+    .getByRole('navigation', { name: '工作台', exact: true })
+    .getByRole('link', { name: '工具', exact: true })
+    .click();
+  await page
+    .getByRole('main')
+    .getByRole('link', { name: new RegExp(`^${name}`) })
+    .click();
+
+  return page.getByRole('main');
+}
+
+export async function openSettings(page: Page) {
+  await page.getByRole('link', { name: '设置', exact: true }).click();
+
+  return page.getByRole('main');
+}
+
 export async function openFieldTool(
   page: Page,
   group: 'AI 工具' | '数据工具',

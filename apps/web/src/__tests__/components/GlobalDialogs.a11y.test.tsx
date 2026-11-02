@@ -171,12 +171,6 @@ function createProps(): Parameters<typeof GlobalDialogs>[0] {
       dbType: 'mysql',
       fields: [],
     } as any,
-    // SAFETY: This fixture supplies only the child-dialog props needed by the GlobalDialogs a11y case.
-    erDiagramDialogProps: {
-      open: false,
-      onOpenChange: vi.fn(),
-      onSelectTable: vi.fn(),
-    } as any,
     emptyTrashDialog: {
       open: false,
       onOpenChange: vi.fn(),

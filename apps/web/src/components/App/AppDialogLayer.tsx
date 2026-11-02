@@ -13,9 +13,6 @@ const AISchemaPatchDialog = lazy(() =>
 const AIIndexAdvisorDialog = lazy(() =>
   import('./AIIndexAdvisorDialog').then((module) => ({ default: module.AIIndexAdvisorDialog })),
 );
-const UserSettingsDialog = lazy(() =>
-  import('./UserSettingsDialog').then((module) => ({ default: module.UserSettingsDialog })),
-);
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -62,11 +59,6 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
     <>
       <AuthDialogs />
       <WorkspaceMigrationDialog />
-      {model.userSettings.open && (
-        <Suspense fallback={null}>
-          <UserSettingsDialog {...model.userSettings} />
-        </Suspense>
-      )}
       <WebMcpChangeDialog model={model.webMcpDialog} />
       <GlobalDialogs {...globalDialogs} saveDialog={saveDialog} />
 

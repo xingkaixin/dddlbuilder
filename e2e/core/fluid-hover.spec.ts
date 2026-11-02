@@ -57,7 +57,7 @@ test('menu hover stays inside its group and retains native activation', async ({
   page,
 }, testInfo) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '功能菜单', exact: true }).click();
+  await page.getByRole('button', { name: '帮助', exact: true }).click();
   const docs = page.getByRole('menuitem', { name: /文档/ });
   const feedback = page.getByRole('menuitem', { name: /反馈/ });
   const group = page.locator('[data-fluid-hover]').filter({ has: docs });
@@ -67,88 +67,6 @@ test('menu hover stays inside its group and retains native activation', async ({
   await feedback.hover();
   await expectAligned(highlight, feedback);
   await page.screenshot({ path: testInfo.outputPath('menu-hover.png') });
-  const language = page.getByRole('menuitem', { name: /语言/ });
-  await language.click();
-  await expect(highlight).toHaveCSS('opacity', '0');
-  const english = page.getByRole('menuitemradio', { name: 'English', exact: true });
-  await english.hover();
-  await expectAligned(
-    page
-      .locator('[data-fluid-hover]')
-      .filter({ has: english })
-      .locator('[data-slot="fluid-hover-highlight"]'),
-    english,
-  );
-  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
-  await english.click();
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US');
-});
-
-test('settings navigation preserves gap clicks and vertical keyboard navigation', async ({
-  page,
-}, testInfo) => {
-  await page.route('**/api/me', (route) =>
-    route.fulfill({
-      json: {
-        signedIn: true,
-        user: {
-          userId: 'hover-test',
-          name: 'Hover Test',
-          email: 'hover@example.com',
-          emailVerified: true,
-        },
-      },
-    }),
-  );
-  await page.route('**/api/workspaces', (route) =>
-    route.fulfill({ json: { workspaceId: 'hover-workspace' } }),
-  );
-  await page.route('**/api/workspaces/hover-workspace/yjs', (route) =>
-    route.fulfill({ status: 204 }),
-  );
-  await page.routeWebSocket('**/api/workspaces/hover-workspace/yjs', (socket) => socket.close());
-  await page.route('**/api/credits/ledger?*', (route) =>
-    route.fulfill({ json: { items: [], total: 0, limit: 20, offset: 0 } }),
-  );
-  await page.route('**/api/credits/balance', (route) =>
-    route.fulfill({ json: { balance: 100, version: 1, userId: 'hover-test' } }),
-  );
-  await page.goto('/');
-  await page.getByTitle('Hover Test', { exact: true }).click();
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click();
-  const dialog = page.getByRole('dialog');
-  const tabs = dialog.getByRole('tab');
-  const first = tabs.nth(0);
-  const second = tabs.nth(1);
-  const list = dialog.getByRole('tablist');
-  const highlight = list.locator('[data-slot="fluid-hover-highlight"]');
-  await second.hover();
-  await expectAligned(highlight, second);
-  await expect(first).toHaveAttribute('aria-selected', 'true');
-  await page.screenshot({ path: testInfo.outputPath('settings-hover.png') });
-  const a = await first.boundingBox();
-  const b = await second.boundingBox();
-
-  if (!a || !b) throw new Error('Settings tabs must have layout boxes');
-  await page.mouse.click(b.x + b.width / 2, b.y - 1);
-  await expect(first).toHaveAttribute('aria-selected', 'true');
-
-  const listBox = await list.boundingBox();
-
-  if (!listBox) throw new Error('Settings navigation must be visible');
-  await page.mouse.move(listBox.x + listBox.width / 2, listBox.y + listBox.height - 10);
-  await expect(highlight).toHaveCSS('opacity', '0');
-  await first.focus();
-  await page.keyboard.press('ArrowDown');
-  await expect(second).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(second).toHaveAttribute('aria-selected', 'true');
-  await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
-  await page.getByTitle('Hover Test', { exact: true }).click();
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click();
-  await second.hover();
-  await expectAligned(highlight, second);
 });
 
 test.describe('touch input', () => {

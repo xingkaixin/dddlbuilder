@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
-import { SchemaToolsButton } from '@/components/schema-tools/SchemaToolsButton';
+import { buttonVariants } from '@/components/ui/button';
+import { followAppLink } from '@/lib/appNavigation';
 import { useLocale } from '@/i18n/LocaleContext';
 import { getDocsUrl } from '@/utils/docsLink';
 
@@ -85,7 +86,13 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
             </button>
             {importButton}
             {templateButton}
-            <SchemaToolsButton />
+            <a
+              href="/tools"
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+              onClick={(event) => followAppLink(event, '/tools')}
+            >
+              {t('schemaTools.title')}
+            </a>
           </div>
 
           {hasRecentItems && (

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import type * as SheetJS from '../../apps/web/node_modules/xlsx';
+import { openTool } from '../utils';
 
 const { utils, write }: typeof SheetJS = createRequire(
   new URL('../../apps/web/package.json', import.meta.url),
@@ -9,11 +10,8 @@ const { utils, write }: typeof SheetJS = createRequire(
 
 async function openImport(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: '数据库工具', exact: true }).first().click();
-  const dialog = page.getByRole('dialog', { name: '数据库工具', exact: true });
-  await dialog.getByRole('tab', { name: '业务数据导入', exact: true }).click();
 
-  return dialog;
+  return openTool(page, '业务数据导入');
 }
 
 test('业务 CSV 在浏览器后台处理，下载完整脚本并可复用配置 @tools', async ({ page }) => {

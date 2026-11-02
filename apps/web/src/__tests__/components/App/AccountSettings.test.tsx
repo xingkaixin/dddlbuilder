@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, act } from '@/__tests__/utils/test-utils';
-import { UserSettingsDialog } from '@/components/App/UserSettingsDialog';
+import { AccountSettings } from '@/components/App/settings/AccountSettings';
+import { CreditSettings } from '@/components/App/settings/CreditSettings';
 import { fetchCreditLedger } from '@/services/creditService';
 
 const auth = vi.hoisted(() => ({ userId: 'ledger-user', name: 'Tester' }));
@@ -16,7 +17,11 @@ vi.mock('@/auth/AuthSessionProvider', () => {
     name: auth.name,
     email: 'user@example.com',
   });
-  const useAuthActions = () => ({ updateUserName: vi.fn(), changePassword: vi.fn() });
+  const useAuthActions = () => ({
+    updateUserName: vi.fn(),
+    changePassword: vi.fn(),
+    signOut: vi.fn(),
+  });
   const useAuthCredits = () => ({ creditBalance: 100 });
 
   return {
@@ -53,22 +58,14 @@ describe('credit ledger rendering', () => {
     auth.name = 'Tester';
   });
   afterEach(() => vi.unstubAllGlobals());
-  it('shows the latest account name and resets unsaved edits on reopening', () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(Response.json({ limit: 20, offset: 0, items: [], total: 0 })),
-    );
-    const onOpenChange = vi.fn();
-    const { rerender } = render(<UserSettingsDialog open onOpenChange={onOpenChange} />);
+  it('shows the latest account name and keeps unsaved edits across renders', () => {
+    const { rerender } = render(<AccountSettings />);
     auth.name = 'Updated';
-    rerender(<UserSettingsDialog open onOpenChange={onOpenChange} />);
+    rerender(<AccountSettings />);
     const input = screen.getByDisplayValue('Updated');
     fireEvent.change(input, { target: { value: 'Unsaved' } });
-    rerender(<UserSettingsDialog open onOpenChange={onOpenChange} />);
+    rerender(<AccountSettings />);
     expect(screen.getByDisplayValue('Unsaved')).toBeInTheDocument();
-    rerender(<UserSettingsDialog open={false} onOpenChange={onOpenChange} />);
-    rerender(<UserSettingsDialog open onOpenChange={onOpenChange} />);
-    expect(screen.getByDisplayValue('Updated')).toBeInTheDocument();
   });
 
   it('keeps the current page visible while fetching the next page', async () => {
@@ -82,8 +79,7 @@ describe('credit ledger rendering', () => {
       .mockResolvedValueOnce(Response.json({ limit: 20, offset: 0, items: [item], total: 21 }))
       .mockReturnValueOnce(pendingPage);
     vi.stubGlobal('fetch', fetchMock);
-    render(<UserSettingsDialog open onOpenChange={vi.fn()} />);
-    fireEvent.click(screen.getByRole('tab', { name: /点数中心/ }));
+    render(<CreditSettings />);
     await screen.findByRole('table');
     fireEvent.click(screen.getByRole('button', { name: '下一页' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
@@ -125,12 +121,10 @@ describe('credit ledger rendering', () => {
           }),
         ),
     );
-    const onOpenChange = vi.fn();
-    const { rerender } = render(<UserSettingsDialog open onOpenChange={onOpenChange} />);
-    fireEvent.click(screen.getByRole('tab', { name: /点数中心/ }));
+    const { rerender } = render(<CreditSettings />);
     await screen.findByRole('table');
     auth.userId = 'another-user';
-    rerender(<UserSettingsDialog open onOpenChange={onOpenChange} />);
+    rerender(<CreditSettings />);
     expect(screen.queryByRole('table')).toBeNull();
     await act(async () =>
       resolvePage(Response.json({ limit: 20, offset: 0, items: [], total: 0 })),

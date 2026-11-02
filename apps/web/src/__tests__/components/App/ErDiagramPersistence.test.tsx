@@ -6,7 +6,7 @@ import { createFieldRow } from '@/__tests__/utils/testFactories';
 import { render, screen } from '@/__tests__/utils/test-utils';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { useSavedTables } from '@/hooks/useSavedTables';
-import ErDiagramDialog from '@/components/App/ErDiagramDialog';
+import ErPage from '@/components/App/ErPage';
 import { getSavedTableFromYDoc, upsertSavedTableInYDoc } from '@/services/workspaceYDocAdapter';
 import { getSavedTable, updateSavedTable } from '@/utils/savedTablesDb';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
@@ -117,9 +117,8 @@ function App() {
   const saved = useSavedTables();
 
   return (
-    <ErDiagramDialog
-      open
-      onOpenChange={() => {}}
+    <ErPage
+      ready
       onSelectTable={() => {}}
       saveTable={saved.saveTable}
       overwriteTable={saved.overwriteTable}

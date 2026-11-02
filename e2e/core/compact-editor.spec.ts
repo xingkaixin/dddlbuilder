@@ -18,7 +18,7 @@ test('窄屏直接显示字段，配置和编辑内容在窗口展开后保留',
   if (!fourthField || !footerBox) throw new Error('The editor must show fields and its status');
   expect(fourthField.y + fourthField.height).toBeLessThanOrEqual(footerBox.y);
   await expect(page.getByRole('button', { name: '保存当前表', exact: true })).toBeInViewport();
-  await expect(page.getByRole('button', { name: '数据库工具', exact: true })).toBeInViewport();
+  await expect(page.getByRole('link', { name: '工具', exact: true })).toBeInViewport();
 
   const details = page.getByRole('button', { name: '编辑表信息', exact: true });
   await details.click();

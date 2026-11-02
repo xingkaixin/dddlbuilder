@@ -24,9 +24,7 @@ export interface VersionHistoryTarget {
 }
 
 type SimpleDialogKind =
-  | 'user-settings'
   | 'import'
-  | 'er'
   | 'ai-schema-patch'
   | 'save'
   | 'rename'
@@ -54,8 +52,6 @@ interface AppUiState {
   setWorkspaceSidebarOpen: (open: boolean) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   setIsImportDialogOpen: (open: boolean) => void;
-  setIsUserSettingsOpen: (open: boolean) => void;
-  setIsErDialogOpen: (open: boolean) => void;
   setIsAISchemaPatchOpen: (open: boolean) => void;
   setIsSaveDialogOpen: (open: boolean) => void;
   setIsRenameDialogOpen: (open: boolean) => void;
@@ -95,8 +91,6 @@ export const useAppUiStore = create<AppUiState>((set) => {
     setWorkspaceSidebarOpen: (workspaceSidebarOpen) => set({ workspaceSidebarOpen }),
     setSavedTablesDrawerOpen: (savedTablesDrawerOpen) => set({ savedTablesDrawerOpen }),
     setIsImportDialogOpen: setDialogOpen('import'),
-    setIsUserSettingsOpen: setDialogOpen('user-settings'),
-    setIsErDialogOpen: setDialogOpen('er'),
     setIsAISchemaPatchOpen: setDialogOpen('ai-schema-patch'),
     setIsSaveDialogOpen: setDialogOpen('save'),
     setIsRenameDialogOpen: setDialogOpen('rename'),

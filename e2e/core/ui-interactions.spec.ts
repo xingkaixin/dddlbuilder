@@ -1,7 +1,7 @@
 import { selectWorkspaceView } from '../utils';
 import { openTableAction } from '../utils';
 import { test, expect, type Page, type Route } from '@playwright/test';
-import { setupHydratedState, ensureBuilderVisible } from '../utils';
+import { openSettings, setupHydratedState, ensureBuilderVisible } from '../utils';
 import type { PersistedState } from '../../packages/shared-types/src/index';
 
 test.describe('核心 UI 交互功能测试 @core', () => {
@@ -10,21 +10,10 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await setupHydratedState(page);
   });
 
-  const selectTheme = async (page: Page, name: RegExp, legacyTestId: string) => {
-    const legacyTrigger = page.getByTestId('theme-switcher-trigger');
+  const selectTheme = async (page: Page, name: string) => {
+    const settings = await openSettings(page);
 
-    if (await legacyTrigger.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await legacyTrigger.click();
-      await page.getByTestId(legacyTestId).click();
-
-      return;
-    }
-
-    await page.getByRole('button', { name: /功能菜单|Menu/i }).click();
-    await page.getByRole('menuitem', { name: /主题|Theme/i }).click();
-    const themeOption = page.getByRole('menuitemradio', { name });
-    await expect(themeOption).toBeVisible();
-    await themeOption.dispatchEvent('click');
+    await settings.getByRole('button', { name, exact: true }).click();
   };
 
   test('场景：清空所有功能应重置表单并继续保存编辑', async ({ page }) => {
@@ -114,13 +103,13 @@ test.describe('核心 UI 交互功能测试 @core', () => {
   test('场景：主题可切换并支持系统跟随', async ({ page }) => {
     const html = page.locator('html');
 
-    await selectTheme(page, /暗色|Dark/i, 'theme-option-dark');
+    await selectTheme(page, '暗色');
     await expect(html).toHaveClass(/dark/);
 
     await page.reload();
     await expect(html).toHaveClass(/dark/);
 
-    await selectTheme(page, /跟随系统|System/i, 'theme-option-system');
+    await selectTheme(page, '跟随系统');
 
     await page.emulateMedia({ colorScheme: 'light' });
     await expect(html).not.toHaveClass(/dark/);
@@ -130,9 +119,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
   });
 
   test('场景：切换日语后应更新并记住界面语言', async ({ page }) => {
-    await page.getByRole('button', { name: /功能菜单|Menu/i }).click();
-    await page.getByRole('menuitem', { name: /语言|Language/i }).click();
-    await page.getByRole('menuitemradio', { name: '日本語' }).click();
+    await (await openSettings(page)).getByRole('button', { name: '日本語', exact: true }).click();
 
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja-JP');
     await expect(

@@ -82,7 +82,6 @@ function Harness({
   const model = asDialogLayerModel({
     saveObjectType: 'table',
     globalDialogs: { saveDialog: {} },
-    userSettings: { open: false },
     importDialog: { visible: false },
     indexAdvisor: { open: false },
     aiPatch: {

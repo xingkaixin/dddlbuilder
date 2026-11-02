@@ -3,15 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { instantiateBusinessModule, snapshotTableKey } from '../../packages/ddl-core/src/index';
 import { encodeDeliverySnapshot } from '../../packages/workspace-core/src/index';
 import type { PersistedState } from '../../packages/shared-types/src/index';
-import { setupHydratedState } from '../utils';
+import { openTool as openToolFromNav, setupHydratedState } from '../utils';
 
 async function openTool(page: Page, name: string) {
   await page.goto('/');
-  await page.getByRole('button', { name: '数据库工具', exact: true }).first().click();
-  const dialog = page.getByRole('dialog', { name: '数据库工具', exact: true });
-  await dialog.getByRole('tab', { name, exact: true }).click();
 
-  return dialog.getByRole('tabpanel', { name, exact: true });
+  return openToolFromNav(page, name);
 }
 
 async function loadSnapshot(dialog: Locator, tables: PersistedState[]) {
@@ -83,10 +80,8 @@ test('业务模块整组保存并在刷新后拒绝重复保存 @tools', async (
   await reopened.getByLabel('表名前缀').fill('demo_');
   await reopened.getByRole('button', { name: '保存整组到工作区', exact: true }).click();
   await expect(reopened.getByRole('alert')).toContainText('没有覆盖现有表');
-  await page.getByRole('tab', { name: '影响分析', exact: true }).click();
-  await expect(
-    page.getByRole('tabpanel', { name: '影响分析', exact: true }).getByRole('checkbox'),
-  ).toHaveCount(5);
+  const impact = await openTool(page, '影响分析');
+  await expect(impact.getByRole('checkbox')).toHaveCount(5);
 });
 
 test('SQLite 初始化导出保留约束并阻止不完整选集 @tools', async ({ page }) => {

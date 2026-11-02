@@ -15,7 +15,6 @@ import type { AIGenerateDialog as AIGenerateDialogComponent } from '../AIGenerat
 import type { DiffDialog as DiffDialogComponent } from '../DiffDialog';
 import type { MockDataDialog as MockDataDialogComponent } from '../MockDataDialog';
 import type { ReviewHistoryDialog as ReviewHistoryDialogComponent } from '../ReviewHistoryDialog';
-import type { ErDiagramDialog as ErDiagramDialogComponent } from '../ErDiagramDialog';
 import type { StorageEstimatorDialog as StorageEstimatorDialogComponent } from '../StorageEstimatorDialog';
 import type { TemplateManagerDialog as TemplateManagerDialogComponent } from '../TemplateManagerDialog';
 import type { TableTemplateManagerDialog as TableTemplateManagerDialogComponent } from '../TableTemplateManagerDialog';
@@ -36,9 +35,6 @@ const MockDataDialog = lazy(() =>
 );
 const ReviewHistoryDialog = lazy(() =>
   import('../ReviewHistoryDialog').then((module) => ({ default: module.ReviewHistoryDialog })),
-);
-const ErDiagramDialog = lazy(() =>
-  import('../ErDiagramDialog').then((module) => ({ default: module.ErDiagramDialog })),
 );
 const StorageEstimatorDialog = lazy(() =>
   import('../StorageEstimatorDialog').then((module) => ({
@@ -114,7 +110,6 @@ interface GlobalDialogsProps {
   aiGenerateDialogProps: ComponentProps<typeof AIGenerateDialogComponent>;
   storageEstimatorDialogProps: ComponentProps<typeof StorageEstimatorDialogComponent>;
   mockDataDialogProps: ComponentProps<typeof MockDataDialogComponent>;
-  erDiagramDialogProps: ComponentProps<typeof ErDiagramDialogComponent>;
   emptyTrashDialog: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -140,7 +135,6 @@ export function GlobalDialogs({
   aiGenerateDialogProps,
   storageEstimatorDialogProps,
   mockDataDialogProps,
-  erDiagramDialogProps,
   emptyTrashDialog,
 }: GlobalDialogsProps) {
   const { t } = useTranslation();
@@ -309,11 +303,6 @@ export function GlobalDialogs({
       {mockDataDialogProps.open && (
         <Suspense fallback={null}>
           <MockDataDialog {...mockDataDialogProps} />
-        </Suspense>
-      )}
-      {erDiagramDialogProps.open && (
-        <Suspense fallback={null}>
-          <ErDiagramDialog {...erDiagramDialogProps} />
         </Suspense>
       )}
     </>

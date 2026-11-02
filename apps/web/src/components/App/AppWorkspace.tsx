@@ -2,6 +2,7 @@ import { lazy, Suspense, useMemo, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Upload } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
+import { useAppRoute } from '@/hooks/useAppRoute';
 import { usePreferencesStore, type EditorLayout } from '@/stores/preferencesStore';
 import { EditorLayoutControl } from './EditorLayoutControl';
 import { EditorSurface } from './EditorSurface';
@@ -15,6 +16,9 @@ import { WorkspaceSidebar } from './WorkspaceSidebar';
 import type { AppWorkspaceModel } from './buildAppWorkspaceModel';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
+const ErPage = lazy(() => import('./ErPage'));
+const SettingsPage = lazy(() => import('./settings/SettingsPage'));
+const ToolsPage = lazy(() => import('@/components/schema-tools/ToolsPage'));
 
 interface AppWorkspaceProps {
   model: AppWorkspaceModel;
@@ -24,7 +28,8 @@ const shareLayoutReducer = (_layout: EditorLayout, next: EditorLayout) => next;
 
 export function AppWorkspace({ model }: AppWorkspaceProps) {
   const {
-    header,
+    erPage,
+    toolActions,
     drawer,
     sidebar,
     tabBar,
@@ -35,6 +40,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
     celebration,
   } = model;
   const { t } = useTranslation();
+  const route = useAppRoute();
 
   const { isShareView } = view;
   const savedLayout = usePreferencesStore((state) => state.layout);
@@ -72,7 +78,6 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
   return (
     <>
       <Header
-        {...header}
         onPlayFireworks={isCnyFireworksEnabled ? celebration.handlePlayFireworks : undefined}
       />
 
@@ -97,55 +102,65 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
 
       <SavedTablesDrawer {...drawer} />
 
-      <div className="relative flex min-h-0 flex-1 flex-row">
-        {!view.isShareView && view.workspaceSidebarOpen && <WorkspaceSidebar {...sidebar} />}
+      {route.view === 'tables' ? (
+        <div className="relative flex min-h-0 flex-1 flex-row">
+          {!view.isShareView && view.workspaceSidebarOpen && <WorkspaceSidebar {...sidebar} />}
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="workspace-content">
-          {!view.isShareView && (
-            <TabBar
-              leadingAction={expandSidebarButton}
-              trailingAction={layoutControl}
-              {...tabBar}
-            />
-          )}
-          {view.isShareView && layoutControl && (
-            <div className="flex shrink-0 justify-end border-b bg-muted/20 px-2 py-1">
-              {layoutControl}
-            </div>
-          )}
-          <div className="flex min-h-0 flex-1 flex-col overflow-auto">
-            {view.shouldShowWorkspaceSkeleton ? (
-              <div className="p-3 sm:p-4">
-                <MainWorkspaceSkeleton />
-              </div>
-            ) : !view.hasTabs && !view.isShareView ? (
-              <WorkspaceEmptyState
-                {...emptyState}
-                importButton={
-                  <button
-                    type="button"
-                    onClick={view.openImportDialog}
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {t('emptyState.importDDL')}
-                  </button>
-                }
-                templateButton={
-                  <TableTemplatePopover
-                    {...tableTemplates}
-                    triggerClassName="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  />
-                }
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="workspace-content">
+            {!view.isShareView && (
+              <TabBar
+                leadingAction={expandSidebarButton}
+                trailingAction={layoutControl}
+                {...tabBar}
               />
-            ) : (
-              <div className="flex min-h-0 flex-1 flex-col">
-                <EditorSurface model={editorSurface} layout={layout} />
+            )}
+            {view.isShareView && layoutControl && (
+              <div className="flex shrink-0 justify-end border-b bg-muted/20 px-2 py-1">
+                {layoutControl}
               </div>
             )}
+            <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+              {view.shouldShowWorkspaceSkeleton ? (
+                <div className="p-3 sm:p-4">
+                  <MainWorkspaceSkeleton />
+                </div>
+              ) : !view.hasTabs && !view.isShareView ? (
+                <WorkspaceEmptyState
+                  {...emptyState}
+                  importButton={
+                    <button
+                      type="button"
+                      onClick={view.openImportDialog}
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {t('emptyState.importDDL')}
+                    </button>
+                  }
+                  templateButton={
+                    <TableTemplatePopover
+                      {...tableTemplates}
+                      triggerClassName="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    />
+                  }
+                />
+              ) : (
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <EditorSurface model={editorSurface} layout={layout} />
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <main className="flex min-h-0 flex-1 flex-col overflow-auto">
+          <Suspense fallback={<MainWorkspaceSkeleton />}>
+            {route.view === 'er' && <ErPage {...erPage} />}
+            {route.view === 'tools' && <ToolsPage toolId={route.toolId} actions={toolActions} />}
+            {route.view === 'settings' && <SettingsPage />}
+          </Suspense>
+        </main>
+      )}
     </>
   );
 }

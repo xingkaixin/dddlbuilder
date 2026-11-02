@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@/__tests__/utils/test-utils';
-import { ErDiagramDialog } from '@/components/App/ErDiagramDialog';
+import ErPage from '@/components/App/ErPage';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- 依赖替换用于隔离对话框加载流程，只验证调用方提供的读取结果。
@@ -34,7 +34,7 @@ const record: SavedTableRecord = {
   updatedAt: 1,
 };
 
-describe('ErDiagramDialog', () => {
+describe('ErPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -43,9 +43,8 @@ describe('ErDiagramDialog', () => {
     const loadTables = vi.fn().mockResolvedValue([record]);
 
     render(
-      <ErDiagramDialog
-        open
-        onOpenChange={vi.fn()}
+      <ErPage
+        ready
         onSelectTable={vi.fn()}
         saveTable={vi.fn()}
         overwriteTable={vi.fn()}

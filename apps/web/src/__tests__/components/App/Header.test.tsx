@@ -207,21 +207,9 @@ describe('Header', () => {
     window.history.replaceState({}, '', '/');
   });
 
-  const baseProps = {
-    onOpenSettings: vi.fn(),
-    currentDbType: 'mysql' as const,
-    onImport: vi.fn(),
-    savedTables: [],
-    folderTree: [],
-    onBatchImportComplete: vi.fn(),
-    saveTable: vi.fn(),
-    overwriteTable: vi.fn(),
-    moveTableToFolder: vi.fn(),
-  };
-
   it('未传入烟花能力时不渲染灯笼按钮', async () => {
     await act(async () => {
-      render(<Header {...baseProps} />);
+      render(<Header />);
     });
 
     expect(screen.queryByRole('button', { name: '点击播放烟花' })).not.toBeInTheDocument();
@@ -230,7 +218,7 @@ describe('Header', () => {
   it('传入烟花能力时应渲染灯笼按钮并触发回调', () => {
     const onPlayFireworks = vi.fn();
 
-    render(<Header {...baseProps} onPlayFireworks={onPlayFireworks} />);
+    render(<Header onPlayFireworks={onPlayFireworks} />);
 
     const fireworksButton = screen.getByRole('button', {
       name: '点击播放烟花',
@@ -241,7 +229,7 @@ describe('Header', () => {
   });
 
   it('应展示问题反馈入口并在新标签页打开', () => {
-    render(<Header {...baseProps} />);
+    render(<Header />);
 
     const feedbackLink = screen.getByRole('link', { name: '问题反馈' });
 
@@ -280,22 +268,6 @@ describe('Header', () => {
     });
   });
 
-  it('登录后应展示用户菜单并支持退出登录', async () => {
-    const { useAuthIdentity } = await import('@/auth/AuthSessionProvider');
-    vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
-
-    render(<Header {...baseProps} />);
-
-    expect(screen.getByText('设置')).toBeInTheDocument();
-    expect(screen.queryByText('额度 8800')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('退出登录'));
-
-    await waitFor(() => {
-      expect(signOutMock).toHaveBeenCalledTimes(1);
-    });
-  });
-
   it('登录后应展示工作区同步状态并支持失败重试', async () => {
     const { useAuthIdentity } = await import('@/auth/AuthSessionProvider');
     vi.mocked(useAuthIdentity).mockReturnValue(signedInIdentity);
@@ -307,7 +279,7 @@ describe('Header', () => {
       retry: retryWorkspaceYDocMock,
     };
 
-    const { rerender } = render(<Header {...baseProps} />);
+    const { rerender } = render(<Header />);
     expect(screen.getByTestId('workspace-yjs-status')).toHaveTextContent('已打开本地副本');
 
     mockWorkspaceYDoc.value = {
@@ -317,7 +289,7 @@ describe('Header', () => {
       connectionState: 'connected',
       retry: retryWorkspaceYDocMock,
     };
-    rerender(<Header {...baseProps} onOpenSettings={vi.fn()} />);
+    rerender(<Header onPlayFireworks={vi.fn()} />);
     expect(screen.getByTestId('workspace-yjs-status')).toHaveTextContent('云端已同步');
 
     mockWorkspaceYDoc.value = {
@@ -328,7 +300,7 @@ describe('Header', () => {
       failureReason: 'service_unavailable',
       retry: retryWorkspaceYDocMock,
     };
-    rerender(<Header {...baseProps} onOpenSettings={vi.fn()} />);
+    rerender(<Header onPlayFireworks={vi.fn()} />);
     expect(screen.getByTestId('workspace-yjs-status')).toHaveTextContent('同步服务不可用');
     fireEvent.click(screen.getByRole('button', { name: '重试同步' }));
     expect(retryWorkspaceYDocMock).toHaveBeenCalledTimes(1);

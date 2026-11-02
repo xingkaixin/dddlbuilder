@@ -1,6 +1,6 @@
 import { createAIConversationMock } from './ai-conversations';
 import { selectWorkspaceView } from './utils';
-import { openFieldTool, openTableAction } from './utils';
+import { openFieldTool, openSettings, openTableAction, openTool } from './utils';
 import {
   expect,
   test,
@@ -77,8 +77,7 @@ test('database tools read saved tables from the synchronized workspace', async (
   try {
     await page.goto('/');
     await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
-    await page.getByRole('button', { name: '数据库工具', exact: true }).first().click();
-    const dialog = page.getByRole('dialog', { name: '数据库工具', exact: true });
+    const dialog = await openTool(page, '数据字典');
     const savedTable = dialog.getByRole('checkbox', { name: /^cloud_dictionary/ });
     await expect(savedTable).toBeVisible();
     await savedTable.check();
@@ -429,12 +428,12 @@ test('sign out preserves local changes until cloud persistence is confirmed', as
     await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
     server.setClientPaused('signout-client', true);
     await tableNameInput(page).fill('local_before_signout');
-    await page.getByTitle('Sync E2E', { exact: true }).click();
-    await page.getByRole('menuitem', { name: '退出登录' }).click();
+    await (await openSettings(page)).getByRole('button', { name: '退出登录' }).click();
     await expect(
       page.getByText('还有内容未确认同步到云端，已取消退出并保留本地数据。请恢复同步后重试。'),
     ).toBeVisible({ timeout: 12_000 });
     expect(signOutRequests).toBe(0);
+    await page.goBack();
     await expect(tableNameInput(page)).toHaveValue('local_before_signout');
     expect(readDefaultDraftState(server.doc)?.tableName).toBe('cloud_before_signout');
 
@@ -446,8 +445,7 @@ test('sign out preserves local changes until cloud persistence is confirmed', as
       .poll(() => readDefaultDraftState(server.doc)?.tableName, { timeout: 15_000 })
       .toBe('local_before_signout');
     await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
-    await page.getByTitle('Sync E2E', { exact: true }).click();
-    await page.getByRole('menuitem', { name: '退出登录' }).click();
+    await (await openSettings(page)).getByRole('button', { name: '退出登录' }).click();
     await expect(page.getByRole('button', { name: '登录 / 注册', exact: true })).toBeEnabled();
     expect(signOutRequests).toBe(1);
     const databases = await page.evaluate(() => indexedDB.databases());
@@ -1475,7 +1473,7 @@ test('ER relationship deletion preserves synced edits on the selected copy', asy
     await getSavedTableRow(page, 'copy').getByTestId('table-select:copy').click();
     await expect(tableNameInput(page)).toHaveValue('orders');
     await openTableAction(page, 'ER 关系图');
-    const dialog = page.getByRole('dialog', { name: 'ER 关系图' });
+    const dialog = page.getByRole('main');
     await expect(dialog.locator('.react-flow__edge')).toHaveCount(2);
 
     const currentCopy = getWorkspaceSavedTable(server.doc, {
@@ -1502,7 +1500,9 @@ test('ER relationship deletion preserves synced edits on the selected copy', asy
         ],
       },
     });
+    await page.goBack();
     await expect(page.locator('#table-comment')).toHaveValue('remote comment');
+    await page.goForward();
     await dialog.locator(`button[data-edge-id='["copy","shared-fk"]']`).click();
 
     const foreignKeyCount = (id: string) => {

@@ -1,5 +1,6 @@
 import { useWorkspaceQuerySync } from '@/hooks/workspacePersistence/useWorkspaceQuerySync';
 import { useTemplateCatalog } from './hooks/useTemplateCatalog';
+import { navigateApp } from '@/lib/appNavigation';
 import { useCallback, useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useEditorDomains } from './hooks/useEditorDomains';
@@ -73,7 +74,6 @@ export function useAppController() {
     setShowFireworks,
     setSavedTablesDrawerOpen,
     setIsImportDialogOpen,
-    setIsErDialogOpen,
     setIsAISchemaPatchOpen,
     setWorkspaceSidebarOpen,
     isSaveDialogOpen,
@@ -87,7 +87,6 @@ export function useAppController() {
     setIsStorageEstimatorOpen,
     setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen,
-    setIsUserSettingsOpen,
   } = ui;
 
   const dialogStates = useDialogStates({
@@ -341,7 +340,6 @@ export function useAppController() {
     setVersionHistoryTarget,
     setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen,
-    setIsUserSettingsOpen,
   });
   const { handleViewVersionHistory, handleOpenAIGenerateDialog } = navigationActions;
 
@@ -386,7 +384,7 @@ export function useAppController() {
   );
   const expandSidebar = useCallback(() => setWorkspaceSidebarOpen(true), [setWorkspaceSidebarOpen]);
   const openImportDialog = useCallback(() => setIsImportDialogOpen(true), [setIsImportDialogOpen]);
-  const openErDiagram = useCallback(() => setIsErDialogOpen(true), [setIsErDialogOpen]);
+  const openErDiagram = useCallback(() => navigateApp('/er'), []);
 
   const openAISchemaPatch = useCallback(() => {
     if (tabs.length === 0 && !isShareView) {
@@ -464,6 +462,8 @@ export function useAppController() {
     openImportDialog,
     handleFireworksComplete,
     handlePlayFireworks,
+    templateActions,
+    handleSelectTableFromEr,
   });
   const dialogLayer = buildAppDialogLayerModel({
     domains,
@@ -487,7 +487,6 @@ export function useAppController() {
     onBatchImportComplete: navigationActions.handleOpenSavedTablesDrawer,
     handleCopyDiff,
     handleRollbackVersion,
-    handleSelectTableFromEr,
   });
 
   return {

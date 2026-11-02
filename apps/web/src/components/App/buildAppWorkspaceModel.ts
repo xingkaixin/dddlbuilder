@@ -1,3 +1,4 @@
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { useEditorDomains } from './hooks/useEditorDomains';
 import type { useEditorSurfaceModel } from './hooks/useEditorSurfaceModel';
 import type { useFolderActions } from './hooks/useFolderActions';
@@ -10,6 +11,7 @@ import type { useWorkspaceController } from './hooks/useWorkspaceController';
 import type { useWorkspacePresentation } from './hooks/useWorkspacePresentation';
 import type { useWorkspaceTabActions } from './hooks/useWorkspaceTabActions';
 import type { useWorkspaceTrashActions } from './hooks/useWorkspaceTrashActions';
+import type { useTemplateActions } from './hooks/useTemplateActions';
 import type { useTableTemplates } from '@/hooks/useTableTemplates';
 
 type EditorDomains = ReturnType<typeof useEditorDomains>;
@@ -41,6 +43,8 @@ interface BuildAppWorkspaceModelParams {
   openImportDialog: () => void;
   handleFireworksComplete: () => void;
   handlePlayFireworks: () => void;
+  templateActions: ReturnType<typeof useTemplateActions>;
+  handleSelectTableFromEr: (state: PersistedState) => void;
 }
 
 export function buildAppWorkspaceModel({
@@ -64,6 +68,8 @@ export function buildAppWorkspaceModel({
   openImportDialog,
   handleFireworksComplete,
   handlePlayFireworks,
+  templateActions,
+  handleSelectTableFromEr,
 }: BuildAppWorkspaceModelParams) {
   const { ui } = domains;
 
@@ -82,9 +88,22 @@ export function buildAppWorkspaceModel({
       : null;
 
   return {
-    header: {
-      onOpenSettings: navigationActions.handleOpenSettings,
-      onOpenErDiagram: editorSurface.tableConfigProps.onOpenErDiagram,
+    erPage: {
+      ready: !workspacePresentation.shouldShowWorkspaceSkeleton,
+      onSelectTable: handleSelectTableFromEr,
+      saveTable: tables.saveTable,
+      overwriteTable: tables.overwriteTable,
+      loadTables: tables.loadTables,
+    },
+    toolActions: {
+      onOpenFieldTemplates: templateActions.handleManageTemplates,
+      onOpenTableTemplates: tableTemplateActions.handleManageTemplates,
+      onOpenAIGenerate: navigationActions.handleOpenAIGenerateDialog,
+      onOpenAIPatch: editorSurface.tableBuilderProps.dataTableProps.onOpenAISchemaPatch,
+      onOpenIndexAdvisor:
+        tabLifecycle.tabs.length > 0
+          ? editorSurface.tableBuilderProps.dataTableProps.onOpenAIIndexAdvisor
+          : undefined,
     },
     drawer: {
       open: ui.savedTablesDrawerOpen,
