@@ -5,7 +5,7 @@ description: "Import CSV or Excel records, map columns or infer a table, validat
 
 # Convert CSV and Excel to INSERT SQL
 
-For real order records, customer lists or similar CSV / Excel data, open **Database tools**, then **Business data import**. Generate a new table and INSERT SQL, or validate records against an existing table and generate INSERT SQL. No account is required.
+For real order records, customer lists or similar CSV / Excel data, open **Tools** in the page header, then **Business data import**. Generate a new table and INSERT SQL, or validate records against an existing table and generate INSERT SQL. No account is required.
 
 Records are processed only in a background thread in your browser. They are not uploaded, written to the workspace or synchronized with an account. Closing the tool or switching accounts clears the current input and results. Structure SQL still uses the existing parsing service; do not paste INSERT statements containing records into the structure source.
 

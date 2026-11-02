@@ -21,7 +21,7 @@ CREATE TABLE users (
 );
 ```
 
-Select `users`, open the **ORM** tab in the generated output, and choose **Prisma**. The generated model is shown below. Alignment spacing may differ.
+Select `users`, open the **ORM** tab in the output area, and choose **Prisma**. The generated model is shown below. Alignment spacing may differ.
 
 ```prisma
 model Users {
@@ -44,7 +44,7 @@ Once the table structure is settled, generate ORM model classes and annotations 
 ## Steps
 
 ### 1. Select the target framework
-1. Click the **ORM** tab in the generated output.
+1. Click the **ORM** tab in the output area.
 2. In the **ORM Framework** selector, choose a framework:
    - **Prisma** (Node.js / TypeScript)
    - **TypeORM** (TypeScript / NestJS)

@@ -11,14 +11,14 @@ Use it when you need to manage views alongside regular tables, or need starting 
 ## Steps
 
 ### 1. Define a view and generate its DDL
-1. In the table configuration area, click **Properties** and set **Object Type** to **View**.
+1. In the table header, click **Properties** and set **Object Type** to **View**.
 2. Enter a **View Name**, for example `v_user_order_summary`.
 3. On the **View SQL** tab, enter a SELECT statement in **Query SQL**. To set the column names the view exposes, use `AS` aliases in the SELECT.
 4. **CREATE OR REPLACE** is selected by default and generates `CREATE OR REPLACE VIEW` (`CREATE OR ALTER VIEW` on SQL Server). Clear it to generate `CREATE VIEW`. SQLite / D1 always gets `CREATE VIEW`.
-5. The **DDL** tab of the generated output shows the `CREATE VIEW ... AS SELECT ...` statement. Click **Copy DDL** to copy it.
+5. The **DDL** tab of the output area shows the `CREATE VIEW ... AS SELECT ...` statement. Click **Copy DDL** to copy it.
 
 ### 2. Routine templates (procedures, functions, triggers)
-1. Click the **Routines** tab in the generated output. SQLite / D1 does not have this tab.
+1. Click the **Routines** tab in the output area. SQLite / D1 does not have this tab.
 2. In **Template**, choose what to generate:
    - **Auto Updated Timestamp Trigger** sets the chosen timestamp column to the current time when a row is updated.
    - **Audit Log Trigger** writes a row to the audit table after data changes.

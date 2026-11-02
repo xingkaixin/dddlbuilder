@@ -41,5 +41,5 @@ When the database type is **PostgreSQL (Citus)**, the **Advanced** menu in the c
 In MySQL and PostgreSQL partitioned tables, every primary key and unique index **must include the partition key columns**. Otherwise the database returns an error when it creates the table.
 :::
 
-- If **Partitioning** or **Sharding** does not appear, check that the database type at the top is one of the types listed above.
+- If **Partitioning** or **Sharding** does not appear, check that the database type in the table header is one of the types listed above.
 - Partitioning adds metadata overhead. For tables under a million rows, start with a regular table.

@@ -34,7 +34,7 @@ Use blueprints when you create several tables with similar structures, such as m
    - The structure opens in a new draft tab. The original tab does not change.
 5. Adjust it for your business:
    - Add or remove fields, change VARCHAR lengths, or change default values.
-   - Click the Save icon to store it under a name in Saved Tables.
+   - Click **Save current table** in the table header to store it under a name in Saved Tables.
 6. To rename, duplicate, or delete blueprints, choose **Manage blueprints...**.
 
 ---

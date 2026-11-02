@@ -11,7 +11,7 @@ After you finish the table design, hand the SQL to a database review or a change
 ## Operations walkthrough
 
 ### 1. View each output
-**Generated output** has these tabs:
+The output area has these tabs:
 - **DDL**: the `CREATE TABLE` statement with the primary key, field constraints, comments, indexes, and partitioning. If **Schema Name** is filled in, the table name is output as `schema.table`.
 - **DCL**: a `GRANT SELECT` statement for each grantee.
 - **ORM**: choose Prisma, TypeORM, SQLAlchemy, GORM, or JPA under **ORM Framework** to generate the matching model code.
@@ -22,10 +22,10 @@ After you finish the table design, hand the SQL to a database review or a change
 - The **DDL** tab can switch between **Compact** and **Aligned** formatting. The copied text matches the format on screen.
 
 ### 3. Switch between design and output
-When **Split preview** on the right of the tab bar is on, the design area is on top and the generated output is below. For tables with many fields, click **Collapse output panel** at the top of the output to show only the design area. Click **Generated output** when you want to see the code again.
+The layout buttons on the right of the tab bar switch between the design area and the output area: **Side by side** (the default), **Top and bottom**, **Design only**, and **Output only**. For tables with many fields, choose **Design only**. Switch back to a split layout or choose **Output only** when you want to see the code. Change the default layout under **Settings > Editor**, or press ⌘K (Ctrl K on Windows / Linux) and choose **Change layout**.
 
 ### 4. Generate a read-only share link
-1. Click **Share** at the top.
+1. Click **Share** in the table header.
 2. DDLBuilder creates a read-only link and copies it to your clipboard. The link expires after 7 days.
 3. The link contains the current table's name, schema name, fields, constraints, indexes, and misc settings.
 

@@ -5,7 +5,7 @@ description: "Generate parameterized SELECT queries from table relationships, cr
 
 # Visual SQL query design and business data modeling
 
-Open **Database tools** in the header to design related queries, create a group of business tables or inspect field dependencies. These tools work with schemas and do not connect to or execute user databases.
+Open **Tools** in the page header to design related queries, create a group of business tables or inspect field dependencies. These tools work with schemas and do not connect to or execute user databases.
 
 ## Visual query design
 
@@ -19,7 +19,7 @@ Select ordinary tables from one MySQL or PostgreSQL dialect. Sources include sav
 
 For example, join users to orders, output usernames and SUM of order amounts, then group by username. LIKE handles text patterns. IS NULL and IS NOT NULL do not consume parameters.
 
-The tool does not execute the SQL. Bind the parameters with your project's database driver and convert their types as your application requires. This first version does not support self joins, cyclic joins, subqueries, UNION or arbitrary SQL expressions. Changing sources clears the design. Reconfigure after closing the dialog, changing tools or changing accounts.
+The tool does not execute the SQL. Bind the parameters with your project's database driver and convert their types as your application requires. This first version does not support self joins, cyclic joins, subqueries, UNION or arbitrary SQL expressions. Changing sources clears the design. Reconfigure after leaving the page, changing tools or changing accounts.
 
 ## Multi-table business modules
 
@@ -51,7 +51,7 @@ Choose **SQLite / D1** in the main editor, configure fields, keys, indexes and f
 
 ### Export a complete initialization project
 
-1. Open **Database tools** and select **SQLite / D1 export**.
+1. Open **Tools** in the page header and select **SQLite / D1 export**.
 2. Choose SQLite or Cloudflare D1 as the export target, then select saved SQLite tables or upload a schema snapshot. Include every referenced parent table. Missing references or duplicate table/index names block export.
 3. Download `0001_init.sql`, `schema.ts` and the instructions.
 4. Execute SQL in an empty SQLite database with `PRAGMA foreign_keys = ON` enabled for the connection.

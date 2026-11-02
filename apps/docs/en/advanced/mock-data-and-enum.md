@@ -12,7 +12,7 @@ Use these tools to fill in test data during development and integration testing,
 
 ### 1. Generate and export mock data
 1. Make sure the table's columns and data types are set.
-2. Click **Mock Data** in the field toolbar to open the **Mock Data Generator**.
+2. Open the **Data tools** menu in the field toolbar and click **Mock Data** to open the **Mock Data Generator**.
 3. Set the generation options:
    - Set the row count (1 to 100 rows).
    - Check the preview. The generator creates values from each field's type. When a field name or comment contains keywords such as email, phone or address, it generates values in that format.

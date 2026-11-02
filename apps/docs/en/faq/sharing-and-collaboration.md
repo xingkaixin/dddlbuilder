@@ -18,7 +18,7 @@ This page answers common questions about share links, editable copies, and draft
 
 - Share links are valid for 7 days and expire automatically after that.
 - Chat apps can wrap or cut off long URLs. If the share ID at the end of the link is incomplete, the page reports that the link does not exist and returns to the home page.
-- Ask the sender to reopen the original table, click **Share** to create a new URL, and copy the full URL.
+- Ask the sender to reopen the original table, click **Share** in the table header to create a new URL, and copy the full URL.
 
 ---
 

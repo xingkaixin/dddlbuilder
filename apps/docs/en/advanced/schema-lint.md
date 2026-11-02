@@ -38,7 +38,7 @@ graph TD
 
 ## Steps
 
-1. The bottom bar of the editor shows **Schema Lint · N items** or **Schema Lint · Passed**. Click it to open the issue list. The **DDL** tab of the generated output shows the same results.
+1. The status bar at the bottom of the editor always shows **Schema Lint · N items** or **Schema Lint · Passed**. Click it to open the issue list.
 2. Review the issues:
    - Issues are sorted into three levels: **Error**, **Warning**, and **Suggestion**.
    - Each issue shows the rule name, the affected table, column, or index, the reason, and a suggested fix.

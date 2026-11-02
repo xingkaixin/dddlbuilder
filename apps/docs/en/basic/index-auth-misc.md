@@ -27,16 +27,16 @@ When you are not sure which indexes your common queries need:
 ### 3. Privilege configuration (DCL)
 On the **Privileges** tab:
 - Enter a grantee (a user or role, such as `app_user` or `readonly_role`) and click **Add**.
-- The **DCL** tab in **Generated output** contains one `GRANT SELECT ON table TO grantee;` statement per grantee.
+- The **DCL** tab in the output area contains one `GRANT SELECT ON table TO grantee;` statement per grantee.
 - If **Schema Name** is filled in, the table name in the statement has the schema prefix.
 
 ### 4. Misc settings (storage and database options)
-On the **Misc** tab, turn on **Enable miscellaneous options** to set the storage options supported by the current database:
+Choose **Misc** from the **Advanced** menu, then turn on **Enable miscellaneous options** to set the storage options supported by the current database:
 - **Engine and charset**: MySQL/MariaDB `ENGINE` (for example InnoDB), `CHARACTER SET` (for example `utf8mb4`), and `COLLATE`.
 - **Physical storage**: `TABLESPACE`, PostgreSQL `fillfactor`, Oracle `PCTFREE`, `INITRANS`, and other database-specific clauses.
 
 ### 5. Routine skeleton code
-In **Generated output**, switch to the **Routines** tab and choose a template (Procedure, Function, Auto Updated Timestamp Trigger, Audit Log Trigger, or Custom Trigger). Fill in the name and other parameters to generate skeleton code, then add the business logic in your database.
+In the output area, switch to the **Routines** tab and choose a template (Procedure, Function, Auto Updated Timestamp Trigger, Audit Log Trigger, or Custom Trigger). Fill in the name and other parameters to generate skeleton code, then add the business logic in your database.
 
 ---
 

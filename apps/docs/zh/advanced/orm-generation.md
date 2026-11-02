@@ -21,7 +21,7 @@ CREATE TABLE users (
 );
 ```
 
-选中 `users`，切换到生成结果的 **ORM 模型** 标签，选择 **Prisma**。生成结果如下（对齐空格可能不同）：
+选中 `users`，切换到输出区的 **ORM 模型** 标签，选择 **Prisma**。生成结果如下（对齐空格可能不同）：
 
 ```prisma
 model Users {
@@ -44,7 +44,7 @@ model Users {
 ## 核心操作指引
 
 ### 1. 切换与选择目标框架
-1. 在生成结果中点击 **ORM 模型** 标签页。
+1. 在输出区点击 **ORM 模型** 标签页。
 2. 在 **ORM 框架** 选择器中选择目标框架：
    - **Prisma**（Node.js / TypeScript）
    - **TypeORM**（TypeScript / NestJS）

@@ -33,7 +33,7 @@ CREATE TABLE orders (
 
 ### Create the relationship and check the ER diagram
 
-1. In the table config area, click **More**, open **ER Diagram**, and drag from `orders.user_id` to `users.id`.
+1. Click **ER Diagram** in the page header, and drag from `orders.user_id` to `users.id`.
 2. Select **Physical foreign key**, **Many to one** and **Required**. Set the delete action to `RESTRICT` and the update action to `CASCADE`.
 3. Set **Foreign key name** to `fk_orders_user` and leave **Create an index for the foreign key** unchecked. Click **Create Relationship** and save `orders`.
 
@@ -85,7 +85,7 @@ Use this to create references between business tables (such as users and orders,
 
 ### 1. Create a relationship in the ER diagram (recommended)
 1. Make sure the source and target tables are saved to the current workspace.
-2. In the table config area, click **More** and select **ER Diagram**.
+2. Click **ER Diagram** in the page header.
 3. Drag the handle on the left of the source field to the handle on the right of the target field.
 4. Set the following in the **Create Table Relationship** dialog:
    - Check the source and target fields the dialog fills in. The target field must be a single-field primary or unique key.
@@ -99,7 +99,7 @@ Use this to create references between business tables (such as users and orders,
 2. Click **Add Foreign Key**.
 3. Enter **Constraint Name** and **Target Table**, select **Local Fields**, then type each of the **Target Fields** and press Enter to add it.
 4. Set **On Delete** and **On Update** as needed.
-5. Click **Add**. The DDL in the generated output now includes a `CONSTRAINT ... FOREIGN KEY ... REFERENCES ...` statement.
+5. Click **Add**. The DDL in the output area now includes a `CONSTRAINT ... FOREIGN KEY ... REFERENCES ...` statement.
 
 ### 3. Browse and arrange the ER diagram
 - Drag table nodes to move them, or click **Auto Layout** in the toolbar.
@@ -111,7 +111,7 @@ Use this to create references between business tables (such as users and orders,
 ## Verification checklist
 
 - [ ] The new relationship appears in both the foreign key list and the ER diagram.
-- [ ] The DDL in the generated output contains the foreign key constraint statement.
+- [ ] The DDL in the output area contains the foreign key constraint statement.
 - [ ] One-to-one source fields have a unique index, and foreign key fields often used in joins have a regular index.
 
 ## Notes

@@ -11,7 +11,7 @@ Use these features in two cases. You can generate a new table from a description
 ## Steps
 
 ### 1. AI Table Workshop (conversational design)
-1. Click **AI Table Workshop** in the table config area to open the conversation panel.
+1. In the sidebar, click **New** and choose **AI Table Workshop** to open the conversation panel. You can also choose **AI table builder** on the **Tools** page in the page header, or press ⌘K (Ctrl K on Windows / Linux) and search for **AI table builder**.
 2. Describe the business requirements, including entities, main business scenarios, frequent query conditions, and special constraints. For example: "Design a multi-tenant e-commerce order table with tenant ID, order number, payment status, amount, and coupon discount. It must support queries by creation time range."
 3. You can select field templates. The AI uses fields from those templates first (for example, `created_at` and `updated_by`).
 4. The AI returns a complete table structure. **Design notes** explains the type and index choices, such as why it added a composite index.

@@ -12,7 +12,7 @@ Check a table yourself before handing it to a DBA or releasing it. When you read
 
 ### 1. AI Review
 1. Make sure the current table has columns and DDL has been generated.
-2. In the **DDL** tab of the generated output, click **AI Review**.
+2. In the **DDL** tab of the output area, click **AI Review**.
 3. Read the score and suggestions:
    - AI reviews six areas: naming conventions, data type choices, index design, integrity constraints, extensibility, and performance. It returns a score from 1 to 10 and a short summary.
    - Suggestions are listed one by one. Performance issues are marked **Severe** or **Warning**.
@@ -20,7 +20,7 @@ Check a table yourself before handing it to a DBA or releasing it. When you read
 5. Click the history icon next to **AI Review** to open **Review History**, which shows earlier scores and suggestions.
 
 ### 2. Explain selected SQL
-1. In a SQL code area of the generated output, select a statement or clause with the mouse, such as an index option, a partition definition, or a storage parameter.
+1. In the SQL code of the output area, select a statement or clause with the mouse, such as an index option, a partition definition, or a storage parameter.
 2. An **Explain selection** button appears next to the selection. When you are signed out, it reads **Sign in to explain**.
 3. Click **Explain selection**. AI explains what the snippet does and its key points.
 

@@ -18,7 +18,7 @@ Use this when you refactor a legacy system, migrate an old project's database, o
 ## Steps
 
 ### 1. Import single-table or multi-table SQL
-1. Click **Import Schema** in the header. To save several tables at once, set **Import mode** to **Save as saved tables**.
+1. Click **Import** in the sidebar, or choose **Import Schema** from the **New** menu. You can also press ⌘K (Ctrl K on Windows / Linux) and search for **Import schema**. To save several tables at once, set **Import mode** to **Save as saved tables**.
 2. Set **Source Type** to SQL, choose the **Source Database**, and paste the SQL script. It can contain one or more `CREATE TABLE`, `CREATE INDEX`, `ALTER TABLE` and `GRANT` statements.
 3. Click **Next** to validate the syntax and parse the table structure.
 4. Review and adjust the result:
@@ -30,7 +30,7 @@ Use this when you refactor a legacy system, migrate an old project's database, o
 
 For actual order records or customer lists, use [Business Data Import](/en/advanced/business-data-import). CSV / Excel imports on this page read field-definition lists.
 
-1. Click **Import Schema** in the header and choose a **Source Type**:
+1. Click **Import** in the sidebar and choose a **Source Type**:
    - **CSV / TSV**: The first row is a header (field name, field type, field comment). Each following row describes one field.
    - **Excel** (.xlsx / .xls): Each worksheet becomes one table, named after the sheet. Row 1 is the header (field name, field type, field comment), and each following row is one field.
    - **JSON Schema / OpenAPI**: Reads the fields in `properties` with their types, formats and descriptions.
@@ -54,7 +54,7 @@ For actual order records or customer lists, use [Business Data Import](/en/advan
 
 - [ ] The workspace shows the parsed table names, columns, constraints and indexes.
 - [ ] If the source SQL has a schema prefix, `Schema Name` and `Table Name` hold the two parts.
-- [ ] The DDL and DCL in the generated output match the syntax of the target database.
+- [ ] The DDL and DCL in the output area match the syntax of the target database.
 
 ## Notes and troubleshooting
 

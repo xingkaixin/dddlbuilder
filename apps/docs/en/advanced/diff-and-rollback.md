@@ -13,7 +13,7 @@ Use these tools when you change columns, types or indexes on an existing table a
 ### 1. View schema differences
 1. Load a saved table from **Workspace**.
 2. Add or remove columns, change types or adjust indexes in the editor.
-3. In the table config area, click **More** and select **View schema changes**.
+3. In the table header, click **More** and select **View schema changes**.
 4. The **Table Structure Diff** dialog lists changes to table config, columns (added, removed, renamed and modified) and indexes.
 
 ### 2. Copy the ALTER and rollback scripts
@@ -21,7 +21,7 @@ Use these tools when you change columns, types or indexes on an existing table a
 - Expand **Rollback Script** and click **Copy Rollback**. The rollback script contains the reverse ALTER statements that undo the changes above.
 
 ### 3. Version history and rollback
-- With a saved table loaded, click **Version history** in the table config area.
+- With a saved table loaded, click **Version history** in the table header.
 - Review each saved version with its save time and change summary.
 - Select a version and click **Rollback to this version**. The editor reverts to that version.
 

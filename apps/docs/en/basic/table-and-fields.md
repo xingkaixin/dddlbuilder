@@ -1,6 +1,6 @@
 # Table and field configuration
 
-This page explains each setting in the table configuration area and the **Fields** table, plus the helper tools in the field table toolbar.
+This page explains each setting in the table header and the **Fields** table, plus the helper tools in the field table toolbar.
 
 ## Overview
 
@@ -11,7 +11,7 @@ Use this page when you create a new table, or add and change fields and constrai
 ## Configuration walkthrough
 
 ### 1. Table-level metadata
-In the table configuration area at the top, fill in:
+In the table header, fill in:
 - **Database Type**: select the target database, such as MySQL, PostgreSQL, or Oracle.
 - **Table Name** and **Table Comment**: for example `order_item` and `Order items`.
 - **Schema Name** (optional, under **Properties**): fill it in when the target database separates objects by schema. For example, entering `sales` outputs the table name as `sales.order_item`. Do not put the schema in the table name.
@@ -22,7 +22,7 @@ In the **Fields** table, set the following for each field:
 - **Type**: a type supported by the current database, such as `BIGINT`, `VARCHAR(255)`, `DECIMAL(10,2)`, or `JSON`.
 - **Nullable**: clear the checkbox to generate `NOT NULL`.
 - **Default Kind** and **Default Value**: **Default Kind** can be **None**, **Auto Increment**, **Constant**, **SQL expression**, **Current Time**, or **UUID**. Fill in **Default Value** when a specific value is needed.
-- **On Update**: choose **Current Time** to generate `ON UPDATE CURRENT_TIMESTAMP`.
+- **On Update**: choose **Current Time** to generate `ON UPDATE CURRENT_TIMESTAMP`. This column is hidden by default. Show it from **Columns** in the field toolbar, or under **Field table columns** in **Settings > Editor**.
 
 ### 3. Editing tips
 - Click **Add Rows** in the toolbar to append empty rows to the end of the table. Use the plus and minus buttons next to it to change how many rows each click adds. Drag the handle at the start of a row to reorder fields.

@@ -34,7 +34,7 @@ graph TD
 
 ### 2. Draft box
 - Any design that you have not saved as a saved table is in the draft box.
-- Click **Create draft** in the tab bar to create more drafts. They are listed in the **Drafts** group of the left **Workspace** sidebar. Use drafts to try different designs without changing your saved tables.
+- In the left **Workspace** sidebar, click **New** and choose **New draft** to create more drafts. They are listed in the **Drafts** group. You can also press ⌘K (Ctrl K on Windows / Linux) and search for **New draft**. Use drafts to try different designs without changing your saved tables.
 
 ### 3. Saved tables, folders, and trash
 - After you click save and enter a name, the table becomes a saved table. It appears under **Projects** in the left **Workspace** sidebar, where you can search for it and open it.
@@ -42,7 +42,7 @@ graph TD
 - A deleted table goes to **Trash** first and stays there until you restore it or delete it permanently.
 
 ### 4. Read-only sharing and saving a copy
-- The link created by **Share** at the top is read-only. People who open it cannot change your design.
+- The link created by **Share** in the table header is read-only. People who open it cannot change your design.
 - The recipient can click **Save as copy and edit** in the banner to save the table structure into their own workspace and edit it there.
 
 ### 5. Output types (DDL / DCL / ORM / routines)
@@ -59,7 +59,7 @@ graph TD
 
 ### 7. AI features and credits
 - AI features include **AI Table Workshop**, **AI Edit**, **AI Index Advisor**, **AI Review**, **AI SQL Explainer**, and **AI Comments**.
-- AI features deduct credits based on actual token usage. After you sign in, click your avatar in the upper-right corner, choose **Settings**, and open **Credits** to see your balance and usage history.
+- AI features deduct credits based on actual token usage. After you sign in, click your avatar in the page header to open **Settings**, then go to **Credits** to see your balance and usage history.
 
 ---
 
@@ -67,7 +67,7 @@ graph TD
 
 | Question | Answer |
 |---|---|
-| Where are my changes saved? | Unsaved changes are in the draft box. After you click the save icon, the table becomes a saved table. |
+| Where are my changes saved? | Unsaved changes are in the draft box. After you click **Save current table** in the table header, the table becomes a saved table. |
 | Can other people edit a shared link? | No. The recipient must click **Save as copy and edit** first, and then edits their own copy. |
 | How does multi-device sync work? | Sign in to the same account. Changes sync automatically, with no manual upload or download. |
 | Will I lose data if I switch computers? | Without an account, data is stored only in the current browser and is lost if you clear browser data. After you sign in, data syncs to the cloud, and you see it when you sign in on the new computer. |

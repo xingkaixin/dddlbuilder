@@ -5,7 +5,7 @@ description: "Compare two MySQL or PostgreSQL SQL schemas online and export migr
 
 # SQL schema diff and data dictionary export
 
-Use **Database tools** in the header to document an existing database, compare two environments, or prepare related test rows. The entry is also available in an empty workspace. Signing in or creating a table first is not required.
+Open **Tools** in the page header (the page is titled **Database tools**) to document an existing database, compare two environments, or prepare related test rows. Signing in or creating a table first is not required.
 
 ## Prepare inputs
 

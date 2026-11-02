@@ -15,13 +15,13 @@ This page explains where some tabs, buttons, and entry points are, and when they
 ## 2. Why don't I see "Foreign Keys" or the "ER Diagram"?
 
 - The **Foreign Keys** tab is in the table configuration area. It does not appear when the database type is Hive or the object type is View. If the current table has no columns yet, the panel shows "Please add fields first".
-- **ER Diagram** is in the **More** menu of the table configuration area. The diagram shows saved tables only, so save the tables you want to connect first.
+- The **ER Diagram** page is in the page header. The diagram shows saved tables only, so save the tables you want to connect first.
 
 ---
 
 ## 3. Why can't I find the "ORM" or "Routines" tabs in the generated output?
 
-- The tab bar at the top of the generated output contains **DDL**, **DCL**, **ORM**, and **Routines**. If you don't see the tab bar, check whether the output panel is collapsed.
+- The tab bar at the top of the output area contains **DDL**, **DCL**, **ORM**, and **Routines**. If you don't see the output area, check whether the workspace view is set to **Design only**.
 - When the database type is SQLite / D1, **DCL** and **Routines** are hidden.
 - View DDL appears in the **DDL** tab. There is no separate view tab.
 
@@ -29,7 +29,7 @@ This page explains where some tabs, buttons, and entry points are, and when they
 
 ## 4. Why don't I see "View schema changes"?
 
-**View schema changes** is in the **More** menu of the table configuration area. It appears only when both of these are true:
+**View schema changes** is in the **More** menu of the table header. It appears only when both of these are true:
 
 1. The active tab has a **saved table** loaded, not a new blank draft.
 2. You made an **actual structural change** to that table, such as adding or removing columns, changing types, or editing indexes.

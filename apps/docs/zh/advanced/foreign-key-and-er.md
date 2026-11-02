@@ -33,7 +33,7 @@ CREATE TABLE orders (
 
 ### 创建关系并检查 ER 图
 
-1. 在表配置区域点击 **更多**，打开 **ER 关系图**，从 `orders.user_id` 拖向 `users.id`。
+1. 点击页眉的 **关系图**，从 `orders.user_id` 拖向 `users.id`。
 2. 选择 **物理外键**、**多对一**、**必须关联**，删除规则设为 `RESTRICT`，更新规则设为 `CASCADE`。
 3. 将 **外键名称** 设为 `fk_orders_user`，不勾选 **为外键字段创建索引**。点击 **创建关系**，保存 `orders`。
 
@@ -85,7 +85,7 @@ ALTER TABLE orders ADD CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCE
 
 ### 1. 在 ER 关系图中创建关系（推荐）
 1. 确保源表与目标表均已保存至当前工作区。
-2. 在表配置区域点击 **更多**，选择 **ER 关系图**。
+2. 点击页眉的 **关系图**。
 3. 将源表字段左侧的连接点拖到目标表字段右侧的连接点。
 4. 在 **创建表关系** 对话框中设置：
    - 核对对话框带入的源字段与目标字段。目标字段只能是单字段主键或唯一键。
@@ -99,7 +99,7 @@ ALTER TABLE orders ADD CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCE
 2. 点击 **添加外键**。
 3. 填写 **约束名称** 和 **目标表名**，选择 **本表字段**，再输入 **目标表字段**（回车添加）。
 4. 按需设置 **删除时** 与 **更新时** 的规则。
-5. 点击 **确认添加**。生成结果中的 DDL 随即加入 `CONSTRAINT ... FOREIGN KEY ... REFERENCES ...` 语句。
+5. 点击 **确认添加**。输出区的 DDL 随即加入 `CONSTRAINT ... FOREIGN KEY ... REFERENCES ...` 语句。
 
 ### 3. 浏览和整理 ER 关系图
 - 拖动表节点调整位置，或点击工具栏的 **自动布局**。
@@ -111,7 +111,7 @@ ALTER TABLE orders ADD CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCE
 ## 校验与完成标志
 
 - [ ] 外键配置列表和 ER 关系图都显示了新建的关系。
-- [ ] 生成结果中的 DDL 包含外键约束语句。
+- [ ] 输出区的 DDL 包含外键约束语句。
 - [ ] 一对一关系的源字段有唯一索引；常用于关联查询的外键字段有普通索引。
 
 ## 常见注意事项
