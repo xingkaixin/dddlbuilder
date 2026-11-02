@@ -18,6 +18,11 @@ outline: [2, 2]
 - **Moved entries**: Import and AI generation are in the sidebar. Share, History and Properties are in the table header. Misc, sharding, partition and Hive partition settings are grouped under the Advanced tab. Docs and feedback are in the header Help menu.
 - **Docs site**: The docs layout and home page are redesigned. On phones, a bottom bar opens the page list and the outline.
 
+### Fixed
+- **Interface language**: Empty-table hints in the output area, comments in routine templates and the empty Mock data hint now follow the interface language instead of always showing Chinese.
+- **Frozen columns**: The last frozen column was missing its row dividers. They are back.
+- **Folders in an empty project**: Folders you create before saving any table now appear in the sidebar right away.
+
 ## [0.25.8] - 2026-10-20
 
 ### Improved
