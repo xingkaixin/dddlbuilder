@@ -5,6 +5,7 @@
   "exports": {
     "./tokens.css": "./src/tokens.css",
     "./tiles.css": "./src/tiles.css",
+    "./sketch.css": "./src/sketch.css",
     "./sketch-path": "./src/sketch-path.ts",
     "./tile-scenes": "./src/tile-scenes.ts",
     "./tile-player": "./src/tile-player.ts"

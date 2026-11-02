@@ -1,0 +1,46 @@
+.lm-sketch {
+  position: relative;
+  isolation: isolate;
+}
+
+.lm-ink {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.lm-s {
+  fill: none;
+  stroke: var(--lm-stroke, var(--line-strong));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.12s;
+}
+
+.lm-s1 {
+  opacity: 0.95;
+  stroke-width: var(--lm-w1, var(--stroke-main));
+}
+
+.lm-s2 {
+  opacity: 0.55;
+  stroke-width: var(--lm-w2, var(--stroke-echo));
+}
+
+.lm-wash {
+  opacity: var(--lm-wash-op, 0);
+  transition: opacity 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.lm-wash line {
+  stroke: var(--lm-wash, var(--blue-wash));
+  stroke-linecap: round;
+}
+
+.lm-wash-tint {
+  fill: var(--lm-wash, var(--blue-wash));
+  opacity: 0.22;
+}
