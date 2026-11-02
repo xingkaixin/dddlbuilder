@@ -1,13 +1,17 @@
 import { memo, useCallback, useMemo, useReducer } from 'react';
 import {
+  ChevronDown,
   ChevronLeft,
   FileEdit,
+  FileInput,
   FolderOpen,
   Plus,
   Search,
+  Sparkles,
   Trash2,
   MoreHorizontal,
   RotateCcw,
+  Upload,
   X,
 } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -53,6 +57,9 @@ interface WorkspaceSidebarProps {
   tablePresentations?: ReadonlyMap<string, TablePresentation>;
   onCollapse: () => void;
   onOpenWorkspace: () => void;
+  onCreateDraft: () => void;
+  onOpenImport: () => void;
+  onOpenAIGenerate: () => void;
   onCreateFolder?: () => void;
   onSelectDraft?: (draftId: string) => void;
   onDeleteDraft?: (draftId: string) => void;
@@ -96,6 +103,9 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     tablePresentations,
     onCollapse,
     onOpenWorkspace,
+    onCreateDraft,
+    onOpenImport,
+    onOpenAIGenerate,
     onCreateFolder,
     onSelectDraft,
     onDeleteDraft,
@@ -188,28 +198,62 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
 
     return (
       <aside
-        className="absolute inset-y-0 left-0 z-30 flex w-60 shrink-0 flex-col overflow-hidden border-r bg-muted sm:static sm:z-auto sm:w-[220px]"
+        className="absolute inset-y-0 left-0 z-30 flex w-62 shrink-0 flex-col overflow-hidden border-r bg-muted sm:static sm:z-auto sm:w-[220px]"
         data-testid="workspace-sidebar"
       >
-        <div className="relative flex items-center justify-between border-b px-3 py-3">
+        <div className="flex items-center justify-between px-3 pt-3">
           <button
             type="button"
-            className="flex min-w-0 items-center gap-2"
+            className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={onOpenWorkspace}
           >
-            <FolderOpen className="h-4 w-4 text-primary" />
-            <span className="truncate text-[13px] font-medium">
-              {t('savedTables.workspaceTitle')}
-            </span>
+            <FolderOpen className="h-3.5 w-3.5" />
+            <span className="truncate">{t('savedTables.workspaceTitle')}</span>
           </button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={onCollapse}
             aria-label={t('savedTables.collapse')}
           >
             <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 px-3 pt-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" className="gap-1.5 px-3">
+                <Plus className="h-4 w-4" />
+                {t('savedTables.newMenu')}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem onClick={onCreateDraft}>
+                <FileEdit className="h-4 w-4" />
+                {t('savedTables.createDraft')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onOpenAIGenerate}>
+                <Sparkles className="h-4 w-4" />
+                {t('tableConfig.aiGenerate')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onOpenImport}>
+                <FileInput className="h-4 w-4" />
+                {t('header.importSql')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-1.5 px-3"
+            aria-label={t('header.importSql')}
+            onClick={onOpenImport}
+          >
+            <Upload className="h-4 w-4" />
+            {t('savedTables.import')}
           </Button>
         </div>
 
@@ -221,7 +265,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder={t('savedTables.workspaceSearchPlaceholder')}
-                className="h-8 pl-8 text-xs"
+                className="h-9 pl-8 text-sm"
               />
             </div>
             {onCreateFolder && (
@@ -263,7 +307,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                       <FileEdit className="h-4 w-4 text-amber-600" />
                       <button
                         type="button"
-                        className="min-w-0 flex-1 truncate text-left font-normal"
+                        className="min-w-0 flex-1 truncate text-left font-mono font-normal"
                         onClick={() => onSelectDraft?.(draft.draftId)}
                       >
                         {draft.name}

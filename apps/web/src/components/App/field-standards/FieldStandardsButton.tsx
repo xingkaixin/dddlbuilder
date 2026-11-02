@@ -14,12 +14,7 @@ export function FieldStandardsButton() {
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-7 px-2 text-xs"
-        onClick={() => dispatchDialog('opened')}
-      >
+      <Button variant="ghost" size="tool" onClick={() => dispatchDialog('opened')}>
         {t('fieldStandards.title')}
       </Button>
       {open && (

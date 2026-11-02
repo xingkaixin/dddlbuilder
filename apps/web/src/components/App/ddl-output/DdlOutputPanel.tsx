@@ -4,14 +4,13 @@ import type {
   DDLReviewStructuredSuggestion,
 } from '@ddlbuilder/shared-types/ddl-review';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
-import type { SchemaLintIssue } from '@/utils/schemaLint';
 import { AlignJustify, AlignLeft, GraduationCap, History } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ReviewResultPanel } from '../ReviewResult';
-import { SchemaLintPanel } from '../SchemaLintPanel';
 import { useAIRequestAccess } from '@/hooks/useAIRequestAccess';
 import { useTranslation } from 'react-i18next';
+import { useActiveFieldLine } from '@/hooks/useActiveFieldLine';
 import { CopyOutputButton, OutputCode, OutputHeading } from './OutputPrimitives';
 
 interface DdlOutputPanelProps {
@@ -25,7 +24,6 @@ interface DdlOutputPanelProps {
   reviewPartialResult: PartialReviewResult | null;
   reviewResult: DDLReviewResult | null;
   reviewError: string | null;
-  schemaLintIssues: SchemaLintIssue[];
   onStartReview: () => void;
   onViewReviewHistory?: () => void;
   onApplySuggestion?: (suggestion: DDLReviewStructuredSuggestion) => void;
@@ -42,7 +40,6 @@ export function DdlOutputPanel({
   reviewPartialResult,
   reviewResult,
   reviewError,
-  schemaLintIssues,
   onStartReview,
   onViewReviewHistory,
   onApplySuggestion,
@@ -50,6 +47,7 @@ export function DdlOutputPanel({
   const { t } = useTranslation();
   const { accessError } = useAIRequestAccess();
   const canReview = dbType !== 'sqlite' && Boolean(code && !code.startsWith('--'));
+  const activeLine = useActiveFieldLine(code);
 
   const formatControls = (
     <div className="inline-flex overflow-hidden rounded-md border border-border/70 bg-background shadow-xs">
@@ -95,7 +93,7 @@ export function DdlOutputPanel({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 gap-1.5 px-2 text-xs font-medium"
+                    className="h-8 gap-1.5 px-3"
                     onClick={onStartReview}
                     disabled={!canReview || isReviewing}
                   >
@@ -113,8 +111,9 @@ export function DdlOutputPanel({
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
+                    size="tool"
+                    className="w-8 px-0"
+                    aria-label={t('ddlOutput.reviewHistoryTip')}
                     onClick={onViewReviewHistory}
                   >
                     <History className="h-3.5 w-3.5" />
@@ -133,9 +132,8 @@ export function DdlOutputPanel({
           </>
         }
       />
-      <OutputCode code={code || t('ddlOutput.emptyDdl')} />
-      <div className="px-4 pb-4">
-        <SchemaLintPanel issues={schemaLintIssues} />
+      <OutputCode code={code || t('ddlOutput.emptyDdl')} activeLine={activeLine} />
+      <div className="pb-4">
         <ReviewResultPanel
           isLoading={isReviewing}
           thinking={reviewThinking}

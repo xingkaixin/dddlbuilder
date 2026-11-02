@@ -147,7 +147,9 @@ vi.mock('@/auth/AuthSessionProvider', () => {
   const useAuthActions = vi.fn(() => (actions ??= buildActions()));
   const useAuthDialog = vi.fn(() => (dialog ??= buildDialog()));
 
-  return { useAuthIdentity, useAuthActions, useAuthDialog };
+  const useAuthCredits = vi.fn(() => ({ creditBalance: null, creditsStatus: 'idle' }));
+
+  return { useAuthIdentity, useAuthActions, useAuthDialog, useAuthCredits };
 });
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- Workspace document state is injected to cover retry affordances.
@@ -206,9 +208,6 @@ describe('Header', () => {
   });
 
   const baseProps = {
-    onShare: vi.fn(),
-    isSharing: false,
-    onOpenImport: vi.fn(),
     onOpenSettings: vi.fn(),
     currentDbType: 'mysql' as const,
     onImport: vi.fn(),
@@ -219,13 +218,6 @@ describe('Header', () => {
     overwriteTable: vi.fn(),
     moveTableToFolder: vi.fn(),
   };
-
-  it('routes import through the application dialog owner', async () => {
-    const onOpenImport = vi.fn();
-    render(<Header {...baseProps} onOpenImport={onOpenImport} />);
-    fireEvent.click(await screen.findByRole('button', { name: '导入结构' }));
-    expect(onOpenImport).toHaveBeenCalledOnce();
-  });
 
   it('未传入烟花能力时不渲染灯笼按钮', async () => {
     await act(async () => {
@@ -325,7 +317,7 @@ describe('Header', () => {
       connectionState: 'connected',
       retry: retryWorkspaceYDocMock,
     };
-    rerender(<Header {...baseProps} onShare={vi.fn()} />);
+    rerender(<Header {...baseProps} onOpenSettings={vi.fn()} />);
     expect(screen.getByTestId('workspace-yjs-status')).toHaveTextContent('云端已同步');
 
     mockWorkspaceYDoc.value = {
@@ -336,7 +328,7 @@ describe('Header', () => {
       failureReason: 'service_unavailable',
       retry: retryWorkspaceYDocMock,
     };
-    rerender(<Header {...baseProps} onShare={vi.fn()} />);
+    rerender(<Header {...baseProps} onOpenSettings={vi.fn()} />);
     expect(screen.getByTestId('workspace-yjs-status')).toHaveTextContent('同步服务不可用');
     fireEvent.click(screen.getByRole('button', { name: '重试同步' }));
     expect(retryWorkspaceYDocMock).toHaveBeenCalledTimes(1);

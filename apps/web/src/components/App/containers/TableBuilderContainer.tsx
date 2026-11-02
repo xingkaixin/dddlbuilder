@@ -1,21 +1,9 @@
-import { memo, type ComponentProps, type ComponentType, type ReactNode } from 'react';
-import {
-  Columns3Cog,
-  Network,
-  ShieldUser,
-  Key,
-  Lock,
-  Hash,
-  Share2,
-  Layers,
-  SlidersHorizontal,
-  Link2,
-  Code2,
-  type AppIconProps,
-} from '@/components/icons';
+import { memo, type ComponentProps, type ReactNode } from 'react';
+import { Key, Lock, Hash } from '@/components/icons';
 import type { DatabaseType, SchemaObjectType } from '@ddlbuilder/shared-types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEditorStore } from '@/stores';
+import { cn } from '@/lib/utils';
 import { getAvailableTabs, isBuilderTab, type BuilderTab } from '@/utils/tabUtils';
 import { useTranslation } from 'react-i18next';
 import { AuthPanel } from '../AuthPanel';
@@ -54,7 +42,6 @@ export interface TableBuilderContainerProps {
 
 interface BuilderTabDefinition {
   value: BuilderTab;
-  icon: ComponentType<AppIconProps>;
   label: string;
   badge?: ReactNode;
   panel: ReactNode;
@@ -148,48 +135,41 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
     objectType === 'view'
       ? {
           value: 'fields',
-          icon: Code2,
           label: t('builderTabs.viewSql'),
           panel: <ViewDefinitionPanel {...viewDefinitionPanelProps} />,
         }
       : {
           value: 'fields',
-          icon: Columns3Cog,
           label: t('builderTabs.fields'),
           badge: tabBadge(fieldCount),
           panel: <DataTable {...dataTableProps} />,
         },
     {
       value: 'indexes',
-      icon: Network,
       label: t('builderTabs.indexes'),
       badge: indexes.length > 0 && <IndexStatsBadge stats={indexStats} />,
       panel: <IndexPanel {...indexPanelProps} />,
     },
     {
       value: 'foreignKeys',
-      icon: Link2,
       label: t('builderTabs.foreignKeys'),
       badge: tabBadge(foreignKeyCount),
       panel: <ForeignKeyPanel {...foreignKeyPanelProps} />,
     },
     {
       value: 'auth',
-      icon: ShieldUser,
       label: t('builderTabs.auth'),
       badge: tabBadge(authPanelProps.authObjects.length),
       panel: <AuthPanel {...authPanelProps} />,
     },
     {
       value: 'misc',
-      icon: SlidersHorizontal,
       label: t('builderTabs.misc'),
       badge: tabBadge(tableOptionsPanelProps.config.enabled ? t('builderTabs.enabled') : null),
       panel: <TableOptionsPanel {...tableOptionsPanelProps} />,
     },
     {
       value: 'sharding',
-      icon: Share2,
       label: t('builderTabs.sharding'),
       badge: tabBadge(
         shardingPanelProps.config.mode === 'distributed'
@@ -200,14 +180,12 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
     },
     {
       value: 'partition',
-      icon: Layers,
       label: t('builderTabs.partition'),
       badge: tabBadge(partitionPanelProps.config.enabled ? partitionPanelProps.config.type : null),
       panel: <PartitionPanel {...partitionPanelProps} />,
     },
     {
       value: 'hive-partition',
-      icon: Layers,
       label: t('builderTabs.hivePartition'),
       badge: tabBadge(
         hivePartitionPanelProps.config.enabled
@@ -245,16 +223,10 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
             </option>
           ))}
         </select>
-        <div className="hidden flex-wrap items-center gap-2 border-b @min-[640px]/editor:flex">
-          <TabsList className="h-9 max-w-full justify-start overflow-x-auto rounded-none bg-transparent p-0">
-            {primaryTabs.map(({ value, icon: Icon, label, badge }) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                aria-label={label}
-                className="h-9 gap-1.5 rounded-none border-b-2 border-transparent px-3 text-xs after:hidden data-active:border-primary data-active:bg-transparent data-active:text-primary data-active:shadow-none"
-              >
-                <Icon className="h-3.5 w-3.5" />
+        <div className="hidden flex-wrap items-center gap-1 @min-[640px]/editor:flex">
+          <TabsList className="max-w-full justify-start overflow-x-auto p-0">
+            {primaryTabs.map(({ value, label, badge }) => (
+              <TabsTrigger key={value} value={value} aria-label={label} className="h-9 gap-1.5">
                 {label}
                 {badge}
               </TabsTrigger>
@@ -267,9 +239,8 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
                   aria-label={t('builderTabs.advanced')}
                   variant="ghost"
                   size="sm"
-                  className={`h-9 gap-1.5 rounded-none border-b-2 text-xs ${activeAdvancedTab ? 'border-primary text-primary' : 'border-transparent'}`}
+                  className={cn('h-9 gap-1.5', activeAdvancedTab && 'lm-hatch text-foreground')}
                 >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
                   {activeAdvancedTab ? activeAdvancedTab.label : t('builderTabs.advanced')}
                   {advancedTabs.some((tab) => tab.badge) && (
                     <span

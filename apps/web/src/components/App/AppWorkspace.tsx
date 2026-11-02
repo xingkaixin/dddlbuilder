@@ -140,7 +140,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
               />
             ) : (
               <div className="flex min-h-0 flex-1 flex-col">
-                <EditorSurface model={editorSurface} layout={layout} onLayoutChange={setLayout} />
+                <EditorSurface model={editorSurface} layout={layout} />
               </div>
             )}
           </div>

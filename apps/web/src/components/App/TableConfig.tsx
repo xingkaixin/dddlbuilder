@@ -6,7 +6,9 @@ import {
   Eye,
   GitCompare,
   History,
+  Loader2,
   Save,
+  Share2,
   Table,
   Trash2,
   Waypoints,
@@ -45,6 +47,8 @@ interface TableConfigProps {
   onViewDiff?: () => void;
   onViewHistory?: () => void;
   onOpenErDiagram?: () => void;
+  onShare?: () => void;
+  isSharing?: boolean;
   saveDisabled?: boolean;
   saveDisabledHint?: string;
   showDiffButton?: boolean;
@@ -72,6 +76,8 @@ export const TableConfig = memo<TableConfigProps>(
     onViewDiff,
     onViewHistory,
     onOpenErDiagram,
+    onShare,
+    isSharing = false,
     saveDisabled = false,
     saveDisabledHint,
     showDiffButton = false,
@@ -85,7 +91,7 @@ export const TableConfig = memo<TableConfigProps>(
     const selectedDbOption = DATABASE_OPTIONS.find((option) => option.value === dbType);
 
     return (
-      <div className="flex items-start gap-2 @min-[640px]/editor:items-center">
+      <div className="flex items-start gap-3 @min-[640px]/editor:items-center">
         <div className="min-w-0 flex-1">
           <Button
             variant="ghost"
@@ -110,12 +116,12 @@ export const TableConfig = memo<TableConfigProps>(
           <div
             id={detailsId}
             className={cn(
-              'max-h-[50dvh] flex-wrap items-center justify-between gap-x-4 gap-y-2 overflow-y-auto @min-[640px]/editor:flex @min-[640px]/editor:max-h-none @min-[640px]/editor:overflow-visible',
+              'max-h-[50dvh] flex-wrap items-center justify-between gap-x-3 gap-y-2 overflow-y-auto @min-[640px]/editor:flex @min-[640px]/editor:max-h-none @min-[640px]/editor:overflow-visible',
               detailsOpen ? 'flex pt-2 @min-[640px]/editor:pt-0' : 'hidden',
             )}
           >
-            <div className="min-w-0 flex-1 basis-60">
-              <div className="flex items-center gap-1">
+            <div className="flex min-w-0 flex-1 basis-72 items-baseline gap-3">
+              <div className="flex min-w-0 items-center gap-1">
                 {schemaName && (
                   <span
                     className="max-w-32 truncate text-sm text-muted-foreground"
@@ -136,7 +142,7 @@ export const TableConfig = memo<TableConfigProps>(
                   )}
                   value={tableName}
                   onChange={(event) => onTableNameChange(event.target.value)}
-                  className="h-8 min-w-0 border-transparent bg-transparent px-1 text-lg font-semibold shadow-none hover:border-input focus:border-input"
+                  className="h-8 w-[13ch] min-w-0 border-0 bg-transparent px-1 font-mono text-xl shadow-none hover:border-input focus:border-input"
                 />
               </div>
               <Input
@@ -147,14 +153,14 @@ export const TableConfig = memo<TableConfigProps>(
                 placeholder={t('tableConfig.tableCommentPlaceholder')}
                 value={tableComment}
                 onChange={(event) => onTableCommentChange(event.target.value)}
-                className="h-7 border-transparent bg-transparent px-1 text-xs text-muted-foreground shadow-none hover:border-input focus:border-input"
+                className="h-7 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-muted-foreground shadow-none hover:border-input focus:border-input"
               />
               {(workspaceLabel || loadedTableName) && (
                 <span className="sr-only">{workspaceLabel || loadedTableName}</span>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2" data-testid="table-config-actions">
-              <div className="w-36">
+            <div className="flex flex-wrap items-center gap-1" data-testid="table-config-actions">
+              <div className="mr-2 w-36">
                 <SearchableSelect
                   value={dbType}
                   onValueChange={(value) => {
@@ -169,7 +175,7 @@ export const TableConfig = memo<TableConfigProps>(
                   id="db-type-select"
                   data-testid="db-type-selector"
                   aria-label={t('tableConfig.dbType')}
-                  triggerClassName="h-7 rounded-md px-2 text-xs"
+                  triggerClassName="h-10 rounded-md px-3 text-sm"
                   emptyMessage={t('searchableSelect.empty')}
                   renderTrigger={() => {
                     if (!selectedDbOption) return t('tableConfig.dbTypePlaceholder');
@@ -199,8 +205,8 @@ export const TableConfig = memo<TableConfigProps>(
               </div>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                  <Button variant="ghost" size="tool">
+                    <SlidersHorizontal className="h-4 w-4" />
                     {t('tableConfig.properties')}
                   </Button>
                 </PopoverTrigger>
@@ -257,21 +263,41 @@ export const TableConfig = memo<TableConfigProps>(
                 </PopoverContent>
               </Popover>
               {showHistoryButton && onViewHistory && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 gap-1.5 text-xs"
-                  onClick={onViewHistory}
-                >
-                  <History className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="tool" onClick={onViewHistory}>
+                  <History className="h-4 w-4" />
                   {t('savedTables.history')}
                 </Button>
               )}
+              {onShare && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="tool"
+                      onClick={onShare}
+                      disabled={isSharing}
+                      aria-busy={isSharing}
+                      aria-label={t(isSharing ? 'header.generatingShareLink' : 'header.shareLink')}
+                    >
+                      {isSharing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Share2 className="h-4 w-4" aria-hidden />
+                      )}
+                      {t('tableConfig.share')}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {t(isSharing ? 'header.generatingShareLink' : 'header.generateShareLink')}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
+                  <Button variant="ghost" size="tool" aria-label={t('tableConfig.more')}>
                     <MoreHorizontal className="h-4 w-4" />
-                    {t('tableConfig.more')}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -303,12 +329,11 @@ export const TableConfig = memo<TableConfigProps>(
             <TooltipTrigger asChild>
               <span className="inline-flex">
                 <Button
-                  size="sm"
-                  className="h-11 w-11 shrink-0 gap-1.5 px-0 text-xs @min-[640px]/editor:h-8 @min-[640px]/editor:w-auto @min-[640px]/editor:px-4"
+                  className="h-11 w-11 shrink-0 gap-1.5 px-0 @min-[640px]/editor:h-10 @min-[640px]/editor:w-auto @min-[640px]/editor:px-4"
                   onClick={onSaveCurrent}
                   disabled={saveDisabled}
                 >
-                  <Save className="h-3.5 w-3.5" />
+                  <Save className="h-4 w-4 @min-[640px]/editor:hidden" />
                   <span className="sr-only @min-[640px]/editor:not-sr-only">
                     {t(
                       objectType === 'view'

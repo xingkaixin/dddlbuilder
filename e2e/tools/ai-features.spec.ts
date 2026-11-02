@@ -461,13 +461,10 @@ test.describe('AI 功能 UI 测试 @tools @ai', () => {
     await page.keyboard.press('Enter');
 
     // 查找评审按钮
-    const reviewButton = page
-      .locator('button')
-      .filter({ hasText: /评审/i })
-      .or(page.locator('button').filter({ hasText: /大师/i }));
+    const reviewButton = page.getByRole('button', { name: '大师评审', exact: true });
 
     if ((await reviewButton.count()) > 0) {
-      await reviewButton.first().click();
+      await reviewButton.click();
 
       // 检查是否有加载状态或评审结果区域
       // 只检查按钮点击是否有反应，不等待实际 API 响应

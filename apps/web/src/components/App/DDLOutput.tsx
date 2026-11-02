@@ -7,10 +7,7 @@ import type {
 import type { ORMTarget } from '@ddlbuilder/ddl-core';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import type { SchemaLintIssue } from '@/utils/schemaLint';
-import { Code, Maximize, X, ScrollText, ShieldCheck, Workflow } from '@/components/icons';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslation } from 'react-i18next';
 import { DclOutputPanel } from './ddl-output/DclOutputPanel';
 import { DdlOutputPanel } from './ddl-output/DdlOutputPanel';
@@ -39,73 +36,34 @@ interface DDLOutputProps {
   onStartReview: () => void;
   onViewReviewHistory?: () => void;
   onApplySuggestion?: (suggestion: DDLReviewStructuredSuggestion) => void;
-  onCollapsePanel?: () => void;
-  onMaximizePanel?: () => void;
 }
 
 export const DDLOutput = memo<DDLOutputProps>((props) => {
   const { t } = useTranslation();
 
   const tabs = [
-    { value: 'ddl', label: t('ddlOutput.ddlTab'), icon: ScrollText },
-    { value: 'dcl', label: t('ddlOutput.dclTab'), icon: ShieldCheck },
-    { value: 'orm', label: t('ddlOutput.ormTab'), icon: Code },
-    { value: 'routine', label: t('ddlOutput.routineTab'), icon: Workflow },
+    { value: 'ddl', label: t('ddlOutput.ddlTab') },
+    { value: 'dcl', label: t('ddlOutput.dclTab') },
+    { value: 'orm', label: t('ddlOutput.ormTab') },
+    { value: 'routine', label: t('ddlOutput.routineTab') },
   ] as const;
 
   return (
     <div className="relative flex w-full min-w-0 flex-col bg-background">
       <Tabs key={props.dbType} defaultValue="ddl" className="relative flex flex-col">
-        <div className="sticky top-0 z-10 border-b bg-background px-4 pt-3">
+        <div className="sticky top-0 z-10 bg-background pb-2">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <TabsList className="h-9 min-w-0 max-w-full justify-start overflow-x-auto rounded-none bg-transparent p-0">
-              {tabs.flatMap(({ value, label, icon: Icon }) =>
+            <TabsList className="min-w-0 max-w-full justify-start overflow-x-auto p-0">
+              {tabs.flatMap(({ value, label }) =>
                 props.dbType === 'sqlite' && (value === 'dcl' || value === 'routine')
                   ? []
                   : [
-                      <TabsTrigger
-                        key={value}
-                        value={value}
-                        className="h-9 shrink-0 gap-1.5 rounded-none border-b-2 border-transparent px-3 text-xs after:hidden data-active:border-primary data-active:bg-transparent data-active:text-primary data-active:shadow-none"
-                      >
-                        <Icon className="h-3.5 w-3.5" />
+                      <TabsTrigger key={value} value={value} className="h-9 shrink-0">
                         <span>{label}</span>
                       </TabsTrigger>,
                     ],
               )}
             </TabsList>
-            <div className="ml-auto flex shrink-0 items-center gap-1">
-              {props.onMaximizePanel && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
-                  onClick={props.onMaximizePanel}
-                  aria-label={t('editorLayout.maximize')}
-                >
-                  <Maximize className="h-4 w-4" />
-                </Button>
-              )}
-              {props.onCollapsePanel && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
-                      onClick={props.onCollapsePanel}
-                      aria-label={t('ddlOutput.collapsePanel')}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t('ddlOutput.collapsePanel')}</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
           </div>
         </div>
         <TabsContent value="ddl" className="mt-0">
@@ -120,7 +78,6 @@ export const DDLOutput = memo<DDLOutputProps>((props) => {
             reviewThinking={props.reviewThinking}
             reviewResult={props.reviewResult}
             reviewError={props.reviewError}
-            schemaLintIssues={props.schemaLintIssues}
             onStartReview={props.onStartReview}
             onViewReviewHistory={props.onViewReviewHistory}
             onApplySuggestion={props.onApplySuggestion}

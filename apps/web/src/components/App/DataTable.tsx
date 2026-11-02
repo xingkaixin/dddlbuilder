@@ -8,7 +8,7 @@ import { DragDropVerticalIcon } from '@/components/icons';
 import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import { normalizeAddCount, type EnumValueMeta } from '@ddlbuilder/shared-types';
-import { buildDuplicateNameSet, useEditorStore } from '@/stores';
+import { buildDuplicateNameSet, useAppUiStore, useEditorStore } from '@/stores';
 import {
   FieldRowStateContext,
   useFieldColumns,
@@ -48,15 +48,15 @@ interface DataTableProps {
 }
 
 const COLUMN_WIDTHS = {
-  order: 72,
+  order: 56,
   fieldName: 120,
-  fieldComment: 150,
-  fieldType: 120,
-  nullable: 70,
-  defaultKind: 110,
-  defaultValue: 100,
+  fieldComment: 120,
+  fieldType: 128,
+  nullable: 76,
+  defaultKind: 84,
+  defaultValue: 84,
   onUpdate: 100,
-  actions: 50,
+  actions: 40,
 } satisfies Record<string, number>;
 
 type EditingCell = { row: number; col: string };
@@ -91,6 +91,7 @@ interface SortableDataRowProps {
   effectiveFreezeColumns: number;
   getStickyLeft: (colIndex: number) => number;
   isRowHighlighted: boolean;
+  isRowSelected: boolean;
   dragFieldLabel: string;
 }
 
@@ -126,6 +127,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
   effectiveFreezeColumns,
   getStickyLeft,
   isRowHighlighted,
+  isRowSelected,
   dragFieldLabel,
 }: SortableDataRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -149,8 +151,9 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
           transition,
         }}
         data-row-index={row.index}
+        data-selected={isRowSelected || undefined}
         className={cn(
-          'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
+          'group/row transition-colors',
           isRowHighlighted && 'bg-blue-500/10 animate-row-highlight',
           isDragging && 'opacity-80',
         )}
@@ -170,7 +173,8 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
               data-editing={editingColumn === cell.column.id || undefined}
               data-editable-column={cell.column.columnDef.meta?.editable || undefined}
               className={cn(
-                'h-10 px-1 bg-background text-xs transition-colors group-hover/row:bg-muted/30',
+                'h-[var(--lm-row)] bg-background px-1 font-mono text-[13px] shadow-[inset_0_-1px_0_var(--line-faint)] transition-colors group-hover/row:bg-[color-mix(in_srgb,var(--mark)_30%,var(--paper))] group-data-selected/row:bg-[color-mix(in_srgb,var(--mark)_55%,var(--paper))]',
+                cell.column.id === 'fieldComment' && 'font-text',
                 isFrozen && 'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
                 isLastFrozen &&
                   'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
@@ -320,6 +324,14 @@ export const DataTable = memo<DataTableProps>(
       });
     }, [rows, duplicateNameSet, dbType, t]);
 
+    const setActiveFieldId = useAppUiStore((state) => state.setActiveFieldId);
+
+    const handleRowSelected = useCallback(
+      (rowIndex: number | null) =>
+        setActiveFieldId(rowIndex === null ? null : (rows[rowIndex]?.id ?? null)),
+      [rows, setActiveFieldId],
+    );
+
     const {
       selectedCell,
       clearSelection,
@@ -327,9 +339,7 @@ export const DataTable = memo<DataTableProps>(
       focusFirstInteractiveInCell,
       handleCellActivate,
       handleTabNavigation,
-    } = useDataTableNavigation({
-      tableRef,
-    });
+    } = useDataTableNavigation({ tableRef, onRowSelected: handleRowSelected });
 
     const hiddenColumns = usePreferencesStore((state) => state.hiddenFieldColumns);
 
@@ -455,7 +465,10 @@ export const DataTable = memo<DataTableProps>(
           >
             <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
               <table
-                className="border-separate border-spacing-0 table-fixed text-xs"
+                className={cn(
+                  'border-separate border-spacing-0 table-fixed text-xs',
+                  !freezeEnabled && 'w-full',
+                )}
                 style={{ minWidth: table.getTotalSize() }}
                 data-testid="data-table"
                 aria-label={t('dataTable.ariaLabel')}
@@ -474,10 +487,9 @@ export const DataTable = memo<DataTableProps>(
                           <th
                             key={header.id}
                             className={cn(
-                              'h-9 px-2 text-left text-xs font-medium text-muted-foreground',
-                              isFrozen
-                                ? 'relative sticky z-30 bg-muted/30 supports-[backdrop-filter]:backdrop-blur-[2px]'
-                                : 'bg-muted/30',
+                              'h-[30px] whitespace-nowrap bg-background px-2 text-left text-xs font-normal text-muted-foreground shadow-[inset_0_-1px_0_var(--line)]',
+                              isFrozen &&
+                                'relative sticky z-30 supports-[backdrop-filter]:backdrop-blur-[2px]',
                               isLastFrozen &&
                                 'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
                             )}
@@ -504,6 +516,7 @@ export const DataTable = memo<DataTableProps>(
                       columns={columns}
                       warnings={rowWarnings[row.index] ?? []}
                       selectedColumn={selectedCell?.row === row.index ? selectedCell.col : null}
+                      isRowSelected={selectedCell?.row === row.index}
                       editingColumn={editingCell?.row === row.index ? editingCell.col : null}
 
                       onEditingCellChange={handleEditingCellChange}

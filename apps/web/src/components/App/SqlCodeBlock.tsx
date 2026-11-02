@@ -9,6 +9,7 @@ import { ExplainPopover } from './ExplainPopover';
 
 interface SqlCodeBlockProps {
   code: string;
+  activeLine?: number;
 }
 
 const highlighter = createHighlighterCoreSync({
@@ -17,7 +18,18 @@ const highlighter = createHighlighterCoreSync({
   engine: createJavaScriptRegexEngine(),
 });
 
-export default function SqlCodeBlock({ code }: SqlCodeBlockProps) {
+function revealInPane(line: HTMLElement | null) {
+  const pane = line?.closest('[data-testid="generated-results"]');
+
+  if (!line || !pane) return;
+  const lineBox = line.getBoundingClientRect();
+  const paneBox = pane.getBoundingClientRect();
+
+  if (lineBox.top < paneBox.top) pane.scrollTop -= paneBox.top - lineBox.top;
+  else if (lineBox.bottom > paneBox.bottom) pane.scrollTop += lineBox.bottom - paneBox.bottom;
+}
+
+export default function SqlCodeBlock({ code, activeLine }: SqlCodeBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme === 'dark' ? 'one-dark-pro' : 'one-light';
@@ -31,18 +43,16 @@ export default function SqlCodeBlock({ code }: SqlCodeBlockProps) {
     <div ref={containerRef}>
       <ExplainPopover containerRef={containerRef}>
         <pre
-          className="overflow-auto whitespace-pre-wrap p-2"
-          style={{
-            fontFamily: '"Roboto Mono", monospace',
-            fontSize: '0.775rem',
-            color: highlighted.fg,
-          }}
+          className="overflow-auto font-mono text-[13px] leading-[22px] whitespace-pre-wrap"
+          style={{ color: highlighted.fg }}
         >
           <code style={{ fontFamily: 'inherit' }}>
             {highlighted.tokens.map((line, lineIndex) => (
               <span
                 key={lineIndex}
-                className="relative block min-h-[1lh]"
+                ref={lineIndex === activeLine ? revealInPane : undefined}
+                data-active={lineIndex === activeLine || undefined}
+                className="relative block min-h-[1lh] data-active:bg-[var(--mark)]"
                 style={{ paddingLeft: `${String(highlighted.tokens.length).length + 2.25}ch` }}
               >
                 <span

@@ -83,11 +83,8 @@ export function buildAppWorkspaceModel({
 
   return {
     header: {
-      onShare: shareAction.handleShare,
-      isSharing: shareAction.isSharing,
-      onOpenImport: openImportDialog,
       onOpenSettings: navigationActions.handleOpenSettings,
-      onOpenAIGenerate: navigationActions.handleOpenAIGenerateDialog,
+      onOpenErDiagram: editorSurface.tableConfigProps.onOpenErDiagram,
     },
     drawer: {
       open: ui.savedTablesDrawerOpen,
@@ -128,6 +125,9 @@ export function buildAppWorkspaceModel({
       activeDirty: isLoadedDirty,
       tablePresentations: workspacePresentation.tablePresentations,
       onCollapse: collapseSidebar,
+      onCreateDraft: workspaceTabs.handleCreateDraft,
+      onOpenImport: openImportDialog,
+      onOpenAIGenerate: navigationActions.handleOpenAIGenerateDialog,
       onOpenWorkspace: navigationActions.handleOpenSavedTablesDrawer,
       onCreateFolder: folderActions.handleOpenCreateFolderDialog,
       onSelectDraft: workspaceTabs.handleSelectDraft,
@@ -181,7 +181,14 @@ export function buildAppWorkspaceModel({
       expandSidebar,
       openImportDialog,
     },
-    editorSurface,
+    editorSurface: {
+      ...editorSurface,
+      tableConfigProps: {
+        ...editorSurface.tableConfigProps,
+        onShare: shareAction.handleShare,
+        isSharing: shareAction.isSharing,
+      },
+    },
     celebration: {
       handleFireworksComplete,
       handlePlayFireworks,

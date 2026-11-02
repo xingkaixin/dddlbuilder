@@ -24,6 +24,7 @@ const buttonVariants = cva(
         sm: 'h-9 rounded-md px-4 text-sm',
         lg: 'h-11 rounded-lg px-8 text-base',
         icon: 'h-10 w-10',
+        tool: 'h-8 gap-1.5 rounded-md px-2.5 text-sm text-muted-foreground',
       },
     },
     defaultVariants: {

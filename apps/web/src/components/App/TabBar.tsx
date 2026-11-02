@@ -55,29 +55,28 @@ const TabItem = memo(
           }
         }}
         className={cn(
-          'group relative flex h-9 max-w-[200px] shrink-0 cursor-pointer items-center gap-2 rounded-t-md border-t border-x px-3 text-sm transition-colors',
+          'group relative flex h-[34px] max-w-[200px] shrink-0 cursor-pointer items-center gap-2 rounded-md px-2.5 text-sm transition-colors',
           isActive
-            ? 'border-border bg-background text-foreground'
-            : 'border-transparent bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+            ? 'bg-card text-foreground shadow-[inset_0_0_0_1px_var(--line-faint)]'
+            : 'text-muted-foreground hover:text-foreground',
         )}
       >
-        {/* 来源类型指示器 */}
         <span
-          className={cn('h-2 w-2 shrink-0 rounded-full', isDraft ? 'bg-amber-500' : 'bg-primary')}
+          className={cn(
+            'h-2 w-2 shrink-0 rounded-full',
+            isDraft ? 'shadow-[inset_0_0_0_1.5px_var(--warning)]' : 'bg-[var(--blue)]',
+          )}
         />
 
-        {/* 标题 */}
-        <span className="min-w-0 flex-1 truncate select-none">
+        <span className="min-w-0 flex-1 truncate font-mono select-none">
           {title}
           {isDirty ? ' *' : ''}
         </span>
 
-        {/* 加载指示器 */}
         {tab.isLoading && (
           <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
         )}
 
-        {/* 关闭按钮 */}
         <button
           type="button"
           onClick={(e) => {
@@ -126,12 +125,9 @@ export const TabBar = memo(
     }, [tabs]);
 
     return (
-      <div
-        className="flex shrink-0 items-end gap-1 border-b bg-muted/20 px-2 pt-1"
-        data-testid="workspace-tab-bar"
-      >
+      <div className="flex shrink-0 items-center gap-1 px-3 pt-2" data-testid="workspace-tab-bar">
         {leadingAction}
-        <div className="flex min-w-0 flex-1 items-end gap-1 overflow-x-auto">
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
           {visibleTabs.map((tab) => (
             <TabItem
               key={tab.id}
@@ -150,10 +146,10 @@ export const TabBar = memo(
                 <button
                   type="button"
                   className={cn(
-                    'flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-t-md border-t border-x px-3 text-sm transition-colors',
+                    'flex h-[34px] shrink-0 cursor-pointer items-center gap-1 rounded-md px-3 text-sm transition-colors',
                     hiddenTabs.some((t) => t.id === activeTabId)
-                      ? 'border-border bg-background text-foreground'
-                      : 'border-transparent bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+                      ? 'bg-card text-foreground shadow-[inset_0_0_0_1px_var(--line-faint)]'
+                      : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   <span className="select-none">{t('tabBar.more')}</span>
@@ -173,7 +169,9 @@ export const TabBar = memo(
                     <span
                       className={cn(
                         'h-2 w-2 shrink-0 rounded-full',
-                        tab.source.kind === 'draft' ? 'bg-amber-500' : 'bg-primary',
+                        tab.source.kind === 'draft'
+                          ? 'shadow-[inset_0_0_0_1.5px_var(--warning)]'
+                          : 'bg-[var(--blue)]',
                       )}
                     />
                     <span className="min-w-0 flex-1 truncate">
@@ -206,13 +204,13 @@ export const TabBar = memo(
           <button
             type="button"
             onClick={onCreateTab}
-            className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label={t('tabBar.createDraft')}
           >
             <Plus className="h-4 w-4" />
           </button>
         </div>
-        {trailingAction && <div className="mb-1 shrink-0 pl-2">{trailingAction}</div>}
+        {trailingAction && <div className="shrink-0 pl-2">{trailingAction}</div>}
       </div>
     );
   },

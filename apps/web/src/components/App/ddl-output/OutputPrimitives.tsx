@@ -18,11 +18,14 @@ const CODE_FALLBACK_STYLE: CSSProperties = {
   margin: 0,
 };
 
-export function OutputCode({ code }: { code: string }) {
+export function OutputCode({ code, activeLine }: { code: string; activeLine?: number }) {
   return (
-    <div data-testid="ddl-output" className="relative flex-1 overflow-auto px-4 py-3.5">
+    <div
+      data-testid="ddl-output"
+      className="relative flex-1 overflow-auto rounded-lg bg-muted py-2.5 pr-3"
+    >
       <Suspense fallback={<pre style={CODE_FALLBACK_STYLE}>{code}</pre>}>
-        <SqlCodeBlock code={code} />
+        <SqlCodeBlock code={code} activeLine={activeLine} />
       </Suspense>
     </div>
   );
@@ -72,9 +75,9 @@ export function CopyOutputButton({
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant="secondary"
+          variant="outline"
           size="sm"
-          className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
+          className="ml-auto h-8 gap-1.5 px-3"
           onClick={handleCopy}
         >
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -100,21 +103,15 @@ export function OutputHeading({
   actions: React.ReactNode;
 }) {
   return (
-    <div className="border-b px-4 py-2">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-            {dbType && (
-              <span className="transition-transform duration-200 hover:scale-105">
-                <DatabaseBadge dbType={dbType} />
-              </span>
-            )}
-          </div>
-          <p className="sr-only">{description}</p>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>
-      </div>
+    <div className="flex min-h-8 flex-wrap items-center gap-1 pb-2">
+      <h2 className="sr-only">{title}</h2>
+      <p className="sr-only">{description}</p>
+      {dbType && (
+        <span className="sr-only">
+          <DatabaseBadge dbType={dbType} />
+        </span>
+      )}
+      {actions}
     </div>
   );
 }

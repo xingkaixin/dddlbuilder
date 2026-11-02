@@ -1,9 +1,11 @@
-import { useCallback, useId, useReducer, useRef, type ComponentProps } from 'react';
+import { useId, useReducer, useRef, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { EditorLayout } from '@/stores/preferencesStore';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useEditorStore } from '@/stores';
+import { DATABASE_OPTIONS } from './databaseOptions';
 import { TableConfig } from './TableConfig';
 import { SchemaLintPanel } from './SchemaLintPanel';
 import { OutputContainer, type OutputContainerProps } from './containers/OutputContainer';
@@ -39,14 +41,30 @@ function splitPercentReducer(percent: number, event: SplitEvent) {
   return Math.max(30, Math.min(75, next));
 }
 
+function EditorStatus() {
+  const { t } = useTranslation();
+
+  const fieldCount = useEditorStore(
+    (state) => state.rows.filter((row) => row.fieldName?.trim()).length,
+  );
+  const dbType = useEditorStore((state) => state.dbType);
+
+  return (
+    <>
+      <span>{t('editorLayout.fieldCount', { count: fieldCount })}</span>
+      <span className="ml-auto font-mono">
+        {DATABASE_OPTIONS.find((option) => option.value === dbType)?.label}
+      </span>
+    </>
+  );
+}
+
 export function EditorSurface({
   model,
   layout: view,
-  onLayoutChange,
 }: {
   model: EditorSurfaceModel;
   layout: EditorLayout;
-  onLayoutChange: (layout: EditorLayout) => void;
 }) {
   const { documentId, isShareView, tableConfigProps, tableBuilderProps, outputProps } = model;
   const { t } = useTranslation();
@@ -55,8 +73,6 @@ export function EditorSurface({
   const panesRef = useRef<HTMLDivElement>(null);
   const builderId = useId();
   const issues = outputProps.ddlOutputProps.schemaLintIssues ?? [];
-  const collapseOutput = useCallback(() => onLayoutChange('design'), [onLayoutChange]);
-  const maximizeOutput = useCallback(() => onLayoutChange('output'), [onLayoutChange]);
 
   return (
     <section
@@ -64,7 +80,7 @@ export function EditorSurface({
       data-testid="editor-surface"
       data-view={view}
     >
-      <div className="shrink-0 border-b px-4 py-1 @min-[640px]/editor:py-3">
+      <div className="shrink-0 px-4 pb-2 pt-2.5">
         <div
           className={isShareView ? 'pointer-events-none select-none opacity-80' : undefined}
           inert={isShareView}
@@ -85,7 +101,7 @@ export function EditorSurface({
           id={builderId}
           hidden={view === 'output'}
           className={cn(
-            'min-h-0 min-w-0 overflow-auto px-4 py-3',
+            'min-h-0 min-w-0 overflow-auto px-4 pb-2',
             view === 'design' && 'flex-1',
             view === 'split' && 'min-h-[26rem] shrink-0 sm:min-h-0',
             view === 'side' && 'min-h-[26rem] shrink-0 @min-[980px]/editor:min-h-0',
@@ -111,10 +127,10 @@ export function EditorSurface({
             aria-valuemax={75}
             aria-valuenow={Math.round(splitPercent)}
             className={cn(
-              'hidden shrink-0 touch-none items-center justify-center bg-muted/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+              'hidden shrink-0 touch-none items-center justify-center hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
               view === 'side'
-                ? 'w-3 cursor-col-resize border-x @min-[980px]/editor:flex'
-                : 'h-3 cursor-row-resize border-y sm:flex',
+                ? 'w-3 cursor-col-resize @min-[980px]/editor:flex'
+                : 'h-3 cursor-row-resize sm:flex',
             )}
             onPointerDown={(event) => {
               event.preventDefault();
@@ -144,41 +160,31 @@ export function EditorSurface({
               dispatchSplit({ type: 'keyPressed', key });
             }}
           >
-            <span
-              className={cn(
-                'rounded-full bg-muted-foreground/40',
-                view === 'side' ? 'h-8 w-0.5' : 'h-0.5 w-8',
-              )}
-            />
+            <span className={cn('bg-border', view === 'side' ? 'h-full w-px' : 'h-px w-full')} />
           </div>
         )}
         <div
           hidden={view === 'design'}
           className={cn(
-            'min-h-0 min-w-0 flex-1 overflow-auto',
+            'min-h-0 min-w-0 flex-1 overflow-auto px-4 pb-2',
             view === 'split' && 'min-h-[20rem] shrink-0 sm:min-h-0 sm:shrink',
             view === 'side' &&
               'min-h-[20rem] shrink-0 @min-[980px]/editor:min-h-0 @min-[980px]/editor:shrink',
           )}
           data-testid="generated-results"
         >
-          <OutputContainer
-            {...outputProps}
-            onCollapse={collapseOutput}
-            onMaximize={paired ? maximizeOutput : undefined}
-            frozen={view === 'design'}
-          />
+          <OutputContainer {...outputProps} frozen={view === 'design'} />
         </div>
       </div>
-      <footer className="shrink-0 border-t bg-muted/20 px-3 py-1">
+      <footer className="flex h-8 shrink-0 items-center gap-4 overflow-hidden whitespace-nowrap bg-muted px-4 text-[13px] text-muted-foreground">
         <Popover>
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
               className={cn(
-                'h-7 px-2 text-xs',
-                issues.length > 0 && 'text-amber-700 dark:text-amber-400',
+                'h-7 px-0 text-[13px] hover:bg-transparent',
+                issues.length > 0 && 'text-[var(--warning)]',
               )}
             >
               {t('schemaLint.title')} ·{' '}
@@ -195,6 +201,7 @@ export function EditorSurface({
             <SchemaLintPanel issues={issues} />
           </PopoverContent>
         </Popover>
+        <EditorStatus />
       </footer>
     </section>
   );

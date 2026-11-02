@@ -228,7 +228,7 @@ export const EditableCell = memo<EditableCellProps>(
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           className={cn(
-            'h-7 w-full border-transparent bg-transparent px-2 py-1 text-xs any-pointer-coarse:text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
+            'h-7 w-full border-transparent bg-transparent px-2 py-1 font-[inherit] text-[13px] any-pointer-coarse:text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
             className,
           )}
           autoComplete="off"
@@ -249,7 +249,7 @@ export const EditableCell = memo<EditableCellProps>(
         onDoubleClick={handleDoubleClick}
         onKeyDown={handleCellKeyDown}
         className={cn(
-          'flex h-7 w-full cursor-text items-center truncate px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary/30',
+          'flex h-7 w-full cursor-text items-center truncate px-2 py-1 text-[13px] outline-none focus:ring-1 focus:ring-primary/30',
           disabled && 'cursor-not-allowed text-muted-foreground opacity-60',
           !value && 'text-muted-foreground/50',
           className,

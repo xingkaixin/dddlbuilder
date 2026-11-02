@@ -113,9 +113,9 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
         <Popover open={open} onOpenChange={handleOpenChange}>
           <PopoverTrigger asChild>
             <Button
-              variant="outline"
-              size="sm"
-              className={triggerClassName ?? 'h-7 gap-1.5 px-2 text-xs font-medium'}
+              variant={triggerClassName ? 'outline' : 'ghost'}
+              size={triggerClassName ? 'sm' : 'tool'}
+              className={triggerClassName}
             >
               <LayoutTemplate className="h-3.5 w-3.5" />
               {t('tableTemplate.quickApply.trigger')}

@@ -153,7 +153,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     return (
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs font-medium">
+          <Button variant="ghost" size="tool">
             <FileText className="h-3.5 w-3.5" />
             {t('templateManager.quickApply.trigger')}
             <ChevronDown className="h-3 w-3 opacity-50" />

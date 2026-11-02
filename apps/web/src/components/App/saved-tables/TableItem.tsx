@@ -65,7 +65,7 @@ export const TableItem = memo<TableItemProps>(
         ref={setNodeRef}
         className={cn(
           'group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 transition-colors hover:bg-accent focus-within:bg-accent',
-          isActive && 'bg-accent/60',
+          isActive && 'lm-hatch',
         )}
         style={{
           paddingLeft: `${depth * 16 + 8}px`,
@@ -115,12 +115,7 @@ export const TableItem = memo<TableItemProps>(
                 data-testid={`table-icon:${item.normalizedName}`}
               />
             )}
-            <span
-              className={cn(
-                'truncate text-[13px] leading-5',
-                isActive ? 'font-medium' : 'font-normal',
-              )}
-            >
+            <span className={cn('truncate font-mono text-[13px] leading-5')}>
               {displayName ?? item.name}
             </span>
             {showDirty && <span className="text-xs text-amber-600">*</span>}

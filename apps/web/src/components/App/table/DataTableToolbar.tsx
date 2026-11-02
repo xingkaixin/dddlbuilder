@@ -69,11 +69,7 @@ function FieldColumnsMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 gap-1.5 px-2 text-xs @min-[640px]/editor:h-7"
-        >
+        <Button variant="ghost" size="tool">
           <Columns3Cog className="h-3.5 w-3.5" />
           {t('dataTable.columns')}
         </Button>
@@ -121,7 +117,7 @@ export function DataTableToolbar({
   const freezeId = useId();
 
   return (
-    <div className="relative border-b px-0 py-2">
+    <div className="relative py-1">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           variant="outline"
@@ -145,11 +141,7 @@ export function DataTableToolbar({
           {(onOpenAISchemaPatch || onGenerateComments || onOpenAIIndexAdvisor) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 gap-1.5 px-2 text-xs @min-[640px]/editor:h-7"
-                >
+                <Button variant="ghost" size="tool">
                   <WandSparkles className="h-3.5 w-3.5" />
                   {t('dataTable.aiTools')}
                   <ChevronDown className="h-3 w-3" />
@@ -197,11 +189,7 @@ export function DataTableToolbar({
           {(onOpenStorageEstimator || onOpenMockDataGenerator) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 gap-1.5 px-2 text-xs @min-[640px]/editor:h-7"
-                >
+                <Button variant="ghost" size="tool">
                   <TableProperties className="h-3.5 w-3.5" />
                   {t('dataTable.dataTools')}
                   <ChevronDown className="h-3 w-3" />

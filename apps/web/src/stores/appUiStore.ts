@@ -49,6 +49,8 @@ interface AppUiState {
   savedTablesDrawerOpen: boolean;
   activeDialog: ActiveAppDialog;
   showFireworks: boolean;
+  activeFieldId: string | null;
+  setActiveFieldId: (id: string | null) => void;
   setWorkspaceSidebarOpen: (open: boolean) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   setIsImportDialogOpen: (open: boolean) => void;
@@ -88,6 +90,8 @@ export const useAppUiStore = create<AppUiState>((set) => {
     savedTablesDrawerOpen: false,
     activeDialog: noDialog,
     showFireworks: readCnyFireworksPending(),
+    activeFieldId: null,
+    setActiveFieldId: (activeFieldId) => set({ activeFieldId }),
     setWorkspaceSidebarOpen: (workspaceSidebarOpen) => set({ workspaceSidebarOpen }),
     setSavedTablesDrawerOpen: (savedTablesDrawerOpen) => set({ savedTablesDrawerOpen }),
     setIsImportDialogOpen: setDialogOpen('import'),

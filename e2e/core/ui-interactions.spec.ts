@@ -222,10 +222,6 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await separator.focus();
     await page.keyboard.press('ArrowUp');
     await expect(separator).toHaveAttribute('aria-valuenow', '50');
-    await page.getByRole('button', { name: '最大化生成结果', exact: true }).click();
-    await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'output');
-    await page.getByRole('button', { name: '收起输出面板', exact: true }).click();
-    await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'design');
   });
 });
 

@@ -97,6 +97,7 @@ import {
   Sun as SunData,
   LayoutTwoColumnIcon as LayoutTwoColumnData,
   LayoutTwoRowIcon as LayoutTwoRowData,
+  HelpCircleIcon as CircleHelpData,
   Table as TableData,
   Table2 as Table2Data,
   Table03Icon as TablePropertiesData,
@@ -225,6 +226,7 @@ export const Star = createAppIcon(StarData, 'Star');
 export const Sun = createAppIcon(SunData, 'Sun');
 export const LayoutTwoColumn = createAppIcon(LayoutTwoColumnData, 'LayoutTwoColumn');
 export const LayoutTwoRow = createAppIcon(LayoutTwoRowData, 'LayoutTwoRow');
+export const CircleHelp = createAppIcon(CircleHelpData, 'CircleHelp');
 export const Table = createAppIcon(TableData, 'Table');
 export const Table2 = createAppIcon(Table2Data, 'Table2');
 export const TableProperties = createAppIcon(TablePropertiesData, 'TableProperties');

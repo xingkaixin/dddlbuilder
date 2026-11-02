@@ -22,8 +22,10 @@ const INTERACTIVE_SELECTOR = 'input:not([disabled]), div[tabindex="0"], button:n
 
 export function useDataTableNavigation({
   tableRef,
+  onRowSelected,
 }: {
   tableRef: RefObject<HTMLDivElement | null>;
+  onRowSelected?: (row: number | null) => void;
 }) {
   const [selectedCell, dispatch] = useReducer(selectedCellReducer, null);
 
@@ -31,11 +33,18 @@ export function useDataTableNavigation({
     cell?.querySelector<HTMLElement>(INTERACTIVE_SELECTOR)?.focus();
   }, []);
 
-  const handleCellActivate = useCallback((row: number, col: string) => {
-    dispatch({ type: 'cellActivated', row, col });
-  }, []);
+  const handleCellActivate = useCallback(
+    (row: number, col: string) => {
+      dispatch({ type: 'cellActivated', row, col });
+      onRowSelected?.(row);
+    },
+    [onRowSelected],
+  );
 
-  const clearSelection = useCallback(() => dispatch({ type: 'cleared' }), []);
+  const clearSelection = useCallback(() => {
+    dispatch({ type: 'cleared' });
+    onRowSelected?.(null);
+  }, [onRowSelected]);
 
   const focusEditableCell = useCallback(
     (row: number, col: string) => {
