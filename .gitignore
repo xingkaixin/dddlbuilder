@@ -66,3 +66,4 @@ skills-lock.json
 
 .cloudflare
 cloudflare.deploy.json
+output/
