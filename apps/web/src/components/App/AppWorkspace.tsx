@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, Upload } from '@/components/icons';
+import { ChevronRight } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
 import { useAppRoute } from '@/hooks/useAppRoute';
 import { usePreferencesStore, type EditorLayout } from '@/stores/preferencesStore';
@@ -10,7 +10,6 @@ import { Header } from './Header';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
 import { SavedTablesDrawer } from './SavedTablesDrawer';
 import { TabBar } from './TabBar';
-import { TableTemplatePopover } from './TableTemplatePopover';
 import { WorkspaceEmptyState } from './WorkspaceEmptyState';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import type { AppWorkspaceModel } from './buildAppWorkspaceModel';
@@ -34,7 +33,6 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
     sidebar,
     tabBar,
     emptyState,
-    tableTemplates,
     view,
     editorSurface,
     celebration,
@@ -125,25 +123,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
                   <MainWorkspaceSkeleton />
                 </div>
               ) : !view.hasTabs && !view.isShareView ? (
-                <WorkspaceEmptyState
-                  {...emptyState}
-                  importButton={
-                    <button
-                      type="button"
-                      onClick={view.openImportDialog}
-                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    >
-                      <Upload className="h-4 w-4" />
-                      {t('emptyState.importDDL')}
-                    </button>
-                  }
-                  templateButton={
-                    <TableTemplatePopover
-                      {...tableTemplates}
-                      triggerClassName="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    />
-                  }
-                />
+                <WorkspaceEmptyState {...emptyState} toolActions={toolActions} />
               ) : (
                 <div className="flex min-h-0 flex-1 flex-col">
                   <EditorSurface model={editorSurface} layout={layout} />

@@ -1,3 +1,4 @@
+import { EmptyTile } from '@/components/ui/feature-tile';
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -102,9 +103,11 @@ export const AuthPanel = memo<AuthPanelProps>(
                 ))}
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed bg-muted/30 px-3 py-8 text-center text-sm text-muted-foreground">
-                {t('authPanel.empty')}
-              </div>
+              <EmptyTile
+                scene="grant"
+                title={t('emptyTiles.grant.title')}
+                description={t('emptyTiles.grant.description')}
+              />
             )}
           </section>
         </div>

@@ -84,6 +84,8 @@ function Harness({
     globalDialogs: { saveDialog: {} },
     importDialog: { visible: false },
     indexAdvisor: { open: false },
+    commandPalette: { open: false },
+    fieldStandards: { open: false },
     aiPatch: {
       targetKey,
       open,

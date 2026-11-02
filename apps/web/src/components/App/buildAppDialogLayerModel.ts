@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+import type { CommandPalette } from './CommandPalette';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import type { useTableTemplates } from '@/hooks/useTableTemplates';
@@ -52,6 +54,7 @@ interface BuildAppDialogLayerModelParams {
   handleCopyDiff: () => void;
   onBatchImportComplete: () => void;
   handleRollbackVersion: (state: PersistedState) => void;
+  commandPalette: ComponentProps<typeof CommandPalette>;
 }
 
 export function buildAppDialogLayerModel({
@@ -76,6 +79,7 @@ export function buildAppDialogLayerModel({
   onBatchImportComplete,
   handleCopyDiff,
   handleRollbackVersion,
+  commandPalette,
 }: BuildAppDialogLayerModelParams) {
   const { editor, ui, tableOptions } = domains;
   const { persistenceStatus, tables, folders, scope: workspaceScope } = workspaceController;
@@ -100,6 +104,11 @@ export function buildAppDialogLayerModel({
 
   return {
     webMcpDialog,
+    commandPalette,
+    fieldStandards: {
+      open: ui.isFieldStandardsOpen,
+      onClose: () => ui.setIsFieldStandardsOpen(false),
+    },
     saveObjectType: editor.objectType,
     saveDialogIsUpdate: derived.hasLoadedTable,
     globalDialogs: {

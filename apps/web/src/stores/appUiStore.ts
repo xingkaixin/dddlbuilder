@@ -34,7 +34,9 @@ type SimpleDialogKind =
   | 'review-history'
   | 'storage-estimator'
   | 'ai-generate'
-  | 'mock-data';
+  | 'mock-data'
+  | 'field-standards'
+  | 'command-palette';
 
 export type ActiveAppDialog =
   | { kind: 'none' }
@@ -65,6 +67,8 @@ interface AppUiState {
   setIsStorageEstimatorOpen: (open: boolean) => void;
   setIsAIGenerateDialogOpen: (open: boolean) => void;
   setIsMockDataDialogOpen: (open: boolean) => void;
+  setIsFieldStandardsOpen: (open: boolean) => void;
+  setIsCommandPaletteOpen: (open: boolean) => void;
 }
 
 const noDialog: ActiveAppDialog = { kind: 'none' };
@@ -114,5 +118,7 @@ export const useAppUiStore = create<AppUiState>((set) => {
     setIsStorageEstimatorOpen: setDialogOpen('storage-estimator'),
     setIsAIGenerateDialogOpen: setDialogOpen('ai-generate'),
     setIsMockDataDialogOpen: setDialogOpen('mock-data'),
+    setIsFieldStandardsOpen: setDialogOpen('field-standards'),
+    setIsCommandPaletteOpen: setDialogOpen('command-palette'),
   };
 });

@@ -229,7 +229,7 @@ test('编辑器测试页面不依赖外部字体和统计服务完成加载', as
 test('默认左右分屏，刷新后保留所选布局', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/');
-  await page.getByRole('button', { name: '创建新表', exact: true }).click();
+  await page.getByRole('button', { name: /^从空白开始/ }).click();
   await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'side');
   await expect(page.getByTestId('workspace-sidebar')).toBeVisible();
   const firstRow = page.getByTestId('data-table').locator('tbody tr').first();

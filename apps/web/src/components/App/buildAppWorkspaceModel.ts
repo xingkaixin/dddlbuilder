@@ -12,7 +12,6 @@ import type { useWorkspacePresentation } from './hooks/useWorkspacePresentation'
 import type { useWorkspaceTabActions } from './hooks/useWorkspaceTabActions';
 import type { useWorkspaceTrashActions } from './hooks/useWorkspaceTrashActions';
 import type { useTemplateActions } from './hooks/useTemplateActions';
-import type { useTableTemplates } from '@/hooks/useTableTemplates';
 
 type EditorDomains = ReturnType<typeof useEditorDomains>;
 
@@ -25,7 +24,6 @@ type TabLifecycle = ReturnType<typeof useTabLifecycle>;
 interface BuildAppWorkspaceModelParams {
   domains: EditorDomains;
   workspaceController: WorkspaceController;
-  tableTemplateData: ReturnType<typeof useTableTemplates>;
   schemaController: SchemaController;
   tabLifecycle: TabLifecycle;
   folderActions: ReturnType<typeof useFolderActions>;
@@ -50,7 +48,6 @@ interface BuildAppWorkspaceModelParams {
 export function buildAppWorkspaceModel({
   domains,
   workspaceController,
-  tableTemplateData,
   schemaController,
   tabLifecycle,
   folderActions,
@@ -182,13 +179,8 @@ export function buildAppWorkspaceModel({
       onOpenDraft: workspaceTabs.handleSelectDraft,
       onOpenTable: workspaceTabs.handleSelectSavedTable,
       onLoadExample: workspaceTabs.handleLoadExample,
-    },
-    tableTemplates: {
-      templates: tableTemplateData.templates,
-      loading: tableTemplateData.loading,
-      onApplyTemplate: tableTemplateActions.handleApplyTemplate,
-      onManageTemplates: tableTemplateActions.handleManageTemplates,
-      onSaveAsTemplate: tableTemplateActions.handleSaveAsTemplate,
+      onOpenImport: openImportDialog,
+      onOpenAIGenerate: navigationActions.handleOpenAIGenerateDialog,
     },
     view: {
       isShareView: persistenceStatus.isShareView,

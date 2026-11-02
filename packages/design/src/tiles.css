@@ -18,8 +18,12 @@
   gap: var(--space-3);
   height: 100%;
   padding: var(--space-2) var(--space-2) 20px;
+  width: 100%;
+  border: 0;
   background: var(--surface);
   color: var(--ink);
+  font: inherit;
+  text-align: left;
   transition: background-color 0.12s;
 }
 

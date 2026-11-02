@@ -1,13 +1,21 @@
-import { memo, type ReactNode } from 'react';
-import { FileEdit, Plus, Table2 } from '@/components/icons';
+import { memo, useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
-import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
-import { buttonVariants } from '@/components/ui/button';
+import { ArrowRight } from '@/components/icons';
+import { openTool, type ToolActions } from '@/components/schema-tools/toolActions';
+import { TOOL_GROUPS } from '@/components/schema-tools/toolCatalog';
+import { FeatureTile } from '@/components/ui/feature-tile';
+import { Ink } from '@/components/ui/sketch';
+import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { followAppLink } from '@/lib/appNavigation';
-import { useLocale } from '@/i18n/LocaleContext';
-import { getDocsUrl } from '@/utils/docsLink';
+import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
+import { usePreferencesStore } from '@/stores/preferencesStore';
+
+const MAX_RECENT = 6;
+
+const MODULE_LINKS = ['moduleRbac', 'moduleBooking', 'moduleInventory'] as const;
+
+const linkClass = 'text-[var(--blue-strong)] underline underline-offset-4';
 
 interface WorkspaceEmptyStateProps {
   hasContent: boolean;
@@ -17,213 +25,221 @@ interface WorkspaceEmptyStateProps {
   onOpenDraft: (draftId: string) => void;
   onOpenTable: (table: SavedTableSummary) => void;
   onLoadExample: () => void;
-  importButton: ReactNode;
-  templateButton: ReactNode;
+  onOpenImport: () => void;
+  onOpenAIGenerate: () => void;
+  toolActions: ToolActions;
 }
 
-export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
-  ({
-    hasContent,
-    recentDrafts,
-    recentTables,
-    onCreateNewTable,
-    onOpenDraft,
-    onOpenTable,
-    onLoadExample,
-    importButton,
-    templateButton,
-  }) => {
-    const { t } = useTranslation();
-    const { locale } = useLocale();
-    const docsUrl = getDocsUrl(locale);
-    const workspace = useWorkspaceYDoc();
-    const awaitingCloud = Boolean(workspace.doc && !workspace.remoteLoaded && !hasContent);
-    const hasRecentItems = recentDrafts.length > 0 || recentTables.length > 0;
+function CardGrid({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-3">
+      {children}
+    </div>
+  );
+}
 
-    return (
-      <div className="relative flex min-h-[60vh] flex-1 flex-col items-center justify-center overflow-hidden px-4 py-10">
-        <img
-          src="/assets/empty-state/workspace-light.webp"
-          alt=""
-          aria-hidden
-          className="workspace-empty-backdrop pointer-events-none absolute inset-0 h-full w-full select-none object-cover dark:hidden"
-        />
-        <img
-          src="/assets/empty-state/workspace-dark.webp"
-          alt=""
-          aria-hidden
-          className="workspace-empty-backdrop pointer-events-none absolute inset-0 hidden h-full w-full select-none object-cover dark:block"
-        />
+function FirstRunHome({
+  awaitingCloud,
+  onCreateNewTable,
+  onLoadExample,
+  onOpenImport,
+  onOpenAIGenerate,
+}: Pick<
+  WorkspaceEmptyStateProps,
+  'onCreateNewTable' | 'onLoadExample' | 'onOpenImport' | 'onOpenAIGenerate'
+> & { awaitingCloud: boolean }) {
+  const { t } = useTranslation();
 
-        <div className="relative flex w-full max-w-[520px] flex-col items-center">
-          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-xl border border-border bg-card shadow-sm">
-            <Table2 className="h-8 w-8 text-primary" />
-          </div>
-
-          <div className="mb-6 space-y-2">
-            <h2 className="text-center text-lg font-semibold tracking-tight text-foreground">
-              {awaitingCloud
-                ? t('emptyState.initialSyncTitle')
-                : hasContent
-                  ? t('emptyState.noTabOpenTitle')
-                  : t('emptyState.completelyEmptyTitle')}
-            </h2>
-            {awaitingCloud && (
-              <p className="max-w-md text-center text-sm leading-7 text-muted-foreground">
-                {t('emptyState.initialSyncDescription')}
-              </p>
-            )}
-          </div>
-
-          <div className="mb-8 flex flex-wrap justify-center gap-2">
-            <button
-              type="button"
+  return (
+    <div className="flex flex-1 flex-col items-center gap-8 overflow-auto px-6 pb-8 pt-14">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <h2 className="text-[34px] font-normal leading-10">
+          {t(awaitingCloud ? 'emptyState.initialSyncTitle' : 'home.title')}
+        </h2>
+        <p className="max-w-md font-text text-muted-foreground">
+          {t(awaitingCloud ? 'emptyState.initialSyncDescription' : 'home.subtitle')}
+        </p>
+      </div>
+      <div className="flex w-full max-w-[1040px] flex-col gap-6">
+        <div className="lm-sketch tile-frame relative">
+          <Ink radius={8} />
+          <div className="tile-grid">
+            <FeatureTile
+              scene="ddl"
+              order={0}
+              title={t('home.blankTitle')}
+              description={t('home.blankDescription')}
               onClick={onCreateNewTable}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md"
-            >
-              <Plus className="h-4 w-4" />
-              {t('emptyState.createNewTable')}
-            </button>
-            {importButton}
-            {templateButton}
-            <a
-              href="/tools"
-              className={buttonVariants({ variant: 'outline', size: 'sm' })}
-              onClick={(event) => followAppLink(event, '/tools')}
-            >
-              {t('schemaTools.title')}
-            </a>
+            />
+            <FeatureTile
+              scene="import"
+              order={1}
+              title={t('home.importTitle')}
+              description={t('home.importDescription')}
+              onClick={onOpenImport}
+            />
+            <FeatureTile
+              scene="ai"
+              order={2}
+              title={t('home.aiTitle')}
+              description={t('home.aiDescription')}
+              onClick={onOpenAIGenerate}
+            />
           </div>
-
-          {hasRecentItems && (
-            <div className="mb-8 w-full space-y-5">
-              {recentDrafts.length > 0 && (
-                <RecentSection title={t('emptyState.recentDrafts')}>
-                  {recentDrafts.map((draft) => (
-                    <RecentCard
-                      key={draft.draftId}
-                      title={draft.name}
-                      meta={t('emptyState.draftMeta', {
-                        count: draft.fieldCount,
-                      })}
-                      tone="draft"
-                      onClick={() => onOpenDraft(draft.draftId)}
-                    />
-                  ))}
-                </RecentSection>
-              )}
-              {recentTables.length > 0 && (
-                <RecentSection title={t('emptyState.recentTables')}>
-                  {recentTables.map((table) => (
-                    <RecentCard
-                      key={table.tableId}
-                      title={table.name}
-                      meta={t('emptyState.tableMeta', {
-                        count: table.fieldCount,
-                      })}
-                      tone="table"
-                      onClick={() => onOpenTable(table)}
-                    />
-                  ))}
-                </RecentSection>
-              )}
-            </div>
-          )}
-
-          <div className="w-full max-w-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">
-                {t('emptyState.quickExperience')}
-              </span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="mb-3 text-sm font-medium">{t('emptyState.exampleTitle')}</h3>
-              <button
-                type="button"
-                onClick={onLoadExample}
-                className="w-full rounded-md border px-3 py-2 text-xs font-medium transition-colors hover:bg-accent"
-              >
-                {t('emptyState.loadExample')}
-              </button>
-            </div>
-          </div>
-
-          <nav
-            aria-label={t('emptyState.guides')}
-            className="mt-6 flex max-w-md flex-wrap justify-center gap-x-4 gap-y-2 text-xs"
-          >
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">
+          <span>{t('home.tryExample')}</span>
+          <button type="button" className={linkClass} onClick={onLoadExample}>
+            {t('home.example')}
+          </button>
+          <span aria-hidden>·</span>
+          <span>{t('home.modules')}</span>
+          {MODULE_LINKS.map((key) => (
             <a
-              className="py-1 text-primary underline underline-offset-4"
-              href={`${docsUrl}basic/getting-started`}
+              key={key}
+              href="/tools/modules"
+              className={linkClass}
+              onClick={(event) => followAppLink(event, '/tools/modules')}
             >
-              {t('emptyState.ddlGuide')}
+              {t(`home.${key}`)}
             </a>
-            <a
-              className="py-1 text-primary underline underline-offset-4"
-              href={`${docsUrl}advanced/foreign-key-and-er`}
-            >
-              {t('emptyState.erGuide')}
-            </a>
-            <a
-              className="py-1 text-primary underline underline-offset-4"
-              href={`${docsUrl}advanced/database-tools`}
-            >
-              {t('emptyState.diffGuide')}
-            </a>
-          </nav>
+          ))}
         </div>
       </div>
-    );
-  },
-);
-
-function RecentSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="w-full">
-      <div className="mb-3 flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-[11px] text-muted-foreground">{title}</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-      <div className="grid gap-2 sm:grid-cols-3">{children}</div>
-    </section>
+    </div>
   );
 }
 
 function RecentCard({
   title,
   meta,
-  tone,
   onClick,
 }: {
   title: string;
   meta: string;
-  tone: 'draft' | 'table';
   onClick: () => void;
 }) {
-  const iconClass =
-    tone === 'draft'
-      ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300'
-      : 'bg-primary/10 text-primary';
-
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex min-w-0 items-center gap-2.5 rounded-lg border border-border/80 bg-card px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm"
+      className="lm-sketch relative flex min-h-16 min-w-0 flex-col justify-center gap-0.5 rounded-md px-4 py-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${iconClass}`}>
-        {tone === 'draft' ? <FileEdit className="h-4 w-4" /> : <Table2 className="h-4 w-4" />}
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-xs font-medium text-foreground">{title}</span>
-        <span className="block truncate text-[11px] text-muted-foreground">{meta}</span>
-      </span>
+      <Ink radius={6} />
+      <span className="truncate font-mono text-sm">{title}</span>
+      <span className="truncate font-text text-[13px] text-muted-foreground">{meta}</span>
     </button>
   );
 }
+
+function ReturningHome({
+  recentDrafts,
+  recentTables,
+  onOpenDraft,
+  onOpenTable,
+  toolActions,
+}: Pick<
+  WorkspaceEmptyStateProps,
+  'recentDrafts' | 'recentTables' | 'onOpenDraft' | 'onOpenTable' | 'toolActions'
+>) {
+  const { t } = useTranslation();
+  const pinnedIds = usePreferencesStore((state) => state.pinnedTools);
+
+  const pinnedTools = useMemo(
+    () => TOOL_GROUPS.flatMap((group) => group.tools).filter((tool) => pinnedIds.includes(tool.id)),
+    [pinnedIds],
+  );
+
+  const recent = useMemo(
+    () =>
+      [
+        ...recentDrafts.map((draft) => ({
+          key: `draft:${draft.draftId}`,
+          title: draft.name,
+          meta: t('emptyState.draftMeta', { count: draft.fieldCount }),
+          updatedAt: draft.updatedAt,
+          open: () => onOpenDraft(draft.draftId),
+        })),
+        ...recentTables.map((table) => ({
+          key: `table:${table.tableId}`,
+          title: table.name,
+          meta: t('emptyState.tableMeta', { count: table.fieldCount }),
+          updatedAt: table.updatedAt,
+          open: () => onOpenTable(table),
+        })),
+      ]
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, MAX_RECENT),
+    [onOpenDraft, onOpenTable, recentDrafts, recentTables, t],
+  );
+
+  return (
+    <div className="flex flex-1 flex-col overflow-auto px-6 pb-8 pt-12">
+      <div className="mx-auto flex w-full max-w-[880px] flex-col gap-8">
+        <h2 className="text-[28px] font-normal leading-9">{t('home.continueTitle')}</h2>
+        {recent.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h3 className="text-sm font-normal text-muted-foreground">{t('home.recent')}</h3>
+            <CardGrid>
+              {recent.map(({ key, title, meta, open }) => (
+                <RecentCard key={key} title={title} meta={meta} onClick={open} />
+              ))}
+            </CardGrid>
+          </section>
+        )}
+        {pinnedTools.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-sm font-normal text-muted-foreground">{t('home.pinnedTools')}</h3>
+              <a
+                href="/tools"
+                className="text-sm text-muted-foreground underline underline-offset-4"
+                onClick={(event) => followAppLink(event, '/tools')}
+              >
+                {t('home.manage')}
+              </a>
+            </div>
+            <CardGrid>
+              {pinnedTools.map((tool) => {
+                const Icon = tool.icon;
+
+                return (
+                  <button
+                    key={tool.id}
+                    type="button"
+                    onClick={() => openTool(tool.id, toolActions)}
+                    className="flex min-w-0 items-center gap-3 rounded-md px-2 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Icon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                    <span className="min-w-0 flex-1 truncate">{t(tool.label)}</span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  </button>
+                );
+              })}
+            </CardGrid>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
+  ({ hasContent, onCreateNewTable, onLoadExample, onOpenImport, onOpenAIGenerate, ...recent }) => {
+    const workspace = useWorkspaceYDoc();
+
+    if (hasContent) return <ReturningHome {...recent} />;
+
+    return (
+      <FirstRunHome
+        awaitingCloud={Boolean(workspace.doc && !workspace.remoteLoaded)}
+        onCreateNewTable={onCreateNewTable}
+        onLoadExample={onLoadExample}
+        onOpenImport={onOpenImport}
+        onOpenAIGenerate={onOpenAIGenerate}
+      />
+    );
+  },
+);
 
 WorkspaceEmptyState.displayName = 'WorkspaceEmptyState';

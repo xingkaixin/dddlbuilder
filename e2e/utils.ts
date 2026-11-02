@@ -28,15 +28,25 @@ export async function confirmFieldTypeChangeIfNeeded(page: Page): Promise<void> 
 
 /**
  * 确保 Builder 主界面已显示。
- * 若页面处于空状态（无标签页），则点击"创建新表"进入 Builder。
+ * 若页面处于空状态（无标签页），则点击"从空白开始"进入 Builder。
  */
 export async function ensureBuilderVisible(page: Page): Promise<void> {
   const tableNameInput = page.locator('#table-name');
-  const createTableButton = page.getByRole('button', { name: '创建新表', exact: true });
+  const createTableButton = page.getByRole('button', { name: /^从空白开始/ });
+  const returningHome = page.getByRole('heading', { name: '接着上次继续' });
 
-  await tableNameInput.or(createTableButton).first().waitFor({ state: 'visible', timeout: 10000 });
+  await tableNameInput
+    .or(createTableButton)
+    .or(returningHome)
+    .first()
+    .waitFor({ state: 'visible', timeout: 10000 });
 
-  if (!(await tableNameInput.isVisible())) await createTableButton.click();
+  if (await returningHome.isVisible()) {
+    await page.getByRole('button', { name: '新建' }).click();
+    await page.getByRole('menuitem', { name: '新建草稿' }).click();
+  } else if (!(await tableNameInput.isVisible())) {
+    await createTableButton.click();
+  }
   await tableNameInput.waitFor({ state: 'visible', timeout: 10000 });
 
   await selectWorkspaceView(page, 'split');

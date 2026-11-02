@@ -26,6 +26,7 @@ export interface Preferences {
   sqlFormatMode: SqlFormatMode;
   addRowCount: number;
   pinnedTools: string[];
+  checklistDismissed: boolean;
 }
 
 interface PreferencesState extends Preferences {
@@ -44,6 +45,7 @@ const defaultPreferences: Preferences = {
   sqlFormatMode: 'compact',
   addRowCount: 10,
   pinnedTools: [],
+  checklistDismissed: false,
 };
 
 function readStorage(key: string): string | null {

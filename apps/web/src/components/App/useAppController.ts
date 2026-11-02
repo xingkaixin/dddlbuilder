@@ -444,7 +444,6 @@ export function useAppController() {
   const workspaceView = buildAppWorkspaceModel({
     domains,
     workspaceController,
-    tableTemplateData,
     schemaController,
     tabLifecycle,
     folderActions,
@@ -487,6 +486,19 @@ export function useAppController() {
     onBatchImportComplete: navigationActions.handleOpenSavedTablesDrawer,
     handleCopyDiff,
     handleRollbackVersion,
+    commandPalette: {
+      open: domains.ui.isCommandPaletteOpen,
+      onOpenChange: domains.ui.setIsCommandPaletteOpen,
+      tables: workspaceView.sidebar.items,
+      drafts: workspaceView.sidebar.draftItems,
+      onOpenTable: workspaceTabs.handleSelectSavedTable,
+      onOpenDraft: workspaceTabs.handleSelectDraft,
+      onCreateDraft: workspaceTabs.handleCreateDraft,
+      onOpenImport: openImportDialog,
+      onSave: tabs.length > 0 ? handleSaveCurrent : undefined,
+      onViewDiff: tabs.length > 0 ? navigationActions.handleOpenDiffDialog : undefined,
+      toolActions: workspaceView.toolActions,
+    },
   });
 
   return {

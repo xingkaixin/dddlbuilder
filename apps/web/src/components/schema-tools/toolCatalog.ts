@@ -87,8 +87,6 @@ export const ACTION_TOOL_GROUPS = [
 
 export type PageToolId = (typeof PAGE_TOOL_GROUPS)[number]['tools'][number]['id'];
 
-export type ActionTool = (typeof ACTION_TOOL_GROUPS)[number]['tools'][number];
-
 export const TOOL_GROUPS: readonly ToolGroup[] = [...PAGE_TOOL_GROUPS, ...ACTION_TOOL_GROUPS];
 
 const PAGE_TOOL_IDS = new Set<string>(

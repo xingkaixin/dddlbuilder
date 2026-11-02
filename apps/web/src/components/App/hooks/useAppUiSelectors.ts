@@ -25,6 +25,8 @@ export function useAppUiSelectors() {
         isStorageEstimatorOpen: activeDialog.kind === 'storage-estimator',
         isAIGenerateDialogOpen: activeDialog.kind === 'ai-generate',
         isMockDataDialogOpen: activeDialog.kind === 'mock-data',
+        isFieldStandardsOpen: activeDialog.kind === 'field-standards',
+        isCommandPaletteOpen: activeDialog.kind === 'command-palette',
       };
     }),
   );
@@ -47,5 +49,7 @@ export function useAppUiSelectors() {
     setIsStorageEstimatorOpen: actions.setIsStorageEstimatorOpen,
     setIsAIGenerateDialogOpen: actions.setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen: actions.setIsMockDataDialogOpen,
+    setIsFieldStandardsOpen: actions.setIsFieldStandardsOpen,
+    setIsCommandPaletteOpen: actions.setIsCommandPaletteOpen,
   };
 }

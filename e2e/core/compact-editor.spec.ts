@@ -5,7 +5,7 @@ test.use({ viewport: { width: 382, height: 582 } });
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '一键加载示例', exact: true }).click();
+  await page.getByRole('button', { name: '加载示例表 user_profile', exact: true }).click();
   await expect(page.getByTestId('data-table')).toBeVisible();
 });
 

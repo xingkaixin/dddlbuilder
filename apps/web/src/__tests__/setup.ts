@@ -58,6 +58,16 @@ class ResizeObserverMock {
 
 globalThis.ResizeObserver = ResizeObserverMock;
 
+class IntersectionObserverMock extends ResizeObserverMock {
+  root = null;
+  rootMargin = '';
+  scrollMargin = '';
+  thresholds = [];
+  takeRecords = () => [];
+}
+
+globalThis.IntersectionObserver = IntersectionObserverMock;
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

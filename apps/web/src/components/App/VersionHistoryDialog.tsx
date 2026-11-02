@@ -1,3 +1,4 @@
+import { EmptyTile } from '@/components/ui/feature-tile';
 import { memo, useCallback, useMemo, useReducer } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tableVersionsOptions } from '@/queries/tableVersions';
@@ -354,9 +355,11 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : versions.length === 0 ? (
-                <div className="py-8 text-center text-sm text-muted-foreground">
-                  {t('versionHistory.empty')}
-                </div>
+                <EmptyTile
+                  scene="history"
+                  title={t('emptyTiles.history.title')}
+                  description={t('emptyTiles.history.description')}
+                />
               ) : filteredVersions.length === 0 ? (
                 <div className="py-8 text-center text-sm text-muted-foreground">
                   {t('versionHistory.noResults')}

@@ -1,11 +1,11 @@
 import { createPortal } from 'react-dom';
 import { useTheme } from 'next-themes';
 import { useTranslation } from 'react-i18next';
-import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import { useAuthIdentity } from '@/auth/AuthSessionProvider';
 import { buttonVariants } from '@/components/ui/button';
 import { SearchableSelect } from '@/components/ui/select';
 import { useLocale } from '@/i18n/LocaleContext';
+import { LOCALES } from '@/i18n/types';
 import { followAppLink } from '@/lib/appNavigation';
 import { commandShortcutLabel } from '@/lib/commandShortcut';
 import {
@@ -21,12 +21,6 @@ import { FIELD_COLUMN_LABELS } from '../table/fieldColumnLabels';
 import { AccountSettings, WorkspaceSyncSettings } from './AccountSettings';
 import { CreditSettings } from './CreditSettings';
 import { Chip, ChoiceChips, SettingGroup, SettingRow } from './SettingRow';
-
-const LOCALES = [
-  { value: 'zh-CN', label: 'locale.zhCN' },
-  { value: 'en-US', label: 'locale.enUS' },
-  { value: 'ja-JP', label: 'locale.jaJP' },
-] as const satisfies readonly { value: AppLocale; label: string }[];
 
 const THEMES = ['system', 'light', 'dark'] as const;
 

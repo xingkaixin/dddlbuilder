@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Pin, Search } from '@/components/icons';
 import { Input } from '@/components/ui/input';
 import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
-import { followAppLink, navigateApp } from '@/lib/appNavigation';
+import { followAppLink } from '@/lib/appNavigation';
 import { cn } from '@/lib/utils';
 import { usePreferencesStore } from '@/stores/preferencesStore';
 import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
@@ -12,33 +12,18 @@ import {
   isPageToolId,
   PAGE_TOOL_GROUPS,
   TOOL_GROUPS,
-  type ActionTool,
   type ToolEntry,
 } from './toolCatalog';
+import { openTool, type ToolActions } from './toolActions';
 
 const ToolDetail = lazy(() => import('./ToolDetail'));
-const FieldStandardsDialog = lazy(() =>
-  import('@/components/App/field-standards/FieldStandardsDialog').then((module) => ({
-    default: module.FieldStandardsDialog,
-  })),
-);
-
-export interface ToolsPageActions {
-  onOpenFieldTemplates: () => void;
-  onOpenTableTemplates: () => void;
-  onOpenAIGenerate: () => void;
-  onOpenAIPatch?: () => void;
-  onOpenIndexAdvisor?: () => void;
-}
 
 interface ToolsPageProps {
   toolId: string | null;
-  actions: ToolsPageActions;
+  actions: ToolActions;
 }
 
 const queryReducer = (_query: string, next: string) => next;
-
-const standardsReducer = (_open: boolean, event: 'opened' | 'closed') => event === 'opened';
 
 const toolRowClass =
   'flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-2.5 text-left text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -87,43 +72,9 @@ function PinButton({ tool }: { tool: ToolEntry }) {
   );
 }
 
-function ToolList({ actions }: { actions: ToolsPageActions }) {
+function ToolList({ actions }: { actions: ToolActions }) {
   const { t } = useTranslation();
   const [query, setQuery] = useReducer(queryReducer, '');
-  const [standardsOpen, dispatchStandards] = useReducer(standardsReducer, false);
-
-  const runActionTool = (id: ActionTool['id']) => {
-    switch (id) {
-      case 'field-standards':
-        dispatchStandards('opened');
-
-        return;
-      case 'field-templates':
-        actions.onOpenFieldTemplates();
-
-        return;
-      case 'table-templates':
-        actions.onOpenTableTemplates();
-
-        return;
-      case 'ai-generate':
-        actions.onOpenAIGenerate();
-
-        return;
-      case 'ai-patch':
-        navigateApp('/');
-        actions.onOpenAIPatch?.();
-
-        return;
-      case 'ai-comments':
-        navigateApp('/');
-
-        return;
-      case 'index-advisor':
-        navigateApp('/');
-        actions.onOpenIndexAdvisor?.();
-    }
-  };
 
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -192,18 +143,13 @@ function ToolList({ actions }: { actions: ToolsPageActions }) {
         )),
       )}
       {ACTION_TOOL_GROUPS.map((group) =>
-        renderGroup<ActionTool>(group, (tool) => (
-          <button type="button" className={toolRowClass} onClick={() => runActionTool(tool.id)}>
+        renderGroup<ToolEntry>(group, (tool) => (
+          <button type="button" className={toolRowClass} onClick={() => openTool(tool.id, actions)}>
             <ToolRowContent tool={tool} />
           </button>
         )),
       )}
       {!hasMatches && <p className="text-sm text-muted-foreground">{t('toolsPage.noResults')}</p>}
-      {standardsOpen && (
-        <Suspense fallback={null}>
-          <FieldStandardsDialog onClose={() => dispatchStandards('closed')} />
-        </Suspense>
-      )}
     </div>
   );
 }

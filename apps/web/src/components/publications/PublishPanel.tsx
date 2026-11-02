@@ -1,3 +1,4 @@
+import { EmptyTile } from '@/components/ui/feature-tile';
 import { useReducer } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -153,6 +154,13 @@ export function PublishPanel({
             ))}
         </select>
       </label>
+      {!content && !list.isFetching && !list.isError && !list.data?.length && (
+        <EmptyTile
+          scene="publish"
+          title={t('emptyTiles.publish.title')}
+          description={t('emptyTiles.publish.description')}
+        />
+      )}
       {list.isError && (
         <p role="alert">
           {t('publication.loadFailed')}{' '}

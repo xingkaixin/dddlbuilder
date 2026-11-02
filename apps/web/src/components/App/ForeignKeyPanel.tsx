@@ -1,3 +1,5 @@
+import { EmptyTile } from '@/components/ui/feature-tile';
+import { followAppLink } from '@/lib/appNavigation';
 import { memo, useReducer } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -526,9 +528,13 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
           )}
 
           {foreignKeys.length === 0 && !draft && (
-            <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-              {t('foreignKeyPanel.empty')}
-            </div>
+            <EmptyTile
+              scene="er"
+              title={t('emptyTiles.er.title')}
+              description={t('emptyTiles.er.description')}
+              href="/er"
+              onClick={(event) => followAppLink(event, '/er')}
+            />
           )}
         </div>
       </div>

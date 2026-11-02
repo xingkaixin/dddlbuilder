@@ -6,6 +6,12 @@ export const LOCAL_STORAGE_KEY = 'ddlbuilder:locale:v1';
 
 export const DEFAULT_LOCALE: AppLocale = 'zh-CN';
 
+export const LOCALES = [
+  { value: 'zh-CN', label: 'locale.zhCN' },
+  { value: 'en-US', label: 'locale.enUS' },
+  { value: 'ja-JP', label: 'locale.jaJP' },
+] as const satisfies readonly { value: AppLocale; label: string }[];
+
 function getStorageItem(key: string): string | null {
   if (typeof window === 'undefined') {
     return null;

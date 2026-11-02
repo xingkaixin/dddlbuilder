@@ -1,3 +1,4 @@
+import { EmptyTile } from '@/components/ui/feature-tile';
 import { AIAccessNotice } from './AIAccessNotice';
 import {
   Bot,
@@ -383,9 +384,11 @@ export function AISchemaPatchPanel({
                   {t('aiPatch.noDirection')}
                 </div>
               ) : (
-                <div className="rounded-md bg-muted/20 px-3 py-8 text-center text-sm text-muted-foreground">
-                  {t('aiPatch.emptyResult')}
-                </div>
+                <EmptyTile
+                  scene="ai"
+                  title={t('emptyTiles.ai.title')}
+                  description={t('emptyTiles.ai.description')}
+                />
               )}
             </div>
 

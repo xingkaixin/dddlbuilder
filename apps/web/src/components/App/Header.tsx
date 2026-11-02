@@ -6,6 +6,7 @@ import {
   BookOpen,
   LayoutGrid,
   LogIn,
+  Search,
   Settings,
   MessageCircle,
   Table,
@@ -22,8 +23,11 @@ import {
   useAuthIdentity,
 } from '@/auth/AuthSessionProvider';
 import { followAppLink } from '@/lib/appNavigation';
+import { commandShortcutLabel } from '@/lib/commandShortcut';
+import { useAppUiStore } from '@/stores/appUiStore';
 import { cn } from '@/lib/utils';
 import { useAppRoute } from '@/hooks/useAppRoute';
+import { useShareRoute } from '@/hooks/workspacePersistence/shareRoute';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +56,8 @@ export const Header = memo<HeaderProps>(({ onPlayFireworks }) => {
   const { t } = useTranslation();
   const { locale } = useLocale();
   const { view } = useAppRoute();
+  const { shareId } = useShareRoute();
+  const openPalette = useAppUiStore((state) => state.setIsCommandPaletteOpen);
   const docsUrl = getDocsUrl(locale);
   const authIdentity = useAuthIdentity();
   const authActions = useAuthActions();
@@ -92,7 +98,7 @@ export const Header = memo<HeaderProps>(({ onPlayFireworks }) => {
             }
           `}</style>
       ) : null}
-      <header className="@container/header relative isolate flex h-16 shrink-0 items-center gap-4 bg-background px-5">
+      <header className="@container/header relative isolate flex h-16 shrink-0 items-center gap-2 bg-background px-3 @min-[720px]/header:gap-4 @min-[720px]/header:px-5">
         <div className="flex shrink-0 items-center gap-2">
           <img
             src="/logo.svg"
@@ -107,7 +113,10 @@ export const Header = memo<HeaderProps>(({ onPlayFireworks }) => {
           <p className="sr-only">{t('header.appDescription')}</p>
           {onPlayFireworks ? <HeaderLantern onPlay={onPlayFireworks} /> : null}
         </div>
-        <span aria-hidden className="h-7 w-px shrink-0 bg-border" />
+        <span
+          aria-hidden
+          className="hidden h-7 w-px shrink-0 bg-border @min-[720px]/header:block"
+        />
         <nav className="flex min-w-0 items-center gap-1" aria-label={t('header.navLabel')}>
           {NAV_ITEMS.map(({ view: itemView, href, label, icon: Icon }) => (
             <a
@@ -123,7 +132,23 @@ export const Header = memo<HeaderProps>(({ onPlayFireworks }) => {
             </a>
           ))}
         </nav>
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+        {!shareId && (
+          <button
+            type="button"
+            aria-label={t('commandPalette.search')}
+            className="lm-field flex h-10 w-11 shrink-0 items-center justify-center gap-2 rounded-md px-3 text-sm text-muted-foreground @min-[860px]/header:w-[200px] @min-[860px]/header:justify-start @min-[1180px]/header:w-[280px]"
+            onClick={() => openPalette(true)}
+          >
+            <Search className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="hidden truncate @min-[860px]/header:inline">
+              {t('commandPalette.search')}
+            </span>
+            <kbd className="ml-auto hidden font-mono text-xs @min-[860px]/header:inline">
+              {commandShortcutLabel()}
+            </kbd>
+          </button>
+        )}
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-1 @min-[720px]/header:gap-3">
           {authSession.workspaceScope ? <WorkspaceYDocStatus /> : null}
           {authCredits.creditBalance !== null ? (
             <span className="hidden whitespace-nowrap text-[13px] text-muted-foreground @min-[1180px]/header:inline">

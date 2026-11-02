@@ -15,6 +15,7 @@ import { LocaleProvider } from './i18n/LocaleContext';
 import { AuthSessionProvider } from './auth/AuthSessionProvider';
 import { WorkspaceYDocProvider } from './providers/WorkspaceYDocProvider';
 import { isAdminPath } from './admin/lib/adminPath';
+import { listenForCommandShortcut } from './lib/commandShortcut';
 import { notifyAuthCallbackError } from './auth/useAuthCallbackCommand';
 import i18n from './i18n';
 
@@ -40,6 +41,7 @@ const PublicationPage = lazy(() => import('./components/publications/Publication
 if (!isAdmin && !publicationId) {
   document.documentElement.dataset.surface = 'app';
   syncPreferencesToDocument();
+  listenForCommandShortcut();
 }
 
 // Keep remote font CSS non-blocking until it has loaded.

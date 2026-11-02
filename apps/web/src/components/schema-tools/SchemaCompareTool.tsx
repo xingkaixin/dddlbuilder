@@ -1,3 +1,4 @@
+import { EmptyTile } from '@/components/ui/feature-tile';
 import { ToolLayout } from './ToolLayout';
 import { PublishPanel } from '@/components/publications/PublishPanel';
 import { Input } from '@/components/ui/input';
@@ -176,6 +177,13 @@ export function SchemaCompareTool() {
           {t('schemaTools.compare.exportSql')}
         </Button>
       </div>
+      {!comparison && !error && !beforeSql.trim() && !afterSql.trim() && (
+        <EmptyTile
+          scene="compare"
+          title={t('emptyTiles.compare.title')}
+          description={t('emptyTiles.compare.description')}
+        />
+      )}
       {error && (
         <p
           role="alert"

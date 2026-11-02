@@ -112,7 +112,7 @@ test('first cloud sync is not presented as an empty workspace', async ({ browser
   try {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: '尚未完成首次同步' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '还没有任何表或草稿' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: '先建一张表' })).toHaveCount(0);
     release();
     await openDraftByName(page, 'remote_existing');
     await expect(tableNameInput(page)).toHaveValue('remote_existing');
@@ -222,7 +222,7 @@ test('a previously synchronized empty workspace remains empty while offline', as
       route.fulfill({ status: 503 }),
     );
     await page.reload();
-    await expect(page.getByRole('heading', { name: '还没有任何表或草稿' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '先建一张表' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '尚未完成首次同步' })).toHaveCount(0);
   } finally {
     await context.close();

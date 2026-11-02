@@ -1,3 +1,6 @@
+import { EmptyTile } from '@/components/ui/feature-tile';
+import { Ink } from '@/components/ui/sketch';
+import { usePreferencesStore } from '@/stores/preferencesStore';
 import { memo, useCallback, useMemo, useReducer } from 'react';
 import {
   ChevronDown,
@@ -221,7 +224,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
           </Button>
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 px-3 pt-2">
+        <div className="flex flex-wrap gap-2 px-3 pt-2 [&>*]:flex-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" className="gap-1.5 px-3">
@@ -410,9 +413,11 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                       ))}
                     </>
                   ) : (
-                    <div className="px-2 py-2 text-xs text-muted-foreground">
-                      {t('savedTables.trashEmpty')}
-                    </div>
+                    <EmptyTile
+                      scene="trash"
+                      title={t('emptyTiles.trash.title')}
+                      description={t('emptyTiles.trash.description')}
+                    />
                   )}
                 </section>
               ) : (
@@ -433,14 +438,22 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                       dragFeedbackTestId="workspace-drag-feedback"
                     />
                   )}
-                  {filteredItems.length === 0 && (
-                    <div className="px-2 py-2 text-xs text-muted-foreground">
-                      {normalizedQuery ? t('savedTables.noMatch') : t('savedTables.empty')}
-                    </div>
-                  )}
+                  {filteredItems.length === 0 &&
+                    (normalizedQuery ? (
+                      <EmptyTile
+                        scene="search"
+                        title={t('emptyTiles.search.title')}
+                        description={t('emptyTiles.search.description')}
+                      />
+                    ) : (
+                      <div className="px-2 py-2 text-xs text-muted-foreground">
+                        {t('home.noTables')}
+                      </div>
+                    ))}
                 </section>
               )}
 
+              {items.length === 0 && <FirstStepsChecklist />}
               <button
                 type="button"
                 className="flex w-full items-center justify-between rounded-md px-2 py-2 text-[13px] leading-5 text-muted-foreground hover:bg-accent"
@@ -463,6 +476,42 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
 );
 
 WorkspaceSidebar.displayName = 'WorkspaceSidebar';
+
+function FirstStepsChecklist() {
+  const { t } = useTranslation();
+  const dismissed = usePreferencesStore((state) => state.checklistDismissed);
+  const setPreference = usePreferencesStore((state) => state.setPreference);
+
+  if (dismissed) return null;
+
+  return (
+    <section
+      aria-label={t('home.steps')}
+      className="lm-sketch relative mb-2 flex flex-col gap-2 rounded-lg p-3 text-sm"
+    >
+      <Ink radius={8} />
+      <div className="flex items-center justify-between">
+        <span>{t('home.steps')}</span>
+        <button
+          type="button"
+          aria-label={t('home.dismissSteps')}
+          className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+          onClick={() => setPreference('checklistDismissed', true)}
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+      <ol className="flex flex-col gap-1.5 text-muted-foreground">
+        {(['step1', 'step2', 'step3'] as const).map((step, index) => (
+          <li key={step} className="flex items-center gap-2">
+            <span className="font-mono text-xs">{index + 1}</span>
+            {t(`home.${step}`)}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
 
 function TrashRow({
   name,

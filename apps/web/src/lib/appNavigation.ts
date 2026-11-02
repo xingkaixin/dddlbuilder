@@ -7,7 +7,7 @@ export function navigateApp(pathname: string) {
   else pushPathname(pathname);
 }
 
-export function followAppLink(event: MouseEvent<HTMLAnchorElement>, pathname: string) {
+export function followAppLink(event: MouseEvent<HTMLElement>, pathname: string) {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
   navigateApp(pathname);

@@ -7,6 +7,14 @@ import { WebMcpChangeDialog } from '@/webmcp/WebMcpChangeDialog';
 import { AuthDialogs } from '@/auth/AuthDialogs';
 import { WorkspaceMigrationDialog } from './WorkspaceMigrationDialog';
 
+const CommandPalette = lazy(() =>
+  import('./CommandPalette').then((module) => ({ default: module.CommandPalette })),
+);
+const FieldStandardsDialog = lazy(() =>
+  import('./field-standards/FieldStandardsDialog').then((module) => ({
+    default: module.FieldStandardsDialog,
+  })),
+);
 const AISchemaPatchDialog = lazy(() =>
   import('./AISchemaPatchDialog').then((module) => ({ default: module.AISchemaPatchDialog })),
 );
@@ -60,6 +68,16 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
       <AuthDialogs />
       <WorkspaceMigrationDialog />
       <WebMcpChangeDialog model={model.webMcpDialog} />
+      {model.commandPalette.open && (
+        <Suspense fallback={null}>
+          <CommandPalette {...model.commandPalette} />
+        </Suspense>
+      )}
+      {model.fieldStandards.open && (
+        <Suspense fallback={null}>
+          <FieldStandardsDialog onClose={model.fieldStandards.onClose} />
+        </Suspense>
+      )}
       <GlobalDialogs {...globalDialogs} saveDialog={saveDialog} />
 
       {aiPatchMounted && (

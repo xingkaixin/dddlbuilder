@@ -1,3 +1,4 @@
+import { EmptyTile } from '@/components/ui/feature-tile';
 import { memo, useMemo, useReducer } from 'react';
 import {
   createEntityId,
@@ -695,6 +696,12 @@ export const IndexPanel = memo<IndexPanelProps>(
                   </div>
                 )}
               </div>
+            ) : indexes.length === 0 ? (
+              <EmptyTile
+                scene="index"
+                title={t('emptyTiles.index.title')}
+                description={t('emptyTiles.index.description')}
+              />
             ) : (
               <div className="flex h-full min-h-64 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
                 {t('indexPanel.emptyDetail')}
