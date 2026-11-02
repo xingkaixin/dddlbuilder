@@ -47,6 +47,7 @@ export async function ensureBuilderVisible(page: Page): Promise<void> {
   } else if (!(await tableNameInput.isVisible())) {
     await createTableButton.click();
   }
+
   await tableNameInput.waitFor({ state: 'visible', timeout: 10000 });
 
   await selectWorkspaceView(page, 'split');
