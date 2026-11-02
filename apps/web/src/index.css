@@ -370,6 +370,25 @@
   pointer-events: none;
 }
 
+.lm-chip-warning,
+.lm-chip-danger,
+.lm-chip-info {
+  color: var(--chip);
+  border-color: color-mix(in srgb, var(--chip) 35%, transparent);
+}
+
+.lm-chip-warning {
+  --chip: var(--warning);
+}
+
+.lm-chip-danger {
+  --chip: var(--danger);
+}
+
+.lm-chip-info {
+  --chip: var(--blue);
+}
+
 .t-base-overlay {
   opacity: 0;
   transition: opacity var(--modal-open-dur) var(--modal-ease);

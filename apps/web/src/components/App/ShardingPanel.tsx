@@ -10,6 +10,7 @@ import {
 import { Database, GitBranch } from '@/components/icons';
 import type { CitusTableMode, CitusShardingConfig } from '@ddlbuilder/shared-types';
 import { useTranslation } from 'react-i18next';
+import { Notice } from '@/components/ui/notice';
 
 interface ShardingPanelProps {
   config: CitusShardingConfig;
@@ -98,9 +99,7 @@ export const ShardingPanel = memo<ShardingPanelProps>(
                   </span>
                 </Label>
                 {availableFields.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                    {t('shardingPanel.noFields')}
-                  </div>
+                  <Notice>{t('shardingPanel.noFields')}</Notice>
                 ) : (
                   <Select
                     value={config.distributionColumn || ''}

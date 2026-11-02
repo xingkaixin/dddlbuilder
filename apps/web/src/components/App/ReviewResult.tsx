@@ -152,9 +152,7 @@ const SuggestionItem = memo<{
         {suggestion.type === 'performance_warning' && suggestion.severity && (
           <span
             className={`mt-1 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${
-              suggestion.severity === 'error'
-                ? 'text-red-600 bg-red-50 border border-red-100'
-                : 'text-amber-600 bg-amber-50 border border-amber-100'
+              suggestion.severity === 'error' ? 'lm-chip-danger border' : 'lm-chip-warning border'
             }`}
           >
             {suggestion.severity === 'error' ? t('review.severe') : t('review.warning')}
@@ -168,7 +166,7 @@ const SuggestionItem = memo<{
               {suggestion.fieldModification.fieldName}
             </span>
             <ArrowRight className="h-3 w-3" />
-            <span className="text-amber-600 font-medium">
+            <span className="font-medium text-[var(--warning)]">
               {suggestion.fieldModification.changes.fieldType ||
                 suggestion.fieldModification.changes.fieldComment ||
                 t('review.details')}

@@ -12,6 +12,7 @@ import { downloadFile } from '@/utils/mockDataGenerator';
 import { SqlSnapshotInput } from './SqlSnapshotInput';
 import { parseSqlSnapshot } from './sqlSnapshot';
 import { comparisonDetails, comparisonMarkdown } from './comparisonReport';
+import { Notice } from '@/components/ui/notice';
 
 type CompareState = {
   dbType: 'mysql' | 'postgresql';
@@ -216,9 +217,7 @@ export function SchemaCompareTool() {
       )}
       {comparison && (
         <>
-          <p className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
-            {t('schemaTools.compare.warning')}
-          </p>
+          <Notice tone="warning">{t('schemaTools.compare.warning')}</Notice>
           <div className="flex flex-wrap gap-4" role="status">
             {(['added', 'removed', 'modified', 'unchanged'] as const).map((status) => (
               <span key={status} className="text-sm">

@@ -13,6 +13,8 @@ import { TabBar } from './TabBar';
 import { WorkspaceEmptyState } from './WorkspaceEmptyState';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import type { AppWorkspaceModel } from './buildAppWorkspaceModel';
+import { Notice } from '@/components/ui/notice';
+import { Button } from '@/components/ui/button';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 const ErPage = lazy(() => import('./ErPage'));
@@ -80,16 +82,12 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
       />
 
       {view.isShareView && (
-        <div className="mx-3 mt-3 flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300 sm:flex-row sm:items-center sm:justify-between">
+        <Notice className="mx-3 mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p>{t('app.shareBanner')}</p>
-          <button
-            type="button"
-            onClick={view.openSaveDialog}
-            className="inline-flex shrink-0 items-center justify-center rounded-md border border-amber-500/40 bg-amber-100 px-3 py-2 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-200 dark:border-amber-600 dark:bg-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-900"
-          >
+          <Button size="sm" variant="secondary" className="shrink-0" onClick={view.openSaveDialog}>
             {t('app.saveAsCopy')}
-          </button>
-        </div>
+          </Button>
+        </Notice>
       )}
 
       {isCnyFireworksEnabled && view.showFireworks && (

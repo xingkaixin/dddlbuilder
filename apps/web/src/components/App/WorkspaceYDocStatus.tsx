@@ -46,7 +46,7 @@ export function WorkspaceYDocStatus() {
       return {
         icon: WifiOff,
         label: t('workspaceYDoc.status.offlineLocalSaved'),
-        className: 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+        className: 'lm-chip-warning',
         iconClassName: '',
       };
     }

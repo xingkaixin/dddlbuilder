@@ -30,6 +30,7 @@ import { diffPersistedState, type FieldDiff } from '@ddlbuilder/ddl-core';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import type { TableTemplate } from '@/hooks/useTableTemplates';
 import { useTranslation } from 'react-i18next';
+import { Notice } from '@/components/ui/notice';
 
 const MAX_INPUT_LENGTH = 500;
 
@@ -273,9 +274,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
             <AIAccessNotice />
             {/* Existing config hint */}
             {hasExistingConfig && !conversationHistory.length && (
-              <div className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-md px-3 py-2">
-                {t('aiGenerate.existingConfigHint')}
-              </div>
+              <Notice>{t('aiGenerate.existingConfigHint')}</Notice>
             )}
 
             {/* Conversation history */}

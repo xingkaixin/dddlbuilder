@@ -19,6 +19,7 @@ import type {
   MysqlPartitionConfig,
   PartitionDefinition,
 } from '@ddlbuilder/shared-types';
+import { Notice } from '@/components/ui/notice';
 
 const PARTITION_TYPE_INFO: Record<MysqlPartitionType, { label: string }> = {
   RANGE: {
@@ -256,9 +257,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                   {/* Field selection (hidden when expression is used) */}
                   {!config.expression &&
                     (availableFields.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                        {t('partitionPanel.noFields')}
-                      </div>
+                      <Notice>{t('partitionPanel.noFields')}</Notice>
                     ) : supportsMultipleColumns(config.type) ? (
                       // Multi-column selection for COLUMNS types
                       <div className="flex flex-wrap gap-2">

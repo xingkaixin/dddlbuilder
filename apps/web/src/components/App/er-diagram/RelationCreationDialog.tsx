@@ -467,7 +467,7 @@ export function RelationCreationDialog({
                 )}
               </div>
               {result.plan.warnings.includes('field-type-mismatch') && (
-                <p className="mt-2 flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
+                <p className="mt-2 flex items-start gap-2 text-xs text-[var(--warning)]">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   {t('erDiagram.relationship.warnings.field-type-mismatch')}
                 </p>

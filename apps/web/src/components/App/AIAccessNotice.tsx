@@ -1,5 +1,5 @@
 import { useAIRequestAccess } from '@/hooks/useAIRequestAccess';
-import { cn } from '@/lib/utils';
+import { Notice } from '@/components/ui/notice';
 
 export function AIAccessNotice({ className }: { className?: string }) {
   const { accessError } = useAIRequestAccess();
@@ -7,13 +7,8 @@ export function AIAccessNotice({ className }: { className?: string }) {
   if (!accessError) return null;
 
   return (
-    <div
-      className={cn(
-        'rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800',
-        className,
-      )}
-    >
+    <Notice tone="warning" className={className}>
       {accessError}
-    </div>
+    </Notice>
   );
 }

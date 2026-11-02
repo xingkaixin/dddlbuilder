@@ -95,8 +95,7 @@ export function WorkspaceTreeView({
             'mb-3 rounded-md border px-2.5 py-2 text-xs',
             dragFeedback.type === 'success' &&
               'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-            dragFeedback.type === 'blocked' &&
-              'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+            dragFeedback.type === 'blocked' && 'lm-chip-warning',
             dragFeedback.type === 'error' &&
               'border-destructive/30 bg-destructive/10 text-destructive',
           )}

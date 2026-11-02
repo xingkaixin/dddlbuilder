@@ -189,7 +189,7 @@ export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
               {hasContent && (
                 <>
                   <br />
-                  <span className="text-amber-600">
+                  <span className="text-[var(--warning)]">
                     {t('savedTables.deleteFolderDialog.contentPrefix')}
                     {tableCount > 0 &&
                       t('savedTables.deleteFolderDialog.containsTables', {

@@ -20,9 +20,9 @@ const severityIcon = {
 } satisfies Record<SchemaLintSeverity, typeof AlertCircle>;
 
 const severityClassName = {
-  error: 'text-red-600 bg-red-50 border-red-100 dark:bg-red-950/30 dark:border-red-900',
-  warning: 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/30 dark:border-amber-900',
-  suggestion: 'text-blue-600 bg-blue-50 border-blue-100 dark:bg-blue-950/30 dark:border-blue-900',
+  error: 'lm-chip-danger',
+  warning: 'lm-chip-warning',
+  suggestion: 'lm-chip-info',
 } satisfies Record<SchemaLintSeverity, string>;
 
 const severityBadgeKey = {

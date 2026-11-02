@@ -50,7 +50,7 @@ const FieldDiffRow = memo<{ diff: FieldDiff }>(({ diff }) => {
       ? 'bg-green-500/10 border-green-500/20'
       : diff.type === 'remove'
         ? 'bg-red-500/10 border-red-500/20'
-        : 'bg-amber-500/10 border-amber-500/20';
+        : 'border-[var(--line)]';
 
   const field = diff.type === 'remove' ? diff.oldField : diff.newField;
   const oldField = diff.type === 'add' ? undefined : diff.oldField;
@@ -205,13 +205,13 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
               {diff.manualChanges?.map((change) => (
                 <div
                   key={change}
-                  className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm"
+                  className="rounded-md border border-[var(--line-faint)] px-3 py-2 text-sm"
                 >
                   {t(`diffDialog.manualChanges.${change}`)} · {t('diffDialog.manualMigration')}
                 </div>
               ))}
               {diff.schemaNameChanged && (
-                <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
+                <div className="rounded-md border border-[var(--line-faint)] px-3 py-2 text-sm">
                   <span className="text-muted-foreground">Schema: </span>
                   <span className="line-through">
                     {diff.oldSchemaName || t('diffDialog.default')}
@@ -223,7 +223,7 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
                 </div>
               )}
               {diff.tableNameChanged && (
-                <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
+                <div className="rounded-md border border-[var(--line-faint)] px-3 py-2 text-sm">
                   <span className="text-muted-foreground">{t('diffDialog.tableName')}: </span>
                   <span className="line-through">{diff.oldTableName}</span>
                   <span className="mx-1">→</span>
@@ -231,14 +231,14 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
                 </div>
               )}
               {diff.tableCommentChanged && (
-                <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
+                <div className="rounded-md border border-[var(--line-faint)] px-3 py-2 text-sm">
                   <span className="text-muted-foreground">
                     {t('diffDialog.tableCommentChanged')}
                   </span>
                 </div>
               )}
               {diff.miscConfigChanged && (
-                <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
+                <div className="rounded-md border border-[var(--line-faint)] px-3 py-2 text-sm">
                   <span className="text-muted-foreground">{t('diffDialog.miscChanged')}</span>
                   {diff.oldMiscConfig && diff.newMiscConfig && (
                     <div className="mt-1 text-xs text-muted-foreground">
@@ -394,7 +394,7 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
               {showRollback && (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-amber-600 dark:text-amber-300">
+                    <span className="text-xs text-[var(--warning)]">
                       {t('diffDialog.rollbackWarning')}
                     </span>
                     <Button
@@ -407,7 +407,7 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
                       {t('diffDialog.copyRollback')}
                     </Button>
                   </div>
-                  <div className="max-h-48 overflow-auto rounded-md border border-amber-300/60 bg-amber-50/20 dark:border-amber-700/60 dark:bg-amber-950/35">
+                  <div className="max-h-48 overflow-auto rounded-md border border-[var(--line-faint)]">
                     <Suspense
                       fallback={
                         <pre className="m-0 whitespace-pre-wrap p-3 font-mono text-xs">

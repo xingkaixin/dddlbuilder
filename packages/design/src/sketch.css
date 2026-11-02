@@ -3,6 +3,11 @@
   isolation: isolate;
 }
 
+.lm-tone--warning {
+  --lm-wash: var(--warning-wash);
+  --lm-stroke: var(--warning);
+}
+
 .lm-ink {
   position: absolute;
   top: 0;

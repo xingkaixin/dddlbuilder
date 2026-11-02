@@ -437,9 +437,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                           </p>
 
                           {diffSummary && (
-                            <p className="text-xs text-amber-600 dark:text-amber-400">
-                              {diffSummary}
-                            </p>
+                            <p className="text-xs text-[var(--warning)]">{diffSummary}</p>
                           )}
                         </button>
 
