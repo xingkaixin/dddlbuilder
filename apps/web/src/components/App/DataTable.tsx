@@ -177,7 +177,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
                 cell.column.id === 'fieldComment' && 'font-text',
                 isFrozen && 'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
                 isLastFrozen &&
-                  'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
+                  'border-r border-primary/30 shadow-[inset_0_-1px_0_var(--line-faint),8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
                 isRowHighlighted && 'bg-blue-500/10',
                 isSelected && 'ring-2 ring-primary ring-inset',
               )}
@@ -491,7 +491,7 @@ export const DataTable = memo<DataTableProps>(
                               isFrozen &&
                                 'relative sticky z-30 supports-[backdrop-filter]:backdrop-blur-[2px]',
                               isLastFrozen &&
-                                'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
+                                'border-r border-primary/30 shadow-[inset_0_-1px_0_var(--line),8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
                             )}
                             style={{
                               width: header.getSize(),
