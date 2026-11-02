@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added
+- **New interface**: The whole site has a new hand-drawn look, with light and dark themes in Chinese, English and Japanese. The interface uses a handwritten font by default, and you can switch to Clear in Settings. Table content and SQL use a monospace font; docs and the changelog use a standard font.
+- **Command palette**: Press ⌘K (Ctrl K on Windows and Linux) to search tables, tools and common actions, or to switch theme and language.
+- **Side-by-side layout**: The editor adds a side-by-side layout and uses it by default. If you already use the top-and-bottom split, it stays as it is. The On Update column is hidden by default; change this under Columns.
+- **Settings page**: Theme, language, font, density, default database, default layout, field columns, SQL format, rows to add and pinned tools are now on one page. These preferences stay in the current browser and do not sync across devices.
+- **Home page**: On first use, the home page offers three ways to start: from blank, by importing a schema, or by drafting with AI. Once you have content, it shows recently opened tables and pinned tools.
+
+### Improved
+- **Full pages for ER diagram and tools**: The ER diagram, tools and settings each have their own address and work with refresh and the browser Back button. You can pin tools to the home page and the command palette.
+- **Moved entries**: Import and AI generation are in the sidebar. Share, History and Properties are in the table header. Misc, sharding, partition and Hive partition settings are grouped under the Advanced tab. Docs and feedback are in the header Help menu.
+- **Docs site**: The docs layout and home page are redesigned. On phones, a bottom bar opens the page list and the outline.
+
 ## [0.25.8] - 2026-10-20
 
 ### Improved
