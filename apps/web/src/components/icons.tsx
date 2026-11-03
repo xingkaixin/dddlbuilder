@@ -19,10 +19,7 @@ import {
   ChevronUp as ChevronUpData,
   Circle as CircleData,
   Clock as ClockData,
-  CloudUpload as CloudUploadData,
-  Code as CodeData,
   CodeSimpleIcon as Code2Data,
-  Coins as CoinsData,
   ColumnsThreeCogIcon as Columns3CogData,
   Copy as CopyData,
   Database as DatabaseData,
@@ -48,7 +45,6 @@ import {
   Key as KeyData,
   KeyRound as KeyRoundData,
   Languages as LanguagesData,
-  Laptop as LaptopData,
   Layers as LayersData,
   LayoutGrid as LayoutGridData,
   LayoutTemplate as LayoutTemplateData,
@@ -69,8 +65,6 @@ import {
   Moon as MoonData,
   MoreHorizontal as MoreHorizontalData,
   Network as NetworkData,
-  PanelRightClose as PanelRightCloseData,
-  PanelRightOpen as PanelRightOpenData,
   Pause as PauseData,
   Pencil as PencilData,
   Pin as PinData,
@@ -80,15 +74,12 @@ import {
   RefreshCw as RefreshCwData,
   RotateCcw as RotateCcwData,
   Save as SaveData,
-  ScrollText as ScrollTextData,
   Search as SearchData,
-  SearchCheck as SearchCheckData,
   Send as SendData,
   Settings as SettingsData,
   Settings2 as Settings2Data,
   Share2 as Share2Data,
   ShieldCheck as ShieldCheckData,
-  ShieldUser as ShieldUserData,
   SkipBack as SkipBackData,
   SkipForward as SkipForwardData,
   SlidersHorizontal as SlidersHorizontalData,
@@ -103,12 +94,10 @@ import {
   Table03Icon as TablePropertiesData,
   Trash2 as Trash2Data,
   Upload as UploadData,
-  User02Icon as User2Data,
   UserRound as UserRoundData,
   WandSparkles as WandSparklesData,
   Route01Icon as WaypointsData,
   WifiOff as WifiOffData,
-  Workflow as WorkflowData,
   X as XData,
   Zap as ZapData,
   ZoomIn as ZoomInData,
@@ -148,10 +137,7 @@ export const ChevronRight = createAppIcon(ChevronRightData, 'ChevronRight');
 export const ChevronUp = createAppIcon(ChevronUpData, 'ChevronUp');
 export const Circle = createAppIcon(CircleData, 'Circle');
 export const Clock = createAppIcon(ClockData, 'Clock');
-export const CloudUpload = createAppIcon(CloudUploadData, 'CloudUpload');
-export const Code = createAppIcon(CodeData, 'Code');
 export const Code2 = createAppIcon(Code2Data, 'Code2');
-export const Coins = createAppIcon(CoinsData, 'Coins');
 export const Columns3Cog = createAppIcon(Columns3CogData, 'Columns3Cog');
 export const Copy = createAppIcon(CopyData, 'Copy');
 export const Database = createAppIcon(DatabaseData, 'Database');
@@ -177,7 +163,6 @@ export const InfoIcon = createAppIcon(InfoIconData, 'InfoIcon');
 export const Key = createAppIcon(KeyData, 'Key');
 export const KeyRound = createAppIcon(KeyRoundData, 'KeyRound');
 export const Languages = createAppIcon(LanguagesData, 'Languages');
-export const Laptop = createAppIcon(LaptopData, 'Laptop');
 export const Layers = createAppIcon(LayersData, 'Layers');
 export const LayoutGrid = createAppIcon(LayoutGridData, 'LayoutGrid');
 export const LayoutTemplate = createAppIcon(LayoutTemplateData, 'LayoutTemplate');
@@ -198,8 +183,6 @@ export const Minus = createAppIcon(MinusData, 'Minus');
 export const Moon = createAppIcon(MoonData, 'Moon');
 export const MoreHorizontal = createAppIcon(MoreHorizontalData, 'MoreHorizontal');
 export const Network = createAppIcon(NetworkData, 'Network');
-export const PanelRightClose = createAppIcon(PanelRightCloseData, 'PanelRightClose');
-export const PanelRightOpen = createAppIcon(PanelRightOpenData, 'PanelRightOpen');
 export const Pause = createAppIcon(PauseData, 'Pause');
 export const Pencil = createAppIcon(PencilData, 'Pencil');
 export const Pin = createAppIcon(PinData, 'Pin');
@@ -209,15 +192,12 @@ export const PlusCircle = createAppIcon(PlusCircleData, 'PlusCircle');
 export const RefreshCw = createAppIcon(RefreshCwData, 'RefreshCw');
 export const RotateCcw = createAppIcon(RotateCcwData, 'RotateCcw');
 export const Save = createAppIcon(SaveData, 'Save');
-export const ScrollText = createAppIcon(ScrollTextData, 'ScrollText');
 export const Search = createAppIcon(SearchData, 'Search');
-export const SearchCheck = createAppIcon(SearchCheckData, 'SearchCheck');
 export const Send = createAppIcon(SendData, 'Send');
 export const Settings = createAppIcon(SettingsData, 'Settings');
 export const Settings2 = createAppIcon(Settings2Data, 'Settings2');
 export const Share2 = createAppIcon(Share2Data, 'Share2');
 export const ShieldCheck = createAppIcon(ShieldCheckData, 'ShieldCheck');
-export const ShieldUser = createAppIcon(ShieldUserData, 'ShieldUser');
 export const SkipBack = createAppIcon(SkipBackData, 'SkipBack');
 export const SkipForward = createAppIcon(SkipForwardData, 'SkipForward');
 export const SlidersHorizontal = createAppIcon(SlidersHorizontalData, 'SlidersHorizontal');
@@ -232,12 +212,10 @@ export const Table2 = createAppIcon(Table2Data, 'Table2');
 export const TableProperties = createAppIcon(TablePropertiesData, 'TableProperties');
 export const Trash2 = createAppIcon(Trash2Data, 'Trash2');
 export const Upload = createAppIcon(UploadData, 'Upload');
-export const User2 = createAppIcon(User2Data, 'User2');
 export const UserRound = createAppIcon(UserRoundData, 'UserRound');
 export const WandSparkles = createAppIcon(WandSparklesData, 'WandSparkles');
 export const Waypoints = createAppIcon(WaypointsData, 'Waypoints');
 export const WifiOff = createAppIcon(WifiOffData, 'WifiOff');
-export const Workflow = createAppIcon(WorkflowData, 'Workflow');
 export const X = createAppIcon(XData, 'X');
 export const Zap = createAppIcon(ZapData, 'Zap');
 export const ZoomIn = createAppIcon(ZoomInData, 'ZoomIn');
