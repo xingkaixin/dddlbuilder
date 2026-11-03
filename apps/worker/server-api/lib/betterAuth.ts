@@ -4,7 +4,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { drizzle } from 'drizzle-orm/d1';
 import { Resend } from 'resend';
 import type { ApiEnv } from './context.js';
-import { betterAuthSchema } from '@ddlbuilder/user-db';
+import { betterAuthRelations, betterAuthSchema } from '@ddlbuilder/user-db';
 import { getUserSystemConfig } from './userSystemConfig.js';
 import { parseAllowedOrigins } from './env.js';
 import { grantSignupCredits } from './credits.js';
@@ -159,7 +159,7 @@ const sweptContexts = new WeakSet<object>();
 
 const buildBetterAuth = (env: ApiEnv['Bindings']) => {
   const config = getUserSystemConfig(env);
-  const db = drizzle(env.USER_DB);
+  const db = drizzle(env.USER_DB, { schema: { ...betterAuthSchema, ...betterAuthRelations } });
   const authBaseUrl = new URL(config.betterAuthUrl);
 
   const trustedOrigins = new Set([
@@ -168,6 +168,7 @@ const buildBetterAuth = (env: ApiEnv['Bindings']) => {
   ]);
 
   return betterAuth({
+    advanced: { database: { joins: true } },
     rateLimit: { enabled: false },
     disabledPaths: [
       // The native send-verification-email endpoint retains verified-account checks.

@@ -165,7 +165,7 @@ describe('createBetterAuth', () => {
 
     createBetterAuth(env);
 
-    expect(drizzleMock).toHaveBeenCalledWith(env.USER_DB);
+    expect(drizzleMock).toHaveBeenCalledWith(env.USER_DB, { schema: expect.anything() });
     expect(drizzleAdapterMock).toHaveBeenCalledWith(
       { db: 'mocked' },
       { provider: 'sqlite', schema: expect.anything() },

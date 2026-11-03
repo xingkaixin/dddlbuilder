@@ -78,10 +78,16 @@ describe('email OTP verification', () => {
     const cookie = verified.headers.get('set-cookie');
     expect(cookie).toContain('session_token=');
 
+    const prepare = vi.spyOn(fixture.database, 'prepare');
+
     const session = await createBetterAuth(env).api.getSession({
       headers: new Headers({ cookie: cookie ?? '' }),
     });
+    expect(prepare).toHaveBeenCalledTimes(1);
+    prepare.mockRestore();
     expect(session?.user.emailVerified).toBe(true);
+    expect(session?.user.createdAt).toBeInstanceOf(Date);
+    expect(session?.session.expiresAt).toBeInstanceOf(Date);
     expect((await verify(otp)).status).toBe(400);
     expect(fixture.sqlite.prepare('SELECT COUNT(*) AS count FROM session').get()?.count).toBe(1);
     expect((await resend()).status).toBe(200);
