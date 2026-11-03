@@ -388,7 +388,6 @@ export const IndexPanel = memo<IndexPanelProps>(
                   type="button"
                   className="relative flex w-full items-start gap-2 rounded-md border border-primary bg-primary/5 px-3 py-2.5 pr-24 text-left shadow-sm"
                 >
-                  <DragDropVerticalIcon className="mt-1 h-4 w-4 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold leading-snug">
                       {t('indexPanel.draftTitle')}
@@ -429,7 +428,6 @@ export const IndexPanel = memo<IndexPanelProps>(
                     }}
                   >
                     <div className="flex min-w-0 gap-3 text-left">
-                      <DragDropVerticalIcon className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                       <div className="min-w-0 flex-1">
                         <div className="break-all pr-2 text-sm font-semibold leading-snug">
                           {index.name}
