@@ -1,5 +1,7 @@
 # Web 图标语义清单（apps/web）
 
+迁移前的快照："当前 hugeicons" 列和行号对应替换前的代码，用于追溯每个槽位的来源。现行规范见 [icon-system.md](icon-system.md)。
+
 路径约定：`App/X` = `apps/web/src/components/App/X.tsx`；`ui/`、`schema-tools/`、`ImportSqlDialog/`、`FireworksOverlay` 同理位于 `components/` 下；`admin/`、`auth/` 位于 `apps/web/src/` 下。`.ts` 文件保留扩展名。
 
 尺寸换算：h-2=8、h-2.5=10、h-3=12、h-3.5=14、h-4/size-4=16、h-5/size-5=20、h-6/size-6=24、h-8=32（px）。未写颜色即继承 `currentColor`（通常是按钮/菜单文字色）。

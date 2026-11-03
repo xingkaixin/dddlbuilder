@@ -17,7 +17,7 @@
 | [modules/schema-engine.md](modules/schema-engine.md) | 表结构建模、DDL/ORM 生成、diff 与数据库工具 |
 | [modules/workspace-sync.md](modules/workspace-sync.md) | 工作区存储、Y.Doc 同步、匿名数据迁入账号 |
 | [modules/account-and-ai.md](modules/account-and-ai.md) | 认证与会话、额度账本、AI 请求治理、管理后台 |
-| [design/icon-system.md](design/icon-system.md) | 自绘图标的视觉语言、动效、工程落点和分期；用法清单见 [design/icon-inventory.md](design/icon-inventory.md) |
+| [design/icon-system.md](design/icon-system.md) | 自绘图标的视觉语言、动效和工程落点；迁移前的用法清单见 [design/icon-inventory.md](design/icon-inventory.md) |
 | [adr/](adr/) | 架构决策记录 |
 | [../CONTEXT.md](../CONTEXT.md) | 领域术语 |
 | [../apps/worker/OBSERVABILITY.md](../apps/worker/OBSERVABILITY.md) | AI 链路的 tracing 与日志查询 |
