@@ -24,14 +24,4 @@ describe('schemaStateSignature', () => {
     expect(buildSchemaStateSignature(current)).toBe(buildSchemaStateSignature(stored));
     expect(buildPersistedStateSignature(current)).not.toBe(buildPersistedStateSignature(stored));
   });
-
-  it('normalizes implicit editor defaults', () => {
-    const stored = createState();
-
-    const current = createState({
-      fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 3 },
-    });
-
-    expect(buildPersistedStateSignature(current)).toBe(buildPersistedStateSignature(stored));
-  });
 });

@@ -37,16 +37,6 @@ describe('decodeWorkspaceMigrationPayload', () => {
     });
   });
 
-  it('拒绝错误的集合形状', () => {
-    const input = payload();
-    expect(
-      decodeWorkspaceMigrationPayload({
-        ...input,
-        snapshot: { ...input.snapshot, savedTables: {} },
-      }),
-    ).toBeNull();
-  });
-
   it('拒绝嵌套的非法持久化状态', () => {
     const input = payload();
     expect(

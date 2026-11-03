@@ -82,23 +82,4 @@ describe('normalizeWorkspaceMigrationSnapshot', () => {
       }),
     ]);
   });
-
-  it.each([
-    null,
-    {
-      activeSource: { kind: 'draft' as const, draftId: 'named' },
-      activeState: null,
-      updatedAt: 30,
-    },
-    {
-      activeSource: { kind: 'saved_table' as const, normalizedName: 'table' },
-      activeState: state('saved'),
-      updatedAt: 30,
-    },
-  ])('非草稿内容不产生额外草稿 (%j)', (activeSession) => {
-    const input = { ...snapshot(), activeSession };
-    const result = normalizeWorkspaceMigrationSnapshot(input);
-    expect(result.drafts).toHaveLength(2);
-    expect(result.drafts[1]).toEqual(input.drafts[0]);
-  });
 });

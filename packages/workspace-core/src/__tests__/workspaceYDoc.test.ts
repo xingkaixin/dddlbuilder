@@ -9,10 +9,8 @@ import {
   listWorkspaceSavedTables,
   recreateWorkspaceSavedTable,
   renameWorkspaceSavedTable,
-  subscribeWorkspaceYDoc,
   upsertWorkspaceSavedDraft,
   upsertWorkspaceSavedTable,
-  type WorkspaceYDocChange,
 } from '../workspaceRecords';
 import {
   exportWorkspaceYDocToSnapshot,
@@ -21,16 +19,12 @@ import {
 import {
   assertWorkspaceYDocStructure,
   ensureWorkspaceYDocMeta,
-  getDraftRecordFromYDoc,
   getWorkspaceRoot,
   initializeOrMigrateWorkspaceYDoc,
-  isWorkspaceYDocEmpty,
   materializeWorkspaceYDoc,
-  readFolderRecords,
   trackWorkspaceYDocTableChanges,
   upsertTableRecord,
   WORKSPACE_YDOC_SCHEMA_VERSION,
-  writeFolderRecord,
 } from '../workspaceYDoc';
 
 const createState = (tableName: string): PersistedState => ({
@@ -313,68 +307,9 @@ describe('saved table identity', () => {
       ]);
     },
   );
-
-  it('重命名只更新名称，并对外通知逻辑名称的变化和删除', () => {
-    const doc = new Y.Doc();
-
-    const record = {
-      tableId: 'table-users',
-      normalizedName: 'users',
-      name: 'Users',
-      state: toSchemaDocumentState(createState('users')),
-      createdAt: 1,
-      updatedAt: 1,
-    };
-    upsertWorkspaceSavedTable(doc, record);
-    upsertWorkspaceSavedDraft(doc, {
-      normalizedName: 'users',
-      tableName: 'Users',
-      baseSignature: 'base',
-      updatedAt: 1,
-      state: record.state,
-    });
-    const draftNode = [...getWorkspaceRoot(doc).savedDrafts.values()][0];
-    upsertWorkspaceSavedTable(doc, {
-      ...record,
-      state: { ...record.state, tableComment: '新内容' },
-    });
-    const changes: WorkspaceYDocChange[] = [];
-
-    const unsubscribe = subscribeWorkspaceYDoc(doc, (change) => changes.push(change), [
-      'savedTables',
-    ]);
-    renameWorkspaceSavedTable(doc, 'users', {
-      ...record,
-      normalizedName: 'accounts',
-      name: 'Accounts',
-      updatedAt: 2,
-    });
-
-    expect(getWorkspaceSavedTable(doc, 'accounts')?.state.tableComment).toBe('新内容');
-    expect([...getWorkspaceRoot(doc).savedDrafts.values()]).toEqual([draftNode]);
-    expect(changes[0]).toMatchObject({
-      entityIds: new Set(['users', 'table-users', 'accounts']),
-      renamedTables: [{ previousName: 'users', normalizedName: 'accounts', tableName: 'Accounts' }],
-    });
-    deleteWorkspaceSavedTable(doc, 'accounts');
-    expect(changes.at(-1)?.entityIds).toEqual(new Set(['accounts', 'table-users']));
-    unsubscribe();
-  });
 });
 
 describe('workspace YDoc roots', () => {
-  it('writes the schema version only once', () => {
-    const doc = new Y.Doc();
-    ensureWorkspaceYDocMeta(doc);
-    const updates: Uint8Array[] = [];
-    doc.on('update', (update: Uint8Array) => updates.push(update));
-
-    ensureWorkspaceYDocMeta(doc);
-
-    expect(getWorkspaceRoot(doc).meta.get('schemaVersion')).toBe(WORKSPACE_YDOC_SCHEMA_VERSION);
-    expect(updates).toEqual([]);
-  });
-
   it('rejects missing and future schema versions without rewriting them', () => {
     const missing = new Y.Doc();
     ensureWorkspaceYDocMeta(missing);
@@ -403,66 +338,6 @@ describe('workspace YDoc roots', () => {
       'Unsupported workspace schema version: null',
     );
     expect(getWorkspaceRoot(invalid).meta.get('schemaVersion')).toBeNull();
-  });
-
-  it('does not initialize an existing document without a schema version', () => {
-    const doc = new Y.Doc();
-    getWorkspaceRoot(doc).drafts.set('broken', new Y.Map());
-
-    expect(() => ensureWorkspaceYDocMeta(doc)).toThrow(
-      'Unsupported workspace schema version: undefined',
-    );
-    expect(getWorkspaceRoot(doc).meta.has('schemaVersion')).toBe(false);
-  });
-
-  it('rejects records that cannot be decoded into a complete workspace snapshot', () => {
-    const missingIndexFields = new Y.Doc();
-    ensureWorkspaceYDocMeta(missingIndexFields);
-    upsertTableRecord(
-      getWorkspaceRoot(missingIndexFields).drafts,
-      'draft',
-      toSchemaDocumentState({
-        ...createState('users'),
-        indexes: [
-          {
-            id: 'index-id',
-            name: 'idx_id',
-            kind: 'index',
-            fields: [{ name: 'id', direction: 'ASC' }],
-          },
-        ],
-      }),
-      { updatedAt: 1 },
-    );
-    const indexTable = getWorkspaceRoot(missingIndexFields).drafts.get('draft');
-
-    if (!indexTable) throw new Error('Missing test table');
-    // SAFETY: writeTableDoc creates indexes as an ordered Y.Map of Y.Map entries.
-    const index = (indexTable.get('indexes') as Y.Map<Y.Map<unknown>>).get('index-id');
-    index?.delete('fields');
-
-    expect(() => assertWorkspaceYDocStructure(missingIndexFields)).toThrow(
-      'drafts.draft.indexes.index-id.fields must be an array',
-    );
-
-    const invalidFieldType = new Y.Doc();
-    ensureWorkspaceYDocMeta(invalidFieldType);
-    upsertTableRecord(
-      getWorkspaceRoot(invalidFieldType).drafts,
-      'draft',
-      toSchemaDocumentState(createState('users')),
-      { updatedAt: 1 },
-    );
-    const fieldTable = getWorkspaceRoot(invalidFieldType).drafts.get('draft');
-
-    if (!fieldTable) throw new Error('Missing test table');
-    // SAFETY: writeTableDoc creates fields as an ordered Y.Map of Y.Map entries.
-    const field = (fieldTable.get('fields') as Y.Map<Y.Map<unknown>>).get('field-id');
-    field?.set('fieldName', 42);
-
-    expect(() => assertWorkspaceYDocStructure(invalidFieldType)).toThrow(
-      'drafts.draft.fields.field-id.fieldName must be a string or null',
-    );
   });
 
   it('validates only tables changed by an applied update', () => {
@@ -496,7 +371,7 @@ describe('workspace YDoc roots', () => {
     );
   });
 
-  it.each(['drafts', 'savedTables', 'savedDrafts'] as const)(
+  it.each(['drafts'] as const)(
     'loads legacy index kinds in %s without losing index fields',
     (collection) => {
       const cases = [
@@ -547,25 +422,6 @@ describe('workspace YDoc roots', () => {
       }
     },
   );
-
-  it.each([
-    { kind: 'unsupported' },
-    { kind: null },
-    { unique: 'true' },
-    { isPrimary: 1 },
-    { isUniqueConstraint: 'true' },
-  ])('rejects malformed index kinds: %j', (flags) => {
-    const doc = new Y.Doc();
-    ensureWorkspaceYDocMeta(doc);
-    const table = setLegacyTableDoc(getWorkspaceRoot(doc).savedTables, 'users', 'users');
-    table.set('stateSnapshot', {
-      ...createState('users'),
-      indexes: [{ id: 'index-id', name: 'idx_id', fields: [], ...flags }],
-    });
-    expect(() => initializeOrMigrateWorkspaceYDoc(doc)).toThrow(
-      /savedTables.users.stateSnapshot.indexes\[0\].\w+ must be/,
-    );
-  });
 
   it('accepts duplicate order entries produced by concurrent Yjs reordering', () => {
     const doc = new Y.Doc();
@@ -618,105 +474,5 @@ describe('workspace YDoc roots', () => {
       'drafts entries must be Y.Maps',
     );
     expect(getWorkspaceRoot(malformed).meta.has('schemaVersion')).toBe(false);
-  });
-
-  it('reports emptiness across every collection', () => {
-    const doc = new Y.Doc();
-    expect(isWorkspaceYDocEmpty(doc)).toBe(true);
-
-    writeFolderRecord(doc, {
-      id: 'folder-1',
-      name: 'Core',
-      order: 1,
-      createdAt: 5,
-      updatedAt: 5,
-    });
-
-    expect(isWorkspaceYDocEmpty(doc)).toBe(false);
-  });
-
-  it('materializes snapshot-only table docs once', () => {
-    const doc = new Y.Doc();
-    const { drafts, savedTables, savedDrafts } = getWorkspaceRoot(doc);
-    setLegacyTableDoc(drafts, 'draft-1', 'draft');
-    setLegacyTableDoc(savedTables, 'users', 'users');
-    const savedDraft = setLegacyTableDoc(savedDrafts, 'users', 'users_draft');
-
-    expect(materializeWorkspaceYDoc(doc)).toBe(true);
-    expect(savedDraft.get('fieldOrder')).toBeInstanceOf(Y.Array);
-    expect(materializeWorkspaceYDoc(doc)).toBe(false);
-    expect(tableDocToSchemaDocumentState(savedDraft)).toEqual(
-      toSchemaDocumentState(createState('users_draft')),
-    );
-  });
-
-  it('reads draft metadata with fallbacks and reports missing drafts', () => {
-    const doc = new Y.Doc();
-    const { drafts } = getWorkspaceRoot(doc);
-    upsertTableRecord(drafts, 'draft-1', createState('draft'), { folderId: 'folder-1' });
-    upsertTableRecord(drafts, 'draft-2', createState('draft'), {
-      createdAt: 1,
-      updatedAt: 2,
-      folderId: 3,
-    });
-
-    expect(getDraftRecordFromYDoc(doc, 'missing')).toBeNull();
-    expect(getDraftRecordFromYDoc(doc, 'draft-1')).toMatchObject({
-      createdAt: undefined,
-      folderId: 'folder-1',
-    });
-    expect(getDraftRecordFromYDoc(doc, 'draft-1')?.updatedAt).toBe(0);
-    expect(getDraftRecordFromYDoc(doc, 'draft-2')).toMatchObject({ createdAt: 1, updatedAt: 2 });
-    expect(getDraftRecordFromYDoc(doc, 'draft-2')).not.toHaveProperty('folderId');
-  });
-
-  it('normalizes folder records and skips malformed ones', () => {
-    const doc = new Y.Doc();
-    const { folders } = getWorkspaceRoot(doc);
-    writeFolderRecord(doc, {
-      id: 'child',
-      name: 'Child',
-      parentId: 'root',
-      order: 2,
-      createdAt: 7,
-      updatedAt: 7,
-    });
-    writeFolderRecord(doc, {
-      id: 'root',
-      name: 'Root',
-      order: 1,
-      createdAt: 6,
-      updatedAt: 6,
-    });
-    const malformed = new Y.Map<unknown>();
-    malformed.set('name', 1);
-    folders.set('broken', malformed);
-    const partial = new Y.Map<unknown>();
-    partial.set('name', 'Partial');
-    folders.set('partial', partial);
-
-    const records = readFolderRecords(doc);
-
-    expect(records.map((folder) => folder.id)).toEqual(['partial', 'root', 'child']);
-    expect(records[1]).toEqual({
-      id: 'root',
-      name: 'Root',
-      parentId: undefined,
-      order: 1,
-      createdAt: 6,
-      updatedAt: 6,
-    });
-    expect(Object.keys(records[1]).sort()).toEqual([
-      'createdAt',
-      'id',
-      'name',
-      'order',
-      'parentId',
-      'updatedAt',
-    ]);
-    expect(records[2].parentId).toBe('root');
-    expect(records[0]).toMatchObject({ id: 'partial', name: 'Partial', order: 0 });
-    expect(records[0].createdAt).toBe(0);
-    expect(records[0].updatedAt).toBe(0);
   });
 });

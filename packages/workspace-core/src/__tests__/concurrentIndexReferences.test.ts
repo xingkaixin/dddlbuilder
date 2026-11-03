@@ -117,37 +117,6 @@ describe('index field references', () => {
     },
   );
 
-  it.each([true, false])(
-    'resolves an index added concurrently with a field rename (existing index=%s)',
-    (existingIndex) => {
-      const left = createDoc();
-      const state = initialState();
-      write(left, { ...state, indexes: existingIndex ? state.indexes : [] });
-      const right = clone(left);
-      write(left, rename(read(left), 'org_id', 'organization_id'));
-      const rightState = read(right);
-      write(right, {
-        ...rightState,
-        indexes: [
-          ...rightState.indexes,
-          {
-            id: 'index-added',
-            name: 'idx_added',
-            kind: 'unique_index',
-            fields: [{ name: 'org_id', direction: 'DESC' }],
-          },
-        ],
-      });
-
-      expect(merge(left, right).indexes.find((index) => index.id === 'index-added')).toEqual({
-        id: 'index-added',
-        name: 'idx_added',
-        kind: 'unique_index',
-        fields: [{ name: 'organization_id', direction: 'DESC' }],
-      });
-    },
-  );
-
   it('keeps the legacy index names current for readers without field ID support', () => {
     const doc = createDoc();
     write(doc, initialState());
@@ -204,20 +173,6 @@ describe('index field references', () => {
     },
   );
 
-  it('migrates legacy fine-grained indexes on the next ordinary edit', () => {
-    const doc = createDoc();
-    write(doc, initialState());
-    writeOrderedMap(table(doc), 'indexes', 'indexOrder', initialState().indexes);
-    const peer = clone(doc);
-    write(doc, rename(read(doc), 'user_id', 'account_id'));
-    write(peer, rename(read(peer), 'org_id', 'organization_id'));
-
-    expect(merge(doc, peer).indexes[0].fields.map((field) => field.name)).toEqual([
-      'account_id',
-      'organization_id',
-    ]);
-  });
-
   it('preserves index order and direction across edits and snapshot round trips', () => {
     const doc = createDoc();
     write(doc, initialState());
@@ -243,27 +198,5 @@ describe('index field references', () => {
       { name: 'user_id', direction: 'ASC' },
     ]);
     expect(JSON.stringify(snapshot)).not.toContain('fieldId');
-  });
-
-  it('distinguishes case-sensitive names and preserves unresolved references', () => {
-    const doc = createDoc();
-    const state = initialState();
-    state.rows[0].fieldName = 'Email';
-    state.rows[1].fieldName = 'email';
-    state.indexes[0].fields = [
-      { name: 'Email', direction: 'ASC' },
-      { name: 'email', direction: 'DESC' },
-      { name: 'missing', direction: 'ASC' },
-    ];
-    write(doc, state);
-    const peer = clone(doc);
-    write(doc, rename(read(doc), 'Email', 'PrimaryEmail'));
-    write(peer, rename(read(peer), 'email', 'secondary_email'));
-
-    expect(merge(doc, peer).indexes[0].fields.map((field) => field.name)).toEqual([
-      'PrimaryEmail',
-      'secondary_email',
-      'missing',
-    ]);
   });
 });

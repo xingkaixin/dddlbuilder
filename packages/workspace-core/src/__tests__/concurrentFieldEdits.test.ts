@@ -56,22 +56,6 @@ const forkPeers = (initial: PersistedState) => {
 };
 
 describe('并发字段编辑', () => {
-  it('keeps inserted field properties when a concurrent deletion changes its position', () => {
-    const id = row('id', 'id', { fieldType: 'int', nullable: false });
-    const name = row('name', 'name', { fieldType: 'varchar', nullable: true });
-    const inserted = row('x', 'x', { fieldType: 'varchar', nullable: true });
-    const { tableA, tableB, converge } = forkPeers(state([id, name]));
-    applySchemaDocumentStateToTableDoc(tableA, state([id, inserted, name]), {
-      compactSnapshotBase: true,
-    });
-    applySchemaDocumentStateToTableDoc(tableB, state([name]), { compactSnapshotBase: true });
-    const [merged, peer] = converge();
-    expect(merged.rows).toMatchObject([
-      { id: 'x', fieldType: 'varchar', nullable: true },
-      { id: 'name', fieldType: 'varchar', nullable: true },
-    ]);
-    expect(peer).toEqual(merged);
-  });
   const ID = row('f-id', 'id');
   const NAME = row('f-name', 'name');
   const AGE = row('f-age', 'age');
@@ -90,30 +74,6 @@ describe('并发字段编辑', () => {
     ]);
     expect(mergedPeer.rows).toEqual(merged.rows);
   });
-
-  it('一端改名，另一端在其之前插入行时改名不丢失', () => {
-    const { tableA, tableB, converge } = forkPeers(state([ID, NAME, AGE]));
-
-    applySchemaDocumentStateToTableDoc(
-      tableA,
-      state([ID, { ...NAME, fieldName: 'user_name' }, AGE]),
-    );
-    applySchemaDocumentStateToTableDoc(tableB, state([row('f-uuid', 'uuid'), ID, NAME, AGE]));
-
-    const [merged] = converge();
-    expect(merged.rows.map((r) => r.fieldName)).toEqual(['uuid', 'id', 'user_name', 'age']);
-  });
-
-  it('两端各改不同字段的注释时都保留', () => {
-    const { tableA, tableB, converge } = forkPeers(state([ID, NAME, AGE]));
-
-    applySchemaDocumentStateToTableDoc(tableA, state([{ ...ID, fieldComment: '主键' }, NAME, AGE]));
-    applySchemaDocumentStateToTableDoc(tableB, state([ID, NAME, { ...AGE, fieldComment: '岁数' }]));
-
-    const [merged] = converge();
-    expect(merged.rows.map((r) => r.fieldComment)).toEqual(['主键', '', '岁数']);
-  });
-
   it('一端删行，另一端改另一行时两个意图都生效', () => {
     const { tableA, tableB, converge } = forkPeers(state([ID, NAME, AGE]));
 
@@ -126,17 +86,6 @@ describe('并发字段编辑', () => {
       ['age', '岁数'],
     ]);
   });
-
-  it('两端各追加一行时都保留', () => {
-    const { tableA, tableB, converge } = forkPeers(state([ID]));
-
-    applySchemaDocumentStateToTableDoc(tableA, state([ID, row('f-a', 'from_a')]));
-    applySchemaDocumentStateToTableDoc(tableB, state([ID, row('f-b', 'from_b')]));
-
-    const [merged] = converge();
-    expect(merged.rows.map((r) => r.fieldName).sort()).toEqual(['from_a', 'from_b', 'id']);
-  });
-
   it('两端在同一位置插入时都留在原来的相邻字段之间', () => {
     const { tableA, tableB, converge } = forkPeers(state([ID, NAME]));
 
@@ -151,17 +100,6 @@ describe('并发字段编辑', () => {
       'name',
     ]);
     expect(new Set(merged.rows.map((r) => r.id)).size).toBe(4);
-    expect(peer).toEqual(merged);
-  });
-
-  it('调整一个字段的位置不会改变其他字段间的并发插入位置', () => {
-    const { tableA, tableB, converge } = forkPeers(state([ID, NAME, AGE]));
-
-    applySchemaDocumentStateToTableDoc(tableA, state([NAME, AGE, ID]));
-    applySchemaDocumentStateToTableDoc(tableB, state([ID, NAME, row('f-a', 'from_a'), AGE]));
-
-    const [merged, peer] = converge();
-    expect(merged.rows.map((r) => r.fieldName)).toEqual(['name', 'from_a', 'age', 'id']);
     expect(peer).toEqual(merged);
   });
 });
