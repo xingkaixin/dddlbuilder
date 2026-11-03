@@ -334,24 +334,28 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
         };
 
       try {
-        const token = beginLegacyWorkspaceMigration(scope);
+        const migrated = hasCompletedLegacyMigration(workspaceUserId, workspaceId);
         const committed = await persistence.get(LEGACY_MIGRATION_COMMITTED);
 
-        if (!committed && !hasCompletedLegacyMigration(workspaceUserId, workspaceId)) {
-          const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
+        if (cancelled) return;
+
+        if (!committed || !migrated) {
+          const token = beginLegacyWorkspaceMigration(scope);
+
+          if (!committed && !migrated) {
+            const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
+
+            if (cancelled) return;
+
+            if (snapshot) mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
+          }
+
+          if (!committed) await commitLegacyWorkspaceYDoc(persistence, doc);
 
           if (cancelled) return;
-
-          if (snapshot) mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
+          await clearLegacyWorkspaceData(scope);
+          completeLegacyWorkspaceMigration(scope, token);
         }
-
-        if (cancelled) return;
-
-        if (!committed) await commitLegacyWorkspaceYDoc(persistence, doc);
-
-        if (cancelled) return;
-        await clearLegacyWorkspaceData(scope);
-        completeLegacyWorkspaceMigration(scope, token);
       } catch (error) {
         console.error('[workspace-yjs] legacy snapshot merge failed', error);
         throw error;
@@ -413,7 +417,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       }
     });
     clientRef.current = client;
-    void client.connect();
+    client.connect();
 
     return () => {
       cancelled = true;

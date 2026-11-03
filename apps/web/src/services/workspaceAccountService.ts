@@ -16,7 +16,7 @@ import { clearWorkspaceHistory } from './workspaceHistoryCleanup';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types';
 import type { CurrentWorkspaceResponseWithMeta } from '@ddlbuilder/shared-types/api';
 import * as Option from 'effect/Option';
-import { deleteSavedTable, listSavedTables, listTrashedSavedTables } from '@/utils/savedTablesDb';
+import { deleteSavedTable, listSavedTablesByStatus } from '@/utils/savedTablesDb';
 import { clearFolders } from '@/utils/tableFolders';
 import {
   clearWorkspaceSession,
@@ -51,11 +51,10 @@ export const fetchCurrentWorkspace = async (
 };
 
 const clearWorkspacePartition = async (scope: WorkspaceScope): Promise<void> => {
-  const [drafts, trashedDrafts, savedTables, trashedSavedTables, savedDrafts] = await Promise.all([
+  const [drafts, trashedDrafts, savedTables, savedDrafts] = await Promise.all([
     listDrafts(scope),
     listTrashedDrafts(scope),
-    listSavedTables(scope),
-    listTrashedSavedTables(scope),
+    listSavedTablesByStatus(scope),
     listSavedDrafts(scope),
   ]);
 
@@ -64,8 +63,9 @@ const clearWorkspacePartition = async (scope: WorkspaceScope): Promise<void> => 
     clearFolders(scope),
     ...drafts.map((item) => deleteDraft(item.draftId, scope)),
     ...trashedDrafts.map((item) => deleteDraft(item.draftId, scope)),
-    ...savedTables.map((item) => deleteSavedTable(item.normalizedName, scope)),
-    ...trashedSavedTables.map((item) => deleteSavedTable(item.normalizedName, scope)),
+    ...[...savedTables.active, ...savedTables.trashed].map((item) =>
+      deleteSavedTable(item.normalizedName, scope),
+    ),
     ...Object.keys(savedDrafts).map((normalizedName) => deleteSavedDraft(normalizedName, scope)),
   ]);
 };
@@ -73,8 +73,10 @@ const clearWorkspacePartition = async (scope: WorkspaceScope): Promise<void> => 
 export const clearLegacyWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {
   if (scope.kind !== 'user') return;
   const session = await readWorkspaceSession(scope);
-  await clearWorkspacePartition(scope);
-  await clearWorkspacePartition({ kind: 'legacy_user', userId: scope.userId });
+  await Promise.all([
+    clearWorkspacePartition(scope),
+    clearWorkspacePartition({ kind: 'legacy_user', userId: scope.userId }),
+  ]);
 
   if (session) {
     await writeWorkspaceSession(
@@ -88,14 +90,17 @@ export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<vo
   if (scope.kind !== 'user') return;
   const scopes = markWorkspaceCleanupPending(scope);
 
-  for (const cachedScope of scopes) {
-    await clearWorkspaceYDocData(cachedScope.workspaceId);
-    await clearWorkspacePartition(cachedScope);
-    await clearWorkspaceHistory(cachedScope);
-  }
+  const legacyScope = { kind: 'legacy_user', userId: scope.userId } as const;
 
-  await clearWorkspacePartition({ kind: 'legacy_user', userId: scope.userId });
-  await clearWorkspaceHistory({ kind: 'legacy_user', userId: scope.userId });
+  await Promise.all([
+    ...scopes.flatMap((cachedScope) => [
+      clearWorkspaceYDocData(cachedScope.workspaceId),
+      clearWorkspacePartition(cachedScope),
+      clearWorkspaceHistory(cachedScope),
+    ]),
+    clearWorkspacePartition(legacyScope),
+    clearWorkspaceHistory(legacyScope),
+  ]);
 
   for (const cachedScope of scopes) forgetWorkspaceCache(cachedScope);
   dispatchWorkspaceSnapshotApplied();

@@ -241,12 +241,18 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
 export async function clearFolders(scope: WorkspaceScope): Promise<void> {
   const folders = await listFolders(scope);
 
-  for (const folder of folders) {
-    await runWithFolderStore<undefined>('readwrite', (store) => store.delete(folder.id));
-    await runWithFolderStore<undefined>('readwrite', (store) =>
-      store.delete(withScopeKey(scope, folder.id)),
-    );
-  }
+  if (folders.length === 0) return;
+  await runWithFolderStore<undefined>('readwrite', (store) => {
+    for (const folder of folders.slice(0, -1)) {
+      store.delete(folder.id);
+      store.delete(withScopeKey(scope, folder.id));
+    }
+
+    const last = folders[folders.length - 1];
+    store.delete(last.id);
+
+    return store.delete(withScopeKey(scope, last.id));
+  });
 }
 
 /**
