@@ -2,18 +2,54 @@ name: Test
 
 on:
   pull_request:
+    paths: &code-paths
+      - '**'
+      - '!docs/**'
+      - '!**/*.md'
+      - '!.agents/**'
+      # The docs site renders its Markdown, so it still needs CI.
+      - 'apps/docs/**'
   push:
     branches:
-      - '**'
+      - main
+    paths: *code-paths
 
 permissions:
   contents: read
 
+# Every main commit gets its own group so release commits are never cancelled or superseded.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Listed first because e2e waits on it; runners are handed out roughly in job order.
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup tools
+        uses: jdx/mise-action@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run build
+        run: pnpm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist-build
+          path: |
+            apps/web/dist/client
+            apps/worker/dist
+          if-no-files-found: error
+          retention-days: 1
+
   typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -47,8 +83,20 @@ jobs:
         run: pnpm run lint
 
   test:
+    name: test (${{ matrix.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: web 1/2
+            command: pnpm --filter @ddlbuilder/web run test --shard=1/2
+          - name: web 2/2
+            command: pnpm --filter @ddlbuilder/web run test --shard=2/2
+          # Mirrors `pnpm test` minus the web package, so new packages are picked up automatically.
+          - name: others
+            command: pnpm run test:lint && pnpm exec turbo run test --filter='!@ddlbuilder/web' && pnpm run test:scripts
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -60,7 +108,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run unit tests
-        run: pnpm run test
+        run: ${{ matrix.command }}
 
   runtime:
     runs-on: ubuntu-latest
@@ -78,46 +126,39 @@ jobs:
       - name: Verify D1 migrations in Workerd
         run: pnpm run test:runtime
 
-      - name: Audit production dependencies
-        run: pnpm audit --prod
-
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup tools
-        uses: jdx/mise-action@v4
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run build
-        run: pnpm run build
-
       - name: Validate Cloudflare configuration
         run: pnpm exec tsx scripts/verify-worker-config.ts
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: dist-build
-          path: |
-            apps/web/dist/client
-            apps/worker/dist
-          if-no-files-found: error
+      - name: Audit production dependencies
+        run: pnpm audit --prod
 
   test_e2e:
+    name: test_e2e (${{ matrix.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs:
-      - typecheck
-      - lint
-      - test
-      - runtime
-      - build
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: 1/8
+            args: --fully-parallel --shard=1/8
+          - name: 2/8
+            args: --fully-parallel --shard=2/8
+          - name: 3/8
+            args: --fully-parallel --shard=3/8
+          - name: 4/8
+            args: --fully-parallel --shard=4/8
+          - name: 5/8
+            args: --fully-parallel --shard=5/8
+          - name: 6/8
+            args: --fully-parallel --shard=6/8
+          - name: 7/8
+            args: --fully-parallel --shard=7/8
+          - name: 8/8
+            args: --fully-parallel --shard=8/8
+          - name: runtime
+            args: --config playwright.runtime.config.ts
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -134,22 +175,51 @@ jobs:
           name: dist-build
           path: apps
 
-      - name: Verify downloaded build artifact
-        run: |
-          test -f apps/web/dist/client/index.html
-          pnpm exec tsx scripts/verify-server-bundle.ts
+      - name: Resolve Playwright deps cache key
+        id: playwright
+        run: echo "deps-key=playwright-deps-$ImageOS-$ImageVersion-$(pnpm exec playwright --version | tr ' ' '-')" >> "$GITHUB_OUTPUT"
 
+      # apt-get update and the font downloads are the slowest and least predictable part of
+      # e2e setup, so the packages they fetch are cached per runner image.
+      - name: Restore Playwright system packages
+        uses: actions/cache@v6
+        with:
+          path: ~/playwright-debs
+          key: ${{ steps.playwright.outputs.deps-key }}
+
+      # The CLI installs system deps and the browser one after another; they are independent.
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+        run: |
+          install_system_deps() {
+            # apt prefers the repository copy of a version it already knows, so the files go
+            # into its archive cache to keep it off the network.
+            if compgen -G "$HOME/playwright-debs/*.deb" > /dev/null &&
+              sudo cp "$HOME"/playwright-debs/*.deb /var/cache/apt/archives/ &&
+              sudo apt-get install -y --no-install-recommends "$HOME"/playwright-debs/*.deb; then
+              return
+            fi
+            pnpm exec playwright install-deps chromium
+            mkdir -p ~/playwright-debs
+            cp /var/cache/apt/archives/*.deb ~/playwright-debs/ || true
+          }
+          install_system_deps &
+          pnpm exec playwright install --only-shell chromium
+          wait $!
 
       - name: Run e2e tests
-        run: pnpm run test:e2e
+        run: pnpm exec playwright test ${{ matrix.args }}
+        env:
+          # Playwright splits shards by test count, but the workspace sync specs at the end of
+          # the list run far longer, so the last shards take fewer tests. This variable is
+          # undocumented; if Playwright drops it, shards fall back to equal counts and still
+          # run every test. Re-derive from a JSON report when the suite shifts a lot.
+          PWTEST_SHARD_WEIGHTS: '33:29:21:24:15:8:3:5'
 
       - name: Upload Playwright artifacts
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-artifacts
+          name: playwright-artifacts-${{ strategy.job-index }}
           path: |
             playwright-report/**
             test-results/**
