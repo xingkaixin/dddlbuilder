@@ -98,25 +98,27 @@ const stopAIConversations = async (
     RETURNING id, conversation_id, submitted_at`)
       .bind(Date.now(), identity.userId, identity.sessionId ?? null, identity.sessionId ?? null)
       .all<{ id: string; conversation_id: string; submitted_at: number | null }>();
-  const failures: unknown[] = [];
+  const conversations = env.AI_CONVERSATIONS;
 
-  for (const operation of results) {
-    if (!operation.submitted_at) continue;
+  const settled = await Promise.allSettled(
+    results
+      .filter((operation) => operation.submitted_at)
+      .map(async (operation) => {
+        const response = await conversations
+          .get(conversations.idFromName(operation.conversation_id))
+          .fetch(`https://ai.internal/stop?operation=${encodeURIComponent(operation.id)}`, {
+            method: 'POST',
+            headers: { 'x-ai-user': identity.userId },
+          });
+        await response.body?.cancel();
 
-    try {
-      const response = await env.AI_CONVERSATIONS.get(
-        env.AI_CONVERSATIONS.idFromName(operation.conversation_id),
-      ).fetch(`https://ai.internal/stop?operation=${encodeURIComponent(operation.id)}`, {
-        method: 'POST',
-        headers: { 'x-ai-user': identity.userId },
-      });
-      await response.body?.cancel();
-
-      if (!response.ok && response.status !== 409) throw new Error('AI session revocation failed');
-    } catch (error) {
-      failures.push(error);
-    }
-  }
+        if (!response.ok && response.status !== 409)
+          throw new Error('AI session revocation failed');
+      }),
+  );
+  const failures = settled.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason] : [],
+  );
 
   if (failures.length) throw new AggregateError(failures, 'AI session revocation failed');
 };
