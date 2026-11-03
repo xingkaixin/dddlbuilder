@@ -78,7 +78,7 @@ export class WorkspaceYDocSyncClient {
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
   }
 
-  async connect() {
+  connect() {
     if (this.destroyed || this.socket || this.connecting) return;
 
     if (typeof WebSocket === 'undefined') {
@@ -93,30 +93,9 @@ export class WorkspaceYDocSyncClient {
       return;
     }
 
-    this.connecting = true;
     this.notify('connecting');
-    const failureReason = await this.checkAvailability();
-    this.connecting = false;
-
-    if (this.destroyed || this.socket) return;
-
-    if (this.isOffline()) {
-      this.notify('offline');
-
-      return;
-    }
-
-    if (failureReason) {
-      this.notify('error', failureReason);
-
-      if (failureReason !== 'auth') {
-        this.scheduleReconnect();
-      }
-
-      return;
-    }
-
     const socket = new WebSocket(buildWorkspaceYDocUrl(this.workspaceId));
+    let opened = false;
     socket.binaryType = 'arraybuffer';
     this.socket = socket;
     this.socketOpenTimer = setTimeout(() => {
@@ -136,6 +115,7 @@ export class WorkspaceYDocSyncClient {
         return;
       }
 
+      opened = true;
       this.clearSocketOpenTimer();
       this.reconnectDelayMs = 1000;
       this.syncRoundTripComplete = false;
@@ -167,7 +147,7 @@ export class WorkspaceYDocSyncClient {
         return;
       }
 
-      this.notify('error', 'unknown');
+      if (opened) this.notify('error', 'unknown');
     };
 
     socket.onclose = () => {
@@ -175,15 +155,21 @@ export class WorkspaceYDocSyncClient {
       this.clearSocketOpenTimer();
       this.socket = null;
 
-      if (!this.destroyed) {
-        if (this.isOffline()) {
-          this.notify('offline');
-        } else {
-          this.notify('error', 'network');
-        }
+      if (this.destroyed) return;
 
-        this.scheduleReconnect();
+      if (!opened && !this.isOffline()) {
+        void this.reportHandshakeFailure();
+
+        return;
       }
+
+      if (this.isOffline()) {
+        this.notify('offline');
+      } else {
+        this.notify('error', 'network');
+      }
+
+      this.scheduleReconnect();
     };
   }
 
@@ -199,7 +185,7 @@ export class WorkspaceYDocSyncClient {
       this.discardSocket(this.socket);
     }
 
-    void this.connect();
+    this.connect();
   }
 
   flushAndWaitForSync(): Promise<void> {
@@ -226,7 +212,7 @@ export class WorkspaceYDocSyncClient {
       this.flushPendingUpdates();
 
       if (this.socket?.readyState === WebSocket.OPEN) this.notify('connected');
-      else void this.connect();
+      else this.connect();
     });
   }
 
@@ -296,7 +282,7 @@ export class WorkspaceYDocSyncClient {
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      void this.connect();
+      this.connect();
       this.reconnectDelayMs = Math.min(this.reconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS);
     }, this.reconnectDelayMs);
   }
@@ -457,6 +443,25 @@ export class WorkspaceYDocSyncClient {
 
   private isOffline() {
     return this.browserOffline || (typeof navigator !== 'undefined' && !navigator.onLine);
+  }
+
+  // Browsers hide the handshake status from WebSocket, so only a HEAD can tell auth from outage.
+  private async reportHandshakeFailure() {
+    this.connecting = true;
+    const failureReason = await this.checkAvailability();
+    this.connecting = false;
+
+    if (this.destroyed || this.socket) return;
+
+    if (this.isOffline()) {
+      this.notify('offline');
+
+      return;
+    }
+
+    this.notify('error', failureReason ?? 'network');
+
+    if (failureReason !== 'auth') this.scheduleReconnect();
   }
 
   private async checkAvailability(): Promise<WorkspaceYDocFailureReason | null> {

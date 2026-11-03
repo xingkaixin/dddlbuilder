@@ -103,9 +103,9 @@ test('first cloud sync is not presented as an empty workspace', async ({ browser
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await context.route(`**/api/workspaces/${workspaceId}/yjs`, async (route) => {
+  await context.routeWebSocket(`**/api/workspaces/${workspaceId}/yjs`, async (socket) => {
     await gate;
-    await route.fallback();
+    server.route()(socket);
   });
   const page = await context.newPage();
 
