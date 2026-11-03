@@ -152,8 +152,12 @@ jobs:
           name: dist-build
           path: apps
 
+      # The CLI installs system deps and the browser one after another; they are independent.
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+        run: |
+          pnpm exec playwright install-deps chromium &
+          pnpm exec playwright install --only-shell chromium
+          wait $!
 
       - name: Run e2e tests
         run: pnpm run test:e2e
