@@ -17,9 +17,15 @@
   fill: currentColor;
 }
 
+.lm-ic-dash {
+  stroke-dasharray: 2.4 2.6;
+}
+
 .lm-ic-wash {
   fill: var(--lm-ic-wash, var(--blue-wash));
   opacity: var(--wash-rest);
+  /* `translate` composes with the hover `transform`, so the offset survives group motion. */
+  translate: 0.9px 0.9px;
 }
 
 .lm-ic[data-tone='success'] {
@@ -32,4 +38,108 @@
 
 .lm-ic[data-tone='danger'] {
   --lm-ic-wash: var(--danger-wash);
+}
+
+.lm-ic[data-tone='ai'] {
+  --lm-ic-wash: var(--ai-wash);
+}
+
+/* Hover groups: lengths are grid units, because px inside the SVG are user units. */
+[class*='lm-ic-g-'] {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lm-ic-g-lid {
+  transform-origin: 4.4px 6.6px;
+}
+
+.lm-ic-g-nib {
+  transform-origin: 4.8px 19.2px;
+}
+
+.lm-ic-g-tilt {
+  transform-origin: 12px 20.4px;
+}
+
+.lm-ic-g-flap {
+  transform-origin: 12px 6.4px;
+}
+
+.lm-ic-g-star,
+.lm-ic-g-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+:is(button, a, [role='button'], [role='menuitem'], [role='option'], [role='tab']):is(
+  :hover,
+  :focus-visible
+) {
+  .lm-ic-g-lid {
+    transform: translateY(-0.6px) rotate(-18deg);
+  }
+
+  .lm-ic-g-nib {
+    transform: rotate(-8deg);
+  }
+
+  .lm-ic-g-front {
+    transform: translate(0.8px, 0.8px);
+  }
+
+  .lm-ic-g-drop {
+    transform: translateY(2.2px);
+  }
+
+  .lm-ic-g-rise {
+    transform: translateY(-2.2px);
+  }
+
+  .lm-ic-g-fly {
+    transform: translate(1.4px, -1.4px);
+  }
+
+  .lm-ic-g-spin {
+    transform: rotate(180deg);
+  }
+
+  .lm-ic-g-undo {
+    transform: rotate(-50deg);
+  }
+
+  .lm-ic-g-enter {
+    transform: translateX(1.4px);
+  }
+
+  .lm-ic-g-flap {
+    transform: scaleY(-0.5);
+  }
+
+  .lm-ic-g-tilt {
+    transform: rotate(14deg);
+  }
+
+  .lm-ic-g-gear {
+    transform: rotate(45deg);
+  }
+
+  .lm-ic-g-rays {
+    transform: rotate(45deg);
+  }
+
+  .lm-ic-g-star {
+    transform: rotate(14deg) scale(1.08);
+  }
+
+  .lm-ic-g-twinkle {
+    transform: rotate(90deg) scale(1.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*='lm-ic-g-'] {
+    transition: none;
+  }
 }

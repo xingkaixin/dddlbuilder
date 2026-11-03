@@ -22,6 +22,7 @@
   --danger: #a8321f;
   --danger-wash: #ec9a8a;
   --mark: #c7d6f6;
+  --ai-wash: #b7a6ee;
   --overlay: #1c284033;
   --shadow-overlay: 0 3px 12px #1c284033;
 
@@ -78,6 +79,7 @@
   --danger: #f4a596;
   --danger-wash: #7f3a2e;
   --mark: #2d4170;
+  --ai-wash: #4c3f86;
   --overlay: #000000a0;
   --shadow-overlay: 0 8px 28px #00000066;
 }
