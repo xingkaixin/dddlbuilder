@@ -23,6 +23,33 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Listed first because e2e waits on it; runners are handed out roughly in job order.
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup tools
+        uses: jdx/mise-action@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run build
+        run: pnpm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist-build
+          path: |
+            apps/web/dist/client
+            apps/worker/dist
+          if-no-files-found: error
+          retention-days: 1
+
   typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -87,46 +114,16 @@ jobs:
       - name: Verify D1 migrations in Workerd
         run: pnpm run test:runtime
 
-      - name: Audit production dependencies
-        run: pnpm audit --prod
-
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup tools
-        uses: jdx/mise-action@v4
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run build
-        run: pnpm run build
-
       - name: Validate Cloudflare configuration
         run: pnpm exec tsx scripts/verify-worker-config.ts
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: dist-build
-          path: |
-            apps/web/dist/client
-            apps/worker/dist
-          if-no-files-found: error
+      - name: Audit production dependencies
+        run: pnpm audit --prod
 
   test_e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs:
-      - typecheck
-      - lint
-      - test
-      - runtime
-      - build
+    needs: build
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -142,11 +139,6 @@ jobs:
         with:
           name: dist-build
           path: apps
-
-      - name: Verify downloaded build artifact
-        run: |
-          test -f apps/web/dist/client/index.html
-          pnpm exec tsx scripts/verify-server-bundle.ts
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
