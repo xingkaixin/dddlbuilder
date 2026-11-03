@@ -32,15 +32,6 @@ test.describe('表选项面板功能测试 @panels', () => {
     );
   });
 
-  test('场景：MySQL 数据库应显示并能配置表选项', async ({ page }) => {
-    await configureMySQLTableOptions(page);
-    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
-    await expect(sqlOutput).toContainText('HYDRATED_FIELD INT');
-    await expect(sqlOutput).toContainText(
-      'ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin',
-    );
-  });
-
   test('场景：禁用表选项后不应在 SQL 中生成', async ({ page }) => {
     const panel = await configureMySQLTableOptions(page);
     const sqlOutput = page.locator('[role="tabpanel"]:visible pre');

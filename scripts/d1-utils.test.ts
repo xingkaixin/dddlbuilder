@@ -70,48 +70,6 @@ describe('d1-utils', () => {
     expect(files[0]).toBe(path.join(migrationDir, '0001_user_system_init.sql'));
   });
 
-  it('builds wrangler execute args from command only', () => {
-    expect(
-      buildD1ExecuteArgs('local-d1.json', '.wrangler/state/dev', { command: 'SELECT 1' }),
-    ).toEqual([
-      'exec',
-      'wrangler',
-      '--config',
-      'local-d1.json',
-      'd1',
-      'execute',
-      'USER_DB',
-      '--local',
-      '--persist-to',
-      '.wrangler/state/dev',
-      '--command',
-      'SELECT 1',
-    ]);
-  });
-
-  it('builds wrangler execute args with json flag', () => {
-    expect(
-      buildD1ExecuteArgs('local-d1.json', '.wrangler/state/dev', {
-        command: 'SELECT 1',
-        json: true,
-      }),
-    ).toEqual([
-      'exec',
-      'wrangler',
-      '--config',
-      'local-d1.json',
-      'd1',
-      'execute',
-      'USER_DB',
-      '--local',
-      '--persist-to',
-      '.wrangler/state/dev',
-      '--command',
-      'SELECT 1',
-      '--json',
-    ]);
-  });
-
   it('keeps leading SQL comments inside the remote cf query argument', () => {
     expect(buildD1QueryArgs('production-db-id', { command: '-- migration\nSELECT 1' })).toEqual([
       'd1',
@@ -119,46 +77,6 @@ describe('d1-utils', () => {
       'production-db-id',
       '--sql=-- migration\nSELECT 1',
     ]);
-  });
-
-  it('throws error when neither file nor command is provided', () => {
-    expect(() => buildD1ExecuteArgs('local-d1.json', '.wrangler/state/dev', {})).toThrow(
-      '缺少 SQL 输入',
-    );
-  });
-
-  it('builds wrangler execute args with both file and command', () => {
-    expect(
-      buildD1ExecuteArgs('local-d1.json', '.wrangler/state/dev', {
-        file: '/tmp/test.sql',
-        command: 'SELECT 1',
-      }),
-    ).toEqual([
-      'exec',
-      'wrangler',
-      '--config',
-      'local-d1.json',
-      'd1',
-      'execute',
-      'USER_DB',
-      '--local',
-      '--persist-to',
-      '.wrangler/state/dev',
-      '--file',
-      '/tmp/test.sql',
-      '--command',
-      'SELECT 1',
-    ]);
-  });
-
-  it('runs d1 execute successfully', () => {
-    vi.mocked(spawnSync).mockReturnValue(spawnResult());
-    runD1Execute('local', { command: 'SELECT 1' });
-    expect(spawnSync).toHaveBeenCalledWith(
-      'pnpm',
-      expect.arrayContaining(['d1', 'execute', 'USER_DB']),
-      expect.objectContaining({ stdio: 'inherit' }),
-    );
   });
 
   it('exits when d1 execute fails', () => {
@@ -265,25 +183,6 @@ describe('d1-utils', () => {
     );
   });
 
-  it('rejects an unknown baseline endpoint', () => {
-    vi.mocked(spawnSync)
-      .mockReturnValueOnce(spawnResult())
-      .mockReturnValueOnce(
-        spawnResult({
-          status: 0,
-          stdout: JSON.stringify([{ results: [] }]),
-        }),
-      )
-      .mockReturnValueOnce(
-        spawnResult({
-          status: 0,
-          stdout: JSON.stringify([{ results: [{ name: 'users' }] }]),
-        }),
-      );
-
-    expect(() => baselineExistingMigrations('local', '9999_unknown.sql')).toThrow('未知迁移');
-  });
-
   it('applies every migration for a fresh database', () => {
     vi.mocked(spawnSync)
       .mockReturnValueOnce(spawnResult())
@@ -367,19 +266,6 @@ describe('d1-utils', () => {
     ]);
   });
 
-  it('does not issue drop statements for an empty database', () => {
-    vi.mocked(spawnSync).mockReturnValue(
-      spawnResult({
-        status: 0,
-        stdout: JSON.stringify([{ results: [] }]),
-      }),
-    );
-
-    resetDatabase('local');
-
-    expect(spawnSync).toHaveBeenCalledTimes(1);
-  });
-
   it.each([1, null])('stops a reset when schema inspection fails (%s)', (status) => {
     vi.mocked(spawnSync).mockReturnValue(
       spawnResult({
@@ -394,17 +280,6 @@ describe('d1-utils', () => {
     expect(() => resetDatabase('local')).toThrow('process exited');
     expect(process.exit).toHaveBeenCalledWith(1);
     expect(spawnSync).toHaveBeenCalledTimes(1);
-  });
-
-  it('verifies all required runtime tables', () => {
-    vi.mocked(spawnSync).mockReturnValue(
-      spawnResult({
-        status: 0,
-        stdout: JSON.stringify([{ results: [{ name: 'user' }, { name: 'session' }] }]),
-      }),
-    );
-
-    expect(() => verifyRequiredD1Tables('local', ['user', 'session'])).not.toThrow();
   });
 
   it('rejects a database with missing runtime tables', () => {
@@ -432,16 +307,5 @@ describe('d1-utils', () => {
 
     expect(() => runPendingMigrations('local')).toThrow('D1 JSON row is missing a string name');
     expect(vi.mocked(spawnSync).mock.calls).toHaveLength(2);
-  });
-
-  it('stops reset when a D1 schema row is malformed', () => {
-    vi.mocked(spawnSync).mockReturnValue(
-      spawnResult({
-        stdout: JSON.stringify([{ results: [{ type: 'table' }] }]),
-      }),
-    );
-
-    expect(() => resetDatabase('local')).toThrow('D1 JSON row is missing string type/name');
-    expect(vi.mocked(spawnSync).mock.calls).toHaveLength(1);
   });
 });

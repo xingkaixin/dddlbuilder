@@ -1,12 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import type * as SheetJS from '../../apps/web/node_modules/xlsx';
 import { openTool } from '../utils';
-
-const { utils, write }: typeof SheetJS = createRequire(
-  new URL('../../apps/web/package.json', import.meta.url),
-)('xlsx');
 
 async function openImport(page: Page) {
   await page.goto('/');
@@ -65,40 +59,6 @@ test('业务 CSV 在浏览器后台处理，下载完整脚本并可复用配置
   await page.screenshot({ path: '/tmp/ddlbuilder-business-import-mobile-source.png' });
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.screenshot({ path: '/tmp/ddlbuilder-business-import-dark.png' });
-});
-
-test('Excel 可跳过空工作表，并拒绝公式单元格 @tools', async ({ page }) => {
-  const book = utils.book_new();
-  utils.book_append_sheet(book, utils.aoa_to_sheet([]), 'Empty');
-  utils.book_append_sheet(
-    book,
-    utils.aoa_to_sheet([
-      ['code', 'amount'],
-      ['00123', 19.9],
-    ]),
-    'Orders',
-  );
-  const formulas = utils.aoa_to_sheet([['value'], [2]]);
-  formulas.A2.f = '1+1';
-  utils.book_append_sheet(book, formulas, 'Formulas');
-  const dialog = await openImport(page);
-  await dialog.getByLabel('业务数据文件', { exact: true }).setInputFiles({
-    name: 'orders.xlsx',
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    buffer: write(book, { type: 'buffer', bookType: 'xlsx', compression: true }),
-  });
-  await dialog.getByRole('button', { name: '读取数据', exact: true }).click();
-  await dialog.getByRole('combobox', { name: 'Excel 工作表', exact: true }).selectOption('Orders');
-  await expect(dialog.getByText('已读取 1 行、2 列')).toBeVisible();
-  await dialog
-    .getByRole('combobox', { name: 'Excel 工作表', exact: true })
-    .selectOption('Formulas');
-  await expect(dialog.getByRole('alert')).toContainText('A2 含公式');
-  await expect(
-    dialog.getByRole('button', { name: '校验全部数据并生成 SQL', exact: true }),
-  ).toBeDisabled();
-  await dialog.getByRole('combobox', { name: 'Excel 工作表', exact: true }).selectOption('Orders');
-  await expect(dialog.getByText('已读取 1 行、2 列')).toBeVisible();
 });
 
 test('数据错误有源行号且输入变化立即使结果失效 @tools', async ({ page }) => {

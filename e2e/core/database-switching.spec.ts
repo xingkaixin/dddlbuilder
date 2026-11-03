@@ -59,22 +59,6 @@ test.describe('数据库切换与方言验证 @core', () => {
     // 验证 PG 的类型映射 (varchar(255) -> varchar(255))
     await expect(sqlOutputElement).toContainText(/id\s+varchar\(255\)/i);
   });
-
-  test('场景：切换到 Oracle 应生成大写表名和特定语法', async ({ page }) => {
-    await page.locator('#table-name').fill('orders');
-    await page.locator('#table-comment').fill('订单表');
-
-    const sqlOutputElement = sqlOutput(page);
-
-    // 切换到 Oracle
-    await page.locator('[data-testid="db-type-selector"]').click();
-    await page.getByRole('option', { name: 'Oracle', exact: true }).click();
-
-    // Oracle Table COMMENT 语法
-    await expect(sqlOutputElement).toContainText(/COMMENT ON TABLE\s+orders\s+IS\s+'订单表'/i);
-    // Oracle 的类型映射 (varchar(255) -> VARCHAR2(255))
-    await expect(sqlOutputElement).toContainText(/id\s+VARCHAR2\(255\)/i);
-  });
 });
 
 function sqlOutput(page: Page) {

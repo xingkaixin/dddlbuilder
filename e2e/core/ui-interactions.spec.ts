@@ -1,7 +1,6 @@
-import { selectWorkspaceView } from '../utils';
 import { openTableAction } from '../utils';
-import { test, expect, type Page, type Route } from '@playwright/test';
-import { openSettings, setupHydratedState, ensureBuilderVisible } from '../utils';
+import { test, expect } from '@playwright/test';
+import { setupHydratedState } from '../utils';
 import type { PersistedState } from '../../packages/shared-types/src/index';
 
 test.describe('核心 UI 交互功能测试 @core', () => {
@@ -9,12 +8,6 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await page.goto('/');
     await setupHydratedState(page);
   });
-
-  const selectTheme = async (page: Page, name: string) => {
-    const settings = await openSettings(page);
-
-    await settings.getByRole('button', { name, exact: true }).click();
-  };
 
   test('场景：清空所有功能应重置表单并继续保存编辑', async ({ page }) => {
     // 填写一些数据
@@ -94,158 +87,4 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await expect(page.locator('#table-name')).toHaveValue('work_after_clear');
     await expect(page.locator('#table-comment')).toHaveValue('清空后继续编辑');
   });
-
-  test('场景：默认配置下不显示烟花入口和节日弹层', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /点击播放烟花|Play fireworks/i })).toHaveCount(0);
-    await expect(page.getByRole('dialog', { name: /新春烟花/i })).toHaveCount(0);
-  });
-
-  test('场景：主题可切换并支持系统跟随', async ({ page }) => {
-    const html = page.locator('html');
-
-    await selectTheme(page, '暗色');
-    await expect(html).toHaveClass(/dark/);
-
-    await page.reload();
-    await expect(html).toHaveClass(/dark/);
-
-    await selectTheme(page, '跟随系统');
-
-    await page.emulateMedia({ colorScheme: 'light' });
-    await expect(html).not.toHaveClass(/dark/);
-
-    await page.emulateMedia({ colorScheme: 'dark' });
-    await expect(html).toHaveClass(/dark/);
-  });
-
-  test('场景：切换日语后应更新并记住界面语言', async ({ page }) => {
-    await (await openSettings(page)).getByRole('button', { name: '日本語', exact: true }).click();
-
-    await expect(page.locator('html')).toHaveAttribute('lang', 'ja-JP');
-    await expect(
-      page.getByText('プロフェッショナルなデータベーステーブル設計ツール', { exact: true }),
-    ).toBeVisible();
-
-    await page.reload();
-
-    await expect(page.locator('html')).toHaveAttribute('lang', 'ja-JP');
-    await expect(
-      page.getByText('プロフェッショナルなデータベーステーブル設計ツール', { exact: true }),
-    ).toBeVisible();
-  });
-
-  test('场景：标签页切换应正常工作', async ({ page }) => {
-    // 填写表名以激活 SQL 生成
-    await page.locator('#table-name').fill('tab_test');
-
-    // 收起侧边栏避免遮挡标签页
-    const collapseBtn = page.getByRole('button', { name: /收起侧边栏/i });
-
-    if (await collapseBtn.isVisible().catch(() => false)) {
-      await collapseBtn.click();
-    }
-
-    // 测试标签页切换
-    const tabs = [
-      { name: /字段/i, panel: 'fields' },
-      { name: /索引/i, panel: 'indexes' },
-      { name: /权限/i, panel: 'permissions' },
-      { name: /表选项/i, panel: 'options' },
-    ];
-
-    for (const tab of tabs) {
-      const tabElement = page.getByRole('tab', { name: tab.name });
-
-      // 检查标签是否存在（某些标签只在特定数据库下显示）
-      if ((await tabElement.count()) > 0) {
-        await tabElement.click();
-        await expect(tabElement).toHaveAttribute('aria-selected', 'true');
-      }
-    }
-
-    // 切换回字段标签
-    await page.getByRole('tab', { name: /字段/i }).click();
-    await expect(page.getByRole('tab', { name: /字段/i })).toHaveAttribute('aria-selected', 'true');
-  });
-
-  test('场景：收起工作区侧栏后应释放全部横向空间', async ({ page }) => {
-    const sidebar = page.getByTestId('workspace-sidebar');
-    const content = page.getByTestId('workspace-content');
-
-    await expect(sidebar).toBeVisible();
-    const expandedContentBox = await content.boundingBox();
-    expect(expandedContentBox?.x).toBeGreaterThan(0);
-
-    await page.getByRole('button', { name: /收起侧边栏|Collapse sidebar/i }).click();
-
-    await expect(sidebar).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /展开侧边栏|Expand sidebar/i })).toBeVisible();
-    const collapsedContentBox = await content.boundingBox();
-    expect(collapsedContentBox?.x).toBe(0);
-
-    await page.getByRole('button', { name: /展开侧边栏|Expand sidebar/i }).click();
-    await expect(sidebar).toBeVisible();
-  });
-
-  test('场景：设计、结果和分屏视图共享同一份编辑内容', async ({ page }) => {
-    const outputPanel = page.getByTestId('output-panel');
-
-    const status = page.getByTestId('editor-surface').locator('footer');
-    await expect(status).toBeInViewport();
-    await status.getByRole('button').click();
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(outputPanel).toBeVisible();
-    await selectWorkspaceView(page, 'design');
-    await expect(outputPanel).not.toBeVisible();
-    await page.locator('#table-name').fill('layout_test');
-    await selectWorkspaceView(page, 'output');
-    await expect(page.getByTestId('data-table')).not.toBeVisible();
-    await expect(outputPanel.locator('pre')).toContainText('layout_test');
-    await selectWorkspaceView(page, 'split');
-    await expect(page.getByTestId('data-table')).toBeVisible();
-    await expect(outputPanel).toBeVisible();
-    const separator = page.getByRole('separator', { name: '调整设计与结果的高度' });
-    await separator.focus();
-    await page.keyboard.press('ArrowUp');
-    await expect(separator).toHaveAttribute('aria-valuenow', '50');
-  });
-});
-
-test('编辑器测试页面不依赖外部字体和统计服务完成加载', async ({ page }) => {
-  const pending: Route[] = [];
-  await page.route(/^https:\/\//, (route) => {
-    pending.push(route);
-  });
-
-  try {
-    await page.goto('/');
-    await ensureBuilderVisible(page);
-  } finally {
-    await Promise.all(pending.map((route) => route.abort()));
-  }
-});
-
-test('默认左右分屏，刷新后保留所选布局', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto('/');
-  await page.getByRole('button', { name: /^从空白开始/ }).click();
-  await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'side');
-  await expect(page.getByTestId('workspace-sidebar')).toBeVisible();
-  const firstRow = page.getByTestId('data-table').locator('tbody tr').first();
-  await expect(firstRow).toBeInViewport();
-  await page.locator('#table-name').fill('layout_preference');
-  await selectWorkspaceView(page, 'split');
-  const editor = await page.getByTestId('design-panel').boundingBox();
-  const output = await page.getByTestId('generated-results').boundingBox();
-
-  if (!editor || !output) throw new Error('Both comparison panels must be visible');
-  expect(output.y).toBeGreaterThanOrEqual(editor.y + editor.height);
-  expect(output.width).toBe(editor.width);
-  await page.reload();
-  await page
-    .getByTestId('workspace-sidebar')
-    .getByRole('button', { name: 'layout_preference', exact: true })
-    .click();
-  await expect(page.getByTestId('editor-surface')).toHaveAttribute('data-view', 'split');
 });

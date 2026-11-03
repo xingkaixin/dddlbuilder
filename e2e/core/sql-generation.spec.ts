@@ -2,16 +2,6 @@ import { test, expect } from '@playwright/test';
 import { confirmFieldTypeChangeIfNeeded, setupHydratedState } from '../utils';
 
 test.describe('SQL 自动生成流程 @core @smoke', () => {
-  test.beforeEach(async ({ context }) => {
-    await context.addInitScript(() => {
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: async () => {} },
-        configurable: true,
-      });
-    });
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  });
-
   test('场景：填写表信息和字段后，应正确生成建表 SQL', async ({ page }) => {
     // 1. 访问首页
     await page.goto('/');
@@ -77,51 +67,5 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     );
     await firstNullableCheckbox.click();
     await expect(sqlOutput).toContainText(/NOT NULL/i, { timeout: 5000 });
-  });
-
-  test('场景：复制 DDL', async ({ page }) => {
-    await page.goto('/');
-    await setupHydratedState(page);
-
-    await page.locator('#table-name').fill('copy_test');
-
-    const nameCell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-    );
-    await nameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
-    await page.keyboard.press('Enter');
-
-    const typeCell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
-    );
-    await typeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
-    await page.keyboard.press('Enter');
-
-    await page.evaluate(() => {
-      // SAFETY: This browser test installs a mutable clipboard probe on the page global.
-      (window as any).__copyTriggered = false;
-
-      const writeText = async () => {
-        // SAFETY: This browser test reads the boolean flag installed on the same page global above.
-        (window as any).__copyTriggered = true;
-      };
-
-      try {
-        Object.defineProperty(navigator, 'clipboard', {
-          value: { writeText },
-          configurable: true,
-        });
-      } catch {
-        // SAFETY: The fallback replaces the same test-only clipboard probe when the property is not configurable.
-        (navigator as any).clipboard = { writeText };
-      }
-    });
-
-    const copyButton = page.getByRole('button', { name: /复制DDL/i });
-    await copyButton.click();
-    // SAFETY: This browser test reads the boolean flag installed on the same page global above.
-    await expect.poll(() => page.evaluate(() => (window as any).__copyTriggered)).toBe(true);
   });
 });

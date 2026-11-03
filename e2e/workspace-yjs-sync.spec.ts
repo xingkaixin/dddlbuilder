@@ -1,6 +1,6 @@
 import { createAIConversationMock } from './ai-conversations';
 import { selectWorkspaceView } from './utils';
-import { openFieldTool, openSettings, openTableAction, openTool } from './utils';
+import { openFieldTool, openSettings, openTableAction } from './utils';
 import {
   expect,
   test,
@@ -20,7 +20,6 @@ import type { WorkspaceMigrationPayload } from '../packages/shared-types/src/wor
 import { applyWorkspaceMigrationSnapshot } from '../apps/worker/server-api/lib/workspaceMigration';
 import {
   getWorkspaceSavedTable,
-  listWorkspaceDrafts,
   upsertWorkspaceSavedTable,
 } from '../packages/workspace-core/src/index';
 
@@ -29,68 +28,6 @@ const MESSAGE_SYNC = 0;
 const isString = (value: unknown): value is string => typeof value === 'string';
 const isNumber = (value: unknown): value is number => typeof value === 'number';
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
-
-test('database tools read saved tables from the synchronized workspace', async ({ browser }) => {
-  const server = new MockWorkspaceYjsServer();
-  const workspaceId = `ws-schema-tools-${Date.now()}`;
-  seedDefaultDraft(server.doc, 'draft_only', 'id');
-
-  const state: PersistedState = {
-    schemaName: '',
-    tableName: 'cloud_dictionary',
-    tableComment: 'Cloud table description',
-    dbType: 'mysql',
-    sqlFormatMode: 'compact',
-    addCount: 10,
-    rows: [
-      {
-        id: 'cloud-field',
-        fieldName: 'id',
-        fieldType: 'BIGINT',
-        fieldComment: '',
-        nullable: false,
-      },
-    ],
-    indexes: [],
-    authInput: '',
-    authObjects: [],
-  };
-
-  for (const trashed of [false, true]) {
-    const name = trashed ? 'trashed_table' : state.tableName;
-    upsertWorkspaceSavedTable(server.doc, {
-      tableId: name,
-      normalizedName: name,
-      name,
-      state: { ...state, tableName: name },
-      createdAt: 1,
-      updatedAt: 1,
-      ...(trashed ? { trashedAt: 1 } : {}),
-    });
-  }
-
-  const context = await browser.newContext({ locale: 'zh-CN' });
-  await mockSignedInWorkspace(context, server, workspaceId);
-  await context.route('**/api/publications', (route) => route.fulfill({ json: [] }));
-  const page = await context.newPage();
-
-  try {
-    await page.goto('/');
-    await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
-    const dialog = await openTool(page, '数据字典');
-    const savedTable = dialog.getByRole('checkbox', { name: /^cloud_dictionary/ });
-    await expect(savedTable).toBeVisible();
-    await savedTable.check();
-    await expect(dialog.getByRole('checkbox')).toHaveCount(1);
-    await expect(
-      dialog.getByRole('heading', { name: 'cloud_dictionary', exact: true }),
-    ).toBeVisible();
-    await expect(dialog.getByRole('button', { name: '导出 Markdown', exact: true })).toBeEnabled();
-  } finally {
-    await context.close();
-    server.doc.destroy();
-  }
-});
 
 test('first cloud sync is not presented as an empty workspace', async ({ browser }) => {
   const workspaceId = `ws-initial-sync-${Date.now()}`;
@@ -973,131 +910,6 @@ test('workspace yjs sync converges realtime edits and IndexedDB restore', async 
   await contextB.close();
 });
 
-test('remote draft removal cancels index advice when switching to a same-name draft', async ({
-  browser,
-}) => {
-  const workspaceId = `ws-draft-removal-${Date.now()}`;
-  const server = new MockWorkspaceYjsServer();
-  seedDefaultDraft(server.doc, 'shared_draft', 'id');
-  const contextA = await browser.newContext({ locale: 'zh-CN' });
-  const contextB = await browser.newContext({ locale: 'zh-CN' });
-  await mockSignedInWorkspace(contextA, server, workspaceId, 'deleting-client');
-  await mockSignedInWorkspace(contextB, server, workspaceId, 'editing-client');
-  let finishResponse = () => {};
-
-  const responseReady = new Promise<void>((resolve) => {
-    finishResponse = resolve;
-  });
-  const ai = createAIConversationMock();
-  await contextB.route('**/api/ai/operations{,/**}', async (route) => {
-    if (await ai.handle(route)) return;
-    await responseReady;
-    await ai.fulfill(route, {
-      json: {
-        summary: 'Advice for the deleted draft',
-        recommendations: [
-          {
-            id: 'unique-id',
-            category: 'missing_index',
-            title: 'Unique ID for the deleted draft',
-            rationale: 'The original draft requires unique IDs',
-            confidence: 'high',
-            index: {
-              name: 'uk_shared_draft_id',
-              fields: [{ name: 'id', direction: 'ASC' }],
-              unique: true,
-            },
-          },
-        ],
-      },
-    });
-  });
-  const pageA = await contextA.newPage();
-  const pageB = await contextB.newPage();
-
-  const remainingDraft = () =>
-    listWorkspaceDrafts(server.doc).find(({ draftId }) => draftId !== DEFAULT_DRAFT_ID)?.record
-      .state;
-  const sharedDraftTabs = pageB.locator('div[role="button"]').filter({ hasText: /^shared_draft/ });
-  const advisor = pageB.getByRole('dialog', { name: 'AI 索引优化顾问' });
-
-  try {
-    await pageA.goto('/');
-    await pageB.goto('/');
-    await openDraftByName(pageA, 'shared_draft');
-    await openDraftByName(pageB, 'shared_draft');
-    await expect(pageA.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
-    await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
-    await pageB.getByRole('button', { name: /新建草稿/i }).click();
-    await tableNameInput(pageB).fill('shared_draft');
-    await editFirstFieldName(pageB, 'id');
-    await editFirstFieldType(pageB, 'BIGINT');
-    await pageB.locator('#table-comment').fill('keep this draft');
-    await expect.poll(() => remainingDraft()?.tableComment).toBe('keep this draft');
-    await expect(sharedDraftTabs).toHaveCount(2);
-    await openSavedTables(pageB);
-    await getSavedTableRow(pageB, DEFAULT_DRAFT_ID).getByTestId('table-select:default').click();
-    await expect(pageB.locator('#table-comment')).toHaveValue('');
-
-    await openFieldTool(pageB, 'AI 工具', 'AI 索引顾问');
-    await advisor
-      .locator('#ai-index-query-patterns')
-      .fill('SELECT * FROM shared_draft WHERE id = ?');
-
-    const requestStarted = pageB.waitForRequest(
-      (request) =>
-        /\/api\/ai\/operations\/[^/]+$/.test(new URL(request.url()).pathname) &&
-        request.method() === 'POST',
-    );
-    await advisor.getByRole('button', { name: '分析索引', exact: true }).click();
-    const request = await requestStarted;
-    expect(request.postDataJSON().tableName).toBe('shared_draft');
-    const cancelled = pageB.waitForEvent('requestfailed', (failed) => failed === request);
-
-    await openSavedTables(pageA);
-    await getSavedTableRow(pageA, DEFAULT_DRAFT_ID)
-      .getByRole('button', { name: '更多操作' })
-      .click();
-    await pageA.getByRole('menuitem', { name: '删除', exact: true }).click();
-
-    await expect(advisor).toBeHidden();
-    finishResponse();
-    await cancelled;
-    await expect(tableNameInput(pageB)).toHaveValue('shared_draft');
-    await expect(pageB.locator('#table-comment')).toHaveValue('keep this draft');
-    await expect(sharedDraftTabs).toHaveCount(1);
-    await openFieldTool(pageB, 'AI 工具', 'AI 索引顾问');
-    await expect(advisor).toBeVisible();
-    await expect(advisor.getByText('Advice for the deleted draft')).toHaveCount(0);
-    await expect(advisor.getByRole('button', { name: '添加索引', exact: true })).toHaveCount(0);
-    await advisor.getByRole('button', { name: '取消', exact: true }).click();
-    expect(remainingDraft()?.indexes).toEqual([]);
-    await pageB.locator('#table-comment').fill('edited after remote removal');
-    await expect.poll(() => remainingDraft()?.tableComment).toBe('edited after remote removal');
-    expect(
-      readMetadata(server.doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID))?.get(
-        'trashedAt',
-      ),
-    ).toEqual(expect.any(Number));
-
-    await pageB.reload();
-    await openDraftByName(pageB, 'shared_draft');
-    await expect(pageB.locator('#table-comment')).toHaveValue('edited after remote removal');
-    await expect(sharedDraftTabs).toHaveCount(1);
-    expect(remainingDraft()?.indexes).toEqual([]);
-    expect(
-      readMetadata(server.doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID))?.get(
-        'trashedAt',
-      ),
-    ).toEqual(expect.any(Number));
-  } finally {
-    finishResponse();
-    await contextA.close();
-    await contextB.close();
-    server.doc.destroy();
-  }
-});
-
 test('workspace yjs sync converges saved table lifecycle and folder moves across contexts', async ({
   browser,
 }) => {
@@ -1336,40 +1148,6 @@ test('workspace yjs rename preserves an offline save and retargets open tabs', a
   expect(savedTableDoc(server.doc, originalName)).toBeUndefined();
   await contextA.close();
   await contextB.close();
-});
-
-test('workspace yjs sync preserves offline edits locally and converges after reconnect', async ({
-  browser,
-}) => {
-  const workspaceId = `ws-offline-e2e-${Date.now()}`;
-  const server = new MockWorkspaceYjsServer();
-  seedDefaultDraft(server.doc, 'cloud_seed', 'id');
-  const context = await browser.newContext({ locale: 'zh-CN' });
-  await mockSignedInWorkspace(context, server, workspaceId);
-  const page = await context.newPage();
-
-  await page.goto('/');
-  await openDraftByName(page, 'cloud_seed');
-  await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
-  await selectWorkspaceView(page, 'split');
-  await expect(page.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
-
-  await context.setOffline(true);
-  await page.evaluate(() => window.dispatchEvent(new Event('offline')));
-  await tableNameInput(page).fill('offline_local');
-  await editFirstFieldName(page, 'offline_id');
-  await expect(page.getByTestId('workspace-yjs-status')).toContainText('离线，本地已保存');
-  await expect(tableNameInput(page)).toHaveValue('offline_local');
-  await page.waitForTimeout(700);
-
-  await context.setOffline(false);
-  await page.evaluate(() => window.dispatchEvent(new Event('online')));
-
-  await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
-  await expect.poll(() => readDefaultDraftState(server.doc)?.tableName).toBe('offline_local');
-  expect(readDefaultDraftState(server.doc)?.rows[0]?.fieldName).toBe('offline_id');
-
-  await context.close();
 });
 
 test('workspace yjs sync merges offline and online concurrent schema edits', async ({

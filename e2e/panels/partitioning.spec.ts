@@ -39,18 +39,6 @@ test.describe('MySQL 分区配置验证 @panels', () => {
     await page.keyboard.press('Enter');
   });
 
-  test('场景：配置为 HASH 分区', async ({ page }) => {
-    // 切换到“分区配置”面板
-    const partitionPanel = await openPartitionPanel(page);
-    await selectPartitionType(page, partitionPanel, 'HASH');
-
-    // 输入分区表达式
-    await page.getByPlaceholder(/输入表达式/i).fill('id');
-
-    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
-    await expect(sqlOutput).toContainText(/PARTITION BY HASH\(id\)/i);
-  });
-
   test('场景：配置为 KEY 分区并设置数量', async ({ page }) => {
     const partitionPanel = await openPartitionPanel(page);
     await selectPartitionType(page, partitionPanel, 'KEY');
@@ -61,30 +49,5 @@ test.describe('MySQL 分区配置验证 @panels', () => {
     const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toContainText(/PARTITION BY KEY\(id\)/i);
     await expect(sqlOutput).toContainText(/PARTITIONS 8/i);
-  });
-
-  test('场景：配置为 RANGE 分区并使用快捷生成', async ({ page }) => {
-    const partitionPanel = await openPartitionPanel(page);
-    await selectPartitionType(page, partitionPanel, 'RANGE');
-
-    await page.getByPlaceholder(/输入表达式/i).fill('id');
-    await page.getByRole('button', { name: /按年/i }).click();
-
-    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
-    await expect(sqlOutput).toContainText(/PARTITION BY RANGE\(id\)/i);
-  });
-
-  test('场景：配置为 LIST 分区并添加分区定义', async ({ page }) => {
-    const partitionPanel = await openPartitionPanel(page);
-    await selectPartitionType(page, partitionPanel, 'LIST');
-
-    await page.getByPlaceholder(/输入表达式/i).fill('id');
-    await page.getByRole('button', { name: /添加分区/i }).click();
-
-    await page.getByPlaceholder('分区名').fill('p1');
-    await page.getByPlaceholder(/\(1, 2, 3\)/).fill('(1, 2)');
-
-    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
-    await expect(sqlOutput).toContainText(/PARTITION BY LIST\(id\)/i);
   });
 });

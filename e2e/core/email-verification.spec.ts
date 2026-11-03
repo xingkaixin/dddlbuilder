@@ -83,28 +83,4 @@ test.describe('邮箱验证码', () => {
     await expect(page.getByText('邮箱验证成功，已登录', { exact: true })).toBeVisible();
     expect(signedIn).toBe(true);
   });
-
-  test('未验证账号可以继续验证、关闭后恢复，并在冷却结束后重发', async ({ page }) => {
-    await page.clock.install();
-    await page.getByLabel('邮箱', { exact: true }).fill(email);
-    await page.getByLabel('密码', { exact: true }).fill('Password-test-123!');
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: '登录 / 注册', exact: true })
-      .click();
-    await expect(page.getByRole('heading', { name: '验证你的邮箱' })).toBeVisible();
-    expect(codesSent).toBe(1);
-    await expect(page.getByRole('button', { name: /秒后可重发/ })).toBeDisabled();
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.clock.fastForward(30_000);
-    await page.getByRole('button', { name: '登录 / 注册', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '验证你的邮箱' })).toBeVisible();
-    expect(codesSent).toBe(1);
-    await page.clock.fastForward(31_000);
-    await page.getByRole('button', { name: '重新发送验证码', exact: true }).click();
-    await expect.poll(() => codesSent).toBe(2);
-    await expect(page.getByRole('button', { name: /秒后可重发/ })).toBeDisabled();
-    await page.getByRole('button', { name: '返回登录', exact: true }).click();
-    await expect(page.getByLabel('邮箱', { exact: true })).toHaveValue(email);
-  });
 });

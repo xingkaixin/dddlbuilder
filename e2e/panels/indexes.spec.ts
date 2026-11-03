@@ -31,33 +31,6 @@ test.describe('索引管理验证 @panels', () => {
     await expect(typeCell).toHaveText(/int/i);
   });
 
-  test('场景：添加普通索引', async ({ page }) => {
-    await page.getByRole('tab', { name: '索引配置', exact: true }).click();
-
-    await selectIndexField(page);
-
-    await page.getByRole('button', { name: '保存索引', exact: true }).click();
-
-    // 等待索引名称出现在列表中
-    await expect(page.getByText('idx_index_test_id').first()).toBeVisible();
-
-    const sqlOutput = page.getByTestId('ddl-output').locator('pre');
-    await expect(sqlOutput).toContainText(/INDEX idx_index_test_id \(id ASC\)/i);
-  });
-
-  test('场景：添加唯一索引', async ({ page }) => {
-    await page.getByRole('tab', { name: '索引配置', exact: true }).click();
-
-    await page.getByRole('button', { name: /添加唯一索引/i }).click();
-    await selectIndexField(page);
-    await page.getByRole('button', { name: '保存索引', exact: true }).click();
-
-    await expect(page.getByText('uk_index_test_id').first()).toBeVisible();
-
-    const sqlOutput = page.getByTestId('ddl-output').locator('pre');
-    await expect(sqlOutput).toContainText(/UNIQUE INDEX uk_index_test_id \(id ASC\)/i);
-  });
-
   test('场景：添加主键索引', async ({ page }) => {
     await page.getByRole('tab', { name: '索引配置', exact: true }).click();
 

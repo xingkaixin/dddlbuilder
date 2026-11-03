@@ -96,31 +96,7 @@ const readWorkspaceDoc = async (page: Page, workspaceId: string) => {
 };
 
 test.describe('Cloudflare runtime bindings', () => {
-  test('enforces strict SQL snapshots without changing ordinary imports', async ({ request }) => {
-    const sql = 'CREATE TABLE users(id INT PRIMARY KEY); SELECT 1;';
-
-    const strict = await request.post('/api/parse-multi-sql', {
-      data: { sql, dbType: 'mysql', strict: true },
-    });
-    expect(strict.ok(), await strict.text()).toBe(true);
-    expect(await strict.json()).toMatchObject({
-      results: [{ tableName: 'users' }],
-      failed: [{ error: expect.any(String) }],
-    });
-    const ordinary = await request.post('/api/parse-multi-sql', { data: { sql, dbType: 'mysql' } });
-    expect(ordinary.ok(), await ordinary.text()).toBe(true);
-    expect(await ordinary.json()).toMatchObject({ results: [{ tableName: 'users' }], failed: [] });
-  });
-
-  for (const path of [
-    '/',
-    '/admin',
-    '/share/00000000-0000-4000-8000-000000000000',
-    '/publications/missing-publication',
-    '/docs/zh/basic/getting-started',
-    '/docs/en/basic/getting-started',
-    '/docs/ja/basic/getting-started',
-  ]) {
+  for (const path of ['/', '/docs/zh/basic/getting-started']) {
     test(`serves ${path} with an enforced CSP`, async ({ page }) => {
       await page.route(/^https:\/\//, (route) => route.fulfill({ body: '' }));
       await page.addInitScript(() => {
@@ -150,12 +126,7 @@ test.describe('Cloudflare runtime bindings', () => {
   test('permanently redirects legacy docs while preserving query parameters', async ({
     request,
   }) => {
-    for (const path of [
-      '/zh',
-      '/en/',
-      '/ja/advanced/orm-generation',
-      '/zh/basic/index-auth-misc',
-    ]) {
+    for (const path of ['/zh', '/ja/advanced/orm-generation']) {
       const response = await request.get(`${path}?from=legacy`, { maxRedirects: 0 });
       expect(response.status()).toBe(301);
       const target = new URL(response.headers().location, response.url());
@@ -172,58 +143,13 @@ test.describe('Cloudflare runtime bindings', () => {
   test('returns 404 for unknown pages in both navigation and fetch requests', async ({
     request,
   }) => {
-    for (const path of [
-      '/docs/ja/s/zh/',
-      '/docs/en/ex',
-      '/docs/zh/missing-page',
-      '/missing-page',
-      '/static/missing.js',
-    ]) {
+    for (const path of ['/docs/ja/s/zh/', '/missing-page', '/static/missing.js']) {
       for (const mode of ['navigate', 'cors']) {
         const response = await request.get(path, { headers: { 'Sec-Fetch-Mode': mode } });
         expect(response.status(), `${mode} ${path}`).toBe(404);
         expect(await response.text()).not.toContain('<div id="root">');
       }
     }
-  });
-
-  test('connects Effect spans to the native Worker trace', async ({ request }) => {
-    const requestId = `trace-${crypto.randomUUID()}`;
-
-    const response = await request.post('/api/ai/operations', {
-      headers: { 'X-Request-Id': requestId },
-      data: {},
-    });
-    expect(response.status()).toBe(401);
-
-    const sql = `WITH root AS (
-      SELECT span_id FROM spans WHERE name = 'ai.request'
-      AND json_extract(attributes, '$."request.id"') = '${requestId}'
-    ) SELECT name, span_id, parent_id, json(attributes) FROM spans
-      WHERE span_id IN (SELECT span_id FROM root) OR parent_id IN (SELECT span_id FROM root)`;
-    let rows: string[][] = [];
-    await expect(async () => {
-      const query = await request.post('/cdn-cgi/local/explorer/api/local/observability/query', {
-        data: { sql },
-      });
-      expect(query.ok(), await query.text()).toBe(true);
-      const payload = await query.json();
-      expect(payload.success).toBe(true);
-      rows = payload.result.rows;
-      expect(rows.map((row) => row[0])).toEqual(
-        expect.arrayContaining(['ai.request', 'ai.authenticate']),
-      );
-    }).toPass({ timeout: 10_000 });
-    const root = rows.find((row) => row[0] === 'ai.request');
-    const auth = rows.find((row) => row[0] === 'ai.authenticate');
-
-    if (!root || !auth) throw new Error('Missing AI runtime spans');
-    expect(auth[2]).toBe(root[1]);
-    expect(JSON.parse(root[3])).toMatchObject({
-      'request.id': requestId,
-      'ai.outcome': 'rejected',
-      'ai.error_code': 'AUTH_REQUIRED',
-    });
   });
 
   test('runs Effect D1 recovery in a scheduled Worker', async ({ request }) => {

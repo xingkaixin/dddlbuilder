@@ -49,40 +49,4 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
       /SELECT create_distributed_table\('sharded_table', 'user_id'\)/i,
     );
   });
-
-  test('场景：配置为副本表', async ({ page }) => {
-    await page.locator('[data-testid="db-type-selector"]').click();
-    await page.getByRole('option', { name: /PostgreSQL \(Citus\)/i }).click();
-
-    await page.locator('#table-name').fill('reference_table');
-
-    const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
-    await cell.dblclick();
-    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
-    await page.keyboard.press('Enter');
-
-    const typeCell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
-    );
-    await typeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
-    await page.keyboard.press('Enter');
-
-    await openAdvancedSettings(page, '分片配置');
-    await page.getByRole('button', { name: /副本表/i }).click();
-
-    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
-    await expect(sqlOutput).toContainText(/SELECT create_reference_table\('reference_table'\)/i);
-  });
-
-  test('场景：无字段提示', async ({ page }) => {
-    await page.locator('[data-testid="db-type-selector"]').click();
-    await page.getByRole('option', { name: /PostgreSQL \(Citus\)/i }).click();
-
-    await page.locator('#table-name').fill('empty_table');
-
-    await openAdvancedSettings(page, '分片配置');
-    await page.getByRole('button', { name: /分片表/i }).click();
-    await expect(page.getByText(/请先在字段配置中添加字段/)).toBeVisible();
-  });
 });

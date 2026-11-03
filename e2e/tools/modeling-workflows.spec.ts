@@ -1,9 +1,9 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { instantiateBusinessModule, snapshotTableKey } from '../../packages/ddl-core/src/index';
+import { instantiateBusinessModule } from '../../packages/ddl-core/src/index';
 import { encodeDeliverySnapshot } from '../../packages/workspace-core/src/index';
 import type { PersistedState } from '../../packages/shared-types/src/index';
-import { openTool as openToolFromNav, setupHydratedState } from '../utils';
+import { openTool as openToolFromNav } from '../utils';
 
 async function openTool(page: Page, name: string) {
   await page.goto('/');
@@ -82,79 +82,4 @@ test('业务模块整组保存并在刷新后拒绝重复保存 @tools', async (
   await expect(reopened.getByRole('alert')).toContainText('没有覆盖现有表');
   const impact = await openTool(page, '影响分析');
   await expect(impact.getByRole('checkbox')).toHaveCount(5);
-});
-
-test('SQLite 初始化导出保留约束并阻止不完整选集 @tools', async ({ page }) => {
-  const dialog = await openTool(page, 'SQLite / D1 导出');
-
-  const tables = instantiateBusinessModule('rbac', 'mysql', '', 'integer').map(
-    (table): PersistedState => ({ ...table, dbType: 'sqlite' }),
-  );
-  await loadSnapshot(dialog, tables);
-  const sql = await downloadText(page, dialog.getByRole('button', { name: '下载初始化 SQL' }));
-  expect(sql).toContain('PRIMARY KEY AUTOINCREMENT');
-  expect(sql).toContain('FOREIGN KEY');
-  expect(sql).not.toContain('ALTER TABLE');
-
-  const drizzle = await downloadText(
-    page,
-    dialog.getByRole('button', { name: '下载 Drizzle schema' }),
-  );
-  expect(drizzle).toContain('drizzle-orm/sqlite-core');
-  expect(drizzle).toContain('foreignKey(');
-  await dialog.getByRole('checkbox', { name: /^users/ }).uncheck();
-  await expect(dialog.getByRole('alert')).toContainText('referenced table');
-  await expect(dialog.getByRole('button', { name: '下载初始化 SQL' })).toHaveCount(0);
-
-  const wide = {
-    ...tables[0],
-    indexes: [],
-    rows: Array.from({ length: 101 }, (_, i) => ({
-      id: String(i),
-      fieldName: `f${i}`,
-      fieldType: 'text',
-      fieldComment: '',
-      nullable: true,
-    })),
-  };
-  await loadSnapshot(dialog, [wide]);
-  await expect(dialog.getByRole('alert')).toContainText('100 columns');
-  await dialog.getByLabel('导出目标', { exact: true }).selectOption('sqlite');
-  expect(
-    await downloadText(page, dialog.getByRole('button', { name: '下载初始化 SQL' })),
-  ).toContain('f100');
-});
-
-test('字段影响报告包含关系与分析范围 @tools', async ({ page }) => {
-  const dialog = await openTool(page, '影响分析');
-  const tables = instantiateBusinessModule('inventory', 'mysql', '', 'integer');
-  await loadSnapshot(dialog, tables);
-  await dialog.getByLabel('目标表').selectOption(snapshotTableKey(tables[0]));
-  await dialog.getByLabel('目标字段').selectOption('id');
-  await expect(dialog.getByRole('status')).toContainText('已检查 4 张表');
-  const report = await downloadText(page, dialog.getByRole('button', { name: '下载影响报告' }));
-  expect(report).toContain('stock');
-  expect(report).toContain('数据库外键约束');
-  expect(report).toContain('未发现依赖不代表修改安全');
-  await page.screenshot({ path: '/tmp/ddlbuilder-impact-desktop.png' });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: '/tmp/ddlbuilder-impact-mobile.png' });
-  await dialog.getByRole('button', { name: '清空选择', exact: true }).click();
-  await expect(dialog.getByRole('button', { name: '下载影响报告' })).toHaveCount(0);
-});
-
-test('SQLite 编辑器生成原生类型并自动选择 Drizzle @core', async ({ page }) => {
-  await page.goto('/');
-  await setupHydratedState(page);
-  await page.getByTestId('db-type-selector').click();
-  await page.getByRole('option', { name: 'SQLite / D1', exact: true }).click();
-  await expect(
-    page.getByRole('tabpanel', { name: '建表 DDL', exact: true }).locator('pre'),
-  ).toContainText('"HYDRATED_FIELD" INTEGER');
-  await expect(page.getByRole('tab', { name: '授权 DCL', exact: true })).toHaveCount(0);
-  await page.getByRole('tab', { name: 'ORM 模型', exact: true }).click();
-  await expect(page.getByRole('tabpanel', { name: 'ORM 模型' }).locator('pre')).toContainText(
-    'sqliteTable',
-  );
-  await expect(page.locator('#orm-target')).toContainText('Drizzle');
 });

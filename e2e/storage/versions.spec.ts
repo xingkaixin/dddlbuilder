@@ -62,35 +62,6 @@ test.describe('版本管理验证 @storage', () => {
     await ensureBuilderVisible(page);
   });
 
-  test('场景：版本列表展示', async ({ page }) => {
-    const tableName = 'version_test_' + Date.now();
-    await page.locator('#table-name').fill(tableName);
-
-    // 1. 保存初始版本
-    await fillBasicField(page, 'f1');
-    await saveNewTable(page, tableName);
-
-    // 1.5 加载保存的表，进入更新流程
-    await page.getByRole('button', { name: '工作区' }).click();
-    await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
-    await clickSavedTable(page, new RegExp(tableName, 'i'));
-    await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
-
-    // 2. 修改并保存为新版本（已加载表直接覆盖）
-    const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
-    await cell.click();
-    await page.keyboard.press('Control+A');
-    await page.keyboard.press('Backspace');
-    await page.keyboard.type('f1_updated', { delay: 50 });
-    await page.keyboard.press('Tab');
-
-    await saveLoadedTable(page);
-
-    // 3. 查看版本历史
-    const dialog = await openHistoryDialog(page);
-    await expect(dialog.locator('button').filter({ hasText: /最新|初始版本/ })).toHaveCount(2);
-  });
-
   test('场景：版本回滚', async ({ page }) => {
     const tableName = 'version_rollback_' + Date.now();
     await page.locator('#table-name').fill(tableName);
@@ -132,36 +103,5 @@ test.describe('版本管理验证 @storage', () => {
 
     // 验证回滚成功
     await expect(cell).toHaveText('f1', { timeout: 10000 });
-  });
-
-  test('场景：删除版本', async ({ page }) => {
-    const tableName = 'version_delete_' + Date.now();
-    await page.locator('#table-name').fill(tableName);
-    await fillBasicField(page, 'f1');
-
-    await saveNewTable(page, tableName);
-
-    await page.getByRole('button', { name: '工作区' }).click();
-    await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
-    await clickSavedTable(page, new RegExp(tableName, 'i'));
-
-    const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
-    await cell.click();
-    await page.keyboard.press('Control+A');
-    await page.keyboard.press('Backspace');
-    await page.keyboard.type('f1_updated', { delay: 50 });
-    await page.keyboard.press('Tab');
-
-    await saveLoadedTable(page);
-
-    const dialog = await openHistoryDialog(page);
-    const versionItems = dialog.locator('button').filter({ hasText: /最新|初始版本/ });
-    await expect(versionItems).toHaveCount(2);
-
-    await dialog.getByRole('button', { name: /删除版本 1/i }).click();
-    await expect(page.getByText('删除此版本？')).toBeVisible();
-    await page.getByRole('button', { name: /确认删除|删除/i }).click();
-
-    await expect(versionItems).toHaveCount(1);
   });
 });

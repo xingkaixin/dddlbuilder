@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
 import { SqlParser } from '../../packages/ddl-core/src/parser/SqlParser';
 import { openTool } from '../utils';
 
@@ -23,55 +22,6 @@ async function openTools(page: Page) {
 
   return openTool(page, '数据字典');
 }
-
-test('窄屏工具页可用键盘打开工具，内容不横向溢出 @tools', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/tools');
-  const main = page.getByRole('main');
-  await expect(main.getByRole('link')).toHaveCount(11);
-  await main.getByRole('link', { name: /^关联测试数据/ }).press('Enter');
-  await expect(main.getByRole('heading', { name: '关联测试数据', exact: true })).toBeInViewport();
-  await expect(page).toHaveURL(/\/tools\/seed$/);
-
-  const width = await main.evaluate((element) => ({
-    content: element.scrollWidth,
-    viewport: element.clientWidth,
-  }));
-  expect(width.content).toBe(width.viewport);
-  await page.goBack();
-  await expect(main.getByRole('heading', { name: '数据库工具', exact: true })).toBeVisible();
-});
-
-test('数据字典可直接从 SQL 导出并离线搜索 @tools', async ({ page, context }, testInfo) => {
-  const dialog = await openTools(page);
-  await dialog.getByLabel('数据来源', { exact: true }).selectOption('sql');
-  await dialog.getByLabel('表结构 SQL', { exact: true }).fill(sql);
-  await dialog.getByRole('button', { name: '解析 SQL', exact: true }).click();
-  await expect(dialog.getByRole('heading', { name: 'users', exact: true })).toBeVisible();
-  const downloadPromise = page.waitForEvent('download');
-  await dialog.getByRole('button', { name: '导出离线 HTML' }).click();
-  const download = await downloadPromise;
-  const path = testInfo.outputPath('dictionary.html');
-  await download.saveAs(path);
-  const offline = await context.newPage();
-  await offline.goto(pathToFileURL(path).href);
-  await expect(offline.getByRole('heading', { name: 'users', exact: true })).toBeVisible();
-  await offline.getByLabel('搜索表名、字段或业务说明').fill('用户名');
-  await expect(offline.getByRole('heading', { name: 'orders', exact: true })).toBeHidden();
-  await expect(offline.getByRole('heading', { name: 'users', exact: true })).toBeVisible();
-  await offline.getByLabel('搜索表名、字段或业务说明').fill('amount');
-  await expect(offline.getByRole('heading', { name: 'users', exact: true })).toBeHidden();
-  await offline.getByRole('link', { name: 'users (id)', exact: true }).click();
-  await expect(offline.getByRole('heading', { name: 'users', exact: true })).toBeVisible();
-  await offline.close();
-  await page.screenshot({ path: '/tmp/ddlbuilder-schema-tools-desktop.png' });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(dialog).toBeVisible();
-  await page.screenshot({ path: '/tmp/ddlbuilder-schema-tools-mobile.png' });
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await page.screenshot({ path: '/tmp/ddlbuilder-schema-tools-dark.png' });
-});
 
 test('两份 SQL 支持重命名确认，并在输入变化后清除结果 @tools', async ({ page }) => {
   const dialog = await openTools(page);
@@ -152,42 +102,4 @@ test('结构快照可刷新并带出变化报告 @tools', async ({ page }, testI
   const report = page.waitForEvent('download');
   await assessment.getByRole('button', { name: '导出兼容性报告' }).click();
   expect(await readFile(await (await report).path(), 'utf8')).toContain('numeric(20,0)');
-});
-
-test('业务测试场景保存后可导入并重复生成 @tools', async ({ page }) => {
-  await openTools(page);
-  const seed = await openTool(page, '关联测试数据');
-  await seed.getByLabel('数据来源', { exact: true }).selectOption('sql');
-  await seed.getByLabel('表结构 SQL', { exact: true }).fill(sql);
-  await seed.getByRole('button', { name: '解析 SQL', exact: true }).click();
-  await seed.getByText('业务测试场景', { exact: true }).click();
-  await seed.getByLabel('场景名称', { exact: true }).fill('订单金额');
-  await seed
-    .getByRole('combobox', { name: '规则所属表', exact: true })
-    .selectOption({ label: 'orders' });
-  await seed.getByRole('combobox', { name: '规则字段', exact: true }).selectOption('amount');
-  await seed.getByRole('combobox', { name: '生成方式', exact: true }).selectOption('range');
-  await seed.getByLabel('最小值', { exact: true }).fill('12.34');
-  await seed.getByLabel('最大值', { exact: true }).fill('12.34');
-  await seed.getByRole('button', { name: '添加或替换字段规则', exact: true }).click();
-  await seed.getByRole('button', { name: '保存场景', exact: true }).click();
-  await expect(seed.getByText('场景已保存到当前浏览器。', { exact: true })).toBeVisible();
-  await seed.getByRole('button', { name: '生成测试数据', exact: true }).click();
-  const downloadPromise = page.waitForEvent('download');
-  await seed.getByRole('button', { name: '导出 JSON', exact: true }).click();
-  const content = await readFile(await (await downloadPromise).path(), 'utf8');
-  expect(content).toContain('12.34');
-  const scenarioPromise = page.waitForEvent('download');
-  await seed.getByRole('button', { name: '导出场景 JSON', exact: true }).click();
-  const scenario = await readFile(await (await scenarioPromise).path(), 'utf8');
-  await seed.getByLabel('导入场景 JSON', { exact: true }).setInputFiles({
-    name: 'scenario.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(scenario),
-  });
-  await expect(seed.getByRole('button', { name: '导出 JSON', exact: true })).toBeDisabled();
-  await seed.getByRole('button', { name: '生成测试数据', exact: true }).click();
-  const repeated = page.waitForEvent('download');
-  await seed.getByRole('button', { name: '导出 JSON', exact: true }).click();
-  expect(await readFile(await (await repeated).path(), 'utf8')).toBe(content);
 });

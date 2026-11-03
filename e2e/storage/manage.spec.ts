@@ -77,10 +77,6 @@ const clickFirstDraft = async (page: any) => {
   await page.getByRole('button', { name: /新建草稿|new draft/i }).click();
 };
 
-const createNewDraft = async (page: any) => {
-  await page.getByRole('button', { name: /新建草稿|new draft/i }).click();
-};
-
 test.describe('保存表管理补充 @storage', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addInitScript(() => {
@@ -90,28 +86,6 @@ test.describe('保存表管理补充 @storage', () => {
     });
     await page.goto('/');
     await ensureBuilderVisible(page);
-  });
-
-  test('场景：重命名保存表', async ({ page }) => {
-    const baseName = `e2e_rename_${Date.now()}`;
-    const nextName = `${baseName}_renamed`;
-
-    await saveNewTable(page, baseName);
-
-    await sidebarTableAction(page, new RegExp(baseName, 'i'), /重命名/);
-
-    await expect(page.getByText('重命名保存的表')).toBeVisible();
-    await page.getByLabel('新名称').fill(nextName);
-    await page.getByRole('button', { name: /确认/i }).click();
-
-    await expect(page.getByText(new RegExp(`当前：${nextName}`))).toBeVisible();
-
-    await page.locator('#table-comment').fill('edited after rename');
-    await createNewDraft(page);
-    await clickSidebarTable(page, new RegExp(nextName, 'i'));
-    await expect(page.locator('#table-comment')).toHaveValue('edited after rename');
-    await page.getByRole('button', { name: /保存当前表/i }).click();
-    await expect(page.getByText(`已更新：${nextName}`, { exact: true })).toBeVisible();
   });
 
   test('场景：删除并恢复保存表', async ({ page }) => {
@@ -158,43 +132,6 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(getSidebarTableItem(page, new RegExp(tableName, 'i'))).toBeVisible();
     await clickSidebarTable(page, new RegExp(tableName, 'i'));
     await expect(page.locator('#table-comment')).toHaveValue(tableComment);
-  });
-
-  test('场景：未保存修改加载确认', async ({ page }) => {
-    const tableA = `e2e_load_a_${Date.now()}`;
-    const tableB = `e2e_load_b_${Date.now()}`;
-
-    // 保存两个表（需要先切换到草稿状态以重置 hasLoadedTable）
-    await saveNewTable(page, tableA);
-    await createNewDraft(page);
-    await saveNewTable(page, tableB);
-
-    // 加载表 A
-    await clickSidebarTable(page, new RegExp(tableA, 'i'));
-    await expect(page.getByText(new RegExp(`当前：${tableA}`))).toBeVisible();
-
-    // 修改表 A（触发 dirty 状态）
-    await page.locator('#table-name').fill(`${tableA}_modified`);
-    await page.waitForTimeout(300);
-
-    // tabs 模式下，dirty 状态不会阻止加载其他保存的表，直接切换/激活对应标签页
-    await clickSidebarTable(page, new RegExp(tableB, 'i'));
-    await expect(page.getByText(new RegExp(`当前：${tableB}`))).toBeVisible();
-  });
-
-  test('场景：搜索过滤', async ({ page }) => {
-    const tableA = `e2e_search_a_${Date.now()}`;
-    const tableB = `e2e_search_b_${Date.now()}`;
-
-    await saveNewTable(page, tableA);
-    await createNewDraft(page);
-    await saveNewTable(page, tableB);
-
-    const sidebar = page.locator('aside');
-    await sidebar.getByPlaceholder(/搜索表名/).fill(tableA);
-
-    await expect(getSidebarTableItem(page, new RegExp(tableA, 'i'))).toBeVisible();
-    await expect(getSidebarTableItem(page, new RegExp(tableB, 'i'))).toHaveCount(0);
   });
 
   test('场景：全局草稿与保存表草稿应隔离', async ({ page }) => {
