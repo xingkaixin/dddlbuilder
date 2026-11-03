@@ -160,24 +160,13 @@ export const assertWorkspaceOwner = async (
   };
 };
 
-const writeEntities = async (
-  env: ApiEnv['Bindings'],
-  inputs: EntityWriteInput[],
-  metrics?: WorkspaceD1Metrics,
-) => {
-  if (inputs.length === 0) {
-    return;
-  }
+const prepareEntityWrite = (env: ApiEnv['Bindings'], input: EntityWriteInput) => {
+  const deletedAt = input.op === 'delete' ? input.updatedAt : null;
+  const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
+  const contentHash = input.op === 'delete' ? null : input.contentHash;
 
-  await batchWorkspaceD1Results(
-    env.USER_DB,
-    inputs.map((input) => {
-      const deletedAt = input.op === 'delete' ? input.updatedAt : null;
-      const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
-      const contentHash = input.op === 'delete' ? null : input.contentHash;
-
-      return env.USER_DB.prepare(
-        `
+  return env.USER_DB.prepare(
+    `
       INSERT INTO workspace_entities (
         workspace_id,
         user_id,
@@ -196,18 +185,31 @@ const writeEntities = async (
         deleted_at = excluded.deleted_at,
         updated_at = excluded.updated_at
     `,
-      ).bind(
-        input.workspaceId,
-        input.userId,
-        input.entityType,
-        input.entityId,
-        payloadJson,
-        contentHash,
-        deletedAt,
-        input.updatedAt,
-        input.updatedAt,
-      );
-    }),
+  ).bind(
+    input.workspaceId,
+    input.userId,
+    input.entityType,
+    input.entityId,
+    payloadJson,
+    contentHash,
+    deletedAt,
+    input.updatedAt,
+    input.updatedAt,
+  );
+};
+
+const writeEntities = async (
+  env: ApiEnv['Bindings'],
+  inputs: EntityWriteInput[],
+  metrics?: WorkspaceD1Metrics,
+) => {
+  if (inputs.length === 0) {
+    return;
+  }
+
+  await batchWorkspaceD1Results(
+    env.USER_DB,
+    inputs.map((input) => prepareEntityWrite(env, input)),
     metrics,
   );
 };
@@ -417,12 +419,10 @@ export const checkpointWorkspaceSnapshotEntities = async (
   snapshot: WorkspaceSnapshot,
 ) => {
   const metrics = createWorkspaceD1Metrics();
-  const workspace = await assertWorkspaceOwner(env, userId, workspaceId, metrics);
-  // Tombstones only stop the one-time legacy backfill from restoring deleted entities.
-  const keepTombstones = workspace.isDefault && workspace.legacySnapshotBackfilledAt === null;
   const entities = workspaceSnapshotToEntities(snapshot);
 
-  const [hashedEntities, existingRows] = await Promise.all([
+  const [workspace, hashedEntities, existingRows] = await Promise.all([
+    assertWorkspaceOwner(env, userId, workspaceId, metrics),
     Promise.all(
       entities.map(async (entity) => ({
         ...entity,
@@ -431,6 +431,9 @@ export const checkpointWorkspaceSnapshotEntities = async (
     ),
     listActiveEntityHashes(env, workspaceId, metrics),
   ]);
+  // Tombstones only stop the one-time legacy backfill from restoring deleted entities.
+  const keepTombstones = workspace.isDefault && workspace.legacySnapshotBackfilledAt === null;
+
   const existingByKey = new Map(
     existingRows.map((row) => [buildEntityKey(row.entityType, row.entityId), row]),
   );
@@ -487,19 +490,16 @@ export const checkpointWorkspaceSnapshotEntities = async (
     });
   }
 
-  await writeEntities(env, writes, metrics);
+  const statements = [
+    ...writes.map((input) => prepareEntityWrite(env, input)),
+    ...purges.map((row) =>
+      env.USER_DB.prepare(
+        'DELETE FROM workspace_entities WHERE workspace_id = ? AND entity_type = ? AND entity_id = ?',
+      ).bind(workspaceId, row.entityType, row.entityId),
+    ),
+  ];
 
-  if (purges.length > 0) {
-    await batchWorkspaceD1Results(
-      env.USER_DB,
-      purges.map((row) =>
-        env.USER_DB.prepare(
-          'DELETE FROM workspace_entities WHERE workspace_id = ? AND entity_type = ? AND entity_id = ?',
-        ).bind(workspaceId, row.entityType, row.entityId),
-      ),
-      metrics,
-    );
-  }
+  if (statements.length > 0) await batchWorkspaceD1Results(env.USER_DB, statements, metrics);
 
   logWorkspaceD1Metrics(
     'checkpoint',

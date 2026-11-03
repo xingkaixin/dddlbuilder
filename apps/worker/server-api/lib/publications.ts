@@ -179,14 +179,15 @@ async function assertCommentableProposal(db: D1Database, id: string, userId: str
 }
 
 export async function readPublicationComments(db: D1Database, id: string, userId: string | null) {
-  await assertCommentableProposal(db, id, userId);
-
-  const { results } = await db
-    .prepare(
-      `SELECT id, author_name AS author, target, body, resolved, created_at AS createdAt FROM schema_publication_comments WHERE publication_id = ? ORDER BY created_at, id LIMIT 200`,
-    )
-    .bind(id)
-    .all<{ resolved: number }>();
+  const [, { results }] = await Promise.all([
+    assertCommentableProposal(db, id, userId),
+    db
+      .prepare(
+        `SELECT id, author_name AS author, target, body, resolved, created_at AS createdAt FROM schema_publication_comments WHERE publication_id = ? ORDER BY created_at, id LIMIT 200`,
+      )
+      .bind(id)
+      .all<{ resolved: number }>(),
+  ]);
 
   return Schema.decodeUnknownSync(PublicationCommentsSchema)(
     results.map((row) => ({ ...row, resolved: Boolean(row.resolved) })),
