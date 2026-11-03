@@ -1,14 +1,15 @@
 import { memo } from 'react';
 import packageInfo from '../../../package.json';
 import {
-  CircleHelp,
-  Loader2,
   BookOpen,
+  CircleHelp,
+  IconSwap,
   LayoutGrid,
+  Loader2,
   LogIn,
+  MessageCircle,
   Search,
   Settings,
-  MessageCircle,
   Table,
   Waypoints,
 } from '@/components/icons';
@@ -215,11 +216,13 @@ export const Header = memo<HeaderProps>(({ onPlayFireworks }) => {
               onClick={authSession.openAuthDialog}
               disabled={authSession.status === 'loading'}
             >
-              {authSession.status === 'loading' ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <LogIn className="h-4 w-4" aria-hidden />
-              )}
+              <IconSwap state={authSession.status === 'loading'}>
+                {authSession.status === 'loading' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <LogIn className="h-4 w-4" aria-hidden />
+                )}
+              </IconSwap>
               <span className="sr-only sm:not-sr-only">{t('header.auth.signIn')}</span>
             </button>
           )}

@@ -2,15 +2,13 @@ import { memo, useReducer, useCallback, useMemo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  ChevronDown,
   ChevronRight,
-  Folder,
-  FolderOpen,
-  FolderPlus,
   DragDropVerticalIcon,
+  Folder,
+  FolderPlus,
+  MoreHorizontal,
   Pencil,
   Trash2,
-  MoreHorizontal,
 } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -95,8 +93,6 @@ const FolderNode = memo<FolderNodeProps>(
       },
       [setDropRef, setDragRef],
     );
-    const ChevronIcon = isExpanded ? ChevronDown : ChevronRight;
-    const FolderIcon = isExpanded ? FolderOpen : Folder;
 
     return (
       <div
@@ -149,7 +145,12 @@ const FolderNode = memo<FolderNodeProps>(
                 : t('savedTables.expandFolder', { name: folder.name })
             }
           >
-            <ChevronIcon className="h-3.5 w-3.5" />
+            <ChevronRight
+              className={cn(
+                'h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none',
+                isExpanded && 'rotate-90',
+              )}
+            />
           </button>
 
           {/* 可点击的文件夹名称区域 */}
@@ -162,7 +163,10 @@ const FolderNode = memo<FolderNodeProps>(
             onClick={onSelect}
           >
             {/* 文件夹图标 */}
-            <FolderIcon className="h-4 w-4 text-amber-500" />
+            <Folder
+              className="h-4 w-4 text-amber-500"
+              data-state={isExpanded ? 'open' : undefined}
+            />
             {/* 文件夹名称 */}
             <span className="flex-1 truncate font-normal">{folder.name}</span>
             {/* 表数量 */}

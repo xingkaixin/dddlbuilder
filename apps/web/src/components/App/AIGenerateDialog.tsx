@@ -8,16 +8,17 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Loader2,
-  Sparkles,
   Check,
+  ChevronRight,
+  IconSwap,
+  Loader2,
   RotateCcw,
   Send,
-  ChevronDown,
-  ChevronRight,
+  Sparkles,
 } from '@/components/icons';
 import {
   useAIGenerateTable,
@@ -486,11 +487,12 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     onClick={() => dispatch({ type: 'templateListToggled' })}
                   >
-                    {showTemplateSelection ? (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    )}
+                    <ChevronRight
+                      className={cn(
+                        'h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none',
+                        showTemplateSelection && 'rotate-90',
+                      )}
+                    />
                     {t('aiGenerate.templateSelected', {
                       selected: selectedTemplateIds.size,
                       total: templates.length,
@@ -594,11 +596,13 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                     className="h-7 gap-1.5 px-2 text-xs font-medium"
                     size="sm"
                   >
-                    {isLoading ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Send className="h-3.5 w-3.5" />
-                    )}
+                    <IconSwap state={isLoading}>
+                      {isLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Send className="h-3.5 w-3.5" />
+                      )}
+                    </IconSwap>
                     {t('aiGenerate.generate')}
                   </Button>
                 )}

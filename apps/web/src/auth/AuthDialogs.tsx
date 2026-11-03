@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, LogIn, MailCheck } from '@/components/icons';
+import { IconSwap, Loader2, LogIn, MailCheck } from '@/components/icons';
 import {
   Dialog,
   DialogContent,
@@ -421,11 +421,13 @@ export function AuthDialogs() {
                   {t('header.auth.cancel')}
                 </Button>
                 <Button type="button" onClick={handleSubmitAuth} disabled={isSubmittingAuth}>
-                  {isSubmittingAuth ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  ) : (
-                    <LogIn className="h-4 w-4" aria-hidden />
-                  )}
+                  <IconSwap state={isSubmittingAuth}>
+                    {isSubmittingAuth ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <LogIn className="h-4 w-4" aria-hidden />
+                    )}
+                  </IconSwap>
                   {authMode === 'sign_up'
                     ? t('header.auth.createAccount')
                     : authMode === 'forgot_password'

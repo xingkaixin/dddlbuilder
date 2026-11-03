@@ -91,24 +91,15 @@ const STAR = poly(
   true,
 );
 
-type Quad = [[number, number], [number, number], [number, number], [number, number]];
-
-export const FOLDER_CLOSED: Quad = [
-  [3.6, 10.4],
-  [20.4, 10.5],
-  [20.3, 19.7],
-  [3.7, 19.6],
-];
-export const FOLDER_OPEN: Quad = [
-  [6.4, 11.6],
-  [22.3, 11.7],
-  [19.8, 19.7],
-  [3.7, 19.6],
-];
-
-export function folderFront(quad: Quad): string {
-  return poly(quad, true);
-}
+const FOLDER_FRONT = poly(
+  [
+    [3.6, 10.4],
+    [20.4, 10.5],
+    [20.3, 19.7],
+    [3.7, 19.6],
+  ],
+  true,
+);
 
 function page(x: number, y: number, w: number, h: number): IconPart[] {
   return [
@@ -547,7 +538,7 @@ export const ICONS = {
     parts: [
       { kind: 'ink', d: FOLDER_BACK },
       { kind: 'wash', d: box(3.6, 10.4, 16.8, 9.2, 1) },
-      { kind: 'ink', echo: true, d: folderFront(FOLDER_CLOSED) },
+      { kind: 'ink', echo: true, d: FOLDER_FRONT },
       { kind: 'ink', d: line(12, 12.6, 12, 17.6) + line(9.5, 15.1, 14.5, 15.1) },
     ],
   },
@@ -944,16 +935,8 @@ export const ICONS = {
     tier: 'feature',
     parts: [
       { kind: 'ink', d: FOLDER_BACK },
-      { kind: 'wash', d: folderFront(FOLDER_CLOSED) },
-      { kind: 'ink', d: folderFront(FOLDER_CLOSED) },
-    ],
-  },
-  folderOpen: {
-    tier: 'feature',
-    parts: [
-      { kind: 'ink', d: FOLDER_BACK },
-      { kind: 'wash', d: folderFront(FOLDER_OPEN) },
-      { kind: 'ink', d: folderFront(FOLDER_OPEN) },
+      { kind: 'wash', g: 'open', d: FOLDER_FRONT },
+      { kind: 'ink', g: 'open', d: FOLDER_FRONT },
     ],
   },
   draft: {

@@ -1,13 +1,5 @@
 import { memo, useMemo, useCallback, useReducer, lazy, Suspense } from 'react';
-import {
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  Minus,
-  Modify,
-  Plus,
-  RotateCcw,
-} from '@/components/icons';
+import { ChevronRight, Copy, Minus, Modify, Plus, RotateCcw } from '@/components/icons';
 import {
   Dialog,
   DialogContent,
@@ -383,11 +375,12 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
                 className="flex w-full items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => dispatchRollbackVisible('toggled')}
               >
-                {showRollback ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
+                <ChevronRight
+                  className={cn(
+                    'h-4 w-4 transition-transform duration-200 motion-reduce:transition-none',
+                    showRollback && 'rotate-90',
+                  )}
+                />
                 <RotateCcw className="h-3.5 w-3.5" />
                 {t('diffDialog.rollbackScript')}
               </button>

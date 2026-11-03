@@ -1,4 +1,4 @@
-import { forwardRef, type SVGProps } from 'react';
+import { forwardRef, useReducer, type ReactNode, type SVGProps } from 'react';
 import { ICONS, iconElements, type IconName } from '@ddlbuilder/design/icons';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +44,30 @@ function createDrawnIcon(name: IconName, displayName: string) {
   AppIcon.displayName = displayName;
 
   return AppIcon;
+}
+
+type SwapState = string | number | boolean;
+
+interface Shown {
+  state: SwapState;
+  swapped: boolean;
+}
+
+function swapReducer(_shown: Shown, next: SwapState): Shown {
+  return { state: next, swapped: true };
+}
+
+// Remounts its content when `state` changes so the new icon scales in; the first render stays still.
+export function IconSwap({ state, children }: { state: SwapState; children: ReactNode }) {
+  const [shown, swapTo] = useReducer(swapReducer, { state, swapped: false });
+
+  if (shown.state !== state) swapTo(state);
+
+  return (
+    <span key={String(state)} className={cn('lm-ic-swap', shown.swapped && 'lm-ic-swap-in')}>
+      {children}
+    </span>
+  );
 }
 
 export const AlertCircle = createDrawnIcon('error', 'AlertCircle');
@@ -136,7 +160,6 @@ export const ListChecks = createDrawnIcon('listChecks', 'ListChecks');
 export const Grid3x3 = createDrawnIcon('grid', 'Grid3x3');
 export const Clock = createDrawnIcon('clock', 'Clock');
 export const Folder = createDrawnIcon('folder', 'Folder');
-export const FolderOpen = createDrawnIcon('folderOpen', 'FolderOpen');
 export const UserRound = createDrawnIcon('user', 'UserRound');
 export const ArrowUp = createDrawnIcon('arrowUp', 'ArrowUp');
 export const ArrowDown = createDrawnIcon('arrowDown', 'ArrowDown');

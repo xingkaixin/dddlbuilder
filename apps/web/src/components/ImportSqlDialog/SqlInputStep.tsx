@@ -6,7 +6,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, AlertCircle, Download } from '@/components/icons';
+import { AlertCircle, CheckCircle2, Download, IconSwap } from '@/components/icons';
 import { isDatabaseType, type DatabaseType } from '@ddlbuilder/shared-types';
 import type { ImportMode, ImportSourceType, ValidationResult } from './types';
 import { useTranslation } from 'react-i18next';
@@ -242,11 +242,13 @@ export function SqlInputStep({
               : 'bg-destructive/10 text-destructive'
           }`}
         >
-          {validationResult.success ? (
-            <CheckCircle2 className="h-5 w-5 shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 shrink-0" />
-          )}
+          <IconSwap state={validationResult.success}>
+            {validationResult.success ? (
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 shrink-0" />
+            )}
+          </IconSwap>
           <div>
             {validationResult.success ? (
               <span className="font-medium">{t('importSql.validationPass')}</span>

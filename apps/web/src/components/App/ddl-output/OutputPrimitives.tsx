@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useReducer, type CSSProperties } from 'react';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
-import { Check, Copy } from '@/components/icons';
+import { Check, Copy, IconSwap } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DATABASE_OPTIONS } from '../databaseOptions';
@@ -80,7 +80,9 @@ export function CopyOutputButton({
           className="ml-auto h-8 gap-1.5 px-3"
           onClick={handleCopy}
         >
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          <IconSwap state={copied}>
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          </IconSwap>
           {copied ? t('ddlOutput.copied') : label}
         </Button>
       </TooltipTrigger>

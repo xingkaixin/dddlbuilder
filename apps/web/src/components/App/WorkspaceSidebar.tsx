@@ -9,7 +9,7 @@ import {
   FileEdit,
   FileInput,
   FilePlus,
-  FolderOpen,
+  Folder,
   FolderPlus,
   MoreHorizontal,
   Plus,
@@ -335,7 +335,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                             {onMoveDraftToFolder && (
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger>
-                                  <FolderOpen className="mr-2 h-4 w-4" />
+                                  <Folder className="mr-2 h-4 w-4" />
                                   {t('savedTables.moveToFolder')}
                                 </DropdownMenuSubTrigger>
                                 <DropdownMenuSubContent className="w-44">

@@ -1,6 +1,6 @@
 import { memo, useCallback, useReducer } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { History, Trash2, Loader2, Star, ChevronDown, ChevronUp } from '@/components/icons';
+import { ChevronDown, History, Loader2, Star, Trash2 } from '@/components/icons';
 import {
   Dialog,
   DialogContent,
@@ -193,11 +193,12 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                           </span>
                         </span>
                         <span className="flex shrink-0 items-center gap-1 pr-8">
-                          {expandedId === r.id ? (
-                            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          )}
+                          <ChevronDown
+                            className={cn(
+                              'h-4 w-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none',
+                              expandedId === r.id && 'rotate-180',
+                            )}
+                          />
                         </span>
                       </button>
 

@@ -4,6 +4,7 @@ import {
   AlertCircle,
   CheckCircle2,
   HardDrive,
+  IconSwap,
   Loader2,
   RefreshCw,
   WifiOff,
@@ -99,7 +100,9 @@ export function WorkspaceYDocStatus() {
       data-testid="workspace-yjs-status"
       className={`inline-flex h-8 max-w-[16rem] items-center gap-1.5 rounded-md border px-2 text-xs font-medium ${status.className}`}
     >
-      <StatusIcon className={`h-3.5 w-3.5 shrink-0 ${status.iconClassName}`} aria-hidden />
+      <IconSwap state={status.label}>
+        <StatusIcon className={`h-3.5 w-3.5 shrink-0 ${status.iconClassName}`} aria-hidden />
+      </IconSwap>
       <span className="min-w-0 truncate">{status.label}</span>
       {workspaceYDoc.connectionState === 'error' ? (
         <button

@@ -5,6 +5,7 @@ import {
   ChevronDown,
   GitCompare,
   History,
+  IconSwap,
   Loader2,
   MoreHorizontal,
   Save,
@@ -111,7 +112,12 @@ export const TableConfig = memo<TableConfigProps>(
                 {tableComment ? ` · ${tableComment}` : ''}
               </span>
             </span>
-            <ChevronDown className={cn('h-4 w-4 shrink-0', detailsOpen && 'rotate-180')} />
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none',
+                detailsOpen && 'rotate-180',
+              )}
+            />
           </Button>
           <div
             id={detailsId}
@@ -279,11 +285,13 @@ export const TableConfig = memo<TableConfigProps>(
                       aria-busy={isSharing}
                       aria-label={t(isSharing ? 'header.generatingShareLink' : 'header.shareLink')}
                     >
-                      {isSharing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      ) : (
-                        <Share2 className="h-4 w-4" aria-hidden />
-                      )}
+                      <IconSwap state={isSharing}>
+                        {isSharing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        ) : (
+                          <Share2 className="h-4 w-4" aria-hidden />
+                        )}
+                      </IconSwap>
                       {t('tableConfig.share')}
                     </Button>
                   </TooltipTrigger>

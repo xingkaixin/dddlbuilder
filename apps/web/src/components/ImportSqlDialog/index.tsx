@@ -18,7 +18,7 @@ import { requestSqlParse, requestMultiSqlParse } from '@/services/sqlParseServic
 import { ApiError } from '@/services/apiError';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { parseExcelImport, parseStructuredImportText } from '@/utils/structuredImportParser';
-import { ArrowRight, Check } from '@/components/icons';
+import { ArrowRight, Check, IconSwap } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { FolderTreeNode } from '@/hooks/useFolders';
@@ -536,7 +536,9 @@ export function ImportSqlDialog({
                           : 'bg-muted-foreground/20'
                     }`}
                   >
-                    {currentStepIndex > i ? <Check className="h-3 w-3" /> : i + 1}
+                    <IconSwap state={currentStepIndex > i}>
+                      {currentStepIndex > i ? <Check className="h-3 w-3" /> : i + 1}
+                    </IconSwap>
                   </span>
                   {s.label}
                 </div>

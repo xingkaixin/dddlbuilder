@@ -20,12 +20,12 @@ import {
   ChevronDown,
   Columns3Cog,
   HardDrive,
-  WandSparkles,
-  Minus,
-  Plus,
-  Pin,
   ListPlus,
+  Minus,
+  Pin,
+  Plus,
   TableProperties,
+  WandSparkles,
 } from '@/components/icons';
 import { COLUMN_HEADERS } from '@/utils/constants';
 import { FIELD_COLUMNS, usePreferencesStore } from '@/stores/preferencesStore';
@@ -120,7 +120,12 @@ export function DataTableToolbar({
           className="h-11 gap-1.5 px-2 text-xs @min-[640px]/editor:hidden"
         >
           {t('dataTable.fieldTools')}
-          <ChevronDown className={cn('h-3.5 w-3.5', toolsOpen && 'rotate-180')} />
+          <ChevronDown
+            className={cn(
+              'h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none',
+              toolsOpen && 'rotate-180',
+            )}
+          />
         </Button>
         <div
           id={toolsId}

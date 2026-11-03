@@ -12,7 +12,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Copy, Download, Check, TableProperties, Minus, Plus, RefreshCw } from '@/components/icons';
+import {
+  Check,
+  Copy,
+  Download,
+  IconSwap,
+  Minus,
+  Plus,
+  RefreshCw,
+  TableProperties,
+} from '@/components/icons';
 import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
 import { generateMockData, downloadFile, type MockExportFormat } from '@/utils/mockDataGenerator';
 import { useTranslation } from 'react-i18next';
@@ -231,11 +240,13 @@ export const MockDataDialog = memo<MockDataDialogProps>(
                         className="h-7 gap-1.5 px-2.5 text-xs"
                         onClick={handleCopy}
                       >
-                        {copied ? (
-                          <Check className="h-3.5 w-3.5 text-green-500" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
-                        )}
+                        <IconSwap state={copied}>
+                          {copied ? (
+                            <Check className="h-3.5 w-3.5 text-green-500" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </IconSwap>
                         {copied ? t('mockData.copied') : t('mockData.copy')}
                       </Button>
                     </TooltipTrigger>

@@ -3,14 +3,15 @@ import { useQuery } from '@tanstack/react-query';
 import { tableVersionsOptions } from '@/queries/tableVersions';
 import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 import {
-  Play,
-  Pause,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  IconSwap,
+  Loader2,
+  Pause,
+  Play,
   SkipBack,
   SkipForward,
-  Clock,
-  Loader2,
 } from '@/components/icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -488,7 +489,9 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                       className="h-9 w-9"
                       onClick={handlePlayPause}
                     >
-                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      <IconSwap state={isPlaying}>
+                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </IconSwap>
                     </Button>
                     <Button
                       variant="ghost"

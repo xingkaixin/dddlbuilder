@@ -67,6 +67,10 @@
   transform-origin: 12px 6.4px;
 }
 
+.lm-ic-g-open {
+  transform-origin: 12px 19.7px;
+}
+
 .lm-ic-g-star,
 .lm-ic-g-twinkle {
   transform-box: fill-box;
@@ -138,8 +142,33 @@
   }
 }
 
+/* State changes driven by the caller rather than by hover. */
+.lm-ic[data-state='open'] .lm-ic-g-open {
+  transform: skewX(-16deg) scaleY(0.87);
+}
+
+.lm-ic-swap {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.lm-ic-swap-in {
+  animation: lm-ic-swap-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes lm-ic-swap-in {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   [class*='lm-ic-g-'] {
     transition: none;
+  }
+
+  .lm-ic-swap-in {
+    animation: none;
   }
 }
