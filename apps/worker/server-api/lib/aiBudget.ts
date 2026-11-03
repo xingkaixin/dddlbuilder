@@ -23,7 +23,7 @@ const readBudgetValue = (result: D1Result<{ value: number }> | undefined) => {
 };
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- D1 exposes the budget sentinel through an arbitrary driver error.
-const isBudgetExceeded = (error: unknown) =>
+export const isAIDailyBudgetExceeded = (error: unknown) =>
   error instanceof Error && error.message.includes('BUDGET_EXCEEDED');
 
 const normalizeBudgetReservationTokens = (value: number, minimum: number) => {
@@ -44,6 +44,36 @@ const normalizeBudgetActualTokens = (value: number) => {
   return value;
 };
 
+export const prepareAIDailyBudgetReservation = (
+  env: ApiEnv['Bindings'],
+  usageEventId: string,
+  estimatedTokens: number,
+  limitTokens: number,
+  windowId = getCurrentUtcDateKey(),
+) =>
+  env.USER_DB.prepare(
+    `
+    INSERT INTO ai_budget_reservations (
+      usage_event_id,
+      window_id,
+      reserved_tokens,
+      actual_tokens,
+      limit_tokens,
+      expires_at,
+      settled_at,
+      created_at
+    )
+    VALUES (?, ?, ?, NULL, ?, ?, NULL, ?)
+  `,
+  ).bind(
+    usageEventId,
+    windowId,
+    normalizeBudgetReservationTokens(estimatedTokens, 1),
+    normalizeBudgetReservationTokens(limitTokens, 1),
+    getBudgetExpiry(),
+    Date.now(),
+  );
+
 export const reserveAIDailyBudget = async (
   env: ApiEnv['Bindings'],
   usageEventId: string,
@@ -51,33 +81,18 @@ export const reserveAIDailyBudget = async (
   limitTokens: number,
 ) => {
   const windowId = getCurrentUtcDateKey();
-  const reservedTokens = normalizeBudgetReservationTokens(estimatedTokens, 1);
-  const normalizedLimitTokens = normalizeBudgetReservationTokens(limitTokens, 1);
+
+  const reservation = prepareAIDailyBudgetReservation(
+    env,
+    usageEventId,
+    estimatedTokens,
+    limitTokens,
+    windowId,
+  );
 
   try {
     const [, counter] = await env.USER_DB.batch<{ value: number }>([
-      env.USER_DB.prepare(
-        `
-        INSERT INTO ai_budget_reservations (
-          usage_event_id,
-          window_id,
-          reserved_tokens,
-          actual_tokens,
-          limit_tokens,
-          expires_at,
-          settled_at,
-          created_at
-        )
-        VALUES (?, ?, ?, NULL, ?, ?, NULL, ?)
-      `,
-      ).bind(
-        usageEventId,
-        windowId,
-        reservedTokens,
-        normalizedLimitTokens,
-        getBudgetExpiry(),
-        Date.now(),
-      ),
+      reservation,
       env.USER_DB.prepare('SELECT value FROM ai_daily_budget_counters WHERE window_id = ?').bind(
         windowId,
       ),
@@ -85,7 +100,7 @@ export const reserveAIDailyBudget = async (
 
     return readBudgetValue(counter);
   } catch (error) {
-    if (isBudgetExceeded(error)) return null;
+    if (isAIDailyBudgetExceeded(error)) return null;
     throw error;
   }
 };

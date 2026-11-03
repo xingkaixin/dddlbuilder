@@ -1,6 +1,5 @@
 import { createWorkerBackgroundLogger } from './logging.js';
 import { notifyAIOperation } from './telegramNotifier.js';
-import { readSessionAccess } from './auth.js';
 import { mergeReviewSuggestions } from './aiReviewProjection.js';
 import { DDLReviewSuggestionSchema } from '@ddlbuilder/shared-types/ddl-review';
 import * as Schema from 'effect/Schema';
@@ -41,6 +40,7 @@ import {
   type AIUsageReceipt,
   assertAIOperationAccess,
   readAIOperation,
+  readAIOperationAccess,
   recordAICallUsage,
   settleAICalls,
 } from './aiConversationUsage.js';
@@ -117,6 +117,7 @@ export class AIConversationDurableObject {
   private running?: Promise<void>;
   private projection = Promise.resolve();
   private readonly observers = new Set<() => void>();
+  private readonly syncedReceipts = new Set<string>();
   private readonly ready: Promise<void>;
 
   private readonly ctx: DurableObjectState;
@@ -302,7 +303,10 @@ export class AIConversationDurableObject {
         });
     }, context);
     // The durable receipt is replayed before the next admission and before settlement.
-    await recordAICallUsage(this.env, id, response.usage.totalTokens, outputChars, usage).catch(
+    await recordAICallUsage(this.env, id, response.usage.totalTokens, outputChars, usage).then(
+      () => {
+        this.syncedReceipts.add(id);
+      },
       () => {
         const log = createWorkerBackgroundLogger(
           { job: { name: 'ai-usage-receipt' }, ai: { callId: id, outcome: 'replay_pending' } },
@@ -318,8 +322,11 @@ export class AIConversationDurableObject {
   private async replayReceipts() {
     const receipts = await this.runtime().harness.snapshot(Receipts, context);
 
-    for (const item of receipts?.items ?? [])
+    for (const item of receipts?.items ?? []) {
+      if (this.syncedReceipts.has(item.id)) continue;
       await recordAICallUsage(this.env, item.id, item.tokens, item.outputChars, item);
+      this.syncedReceipts.add(item.id);
+    }
   }
 
   private async settle(operation: Operation) {
@@ -348,6 +355,7 @@ export class AIConversationDurableObject {
       results.items = results.items.filter((item) => item.id !== operation.id);
       results.items.push({ id: operation.id, snapshot: JSON.parse(JSON.stringify(snapshot)) });
     }, context);
+    this.syncedReceipts.clear();
     await this.ctx.storage.setAlarm(Date.now() + AI_RETENTION_MS);
     this.report(operation, usage, record);
   }
@@ -486,21 +494,18 @@ export class AIConversationDurableObject {
       return;
     }
 
-    const access = await readAIOperation(this.env, operation.id);
+    const access = await readAIOperationAccess(this.env, operation.id);
 
     if (!access) throw new Error('AI operation missing');
 
     if (access.stopped_at || access.completed_at || (access.deadline_at ?? 0) <= Date.now()) {
       await this.conversation.abort(context);
     } else {
-      await assertAIOperationAccess(this.env, access).catch(async () => {
+      if (!access.session_active) {
         await this.env.USER_DB.prepare('UPDATE ai_operations SET stopped_at = ? WHERE id = ?')
           .bind(Date.now(), operation.id)
           .run();
-        await this.conversation?.abort(context);
-      });
-
-      if ((await readAIOperation(this.env, operation.id))?.stopped_at) {
+        await this.conversation.abort(context);
         await this.finishCancelled(operation);
 
         return;
@@ -631,7 +636,7 @@ export class AIConversationDurableObject {
     const url = new URL(request.url);
     const operationId = url.searchParams.get('operation');
     const userId = request.headers.get('x-ai-user');
-    const operation = operationId ? await readAIOperation(this.env, operationId) : null;
+    const operation = operationId ? await readAIOperationAccess(this.env, operationId) : null;
 
     if (!operation || operation.user_id !== userId)
       return new Response('Not found', { status: 404 });
@@ -687,7 +692,7 @@ export class AIConversationDurableObject {
       }
 
       if ((await this.state()).operation?.id !== operation.id) {
-        await assertAIOperationAccess(this.env, operation);
+        assertAIOperationAccess(operation);
         const config = await Effect.runPromise(loadAIConversationConfig(this.env));
 
         if (!this.conversation) {
@@ -774,7 +779,8 @@ export class AIConversationDurableObject {
       start: (controller) => {
         const observe = async () => {
           let previous = '';
-          let checkedAt = 0;
+          // The route authorized this stream just before forwarding it here.
+          let checkedAt = Date.now();
 
           try {
             while (!signal.aborted && !cancelled) {
@@ -784,13 +790,14 @@ export class AIConversationDurableObject {
 
               if (Date.now() - checkedAt >= 15_000) {
                 const { operation } = await this.state();
-                const access = operation ? await readAIOperation(this.env, operation.id) : null;
+
+                const access = operation
+                  ? await readAIOperationAccess(this.env, operation.id)
+                  : null;
 
                 if (!access) throw new Error('AI operation unavailable');
-                const authorization = await readSessionAccess(this.env, access.user_id);
 
-                if (!authorization.sessionIds.has(access.session_id))
-                  throw new Error('AI authorization expired');
+                if (!access.session_active) throw new Error('AI authorization expired');
                 checkedAt = Date.now();
               }
 
@@ -864,7 +871,7 @@ export class AIConversationDurableObject {
     }
 
     await this.ctx.storage.setAlarm(Date.now() + 30_000);
-    const access = await readAIOperation(this.env, operation.id);
+    const access = await readAIOperationAccess(this.env, operation.id);
 
     if (!access) {
       await this.conversation?.abort(context);
@@ -876,7 +883,7 @@ export class AIConversationDurableObject {
 
     if (access) {
       try {
-        await assertAIOperationAccess(this.env, access);
+        assertAIOperationAccess(access);
       } catch {
         await this.env.USER_DB.prepare(
           'UPDATE ai_operations SET stopped_at = COALESCE(stopped_at, ?) WHERE id = ?',

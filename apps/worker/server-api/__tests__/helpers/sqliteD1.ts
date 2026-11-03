@@ -94,6 +94,10 @@ class SqliteD1Statement {
   }
 
   async run<T>() {
+    return this.runSync<T>();
+  }
+
+  runSync<T>() {
     if (this.statement.columns().length > 0) {
       // SAFETY: the generic is the caller's known row contract for this test adapter.
       const results = this.statement.all(...this.bindings) as T[];
@@ -144,6 +148,7 @@ export const createSqliteD1Database = (options: SqliteD1Options = {}) => {
     prepare(sql: string) {
       return new SqliteD1Statement(sqlite.prepare(sql), sql, options.includeMeta === true);
     },
+    // D1 batches never interleave, so nothing here may yield between BEGIN and COMMIT.
     async batch(statements: SqliteD1Statement[]) {
       sqlite.exec('BEGIN');
 
@@ -151,7 +156,7 @@ export const createSqliteD1Database = (options: SqliteD1Options = {}) => {
         const results = [];
 
         for (const statement of statements) {
-          results.push(await statement.run());
+          results.push(statement.runSync());
         }
 
         sqlite.exec('COMMIT');

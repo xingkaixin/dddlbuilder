@@ -16,7 +16,7 @@ import { buildOpenAIConfig } from '../lib/openaiConfig.js';
 import { enforceOpenAIRateLimit } from '../openaiControl.js';
 import { grantSignupCredits } from '../lib/credits.js';
 import { prepareAIScenario } from '../lib/aiScenarios.js';
-import { readAIOperation } from '../lib/aiConversationUsage.js';
+import type { AIOperation } from '../lib/aiConversationUsage.js';
 import { AI_OPERATION_TIMEOUT_MS, AI_RETENTION_MS } from '../lib/aiConversationConfig.js';
 
 const PrepareSchema = Schema.Struct({
@@ -47,6 +47,21 @@ const ownedConversation = async (c: Context<ApiEnv>, id: string, userId: string)
     .first<ConversationRow>();
 
   if (!row) throw new DomainError(404, 'SERVICE_UNAVAILABLE', 'AI conversation not found');
+
+  return row;
+};
+
+const ownedOperation = async (c: Context<ApiEnv>, id: string, userId: string) => {
+  const row = await c.env.USER_DB.prepare(`
+    SELECT o.*, c.route_key
+    FROM ai_operations o JOIN ai_conversations c ON c.id = o.conversation_id
+    WHERE o.id = ? AND o.user_id = ? AND c.user_id = ?
+      AND c.deleted_at IS NULL AND c.expires_at > ?
+  `)
+    .bind(id, userId, userId, Date.now())
+    .first<AIOperation & Pick<ConversationRow, 'route_key'>>();
+
+  if (!row) throw new DomainError(404, 'SERVICE_UNAVAILABLE', 'AI operation not found');
 
   return row;
 };
@@ -95,42 +110,40 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
             throw new DomainError(400, 'INVALID_JSON', 'Invalid AI request');
           const input = decoded.success;
 
-          const limited = await enforceOpenAIRateLimit(
-            c,
-            input.route,
-            buildOpenAIConfig(c.env),
-            user.userId,
-          );
+          // The grant is idempotent, so running it for a rate-limited request is harmless.
+          const [limited] = await Promise.all([
+            enforceOpenAIRateLimit(c, input.route, buildOpenAIConfig(c.env), user.userId),
+            grantSignupCredits(c.env, user),
+          ]);
 
           if (limited.response) return limited.response;
-          await grantSignupCredits(c.env, user);
           const conversationId = input.conversationId ?? crypto.randomUUID();
+          const operationId = crypto.randomUUID();
+
+          const insertOperation = c.env.USER_DB.prepare(
+            'INSERT INTO ai_operations (id, conversation_id, user_id, session_id, created_at) VALUES (?, ?, ?, ?, ?)',
+          ).bind(operationId, conversationId, user.userId, user.sessionId, Date.now());
 
           if (input.conversationId) {
             const conversation = await ownedConversation(c, conversationId, user.userId);
 
             if (conversation.route_key !== input.route)
               throw new DomainError(409, 'INVALID_JSON', 'AI scenario mismatch');
+            await insertOperation.run();
           } else {
-            await c.env.USER_DB.prepare(
-              'INSERT INTO ai_conversations (id, user_id, route_key, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
-            )
-              .bind(
+            await c.env.USER_DB.batch([
+              c.env.USER_DB.prepare(
+                'INSERT INTO ai_conversations (id, user_id, route_key, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
+              ).bind(
                 conversationId,
                 user.userId,
                 input.route,
                 Date.now(),
                 Date.now() + AI_RETENTION_MS,
-              )
-              .run();
+              ),
+              insertOperation,
+            ]);
           }
-
-          const operationId = crypto.randomUUID();
-          await c.env.USER_DB.prepare(
-            'INSERT INTO ai_operations (id, conversation_id, user_id, session_id, created_at) VALUES (?, ?, ?, ?, ?)',
-          )
-            .bind(operationId, conversationId, user.userId, user.sessionId, Date.now())
-            .run();
 
           return c.json({ operationId, conversationId, userId: user.userId }, 201);
         },
@@ -157,17 +170,13 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
 
   app.post('/ai/operations/:id', async (c) => {
     const user = await authenticateRequest(c);
-    const operation = await readAIOperation(c.env, c.req.param('id'));
-
-    if (!operation || operation.user_id !== user.userId)
-      throw new DomainError(404, 'SERVICE_UNAVAILABLE', 'AI operation not found');
-    const conversation = await ownedConversation(c, operation.conversation_id, user.userId);
+    const operation = await ownedOperation(c, c.req.param('id'), user.userId);
     const parsed = await parseJsonBodyWithLimit(c, 1024 * 1024);
 
     if (!parsed.ok) return parsed.response;
 
     try {
-      prepareAIScenario(conversation.route_key, parsed.data);
+      prepareAIScenario(operation.route_key, parsed.data);
     } catch {
       throw new DomainError(400, 'INVALID_JSON', 'Invalid AI request');
     }
@@ -182,24 +191,31 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
     if (operation.input_hash && operation.input_hash !== hash)
       throw new DomainError(409, 'INVALID_JSON', 'Operation input cannot change');
 
-    const accepted =
-      await c.env.USER_DB.prepare(`UPDATE ai_operations SET input_hash = ?, submitted_at = COALESCE(submitted_at, ?), deadline_at = COALESCE(deadline_at, ?)
-      WHERE id = ? AND (input_hash IS NULL OR input_hash = ?) AND stopped_at IS NULL RETURNING id`)
-        .bind(hash, Date.now(), Date.now() + AI_OPERATION_TIMEOUT_MS, operation.id, hash)
-        .first();
+    const [accepted] = await c.env.USER_DB.batch([
+      c.env.USER_DB.prepare(`UPDATE ai_operations SET input_hash = ?, submitted_at = COALESCE(submitted_at, ?), deadline_at = COALESCE(deadline_at, ?)
+      WHERE id = ? AND (input_hash IS NULL OR input_hash = ?) AND stopped_at IS NULL RETURNING id`).bind(
+        hash,
+        Date.now(),
+        Date.now() + AI_OPERATION_TIMEOUT_MS,
+        operation.id,
+        hash,
+      ),
+      c.env.USER_DB.prepare('UPDATE ai_conversations SET expires_at = ? WHERE id = ?').bind(
+        Date.now() + AI_RETENTION_MS,
+        operation.conversation_id,
+      ),
+    ]);
 
-    if (!accepted) throw new DomainError(409, 'SERVICE_UNAVAILABLE', 'AI operation stopped');
-    await c.env.USER_DB.prepare('UPDATE ai_conversations SET expires_at = ? WHERE id = ?')
-      .bind(Date.now() + AI_RETENTION_MS, conversation.id)
-      .run();
+    if (!accepted?.results.length)
+      throw new DomainError(409, 'SERVICE_UNAVAILABLE', 'AI operation stopped');
 
     const response = await forward(
       c,
-      conversation.id,
+      operation.conversation_id,
       operation.id,
       user.userId,
       '/submit',
-      JSON.stringify({ route: conversation.route_key, input: parsed.data }),
+      JSON.stringify({ route: operation.route_key, input: parsed.data }),
     );
 
     if (response.status !== 409) return response;
@@ -216,11 +232,7 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
   for (const path of ['', '/events', '/stop']) {
     const handler = async (c: Context<ApiEnv>) => {
       const user = await authenticateRequest(c);
-      const operation = await readAIOperation(c.env, c.req.param('id') ?? '');
-
-      if (!operation || operation.user_id !== user.userId)
-        throw new DomainError(404, 'SERVICE_UNAVAILABLE', 'AI operation not found');
-      await ownedConversation(c, operation.conversation_id, user.userId);
+      const operation = await ownedOperation(c, c.req.param('id') ?? '', user.userId);
 
       if (path === '/stop') {
         await c.env.USER_DB.prepare(

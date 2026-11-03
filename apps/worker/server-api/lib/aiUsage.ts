@@ -104,16 +104,18 @@ const normalizeSettlement = (settlement: AIUsageSettlement): AIUsageSettlement =
   return normalized;
 };
 
-export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
+type AIUsageReservationInput<RouteKey extends AIRouteKey> = {
+  userId: string;
+  routeKey: RouteKey;
+  requestId: string;
+  estimatedTokens: number;
+  usageEventId?: string;
+};
+
+export const prepareAIUsageReservation = <RouteKey extends AIRouteKey>(
   env: ApiEnv['Bindings'],
-  input: {
-    userId: string;
-    routeKey: RouteKey;
-    requestId: string;
-    estimatedTokens: number;
-    usageEventId?: string;
-  },
-): Promise<AIUsageReservation<RouteKey>> => {
+  input: AIUsageReservationInput<RouteKey>,
+) => {
   const reservation: AIUsageReservation<RouteKey> = {
     usageEventId: input.usageEventId ?? `usage:${crypto.randomUUID()}`,
     userId: input.userId,
@@ -123,8 +125,9 @@ export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
   };
   const ledgerIdentity = `${reservation.usageEventId}:reserve`;
 
-  try {
-    const result = await env.USER_DB.batch([
+  return {
+    reservation,
+    statements: [
       env.USER_DB.prepare(`
         INSERT INTO usage_events (
           id, user_id, route_key, request_id, estimated_tokens, status, attempt_count, created_at
@@ -149,7 +152,24 @@ export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
         relatedUsageId: reservation.usageEventId,
         metadata: { routeKey: input.routeKey, requestId: input.requestId },
       }),
-    ]);
+    ],
+  };
+};
+
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- D1 trigger errors cross the database adapter as unknown.
+export const mapAIUsageReservationError = (error: unknown): Error =>
+  error instanceof Error && error.message.includes('AI_USAGE_DEBT_PENDING')
+    ? new DomainError(402, 'CREDIT_EXHAUSTED', 'CREDIT_SETTLEMENT_PENDING')
+    : mapLedgerAbort(error);
+
+export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
+  env: ApiEnv['Bindings'],
+  input: AIUsageReservationInput<RouteKey>,
+): Promise<AIUsageReservation<RouteKey>> => {
+  const { reservation, statements } = prepareAIUsageReservation(env, input);
+
+  try {
+    const result = await env.USER_DB.batch(statements);
 
     if (!result[0]?.results.length) {
       throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_ACCOUNT_MISSING');
@@ -157,11 +177,7 @@ export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
 
     return reservation;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('AI_USAGE_DEBT_PENDING')) {
-      throw new DomainError(402, 'CREDIT_EXHAUSTED', 'CREDIT_SETTLEMENT_PENDING');
-    }
-
-    throw mapLedgerAbort(error);
+    throw mapAIUsageReservationError(error);
   }
 };
 

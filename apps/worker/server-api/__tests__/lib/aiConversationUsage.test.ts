@@ -6,8 +6,8 @@ import { loadAIConversationConfig } from '../../lib/aiConversationConfig.js';
 
 const estimate = { inputTokens: 40, maxOutputTokens: 60 };
 
-const fixture = async () => {
-  const test = await createCreditFixture(1000);
+const fixture = async (balance = 1000) => {
+  const test = await createCreditFixture(balance);
   test.sqlite
     .prepare(
       "INSERT INTO session (id, user_id, token, expires_at, created_at, updated_at) VALUES ('session-1', 'user-1', 'token', ?, 1, 1)",
@@ -35,6 +35,21 @@ describe('durable AI accounting', () => {
       (await Effect.runPromise(loadAIConversationConfig({ ...env, AI_THINKING_ENABLED: 'true' })))
         .thinking,
     ).toBe(true);
+  });
+
+  it('rolls admission back when the reservation is rejected', async () => {
+    const test = await fixture(1);
+
+    await expect(
+      admitAICall(test.env, 'operation-1', 'explain', 'claude-haiku-5-5', estimate),
+    ).rejects.toMatchObject({ status: 402 });
+
+    expect(test.sqlite.prepare('SELECT COUNT(*) AS count FROM ai_call_attempts').get()).toEqual({
+      count: 0,
+    });
+    expect(test.sqlite.prepare('SELECT COUNT(*) AS count FROM usage_events').get()).toEqual({
+      count: 0,
+    });
   });
 
   it('charges each physical call once across settlement replay', async () => {
