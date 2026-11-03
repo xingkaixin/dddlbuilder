@@ -4,7 +4,7 @@
  */
 
 import { memo } from 'react';
-import { Pencil, Trash2, Copy, FileText } from '@/components/icons';
+import { Copy, FieldTemplateIcon, Pencil, Trash2 } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +22,7 @@ export const TemplateListItem = memo<TemplateListItemProps>(
 
     return (
       <div className="group flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent">
-        <FileText className="h-5 w-5 text-blue-500" />
+        <FieldTemplateIcon className="h-5 w-5 text-blue-500" />
         <div className="flex-1 min-w-0">
           <div className="font-medium truncate">{template.name}</div>
           <div className="text-sm text-muted-foreground">

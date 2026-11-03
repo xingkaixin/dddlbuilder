@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import {
   FileEdit,
+  FileInput,
   FilePlus,
   GitCompare,
   Languages,
@@ -14,8 +15,7 @@ import {
   Settings,
   Sparkles,
   Sun,
-  Table2,
-  Upload,
+  Table,
   type AppIconProps,
 } from '@/components/icons';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -146,7 +146,7 @@ function useCommands({
         id: 'import',
         group: 'actions',
         label: t('commandPalette.import'),
-        icon: Upload,
+        icon: FileInput,
         run: onTablesView(onOpenImport),
       },
     ];
@@ -164,7 +164,7 @@ function useCommands({
         id: `table:${table.tableId}`,
         group: 'tables' as const,
         label: table.name,
-        icon: Table2,
+        icon: Table,
         mono: true,
         run: onTablesView(() => onOpenTable(table)),
       })),

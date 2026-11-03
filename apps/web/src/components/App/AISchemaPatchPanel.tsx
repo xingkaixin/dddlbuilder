@@ -1,17 +1,17 @@
 import { EmptyTile } from '@/components/ui/feature-tile';
 import { AIAccessNotice } from './AIAccessNotice';
 import {
-  Bot,
+  AiEdit,
   Check,
   Database,
-  FileText,
-  KeyRound,
+  Fields,
+  Index,
   Loader2,
   RotateCcw,
   Send,
-  ShieldCheck,
+  Settings2,
   Sparkles,
-  Table2,
+  Table,
   X,
 } from '@/components/icons';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -93,22 +93,22 @@ export function AISchemaPatchPanel({
       value: dbType.toUpperCase(),
     },
     {
-      icon: Table2,
+      icon: Table,
       label: t('aiPatch.context.table'),
       value: currentState.tableName || t('aiPatch.emptyValue'),
     },
     {
-      icon: FileText,
+      icon: Fields,
       label: t('aiPatch.context.fields'),
       value: String(configuredRows.length),
     },
     {
-      icon: KeyRound,
+      icon: Index,
       label: t('aiPatch.context.indexes'),
       value: String(currentState.indexes.length),
     },
     {
-      icon: ShieldCheck,
+      icon: Settings2,
       label: t('aiPatch.context.moreConfig'),
       value: t('aiPatch.context.moreConfigValue', {
         foreignKeys: currentState.foreignKeys?.length ?? 0,
@@ -276,7 +276,7 @@ export function AISchemaPatchPanel({
       <div className="border-b border-primary/10 px-6 py-5">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
-            <Bot className="h-5 w-5" />
+            <AiEdit className="h-5 w-5" />
           </div>
           <h2 className="text-lg font-semibold leading-tight">{t('aiPatch.title')}</h2>
         </div>

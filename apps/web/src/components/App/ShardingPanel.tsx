@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Database, GitBranch } from '@/components/icons';
+import { Database, Replica, Shard } from '@/components/icons';
 import type { CitusTableMode, CitusShardingConfig } from '@ddlbuilder/shared-types';
 import { useTranslation } from 'react-i18next';
 import { Notice } from '@/components/ui/notice';
@@ -49,7 +49,7 @@ export const ShardingPanel = memo<ShardingPanelProps>(
                       : 'border-muted hover:bg-muted/50'
                   }`}
                 >
-                  <Database
+                  <Replica
                     className={`h-8 w-8 transition-colors ${
                       config.mode === 'reference' ? 'text-primary' : 'text-muted-foreground'
                     }`}
@@ -72,7 +72,7 @@ export const ShardingPanel = memo<ShardingPanelProps>(
                       : 'border-muted hover:bg-muted/50'
                   }`}
                 >
-                  <GitBranch
+                  <Shard
                     className={`h-8 w-8 transition-colors ${
                       config.mode === 'distributed' ? 'text-primary' : 'text-muted-foreground'
                     }`}
@@ -92,7 +92,7 @@ export const ShardingPanel = memo<ShardingPanelProps>(
             {config.mode === 'distributed' && (
               <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
                 <Label className="text-sm font-semibold flex items-center gap-2">
-                  <GitBranch className="h-4 w-4 text-primary" />
+                  <Shard className="h-4 w-4 text-primary" />
                   {t('shardingPanel.column')}
                   <span className="text-xs font-normal text-muted-foreground">
                     ({t('shardingPanel.required')})

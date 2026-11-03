@@ -6,7 +6,7 @@ import {
   FileEdit,
   MoreHorizontal,
   Pencil,
-  Table2,
+  Table,
   Trash2,
 } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -110,7 +110,7 @@ export const TableItem = memo<TableItemProps>(
                 data-testid={`table-icon:${item.normalizedName}`}
               />
             ) : (
-              <Table2
+              <Table
                 className="h-4 w-4 shrink-0 text-primary/80"
                 data-testid={`table-icon:${item.normalizedName}`}
               />

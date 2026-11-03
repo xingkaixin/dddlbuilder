@@ -4,7 +4,7 @@
  */
 
 import { memo, useReducer, useMemo, useCallback } from 'react';
-import { FileText, ChevronDown, Settings, Plus, Search } from '@/components/icons';
+import { ChevronDown, FieldTemplateIcon, Plus, Search, Settings } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
@@ -133,7 +133,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
           onClick={() => handleApply(template)}
         >
-          <FileText className="h-4 w-4 shrink-0 text-blue-500" />
+          <FieldTemplateIcon className="h-4 w-4 shrink-0 text-blue-500" />
           <div className="min-w-0 flex-1">
             <div className="truncate font-medium">{template.name}</div>
             <div className="text-xs text-muted-foreground">
@@ -154,7 +154,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="tool">
-            <FileText className="h-3.5 w-3.5" />
+            <FieldTemplateIcon className="h-3.5 w-3.5" />
             {t('templateManager.quickApply.trigger')}
             <ChevronDown className="h-3 w-3 opacity-50" />
           </Button>

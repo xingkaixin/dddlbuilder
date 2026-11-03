@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import type { DatabaseType, IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types';
 import { useStorageEstimation } from '@/hooks/useStorageEstimation';
-import { Database, HardDrive, Info, BarChart3, Layers, GitBranch, Zap } from '@/components/icons';
+import { BarChart3, Database, HardDrive, Index, Info, Zap } from '@/components/icons';
 
 interface StorageEstimatorDialogProps {
   open: boolean;
@@ -190,13 +190,13 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
             {/* Breakdown: three cards */}
             <div className="grid grid-cols-3 gap-3">
               <BreakdownCard
-                icon={<Layers className="h-4 w-4" />}
+                icon={<Database className="h-4 w-4" />}
                 label={t('storageEstimator.rawData')}
                 bytes={rawDataBytes}
                 colorClass="bg-primary/5 border-primary/10"
               />
               <BreakdownCard
-                icon={<GitBranch className="h-4 w-4" />}
+                icon={<Index className="h-4 w-4" />}
                 label={t('storageEstimator.indexStorage')}
                 bytes={indexBytes}
                 colorClass="bg-emerald-500/5 border-emerald-500/10"
@@ -220,7 +220,7 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
 
               {/* Index */}
               <ExplainSection
-                icon={<GitBranch className="h-4 w-4 text-emerald-600" />}
+                icon={<Index className="h-4 w-4 text-emerald-600" />}
                 title={t('storageEstimator.indexExplanation')}
                 items={indexExplanation}
               />

@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useReducer } from 'react';
-import { ChevronDown, LayoutTemplate, Plus, Search, Settings } from '@/components/icons';
+import { ChevronDown, Plus, Search, Settings, TableBlueprint } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -117,7 +117,7 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
               size={triggerClassName ? 'sm' : 'tool'}
               className={triggerClassName}
             >
-              <LayoutTemplate className="h-3.5 w-3.5" />
+              <TableBlueprint className="h-3.5 w-3.5" />
               {t('tableTemplate.quickApply.trigger')}
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
@@ -155,7 +155,7 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
                     className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
                     onClick={() => dispatch({ type: 'previewOpened', template })}
                   >
-                    <LayoutTemplate className="h-4 w-4 shrink-0 text-emerald-600" />
+                    <TableBlueprint className="h-4 w-4 shrink-0 text-emerald-600" />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{template.name}</div>
                       <div className="text-xs text-muted-foreground">

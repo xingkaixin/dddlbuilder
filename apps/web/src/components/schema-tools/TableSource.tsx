@@ -1,4 +1,4 @@
-import { Database, RefreshCw, Table2 } from '@/components/icons';
+import { RefreshCw, Table, Workspace } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { StandardSummary } from '@ddlbuilder/shared-types/api';
 import { SnapshotFileInput } from './SnapshotFileInput';
@@ -268,7 +268,7 @@ export function TableSource({
                   }
                 />
                 <span className="min-w-0 flex-1 break-words font-mono text-xs font-medium leading-5">
-                  <Table2
+                  <Table
                     className="mr-1.5 inline size-3.5 align-text-bottom text-muted-foreground"
                     aria-hidden="true"
                   />
@@ -289,7 +289,7 @@ export function TableSource({
         source === 'saved' &&
         saved.isSuccess && (
           <div className="rounded-lg border border-dashed px-3 py-5 text-center">
-            <Database className="mx-auto mb-2 size-5 text-muted-foreground" aria-hidden="true" />
+            <Workspace className="mx-auto mb-2 size-5 text-muted-foreground" aria-hidden="true" />
             <p className="text-xs leading-relaxed text-muted-foreground">
               {t('schemaTools.emptySaved')}
             </p>

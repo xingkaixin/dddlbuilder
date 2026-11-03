@@ -1,6 +1,6 @@
 import type React from 'react';
 import { DATABASE_TYPES, type DatabaseType } from '@ddlbuilder/shared-types';
-import { Database, GitBranch, HardDrive, Layers, Share2 } from '@/components/icons';
+import { Database } from '@/components/icons';
 
 type DatabaseOptionMetadata = {
   label: string;
@@ -10,19 +10,19 @@ type DatabaseOptionMetadata = {
 const DATABASE_OPTION_METADATA = {
   sqlite: { label: 'SQLite / D1', icon: Database },
   mysql: { label: 'MySQL', icon: Database },
-  postgresql: { label: 'PostgreSQL', icon: HardDrive },
-  'postgresql-citus': { label: 'PostgreSQL (Citus)', icon: HardDrive },
-  sqlserver: { label: 'SQL Server', icon: GitBranch },
-  oracle: { label: 'Oracle', icon: Layers },
-  mariadb: { label: 'MariaDB', icon: Share2 },
+  postgresql: { label: 'PostgreSQL', icon: Database },
+  'postgresql-citus': { label: 'PostgreSQL (Citus)', icon: Database },
+  sqlserver: { label: 'SQL Server', icon: Database },
+  oracle: { label: 'Oracle', icon: Database },
+  mariadb: { label: 'MariaDB', icon: Database },
   tidb: { label: 'TiDB', icon: Database },
   dm: { label: 'Dameng', icon: Database },
   oceanbase: { label: 'OceanBase (MySQL)', icon: Database },
-  'oceanbase-oracle': { label: 'OceanBase (Oracle)', icon: Layers },
-  kingbase: { label: 'Kingbase', icon: HardDrive },
+  'oceanbase-oracle': { label: 'OceanBase (Oracle)', icon: Database },
+  kingbase: { label: 'Kingbase', icon: Database },
   gbase: { label: 'GBase', icon: Database },
   polardb: { label: 'PolarDB', icon: Database },
-  gaussdb: { label: 'GaussDB', icon: HardDrive },
+  gaussdb: { label: 'GaussDB', icon: Database },
   hive: { label: 'Hive', icon: Database },
 } satisfies Record<DatabaseType, DatabaseOptionMetadata>;
 

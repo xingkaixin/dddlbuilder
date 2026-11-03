@@ -1,5 +1,5 @@
 import { memo, type ComponentProps, type ReactNode } from 'react';
-import { Key, Lock, Hash } from '@/components/icons';
+import { Index, Key, UniqueIndex } from '@/components/icons';
 import type { DatabaseType, SchemaObjectType } from '@ddlbuilder/shared-types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEditorStore } from '@/stores';
@@ -55,12 +55,12 @@ const INDEX_STAT_BADGES = [
   },
   {
     key: 'unique',
-    icon: Lock,
+    icon: UniqueIndex,
     className: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-200',
   },
   {
     key: 'normal',
-    icon: Hash,
+    icon: Index,
     className: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-200',
   },
 ] as const;

@@ -1,14 +1,15 @@
 import { memo } from 'react';
 import {
-  Star,
-  Lightbulb,
   AlertCircle,
   AlertTriangle,
-  Loader2,
-  Check,
-  Plus,
   ArrowRight,
+  Check,
+  Lightbulb,
+  Loader2,
   Minus,
+  Modify,
+  Plus,
+  Star,
 } from '@/components/icons';
 import type {
   DDLReviewResult as ReviewResult,
@@ -133,7 +134,7 @@ const SuggestionItem = memo<{
         ) : suggestion.type === 'add_field' || suggestion.type === 'add_index' ? (
           <Plus className="h-4 w-4 text-emerald-400" />
         ) : suggestion.type === 'modify_field' ? (
-          <ArrowRight className="h-4 w-4 text-amber-400" />
+          <Modify className="h-4 w-4 text-amber-400" />
         ) : suggestion.type === 'performance_warning' ? (
           <AlertTriangle
             className={`h-4 w-4 ${suggestion.severity === 'error' ? 'text-red-500' : 'text-amber-500'}`}

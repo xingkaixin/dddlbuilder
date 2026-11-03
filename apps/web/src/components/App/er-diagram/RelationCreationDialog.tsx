@@ -1,6 +1,6 @@
 import { useMemo, useReducer } from 'react';
 import { getForeignKeyActions } from '@ddlbuilder/ddl-core';
-import { AlertTriangle, ArrowRight, KeyRound, Link2 } from '@/components/icons';
+import { AlertCircle, AlertTriangle, ArrowRight, Key, Link2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -248,7 +248,7 @@ export function RelationCreationDialog({
                         value={field.name}
                         disabled={!intent.logical && !field.isKey}
                       >
-                        <KeyRound
+                        <Key
                           className={cn(
                             'mr-2 h-3.5 w-3.5',
                             field.isKey ? 'text-primary' : 'text-muted-foreground/40',
@@ -477,7 +477,7 @@ export function RelationCreationDialog({
 
           {errorMessage && (
             <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               {errorMessage}
             </p>
           )}

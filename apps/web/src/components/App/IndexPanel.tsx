@@ -21,7 +21,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/useToast';
-import { DragDropVerticalIcon, Hash, Key, Lock, Pencil, Trash2, X } from '@/components/icons';
+import {
+  DragDropVerticalIcon,
+  Index,
+  Key,
+  Pencil,
+  Trash2,
+  UniqueIndex,
+  X,
+} from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { useEditorStore } from '@/stores';
 import { insertIndexDefinition, replaceIndexDefinition } from '@/stores/indexDefinitionMutations';
@@ -302,8 +310,8 @@ export const IndexPanel = memo<IndexPanelProps>(
         type === 'primary'
           ? Key
           : type === 'unique_index' || type === 'unique_constraint'
-            ? Lock
-            : Hash;
+            ? UniqueIndex
+            : Index;
 
       return (
         <span
@@ -346,7 +354,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                 className="h-7 gap-1.5 px-2 text-xs"
                 onClick={() => startCreate('index')}
               >
-                <Hash className="h-3.5 w-3.5" />
+                <Index className="h-3.5 w-3.5" />
                 {t('indexPanel.addIndex')}
               </Button>
               <Button
@@ -355,7 +363,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                 className="h-7 gap-1.5 px-2 text-xs"
                 onClick={() => startCreate('unique_index')}
               >
-                <Lock className="h-3.5 w-3.5" />
+                <UniqueIndex className="h-3.5 w-3.5" />
                 {t('indexPanel.addUnique')}
               </Button>
               <Button

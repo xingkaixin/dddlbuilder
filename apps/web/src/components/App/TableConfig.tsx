@@ -3,17 +3,17 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   ChevronDown,
-  Eye,
   GitCompare,
   History,
   Loader2,
+  MoreHorizontal,
   Save,
   Share2,
+  SlidersHorizontal,
   Table,
   Trash2,
+  ViewTable,
   Waypoints,
-  MoreHorizontal,
-  SlidersHorizontal,
 } from '@/components/icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -226,7 +226,7 @@ export const TableConfig = memo<TableConfigProps>(
                       emptyMessage={t('searchableSelect.empty')}
                       triggerClassName="h-8 text-sm"
                       renderTrigger={() => {
-                        const Icon = objectType === 'view' ? Eye : Table;
+                        const Icon = objectType === 'view' ? ViewTable : Table;
 
                         return (
                           <div className="flex items-center gap-2">
@@ -240,7 +240,7 @@ export const TableConfig = memo<TableConfigProps>(
                         );
                       }}
                       renderItem={(option) => {
-                        const Icon = option.value === 'view' ? Eye : Table;
+                        const Icon = option.value === 'view' ? ViewTable : Table;
 
                         return (
                           <div className="flex items-center gap-2">

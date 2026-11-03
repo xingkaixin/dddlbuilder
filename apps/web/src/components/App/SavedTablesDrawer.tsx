@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo } from 'react';
-import { Database, FilePlus, FolderPlus, Search, X } from '@/components/icons';
+import { FilePlus, FolderPlus, Search, Workspace, X } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
   Drawer,
@@ -190,7 +190,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
           </div>
           <div className="flex items-center justify-between border-b border-primary/10 px-4 py-3">
             <div className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-primary" />
+              <Workspace className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">{t('savedTables.title')}</span>
               {(items.length > 0 || draftItems.length > 0) && (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">

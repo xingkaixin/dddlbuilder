@@ -1,4 +1,4 @@
-import { Database, KeyRound, ListTree, Settings2 } from '@/components/icons';
+import { Database, Fields, Index, Settings2 } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import type { TableBlueprint } from '@/hooks/useTableTemplates';
 import { useTranslation } from 'react-i18next';
@@ -28,14 +28,14 @@ export function TableTemplatePreview({ blueprint }: TableTemplatePreviewProps) {
         </div>
         <div className="rounded-md border p-2">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ListTree className="h-3.5 w-3.5" />
+            <Fields className="h-3.5 w-3.5" />
             {t('tableTemplate.preview.fields')}
           </div>
           <div className="mt-1 text-sm font-medium">{blueprint.rows.length}</div>
         </div>
         <div className="rounded-md border p-2">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <KeyRound className="h-3.5 w-3.5" />
+            <Index className="h-3.5 w-3.5" />
             {t('tableTemplate.preview.indexes')}
           </div>
           <div className="mt-1 text-sm font-medium">{blueprint.indexes.length}</div>

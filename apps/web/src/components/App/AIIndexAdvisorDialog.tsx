@@ -17,7 +17,7 @@ import type {
   AIIndexAdvisorRecommendationCategory,
   AIIndexAdvisorResult,
 } from '@ddlbuilder/shared-types';
-import { ListChecks, Loader2, Sparkles } from '@/components/icons';
+import { AiIndex, ListPlus, Loader2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 interface AIIndexAdvisorDialogProps {
@@ -68,7 +68,7 @@ export const AIIndexAdvisorDialog = memo<AIIndexAdvisorDialogProps>(
         <DialogContent className="flex max-h-[86vh] w-[min(760px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
+              <AiIndex className="h-5 w-5 text-primary" />
               {t('aiIndexAdvisor.title')}
             </DialogTitle>
             <DialogDescription>{t('aiIndexAdvisor.description')}</DialogDescription>
@@ -145,7 +145,7 @@ export const AIIndexAdvisorDialog = memo<AIIndexAdvisorDialogProps>(
                               className="h-7 gap-1.5 px-2 text-xs"
                               onClick={() => onApplyIndex(recommendation)}
                             >
-                              <ListChecks className="h-3.5 w-3.5" />
+                              <ListPlus className="h-3.5 w-3.5" />
                               {t('aiIndexAdvisor.applyIndex')}
                             </Button>
                           )}

@@ -1,4 +1,4 @@
-import { BookOpen, Search, Table2 } from '@/components/icons';
+import { BookOpen, Search, Table } from '@/components/icons';
 import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
@@ -75,7 +75,7 @@ export function DictionaryReader({ document }: { document: DictionaryDocument })
         >
           <div className="flex items-start gap-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-              <Table2 className="size-4" aria-hidden="true" />
+              <Table className="size-4" aria-hidden="true" />
             </div>
             <div className="min-w-0 space-y-1">
               <h3 className="break-words font-mono text-sm font-semibold">{table.name}</h3>

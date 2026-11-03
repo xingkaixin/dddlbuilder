@@ -1,12 +1,12 @@
 import { memo, useMemo, useCallback, useReducer, lazy, Suspense } from 'react';
 import {
-  Copy,
-  Plus,
-  Minus,
-  RefreshCw,
-  RotateCcw,
   ChevronDown,
   ChevronRight,
+  Copy,
+  Minus,
+  Modify,
+  Plus,
+  RotateCcw,
 } from '@/components/icons';
 import {
   Dialog,
@@ -42,7 +42,7 @@ const FieldDiffRow = memo<{ diff: FieldDiff }>(({ diff }) => {
     ) : diff.type === 'remove' ? (
       <Minus className="h-3.5 w-3.5 text-red-500" />
     ) : (
-      <RefreshCw className="h-3.5 w-3.5 text-amber-500" />
+      <Modify className="h-3.5 w-3.5 text-amber-500" />
     );
 
   const bgClass =

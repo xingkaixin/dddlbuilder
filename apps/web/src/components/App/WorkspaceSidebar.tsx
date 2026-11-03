@@ -5,16 +5,19 @@ import { memo, useCallback, useMemo, useReducer } from 'react';
 import {
   ChevronDown,
   ChevronLeft,
+  DeleteForever,
   FileEdit,
   FileInput,
+  FilePlus,
   FolderOpen,
+  FolderPlus,
+  MoreHorizontal,
   Plus,
+  RotateCcw,
   Search,
   Sparkles,
   Trash2,
-  MoreHorizontal,
-  RotateCcw,
-  Upload,
+  Workspace,
   X,
 } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -212,7 +215,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
             className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={onOpenWorkspace}
           >
-            <FolderOpen className="h-3.5 w-3.5" />
+            <Workspace className="h-3.5 w-3.5" />
             <span className="truncate">{t('savedTables.workspaceTitle')}</span>
           </button>
           <Button
@@ -237,7 +240,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuItem onClick={onCreateDraft}>
-                <FileEdit className="h-4 w-4" />
+                <FilePlus className="h-4 w-4" />
                 {t('savedTables.createDraft')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onOpenAIGenerate}>
@@ -257,7 +260,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
             aria-label={t('header.importSql')}
             onClick={onOpenImport}
           >
-            <Upload className="h-4 w-4" />
+            <FileInput className="h-4 w-4" />
             {t('savedTables.import')}
           </Button>
         </div>
@@ -281,7 +284,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                 onClick={() => onCreateFolder()}
                 aria-label={t('savedTables.createFolder')}
               >
-                <Plus className="h-4 w-4" />
+                <FolderPlus className="h-4 w-4" />
               </Button>
             )}
           </div>
@@ -548,7 +551,7 @@ function TrashRow({
               className="text-destructive focus:text-destructive"
               onClick={onDeletePermanently}
             >
-              <X className="mr-2 h-4 w-4" />
+              <DeleteForever className="mr-2 h-4 w-4" />
               {t('savedTables.deletePermanently')}
             </DropdownMenuItem>
           )}
