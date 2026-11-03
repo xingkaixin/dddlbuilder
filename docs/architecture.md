@@ -28,7 +28,7 @@ Cloudflare Worker（apps/worker，Hono）
 | `ddl-core` | DDL/DCL/ORM 生成、SQL 解析、diff 与 ALTER、数据库工具算法、业务数据导入计算 | 浏览器 API、Worker bindings、存储 |
 | `workspace-core` | Workspace Document 模型、编解码与校验、同步帧、快照归一化与合并、历史数据解码、内容哈希 | 存储与传输 |
 | `user-db` | D1 迁移与种子 SQL、认证表的 Drizzle schema | 业务查询 |
-| `design` | Lanmo 设计令牌、手绘线路径、功能动画格的场景、样式和播放器 | 产品逻辑、网络、存储 |
+| `design` | Lanmo 设计令牌、手绘线路径、自绘图标、功能动画格的场景、样式和播放器 | 产品逻辑、网络、存储 |
 | `web` | UI、交互状态、浏览器存储、同步客户端 | 需要密钥、跨用户状态或服务端权威的逻辑 |
 | `worker` | 认证、计费、AI 调用、同步权威、发布与分享、持久化 | 表结构生成规则（复用 `ddl-core`） |
 
