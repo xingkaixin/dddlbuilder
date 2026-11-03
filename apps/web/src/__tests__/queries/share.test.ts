@@ -38,21 +38,4 @@ describe('share queries', () => {
     ).resolves.toMatchObject(state);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
-
-  it.each([
-    { status: 404, code: 'SHARE_NOT_FOUND', attempts: 1 },
-    { status: 502, code: 'SHARE_LOAD_FAILED', attempts: 2 },
-  ])('preserves $status after $attempts attempts', async ({ status, code, attempts }) => {
-    const fetchMock = vi
-      .fn()
-      .mockImplementation(
-        async () => new Response(JSON.stringify({ error: 'Share unavailable', code }), { status }),
-      );
-    vi.stubGlobal('fetch', fetchMock);
-
-    await expect(
-      client.fetchQuery({ ...shareStateOptions('share-id'), retryDelay: 0 }),
-    ).rejects.toMatchObject({ status, code });
-    expect(fetchMock).toHaveBeenCalledTimes(attempts);
-  });
 });

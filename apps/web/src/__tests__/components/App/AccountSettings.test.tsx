@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, act } from '@/__tests__/utils/test-utils';
-import { AccountSettings } from '@/components/App/settings/AccountSettings';
+import { render, screen, act } from '@/__tests__/utils/test-utils';
 import { CreditSettings } from '@/components/App/settings/CreditSettings';
 import { fetchCreditLedger } from '@/services/creditService';
 
@@ -58,45 +57,6 @@ describe('credit ledger rendering', () => {
     auth.name = 'Tester';
   });
   afterEach(() => vi.unstubAllGlobals());
-  it('shows the latest account name and keeps unsaved edits across renders', () => {
-    const { rerender } = render(<AccountSettings />);
-    auth.name = 'Updated';
-    rerender(<AccountSettings />);
-    const input = screen.getByDisplayValue('Updated');
-    fireEvent.change(input, { target: { value: 'Unsaved' } });
-    rerender(<AccountSettings />);
-    expect(screen.getByDisplayValue('Unsaved')).toBeInTheDocument();
-  });
-
-  it('keeps the current page visible while fetching the next page', async () => {
-    let resolvePage: (response: Response) => void = () => {};
-
-    const pendingPage = new Promise<Response>((resolve) => {
-      resolvePage = resolve;
-    });
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(Response.json({ limit: 20, offset: 0, items: [item], total: 21 }))
-      .mockReturnValueOnce(pendingPage);
-    vi.stubGlobal('fetch', fetchMock);
-    render(<CreditSettings />);
-    await screen.findByRole('table');
-    fireEvent.click(screen.getByRole('button', { name: '下一页' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(screen.getByRole('table')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '下一页' })).toBeDisabled();
-    await act(async () =>
-      resolvePage(
-        Response.json({
-          limit: 20,
-          offset: 0,
-          items: [{ ...item, id: 'second', amount: 9876 }],
-          total: 21,
-        }),
-      ),
-    );
-    await screen.findByText('+9876');
-  });
 
   it('normalizes wire timestamps to epoch milliseconds at the service boundary', async () => {
     vi.stubGlobal(

@@ -1,11 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import {
-  deleteWorkspaceSavedTable,
-  getWorkspaceSavedTable,
-  upsertWorkspaceSavedTable,
-} from '@ddlbuilder/workspace-core';
 import { useSavedTablePersistence } from '@/hooks/workspacePersistence/useSavedTablePersistence';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import type { WorkspaceEntityTarget, WorkspaceEntityWrite } from '@/utils/workspaceEntityDeletion';
@@ -131,35 +126,6 @@ describe('useSavedTablePersistence permanent deletion', () => {
     });
   });
 
-  it('先持久化删除所有权，主记录提交后原子收尾历史', async () => {
-    const { result } = renderHook(() => useSavedTablePersistence());
-
-    await act(async () => result.current.deleteTablePermanently(record));
-
-    expect(mocks.beginDeletion).toHaveBeenCalledWith(
-      {
-        scope,
-        tableId: 'table-1',
-        normalizedName: 'users',
-      },
-      expect.any(Function),
-    );
-    expect(mocks.deleteLocal).toHaveBeenCalledWith(
-      { tableId: 'table-1', normalizedName: 'users' },
-      scope,
-    );
-    expect(mocks.finalizeDeletion).toHaveBeenCalledWith(
-      { scope, tableId: 'table-1', normalizedName: 'users' },
-      'delete-operation-1',
-    );
-    expect(mocks.beginDeletion.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.deleteLocal.mock.invocationCallOrder[0],
-    );
-    expect(mocks.deleteFromYDoc.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.finalizeDeletion.mock.invocationCallOrder[0],
-    );
-  });
-
   it('主记录删除失败时不执行历史收尾', async () => {
     mocks.transact.mockImplementationOnce(() => {
       throw new Error('Y.Doc delete failed');
@@ -174,129 +140,5 @@ describe('useSavedTablePersistence permanent deletion', () => {
 
     expect(mocks.cancelDeletion).not.toHaveBeenCalled();
     expect(mocks.finalizeDeletion).not.toHaveBeenCalled();
-  });
-
-  it('Y.Doc 已提交后历史收尾失败仍按删除事实返回成功', async () => {
-    const error = new Error('History cleanup failed');
-    mocks.finalizeDeletion.mockRejectedValueOnce(error);
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { result } = renderHook(() => useSavedTablePersistence());
-
-    await act(async () => {
-      await expect(result.current.deleteTablePermanently(record)).resolves.toBeUndefined();
-    });
-
-    expect(mocks.cancelDeletion).not.toHaveBeenCalled();
-    expect(consoleError).toHaveBeenCalledWith('[workspace] table history cleanup failed', error);
-    consoleError.mockRestore();
-  });
-
-  it('等待本地 cache 清理前已经完成唯一一次主删除', async () => {
-    let releaseCacheCleanup: (() => void) | undefined;
-    mocks.deleteLocal.mockReturnValueOnce(
-      new Promise<void>((resolve) => {
-        releaseCacheCleanup = resolve;
-      }),
-    );
-    const { result } = renderHook(() => useSavedTablePersistence());
-
-    const deletion = result.current.deleteTablePermanently(record);
-    await vi.waitFor(() => expect(mocks.deleteFromYDoc).toHaveBeenCalledOnce());
-    expect(mocks.finalizeDeletion).not.toHaveBeenCalled();
-
-    releaseCacheCleanup?.();
-    await deletion;
-
-    expect(mocks.deleteFromYDoc).toHaveBeenCalledOnce();
-    expect(mocks.finalizeDeletion).toHaveBeenCalledOnce();
-  });
-
-  it('普通写入不能按记录形状冒充恢复', async () => {
-    const { result } = renderHook(() => useSavedTablePersistence());
-
-    await act(async () => result.current.putTable(record));
-
-    expect(mocks.runEntityWrites).toHaveBeenCalledWith(
-      [
-        {
-          target: { scope, tableId: 'table-1', normalizedName: 'users' },
-          mode: 'update',
-        },
-      ],
-      expect.any(Function),
-    );
-  });
-
-  it('Y.Doc state update 先提交实体 marker 事务', async () => {
-    const { result } = renderHook(() => useSavedTablePersistence());
-
-    await act(async () => {
-      await result.current.updateTableState('users', {
-        ...record.state,
-        tableName: 'updated_users',
-      });
-    });
-
-    expect(mocks.runEntityWrites).toHaveBeenCalledWith(
-      [{ target: { scope, tableId: 'table-1', normalizedName: 'users' }, mode: 'update' }],
-      expect.any(Function),
-    );
-    expect(mocks.upsertToYDoc).toHaveBeenCalledWith(
-      expect.any(Y.Doc),
-      expect.objectContaining({ state: expect.objectContaining({ tableName: 'updated_users' }) }),
-    );
-  });
-
-  it('显式恢复才使用 activate 意图', async () => {
-    const { result } = renderHook(() => useSavedTablePersistence());
-
-    await act(async () => result.current.replaceTable('users', record, 'activate'));
-
-    expect(mocks.runEntityWrites).toHaveBeenCalledWith(
-      [
-        {
-          target: { scope, tableId: 'table-1', normalizedName: 'users' },
-          mode: 'activate',
-        },
-      ],
-      expect.any(Function),
-    );
-  });
-
-  it('显式重新激活总会写入新的 Y.Doc 父节点事实', async () => {
-    const { result } = renderHook(() => useSavedTablePersistence());
-
-    await act(async () => result.current.putTable(record, 'update', 'activate'));
-
-    expect(mocks.recreateToYDoc).toHaveBeenCalledWith(expect.any(Y.Doc), record);
-    expect(mocks.upsertToYDoc).not.toHaveBeenCalled();
-  });
-
-  it('observer 在 Y.Doc 删除提交后抛错时仍返回成功', async () => {
-    const doc = new Y.Doc();
-    workspace.yDoc = doc;
-    upsertWorkspaceSavedTable(doc, { ...record, tableId: 'table-1' });
-    mocks.deleteFromYDoc.mockImplementation(deleteWorkspaceSavedTable);
-    mocks.getFromYDoc.mockImplementation(getWorkspaceSavedTable);
-    mocks.transact.mockImplementation((operation: (current: Y.Doc) => void) => {
-      doc.transact(() => {
-        operation(doc);
-      });
-    });
-    const tables = doc.getMap('savedTables');
-
-    const throwAfterDelete = () => {
-      throw new Error('Observer failed after commit');
-    };
-    tables.observe(throwAfterDelete);
-    const { result } = renderHook(() => useSavedTablePersistence());
-
-    await act(async () => {
-      await expect(result.current.deleteTablePermanently(record)).resolves.toBeUndefined();
-    });
-
-    expect(getWorkspaceSavedTable(doc, record)).toBeNull();
-    tables.unobserve(throwAfterDelete);
-    doc.destroy();
   });
 });

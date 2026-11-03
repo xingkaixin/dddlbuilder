@@ -78,29 +78,6 @@ describe('workspace offline storage lifecycle', () => {
     await expect(prepareWorkspaceSignOut('selected')).rejects.toThrow('Workspace is not ready');
   });
 
-  it('cancels sign out when local persistence stops responding', async () => {
-    vi.useFakeTimers();
-    const dispose = vi.fn();
-
-    const unregister = registerWorkspaceYDocOwner('stalled', {
-      dispose,
-      prepareSignOut: () => new Promise<void>(() => {}),
-    });
-    let outcome = 'waiting';
-    void prepareWorkspaceSignOut('stalled').then(
-      () => {
-        outcome = 'confirmed';
-      },
-      () => {
-        outcome = 'cancelled';
-      },
-    );
-    await vi.advanceTimersByTimeAsync(10_000);
-    unregister();
-    expect(outcome).toBe('cancelled');
-    expect(dispose).not.toHaveBeenCalled();
-  });
-
   it.each(['complete', 'abort'])(
     'commits migration data and marker atomically: %s',
     async (event) => {

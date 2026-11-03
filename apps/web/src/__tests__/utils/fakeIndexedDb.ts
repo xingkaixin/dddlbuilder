@@ -1,10 +1,8 @@
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { vi } from 'vitest';
 
-export const createFakeIndexedDB = () => new IDBFactory();
-
 export const setupFakeIndexedDB = () => {
-  const factory = createFakeIndexedDB();
+  const factory = new IDBFactory();
 
   Object.defineProperty(globalThis, 'IDBKeyRange', {
     configurable: true,

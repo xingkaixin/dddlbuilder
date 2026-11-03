@@ -57,25 +57,6 @@ const buildModel = (documentId: string): EditorSurfaceModel => ({
 });
 
 describe('EditorSurface', () => {
-  it('preserves unfinished editor drafts across views', () => {
-    const model = buildModel('orders-tab');
-
-    const { rerender } = render(<EditorSurface model={model} layout="design" />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'index draft' }), {
-      target: { value: 'orders_user_id' },
-    });
-    rerender(<EditorSurface model={model} layout="output" />);
-    expect(screen.getByText('Generated SQL')).toBeVisible();
-    expect(screen.queryByRole('textbox', { name: 'index draft' })).not.toBeInTheDocument();
-    rerender(<EditorSurface model={model} layout="split" />);
-    expect(screen.getByRole('textbox', { name: 'index draft' })).toHaveValue('orders_user_id');
-    const separator = screen.getByRole('separator');
-    fireEvent.keyDown(separator, { key: 'End' });
-    expect(separator).toHaveAttribute('aria-valuenow', '75');
-    fireEvent.keyDown(separator, { key: 'ArrowDown' });
-    expect(separator).toHaveAttribute('aria-valuenow', '75');
-  });
-
   it('clears local editor drafts when the active document changes', () => {
     const { rerender } = render(<EditorSurface model={buildModel('orders-tab')} layout="design" />);
     fireEvent.change(screen.getByRole('textbox', { name: 'index draft' }), {

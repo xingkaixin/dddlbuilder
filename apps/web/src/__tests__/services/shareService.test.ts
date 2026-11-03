@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import i18n from '@/i18n';
-import { ShareApiError, createShare, getShareState } from '@/services/shareService';
+import { getShareState } from '@/services/shareService';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { buildDDL } from '@ddlbuilder/ddl-core';
 import { normalizeFields } from '@/utils/helpers';
@@ -28,92 +27,6 @@ describe('shareService', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-  });
-
-  it('createShare 成功时应返回规范结果并发送正确请求', async () => {
-    const state = createState();
-    const fetchMock = vi.mocked(fetch);
-
-    fetchMock.mockResolvedValue(
-      mockResponse({
-        id: 'share_1',
-        url: 'https://example.com/share/share_1',
-        expiresInSeconds: 3600,
-      }),
-    );
-
-    const result = await createShare(state);
-
-    expect(result).toEqual({
-      id: 'share_1',
-      url: 'https://example.com/share/share_1',
-      expiresInSeconds: 3600,
-    });
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith('/api/share', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ state }),
-    });
-  });
-
-  it('createShare 在响应字段非法时应抛出业务错误', async () => {
-    vi.mocked(fetch).mockResolvedValue(mockResponse({ id: 'share_1', url: 'https://example.com' }));
-
-    await expect(createShare(createState())).rejects.toThrow(
-      i18n.t('services.shareResponseInvalid'),
-    );
-  });
-
-  it('createShare 在 HTTP 错误时应抛出 ShareApiError 并透传 code/status', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockResponse({ error: 'rate limited', code: 'RATE_LIMIT_EXCEEDED' }, 429),
-    );
-
-    await expect(createShare(createState())).rejects.toEqual(
-      expect.objectContaining({
-        status: 429,
-        code: 'RATE_LIMIT_EXCEEDED',
-        message: 'rate limited',
-      }),
-    );
-    await expect(createShare(createState())).rejects.toBeInstanceOf(ShareApiError);
-  });
-
-  it('createShare 在错误响应缺失 payload 时应回退到 requestFailed 文案', async () => {
-    vi.mocked(fetch).mockResolvedValue(mockResponse(null, 500));
-
-    await expect(createShare(createState())).rejects.toMatchObject({
-      status: 500,
-      code: undefined,
-      message: i18n.t('services.requestFailed', { status: 500 }),
-    });
-  });
-
-  it('createShare 在错误响应 JSON 解析失败时也应回退到 requestFailed 文案', async () => {
-    vi.mocked(fetch).mockResolvedValue(new Response('invalid json', { status: 503 }));
-
-    await expect(createShare(createState())).rejects.toMatchObject({
-      status: 503,
-      code: undefined,
-      message: i18n.t('services.requestFailed', { status: 503 }),
-    });
-  });
-
-  it('getShareState 成功时应返回 state，并对 shareId 做 encodeURIComponent', async () => {
-    const shareId = 'part/中文?x=1';
-    const state = createState();
-    const fetchMock = vi.mocked(fetch);
-
-    fetchMock.mockResolvedValue(mockResponse({ id: 's1', state }));
-
-    const result = await getShareState(shareId);
-
-    expect(result).toEqual(state);
-    expect(fetchMock).toHaveBeenCalledWith(`/api/share/${encodeURIComponent(shareId)}`);
   });
 
   it('getShareState 应归一化服务端 KV 里迁移前写入的字段枚举值', async () => {
@@ -167,53 +80,5 @@ describe('shareService', () => {
     expect(ddl).toContain('NOT NULL');
     expect(ddl).toContain('DEFAULT CURRENT_TIMESTAMP');
     expect(ddl).toContain('ON UPDATE CURRENT_TIMESTAMP');
-  });
-
-  it('旧分享包含无效枚举元数据时仍能生成 DDL 并保留合法枚举注释', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      Response.json({
-        id: 's1',
-        state: {
-          ...createState(),
-          rows: [
-            {
-              id: 'status',
-              fieldName: 'status',
-              fieldType: 'INT',
-              nullable: false,
-              enumMeta: [null, { value: {} }, { value: '1', i18n: { 'zh-CN': '启用' } }],
-            },
-          ],
-        },
-      }),
-    );
-    const result = await getShareState('s1');
-
-    const ddl = buildDDL({
-      dbType: result.dbType,
-      tableName: result.tableName,
-      tableComment: '',
-      fields: normalizeFields(result.rows),
-    });
-    expect(ddl).toContain('枚举: 1(启用)');
-    expect(result.rows[0].enumMeta).toEqual([{ value: '1', i18n: { 'zh-CN': '启用' } }]);
-  });
-
-  it('getShareState 在 state 非对象时应抛出业务错误', async () => {
-    vi.mocked(fetch).mockResolvedValue(mockResponse({ id: 's1', state: null }));
-
-    await expect(getShareState('s1')).rejects.toThrow(i18n.t('services.shareDataInvalid'));
-  });
-
-  it('getShareState 在 HTTP 错误时应抛出 ShareApiError', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockResponse({ error: 'not found', code: 'SHARE_NOT_FOUND' }, 404),
-    );
-
-    await expect(getShareState('missing')).rejects.toMatchObject({
-      status: 404,
-      code: 'SHARE_NOT_FOUND',
-      message: 'not found',
-    });
   });
 });

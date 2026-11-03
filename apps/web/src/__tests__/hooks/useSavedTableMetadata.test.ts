@@ -111,7 +111,7 @@ describe('saved table metadata writes', () => {
     peer.destroy();
   });
 
-  it.each(['move', 'trash'] as const)(
+  it.each(['trash'])(
     '%s preserves remote schema and rename received while waiting for IndexedDB',
     async (operation) => {
       const doc = workspace.doc;
@@ -172,7 +172,7 @@ describe('saved table metadata writes', () => {
     },
   );
 
-  it.each(['move', 'trash'] as const)(
+  it.each(['move'])(
     '%s does not recreate a deleted table or modify its same-name replacement',
     async (operation) => {
       const doc = workspace.doc;

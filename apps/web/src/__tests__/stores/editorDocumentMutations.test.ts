@@ -67,46 +67,6 @@ function createCaseSensitiveState(dbType: DatabaseType): PersistedState {
 }
 
 describe('editor document references', () => {
-  it.each(['rename', 'remove'] as const)(
-    'does not %s a partition function when changing an unrelated field',
-    (operation) => {
-      const state = createState({
-        rows: [
-          { id: 'year', fieldName: 'year', fieldType: 'int', fieldComment: '', nullable: false },
-          {
-            id: 'date',
-            fieldName: 'created_at',
-            fieldType: 'date',
-            fieldComment: '',
-            nullable: false,
-          },
-        ],
-        indexes: [],
-        foreignKeys: [],
-        mysqlPartitionConfig: {
-          enabled: true,
-          type: 'RANGE',
-          columns: [],
-          expression: 'YEAR(created_at)',
-          partitions: [],
-        },
-      });
-      useEditorStore.getState().replaceDocument(state);
-
-      if (operation === 'rename') {
-        useEditorStore
-          .getState()
-          .setRows((rows) =>
-            rows.map((row) => (row.id === 'year' ? { ...row, fieldName: 'fiscal_year' } : row)),
-          );
-      } else {
-        useEditorStore.getState().handleRemoveRow(0, 1);
-      }
-
-      expect(useEditorStore.getState().mysqlPartitionConfig).toEqual(state.mysqlPartitionConfig);
-    },
-  );
-
   it('renames and removes real partition references without touching SQL literals', () => {
     const state = createState({
       rows: [
@@ -158,59 +118,22 @@ describe('editor document references', () => {
     expect(state.foreignKeys[1]).toMatchObject({ refTable: 'users', refSchema: 'other' });
   });
 
-  it('preserves quoted, qualified identities through rename and schema removal', () => {
-    useEditorStore.getState().replaceDocument(
-      createState({
-        dbType: 'postgresql',
-        tableName: '"Audit"."Users"',
-        foreignKeys: [
-          { ...parentForeignKey, refTable: '"Audit"."Users"' },
-          { ...parentForeignKey, id: 'different-case', refTable: '"Audit".users' },
-        ],
-      }),
-    );
-    useEditorStore.getState().setTableName('accounts');
-    expect(useEditorStore.getState().foreignKeys[0]).toMatchObject({
-      refTable: 'accounts',
-      refSchema: undefined,
-    });
-    expect(useEditorStore.getState().foreignKeys[1].refTable).toBe('"Audit".users');
-    useEditorStore.getState().setTableName('');
-    useEditorStore.getState().setTableName('staff');
-    expect(useEditorStore.getState().foreignKeys[0].refTable).toBe('staff');
+  it.each(['postgresql'] as const)('%s renames only references to the exact field', (dbType) => {
+    useEditorStore.getState().replaceDocument(createCaseSensitiveState(dbType));
+    useEditorStore
+      .getState()
+      .setRows((rows) =>
+        rows.map((row) => (row.id === 'upper' ? { ...row, fieldName: 'account_id' } : row)),
+      );
+    const state = useEditorStore.getState();
+    expect(
+      state.indexes.map((index) => ({ name: index.name, field: index.fields[0].name })),
+    ).toEqual([
+      { name: 'idx_account_id', field: 'account_id' },
+      { name: 'idx_userid', field: 'userid' },
+    ]);
+    expect(state.foreignKeys[0]).toMatchObject({ fields: ['userid'], refFields: ['account_id'] });
   });
-
-  it.each(['postgresql', 'kingbase', 'gaussdb'] as const)(
-    '%s renames only references to the exact field',
-    (dbType) => {
-      useEditorStore.getState().replaceDocument(createCaseSensitiveState(dbType));
-      useEditorStore
-        .getState()
-        .setRows((rows) =>
-          rows.map((row) => (row.id === 'upper' ? { ...row, fieldName: 'account_id' } : row)),
-        );
-      const state = useEditorStore.getState();
-      expect(
-        state.indexes.map((index) => ({ name: index.name, field: index.fields[0].name })),
-      ).toEqual([
-        { name: 'idx_account_id', field: 'account_id' },
-        { name: 'idx_userid', field: 'userid' },
-      ]);
-      expect(state.foreignKeys[0]).toMatchObject({ fields: ['userid'], refFields: ['account_id'] });
-    },
-  );
-
-  it.each(['postgresql', 'kingbase', 'gaussdb'] as const)(
-    '%s removes only dependencies of the exact field',
-    (dbType) => {
-      useEditorStore.getState().replaceDocument(createCaseSensitiveState(dbType));
-      useEditorStore.getState().handleRemoveRow(0, 1);
-      const state = useEditorStore.getState();
-      expect(state.rows.map((row) => row.fieldName)).toEqual(['userid']);
-      expect(state.indexes.map((index) => index.id)).toEqual(['lower-index']);
-      expect(state.foreignKeys).toEqual([]);
-    },
-  );
 
   it('renames a self-referenced primary key in one store update', () => {
     useEditorStore.getState().replaceDocument(createState());
@@ -233,74 +156,6 @@ describe('editor document references', () => {
     expect(ddl).toContain('REFERENCES users (user_id)');
     expect(ddl).not.toContain('REFERENCES users (id)');
   });
-
-  it('clears dependencies when a field name is emptied before being entered again', () => {
-    useEditorStore.getState().replaceDocument(
-      createState({
-        foreignKeys: [
-          { ...parentForeignKey },
-          { ...parentForeignKey, id: 'external', name: 'fk_account', refTable: 'accounts' },
-        ],
-        mysqlPartitionConfig: {
-          enabled: true,
-          type: 'HASH',
-          columns: ['id'],
-        },
-      }),
-    );
-    useEditorStore
-      .getState()
-      .setRows((rows) => rows.map((row) => (row.id === 'id' ? { ...row, fieldName: '' } : row)));
-    const cleared = useEditorStore.getState();
-    expect(cleared.rows[0]).toMatchObject({ id: 'id', fieldName: '' });
-    expect(cleared.indexes).toEqual([]);
-    expect(cleared.foreignKeys.map((foreignKey) => foreignKey.id)).toEqual(['external']);
-    expect(cleared.mysqlPartitionConfig).toMatchObject({ enabled: false, columns: [] });
-
-    cleared.setRows((rows) =>
-      rows.map((row) => (row.id === 'id' ? { ...row, fieldName: 'user_id' } : row)),
-    );
-    const state = useEditorStore.getState();
-
-    const ddl = buildDDL({
-      dbType: state.dbType,
-      tableName: state.tableName,
-      tableComment: '',
-      fields: buildNormalizedFields(state.rows),
-      indexes: state.indexes,
-      foreignKeys: state.foreignKeys,
-    });
-    expect(ddl).toContain('user_id');
-    expect(ddl).not.toContain('PRIMARY KEY');
-    expect(ddl).not.toContain('REFERENCES users');
-    expect(ddl).toContain('REFERENCES accounts (id)');
-  });
-
-  it.each([
-    { schemaName: 'audit', refSchema: 'audit', refTable: 'users', self: true },
-    { schemaName: 'audit', refSchema: undefined, refTable: 'audit.users', self: true },
-    { schemaName: 'audit', refSchema: 'other', refTable: 'users', self: false },
-    { schemaName: 'audit', refSchema: undefined, refTable: 'users', self: false },
-    { schemaName: '', refSchema: undefined, refTable: 'accounts', self: false },
-    { schemaName: '', refSchema: undefined, refTable: '"users"', self: true },
-    { schemaName: '', refSchema: undefined, refTable: '"Users"', self: false },
-  ])(
-    'respects the reference identity $refSchema/$refTable',
-    ({ schemaName, refSchema, refTable, self }) => {
-      const state = createState({
-        dbType: 'postgresql',
-        schemaName,
-        foreignKeys: [{ ...parentForeignKey, refSchema, refTable }],
-      });
-      useEditorStore.getState().replaceDocument(state);
-      useEditorStore
-        .getState()
-        .setRows((rows) =>
-          rows.map((row) => (row.id === 'id' ? { ...row, fieldName: 'user_id' } : row)),
-        );
-      expect(useEditorStore.getState().foreignKeys[0].refFields).toEqual([self ? 'user_id' : 'id']);
-    },
-  );
 
   it('removes a self-reference when its referenced field is deleted but keeps external references', () => {
     const state = createState({

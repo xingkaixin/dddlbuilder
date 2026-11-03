@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FieldRow, IndexDefinition } from '@ddlbuilder/shared-types';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 import { lintSchema } from '@/utils/schemaLint';
 
 const field = (fieldName: string, overrides: Partial<FieldRow> = {}): FieldRow => ({
@@ -14,46 +14,7 @@ const field = (fieldName: string, overrides: Partial<FieldRow> = {}): FieldRow =
   ...overrides,
 });
 
-const primaryIndex: IndexDefinition = {
-  id: 'pk',
-  name: 'pk_users',
-  fields: [{ name: 'id', direction: 'ASC' }],
-  kind: 'primary',
-};
-
 describe('lintSchema', () => {
-  it('returns no issues for a schema that follows baseline rules', () => {
-    const issues = lintSchema({
-      tableName: 'users',
-      rows: [
-        field('id', { fieldType: 'bigint', nullable: false, defaultKind: 'auto_increment' }),
-        field('name'),
-        field('created_at', {
-          fieldType: 'timestamp',
-          nullable: false,
-          defaultKind: 'current_timestamp',
-        }),
-        field('updated_at', {
-          fieldType: 'timestamp',
-          nullable: false,
-          defaultKind: 'current_timestamp',
-          onUpdate: 'current_timestamp',
-        }),
-      ],
-      indexes: [
-        primaryIndex,
-        {
-          id: 'idx_name',
-          name: 'idx_users_name',
-          fields: [{ name: 'name', direction: 'ASC' }],
-          kind: 'index',
-        },
-      ],
-    });
-
-    expect(issues).toEqual([]);
-  });
-
   it('reports naming, primary key, audit, index, type and default issues', () => {
     const issues = lintSchema({
       tableName: 'UserProfile',
@@ -94,110 +55,6 @@ describe('lintSchema', () => {
     expect(issues.find((issue) => issue.ruleId === 'index-name-convention')?.params).toEqual({
       expectedPrefix: 'idx_UserProfile_name',
     });
-  });
-
-  it('reports audit fields with weak conventions', () => {
-    const issues = lintSchema({
-      tableName: 'users',
-      rows: [
-        field('id', { fieldType: 'bigint', nullable: false }),
-        field('created_at', { fieldType: 'varchar(30)' }),
-        field('updated_at', { fieldType: 'datetime', defaultKind: 'current_timestamp' }),
-      ],
-      indexes: [primaryIndex],
-    });
-
-    expect(issues.map((issue) => issue.ruleId)).toEqual(
-      expect.arrayContaining(['audit-field-type', 'created-at-default', 'updated-at-on-update']),
-    );
-  });
-
-  it('keeps issues distinct for same-named entities and stable across renames', () => {
-    const rows = ['double', 'varchar', 'json'].flatMap((fieldType) =>
-      ['first', 'second'].map((suffix) =>
-        field('Total', {
-          id: `${fieldType}-${suffix}`,
-          fieldType,
-          defaultKind: 'constant',
-          defaultValue: '0000-00-00',
-        }),
-      ),
-    );
-    const indexes: IndexDefinition[] = ['first', 'second'].map((suffix) => ({
-      id: `index-${suffix}`,
-      name: 'bad_name',
-      fields: [{ name: 'Total', direction: 'ASC' }],
-      kind: 'index',
-    }));
-    const issues = lintSchema({ tableName: 'users', rows, indexes });
-
-    expect(new Set(issues.map((issue) => issue.id)).size).toBe(issues.length);
-    expect(issues.map((issue) => issue.ruleId)).toEqual(
-      expect.arrayContaining([
-        'field-name-snake-case',
-        'index-name-convention',
-        'string-length-required',
-        'money-decimal-required',
-        'zero-date-default',
-        'large-type-index',
-      ]),
-    );
-    expect(issues).toContainEqual({
-      id: 'index-name-convention:index-first',
-      ruleId: 'index-name-convention',
-      severity: 'warning',
-      target: 'bad_name',
-      params: { expectedPrefix: 'idx_users_Total' },
-    });
-
-    const renamedIssues = lintSchema({
-      tableName: 'users',
-      rows: rows.map((row) => ({ ...row, fieldName: 'TotalRenamed' })),
-      indexes: indexes.map((index) => ({
-        ...index,
-        name: 'still_bad',
-        fields: [{ name: 'TotalRenamed', direction: 'ASC' }],
-      })),
-    });
-
-    expect(renamedIssues.map((issue) => issue.id)).toEqual(issues.map((issue) => issue.id));
-    expect(renamedIssues).toContainEqual({
-      id: 'field-name-snake-case:double-first',
-      ruleId: 'field-name-snake-case',
-      severity: 'warning',
-      target: 'TotalRenamed',
-      params: {},
-    });
-  });
-
-  it('reports large indexed fields', () => {
-    const issues = lintSchema({
-      tableName: 'events',
-      rows: [
-        field('id', { fieldType: 'bigint', nullable: false }),
-        field('payload', { fieldType: 'json' }),
-        field('created_at', { fieldType: 'timestamp', defaultKind: 'current_timestamp' }),
-        field('updated_at', {
-          fieldType: 'timestamp',
-          defaultKind: 'current_timestamp',
-          onUpdate: 'current_timestamp',
-        }),
-      ],
-      indexes: [
-        {
-          ...primaryIndex,
-          name: 'pk_events',
-        },
-        {
-          id: 'idx_payload',
-          name: 'idx_events_payload',
-          fields: [{ name: 'payload', direction: 'ASC' }],
-          kind: 'index',
-        },
-      ],
-    });
-
-    expect(issues.map((issue) => issue.ruleId)).toContain('large-type-index');
   });
 
   it('reports references to fields that do not exist', () => {

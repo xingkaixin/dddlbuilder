@@ -25,8 +25,5 @@ export { default as userEvent } from '@testing-library/user-event';
 // Override the default render with our custom one
 export { customRender as render };
 
-// Helper functions for common test operations
-export const waitForAnimationFrame = () => new Promise((resolve) => setTimeout(resolve, 0));
-
 // Helper to test async operations
 export const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));

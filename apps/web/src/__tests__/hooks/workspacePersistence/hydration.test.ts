@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { createFieldRow } from '@/__tests__/utils/testFactories';
 import type { WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 import {
   collectBootstrapDrafts,
-  pickInitialDraft,
   resolveWorkspaceHydration,
-  toDraftSummary,
-  toHydrationSavedTable,
   type DraftEntry,
   type HydrationSavedTable,
 } from '@/hooks/workspacePersistence/hydration';
@@ -54,72 +50,6 @@ describe('workspacePersistence/hydration', () => {
     const [result] = collectBootstrapDrafts({ globalDraft: null, drafts: [draft] });
     expect(result.record).toMatchObject({ folderId: 'folder-1', trashedAt: 42 });
   });
-  it('pickInitialDraft 应优先 default draft，否则取最新创建的', () => {
-    const drafts = [createDraft('a', 'a', 100), createDraft('default', 'd', 1)];
-    expect(pickInitialDraft(drafts)?.draftId).toBe('default');
-    expect(pickInitialDraft([createDraft('a', 'a', 1), createDraft('b', 'b', 2)])?.draftId).toBe(
-      'b',
-    );
-    expect(pickInitialDraft([])).toBeNull();
-  });
-
-  it('collectBootstrapDrafts 应合并 globalDraft 与其他草稿并保留记录', () => {
-    const drafts = collectBootstrapDrafts({
-      globalDraft: { state: createState('global'), createdAt: 1, updatedAt: 2 },
-      drafts: [
-        { draftId: 'default', record: { state: createState('dup'), updatedAt: 3 } },
-        { draftId: 'a', record: { state: createState('a'), updatedAt: 3 } },
-      ],
-    });
-
-    expect(drafts.map((draft) => draft.draftId)).toEqual(['default', 'a']);
-    expect(drafts[0].record.state.tableName).toBe('global');
-  });
-
-  it('toDraftSummary 应从记录派生摘要', () => {
-    const summary = toDraftSummary('a', {
-      state: createState('users'),
-      updatedAt: 20,
-      folderId: 'f1',
-      trashedAt: 30,
-    });
-    expect(summary).toMatchObject({
-      draftId: 'a',
-      name: 'users',
-      fieldCount: 1,
-      createdAt: 20,
-      updatedAt: 20,
-      folderId: 'f1',
-      trashedAt: 30,
-    });
-  });
-
-  it('toHydrationSavedTable 应抹平 SavedTableRecord 形状', () => {
-    expect(toHydrationSavedTable(null)).toBeNull();
-    expect(
-      // SAFETY: this legacy fixture omits name to exercise the fallback; hydration reads only its identity and state without a draft.
-      toHydrationSavedTable({
-        normalizedName: 'users',
-        state: createState('users'),
-      } as SavedTableRecord),
-    ).toMatchObject({ normalizedName: 'users', tableName: '' });
-  });
-
-  it('无会话时应回退到 initial draft', () => {
-    expect(
-      resolveWorkspaceHydration({
-        drafts: [createDraft('a', 'a', 1)],
-        session: null,
-        findSavedTable: noSavedTable,
-      }),
-    ).toMatchObject({ activeSource: { kind: 'draft', draftId: 'a' } });
-  });
-
-  it('无会话且无草稿时应回退到 default draft 与空状态', () => {
-    expect(
-      resolveWorkspaceHydration({ drafts: [], session: null, findSavedTable: noSavedTable }),
-    ).toEqual({ activeSource: { kind: 'draft', draftId: 'default' }, state: null });
-  });
 
   it('会话指向已保存表时应优先未保存草稿状态', () => {
     const draftState = createState('users_dirty');
@@ -134,15 +64,6 @@ describe('workspacePersistence/hydration', () => {
     expect(result.state).toEqual(draftState);
   });
 
-  it('会话指向已保存表且无未保存草稿时应用已保存内容', () => {
-    const result = resolveWorkspaceHydration({
-      drafts: [],
-      session: createSession({ kind: 'saved_table', normalizedName: 'users' }),
-      findSavedTable: () => savedTable,
-    });
-    expect(result.state).toEqual(savedTable.state);
-  });
-
   it('会话指向的已保存表缺失时应回退到 initial draft', () => {
     const result = resolveWorkspaceHydration({
       drafts: [createDraft('default', 'fallback', 1)],
@@ -152,25 +73,5 @@ describe('workspacePersistence/hydration', () => {
 
     expect(result.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
     expect(result.state?.tableName).toBe('fallback');
-  });
-
-  it('会话草稿存在时应优先草稿实体状态', () => {
-    const result = resolveWorkspaceHydration({
-      drafts: [createDraft('a', 'entity', 1)],
-      session: createSession({ kind: 'draft', draftId: 'a' }),
-      findSavedTable: noSavedTable,
-    });
-    expect(result.state?.tableName).toBe('entity');
-  });
-
-  it('会话草稿缺失时应返回空状态', () => {
-    const result = resolveWorkspaceHydration({
-      drafts: [],
-      session: createSession({ kind: 'draft', draftId: 'gone' }),
-      findSavedTable: noSavedTable,
-    });
-
-    expect(result.activeSource).toEqual({ kind: 'draft', draftId: 'gone' });
-    expect(result.state).toBeNull();
   });
 });

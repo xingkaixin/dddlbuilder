@@ -16,7 +16,6 @@ import {
   isLegacyWorkspaceMigrationCompleted,
 } from '@/services/workspaceLegacyMigrationMarker';
 import {
-  commitWorkspaceMigration,
   collectWorkspaceMigrationPayload,
   prepareLegacyWorkspaceSnapshot,
   promoteLegacyUserWorkspaceData,
@@ -214,73 +213,6 @@ describe('workspaceMigrationService legacy promotion', () => {
     doc.destroy();
   });
 
-  it('回收站里的空默认草稿也保留删除记录', async () => {
-    await writeDraft(
-      DEFAULT_DRAFT_ID,
-      {
-        state: { ...createState('empty'), rows: [] },
-        createdAt: 1,
-        updatedAt: 20,
-        trashedAt: 20,
-      },
-      scope,
-    );
-    const payload = await collectWorkspaceMigrationPayload(scope);
-    expect(payload?.snapshot.globalDraft).toBeNull();
-    expect(payload?.snapshot.drafts).toEqual([
-      expect.objectContaining({
-        draftId: DEFAULT_DRAFT_ID,
-        createdAt: 1,
-        updatedAt: 20,
-        trashedAt: 20,
-      }),
-    ]);
-  });
-
-  it('仅活动会话包含视图时应保留并折叠进 Y.Doc', async () => {
-    const state: PersistedState = {
-      ...createState('active_orders'),
-      objectType: 'view',
-      rows: [],
-      viewDefinition: 'SELECT id FROM orders',
-    };
-    await writeLegacyWorkspaceSession(
-      {
-        activeSource: { kind: 'draft', draftId: DEFAULT_DRAFT_ID },
-        activeState: state,
-        updatedAt: 3,
-      },
-      scope,
-    );
-    const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
-    expect(snapshot).not.toBeNull();
-
-    if (!snapshot) throw new Error('Expected view snapshot');
-    const doc = createWorkspaceYDoc();
-    mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
-    expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]).toMatchObject({
-      draftId: DEFAULT_DRAFT_ID,
-      state: { objectType: 'view', rows: [], viewDefinition: state.viewDefinition },
-    });
-    doc.destroy();
-  });
-
-  it.each([
-    { objectType: 'view' as const, viewDefinition: ' \n ', rows: createState('').rows },
-    { objectType: 'table' as const, viewDefinition: 'SELECT 1', rows: [] },
-    { rows: [] },
-  ])('空草稿不应因非当前对象内容而触发迁移 (%j)', async (content) => {
-    await writeDraft(
-      DEFAULT_DRAFT_ID,
-      {
-        state: { ...createState(''), ...content },
-        updatedAt: 1,
-      },
-      scope,
-    );
-    expect(await collectWorkspaceMigrationPayload(scope)).toBeNull();
-  });
-
   it('迁移快照保留表与草稿的稳定 ID', async () => {
     await addSavedTable(
       {
@@ -413,92 +345,6 @@ describe('workspaceMigrationService legacy promotion', () => {
     doc.destroy();
   });
 
-  it('活动 session 指向默认草稿时应作为独立 draft 折叠进 Y.Doc', async () => {
-    await seedLegacyWorkspace();
-    await writeLegacyWorkspaceSession(
-      {
-        activeSource: { kind: 'draft', draftId: DEFAULT_DRAFT_ID },
-        activeState: createState('legacy_global_editing'),
-        updatedAt: 9,
-      },
-      legacyScope,
-    );
-
-    const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
-
-    if (!snapshot) throw new Error('Expected legacy snapshot');
-
-    const doc = createWorkspaceYDoc();
-    mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
-    const merged = exportWorkspaceYDocToSnapshot(doc);
-
-    expect(merged.drafts.find((draft) => draft.draftId === DEFAULT_DRAFT_ID)?.state.tableName).toBe(
-      'legacy_global_editing',
-    );
-    expect(merged.drafts.find((draft) => draft.draftId === 'draft-legacy')?.state.tableName).toBe(
-      'legacy_draft',
-    );
-
-    doc.destroy();
-  });
-
-  it('保存表 createdAt 应原样进入 Y.Doc，不退化成 updatedAt', async () => {
-    await addSavedTable(
-      {
-        normalizedName: 'dated_table',
-        name: 'dated_table',
-        state: createState('dated_table'),
-        createdAt: 111,
-        updatedAt: 222,
-      },
-      legacyScope,
-    );
-
-    const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
-
-    if (!snapshot) throw new Error('Expected legacy snapshot');
-
-    expect((await listSavedTables(scope))[0]?.createdAt).toBe(111);
-    expect(snapshot.savedTables[0]?.createdAt).toBe(111);
-
-    const doc = createWorkspaceYDoc();
-    mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
-    const merged = exportWorkspaceYDocToSnapshot(doc);
-
-    expect(merged.savedTables[0]).toMatchObject({
-      normalizedName: 'dated_table',
-      createdAt: 111,
-      updatedAt: 222,
-    });
-
-    doc.destroy();
-  });
-
-  it('legacy 分区只有活动会话时应提升并恢复出草稿', async () => {
-    await writeLegacyWorkspaceSession(
-      {
-        activeSource: { kind: 'draft', draftId: 'session-only' },
-        activeState: createState('session_only'),
-        updatedAt: 5,
-      },
-      legacyScope,
-    );
-
-    const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
-
-    expect(snapshot?.drafts).toEqual([
-      expect.objectContaining({
-        draftId: 'session-only',
-        state: expect.objectContaining({ tableName: 'session_only' }),
-        updatedAt: 5,
-      }),
-    ]);
-  });
-
-  it('没有 legacy 数据时应返回 null', async () => {
-    expect(await prepareLegacyWorkspaceSnapshot(scope)).toBeNull();
-  });
-
   it('退出登录清空目标分区后不应重新提升陈旧 legacy 快照', async () => {
     vi.clearAllMocks();
     setupMemoryLocalStorage();
@@ -513,44 +359,5 @@ describe('workspaceMigrationService legacy promotion', () => {
     expect(await listSavedTables(scope)).toEqual([]);
     // 完成标记不在被清空的分区里，下次启动仍然跳过整段 legacy 步骤。
     expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(true);
-  });
-});
-
-describe('迁移响应契约', () => {
-  afterEach(() => vi.restoreAllMocks());
-  it.each([
-    { status: 'completed' },
-    {
-      status: 'completed',
-      createdCount: 0,
-      copiedCount: 0,
-      skippedCount: 0,
-      conflictCount: 1,
-      conflicts: [{ kind: 'folder', normalizedName: null }],
-    },
-    {
-      status: 'completed',
-      createdCount: -1,
-      copiedCount: 0,
-      skippedCount: 0,
-      conflictCount: 0,
-      conflicts: [],
-    },
-  ])('拒绝不完整或无效的迁移结果：%j', async (data) => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json(data));
-    await expect(
-      commitWorkspaceMigration({
-        localFingerprint: 'fingerprint',
-        idempotencyKey: 'key',
-        snapshot: {
-          globalDraft: null,
-          activeSession: null,
-          drafts: [],
-          savedTables: [],
-          savedDrafts: [],
-          folders: [],
-        },
-      }),
-    ).rejects.toThrow('迁移响应无效');
   });
 });

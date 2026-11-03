@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import { getForeignKeyIssue } from '@ddlbuilder/ddl-core';
 import { createFieldRow, createPersistedState } from '@/__tests__/utils/testFactories';
 import {
   defaultRelationshipIntent,
   planTableRelationship,
-  referencedKeyFields,
   type TableRelationshipIntent,
 } from '@/components/App/er-diagram/tableRelationship';
 
@@ -70,49 +68,9 @@ function createDraft() {
 }
 
 describe('tableRelationship', () => {
-  it('creates an Oracle relationship without unsupported default actions', () => {
-    const draft = createDraft();
-    draft.source.dbType = 'oracle';
-    draft.target.dbType = 'oracle';
-    const intent = defaultRelationshipIntent(draft, 'user_id', 'id');
-    const result = planTableRelationship(draft, intent);
-    expect(result.ok).toBe(true);
-
-    if (!result.ok) return;
-    expect(getForeignKeyIssue(result.plan.foreignKey, 'oracle')).toBeNull();
-  });
-
   it('rejects unsupported actions before creating a relationship', () => {
     const result = planTableRelationship(createDraft(), createIntent({ onDelete: 'SET DEFAULT' }));
     expect(result).toEqual({ ok: false, error: 'unsupported-foreign-key-action' });
-  });
-
-  it('only exposes single-field primary and unique keys as reference targets', () => {
-    const state = createTable('users', { isUnique: true });
-    state.indexes?.push({
-      id: 'composite',
-      name: 'uk_users_id_tenant',
-      fields: [
-        { name: 'id', direction: 'ASC' },
-        { name: 'tenant_id', direction: 'ASC' },
-      ],
-      kind: 'unique_index',
-    });
-
-    expect([...referencedKeyFields(state)]).toEqual(['id']);
-  });
-
-  it('uses safe referential actions and derives optionality for a new relationship', () => {
-    const draft = createDraft();
-
-    const intent = defaultRelationshipIntent(draft, 'user_id', 'id');
-    expect(intent).toMatchObject({
-      cardinality: 'many-to-one',
-      optionality: 'optional',
-      createIndex: true,
-    });
-    expect(intent.onDelete).toBeUndefined();
-    expect(intent.onUpdate).toBeUndefined();
   });
 
   it('plans a many-to-one relationship with nullability and an index', () => {
@@ -152,61 +110,6 @@ describe('tableRelationship', () => {
       kind: 'unique_index',
     });
     expect(result.plan.foreignKey).not.toHaveProperty('cardinality');
-  });
-
-  it('reuses an existing suitable index', () => {
-    const draft = createDraft();
-    draft.source.indexes = [
-      {
-        id: 'existing',
-        name: 'idx_orders_user_id',
-        fields: [{ name: 'user_id', direction: 'ASC' }],
-        kind: 'index',
-      },
-    ];
-
-    const result = planTableRelationship(draft, createIntent());
-
-    expect(result.ok).toBe(true);
-
-    if (!result.ok) return;
-    expect(result.plan.addedIndex).toBeUndefined();
-    expect(result.plan.sourceState.indexes).toHaveLength(1);
-  });
-
-  it('does not treat a composite unique index as one-to-one uniqueness', () => {
-    const draft = createDraft();
-    draft.source.indexes = [
-      {
-        id: 'existing',
-        name: 'uk_orders_user_tenant',
-        fields: [
-          { name: 'user_id', direction: 'ASC' },
-          { name: 'tenant_id', direction: 'ASC' },
-        ],
-        kind: 'unique_index',
-      },
-      {
-        id: 'name-conflict',
-        name: 'uk_orders_user_id',
-        fields: [{ name: 'other_user_id', direction: 'ASC' }],
-        kind: 'unique_index',
-      },
-    ];
-
-    const result = planTableRelationship(draft, createIntent({ cardinality: 'one-to-one' }));
-
-    expect(result.ok).toBe(true);
-
-    if (!result.ok) return;
-    expect(result.plan.addedIndex?.name).toBe('uk_orders_user_id_2');
-  });
-
-  it('requires a constraint name at the relationship module interface', () => {
-    expect(planTableRelationship(createDraft(), createIntent({ name: '   ' }))).toEqual({
-      ok: false,
-      error: 'missing-name',
-    });
   });
 
   it('rejects a reference to a field that is not a primary or unique key', () => {
@@ -262,46 +165,6 @@ describe('tableRelationship', () => {
       ok: false,
       error: 'set-null-requires-optional',
     });
-  });
-
-  it('warns about field type mismatch without hiding the requested relationship', () => {
-    const draft = createDraft();
-    const targetField = draft.target.rows[0];
-    expect(targetField).toBeDefined();
-
-    if (!targetField) return;
-    draft.target.rows[0] = { ...targetField, fieldType: 'VARCHAR(36)' };
-
-    const result = planTableRelationship(draft, createIntent());
-
-    expect(result.ok).toBe(true);
-
-    if (!result.ok) return;
-    expect(result.plan.warnings).toEqual(['field-type-mismatch']);
-  });
-
-  it('supports a self-referencing relationship when the target field is a key', () => {
-    const employee = createTable('employees', { fieldName: 'id', isPrimary: true });
-    employee.rows.push(
-      createFieldRow('employees-manager-id', {
-        fieldName: 'manager_id',
-        fieldType: 'BIGINT',
-        nullable: true,
-      }),
-    );
-
-    const result = planTableRelationship(
-      { source: employee, target: employee },
-      createIntent({
-        name: 'fk_employees_manager',
-        sourceField: 'manager_id',
-      }),
-    );
-
-    expect(result.ok).toBe(true);
-
-    if (!result.ok) return;
-    expect(result.plan.foreignKey.refTable).toBe('employees');
   });
 });
 

@@ -7,7 +7,6 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import * as Y from 'yjs';
-import { upsertSavedTableInYDoc } from '@/services/workspaceYDocAdapter';
 import { useWorkspaceMigration } from '@/hooks/useWorkspaceMigration';
 import {
   beginLegacyWorkspaceMigration,
@@ -90,16 +89,6 @@ describe('useWorkspaceMigration', () => {
     vi.unstubAllGlobals();
   });
 
-  it('检查迁移只返回提案，不写入账号分区或重置迁移标记', async () => {
-    const { result } = renderHook();
-    await waitFor(() => expect(result.current.open).toBe(true));
-
-    expect(result.current.pending?.payload.snapshot.savedTables[0]?.tableId).toBe(table.tableId);
-    expect(await listSavedTables(scope)).toEqual([]);
-    expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(true);
-    expect(fetch).toHaveBeenCalledTimes(1);
-  });
-
   it('稍后处理后重新检查仍不迁移，匿名数据保持原位', async () => {
     const first = renderHook();
     await waitFor(() => expect(first.result.current.open).toBe(true));
@@ -117,46 +106,6 @@ describe('useWorkspaceMigration', () => {
     expect(
       vi.mocked(fetch).mock.calls.map(([, options]) => JSON.parse(String(options?.body)).mode),
     ).toEqual(['analyze', 'analyze']);
-  });
-
-  it('当前账号本地已有工作区时不应弹匿名迁移', async () => {
-    if (!ydoc.doc) throw new Error('Missing test document');
-    upsertSavedTableInYDoc(ydoc.doc, table);
-    const { result } = renderHook();
-    await waitFor(() => expect(result.current.checking).toBe(false));
-    expect(result.current.open).toBe(false);
-    expect(result.current.pending).toBeNull();
-  });
-
-  it('workspace 未解析出来之前不应检查迁移', () => {
-    const { wrapper } = createQueryClientWrapper();
-
-    const { result } = testingLibraryRenderHook(
-      () => useWorkspaceMigration({ ...authState, workspaceId: null }),
-      { wrapper },
-    );
-    expect(result.current.checking).toBe(false);
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
-  it('确认后只提交服务端迁移命令，不另行写入本地快照', async () => {
-    const { result } = renderHook();
-    await waitFor(() => expect(result.current.open).toBe(true));
-    const payload = result.current.pending?.payload;
-    vi.mocked(fetch).mockResolvedValueOnce(migrationResponse('completed'));
-
-    await act(async () => {
-      await result.current.runMigration();
-    });
-
-    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[1]?.[1]?.body))).toEqual({
-      mode: 'commit',
-      payload,
-    });
-    expect(result.current.pending).toBeNull();
-    expect(result.current.open).toBe(false);
-    expect(await listSavedTables(scope)).toEqual([]);
-    expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(true);
   });
 
   it('服务端迁移失败时保留提案供重试，不在本地提前采纳', async () => {

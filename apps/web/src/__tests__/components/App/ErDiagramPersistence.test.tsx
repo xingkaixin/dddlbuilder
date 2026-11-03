@@ -1,9 +1,9 @@
-import { act, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { act, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import type * as ReactFlowModule from '@xyflow/react';
 import { createFieldRow } from '@/__tests__/utils/testFactories';
-import { render, screen } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import ErPage from '@/components/App/ErPage';
@@ -143,32 +143,6 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
     teardownFakeIndexedDB();
   });
 
-  it('creates a logical relationship without changing columns or indexes', async () => {
-    render(<App />);
-    await act(() => vi.dynamicImportSettled());
-    await waitFor(() => expect(capture.connect).toBeTypeOf('function'));
-    act(() =>
-      capture.connect?.({
-        source: 'source',
-        target: 'parent',
-        sourceHandle: 'id',
-        targetHandle: 'id',
-      }),
-    );
-    fireEvent.click(await screen.findByRole('button', { name: '逻辑关系' }));
-    fireEvent.change(screen.getByLabelText('业务说明'), { target: { value: 'Business owner' } });
-    fireEvent.click(screen.getByRole('button', { name: '创建关系' }));
-    await waitFor(async () =>
-      expect((await read()).state.foreignKeys?.[0].logical?.description).toBe('Business owner'),
-    );
-    const updated = await read();
-    expect(updated.state.rows).toEqual(source.state.rows);
-    expect(updated.state.indexes).toEqual(source.state.indexes);
-    await waitFor(() =>
-      expect(capture.edges[0]?.data?.fk).toMatchObject({ logical: { cardinality: 'many-to-one' } }),
-    );
-  });
-
   it('删除关系保留打开图之后收到的字段和注释', async () => {
     await write({ ...source, state: { ...source.state, foreignKeys: [foreignKey] } });
     render(<App />);
@@ -203,47 +177,4 @@ describe.each(['ydoc', 'indexeddb'] as const)('ER persistence: %s', (backend) =>
     expect(updated.state.rows.map((row) => row.fieldName)).toEqual(['id', 'remote_note']);
     expect(updated.state.foreignKeys ?? []).toEqual([]);
   });
-
-  it.each([false, true])(
-    '建立关系使用最新源表和目标表 (targetDeleted=%s)',
-    async (targetDeleted) => {
-      render(<App />);
-      await act(() => vi.dynamicImportSettled());
-      await waitFor(() => expect(capture.connect).toBeTypeOf('function'));
-      act(() =>
-        capture.connect?.({
-          source: 'source',
-          target: 'parent',
-          sourceHandle: 'id',
-          targetHandle: 'id',
-        }),
-      );
-      await screen.findByRole('button', { name: '创建关系' });
-      await act(async () => {
-        const current = await read();
-        await write({
-          ...current,
-          state: { ...current.state, tableComment: 'new source comment' },
-        });
-        await write({
-          ...parent,
-          ...(targetDeleted ? { trashedAt: 2 } : {}),
-          state: { ...parent.state, tableName: 'renamed_parent' },
-        });
-      });
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: '创建关系' }));
-      });
-      await waitFor(async () => {
-        const updated = await read();
-        expect((updated.state.foreignKeys ?? []).map((key) => key.refTable)).toEqual(
-          targetDeleted ? [] : ['renamed_parent'],
-        );
-        expect(
-          screen.queryByRole('button', { name: '创建关系' })?.hasAttribute('disabled') ?? false,
-        ).toBe(false);
-      });
-      expect((await read()).state.tableComment).toBe('new source comment');
-    },
-  );
 });

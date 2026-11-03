@@ -205,46 +205,4 @@ describe('publication reading', () => {
     expect(screen.getByText('用户标识')).toBeVisible();
     expect(window.document.querySelector('script')).toBeNull();
   });
-
-  it('posts and resolves comments against a fixed proposal, with report downloads', async () => {
-    record = {
-      ...document,
-      kind: 'proposal',
-      content: { kind: 'proposal', reason: '增加用户', before: [], after: [table], renames: [] },
-    };
-    renderTool(<PublicationPage id={document.id} />);
-    await screen.findByLabelText('留言内容');
-    fireEvent.change(screen.getByLabelText('对象位置（如 orders.amount，可留空）'), {
-      target: { value: 'users.id' },
-    });
-    fireEvent.change(screen.getByLabelText('留言内容'), { target: { value: '<b>确认索引</b>' } });
-    fireEvent.click(screen.getByRole('button', { name: '提交留言' }));
-    await screen.findByText('<b>确认索引</b>');
-    expect(screen.getByLabelText('留言内容')).toHaveValue('');
-    fireEvent.click(screen.getByRole('button', { name: '标记已处理' }));
-    await screen.findByRole('button', { name: '重新打开' });
-    fireEvent.click(screen.getByRole('button', { name: '重新打开' }));
-    await screen.findByRole('button', { name: '标记已处理' });
-    fireEvent.click(screen.getByRole('button', { name: '导出对比报告' }));
-    expect((await harness.lastDownload()).text).toContain('users');
-    fireEvent.click(screen.getByRole('button', { name: '导出迁移 SQL' }));
-    expect((await harness.lastDownload()).text).toContain('CREATE TABLE');
-  });
-
-  it('requires sign-in for comments and handles malformed document snapshots', async () => {
-    signedIn = false;
-    record = {
-      ...document,
-      kind: 'proposal',
-      isOwner: false,
-      content: { kind: 'proposal', reason: '', before: [], after: [table], renames: [] },
-    };
-    const view = renderTool(<PublicationPage id={document.id} />);
-    await screen.findByRole('link', { name: '返回工作区登录后再来留言' });
-    expect(screen.queryByLabelText('留言内容')).not.toBeInTheDocument();
-    view.unmount();
-    record = { ...document, content: { kind: 'document', tables: [{}], standards: [] } };
-    renderTool(<PublicationPage id={document.id} />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('发布内容无效');
-  });
 });

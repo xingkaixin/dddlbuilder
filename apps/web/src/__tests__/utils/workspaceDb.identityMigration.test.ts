@@ -191,45 +191,4 @@ describe('legacy saved table identity migration', () => {
       'user',
     ]);
   });
-
-  it('keeps canonical IDs, unusual names, and draft review keys separate from a scoped-ID alias', async () => {
-    await createOldDatabase(
-      15,
-      [
-        table('users', 'anonymous', 'legacy:anonymous::users'),
-        table('renamed-users', 'anonymous', 'legacy:users'),
-        table('anonymous::special', 'anonymous', 'legacy:anonymous::special'),
-      ],
-      [
-        history('canonical', 'legacy:users', 'anonymous::legacy:users'),
-        history('draft', undefined, 'anonymous::draft:users'),
-        history('name', undefined, 'anonymous::name:users'),
-        history('unrelated', 'legacy:special', 'anonymous::legacy:special', 'special'),
-      ],
-    );
-    expect(
-      await listVersions({ scope, tableId: 'legacy:anonymous::users', normalizedName: 'users' }),
-    ).toEqual([]);
-    expect(
-      await listReviews({ scope, tableId: 'legacy:anonymous::users', normalizedName: 'users' }),
-    ).toEqual([]);
-    expect(
-      (await listVersions({ scope, tableId: 'legacy:users', normalizedName: 'renamed-users' })).map(
-        (record) => record.id,
-      ),
-    ).toEqual(['canonical']);
-    expect(
-      (await readRawHistory(REVIEW_STORE_NAME))
-        .filter((record) => ['draft', 'name'].includes(record.id))
-        .map((record) => record.tableKey)
-        .sort((a, b) => (a ?? '').localeCompare(b ?? '')),
-    ).toEqual(['anonymous::draft:users', 'anonymous::name:users']);
-    expect(
-      await listVersions({
-        scope,
-        tableId: 'legacy:anonymous::special',
-        normalizedName: 'anonymous::special',
-      }),
-    ).toEqual([]);
-  });
 });

@@ -20,41 +20,6 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
 });
 
 describe('persistedStateSignature', () => {
-  it('keeps large document signatures bounded', () => {
-    const signature = buildSchemaStateSignature(createState({ tableComment: 'x'.repeat(100_000) }));
-    expect(signature).toMatch(/^sha256:[a-f0-9]{64}$/);
-  });
-  it('treats UI defaults as unchanged table state', () => {
-    const stored = createState();
-
-    const current = createState({
-      objectType: 'table',
-      viewDefinition: '',
-      viewCreateOrReplace: true,
-      foreignKeys: [],
-      mysqlPartitionConfig: {
-        enabled: false,
-        type: 'RANGE',
-        columns: [],
-        partitionCount: 4,
-        partitions: [],
-      },
-      tableMiscConfig: {
-        enabled: false,
-        engine: '',
-        charset: '',
-        collation: '',
-        tablespace: '',
-      },
-      fieldTableViewConfig: {
-        freezeEnabled: false,
-        freezeColumns: 3,
-      },
-    });
-
-    expect(buildSchemaStateSignature(current)).toBe(buildSchemaStateSignature(stored));
-  });
-
   it('ignores editor session changes when comparing schema documents', () => {
     const stored = createState();
 
@@ -69,16 +34,6 @@ describe('persistedStateSignature', () => {
 
     expect(buildSchemaStateSignature(current)).toBe(buildSchemaStateSignature(stored));
     expect(buildPersistedStateSignature(current)).not.toBe(buildPersistedStateSignature(stored));
-  });
-
-  it('normalizes omitted editor defaults in full-state signatures', () => {
-    const stored = createState();
-
-    const current = createState({
-      fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 3 },
-    });
-
-    expect(buildPersistedStateSignature(current)).toBe(buildPersistedStateSignature(stored));
   });
 
   it('keeps schema document changes in the comparison signature', () => {

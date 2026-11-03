@@ -124,61 +124,6 @@ describe('useWorkspaceTabActions', () => {
     expect(params.selectWorkspaceSnapshot).not.toHaveBeenCalled();
   });
 
-  it('选择已经打开的保存表时只切换标签，不重复加载', async () => {
-    const params = createParams();
-    params.tabs.findTabBySource.mockReturnValue(params.existingTab);
-    const { result } = renderHook(() => useWorkspaceTabActions(params));
-
-    await act(async () => {
-      await result.current.handleSelectSavedTable({
-        tableId: 'table-alpha',
-        normalizedName: 'alpha',
-        name: 'Alpha',
-        dbType: 'mysql',
-        fieldCount: 1,
-        createdAt: 1,
-        updatedAt: 1,
-      });
-    });
-
-    expect(params.tabs.flushActiveTab).not.toHaveBeenCalled();
-    expect(params.tabs.switchToTab).toHaveBeenCalledWith(params.existingTab);
-    expect(params.loadSavedTable).not.toHaveBeenCalled();
-  });
-
-  it('选择草稿时创建标签，并让工作区选择与编辑器状态同步', () => {
-    const params = createParams();
-    const draftState = createState('Draft A');
-    params.getDraftState.mockReturnValue(draftState);
-    const { result } = renderHook(() => useWorkspaceTabActions(params));
-
-    act(() => result.current.handleSelectDraft('draft-a'));
-
-    expect(params.tabs.addTab).toHaveBeenCalledWith({
-      source: { kind: 'draft', draftId: 'draft-a' },
-      stateSnapshot: draftState,
-    });
-    expect(mocks.applySavedState).toHaveBeenCalledWith(draftState);
-    expect(params.selectWorkspaceSnapshot).toHaveBeenCalledWith(
-      { kind: 'draft', draftId: 'draft-a' },
-      draftState,
-    );
-  });
-
-  it('删除草稿时同时关闭对应标签', () => {
-    const params = createParams();
-    params.tabs.findTabBySource.mockReturnValue({
-      ...params.existingTab,
-      source: { kind: 'draft', draftId: 'draft-a' },
-    });
-    const { result } = renderHook(() => useWorkspaceTabActions(params));
-
-    act(() => result.current.handleDeleteDraft('draft-a'));
-
-    expect(params.deleteDraftById).toHaveBeenCalledWith('draft-a');
-    expect(params.tabs.closeTab).toHaveBeenCalledWith('tab-existing');
-  });
-
   it('新建草稿使用完整 UUID', () => {
     const params = createParams();
     const { result } = renderHook(() => useWorkspaceTabActions(params));

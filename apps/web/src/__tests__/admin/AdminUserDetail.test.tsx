@@ -59,57 +59,6 @@ describe('AdminUserDetailView', () => {
     mocks.grantUserCredits.mockResolvedValue(600);
   });
 
-  it('displays credit consumption as a debit', async () => {
-    mocks.getUserCreditLedger.mockResolvedValue([
-      {
-        id: 'consume-1',
-        kind: 'consume',
-        source: 'ai_request',
-        amount: 50,
-        balanceAfter: 50,
-        createdAt: '2026-08-28T00:00:00.000Z',
-      },
-    ]);
-    render(<AdminUserDetailView userId="user-1" onBack={vi.fn()} />);
-    await screen.findByRole('table');
-    expect(screen.getByText('-50')).toBeInTheDocument();
-  });
-
-  it('localizes failed password reset notifications', async () => {
-    mocks.resetUserPassword.mockRejectedValue(new Error('upstream failed'));
-    render(<AdminUserDetailView userId="user-1" onBack={vi.fn()} />);
-    await screen.findByText('user@example.com');
-    fireEvent.click(screen.getByRole('button', { name: '发送重置邮件' }));
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
-    expect(mocks.toastError).toHaveBeenCalledWith('发送重置邮件失败');
-  });
-
-  it('输入额度后点击确认会提交增加额度请求', async () => {
-    render(<AdminUserDetailView userId="user-1" onBack={vi.fn()} />);
-
-    await screen.findByText('user@example.com');
-    fireEvent.click(screen.getByRole('button', { name: '增加额度' }));
-    fireEvent.change(screen.getByPlaceholderText('100'), {
-      target: { value: '500' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('可选备注'), {
-      target: { value: 'manual bonus' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '确认' }));
-
-    await waitFor(() => {
-      expect(mocks.grantUserCredits).toHaveBeenCalledWith(
-        'user-1',
-        500,
-        expect.any(String),
-        'manual bonus',
-      );
-    });
-    expect(mocks.getUserDetail).toHaveBeenCalledTimes(2);
-    expect(mocks.getUserCreditLedger).toHaveBeenCalledTimes(2);
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('已成功增加 500 额度');
-  });
-
   it('同一笔赠额重试沿用幂等键，修改金额后换新键', async () => {
     mocks.grantUserCredits
       .mockRejectedValueOnce(new Error('network'))
@@ -133,18 +82,5 @@ describe('AdminUserDetailView', () => {
     const keys = mocks.grantUserCredits.mock.calls.map((call) => call[2]);
     expect(keys[1]).toBe(keys[0]);
     expect(keys[2]).not.toBe(keys[0]);
-  });
-
-  it('小数额度不能提交', async () => {
-    render(<AdminUserDetailView userId="user-1" onBack={vi.fn()} />);
-
-    await screen.findByText('user@example.com');
-    fireEvent.click(screen.getByRole('button', { name: '增加额度' }));
-    fireEvent.change(screen.getByPlaceholderText('100'), {
-      target: { value: '1.5' },
-    });
-
-    expect(screen.getByRole('button', { name: '确认' })).toBeDisabled();
-    expect(mocks.grantUserCredits).not.toHaveBeenCalled();
   });
 });

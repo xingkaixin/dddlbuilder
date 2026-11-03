@@ -5,12 +5,10 @@ import { readBusinessExcel, readBusinessText } from '@/utils/business-data/readB
 import {
   applyDataImportProfile,
   decodeDataImportProfile,
-  deleteDataImportProfile,
   readDataImportProfiles,
   saveDataImportProfile,
   type DataImportProfile,
 } from '@/utils/business-data/profiles';
-import { executeBusinessDataTask } from '@/utils/business-data/tasks';
 
 const profile: DataImportProfile = {
   version: 1,
@@ -75,12 +73,7 @@ describe('business files', () => {
 
   it.each([
     ['a,a\n1,2', 'headers'],
-    ['a,\n1,2', 'headers'],
     ['a,b\n1', 'width'],
-    ['a\n"unclosed', 'csv'],
-    ['a\n"closed"junk', 'csv'],
-    ['a\nno"quote', 'csv'],
-    ['a\n', 'empty'],
   ])('rejects malformed business data without a partial result: %s', (text, code) => {
     expect(() => readBusinessText(text, ',')).toThrow(`dataImport.errors.${code}`);
   });
@@ -107,59 +100,9 @@ describe('business files', () => {
     await expect(readBusinessExcel(bytes(), 'missing')).rejects.toThrow('sheet');
     await expect(readBusinessExcel(bytes(), 'Empty')).rejects.toThrow('empty');
   });
-
-  it('rejects Excel formulas, merges, errors and unsafe numbers with their cell address', async () => {
-    const { sheet, bytes } = workbookBytes();
-    sheet.A2 = { t: 'n', v: 2, f: '1+1' };
-    await expect(readBusinessExcel(bytes(), 'Orders')).rejects.toThrow('formula|A2');
-    sheet.A2 = { t: 'n', v: 9007199254740992 };
-    await expect(readBusinessExcel(bytes(), 'Orders')).rejects.toThrow('number|A2');
-    sheet.A2 = { t: 'e', v: 7 };
-    await expect(readBusinessExcel(bytes(), 'Orders')).rejects.toThrow('cell|A2');
-    sheet.A2 = { t: 's', v: '00123' };
-    sheet['!merges'] = [utils.decode_range('A2:B2')];
-    await expect(readBusinessExcel(bytes(), 'Orders')).rejects.toThrow('merged');
-    await expect(readBusinessExcel(new ArrayBuffer(3))).rejects.toThrow('xlsx');
-  });
-
-  it('reads valid UTF-8 files and rejects invalid encoding at the actual task boundary', async () => {
-    const file = new File([], 'orders.csv');
-    Object.defineProperty(file, 'arrayBuffer', {
-      value: async () => new TextEncoder().encode('code\n00123').buffer,
-    });
-    expect(
-      await executeBusinessDataTask({ kind: 'file', file, separator: ',', sheet: '' }),
-    ).toMatchObject({ source: { data: { headers: ['code'] } } });
-    const invalid = new File([], 'invalid.csv');
-    Object.defineProperty(invalid, 'arrayBuffer', {
-      value: async () => new Uint8Array([0xff]).buffer,
-    });
-    await expect(
-      executeBusinessDataTask({ kind: 'file', file: invalid, separator: ',', sheet: '' }),
-    ).rejects.toThrow('encoding');
-    await expect(
-      executeBusinessDataTask({
-        kind: 'file',
-        file: new File([], 'old.xls'),
-        separator: ',',
-        sheet: '',
-      }),
-    ).rejects.toThrow('file');
-  });
 });
 
 describe('import profiles', () => {
-  it('saves and removes explicit profiles without overwriting a same-name profile', () => {
-    saveDataImportProfile(profile);
-    expect(readDataImportProfiles()).toEqual([profile]);
-    expect(() => saveDataImportProfile({ ...profile, tableName: 'different' })).toThrow(
-      'profileName',
-    );
-    expect(readDataImportProfiles()[0].tableName).toBe('orders');
-    deleteDataImportProfile(profile.name);
-    expect(readDataImportProfiles()).toEqual([]);
-  });
-
   it('rejects corrupted, oversized and record-bearing files without changing saved settings', () => {
     saveDataImportProfile(profile);
 

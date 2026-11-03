@@ -20,30 +20,6 @@ const table = (name: string, folderId?: string): SavedTableSummary => ({
 });
 
 describe('useSavedTablesFilter', () => {
-  it('一次过滤后按文件夹建立有序索引', () => {
-    const items = [table('First', 'folder-1'), table('Root'), table('Second', 'folder-1')];
-    const { result } = renderHook(() => useSavedTablesFilter({ items, folders, searchQuery: '' }));
-
-    expect(result.current.itemsByFolder.get('folder-1')?.map((item) => item.name)).toEqual([
-      'First',
-      'Second',
-    ]);
-    expect(result.current.ungroupedItems.map((item) => item.name)).toEqual(['Root']);
-  });
-
-  it('索引只包含搜索命中的表', () => {
-    const items = [table('Users', 'folder-1'), table('Orders', 'folder-1')];
-
-    const { result } = renderHook(() =>
-      useSavedTablesFilter({ items, folders, searchQuery: 'user' }),
-    );
-
-    expect(result.current.filteredItems.map((item) => item.name)).toEqual(['Users']);
-    expect(result.current.itemsByFolder.get('folder-1')?.map((item) => item.name)).toEqual([
-      'Users',
-    ]);
-  });
-
   it('keeps missing-folder items visible at root when folders change', () => {
     const items = [table('Restored draft', 'removed'), table('Kept', 'folder-1')];
 

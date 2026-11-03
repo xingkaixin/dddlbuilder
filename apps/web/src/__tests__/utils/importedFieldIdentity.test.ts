@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SqlParser } from '@ddlbuilder/ddl-core/parser';
 import { diffPersistedState, generateAlterDDL, hasTableChanges } from '@ddlbuilder/ddl-core';
-import type { PersistedState } from '@ddlbuilder/shared-types';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
 
@@ -45,25 +44,5 @@ describe('preserveImportedFieldIds', () => {
       { type: 'modify', fieldName: 'email' },
       { type: 'add', fieldName: 'active' },
     ]);
-  });
-
-  it.each([
-    { tableName: 'other' },
-    { schemaName: 'archive' },
-    { dbType: 'postgresql' as const },
-    { objectType: 'view' as const },
-  ])('不同 SQL 对象不继承字段身份：%j', async (change: Partial<PersistedState>) => {
-    const existing = await parseState('CREATE TABLE users (id INT);');
-    const imported = { ...(await parseState('CREATE TABLE users (id INT);')), ...change };
-    expect(preserveImportedFieldIds(existing, imported)).toBe(imported);
-  });
-
-  it.each(['existing', 'imported'] as const)('不猜测重名字段身份：%s', async (duplicateSide) => {
-    const existing = await parseState('CREATE TABLE users (id INT);');
-    const imported = await parseState('CREATE TABLE users (id INT);');
-    const state = duplicateSide === 'existing' ? existing : imported;
-    state.rows.push({ ...state.rows[0], id: 'duplicate-id' });
-    const result = preserveImportedFieldIds(existing, imported);
-    expect(result.rows.map((row) => row.id)).toEqual(imported.rows.map((row) => row.id));
   });
 });

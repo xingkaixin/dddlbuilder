@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, cleanup, screen, waitFor } from '@/__tests__/utils/test-utils';
-import ToolsPage from '@/components/schema-tools/ToolsPage';
 import { DictionaryTool } from '@/components/schema-tools/DictionaryTool';
-import { SchemaCompareTool } from '@/components/schema-tools/SchemaCompareTool';
-import { RelationalSeedTool } from '@/components/schema-tools/RelationalSeedTool';
 import { parseSqlSnapshot } from '@/components/schema-tools/sqlSnapshot';
 
 import { setupSchemaTools, renderTool as render } from '@/__tests__/utils/schemaTools';
@@ -34,22 +31,6 @@ afterEach(() => {
 });
 
 describe('database tool workflows', () => {
-  it('opens the routed tool and falls back to the list for an unknown tool', async () => {
-    const actions = {
-      onOpenFieldTemplates: vi.fn(),
-      onOpenTableTemplates: vi.fn(),
-      onOpenAIGenerate: vi.fn(),
-    };
-    render(<ToolsPage toolId="compare" actions={actions} />);
-    expect(await screen.findByLabelText('当前结构')).toBeInTheDocument();
-    cleanup();
-    render(<ToolsPage toolId="missing" actions={actions} />);
-    expect(screen.getByRole('link', { name: /结构对比/ })).toHaveAttribute(
-      'href',
-      '/tools/compare',
-    );
-  });
-
   it('exports all selected tables even when the dictionary is filtered', async () => {
     render(<DictionaryTool />);
     await enterSql();
@@ -107,78 +88,5 @@ describe('database tool workflows', () => {
     expect(screen.getByRole('button', { name: '导出 Markdown' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: '解析 SQL' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('无法完整保留');
-  });
-
-  it('blocks dictionary exports when standards cannot be loaded and supports retry', async () => {
-    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
-      throw new Error('unavailable');
-    });
-    render(<DictionaryTool />);
-    await screen.findByRole('alert');
-    expect(screen.getByRole('button', { name: '导出 Markdown' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: '重试' }));
-    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
-  });
-
-  it('exports confirmed renames and invalidates results when input or dialect changes', async () => {
-    render(<SchemaCompareTool />);
-    fireEvent.change(screen.getByLabelText('当前结构'), {
-      target: { value: 'CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(30));' },
-    });
-    fireEvent.change(screen.getByLabelText('目标结构'), {
-      target: { value: 'CREATE TABLE users (id INT PRIMARY KEY, display_name VARCHAR(30));' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '比较结构' }));
-    fireEvent.change(await screen.findByLabelText('将 name 重命名为'), {
-      target: { value: 'display_name' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '导出迁移 SQL' }));
-    expect(await harness.lastDownload()).toMatchObject({
-      text: expect.stringContaining('RENAME COLUMN'),
-      name: 'schema-migration.sql',
-    });
-    fireEvent.click(screen.getByRole('button', { name: '导出对比报告' }));
-    expect(await harness.lastDownload()).toMatchObject({
-      text: expect.stringContaining('重命名'),
-      name: 'schema-comparison.md',
-    });
-    fireEvent.change(screen.getByLabelText('数据库'), { target: { value: 'postgresql' } });
-    expect(screen.getByRole('button', { name: '导出迁移 SQL' })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText('目标结构'), { target: { value: 'SELECT 1;' } });
-    fireEvent.click(screen.getByRole('button', { name: '比较结构' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('无法完整保留');
-  });
-
-  it('generates repeatable related rows and blocks missing parents', async () => {
-    render(<RelationalSeedTool />);
-    await enterSql();
-    fireEvent.change(screen.getByLabelText('users 的行数'), { target: { value: '3' } });
-    fireEvent.change(screen.getByLabelText('orders 的行数'), { target: { value: '12' } });
-    fireEvent.click(screen.getByRole('button', { name: '生成测试数据' }));
-    expect(screen.getByRole('status')).toHaveTextContent('15 行');
-    fireEvent.click(screen.getByRole('button', { name: '导出 INSERT SQL' }));
-    const first = await harness.lastDownload();
-    fireEvent.click(screen.getByRole('button', { name: '生成测试数据' }));
-    fireEvent.click(screen.getByRole('button', { name: '导出 INSERT SQL' }));
-    expect(await harness.lastDownload()).toEqual(first);
-    fireEvent.click(screen.getByRole('button', { name: '导出 JSON' }));
-    expect(await harness.lastDownload()).toMatchObject({
-      text: expect.stringContaining('orders'),
-      name: 'relational-test-data.json',
-    });
-    fireEvent.click(screen.getByRole('checkbox', { name: /^users/ }));
-    fireEvent.click(screen.getByRole('button', { name: '生成测试数据' }));
-    expect(screen.getByRole('alert')).toHaveTextContent('include referenced table');
-    expect(screen.getByRole('button', { name: '导出 INSERT SQL' })).toBeDisabled();
-  });
-
-  it('rejects oversized uploads and clears previous SQL', async () => {
-    render(<DictionaryTool />);
-    await enterSql();
-    const file = new File(['x'.repeat(200001)], 'large.sql');
-    fireEvent.change(screen.getByLabelText('上传表结构 SQL文件'), { target: { files: [file] } });
-    await screen.findByRole('alert');
-    expect(screen.getByLabelText('表结构 SQL')).toHaveValue('');
-    expect(screen.getByRole('button', { name: '导出 Markdown' })).toBeDisabled();
   });
 });

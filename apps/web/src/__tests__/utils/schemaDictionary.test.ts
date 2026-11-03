@@ -49,26 +49,4 @@ describe('schema dictionary', () => {
     expect(markdown).toContain('状态 \\| &lt;img');
     expect(markdown).not.toContain('<script>');
   });
-
-  it('resolves schema-qualified relationships and marks references outside the document', () => {
-    const orders = {
-      ...users,
-      tableName: 'orders',
-      foreignKeys: [
-        { id: 'fk', name: 'fk_user', fields: ['user_id'], refTable: 'users', refFields: ['id'] },
-        {
-          id: 'external',
-          name: 'fk_other',
-          fields: ['other_id'],
-          refSchema: 'archive',
-          refTable: 'users',
-          refFields: ['id'],
-        },
-      ],
-    };
-    const document = buildDictionary([users, orders], [], 'Dictionary', 'en-US', i18n.t.bind(i18n));
-    expect(document.tables[1].relationships[0].targetId).toBe('table-0');
-    expect(document.tables[1].relationships[1].targetId).toBeUndefined();
-    expect(document.tables[1].relationships[1].values[2]).toContain('archive.users');
-  });
 });

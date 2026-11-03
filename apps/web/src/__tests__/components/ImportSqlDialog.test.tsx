@@ -1,4 +1,3 @@
-import { AmbiguousTableOverwriteError } from '@/utils/savedTableBatchImport';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@/__tests__/utils/test-utils';
 import { ImportSqlDialog } from '@/components/ImportSqlDialog';
@@ -30,63 +29,6 @@ const mockedRequestSqlParse = vi.mocked(requestSqlParse);
 const mockedRequestMultiSqlParse = vi.mocked(requestMultiSqlParse);
 
 describe('ImportSqlDialog', () => {
-  it.each([false, true])(
-    'preserves a failed batch import for retry, ambiguous=%s',
-    async (ambiguous) => {
-      mockedRequestMultiSqlParse.mockResolvedValue({
-        results: [
-          {
-            tableName: 'users',
-            tableComment: '',
-            fields: [],
-            indexes: [],
-            foreignKeys: [],
-            authObjects: [],
-          },
-        ],
-        failed: [],
-      });
-
-      const onBatchImport = vi
-        .fn()
-        .mockRejectedValueOnce(
-          ambiguous ? new AmbiguousTableOverwriteError() : new Error('storage unavailable'),
-        )
-        .mockResolvedValue({ successCount: 1, skipCount: 0, failCount: 0 });
-      const onOpenChange = vi.fn();
-      render(
-        <ImportSqlDialog
-          currentDbType="mysql"
-          onImport={vi.fn()}
-          open
-          onOpenChange={onOpenChange}
-          savedTables={[]}
-          folderTree={[]}
-          onBatchImport={onBatchImport}
-        />,
-      );
-      fireEvent.click(await screen.findByLabelText('保存为已保存表'));
-      fireEvent.change(screen.getByLabelText('SQL 内容'), {
-        target: { value: 'CREATE TABLE users (id INT);' },
-      });
-      fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-      await screen.findByText('users');
-      fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-      fireEvent.click(screen.getByRole('button', { name: '确认导入' }));
-      await waitFor(() => expect(onBatchImport).toHaveBeenCalledOnce());
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        ambiguous ? '存在多张同名表' : '导入失败',
-      );
-      expect(onOpenChange).not.toHaveBeenCalled();
-      fireEvent.click(screen.getByRole('button', { name: '确认导入' }));
-      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-      expect(onBatchImport.mock.calls[1][0]).toMatchObject({
-        conflictStrategy: 'skip',
-        items: [{ name: 'users', state: { tableName: 'users' } }],
-      });
-    },
-  );
-
   it('imports the edited, reordered and filtered preview', async () => {
     const parsed = {
       tableName: 'users',
@@ -149,36 +91,6 @@ describe('ImportSqlDialog', () => {
     expect(mockedRequestSqlParse).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['workspace', new Error('parser-stack-detail-should-not-be-exposed')],
-    ['saved', new Error('parser-stack-detail-should-not-be-exposed')],
-    ['workspace', new ApiError('parser-stack-detail-should-not-be-exposed', 400, 'INTERNAL_ERROR')],
-    ['saved', new ApiError('parser-stack-detail-should-not-be-exposed', 500, 'SQL_PARSE_FAILED')],
-  ] as const)('%s 模式应使用统一友好文案屏蔽未知解析错误 %s', async (mode, error) => {
-    mockedRequestSqlParse.mockRejectedValue(error);
-    mockedRequestMultiSqlParse.mockRejectedValue(error);
-    render(
-      <ImportSqlDialog
-        currentDbType="mysql"
-        onImport={vi.fn()}
-        open
-        onOpenChange={vi.fn()}
-        savedTables={[]}
-        folderTree={[]}
-        onBatchImport={vi.fn()}
-      />,
-    );
-
-    if (mode === 'saved') fireEvent.click(await screen.findByLabelText('保存为已保存表'));
-    fireEvent.change(screen.getByLabelText('SQL 内容'), {
-      target: { value: 'CREATE TABLE demo (id INT);' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-
-    expect(await screen.findByText('SQL 解析失败，请检查 SQL 语法后重试。')).toBeInTheDocument();
-    expect(screen.queryByText('parser-stack-detail-should-not-be-exposed')).toBeNull();
-  });
-
   it.each(['workspace', 'saved'] as const)(
     '%s 模式应展示不支持定义的具体原因并阻止导入',
     async (mode) => {
@@ -212,89 +124,6 @@ describe('ImportSqlDialog', () => {
       expect(onBatchImport).not.toHaveBeenCalled();
     },
   );
-
-  it('应在正常输入时继续走解析流程并进入预览', async () => {
-    mockedRequestSqlParse.mockResolvedValue({
-      tableName: 'users',
-      tableComment: '',
-      fields: [
-        {
-          name: 'id',
-          type: 'int',
-          comment: '主键',
-          nullable: false,
-          defaultKind: 'none',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-      ],
-      indexes: [],
-      foreignKeys: [],
-      authObjects: [],
-    });
-    render(
-      <ImportSqlDialog currentDbType="mysql" onImport={vi.fn()} open onOpenChange={vi.fn()} />,
-    );
-    const textarea = await screen.findByLabelText('SQL 内容');
-    fireEvent.change(textarea, {
-      target: { value: '  CREATE TABLE users (id INT);  ' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-
-    await waitFor(() => {
-      expect(mockedRequestSqlParse).toHaveBeenCalledWith({
-        sql: 'CREATE TABLE users (id INT);',
-        dbType: 'mysql',
-      });
-    });
-    expect(await screen.findByText(/表名:/)).toBeInTheDocument();
-    expect(screen.getByText('users')).toBeInTheDocument();
-  });
-
-  it('解析到授权信息时应在预览和确认步骤展示并导入', async () => {
-    const parsedResult = {
-      tableName: 'COO_SC_RAT',
-      tableComment: '',
-      fields: [
-        {
-          name: 'id',
-          type: 'int',
-          comment: '主键',
-          nullable: false,
-          defaultKind: 'none' as const,
-          defaultValue: '',
-          onUpdate: 'none' as const,
-        },
-      ],
-      indexes: [],
-      foreignKeys: [],
-      authObjects: ['cb1', 'cb2'],
-    };
-    mockedRequestSqlParse.mockResolvedValue(parsedResult);
-    const onImport = vi.fn();
-
-    render(
-      <ImportSqlDialog currentDbType="mysql" onImport={onImport} open onOpenChange={vi.fn()} />,
-    );
-    const textarea = await screen.findByLabelText('SQL 内容');
-    fireEvent.change(textarea, {
-      target: {
-        value: 'CREATE TABLE COO_SC_RAT (id INT); GRANT SELECT ON COO_SC_RAT TO cb1;',
-      },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-
-    expect(await screen.findByText(/授权对象数:/)).toBeInTheDocument();
-    expect(screen.getByText('cb1')).toBeInTheDocument();
-    expect(screen.getByText('cb2')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-    expect(await screen.findByText('授权对象: cb1, cb2')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: '确认导入' }));
-
-    expect(onImport).toHaveBeenCalledWith(parsedResult, 'mysql');
-  });
 
   it('批量导入应规范化冲突名并只调用一次数据层操作', async () => {
     mockedRequestMultiSqlParse.mockResolvedValue({

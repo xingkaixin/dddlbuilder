@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { withDefaultEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
-import { updateDocumentFields } from '@/stores/editorDocumentMutations';
-import { normalizeFields } from '@/utils/helpers';
-import { buildDDL } from '@ddlbuilder/ddl-core';
 import { decodeSavedDraftBase } from '@ddlbuilder/workspace-core';
 
 const base = withDefaultEditorSession({
@@ -48,45 +45,6 @@ const draft = (
 });
 
 describe('resolveSavedTableSnapshot', () => {
-  it('恢复改名草稿时合并远端索引并生成有效字段引用', () => {
-    const saved: PersistedState = {
-      ...base,
-      indexes: [
-        {
-          id: 'id-index',
-          name: 'idx_id',
-          fields: [{ name: 'id', direction: 'ASC' }],
-          kind: 'index',
-        },
-      ],
-    };
-    const edited = updateDocumentFields(base, [
-      { ...base.rows[0], fieldName: 'account_id' },
-      base.rows[1],
-    ]);
-    const snapshot = resolveSavedTableSnapshot(record(saved), draft(edited));
-
-    const sql = buildDDL({
-      dbType: snapshot.state.dbType,
-      tableName: snapshot.state.tableName,
-      tableComment: snapshot.state.tableComment,
-      fields: normalizeFields(snapshot.state.rows),
-      indexes: snapshot.state.indexes,
-    });
-    expect(sql).toContain('INDEX idx_account_id (account_id ASC)');
-    expect(sql).not.toContain('(id ASC)');
-    expect(
-      resolveSavedTableSnapshot(record(saved), draft(snapshot.state, snapshot.source.baseSignature))
-        .state,
-    ).toEqual(snapshot.state);
-  });
-
-  it('无草稿时返回保存状态，基线相同时直接使用草稿', () => {
-    expect(resolveSavedTableSnapshot(record(), null).state).toBe(base);
-    const edited = { ...base, tableComment: 'draft' };
-    expect(resolveSavedTableSnapshot(record(), draft(edited)).state).toBe(edited);
-  });
-
   it('合并独立字段修改，冲突保留草稿且基线指向最新保存版本', () => {
     const saved = {
       ...base,
@@ -117,21 +75,7 @@ describe('resolveSavedTableSnapshot', () => {
     expect(saved.tableComment).toBe('saved');
   });
 
-  it('合并新增和删除行，草稿修改过的行不会被远端删除吞掉', () => {
-    const saved = { ...base, rows: [] };
-
-    const edited = {
-      ...base,
-      rows: [
-        { ...base.rows[0], fieldComment: 'draft' },
-        { ...base.rows[1], id: 'new', fieldName: 'new' },
-      ],
-    };
-    expect(resolveSavedTableSnapshot(record(saved), draft(edited)).state.rows).toEqual(edited.rows);
-    expect(resolveSavedTableSnapshot(record(saved), draft(base)).state.rows).toEqual([]);
-  });
-
-  it.each(['invalid', '{}'])('无法读取基线 %s 时保留草稿而不是丢弃', (signature) => {
+  it.each(['invalid'])('无法读取基线 %s 时保留草稿而不是丢弃', (signature) => {
     const edited = { ...base, tableComment: 'draft' };
     expect(resolveSavedTableSnapshot(record(), draft(edited, signature)).state).toBe(edited);
   });

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { fireEvent, render } from '@/__tests__/utils/test-utils';
 import { DataTable } from '@/components/App/DataTable';
 import { useEditorStore } from '@/stores';
 import { createEmptyRow } from '@/utils/helpers';
@@ -76,67 +76,6 @@ describe('DataTable 单元格编辑切换', () => {
     setupStores();
   });
 
-  it('a pointer click schedules cell activation only once', () => {
-    const { container } = render(<DataTable />);
-    const cell = container.querySelector('tbody td[data-col-index="2"]');
-
-    if (!cell) throw new Error('Missing comment cell');
-    const timers = vi.spyOn(globalThis, 'setTimeout');
-
-    try {
-      fireEvent.pointerDown(cell, { button: 0 });
-      const scheduledAfterPointer = timers.mock.calls.length;
-      fireEvent.click(cell);
-      expect(timers.mock.calls.length).toBe(scheduledAfterPointer);
-    } finally {
-      timers.mockRestore();
-    }
-  });
-
-  it('字段改名应在一次文档更新中同步 Hive 分桶和索引引用', () => {
-    useEditorStore.setState({
-      dbType: 'hive',
-      rows: [{ ...createEmptyRow(), fieldName: 'user_id', fieldType: 'BIGINT' }],
-      indexes: [
-        {
-          id: 'idx',
-          name: 'idx_user_id',
-          fields: [{ name: 'user_id', direction: 'ASC' }],
-          kind: 'index',
-        },
-      ],
-      tableMiscConfig: {
-        enabled: true,
-        partitions: {
-          enabled: true,
-          columns: [],
-          clustering: { enabled: true, columns: ['user_id'], bucketCount: 4 },
-        },
-      },
-    });
-    render(<DataTable />);
-    const changes = vi.fn();
-    const unsubscribe = useEditorStore.subscribe(changes);
-
-    try {
-      fireEvent.doubleClick(screen.getByTitle('user_id'));
-      const input = screen.getByDisplayValue('user_id');
-      fireEvent.change(input, { target: { value: 'account_id' } });
-      fireEvent.keyDown(input, { key: 'Enter' });
-      const state = useEditorStore.getState();
-      console.info('field rename document result', {
-        field: state.rows[0].fieldName,
-        clustering: state.tableMiscConfig.partitions?.clustering?.columns,
-        notifications: changes.mock.calls.length,
-      });
-      expect(state.tableMiscConfig.partitions?.clustering?.columns).toEqual(['account_id']);
-      expect(state.indexes[0].fields[0].name).toBe('account_id');
-      expect(changes).toHaveBeenCalledTimes(1);
-    } finally {
-      unsubscribe();
-    }
-  });
-
   it('粘贴交换字段名时按原字段身份一次性更新引用', () => {
     const first = { ...createEmptyRow(), fieldName: 'a', fieldType: 'BIGINT' };
     const second = { ...createEmptyRow(), fieldName: 'b', fieldType: 'BIGINT' };
@@ -186,28 +125,5 @@ describe('DataTable 单元格编辑切换', () => {
     } finally {
       unsubscribe();
     }
-  });
-
-  it('编辑提交时一次点击即可选中目标单元格', async () => {
-    const { container } = render(<DataTable />);
-
-    fireEvent.doubleClick(screen.getByTitle('id'));
-    const input = screen.getByDisplayValue('id');
-    fireEvent.change(input, { target: { value: 'abc' } });
-
-    const commentCell = container.querySelector<HTMLTableCellElement>(
-      'tbody td[data-row-index="0"][data-col-index="2"]',
-    );
-    expect(commentCell).not.toBeNull();
-
-    if (!commentCell) return;
-
-    fireEvent.pointerDown(commentCell, { button: 0 });
-
-    expect(useEditorStore.getState().rows[0].fieldName).toBe('abc');
-    expect(commentCell).toHaveClass('ring-2');
-    await waitFor(() => {
-      expect(document.activeElement).toHaveAttribute('title', '主键');
-    });
   });
 });

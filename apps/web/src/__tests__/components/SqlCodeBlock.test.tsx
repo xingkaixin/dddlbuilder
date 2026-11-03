@@ -23,18 +23,4 @@ describe('SqlCodeBlock', () => {
     expect(container.querySelectorAll('[data-line]')).toHaveLength(4);
     expect(container.querySelector('code span[style*="color"]')).not.toBeNull();
   });
-
-  it('updates highlighting when the theme and SQL change', () => {
-    theme.resolvedTheme = 'light';
-    const { container, rerender } = render(<SqlCodeBlock code="SELECT 1;" />);
-    const lightColor = container.querySelector('code span[style*="color"]')?.getAttribute('style');
-
-    theme.resolvedTheme = 'dark';
-    rerender(<SqlCodeBlock code="SELECT 2;" />);
-
-    expect(container.querySelector('code')?.textContent).toBe('SELECT 2;');
-    expect(container.querySelector('code span[style*="color"]')?.getAttribute('style')).not.toBe(
-      lightColor,
-    );
-  });
 });

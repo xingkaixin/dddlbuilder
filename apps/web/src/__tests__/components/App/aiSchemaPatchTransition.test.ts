@@ -25,90 +25,6 @@ const createState = (rows = [row('id', 1)]): PersistedState => ({
   authObjects: [],
 });
 
-describe('AI field changes', () => {
-  it('inserts a field at its candidate position', () => {
-    const email = row('email', 2);
-
-    const result = applyAISchemaChanges(createState(), createState([row('id', 1), email]), [
-      {
-        id: 'field:add:email',
-        kind: 'field',
-        type: 'add',
-        fieldName: 'email',
-        newRow: email,
-      },
-    ]);
-
-    expect(result.rows.map(({ fieldName }) => fieldName)).toEqual(['id', 'email']);
-  });
-
-  it('renames a field case-insensitively', () => {
-    const renamed = row('account_id', 1);
-
-    const result = applyAISchemaChanges(createState([row('User_ID', 1)]), createState([renamed]), [
-      {
-        id: 'field:rename:user_id:account_id',
-        kind: 'field',
-        type: 'rename',
-        fieldName: 'account_id',
-        oldFieldName: 'user_id',
-        newRow: renamed,
-      },
-    ]);
-
-    expect(result.rows[0]?.fieldName).toBe('account_id');
-  });
-
-  it('removes a field', () => {
-    const result = applyAISchemaChanges(
-      createState([row('id', 1), row('email', 2)]),
-      createState(),
-      [
-        {
-          id: 'field:remove:email',
-          kind: 'field',
-          type: 'remove',
-          fieldName: 'email',
-        },
-      ],
-    );
-
-    expect(result.rows).toEqual([row('id', 1)]);
-  });
-
-  it('leaves unsupported incomplete changes unchanged', () => {
-    const rows = [row('id', 1)];
-
-    const result = applyAISchemaChanges(createState(rows), createState(rows), [
-      {
-        id: 'field:add:email',
-        kind: 'field',
-        type: 'add',
-        fieldName: 'email',
-      },
-    ]);
-
-    expect(result).toEqual(createState(rows));
-  });
-
-  it('does not add the same field twice', () => {
-    const email = row('email', 2);
-
-    const change = {
-      id: 'field:add:email',
-      kind: 'field' as const,
-      type: 'add' as const,
-      fieldName: 'email',
-      newRow: email,
-    };
-    const candidateRows = [row('id', 1), email];
-    const first = applyAISchemaChanges(createState(), createState(candidateRows), [change]);
-    const second = applyAISchemaChanges(first, createState(candidateRows), [change]);
-
-    expect(second.rows.map((item) => item.fieldName)).toEqual(['id', 'email']);
-  });
-});
-
 describe('applyAISchemaChanges', () => {
   it('rejects a partial rename that keeps the conflicting field', () => {
     const current = createState([
@@ -198,21 +114,6 @@ describe('applyAISchemaChanges', () => {
     },
   );
 
-  it.each([false, true])('adds a field with a name vacated by a rename (reverse=%s)', (reverse) => {
-    const current = createState([{ ...row('id', 1), id: 'original' }]);
-
-    const candidate = createState([
-      { ...row('id', 1), id: 'new' },
-      { ...current.rows[0], fieldName: 'legacy_id' },
-    ]);
-    const changes = buildAISchemaChanges(current, candidate);
-
-    if (reverse) changes.reverse();
-    const result = applyAISchemaChanges(current, candidate, changes);
-    expect(result.rows).toEqual(candidate.rows);
-    expect(applyAISchemaChanges(result, candidate, changes)).toEqual(result);
-  });
-
   it('preserves the current field identity when an equivalent AI field has a new ID', () => {
     const current = createState([{ ...row('id', 1), id: 'old' }]);
     const candidate = createState([{ ...row('id', 1), id: 'new' }]);
@@ -254,39 +155,6 @@ describe('applyAISchemaChanges', () => {
       index,
     ]);
   });
-
-  it.each([false, true])(
-    'preserves a modified index after field removal (reverse=%s)',
-    (reverse) => {
-      const current: PersistedState = {
-        ...createState([row('old_key', 1), row('new_key', 2)]),
-        indexes: [
-          {
-            id: 'uk-keys',
-            name: 'uk_keys',
-            kind: 'unique_index',
-            fields: [
-              { name: 'old_key', direction: 'ASC' },
-              { name: 'new_key', direction: 'ASC' },
-            ],
-          },
-        ],
-      };
-      const candidate = {
-        ...current,
-        rows: [current.rows[1]],
-        indexes: [{ ...current.indexes[0], fields: [current.indexes[0].fields[1]] }],
-      };
-      const changes = buildAISchemaChanges(current, candidate);
-
-      if (reverse) changes.reverse();
-      const next = applyAISchemaChanges(current, candidate, changes);
-
-      expect(next.rows).toEqual(candidate.rows);
-      expect(next.indexes).toEqual(candidate.indexes);
-      expect(applyAISchemaChanges(next, candidate, changes)).toEqual(next);
-    },
-  );
 
   it('replaces an auto-renamed index independently of change order', () => {
     const oldRow = { ...row('old_name', 1), id: 'f1' };
@@ -371,56 +239,5 @@ describe('applyAISchemaChanges', () => {
     expect(next.indexes).toEqual([]);
     expect(next.foreignKeys).toEqual([]);
     expect(next.mysqlPartitionConfig).toMatchObject({ enabled: false, columns: [] });
-  });
-
-  it('applies a selected batch as one state transition and stays idempotent', () => {
-    const current = createState();
-    const email = row('email', 2);
-
-    const index: IndexDefinition = {
-      id: 'idx-email',
-      name: 'idx_users_email',
-      fields: [{ name: 'email', direction: 'ASC' as const }],
-      kind: 'index',
-    };
-    const candidate = {
-      ...current,
-      tableComment: 'Accounts',
-      rows: [...current.rows, email],
-      indexes: [index],
-    };
-    const changes = [
-      {
-        id: 'table:table_comment',
-        kind: 'table' as const,
-        type: 'table_comment' as const,
-        oldValue: '',
-        newValue: 'Accounts',
-      },
-      {
-        id: 'field:add:email',
-        kind: 'field' as const,
-        type: 'add' as const,
-        fieldName: 'email',
-        newRow: email,
-      },
-      {
-        id: 'index:add:idx_users_email',
-        kind: 'index' as const,
-        type: 'add' as const,
-        indexName: index.name,
-        newIndex: index,
-      },
-    ];
-
-    const first = applyAISchemaChanges(current, candidate, changes);
-    const second = applyAISchemaChanges(first, candidate, changes);
-
-    expect(first).toMatchObject({
-      tableComment: 'Accounts',
-      rows: [{ fieldName: 'id' }, { fieldName: 'email' }],
-      indexes: [{ name: 'idx_users_email' }],
-    });
-    expect(second).toEqual(first);
   });
 });

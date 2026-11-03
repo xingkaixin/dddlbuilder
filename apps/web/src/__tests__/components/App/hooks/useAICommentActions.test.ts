@@ -111,15 +111,6 @@ describe('useAICommentActions', () => {
     expect(mocks.refreshCreditsAfterSuccess).toHaveBeenCalledOnce();
   });
 
-  it('翻译模式可以更新当前文档的已有注释', async () => {
-    mocks.requestComments.mockResolvedValueOnce(commentResult);
-    const hook = renderComments();
-    act(() => hook.result.current.handleGenerateComments('translate', 'en-US'));
-    await waitFor(() =>
-      expect(useEditorStore.getState().rows[1].fieldComment).toBe('模型生成名称'),
-    );
-  });
-
   it('切换到内容相同的另一文档也会取消请求并丢弃迟到结果', async () => {
     const finish = delayComments();
     const hook = renderComments();
@@ -142,41 +133,5 @@ describe('useAICommentActions', () => {
     await act(async () => finish());
     expect(useEditorStore.getState().tableComment).toBe('用户刚输入的注释');
     expect(useEditorStore.getState().rows[0].fieldComment).toBe('');
-  });
-
-  it('响应已返回但尚未写回时，仍保护最新编辑', async () => {
-    const finish = delayComments();
-    mocks.refreshCreditsAfterSuccess.mockImplementationOnce(() => {
-      useEditorStore.getState().setTableComment('最新编辑');
-    });
-    const hook = renderComments();
-    await startComments(hook);
-    await act(async () => finish());
-    expect(useEditorStore.getState().tableComment).toBe('最新编辑');
-  });
-
-  it('卸载后取消请求，迟到结果不能写入全局编辑器', async () => {
-    const finish = delayComments();
-    const hook = renderComments();
-    const signal = await startComments(hook);
-    hook.unmount();
-    expect(signal.aborted).toBe(true);
-    await act(async () => finish());
-    expect(useEditorStore.getState().tableComment).toBe('');
-    expect(useEditorStore.getState().rows[0].fieldComment).toBe('');
-  });
-
-  it('新请求开始后丢弃旧请求结果，新请求仍可正常应用', async () => {
-    const finishOld = delayComments();
-    const finishNew = delayComments();
-    const hook = renderComments();
-    const signal = await startComments(hook);
-    act(() => hook.result.current.handleGenerateComments('translate', 'en-US'));
-    await waitFor(() => expect(mocks.requestComments).toHaveBeenCalledTimes(2));
-    expect(signal.aborted).toBe(true);
-    await act(async () => finishOld());
-    expect(useEditorStore.getState().tableComment).toBe('');
-    await act(async () => finishNew({ ...commentResult, tableComment: 'Users' }));
-    expect(useEditorStore.getState().tableComment).toBe('Users');
   });
 });

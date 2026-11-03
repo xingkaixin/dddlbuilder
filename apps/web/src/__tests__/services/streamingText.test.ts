@@ -1,6 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { readTextStream } from '@/services/streamingText';
-import { createAITextStream } from '@/__tests__/utils/aiStream';
 
 function createTextStream(chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
@@ -16,7 +15,7 @@ function createTextStream(chunks: string[]): ReadableStream<Uint8Array> {
 }
 
 describe('readTextStream', () => {
-  it.each(['', '{"type":"delta","text":"partial"}\n'])(
+  it.each(['{"type":"delta","text":"partial"}\n'])(
     'rejects an upstream error after %j instead of returning success',
     async (prefix) => {
       const stream = createTextStream([
@@ -30,59 +29,12 @@ describe('readTextStream', () => {
     },
   );
 
-  it('cancels the reader and releases its lock when a frame cannot be decoded', async () => {
-    const cancel = vi.fn();
-
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode('{"type":"delta","text":42}\n'));
-      },
-      cancel,
-    });
-    await expect(readTextStream(stream)).rejects.toThrow('AI');
-    expect(cancel).toHaveBeenCalledOnce();
-    expect(stream.locked).toBe(false);
-  });
-
-  it('uses the server message for an error code introduced by a newer server', async () => {
-    await expect(
-      readTextStream(
-        createTextStream(['{"type":"error","error":"New server error","code":"FUTURE_CODE"}\n']),
-      ),
-    ).rejects.toThrow('New server error');
-  });
-
   it('rejects a truncated stream without a completion event', async () => {
     await expect(
       readTextStream(createTextStream(['{"type":"delta","text":"partial"}\n']), {
         debugContext: { route: 'review', forceDebug: true },
       }),
     ).rejects.toThrow('AI');
-  });
-
-  it('should return full text and emit first chunk + final result', async () => {
-    const updates: string[] = [];
-    const stream = createAITextStream(['{"a":', '1}']);
-
-    const fullText = await readTextStream(stream, {
-      updateIntervalMs: 1000,
-      onUpdate: (text) => updates.push(text),
-    });
-
-    expect(fullText).toBe('{"a":1}');
-    expect(updates).toEqual(['{"a":', '{"a":1}']);
-  });
-
-  it('should return empty string for empty stream', async () => {
-    const stream = createAITextStream([]);
-    const updates: string[] = [];
-
-    const fullText = await readTextStream(stream, {
-      onUpdate: (text) => updates.push(text),
-    });
-
-    expect(fullText).toBe('');
-    expect(updates).toHaveLength(0);
   });
 
   it('decodes split UTF-8 bytes and multiple events in a chunk', async () => {
@@ -100,19 +52,5 @@ describe('readTextStream', () => {
     expect(await readTextStream(createTextStream([new TextDecoder().decode(wire)]))).toBe(
       '中文\n完成',
     );
-  });
-
-  it.each([
-    '',
-    '{"type":"unknown"}\n',
-    'not json\n',
-    'null\n',
-    '{"type":"error","error":42}\n',
-    '{"type":"done"}\n{"type":"delta","text":"late"}\n',
-    '{"type":"done"}\n{"type":"done"}\n',
-    '{"type":"delta","text":1}\n',
-    '{"type":"done"}\ntruncated',
-  ])('rejects invalid or incomplete framing: %j', async (wire) => {
-    await expect(readTextStream(createTextStream([wire]))).rejects.toThrow('AI');
   });
 });

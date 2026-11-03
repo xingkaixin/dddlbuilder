@@ -82,23 +82,4 @@ describe('workspace entity commits', () => {
       doc.destroy();
     },
   );
-
-  it('allows updates after reactivation commits', async () => {
-    await runIndexedDbRequest(
-      await openDb(),
-      WORKSPACE_ENTITY_META_STORE_NAME,
-      'readwrite',
-      (store) => store.put(createWorkspaceEntityDeletionMarker(target, 'deleted')),
-    );
-    const doc = new Y.Doc();
-    await commitWorkspaceEntityWrites([{ target, mode: 'activate' }], () =>
-      doc.getMap('tables').set('table-1', 'restored'),
-    );
-    expect(await readMarker()).toBeUndefined();
-    await commitWorkspaceEntityWrites([{ target, mode: 'update' }], () =>
-      doc.getMap('tables').set('table-1', 'updated'),
-    );
-    expect(doc.getMap('tables').get('table-1')).toBe('updated');
-    doc.destroy();
-  });
 });

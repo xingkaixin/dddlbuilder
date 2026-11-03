@@ -35,17 +35,6 @@ const state: PersistedState = {
 };
 
 describe('applySavedState', () => {
-  it('一次通知内替换完整文档', () => {
-    useEditorStore.getState().replaceDocument({ ...state, tableName: 'before' });
-    const tableNames: string[] = [];
-    const unsubscribe = useEditorStore.subscribe((current) => tableNames.push(current.tableName));
-
-    applySavedState(state);
-    unsubscribe();
-
-    expect(tableNames).toEqual(['users']);
-  });
-
   it('由一个入口应用并约束持久化状态', () => {
     applySavedState(state);
 

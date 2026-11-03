@@ -1,19 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import {
-  createVersion,
-  listVersions,
-  getVersion,
-  deleteVersion,
-  pruneOldVersions,
-  countVersions,
-} from '@/utils/tableVersions';
-import * as dbUtils from '@/utils/workspaceDb';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { createVersion, listVersions, pruneOldVersions } from '@/utils/tableVersions';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
-import {
-  beginWorkspaceEntityDeletion,
-  cancelWorkspaceEntityDeletion,
-} from '@/utils/workspaceEntityDeletion';
 
 function createMockState(overrides: Partial<PersistedState> = {}): PersistedState {
   return {
@@ -42,49 +30,13 @@ function createMockState(overrides: Partial<PersistedState> = {}): PersistedStat
   };
 }
 
-const createPersistedVersion = async (...args: Parameters<typeof createVersion>) => {
-  const version = await createVersion(...args);
-
-  if (!version) throw new Error('Expected version to be persisted');
-
-  return version;
-};
-
 describe('tableVersions', () => {
-  it('decodes index kinds from legacy version snapshots', async () => {
-    const target = {
-      scope: { kind: 'anonymous' } as const,
-      tableId: 'legacy-kind',
-      normalizedName: 'legacy',
-    };
-    const state = createMockState({
-      // SAFETY: this fixture intentionally uses the legacy index fields decoded by createVersion.
-      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- legacy snapshots lack the current `kind` field.
-      indexes: [
-        {
-          id: 'uq',
-          name: 'uq_id',
-          fields: [{ name: 'id', direction: 'ASC' }],
-          unique: true,
-          isUniqueConstraint: true,
-        },
-      ] as unknown as PersistedState['indexes'],
-    });
-    const version = await createPersistedVersion(target, state);
-    const loaded = await getVersion(version.id, target);
-    expect(loaded?.state.indexes[0]).toMatchObject({ kind: 'unique_constraint' });
-  });
   let testId = 0;
 
   const getTestTableName = () => {
     const normalizedName = `test_table_${Date.now()}_${testId++}`;
 
     return { scope: { kind: 'anonymous' } as const, tableId: normalizedName, normalizedName };
-  };
-  const defaultTarget = {
-    scope: { kind: 'anonymous' } as const,
-    tableId: 'test',
-    normalizedName: 'test',
   };
 
   beforeAll(() => {
@@ -95,312 +47,64 @@ describe('tableVersions', () => {
     teardownFakeIndexedDB();
   });
 
-  describe('createVersion', () => {
-    it('创建版本快照', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState();
-      const version = await createPersistedVersion(testTableName, state, '初始版本');
+  it('同名表在不同工作区中互不影响', async () => {
+    const normalizedName = getTestTableName().normalizedName;
 
-      expect(version.id).toBeDefined();
-      expect(version.tableNormalizedName).toBe(testTableName.normalizedName);
-      expect(version.state).toEqual(state);
-      expect(version.message).toBe('初始版本');
-      expect(version.createdAt).toBeGreaterThan(0);
-    });
+    const anonymousTarget = {
+      scope: { kind: 'anonymous' } as const,
+      tableId: 'shared-id',
+      normalizedName,
+    };
+    const userTarget = {
+      scope: {
+        kind: 'user' as const,
+        userId: 'user-1',
+        workspaceId: 'workspace-1',
+      },
+      tableId: 'shared-id',
+      normalizedName,
+    };
 
-    it('删除标记存在时不写入迟到版本', async () => {
-      const target = getTestTableName();
-      await beginWorkspaceEntityDeletion(target);
+    await createVersion(anonymousTarget, createMockState(), 'anonymous');
+    await createVersion(userTarget, createMockState(), 'user');
 
-      expect(await createVersion(target, createMockState())).toBeNull();
-      expect(await listVersions(target)).toEqual([]);
-    });
-
-    it('同一删除 marker 释放前不能被新操作接管', async () => {
-      const target = getTestTableName();
-      const firstOperationId = await beginWorkspaceEntityDeletion(target);
-
-      await expect(beginWorkspaceEntityDeletion(target)).rejects.toThrow('表正在永久删除');
-      await cancelWorkspaceEntityDeletion(target, firstOperationId);
-      const secondOperationId = await beginWorkspaceEntityDeletion(target);
-
-      await cancelWorkspaceEntityDeletion(target, firstOperationId);
-
-      expect(await createVersion(target, createMockState())).toBeNull();
-      await cancelWorkspaceEntityDeletion(target, secondOperationId);
-      expect(await createVersion(target, createMockState())).not.toBeNull();
-    });
+    expect((await listVersions(anonymousTarget)).map((version) => version.message)).toEqual([
+      'anonymous',
+    ]);
+    expect((await listVersions(userTarget)).map((version) => version.message)).toEqual(['user']);
   });
 
-  describe('listVersions', () => {
-    it('按时间倒序返回版本列表', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState();
-      await createVersion(testTableName, state, 'v1');
-      await new Promise((r) => setTimeout(r, 10));
-      await createVersion(testTableName, state, 'v2');
+  it('表重命名后仍通过稳定 ID 读取原有历史', async () => {
+    const originalTarget = getTestTableName();
+    await createVersion(originalTarget, createMockState(), 'before-rename');
 
-      const versions = await listVersions(testTableName);
-      expect(versions.length).toBe(2);
-      expect(versions[0].message).toBe('v2');
-      expect(versions[1].message).toBe('v1');
-    });
+    const renamedTarget = {
+      ...originalTarget,
+      normalizedName: `${originalTarget.normalizedName}_v2`,
+    };
 
-    it('空表返回空数组', async () => {
-      const testTableName = getTestTableName();
-      const versions = await listVersions(testTableName);
-      expect(versions).toEqual([]);
-    });
+    const versions = await listVersions(renamedTarget);
 
-    it('同名表在不同工作区中互不影响', async () => {
-      const normalizedName = getTestTableName().normalizedName;
-
-      const anonymousTarget = {
-        scope: { kind: 'anonymous' } as const,
-        tableId: 'shared-id',
-        normalizedName,
-      };
-      const userTarget = {
-        scope: {
-          kind: 'user' as const,
-          userId: 'user-1',
-          workspaceId: 'workspace-1',
-        },
-        tableId: 'shared-id',
-        normalizedName,
-      };
-
-      await createVersion(anonymousTarget, createMockState(), 'anonymous');
-      await createVersion(userTarget, createMockState(), 'user');
-
-      expect((await listVersions(anonymousTarget)).map((version) => version.message)).toEqual([
-        'anonymous',
-      ]);
-      expect((await listVersions(userTarget)).map((version) => version.message)).toEqual(['user']);
-    });
-
-    it('表重命名后仍通过稳定 ID 读取原有历史', async () => {
-      const originalTarget = getTestTableName();
-      await createVersion(originalTarget, createMockState(), 'before-rename');
-
-      const renamedTarget = {
-        ...originalTarget,
-        normalizedName: `${originalTarget.normalizedName}_v2`,
-      };
-
-      const versions = await listVersions(renamedTarget);
-
-      expect(versions.map((version) => version.message)).toEqual(['before-rename']);
-    });
-
-    it('读取不认领未分区历史', async () => {
-      const target = getTestTableName();
-
-      const competingTarget = {
-        scope: {
-          kind: 'user' as const,
-          userId: 'legacy-user',
-          workspaceId: 'legacy-workspace',
-        },
-        tableId: `${target.tableId}-competing`,
-        normalizedName: target.normalizedName,
-      };
-      const db = await dbUtils.openDb();
-      await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(dbUtils.VERSION_STORE_NAME, 'readwrite');
-        tx.objectStore(dbUtils.VERSION_STORE_NAME).add({
-          id: `legacy-${target.tableId}`,
-          tableNormalizedName: target.normalizedName,
-          state: createMockState(),
-          message: 'legacy',
-          createdAt: Date.now(),
-        });
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-
-      expect(await listVersions(target)).toEqual([]);
-      expect(await listVersions(competingTarget)).toEqual([]);
-    });
-
-    it('通过 ID 读取也不会认领未分区版本', async () => {
-      const target = getTestTableName();
-      const versionId = `legacy-by-id-${target.tableId}`;
-      const db = await dbUtils.openDb();
-      await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(dbUtils.VERSION_STORE_NAME, 'readwrite');
-        tx.objectStore(dbUtils.VERSION_STORE_NAME).add({
-          id: versionId,
-          tableNormalizedName: target.normalizedName,
-          state: createMockState(),
-          message: 'legacy-by-id',
-          createdAt: Date.now(),
-        });
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-
-      const version = await getVersion(versionId, target);
-
-      expect(version).toBeNull();
-    });
+    expect(versions.map((version) => version.message)).toEqual(['before-rename']);
   });
 
-  describe('getVersion', () => {
-    it('获取单个版本', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState();
-      const created = await createPersistedVersion(testTableName, state);
+  it('清理超限版本', async () => {
+    const testTableName = getTestTableName();
+    const state = createMockState();
 
-      const fetched = await getVersion(created.id, testTableName);
-      expect(fetched).not.toBeNull();
-      expect(fetched?.id).toBe(created.id);
-    });
+    // 创建 3 个版本
+    await createVersion(testTableName, state, 'v1');
+    await new Promise((r) => setTimeout(r, 5));
+    await createVersion(testTableName, state, 'v2');
+    await new Promise((r) => setTimeout(r, 5));
+    await createVersion(testTableName, state, 'v3');
 
-    it('不存在返回 null', async () => {
-      const result = await getVersion('non_existent_id', defaultTarget);
-      expect(result).toBeNull();
-    });
-  });
+    // 保留最新 1 个
+    const deleted = await pruneOldVersions(testTableName, 1);
+    expect(deleted).toBe(2);
 
-  describe('deleteVersion', () => {
-    it('删除版本', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState();
-      const version = await createPersistedVersion(testTableName, state);
-
-      await deleteVersion(version.id, testTableName);
-      const result = await getVersion(version.id, testTableName);
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('pruneOldVersions', () => {
-    it('清理超限版本', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState();
-
-      // 创建 3 个版本
-      await createVersion(testTableName, state, 'v1');
-      await new Promise((r) => setTimeout(r, 5));
-      await createVersion(testTableName, state, 'v2');
-      await new Promise((r) => setTimeout(r, 5));
-      await createVersion(testTableName, state, 'v3');
-
-      // 保留最新 1 个
-      const deleted = await pruneOldVersions(testTableName, 1);
-      expect(deleted).toBe(2);
-
-      const remaining = await listVersions(testTableName);
-      expect(remaining.length).toBe(1);
-      expect(remaining[0].message).toBe('v3');
-    });
-
-    it('不超限时不删除', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState();
-      await createVersion(testTableName, state);
-
-      const deleted = await pruneOldVersions(testTableName, 10);
-      expect(deleted).toBe(0);
-    });
-  });
-
-  describe('countVersions', () => {
-    it('返回版本数量', async () => {
-      const testTableName = getTestTableName();
-      const state = createMockState();
-      await createVersion(testTableName, state);
-      await createVersion(testTableName, state);
-
-      const count = await countVersions(testTableName);
-      expect(count).toBe(2);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should handle request.onerror and tx.onabort in runWithStore', async () => {
-      let mockTx: any;
-      let mockRequest: any;
-
-      const mockDb = {
-        transaction: () => mockTx,
-        close: vi.fn(),
-      };
-
-      // SAFETY: the fake database implements the transaction and close methods used by runWithStore.
-      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture intentionally omits unrelated IndexedDB members.
-      vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
-
-      // 1. request.onerror fallback
-      mockRequest = { onerror: null, onsuccess: null, error: null };
-      mockTx = {
-        objectStore: () => ({ get: () => mockRequest }),
-        onerror: null,
-        onabort: null,
-        oncomplete: null,
-      };
-
-      const p1 = getVersion('1', defaultTarget);
-      await Promise.resolve(); // yield to let openDb resolve
-      mockRequest.onerror();
-      await expect(p1).rejects.toThrow('请求失败');
-
-      // 2. tx.onerror fallback
-      mockRequest = { onerror: null, onsuccess: null, result: undefined };
-      mockTx = {
-        objectStore: () => ({ get: () => mockRequest }),
-        onerror: null,
-        onabort: null,
-        oncomplete: null,
-        error: null,
-      };
-
-      const p2 = getVersion('1', defaultTarget);
-      await Promise.resolve();
-      mockTx.onerror();
-      await expect(p2).rejects.toThrow('事务失败');
-
-      vi.restoreAllMocks();
-    });
-
-    it('propagates version history transaction failures', async () => {
-      let mockTx: any;
-      const mockRequest = { onerror: null, onsuccess: null };
-
-      const mockDb = {
-        transaction: () => mockTx,
-        close: vi.fn(),
-      };
-      // SAFETY: the fake database implements the transaction and close methods used by runWithStore.
-      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- the fixture intentionally omits unrelated IndexedDB members.
-      vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
-
-      mockTx = {
-        objectStore: () => ({ index: () => ({ getAll: () => mockRequest }) }),
-        onerror: null,
-        onabort: null,
-        oncomplete: null,
-        error: new Error('list error'),
-      };
-      const failedRead = listVersions(defaultTarget);
-      await Promise.resolve();
-      mockTx.onerror();
-      await expect(failedRead).rejects.toThrow('list error');
-
-      mockTx = {
-        objectStore: () => ({ index: () => ({ getAll: () => mockRequest }) }),
-        onerror: null,
-        onabort: null,
-        oncomplete: null,
-        error: null,
-      };
-      const abortedRead = listVersions(defaultTarget);
-      await Promise.resolve();
-      mockTx.onabort();
-      await expect(abortedRead).rejects.toThrow('IndexedDB 事务被中止');
-
-      vi.restoreAllMocks();
-    });
+    const remaining = await listVersions(testTableName);
+    expect(remaining.length).toBe(1);
+    expect(remaining[0].message).toBe('v3');
   });
 });

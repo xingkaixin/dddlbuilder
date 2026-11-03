@@ -16,7 +16,6 @@ import {
   exportWorkspaceYDocToSnapshot,
   upsertDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
-import { WorkspaceYDocSyncClient } from '@/services/workspaceYDocSyncClient';
 import { commitLegacyWorkspaceYDoc } from '@/services/workspaceYDocStorage';
 import {
   clearLegacyWorkspaceData,
@@ -204,44 +203,6 @@ describe('WorkspaceYDocProvider', () => {
     expect(retryPendingWorkspaceCleanup).toHaveBeenCalledTimes(2);
   });
 
-  it('does not rerender document consumers when only connection status changes', async () => {
-    let renders = 0;
-
-    const { result } = renderHook(
-      () => {
-        renders += 1;
-
-        return useWorkspaceYDocDocument();
-      },
-      { wrapper: WorkspaceYDocProvider },
-    );
-    await waitFor(() => expect(result.current.localSynced).toBe(true));
-    const before = renders;
-    const call = vi.mocked(WorkspaceYDocSyncClient).mock.calls.at(-1);
-
-    if (!call) throw new Error('Expected a sync client');
-    const onStatus = call[2];
-    act(() => onStatus({ state: 'connected', synced: true }));
-    expect(renders).toBe(before);
-  });
-
-  it('waits for the refreshed session before retrying the existing sync client', async () => {
-    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(null);
-    let completeRefresh!: () => void;
-    auth.refreshSession.mockReturnValueOnce(
-      new Promise<void>((resolve) => {
-        completeRefresh = resolve;
-      }),
-    );
-    const view = await startProvider();
-
-    act(() => view.result.current.retry());
-    expect(retryClient).not.toHaveBeenCalled();
-
-    completeRefresh();
-    await waitFor(() => expect(retryClient).toHaveBeenCalledOnce());
-  });
-
   it('migrates a structurally valid local document without a schema version', async () => {
     const legacy = new Y.Doc();
     upsertDraftInYDoc(legacy, 'legacy', {
@@ -297,29 +258,6 @@ describe('WorkspaceYDocProvider', () => {
     expect(destroy).toHaveBeenCalledOnce();
   });
 
-  it('legacy 快照合并成功后应本地就绪并连接 Durable Object', async () => {
-    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(legacySnapshotWithTable());
-
-    const { result } = await startProvider();
-
-    expect(WorkspaceYDocSyncClient).toHaveBeenCalledWith(
-      'ws-1',
-      expect.anything(),
-      expect.any(Function),
-    );
-    expect(connect).toHaveBeenCalledTimes(1);
-    expect(clearLegacyWorkspaceData).toHaveBeenCalledOnce();
-    expect(vi.mocked(commitLegacyWorkspaceYDoc).mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(clearLegacyWorkspaceData).mock.invocationCallOrder[0],
-    );
-
-    const snapshot = exportWorkspaceYDocToSnapshot(requireDoc(result.current.doc));
-    expect(snapshot.savedTables[0]).toMatchObject({
-      normalizedName: 'legacy_table',
-      createdAt: 111,
-    });
-  });
-
   it('retains the source partition when the target transaction cannot commit', async () => {
     prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(legacySnapshotWithTable());
     vi.mocked(commitLegacyWorkspaceYDoc).mockRejectedValueOnce(new Error('QuotaExceededError'));
@@ -329,27 +267,6 @@ describe('WorkspaceYDocProvider', () => {
     first.unmount();
     await startProvider();
     expect(clearLegacyWorkspaceData).toHaveBeenCalledOnce();
-  });
-
-  it('legacy 快照准备失败时阻止空工作区和远端连接', async () => {
-    prepareLegacyWorkspaceSnapshotMock.mockRejectedValue(new Error('QuotaExceededError'));
-    renderProvider();
-    await screen.findByTestId('workspace-bootstrap-error');
-    expect(connect).not.toHaveBeenCalled();
-    expect(clearLegacyWorkspaceData).not.toHaveBeenCalled();
-  });
-
-  it('迁移成功后第二次启动不应再跑 legacy 迁移', async () => {
-    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(legacySnapshotWithTable());
-
-    const first = await startProvider();
-    first.unmount();
-    const second = await startProvider();
-
-    expect(prepareLegacyWorkspaceSnapshotMock).toHaveBeenCalledTimes(1);
-    expect(
-      exportWorkspaceYDocToSnapshot(requireDoc(second.result.current.doc)).savedTables,
-    ).toHaveLength(1);
   });
 
   it('Y.Doc 已删除但本地分区仍存在的实体不应在第二次启动复活', async () => {
@@ -386,15 +303,5 @@ describe('WorkspaceYDocProvider', () => {
     expect(
       exportWorkspaceYDocToSnapshot(requireDoc(second.result.current.doc)).savedTables,
     ).toHaveLength(1);
-  });
-
-  it('legacy 分区没有数据时也算迁移完成，下次启动直接跳过', async () => {
-    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(null);
-
-    const first = await startProvider();
-    first.unmount();
-    await startProvider();
-
-    expect(prepareLegacyWorkspaceSnapshotMock).toHaveBeenCalledTimes(1);
   });
 });

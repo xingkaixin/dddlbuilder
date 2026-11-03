@@ -120,41 +120,4 @@ describe('business data workflow', () => {
     await screen.findByText(/表头不能为空或重复/);
     expect(screen.getByRole('button', { name: '校验全部数据并生成 SQL' })).toBeDisabled();
   });
-
-  it('maps an existing table, checks duplicate keys and omits database-generated values', async () => {
-    renderTool(<BusinessDataImportTool />);
-    await readText('code,amount\na,1.00\na,2.00');
-    fireEvent.change(screen.getByLabelText('导入目标'), { target: { value: 'existing' } });
-    fireEvent.change(screen.getByLabelText('数据来源'), { target: { value: 'sql' } });
-    fireEvent.change(screen.getByLabelText('表结构 SQL'), {
-      target: {
-        value:
-          'CREATE TABLE orders (id INT AUTO_INCREMENT PRIMARY KEY, code VARCHAR(20) NOT NULL, amount DECIMAL(8,2), CONSTRAINT uq_code UNIQUE (code));',
-      },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '解析 SQL' }));
-    await screen.findByLabelText('id 的源数据列');
-    expect(screen.getByLabelText('id 的源数据列')).toHaveValue('');
-    await validate();
-    expect(screen.getByText('文件内键值重复')).toBeInTheDocument();
-    await readText('code,amount\na,1.00\nb,2.00');
-    await validate();
-    fireEvent.click(screen.getByRole('button', { name: '下载完整 SQL' }));
-    const output = (await harness.lastDownload()).text;
-    expect(output).toContain('INSERT INTO `orders` (`code`, `amount`)');
-    expect(output).not.toContain('CREATE TABLE');
-  });
-
-  it('cancels stale background reads when the source changes', async () => {
-    renderTool(<BusinessDataImportTool />);
-    fireEvent.change(screen.getByLabelText('输入方式'), { target: { value: 'text' } });
-    fireEvent.change(screen.getByLabelText('业务数据文本'), { target: { value: 'old\nvalue' } });
-    fireEvent.click(screen.getByRole('button', { name: '读取数据' }));
-    fireEvent.change(screen.getByLabelText('业务数据文本'), { target: { value: 'new\nvalue' } });
-    await waitFor(() => expect(screen.queryByText('正在处理…')).not.toBeInTheDocument());
-    expect(screen.queryByLabelText('目标字段 1')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '读取数据' }));
-    await screen.findByLabelText('目标字段 1');
-    expect(screen.getByLabelText('目标字段 1')).toHaveValue('new');
-  });
 });

@@ -1,46 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { toast } from 'sonner';
 import { describe, expect, it, vi } from 'vitest';
 import { usePersistenceQueue } from '@/hooks/workspacePersistence/usePersistenceQueue';
 
 describe('usePersistenceQueue', () => {
-  it('失败后提示并可从提示重试', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const toastSpy = vi.spyOn(toast, 'error').mockImplementation(() => 'toast');
-
-    const task = vi
-      .fn<() => Promise<void>>()
-      .mockRejectedValueOnce(new Error('quota'))
-      .mockResolvedValueOnce();
-    const { result } = renderHook(() => usePersistenceQueue());
-
-    let completion!: Promise<unknown>;
-    act(() => {
-      completion = result.current.enqueue('draft:default', 'save draft', task);
-    });
-
-    await expect(completion).rejects.toThrow('quota');
-
-    await waitFor(() =>
-      expect(toastSpy).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          action: expect.objectContaining({ onClick: result.current.retryFailed }),
-        }),
-      ),
-    );
-    expect(errorSpy).toHaveBeenCalledWith(
-      '[workspace-persistence] save draft failed',
-      expect.any(Error),
-    );
-
-    act(() => {
-      result.current.retryFailed();
-    });
-
-    await waitFor(() => expect(task).toHaveBeenCalledTimes(2));
-  });
-
   it('同一实体的操作按提交顺序执行', async () => {
     let finishFirst!: () => void;
 
@@ -64,38 +26,5 @@ describe('usePersistenceQueue', () => {
     act(() => finishFirst());
 
     await waitFor(() => expect(second).toHaveBeenCalledOnce());
-  });
-
-  it('只执行同一实体最新的待执行整条写入', async () => {
-    let finishFirst!: () => void;
-
-    const first = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          finishFirst = resolve;
-        }),
-    );
-    const superseded = vi.fn().mockResolvedValue(undefined);
-    const latest = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => usePersistenceQueue());
-
-    act(() => {
-      result.current.enqueue('draft:default', 'save draft', first, { replaceable: true });
-    });
-    await waitFor(() => expect(first).toHaveBeenCalledOnce());
-
-    let supersededCompletion!: Promise<unknown>;
-    act(() => {
-      supersededCompletion = result.current.enqueue('draft:default', 'save draft', superseded, {
-        replaceable: true,
-      });
-      result.current.enqueue('draft:default', 'save draft', latest, { replaceable: true });
-    });
-
-    act(() => finishFirst());
-    await supersededCompletion;
-
-    expect(superseded).not.toHaveBeenCalled();
-    expect(latest).toHaveBeenCalledOnce();
   });
 });

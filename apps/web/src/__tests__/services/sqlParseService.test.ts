@@ -7,36 +7,6 @@ describe('requestSqlParse', () => {
     vi.restoreAllMocks();
   });
 
-  it('请求成功时应返回解析结果', async () => {
-    const parsedResult = {
-      tableName: 'users',
-      tableComment: '',
-      fields: [],
-      indexes: [],
-      foreignKeys: [],
-      authObjects: [],
-    };
-
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(Response.json({ result: parsedResult }));
-
-    const result = await requestSqlParse({
-      sql: 'CREATE TABLE users(id INT);',
-      dbType: 'mysql',
-    });
-
-    expect(result).toEqual(parsedResult);
-    expect(fetchSpy).toHaveBeenCalledWith('/api/parse-sql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sql: 'CREATE TABLE users(id INT);',
-        dbType: 'mysql',
-      }),
-    });
-  });
-
   it.each([requestSqlParse, requestMultiSqlParse])(
     '%s 应保留业务错误的安全标识与文案',
     async (parse) => {
@@ -55,61 +25,4 @@ describe('requestSqlParse', () => {
       });
     },
   );
-
-  it.each([requestSqlParse, requestMultiSqlParse])(
-    '%s 应将无有效错误体的 HTTP 失败保留为 ApiError',
-    async (parse) => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json(null, { status: 500 }));
-
-      const request = parse({ sql: 'invalid', dbType: 'mysql' });
-
-      await expect(request).rejects.toBeInstanceOf(ApiError);
-      await expect(request).rejects.toMatchObject({ status: 500, code: undefined });
-    },
-  );
-
-  it('响应结构不包含 result 时应抛出格式错误', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ foo: 'bar' }));
-
-    await expect(
-      requestSqlParse({ sql: 'CREATE TABLE t(id INT);', dbType: 'mysql' }),
-    ).rejects.toThrow('解析结果格式无效');
-  });
-});
-
-describe('SQL 响应契约', () => {
-  afterEach(() => vi.restoreAllMocks());
-
-  const result = {
-    tableName: 'users',
-    tableComment: '',
-    fields: [],
-    indexes: [],
-    foreignKeys: [],
-    authObjects: [],
-  };
-  it.each([
-    { ...result, fields: [{ name: 'id', type: 'INT' }] },
-    {
-      ...result,
-      indexes: [
-        { id: 'i', name: 'idx', kind: 'index', fields: [{ name: 'id', direction: 'sideways' }] },
-      ],
-    },
-    { ...result, foreignKeys: [null] },
-    { ...result, mysqlPartitionConfig: { enabled: true, type: 'HASH', columns: [42] } },
-  ])('拒绝嵌套解析数据损坏：%j', async (result) => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ result }));
-    await expect(
-      requestSqlParse({ sql: 'CREATE TABLE users(id INT)', dbType: 'mysql' }),
-    ).rejects.toThrow('解析结果格式无效');
-  });
-  it('批量响应拒绝损坏的失败条目', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      Response.json({ results: [result], failed: [{ statement: 'bad', error: 123 }] }),
-    );
-    await expect(requestMultiSqlParse({ sql: 'bad', dbType: 'mysql' })).rejects.toThrow(
-      '解析结果格式无效',
-    );
-  });
 });

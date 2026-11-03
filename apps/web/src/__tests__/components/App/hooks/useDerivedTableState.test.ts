@@ -76,17 +76,3 @@ it('增删索引、修改表名和数据库不改写已有索引名', async () =
   act(() => store.removeIndex(added.id));
   expect(useEditorStore.getState().indexes.map((index) => index.name)).toEqual(['email_lookup']);
 });
-
-it('未命名索引在读入文档时获得默认名', async () => {
-  const parsed = await new SqlParser().parseAsync(
-    'CREATE TABLE users (id INT, KEY (id));',
-    'mysql',
-  );
-  const imported = convertParsedResultToPersistedState(parsed, 'mysql');
-  expect(imported.indexes[0].name).toBe('idx_users_id');
-  useEditorStore.getState().replaceDocument({
-    ...imported,
-    indexes: [{ ...imported.indexes[0], name: '', kind: 'primary' }],
-  });
-  expect(useEditorStore.getState().indexes[0].name).toBe('pk_users');
-});

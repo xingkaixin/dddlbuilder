@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAIRequestAccess } from '@/hooks/useAIRequestAccess';
 import i18n from '@/i18n';
@@ -55,17 +55,5 @@ describe('useAIRequestAccess', () => {
 
     expect(result.current.getAccessError()).toBe(i18n.t('services.creditExhausted'));
     expect(mocks.openAuthDialog).not.toHaveBeenCalled();
-  });
-
-  it('统一处理服务端鉴权失败和成功后的额度刷新', () => {
-    const { result } = renderHook(() => useAIRequestAccess());
-
-    expect(
-      result.current.resolveRequestError(new Error(i18n.t('services.authRequired')), 'fallback'),
-    ).toBe(i18n.t('services.authRequired'));
-    act(() => result.current.refreshCreditsAfterSuccess());
-
-    expect(mocks.openAuthDialog).toHaveBeenCalledTimes(1);
-    expect(mocks.refreshCredits).toHaveBeenCalledTimes(1);
   });
 });

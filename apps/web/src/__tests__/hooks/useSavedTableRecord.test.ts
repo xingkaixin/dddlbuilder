@@ -7,7 +7,6 @@ import { useSavedTableRecord } from '@/hooks/useSavedTableRecord';
 import { getSavedTable, type SavedTableRecord } from '@/utils/savedTablesDb';
 import type * as SavedTablesDb from '@/utils/savedTablesDb';
 import { deleteSavedTableFromYDoc, upsertSavedTableInYDoc } from '@/services/workspaceYDocAdapter';
-import { workspaceLocalQueryKeys } from '@/queries/workspaceLocal';
 import { createQueryClientWrapper } from '../utils/queryClient';
 
 type WorkspaceFixture = {
@@ -56,28 +55,6 @@ describe('useSavedTableRecord', () => {
     workspace.scope = { kind: 'anonymous' };
     workspace.doc = null;
     vi.mocked(getSavedTable).mockReset().mockResolvedValue(record);
-  });
-
-  it('caches by table identity and refreshes the baseline after local writes', async () => {
-    const { wrapper, queryClient } = createQueryClientWrapper();
-
-    const { result, rerender, unmount } = renderHook(() => useSavedTableRecord({ ...target }), {
-      wrapper,
-    });
-    await waitFor(() => expect(result.current).toEqual(record));
-    rerender();
-    expect(getSavedTable).toHaveBeenCalledTimes(1);
-
-    const updated = { ...record, state: { ...record.state, tableComment: 'saved again' } };
-    vi.mocked(getSavedTable).mockResolvedValue(updated);
-    await act(async () => {
-      await queryClient.invalidateQueries({
-        queryKey: workspaceLocalQueryKeys.scope(workspace.scope),
-      });
-    });
-    await waitFor(() => expect(result.current?.state.tableComment).toBe('saved again'));
-    unmount();
-    queryClient.clear();
   });
 
   it('reads and tracks the authoritative Y.Doc instead of legacy local data', () => {

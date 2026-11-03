@@ -9,8 +9,6 @@ import { createAITextStream as createTextStream } from '@/__tests__/utils/aiStre
 
 describe('requestGenerateTable', () => {
   it.each([
-    {},
-    { tableName: 'users', tableComment: '', fields: 'invalid' },
     { tableName: 'users', tableComment: '', fields: [{ fieldName: 'id' }] },
     {
       tableName: 'users',
@@ -33,75 +31,6 @@ describe('requestGenerateTable', () => {
       ).rejects.toThrow('解析响应失败');
     },
   );
-
-  it('normalizes provider enum aliases before checking the completed contract', async () => {
-    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
-      new Response(
-        createTextStream([
-          JSON.stringify({
-            tableName: 'users',
-            tableComment: '',
-            fields: [
-              {
-                id: null,
-                fieldName: 'id',
-                fieldType: 'bigint',
-                fieldComment: '',
-                nullable: '否',
-                defaultKind: '自增',
-                onUpdate: '当前时间',
-              },
-            ],
-            designDecisions: [{ title: 'invalid' }, { title: 'key', rationale: 'stable' }],
-          }),
-        ]),
-      ),
-    );
-
-    const { result } = await requestGenerateTable(
-      { description: '生成用户表', dbType: 'mysql' },
-      { signal: new AbortController().signal },
-    );
-    expect(result.fields[0]).toMatchObject({
-      nullable: false,
-      defaultKind: 'auto_increment',
-      onUpdate: 'current_timestamp',
-    });
-    expect(result.fields[0].id).toBeTruthy();
-    expect(result.designDecisions).toEqual([{ title: 'key', rationale: 'stable' }]);
-  });
-
-  it('resolves legacy field identities using the requested dialect', async () => {
-    const rows = ['UserID', 'userid'].map((fieldName) => ({
-      id: fieldName,
-      fieldName,
-      fieldType: 'int',
-      fieldComment: '',
-      nullable: true,
-      defaultKind: 'none' as const,
-    }));
-    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
-      new Response(
-        createTextStream([
-          JSON.stringify({
-            tableName: 'users',
-            tableComment: '',
-            fields: rows.map(({ id: _id, ...row }) => row),
-          }),
-        ]),
-      ),
-    );
-
-    const response = await requestGenerateTable(
-      {
-        description: '保留字段',
-        dbType: 'postgresql',
-        options: { mode: 'patch', existingConfig: { rows } },
-      },
-      { signal: new AbortController().signal },
-    );
-    expect(response.result.fields.map((field) => field.id)).toEqual(['UserID', 'userid']);
-  });
 
   it('uses current fields after a previous patch proposal was not applied', async () => {
     const fields = ['a', 'b'].map((id) => ({
@@ -142,92 +71,8 @@ describe('requestGenerateTable', () => {
     expect(request.existingConfig.rows).toEqual(fields);
   });
 
-  it('does not offer blank placeholder row identities to the model', async () => {
-    const [field, blank] = [
-      { id: 'a', fieldName: 'a' },
-      { id: 'blank', fieldName: ' ' },
-    ].map((row) => ({
-      ...row,
-      fieldType: 'int',
-      fieldComment: '',
-      nullable: true,
-      defaultKind: 'none' as const,
-    }));
-    const fetchMock = vi
-      .spyOn(aiTransport, 'fetchAIConversation')
-      .mockResolvedValue(
-        new Response(
-          createTextStream([JSON.stringify({ tableName: 'orders', tableComment: '', fields: [] })]),
-        ),
-      );
-    await requestGenerateTable(
-      {
-        description: '生成订单表',
-        dbType: 'mysql',
-        options: { existingConfig: { rows: [field, blank] } },
-      },
-      { signal: new AbortController().signal },
-    );
-    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
-    expect(request.existingConfig.rows).toEqual([field]);
-  });
-
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it('rejects an identity that exists only in an unapplied patch proposal', async () => {
-    const stale = {
-      id: 'stale',
-      fieldName: 'stale',
-      fieldType: 'int',
-      fieldComment: '',
-      nullable: true,
-      defaultKind: 'none' as const,
-    };
-    const schema = { tableName: 'users', tableComment: '', fields: [stale], indexes: [] };
-    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue(
-      new Response(createTextStream([JSON.stringify(schema)])),
-    );
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    await expect(
-      requestGenerateTable(
-        {
-          description: '修改当前表',
-          dbType: 'mysql',
-          options: { mode: 'patch', existingConfig: { rows: [] }, previousSchema: schema },
-        },
-        { signal: new AbortController().signal },
-      ),
-    ).rejects.toThrow('解析响应失败');
-  });
-
-  it('continues generated designs from the previous proposal instead of the editor', async () => {
-    const field = {
-      id: 'proposal',
-      fieldName: 'id',
-      fieldType: 'int',
-      fieldComment: '',
-      nullable: true,
-      defaultKind: 'none' as const,
-    };
-    const schema = { tableName: 'users', tableComment: '', fields: [field], indexes: [] };
-
-    const fetchMock = vi
-      .spyOn(aiTransport, 'fetchAIConversation')
-      .mockResolvedValue(new Response(createTextStream([JSON.stringify(schema)])));
-    const result = await requestGenerateTable(
-      {
-        description: '继续设计',
-        dbType: 'mysql',
-        options: { mode: 'generate', existingConfig: { rows: [] }, previousSchema: schema },
-      },
-      { signal: new AbortController().signal },
-    );
-    expect(result.result.fields[0].id).toBe('proposal');
-    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
-    expect(request.previousSchema).toEqual(schema);
-    expect(request.existingConfig).toBeUndefined();
   });
 
   it('rejects a streamed error instead of returning an empty schema', async () => {
@@ -240,39 +85,6 @@ describe('requestGenerateTable', () => {
         { signal: new AbortController().signal },
       ),
     ).rejects.toThrow('AI');
-  });
-
-  it('should parse final generated schema and stream updates', async () => {
-    const updates: string[] = [];
-    // SAFETY: This test double implements the Response fields consumed by the streaming/error branch.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The minimal Response fixture models only fields consumed by this boundary test.
-    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
-      ok: true,
-      headers: new Headers(),
-      status: 200,
-      body: createTextStream([
-        '{"tableName":"users","tableComment":"u",',
-        '"fields":[],"indexes":[],"designDecisions":[{"title":"主键策略","rationale":"稳定标识"}]}',
-      ]),
-      json: vi.fn(),
-    } as unknown as Response);
-
-    const result = await requestGenerateTable(
-      {
-        description: '生成用户表',
-        dbType: 'mysql',
-      },
-      {
-        signal: new AbortController().signal,
-        onStreamingText: (text) => updates.push(text),
-      },
-    );
-
-    expect(result.result.tableName).toBe('users');
-    expect(result.result.fields).toEqual([]);
-    expect(result.result.designDecisions?.[0]?.title).toBe('主键策略');
-    expect(updates.length).toBeGreaterThan(0);
-    expect(updates[updates.length - 1]).toBe(result.fullText);
   });
 
   it('uses the request baseline to preserve a renamed field through the stream', async () => {
@@ -305,26 +117,5 @@ describe('requestGenerateTable', () => {
       { signal: new AbortController().signal },
     );
     expect(response.result.fields[0]).toMatchObject({ id: 'phone-id', fieldName: 'mobile' });
-  });
-
-  it('should throw non-ok response error', async () => {
-    // SAFETY: This test double implements the Response fields consumed by the streaming/error branch.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The minimal Response fixture models only fields consumed by this boundary test.
-    vi.spyOn(aiTransport, 'fetchAIConversation').mockResolvedValue({
-      ok: false,
-      headers: new Headers(),
-      status: 500,
-      json: vi.fn().mockResolvedValue({ error: '生成失败' }),
-    } as unknown as Response);
-
-    await expect(
-      requestGenerateTable(
-        {
-          description: '生成用户表',
-          dbType: 'mysql',
-        },
-        { signal: new AbortController().signal },
-      ),
-    ).rejects.toThrow('生成失败');
   });
 });

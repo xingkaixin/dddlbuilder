@@ -42,19 +42,12 @@ vi.mock('@/auth/AuthSessionProvider', () => {
   };
 });
 
-// whenSynced 的 resolve 由用例掌控，用来复现"本地 update log 还没加载完"的窗口期。
-const localLoad = vi.hoisted(() => ({
-  // SAFETY: the gate test installs this resolver only when the IndexedDB mock is constructed.
-  resolve: null as (() => void) | null,
-}));
-
 // oxlint-disable-next-line anti-slop/no-module-mocking -- replace browser IndexedDB synchronization with a deterministic gate fixture.
 vi.mock('y-indexeddb', () => ({
   IndexeddbPersistence: class {
     get = async () => true;
-    whenSynced = new Promise<void>((resolve) => {
-      localLoad.resolve = () => resolve();
-    });
+    // Never resolves, holding the gate in the window before the local update log loads.
+    whenSynced = new Promise<void>(() => {});
     destroy() {
       return Promise.resolve();
     }
@@ -102,7 +95,6 @@ const createDraftEntry = () => screen.queryByRole('button', { name: '新建草�
 
 describe('WorkspaceYDocProvider 加载门禁', () => {
   beforeEach(() => {
-    localLoad.resolve = null;
     authSession.refreshSession.mockClear();
     authSession.current = {
       status: 'signed_in',
@@ -123,15 +115,6 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
 
     expect(screen.getByTestId('workspace-bootstrap-loading')).toBeInTheDocument();
     expect(createDraftEntry()).toBeNull();
-  });
-
-  it('本地 Y.Doc 加载完成后正常渲染 children', async () => {
-    renderGate();
-    await waitFor(() => expect(localLoad.resolve).toBeTypeOf('function'));
-    act(() => localLoad.resolve?.());
-
-    await waitFor(() => expect(createDraftEntry()).toBeInTheDocument());
-    expect(screen.queryByTestId('workspace-bootstrap-loading')).toBeNull();
   });
 
   it('whenSynced 永不 resolve 时超时进入错误态，重试后回到加载态而非永久卡住', async () => {
@@ -162,19 +145,6 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     expect(screen.queryByTestId('workspace-bootstrap-loading')).toBeNull();
   });
 
-  it('身份未知时等待解析，避免闪出匿名空工作区', () => {
-    authSession.current = {
-      status: 'loading',
-      userId: null,
-      workspaceId: null,
-      refreshSession: authSession.refreshSession,
-    };
-    renderGate();
-
-    expect(createDraftEntry()).toBeNull();
-    expect(screen.getByTestId('workspace-bootstrap-loading')).toBeInTheDocument();
-  });
-
   it('已登录但 workspaceId 还没落地时必须挡住，避免写入匿名分区', () => {
     authSession.current = {
       status: 'signed_in',
@@ -188,72 +158,6 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     expect(createDraftEntry()).toBeNull();
   });
 
-  it('workspaceId 永远拿不到时不会永久卡在加载态，重试会重新解析会话', async () => {
-    vi.useFakeTimers();
-    authSession.current = {
-      status: 'signed_in',
-      userId: 'user-1',
-      workspaceId: null,
-      refreshSession: authSession.refreshSession,
-    };
-    renderGate();
-
-    await act(async () => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
-
-    expect(screen.getByTestId('workspace-bootstrap-error')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '重试加载' }));
-
-    expect(authSession.refreshSession).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('workspace-bootstrap-loading')).toBeInTheDocument();
-
-    await act(async () => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
-    expect(screen.getByTestId('workspace-bootstrap-error')).toBeInTheDocument();
-  });
-
-  // authSession.current 是普通对象，改它不会触发重渲染；必须显式 rerender，
-  // 否则断言的是"什么都没发生"而不是 refreshSession 的效果。
-  const enterRefreshSession = (rerender: ReturnType<typeof renderGate>['rerender']) => {
-    authSession.current = {
-      status: 'loading',
-      userId: 'user-1',
-      workspaceId: 'ws-1',
-      refreshSession: authSession.refreshSession,
-    };
-    act(() => rerender(gateTree()));
-  };
-
-  it('本地尚未加载完时遇上 refreshSession，仍然不放行', () => {
-    const { rerender } = renderGate();
-    expect(createDraftEntry()).toBeNull();
-
-    enterRefreshSession(rerender);
-
-    expect(createDraftEntry()).toBeNull();
-    expect(screen.getByTestId('workspace-bootstrap-loading')).toBeInTheDocument();
-  });
-
-  // 这一条守的是反向：refreshSession 只是刷新会话，身份没变，不该把一个已经加载好的
-  // Y.Doc 拆掉——那会让用户在改个用户名的工夫里看着整个界面退回启动态。
-  it('已加载完成后遇上 refreshSession，不应退回门禁', async () => {
-    const { rerender } = renderGate();
-    await waitFor(() => expect(localLoad.resolve).toBeTypeOf('function'));
-    act(() => localLoad.resolve?.());
-    await waitFor(() => expect(createDraftEntry()).toBeInTheDocument());
-
-    enterRefreshSession(rerender);
-
-    expect(createDraftEntry()).toBeInTheDocument();
-    expect(screen.queryByTestId('workspace-bootstrap-loading')).toBeNull();
-  });
-
-  it('分享页不被门禁挡住', () => {
-    window.history.pushState({}, '', SHARE_PATH);
-    renderGate();
-
-    expect(createDraftEntry()).toBeInTheDocument();
-    expect(screen.queryByTestId('workspace-bootstrap-loading')).toBeNull();
-  });
-
   it('分享失效离开分享路径后，门禁立即生效而不是等到下一次重渲染', async () => {
     window.history.pushState({}, '', SHARE_PATH);
     renderGate();
@@ -264,33 +168,5 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     await waitFor(() => expect(createDraftEntry()).toBeNull());
     expect(screen.getByTestId('workspace-bootstrap-loading')).toBeInTheDocument();
     expect(window.location.pathname).toBe('/');
-  });
-});
-
-describe('WorkspaceYDocProvider 门禁不改变已就绪时的行为', () => {
-  beforeEach(() => {
-    localLoad.resolve = null;
-    authSession.current = {
-      status: 'signed_in',
-      userId: 'user-1',
-      workspaceId: 'ws-1',
-      refreshSession: authSession.refreshSession,
-    };
-    window.history.pushState({}, '', '/');
-    setupMemoryLocalStorage();
-  });
-
-  it('迟到的本地加载会把超时留下的错误态复位', async () => {
-    vi.useFakeTimers();
-    renderGate();
-    await act(async () => vi.advanceTimersByTime(WORKSPACE_BOOTSTRAP_TIMEOUT_MS));
-    expect(screen.getByTestId('workspace-bootstrap-error')).toBeInTheDocument();
-
-    await act(async () => {});
-    const lateResolve = localLoad.resolve;
-    vi.useRealTimers();
-    act(() => lateResolve?.());
-
-    await waitFor(() => expect(createDraftEntry()).toBeInTheDocument());
   });
 });

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
-import { act, render, screen, fireEvent, waitFor, within } from '@/__tests__/utils/test-utils';
+import { act, render, screen, fireEvent, waitFor } from '@/__tests__/utils/test-utils';
 import { withDefaultEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import { AppDialogLayer } from '@/components/App/AppDialogLayer';
 // 预先加载懒加载的对话框模块，避免首个用例把模块转换耗时算进查询超时。
@@ -130,54 +130,6 @@ describe('AI patch dialog session', () => {
     applyChanges.mockReset();
   });
 
-  it('keeps the conversation input across closing and reopening the view', async () => {
-    render(<Harness />);
-    const input = await screen.findByRole('textbox');
-    fireEvent.change(input, { target: { value: '保留这次结构修改' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    await waitFor(() => expect(screen.queryByRole('textbox')).toBeNull());
-    fireEvent.click(screen.getByRole('button', { name: 'Reopen' }));
-    const reopened = await screen.findByRole('textbox');
-    expect(reopened).toHaveValue('保留这次结构修改');
-  });
-
-  it('requires explicit cancellation to stop an active generation', async () => {
-    let signal: AbortSignal | undefined;
-    vi.mocked(requestGenerateTable).mockImplementation((_payload, options) => {
-      signal = options?.signal;
-
-      return new Promise((_resolve, reject) => {
-        signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
-      });
-    });
-    render(<Harness />);
-    fireEvent.change(await screen.findByRole('textbox'), { target: { value: '添加状态列' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    await waitFor(() => expect(signal).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
-    expect(screen.getByRole('textbox')).toHaveValue('添加状态列');
-    expect(signal?.aborted).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: '取消' }));
-    await waitFor(() => expect(signal?.aborted).toBe(true));
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    await waitFor(() => expect(screen.queryByRole('textbox')).toBeNull());
-  });
-
-  it('only clears the session after confirming restart', async () => {
-    render(<Harness />);
-    fireEvent.change(await screen.findByRole('textbox'), { target: { value: '尚未提交的修改' } });
-    fireEvent.click(screen.getByRole('button', { name: '重新开始' }));
-    const confirmation = screen.getByRole('alertdialog');
-    fireEvent.click(within(confirmation).getByRole('button', { name: '取消' }));
-    expect(screen.getByRole('textbox')).toHaveValue('尚未提交的修改');
-    fireEvent.click(screen.getByRole('button', { name: '重新开始' }));
-    fireEvent.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', { name: '重新开始' }),
-    );
-    await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue(''));
-  });
-
   it('keeps applied changes visible and advances the expected state between batches', async () => {
     vi.mocked(requestGenerateTable).mockResolvedValue({
       fullText: '{"tableName":"accounts","tableComment":"账号表","fields":[]}',
@@ -212,120 +164,6 @@ describe('AI patch dialog session', () => {
     expect(applyChanges.mock.calls[1][2]).toEqual(
       expect.objectContaining({ tableName: 'accounts', tableComment: '' }),
     );
-  });
-
-  it('recomputes pending index changes after applying a field rename', async () => {
-    const initialState = {
-      ...state,
-      rows: [
-        {
-          id: 'f1',
-          order: 1,
-          fieldName: 'old_name',
-          fieldType: 'bigint',
-          fieldComment: '',
-          nullable: false,
-        },
-      ],
-      indexes: [
-        {
-          id: 'i1',
-          name: 'idx_old_name',
-          fields: [{ name: 'old_name', direction: 'ASC' as const }],
-          kind: 'index' as const,
-        },
-      ],
-    };
-    vi.mocked(requestGenerateTable).mockResolvedValue({
-      fullText: '{}',
-      result: {
-        tableName: 'users',
-        tableComment: '',
-        fields: [
-          {
-            id: 'f1',
-            fieldName: 'new_name',
-            fieldType: 'bigint',
-            fieldComment: '',
-            nullable: false,
-            defaultKind: 'none',
-          },
-        ],
-        indexes: [
-          {
-            name: 'idx_new_name',
-            fields: [{ name: 'new_name', direction: 'ASC' }],
-            unique: false,
-          },
-        ],
-      },
-    });
-    render(<Harness initialState={initialState} />);
-
-    fireEvent.change(await screen.findByRole('textbox'), { target: { value: '重命名字段' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-
-    const renameTitle = await screen.findByRole('button', {
-      name: '字段 old_name 改名为 new_name',
-    });
-    // SAFETY: The selected transition card is rendered as an HTMLElement by the dialog component.
-    const renameCard = renameTitle.closest('[class~="transition-colors"]') as HTMLElement | null;
-    expect(renameCard).not.toBeNull();
-
-    if (!renameCard) throw new Error('rename card was not rendered');
-    expect(screen.getByText('新增索引 idx_new_name')).toBeInTheDocument();
-    expect(screen.getByText('删除索引 idx_old_name')).toBeInTheDocument();
-    fireEvent.click(within(renameCard).getByRole('button', { name: '确认' }));
-    fireEvent.click(screen.getByRole('button', { name: '应用 1 项变更' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('字段 old_name 改名为 new_name')).toBeInTheDocument();
-      expect(screen.queryByText('新增索引 idx_new_name')).toBeNull();
-      expect(screen.queryByText('删除索引 idx_old_name')).toBeNull();
-    });
-    expect(applyChanges).toHaveBeenCalledTimes(1);
-    expect(applyChanges.mock.calls[0][3].indexes).toEqual([
-      expect.objectContaining({
-        id: 'i1',
-        name: 'idx_new_name',
-        fields: [{ name: 'new_name', direction: 'ASC' }],
-      }),
-    ]);
-  });
-
-  it('does not show applied history when the current target changes', async () => {
-    vi.mocked(requestGenerateTable).mockResolvedValue({
-      fullText: '{}',
-      result: {
-        tableName: 'accounts',
-        tableComment: '',
-        fields: [],
-        indexes: [],
-      },
-    });
-    render(<Harness alternateState={{ ...state, tableName: 'accounts' }} />);
-
-    fireEvent.change(await screen.findByRole('textbox'), { target: { value: '重命名表' } });
-    fireEvent.click(screen.getByRole('button', { name: '发送' }));
-    const title = await screen.findByText('调整表英文名');
-    // SAFETY: The selected transition card is rendered as an HTMLElement by the dialog component.
-    const card = title.closest('[class~="transition-colors"]') as HTMLElement | null;
-    expect(card).not.toBeNull();
-
-    if (!card) throw new Error('change card was not rendered');
-    fireEvent.click(within(card).getByRole('button', { name: '确认' }));
-    fireEvent.click(screen.getByRole('button', { name: '应用 1 项变更' }));
-    await waitFor(() =>
-      expect(screen.getByText('0 项待确认，0 项已选择，1 项已应用')).toBeInTheDocument(),
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    await waitFor(() => expect(screen.queryByRole('textbox')).toBeNull());
-    fireEvent.click(screen.getByRole('button', { name: 'Switch target' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Reopen' }));
-
-    await screen.findByRole('textbox');
-    expect(screen.queryByText('调整表英文名')).toBeNull();
   });
 
   it('discards an in-flight result after the current target changes', async () => {

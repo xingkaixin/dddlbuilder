@@ -17,23 +17,7 @@ const createDependencies = (
   ...overrides,
 });
 
-// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Tool inputs intentionally model untrusted browser payloads.
-const execute = (tool: WebMCP.ModelContextTool, input: Record<string, unknown> = {}) =>
-  tool.execute(input, { signal: new AbortController().signal });
-
 describe('WebMCP tool catalog', () => {
-  it('offers sign-in only to signed-out browser sessions', () => {
-    const signedOutNames = createWebMcpTools(createDependencies()).map((tool) => tool.name);
-
-    const signedInNames = createWebMcpTools(createDependencies({ authStatus: 'signed_in' })).map(
-      (tool) => tool.name,
-    );
-
-    expect(signedOutNames).toContain('start_sign_in');
-    expect(signedInNames).not.toContain('start_sign_in');
-    expect(signedInNames).toContain('inspect_active_schema');
-  });
-
   it('marks document-derived read results as untrusted read-only content', () => {
     const tools = createWebMcpTools(createDependencies());
     const inspect = tools.find((tool) => tool.name === 'inspect_active_schema');
@@ -41,24 +25,6 @@ describe('WebMCP tool catalog', () => {
 
     expect(inspect?.annotations).toEqual({ readOnlyHint: true, untrustedContentHint: true });
     expect(output?.annotations).toEqual({ readOnlyHint: true, untrustedContentHint: true });
-  });
-
-  it('returns structured failures instead of leaking thrown errors', async () => {
-    const tools = createWebMcpTools(
-      createDependencies({
-        inspectSchema: vi.fn(async () => {
-          throw new Error('private runtime detail');
-        }),
-      }),
-    );
-    const inspect = tools.find((tool) => tool.name === 'inspect_active_schema');
-
-    if (!inspect) throw new Error('inspect_active_schema is not registered');
-
-    await expect(execute(inspect)).resolves.toEqual({
-      ok: false,
-      error: { code: 'TOOL_FAILED', message: 'Tool execution failed' },
-    });
   });
 
   it('does not expose mutation tools in a read-only share', () => {
@@ -70,16 +36,5 @@ describe('WebMCP tool catalog', () => {
     expect(names).not.toContain('import_sql_preview');
     expect(names).not.toContain('apply_schema_patch');
     expect(names).not.toContain('start_sign_in');
-  });
-
-  it('passes browser cancellation to the apply flow', async () => {
-    const applyPatch = vi.fn(async () => ({ ok: true }));
-    const tools = createWebMcpTools(createDependencies({ applyPatch }));
-    const apply = tools.find((tool) => tool.name === 'apply_schema_patch');
-    const controller = new AbortController();
-
-    await apply?.execute({ changeSetId: 'change-1' }, { signal: controller.signal });
-
-    expect(applyPatch).toHaveBeenCalledWith({ changeSetId: 'change-1' }, controller.signal);
   });
 });

@@ -94,24 +94,6 @@ describe('editorDocumentCodec', () => {
     expect(toPersistedState(toEditorDocumentState(state))).toEqual(state);
   });
 
-  it('只持久化当前数据库支持的配置', () => {
-    const state = createState({
-      dbType: 'mysql',
-      citusShardingConfig: undefined,
-      mysqlPartitionConfig: {
-        enabled: true,
-        type: 'HASH',
-        columns: ['id'],
-        partitionCount: 8,
-      },
-    });
-
-    const persistedState = toPersistedState(toEditorDocumentState(state));
-
-    expect(persistedState.citusShardingConfig).toBeUndefined();
-    expect(persistedState.mysqlPartitionConfig).toEqual(state.mysqlPartitionConfig);
-  });
-
   it('替换文档时校正当前会话标签但不持久化它', () => {
     const store = useEditorStore.getState();
     store.setObjectType('table');

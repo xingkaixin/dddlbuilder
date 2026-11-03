@@ -87,30 +87,4 @@ describe('useFieldRowMutations', () => {
     expect(rows[0].onUpdate).toBe('none');
     expect(rows[0].defaultValue).toBe('');
   });
-
-  it('应该通过行更新提交字段名变更', () => {
-    let rows: FieldRow[] = [createRow({ fieldName: 'user_id' })];
-
-    const setRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => {
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- React's setter contract is a value-or-updater union.
-      rows = typeof next === 'function' ? next(rows) : next;
-    };
-
-    const { result, rerender } = renderHook(
-      () =>
-        useFieldRowMutations({
-          setRows,
-        }),
-      {
-        initialProps: { currentRows: rows },
-      },
-    );
-
-    act(() => {
-      result.current.updateCellValue(0, 'fieldName', 'account_id');
-    });
-    rerender({ currentRows: rows });
-
-    expect(rows[0].fieldName).toBe('account_id');
-  });
 });

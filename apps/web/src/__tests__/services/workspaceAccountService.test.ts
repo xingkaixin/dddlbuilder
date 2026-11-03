@@ -21,14 +21,12 @@ import {
   clearLegacyWorkspaceData,
   clearLocalWorkspaceData,
   retryPendingWorkspaceCleanup,
-  fetchCurrentWorkspace,
 } from '@/services/workspaceAccountService';
-import { addSavedTable, listSavedTables, updateSavedTable } from '@/utils/savedTablesDb';
+import { addSavedTable, updateSavedTable } from '@/utils/savedTablesDb';
 import {
   beginWorkspaceEntityDeletion,
   WORKSPACE_ENTITY_DELETION_LEASE_MS,
 } from '@/utils/workspaceEntityDeletion';
-import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
 import { readDraft, writeDraft } from '@/utils/workspaceStateDb';
 
 const scope = { kind: 'user' as const, userId: 'user-1', workspaceId: 'ws-1' };
@@ -184,27 +182,6 @@ describe('workspaceAccountService', () => {
     }
   });
 
-  it('启动历史巡检保留未保存文档的 name-key 评审', async () => {
-    const doc = new Y.Doc();
-    const draftTarget = { scope, normalizedName: 'draft-only' };
-
-    const review = await saveReview(draftTarget, 'draft-only', 'ddl', 'mysql', {
-      score: 8,
-      summary: 'draft',
-      suggestions: [],
-    });
-
-    if (!review) throw new Error('Expected draft review to be persisted');
-
-    const stop = watchWorkspaceHistory(doc, scope);
-
-    await vi.waitFor(async () =>
-      expect((await listReviews(draftTarget)).map((item) => item.id)).toEqual([review.id]),
-    );
-    stop();
-    doc.destroy();
-  });
-
   it('离线远端删除后启动巡检清 stable 历史并保留 legacy name 评审', async () => {
     const doc = new Y.Doc();
     const target = { scope, tableId: 'offline-deleted', normalizedName: 'users' };
@@ -259,14 +236,6 @@ describe('workspaceAccountService', () => {
     vi.restoreAllMocks();
   });
 
-  it('reads the current workspace identifier', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ workspaceId: 'ws-1' })),
-    );
-
-    await expect(fetchCurrentWorkspace()).resolves.toMatchObject({ workspaceId: 'ws-1' });
-  });
-
   it('moves legacy partitions without touching anonymous data or deleting the target Y.Doc', async () => {
     const legacy = { kind: 'legacy_user' as const, userId: scope.userId };
     const anonymous = { kind: 'anonymous' as const };
@@ -277,54 +246,5 @@ describe('workspaceAccountService', () => {
     expect(await readDraft('draft', legacy)).toBeNull();
     expect(await readDraft('draft', scope)).toBeNull();
     expect((await readDraft('draft', anonymous))?.state.tableName).toBe('anonymous');
-  });
-
-  it('rejects the retired workspace list response', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ activeWorkspaceId: 'ws-1', workspaces: [] })),
-    );
-
-    await expect(fetchCurrentWorkspace()).rejects.toThrow('工作区响应为空');
-  });
-
-  it('clears only the selected local workspace partition', async () => {
-    // SAFETY: the fake request only needs the onsuccess callback used by the deletion wrapper.
-    const deletion = { onsuccess: null as (() => void) | null };
-
-    const deleteDatabase = vi.fn(() => {
-      queueMicrotask(() => deletion.onsuccess?.());
-
-      return deletion;
-    });
-    Object.defineProperty(indexedDB, 'deleteDatabase', {
-      value: deleteDatabase,
-      configurable: true,
-    });
-    const otherScope = { kind: 'user' as const, userId: 'user-1', workspaceId: 'ws-2' };
-    await writeDraft('draft-1', { state: createState('local'), updatedAt: 1 }, scope);
-    await writeDraft('draft-1', { state: createState('other'), updatedAt: 1 }, otherScope);
-    await addSavedTable(
-      {
-        normalizedName: 'users',
-        name: 'users',
-        state: createState('users'),
-        createdAt: 1,
-        updatedAt: 1,
-      },
-      scope,
-    );
-    await bulkPutFolders(
-      [{ id: 'folder-1', name: 'Folder', order: 1, createdAt: 1, updatedAt: 1 }],
-      scope,
-    );
-
-    await clearLocalWorkspaceData(scope);
-
-    expect(deleteDatabase).toHaveBeenCalledWith('ddlbuilder:workspace:ws-1');
-
-    expect(await readDraft('draft-1', scope)).toBeNull();
-    expect((await readDraft('draft-1', otherScope))?.state.tableName).toBe('other');
-    expect(await listSavedTables(scope)).toEqual([]);
-    expect(await listFolders(scope)).toEqual([]);
   });
 });

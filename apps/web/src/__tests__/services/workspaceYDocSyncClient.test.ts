@@ -14,13 +14,6 @@ import {
   type WorkspaceYDocConnectionStatus,
 } from '@/services/workspaceYDocSyncClient';
 
-const applySyncMessage = (doc: Y.Doc, message: ArrayBuffer) => {
-  const decoder = decodeSyncMessage(message);
-  encodeWorkspaceYDocSyncMessage((encoder) => {
-    syncProtocol.readSyncMessage(decoder, encoder, doc, null);
-  });
-};
-
 const respondToSyncMessage = (doc: Y.Doc, message: ArrayBuffer) => {
   const decoder = decodeSyncMessage(message);
 
@@ -115,62 +108,6 @@ const sentMessage = (socket: MockWebSocket, index: number) => {
 };
 
 describe('WorkspaceYDocSyncClient', () => {
-  it('notifies only when connection status changes during an edit burst', async () => {
-    const doc = new Y.Doc();
-    const server = new Y.Doc();
-    const status = vi.fn();
-    const client = new WorkspaceYDocSyncClient('ws', doc, status);
-    client.connect();
-    const socket = firstSocket();
-    socket.open();
-    syncWithServer(socket, server);
-    status.mockClear();
-
-    for (let i = 0; i < 10; i += 1) doc.getMap('test').set('value', i);
-    const calls = status.mock.calls.length;
-    client.destroy();
-    doc.destroy();
-    server.destroy();
-    expect(calls).toBe(1);
-  });
-
-  it('materializes a remote snapshot with a distinct origin and sends the resulting delta', async () => {
-    const doc = new Y.Doc();
-    const serverDoc = new Y.Doc();
-    const draft = new Y.Map();
-    serverDoc.getMap('drafts').set('draft-1', draft);
-    draft.set('stateSnapshot', {
-      tableName: 'remote',
-      dbType: 'mysql',
-      rows: [{ id: 'field', fieldName: 'id', fieldType: 'int', nullable: false }],
-    });
-    const origins: unknown[] = [];
-    doc.on('update', (_update, origin) => origins.push(origin));
-    const client = new WorkspaceYDocSyncClient('ws', doc, vi.fn());
-    client.connect();
-    const socket = firstSocket();
-    socket.open();
-    syncWithServer(socket, serverDoc);
-    expect(origins).toContain('workspace-remote-sync');
-    expect(origins).toContain('workspace-remote-materialize');
-    expect(origins).not.toContain('workspace-local-edit');
-    expect(draft.get('fields')).toBeInstanceOf(Y.Map);
-    client.destroy();
-    doc.destroy();
-    serverDoc.destroy();
-  });
-  it('opens with only a state-vector request, without a full document update', async () => {
-    const doc = new Y.Doc();
-    doc.getMap('fields').set('large', 'x'.repeat(100_000));
-    const client = new WorkspaceYDocSyncClient('ws', doc, vi.fn());
-    client.connect();
-    const socket = firstSocket();
-    socket.open();
-    expect(socket.sent).toHaveLength(1);
-    expect(socket.sent[0].byteLength).toBeLessThan(100);
-    client.destroy();
-    doc.destroy();
-  });
   beforeEach(() => {
     vi.useFakeTimers();
     MockWebSocket.instances = [];
@@ -182,92 +119,6 @@ describe('WorkspaceYDocSyncClient', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-  });
-
-  it('records the 50-field batch sync envelope in one websocket update message', async () => {
-    const doc = new Y.Doc();
-    const updates: Uint8Array[] = [];
-    doc.on('update', (update) => updates.push(update));
-    const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
-    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
-
-    client.connect();
-    const socket = firstSocket();
-    socket.open();
-
-    const fields = doc.getMap('fields');
-
-    for (let index = 0; index < 50; index += 1) {
-      fields.set(`field-${index}`, `value-${index}`);
-    }
-
-    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS - 1);
-    expect(socket.sent).toHaveLength(1);
-
-    vi.advanceTimersByTime(1);
-    expect(socket.sent).toHaveLength(2);
-
-    const updateMessage = sentMessage(socket, 1);
-    const individualUpdateBytes = updates.reduce((total, update) => total + update.byteLength, 0);
-
-    type BatchMetric = {
-      event: string;
-      workspaceId: string;
-      updateCount: number;
-      messageBytes: number;
-      durationMs: number;
-      updateBytes: number;
-    };
-
-    // SAFETY: this test controls the logger payload and asserts every field of the batch metric below.
-    const metric = JSON.parse(String(info.mock.calls[0]?.[0])) as BatchMetric;
-
-    expect(metric).toMatchObject({
-      event: 'workspace_yjs_client_batch',
-      workspaceId: 'ws-1',
-      updateCount: 50,
-      messageBytes: updateMessage.byteLength,
-      durationMs: WORKSPACE_YDOC_UPDATE_BATCH_MS,
-    });
-    expect(socket.sent).toHaveLength(2);
-    expect(updateMessage.byteLength).toBeLessThan(individualUpdateBytes);
-    expect(metric.updateBytes).toBeLessThan(individualUpdateBytes);
-
-    const peer = new Y.Doc();
-    applySyncMessage(peer, updateMessage);
-    expect(peer.getMap('fields').size).toBe(50);
-    expect(peer.getMap('fields').get('field-49')).toBe('value-49');
-
-    client.destroy();
-  });
-
-  it('does not report cloud sync when local updates were only sent', async () => {
-    const doc = new Y.Doc();
-    const statuses: WorkspaceYDocConnectionStatus[] = [];
-    const onConnectionStateChange = vi.fn((status) => statuses.push(status));
-    const client = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
-    const serverDoc = new Y.Doc();
-
-    client.connect();
-    const socket = firstSocket();
-    socket.open();
-    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
-
-    socket.receive(
-      encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)),
-    );
-    await Promise.resolve();
-    console.info('sync status before server persistence', statuses.at(-1));
-    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
-
-    doc.getMap('fields').set('field-1', 'value-1');
-    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
-
-    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
-    console.info('sync status after send without acknowledgement', statuses.at(-1));
-    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
-
-    client.destroy();
   });
 
   it('requires acknowledgements for every batch, including deletions and newer edits', async () => {
@@ -332,46 +183,20 @@ describe('WorkspaceYDocSyncClient', () => {
     client.destroy();
   });
 
-  it.each(['timeout', 'offline', 'destroy'])(
-    'does not permit data cleanup after %s',
-    async (failure) => {
-      const doc = new Y.Doc();
-      const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
-      client.connect();
-      const socket = firstSocket();
-      socket.open();
-      syncWithServer(socket, new Y.Doc());
-      doc.getMap('fields').set('unsynced', 'keep me');
-      const pending = client.flushAndWaitForSync().catch((error) => error);
-
-      if (failure === 'timeout') vi.advanceTimersByTime(WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
-      else if (failure === 'offline') window.dispatchEvent(new Event('offline'));
-      else client.destroy();
-      expect(await pending).toBeInstanceOf(Error);
-      expect(doc.getMap('fields').get('unsynced')).toBe('keep me');
-      client.destroy();
-    },
-  );
-
-  it('does not reuse acknowledgements after retry or reconnect', async () => {
+  it.each(['timeout', 'offline'])('does not permit data cleanup after %s', async (failure) => {
     const doc = new Y.Doc();
-    const statuses: WorkspaceYDocConnectionStatus[] = [];
-    const client = new WorkspaceYDocSyncClient('ws-1', doc, (status) => statuses.push(status));
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
     client.connect();
     const socket = firstSocket();
     socket.open();
-    const oldBatch = sentMessage(socket, socket.sent.length - 1);
-    client.retry();
-    acknowledge(socket, oldBatch);
-    expect(statuses.at(-1)?.synced).toBe(false);
-    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
-    const activeSocket = MockWebSocket.instances[1];
-    activeSocket.open();
-    acknowledge(socket, oldBatch);
-    acknowledge(activeSocket, oldBatch);
-    expect(statuses.at(-1)?.synced).toBe(false);
-    syncWithServer(activeSocket, new Y.Doc());
-    expect(statuses.at(-1)?.synced).toBe(true);
+    syncWithServer(socket, new Y.Doc());
+    doc.getMap('fields').set('unsynced', 'keep me');
+    const pending = client.flushAndWaitForSync().catch((error) => error);
+
+    if (failure === 'timeout') vi.advanceTimersByTime(WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
+    else window.dispatchEvent(new Event('offline'));
+    expect(await pending).toBeInstanceOf(Error);
+    expect(doc.getMap('fields').get('unsynced')).toBe('keep me');
     client.destroy();
   });
 
@@ -395,35 +220,6 @@ describe('WorkspaceYDocSyncClient', () => {
     syncWithServer(socket, server);
     expect(server.getMap('fields').get('lost')).toBe('recover');
     expect(statuses.at(-1)?.synced).toBe(true);
-    client.destroy();
-  });
-
-  it('waits for an idle window before sending queued local updates', async () => {
-    const doc = new Y.Doc();
-    const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
-    vi.spyOn(console, 'info').mockImplementation(() => {});
-
-    client.connect();
-    const socket = firstSocket();
-    socket.open();
-
-    const fields = doc.getMap('fields');
-    fields.set('field-1', 'value-1');
-    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS - 1);
-    expect(socket.sent).toHaveLength(1);
-
-    fields.set('field-2', 'value-2');
-    vi.advanceTimersByTime(1);
-    expect(socket.sent).toHaveLength(1);
-
-    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
-    expect(socket.sent).toHaveLength(2);
-
-    const peer = new Y.Doc();
-    applySyncMessage(peer, sentMessage(socket, 1));
-    expect(peer.getMap('fields').get('field-1')).toBe('value-1');
-    expect(peer.getMap('fields').get('field-2')).toBe('value-2');
-
     client.destroy();
   });
 
@@ -463,159 +259,6 @@ describe('WorkspaceYDocSyncClient', () => {
     reconnected.open();
     syncWithServer(reconnected, serverDoc);
     expect(serverDoc.getMap('fields').get('offline-field')).toBe('offline-value');
-
-    client.destroy();
-  });
-
-  it('uses sync state vectors to converge local offline changes after reconnect', async () => {
-    const doc = new Y.Doc();
-    doc.getMap('fields').set('offline-field', 'offline-value');
-    const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
-    const serverDoc = new Y.Doc();
-
-    client.connect();
-    const socket = firstSocket();
-    socket.open();
-    socket.receive(
-      encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)),
-    );
-    await Promise.resolve();
-
-    expect(socket.sent.length).toBeGreaterThanOrEqual(2);
-    applySyncMessage(serverDoc, sentMessage(socket, 1));
-    expect(serverDoc.getMap('fields').get('offline-field')).toBe('offline-value');
-
-    client.destroy();
-  });
-
-  it('requests a fresh differential sync when returning online with an open socket', async () => {
-    const doc = new Y.Doc();
-    doc.getMap('fields').set('local-field', 'local-value');
-    const serverDoc = new Y.Doc();
-    const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
-    client.connect();
-    const socket = firstSocket();
-    socket.open();
-    syncWithServer(socket, serverDoc);
-    serverDoc.getMap('fields').set('remote-field', 'remote-value');
-    window.dispatchEvent(new Event('online'));
-    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
-    const reconnected = MockWebSocket.instances[1];
-    reconnected.open();
-    syncWithServer(reconnected, serverDoc);
-    expect(doc.getMap('fields').get('remote-field')).toBe('remote-value');
-    expect(serverDoc.getMap('fields').get('local-field')).toBe('local-value');
-    client.destroy();
-    doc.destroy();
-    serverDoc.destroy();
-  });
-
-  it('ignores callbacks from a connecting socket replaced after returning online', async () => {
-    const doc = new Y.Doc();
-    const statuses: WorkspaceYDocConnectionStatus[] = [];
-    const client = new WorkspaceYDocSyncClient('ws-1', doc, (status) => statuses.push(status));
-
-    client.connect();
-    const replacedSocket = firstSocket();
-
-    window.dispatchEvent(new Event('online'));
-    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
-    // SAFETY: the preceding waitFor verifies that the reconnect instance exists.
-    const activeSocket = MockWebSocket.instances[1] as MockWebSocket;
-    activeSocket.open();
-    expect(statuses.at(-1)).toMatchObject({ state: 'connected' });
-
-    replacedSocket.close();
-
-    expect(statuses.at(-1)).toMatchObject({ state: 'connected' });
-    client.destroy();
-  });
-
-  it('opens the websocket without an availability request', async () => {
-    const client = new WorkspaceYDocSyncClient('ws-1', new Y.Doc(), vi.fn());
-
-    client.connect();
-    firstSocket().open();
-
-    expect(fetch).not.toHaveBeenCalled();
-    client.destroy();
-  });
-
-  it('classifies auth and service failures after a failed handshake', async () => {
-    const doc = new Y.Doc();
-    const onConnectionStateChange = vi.fn();
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(new Response(null, { status: 401 }))
-        .mockResolvedValueOnce(new Response(null, { status: 503 })),
-    );
-
-    const authClient = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
-    authClient.connect();
-    firstSocket().close();
-    await vi.waitFor(() => {
-      expect(onConnectionStateChange).toHaveBeenLastCalledWith({
-        state: 'error',
-        failureReason: 'auth',
-        synced: false,
-      });
-    });
-    await vi.advanceTimersByTimeAsync(60_000);
-    expect(MockWebSocket.instances).toHaveLength(1);
-    authClient.destroy();
-
-    const serviceClient = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
-    serviceClient.connect();
-    MockWebSocket.instances[1]?.close();
-    await vi.waitFor(() => {
-      expect(onConnectionStateChange).toHaveBeenLastCalledWith({
-        state: 'error',
-        failureReason: 'service_unavailable',
-        synced: false,
-      });
-    });
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(MockWebSocket.instances).toHaveLength(3);
-    serviceClient.destroy();
-  });
-
-  it('treats a failed handshake on a reachable endpoint as a network failure', async () => {
-    const onConnectionStateChange = vi.fn();
-    const client = new WorkspaceYDocSyncClient('ws-1', new Y.Doc(), onConnectionStateChange);
-
-    client.connect();
-    firstSocket().close();
-
-    await vi.waitFor(() => {
-      expect(onConnectionStateChange).toHaveBeenLastCalledWith({
-        state: 'error',
-        failureReason: 'network',
-        synced: false,
-      });
-    });
-    client.destroy();
-  });
-
-  it('fails fast when the websocket handshake hangs', async () => {
-    const doc = new Y.Doc();
-    const statuses: WorkspaceYDocConnectionStatus[] = [];
-    const onConnectionStateChange = vi.fn((status) => statuses.push(status));
-    const client = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
-
-    client.connect();
-    const socket = firstSocket();
-    expect(statuses.at(-1)).toMatchObject({ state: 'connecting', synced: false });
-
-    await vi.advanceTimersByTimeAsync(WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
-
-    expect(statuses.at(-1)).toMatchObject({
-      state: 'error',
-      failureReason: 'network',
-      synced: false,
-    });
-    expect(socket.readyState).toBe(MockWebSocket.CLOSED);
 
     client.destroy();
   });

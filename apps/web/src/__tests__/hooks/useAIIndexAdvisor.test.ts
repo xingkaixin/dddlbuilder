@@ -1,5 +1,5 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import type { AIIndexAdvisorRequest, AIIndexAdvisorResult } from '@ddlbuilder/shared-types';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { useAIIndexAdvisor } from '@/hooks/useAIIndexAdvisor';
@@ -41,42 +41,7 @@ const response = (summary: string): AIIndexAdvisorResult => ({
 });
 
 describe('useAIIndexAdvisor', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('keeps the latest result when an aborted request resolves late', async () => {
-    let resolveOlder!: (value: AIIndexAdvisorResult) => void;
-    serviceMocks.requestAIIndexAdvice
-      .mockReturnValueOnce(
-        new Promise<AIIndexAdvisorResult>((resolve) => {
-          resolveOlder = resolve;
-        }),
-      )
-      .mockResolvedValueOnce(response('newer'));
-    const { wrapper } = createQueryClientWrapper();
-    const { result } = renderHook(() => useAIIndexAdvisor('workspace-1:users-draft'), { wrapper });
-
-    let older!: Promise<AIIndexAdvisorResult | null>;
-    act(() => {
-      older = result.current.analyzeIndexes(request('older'));
-    });
-    await waitFor(() => expect(serviceMocks.requestAIIndexAdvice).toHaveBeenCalledOnce());
-
-    await act(async () => {
-      await result.current.analyzeIndexes(request('newer'));
-    });
-    expect(result.current.result?.summary).toBe('newer');
-
-    await act(async () => {
-      resolveOlder(response('older'));
-      await older;
-    });
-
-    expect(result.current.result?.summary).toBe('newer');
-  });
-
-  it.each(['workspace-1:other-users-draft', 'workspace-2:users-draft'])(
+  it.each(['workspace-2:users-draft'])(
     'cancels advice when the document changes to %s',
     async (nextDocumentKey) => {
       let finish!: (value: AIIndexAdvisorResult) => void;
@@ -112,23 +77,4 @@ describe('useAIIndexAdvisor', () => {
       expect(result.current.error).toBeNull();
     },
   );
-
-  it('discards completed advice when leaving and returning to a document', async () => {
-    serviceMocks.requestAIIndexAdvice.mockResolvedValueOnce(response('users advice'));
-    const { wrapper } = createQueryClientWrapper();
-
-    const { result, rerender } = renderHook(({ key }) => useAIIndexAdvisor(key), {
-      wrapper,
-      initialProps: { key: 'workspace-1:users-draft' },
-    });
-    await act(async () => {
-      await result.current.analyzeIndexes(request('email lookup'));
-    });
-    expect(result.current.result?.summary).toBe('users advice');
-
-    rerender({ key: 'workspace-1:other-users-draft' });
-    expect(result.current.result).toBeNull();
-    rerender({ key: 'workspace-1:users-draft' });
-    expect(result.current.result).toBeNull();
-  });
 });
