@@ -175,10 +175,34 @@ jobs:
           name: dist-build
           path: apps
 
+      - name: Resolve Playwright deps cache key
+        id: playwright
+        run: echo "deps-key=playwright-deps-$ImageOS-$ImageVersion-$(pnpm exec playwright --version | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
+      # apt-get update and the font downloads are the slowest and least predictable part of
+      # e2e setup, so the packages they fetch are cached per runner image.
+      - name: Restore Playwright system packages
+        uses: actions/cache@v6
+        with:
+          path: ~/playwright-debs
+          key: ${{ steps.playwright.outputs.deps-key }}
+
       # The CLI installs system deps and the browser one after another; they are independent.
       - name: Install Playwright browsers
         run: |
-          pnpm exec playwright install-deps chromium &
+          install_system_deps() {
+            # apt prefers the repository copy of a version it already knows, so the files go
+            # into its archive cache to keep it off the network.
+            if compgen -G "$HOME/playwright-debs/*.deb" > /dev/null &&
+              sudo cp "$HOME"/playwright-debs/*.deb /var/cache/apt/archives/ &&
+              sudo apt-get install -y --no-install-recommends "$HOME"/playwright-debs/*.deb; then
+              return
+            fi
+            pnpm exec playwright install-deps chromium
+            mkdir -p ~/playwright-debs
+            cp /var/cache/apt/archives/*.deb ~/playwright-debs/ || true
+          }
+          install_system_deps &
           pnpm exec playwright install --only-shell chromium
           wait $!
 
