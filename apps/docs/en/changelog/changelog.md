@@ -6,6 +6,8 @@ outline: [2, 2]
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-03
+
 ### Added
 - **New interface**: The whole site has a new hand-drawn look, with light and dark themes in Chinese, English and Japanese. The interface uses a handwritten font by default, and you can switch to Clear in Settings. Table content and SQL use a monospace font; docs and the changelog use a standard font.
 - **Command palette**: Press ⌘K (Ctrl K on Windows and Linux) to search tables, tools and common actions, or to switch theme and language.
