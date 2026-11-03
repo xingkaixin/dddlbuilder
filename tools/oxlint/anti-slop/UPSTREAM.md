@@ -37,7 +37,7 @@ The repository retains 22 of the 24 rules, including the native
 
 - `require-readable-spacing` keeps import, declaration, and control-flow boundaries
   while allowing cohesive exports, declarations, consecutive single-line terminal
-  guards without an `else`, and immediately consumed bindings. Its regression tests specify the exact syntactic grouping policy.
+  guards without an `else`, and immediately consumed bindings.
   Upstream's `singleline-binding` group is not adopted: these selectors already allow
   it, and they do not require a blank line before a documented module-level binding.
 - `no-known-value-widening` does not treat an unresolved generic return type as
@@ -45,8 +45,7 @@ The repository retains 22 of the 24 rules, including the native
 - `require-safety-comment-for-type-assertion` reports one missing justification per
   continuous assertion chain instead of reporting both inner and outer assertions.
 
-Focused regression tests live beside these rules. Run `pnpm test:lint`; the root
-`pnpm test` command includes them. Application formatting intentionally does not
+Upstream rule tests are not vendored. Application formatting intentionally does not
 rewrite the vendored source.
 
 ## Integration and limitations

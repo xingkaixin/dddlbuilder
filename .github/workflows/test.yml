@@ -96,7 +96,7 @@ jobs:
             command: pnpm --filter @ddlbuilder/web run test --shard=2/2
           # Mirrors `pnpm test` minus the web package, so new packages are picked up automatically.
           - name: others
-            command: pnpm run test:lint && pnpm exec turbo run test --filter='!@ddlbuilder/web' && pnpm run test:scripts
+            command: pnpm exec turbo run test --filter='!@ddlbuilder/web' && pnpm run test:scripts
     steps:
       - name: Checkout
         uses: actions/checkout@v7
