@@ -2,16 +2,25 @@ name: Test
 
 on:
   pull_request:
+    paths: &code-paths
+      - '**'
+      - '!docs/**'
+      - '!**/*.md'
+      - '!.agents/**'
+      # The docs site renders its Markdown, so it still needs CI.
+      - 'apps/docs/**'
   push:
     branches:
-      - '**'
+      - main
+    paths: *code-paths
 
 permissions:
   contents: read
 
+# Every main commit gets its own group so release commits are never cancelled or superseded.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   typecheck:
