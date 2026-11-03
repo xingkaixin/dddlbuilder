@@ -1,30 +1,19 @@
-import { forwardRef } from 'react';
+import { forwardRef, type SVGProps } from 'react';
+import { ICONS, iconElements, type IconName } from '@ddlbuilder/design/icons';
 import {
-  AlertCircle as AlertCircleData,
-  AlertTriangle as AlertTriangleData,
   AlignJustify as AlignJustifyData,
   AlignLeft as AlignLeftData,
-  ArrowLeft as ArrowLeftData,
-  ArrowRight as ArrowRightData,
   BanIcon as BanData,
   Chart03Icon as BarChart3Data,
   BookOpen as BookOpenData,
   Bot as BotData,
   Calendar as CalendarData,
-  Check as CheckData,
-  CheckmarkCircle02Icon as CheckCircle2Data,
-  ChevronDown as ChevronDownData,
-  ChevronLeft as ChevronLeftData,
-  ChevronRight as ChevronRightData,
-  ChevronUp as ChevronUpData,
-  Circle as CircleData,
   Clock as ClockData,
   CodeSimpleIcon as Code2Data,
   ColumnsThreeCogIcon as Columns3CogData,
   Copy as CopyData,
   Database as DatabaseData,
   Download as DownloadData,
-  DragDropVerticalIcon as DragDropVerticalIconData,
   Eye as EyeData,
   FileEditIcon as FileEditData,
   FileInput as FileInputData,
@@ -40,8 +29,6 @@ import {
   HardDrive as HardDriveData,
   Hash as HashData,
   History as HistoryData,
-  Info as InfoData,
-  InformationCircleIcon as InfoIconData,
   Key as KeyData,
   KeyRound as KeyRoundData,
   Languages as LanguagesData,
@@ -53,7 +40,6 @@ import {
   ListChecks as ListChecksData,
   ListPlus as ListPlusData,
   ListTree as ListTreeData,
-  Loading03Icon as Loader2Data,
   Lock as LockData,
   LogIn as LogInData,
   LogOut as LogOutData,
@@ -61,27 +47,19 @@ import {
   MailCheck as MailCheckData,
   Maximize as MaximizeData,
   MessageCircle as MessageCircleData,
-  Minus as MinusData,
   Moon as MoonData,
-  MoreHorizontal as MoreHorizontalData,
   Network as NetworkData,
-  Pause as PauseData,
   Pencil as PencilData,
   Pin as PinData,
-  Play as PlayData,
-  Plus as PlusData,
   PlusSignCircleIcon as PlusCircleData,
   RefreshCw as RefreshCwData,
   RotateCcw as RotateCcwData,
   Save as SaveData,
-  Search as SearchData,
   Send as SendData,
   Settings as SettingsData,
   Settings2 as Settings2Data,
   Share2 as Share2Data,
   ShieldCheck as ShieldCheckData,
-  SkipBack as SkipBackData,
-  SkipForward as SkipForwardData,
   SlidersHorizontal as SlidersHorizontalData,
   Sparkles as SparklesData,
   Star as StarData,
@@ -97,52 +75,104 @@ import {
   UserRound as UserRoundData,
   WandSparkles as WandSparklesData,
   Route01Icon as WaypointsData,
-  WifiOff as WifiOffData,
-  X as XData,
   Zap as ZapData,
   ZoomIn as ZoomInData,
   ZoomOut as ZoomOutData,
 } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon, type HugeiconsIconProps, type IconSvgElement } from '@hugeicons/react';
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
+import { cn } from '@/lib/utils';
 
-export type AppIconProps = Omit<HugeiconsIconProps, 'altIcon' | 'icon'>;
+export interface AppIconProps extends Omit<SVGProps<SVGSVGElement>, 'ref' | 'strokeWidth'> {
+  size?: number;
+}
 
 function createAppIcon(icon: IconSvgElement, displayName: string) {
-  const AppIcon = forwardRef<SVGSVGElement, AppIconProps>(
-    ({ strokeWidth = 1.7, ...props }, ref) => (
-      <HugeiconsIcon ref={ref} icon={icon} strokeWidth={strokeWidth} focusable="false" {...props} />
-    ),
-  );
+  const AppIcon = forwardRef<SVGSVGElement, AppIconProps>((props, ref) => (
+    <HugeiconsIcon ref={ref} icon={icon} strokeWidth={1.7} focusable="false" {...props} />
+  ));
   AppIcon.displayName = displayName;
 
   return AppIcon;
 }
 
-export const AlertCircle = createAppIcon(AlertCircleData, 'AlertCircle');
-export const AlertTriangle = createAppIcon(AlertTriangleData, 'AlertTriangle');
+// Stroke weight, wash and echo depend on the rendered size, and call sites set it with
+// Tailwind classes, so the size is read from them unless passed explicitly.
+const SIZE_CLASS = /(?:^|\s)(?:size|h|w)-(\d+(?:\.\d+)?)(?=\s|$)/;
+
+function sizeOf(className: string | undefined): number {
+  const match = className?.match(SIZE_CLASS);
+
+  return match ? Number(match[1]) * 4 : 16;
+}
+
+function createDrawnIcon(name: IconName, displayName: string) {
+  const def = ICONS[name];
+
+  const AppIcon = forwardRef<SVGSVGElement, AppIconProps>(({ size, className, ...props }, ref) => {
+    const px = size ?? sizeOf(className);
+
+    return (
+      <svg
+        ref={ref}
+        width={px}
+        height={px}
+        viewBox="0 0 24 24"
+        fill="none"
+        focusable="false"
+        aria-hidden="true"
+        data-tone={'tone' in def ? def.tone : undefined}
+        className={cn('lm-ic', className)}
+        {...props}
+      >
+        {iconElements(def, px).map(({ key, tag: Tag, ...attrs }) => (
+          <Tag key={key} {...attrs} />
+        ))}
+      </svg>
+    );
+  });
+  AppIcon.displayName = displayName;
+
+  return AppIcon;
+}
+
+export const AlertCircle = createDrawnIcon('error', 'AlertCircle');
+export const AlertTriangle = createDrawnIcon('warning', 'AlertTriangle');
+export const ArrowLeft = createDrawnIcon('arrowLeft', 'ArrowLeft');
+export const ArrowRight = createDrawnIcon('arrowRight', 'ArrowRight');
+export const Check = createDrawnIcon('check', 'Check');
+export const CheckCircle2 = createDrawnIcon('success', 'CheckCircle2');
+export const ChevronDown = createDrawnIcon('chevronDown', 'ChevronDown');
+export const ChevronLeft = createDrawnIcon('chevronLeft', 'ChevronLeft');
+export const ChevronRight = createDrawnIcon('chevronRight', 'ChevronRight');
+export const ChevronUp = createDrawnIcon('chevronUp', 'ChevronUp');
+export const Circle = createDrawnIcon('radioDot', 'Circle');
+export const DragDropVerticalIcon = createDrawnIcon('dragHandle', 'DragDropVerticalIcon');
+export const Info = createDrawnIcon('info', 'Info');
+export const Loader2 = createDrawnIcon('loading', 'Loader2');
+export const Minus = createDrawnIcon('minus', 'Minus');
+export const MoreHorizontal = createDrawnIcon('more', 'MoreHorizontal');
+export const Pause = createDrawnIcon('pause', 'Pause');
+export const Play = createDrawnIcon('play', 'Play');
+export const Plus = createDrawnIcon('plus', 'Plus');
+export const Search = createDrawnIcon('search', 'Search');
+export const SkipBack = createDrawnIcon('skipBack', 'SkipBack');
+export const SkipForward = createDrawnIcon('skipForward', 'SkipForward');
+export const WifiOff = createDrawnIcon('offline', 'WifiOff');
+export const X = createDrawnIcon('close', 'X');
+
 export const AlignJustify = createAppIcon(AlignJustifyData, 'AlignJustify');
 export const AlignLeft = createAppIcon(AlignLeftData, 'AlignLeft');
-export const ArrowLeft = createAppIcon(ArrowLeftData, 'ArrowLeft');
-export const ArrowRight = createAppIcon(ArrowRightData, 'ArrowRight');
 export const Ban = createAppIcon(BanData, 'Ban');
 export const BarChart3 = createAppIcon(BarChart3Data, 'BarChart3');
 export const BookOpen = createAppIcon(BookOpenData, 'BookOpen');
 export const Bot = createAppIcon(BotData, 'Bot');
 export const Calendar = createAppIcon(CalendarData, 'Calendar');
-export const Check = createAppIcon(CheckData, 'Check');
-export const CheckCircle2 = createAppIcon(CheckCircle2Data, 'CheckCircle2');
-export const ChevronDown = createAppIcon(ChevronDownData, 'ChevronDown');
-export const ChevronLeft = createAppIcon(ChevronLeftData, 'ChevronLeft');
-export const ChevronRight = createAppIcon(ChevronRightData, 'ChevronRight');
-export const ChevronUp = createAppIcon(ChevronUpData, 'ChevronUp');
-export const Circle = createAppIcon(CircleData, 'Circle');
 export const Clock = createAppIcon(ClockData, 'Clock');
 export const Code2 = createAppIcon(Code2Data, 'Code2');
 export const Columns3Cog = createAppIcon(Columns3CogData, 'Columns3Cog');
 export const Copy = createAppIcon(CopyData, 'Copy');
 export const Database = createAppIcon(DatabaseData, 'Database');
 export const Download = createAppIcon(DownloadData, 'Download');
-export const DragDropVerticalIcon = createAppIcon(DragDropVerticalIconData, 'DragDropVerticalIcon');
 export const Eye = createAppIcon(EyeData, 'Eye');
 export const FileEdit = createAppIcon(FileEditData, 'FileEdit');
 export const FileInput = createAppIcon(FileInputData, 'FileInput');
@@ -158,8 +188,6 @@ export const Grid3x3 = createAppIcon(Grid3x3Data, 'Grid3x3');
 export const HardDrive = createAppIcon(HardDriveData, 'HardDrive');
 export const Hash = createAppIcon(HashData, 'Hash');
 export const History = createAppIcon(HistoryData, 'History');
-export const Info = createAppIcon(InfoData, 'Info');
-export const InfoIcon = createAppIcon(InfoIconData, 'InfoIcon');
 export const Key = createAppIcon(KeyData, 'Key');
 export const KeyRound = createAppIcon(KeyRoundData, 'KeyRound');
 export const Languages = createAppIcon(LanguagesData, 'Languages');
@@ -171,7 +199,6 @@ export const Link2 = createAppIcon(Link2Data, 'Link2');
 export const ListChecks = createAppIcon(ListChecksData, 'ListChecks');
 export const ListPlus = createAppIcon(ListPlusData, 'ListPlus');
 export const ListTree = createAppIcon(ListTreeData, 'ListTree');
-export const Loader2 = createAppIcon(Loader2Data, 'Loader2');
 export const Lock = createAppIcon(LockData, 'Lock');
 export const LogIn = createAppIcon(LogInData, 'LogIn');
 export const LogOut = createAppIcon(LogOutData, 'LogOut');
@@ -179,27 +206,19 @@ export const Mail = createAppIcon(MailData, 'Mail');
 export const MailCheck = createAppIcon(MailCheckData, 'MailCheck');
 export const Maximize = createAppIcon(MaximizeData, 'Maximize');
 export const MessageCircle = createAppIcon(MessageCircleData, 'MessageCircle');
-export const Minus = createAppIcon(MinusData, 'Minus');
 export const Moon = createAppIcon(MoonData, 'Moon');
-export const MoreHorizontal = createAppIcon(MoreHorizontalData, 'MoreHorizontal');
 export const Network = createAppIcon(NetworkData, 'Network');
-export const Pause = createAppIcon(PauseData, 'Pause');
 export const Pencil = createAppIcon(PencilData, 'Pencil');
 export const Pin = createAppIcon(PinData, 'Pin');
-export const Play = createAppIcon(PlayData, 'Play');
-export const Plus = createAppIcon(PlusData, 'Plus');
 export const PlusCircle = createAppIcon(PlusCircleData, 'PlusCircle');
 export const RefreshCw = createAppIcon(RefreshCwData, 'RefreshCw');
 export const RotateCcw = createAppIcon(RotateCcwData, 'RotateCcw');
 export const Save = createAppIcon(SaveData, 'Save');
-export const Search = createAppIcon(SearchData, 'Search');
 export const Send = createAppIcon(SendData, 'Send');
 export const Settings = createAppIcon(SettingsData, 'Settings');
 export const Settings2 = createAppIcon(Settings2Data, 'Settings2');
 export const Share2 = createAppIcon(Share2Data, 'Share2');
 export const ShieldCheck = createAppIcon(ShieldCheckData, 'ShieldCheck');
-export const SkipBack = createAppIcon(SkipBackData, 'SkipBack');
-export const SkipForward = createAppIcon(SkipForwardData, 'SkipForward');
 export const SlidersHorizontal = createAppIcon(SlidersHorizontalData, 'SlidersHorizontal');
 export const Sparkles = createAppIcon(SparklesData, 'Sparkles');
 export const Star = createAppIcon(StarData, 'Star');
@@ -215,8 +234,6 @@ export const Upload = createAppIcon(UploadData, 'Upload');
 export const UserRound = createAppIcon(UserRoundData, 'UserRound');
 export const WandSparkles = createAppIcon(WandSparklesData, 'WandSparkles');
 export const Waypoints = createAppIcon(WaypointsData, 'Waypoints');
-export const WifiOff = createAppIcon(WifiOffData, 'WifiOff');
-export const X = createAppIcon(XData, 'X');
 export const Zap = createAppIcon(ZapData, 'Zap');
 export const ZoomIn = createAppIcon(ZoomInData, 'ZoomIn');
 export const ZoomOut = createAppIcon(ZoomOutData, 'ZoomOut');

@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import '@ddlbuilder/design/tokens.css' layer(base);
 @import '@ddlbuilder/design/sketch.css' layer(base);
+@import '@ddlbuilder/design/icons.css' layer(base);
 @import './styles/lanmo.css' layer(components);
 @config "../tailwind.config.js";
 

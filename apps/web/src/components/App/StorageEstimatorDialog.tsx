@@ -12,15 +12,7 @@ import { Input } from '@/components/ui/input';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import type { DatabaseType, IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types';
 import { useStorageEstimation } from '@/hooks/useStorageEstimation';
-import {
-  Database,
-  HardDrive,
-  InfoIcon,
-  BarChart3,
-  Layers,
-  GitBranch,
-  Zap,
-} from '@/components/icons';
+import { Database, HardDrive, Info, BarChart3, Layers, GitBranch, Zap } from '@/components/icons';
 
 interface StorageEstimatorDialogProps {
   open: boolean;
@@ -272,7 +264,7 @@ function ExplainSection({ icon, title, items }: ExplainSectionProps) {
             key={idx}
             className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/20 p-2.5 rounded-md border border-border/50"
           >
-            <InfoIcon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+            <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
             <span>{text}</span>
           </div>
         ))}
