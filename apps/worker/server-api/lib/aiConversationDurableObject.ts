@@ -194,14 +194,15 @@ export class AIConversationDurableObject {
           stream: { timeoutMs: 120_000, maxRetries: 0 },
           retry: { maxRetries: 1 },
           compaction: { enabled: false },
-          progress: { partialIntervalMs: 100 },
+          // observeCommits only sees stored commits; deferring partials would slow the /events stream.
+          progress: { partialIntervalMs: 100, persistWithinMs: 0 },
         },
       },
       context,
     );
     void this.harness.closed.then((end) => {
       // pi-durable does not reopen after a storage failure; a reset object reinitializes on its next event.
-      if (end.reason === 'failed') this.ctx.abort('AI runtime storage failed');
+      if (end.kind === 'failed') this.ctx.abort('AI runtime storage failed');
     });
     const state = await this.state();
 
@@ -211,10 +212,13 @@ export class AIConversationDurableObject {
         state.conversation as ConversationId,
         context,
       );
-    this.harness.subscribeCommits(() => {
-      this.ctx.waitUntil(this.projectReview());
+    this.harness.observeCommits({
+      advance: () => {
+        this.ctx.waitUntil(this.projectReview());
 
-      for (const listener of this.observers) listener();
+        for (const listener of this.observers) listener();
+      },
+      end: () => undefined,
     });
   }
 
