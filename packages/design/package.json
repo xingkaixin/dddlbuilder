@@ -6,6 +6,8 @@
     "./tokens.css": "./src/tokens.css",
     "./tiles.css": "./src/tiles.css",
     "./sketch.css": "./src/sketch.css",
+    "./icons.css": "./src/icons.css",
+    "./icons": "./src/icons.ts",
     "./sketch-path": "./src/sketch-path.ts",
     "./ink": "./src/ink.ts",
     "./tile-scenes": "./src/tile-scenes.ts",

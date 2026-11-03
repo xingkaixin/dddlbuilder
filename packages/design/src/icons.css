@@ -1,0 +1,35 @@
+.lm-ic {
+  flex-shrink: 0;
+}
+
+.lm-ic-ink {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lm-ic-echo {
+  opacity: 0.45;
+}
+
+.lm-ic-dot {
+  fill: currentColor;
+}
+
+.lm-ic-wash {
+  fill: var(--lm-ic-wash, var(--blue-wash));
+  opacity: var(--wash-rest);
+}
+
+.lm-ic[data-tone='success'] {
+  --lm-ic-wash: var(--success-wash);
+}
+
+.lm-ic[data-tone='warning'] {
+  --lm-ic-wash: var(--warning-wash);
+}
+
+.lm-ic[data-tone='danger'] {
+  --lm-ic-wash: var(--danger-wash);
+}
