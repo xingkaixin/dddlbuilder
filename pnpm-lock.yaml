@@ -344,12 +344,6 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.3.1)
-      '@hugeicons/core-free-icons':
-        specifier: 4.4.0
-        version: 4.4.0
-      '@hugeicons/react':
-        specifier: 1.1.10
-        version: 1.1.10(react@19.3.1)
       '@number-flow/react':
         specifier: ^0.6.2
         version: 0.6.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1399,14 +1393,6 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4 || ^5.0.0-0
-
-  '@hugeicons/core-free-icons@4.4.0':
-    resolution: {integrity: sha512-7Mz8bmGoY6tZ6l3C2TXwNMLVSr0I8HPwjjFIERAuJFj3rWwLxdF2ZLkDqdrVuEE1dx5b/VXyIsP4WoSU6Q40KQ==}
-
-  '@hugeicons/react@1.1.10':
-    resolution: {integrity: sha512-9tAsd92yMVVGP+E+d8cM+wc0VnXuYZHNbWQi7TOe8k2neawmhiaFmVFbzyruejhOMa197/LbgvSED32ayUo3ZA==}
-    peerDependencies:
-      react: '>=16.0.0'
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -5644,12 +5630,6 @@ snapshots:
   '@hono/node-server@2.1.5(hono@4.13.14)':
     dependencies:
       hono: 4.13.14
-
-  '@hugeicons/core-free-icons@4.4.0': {}
-
-  '@hugeicons/react@1.1.10(react@19.3.1)':
-    dependencies:
-      react: 19.3.1
 
   '@img/colour@1.1.0': {}
 
