@@ -133,9 +133,32 @@ jobs:
         run: pnpm audit --prod
 
   test_e2e:
+    name: test_e2e (${{ matrix.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: 1/8
+            args: --fully-parallel --shard=1/8
+          - name: 2/8
+            args: --fully-parallel --shard=2/8
+          - name: 3/8
+            args: --fully-parallel --shard=3/8
+          - name: 4/8
+            args: --fully-parallel --shard=4/8
+          - name: 5/8
+            args: --fully-parallel --shard=5/8
+          - name: 6/8
+            args: --fully-parallel --shard=6/8
+          - name: 7/8
+            args: --fully-parallel --shard=7/8
+          - name: 8/8
+            args: --fully-parallel --shard=8/8
+          - name: runtime
+            args: --config playwright.runtime.config.ts
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -160,13 +183,19 @@ jobs:
           wait $!
 
       - name: Run e2e tests
-        run: pnpm run test:e2e
+        run: pnpm exec playwright test ${{ matrix.args }}
+        env:
+          # Playwright splits shards by test count, but the workspace sync specs at the end of
+          # the list run far longer, so the last shards take fewer tests. This variable is
+          # undocumented; if Playwright drops it, shards fall back to equal counts and still
+          # run every test. Re-derive from a JSON report when the suite shifts a lot.
+          PWTEST_SHARD_WEIGHTS: '33:29:21:24:15:8:3:5'
 
       - name: Upload Playwright artifacts
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-artifacts
+          name: playwright-artifacts-${{ strategy.job-index }}
           path: |
             playwright-report/**
             test-results/**
