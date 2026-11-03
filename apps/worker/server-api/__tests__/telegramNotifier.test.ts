@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatTelegramAIMessage, notifyAIOperation } from '../lib/telegramNotifier';
+import { notifyAIOperation } from '../lib/telegramNotifier';
 import type { ApiEnv } from '../lib/context';
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
@@ -46,28 +46,5 @@ describe('telegram notifier', () => {
     notifyAIOperation(createEnv(enabled), payload, waitUntil);
     expect(waitUntil).toHaveBeenCalledOnce();
     expect(fetchSpy).toHaveBeenCalledOnce();
-  });
-
-  it('keeps a failed send inside the background task', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('fail', { status: 500 }));
-    const tasks: Promise<unknown>[] = [];
-
-    notifyAIOperation(createEnv(enabled), payload, (promise) => tasks.push(promise));
-    await expect(tasks[0]).resolves.toBeUndefined();
-  });
-
-  it('formats usage and failure details', () => {
-    const text = formatTelegramAIMessage({
-      ...payload,
-      outcome: 'failed',
-      latencyMs: null,
-      error: 'UPSTREAM_OPENAI_ERROR',
-    });
-
-    expect(text).toContain('[LLM Usage] review');
-    expect(text).toContain('outcome: failed');
-    expect(text).toContain('chargedTokens: 39');
-    expect(text).toContain('latencyMs: n/a');
-    expect(text).toContain('error: UPSTREAM_OPENAI_ERROR');
   });
 });

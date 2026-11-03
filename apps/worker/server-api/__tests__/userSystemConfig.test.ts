@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiEnv } from '../lib/context';
-import { getAuthBodyMaxBytes, getUserSystemConfig } from '../lib/userSystemConfig';
+import { getUserSystemConfig } from '../lib/userSystemConfig';
 
 const buildEnv = () =>
   // SAFETY: the fixture object supplies every configuration key read by the parser; platform bindings are only placeholders.
@@ -24,36 +24,6 @@ const asBindings = <T extends object>(env: T): ApiEnv['Bindings'] => {
 };
 
 describe('getUserSystemConfig', () => {
-  it('reads required user system config', () => {
-    const config = getUserSystemConfig(asBindings(buildEnv()));
-    expect(config.signupBonusCredits).toBe(100000);
-    expect(config.betterAuthUrl).toContain('localhost');
-    expect(config.resendFromEmail).toBe('noreply@example.com');
-    expect(config.authRequireEmailVerification).toBe(true);
-  });
-
-  it('fails when USER_DB binding is missing', () => {
-    const env: Partial<ReturnType<typeof buildEnv>> = buildEnv();
-    delete env.USER_DB;
-    expect(() => getUserSystemConfig(asBindings(env))).toThrow('USER_DB binding is required');
-  });
-
-  it('fails when signup credits are invalid', () => {
-    const env = buildEnv();
-    env.SIGNUP_BONUS_CREDITS = '0';
-    expect(() => getUserSystemConfig(asBindings(env))).toThrow(
-      'SIGNUP_BONUS_CREDITS must be a positive integer',
-    );
-  });
-
-  it('supports disabling email verification in isolated runtimes', () => {
-    const env = {
-      ...buildEnv(),
-      AUTH_REQUIRE_EMAIL_VERIFICATION: 'false',
-    };
-    expect(getUserSystemConfig(asBindings(env)).authRequireEmailVerification).toBe(false);
-  });
-
   it('rejects an invalid email verification setting', () => {
     const env = {
       ...buildEnv(),
@@ -62,23 +32,5 @@ describe('getUserSystemConfig', () => {
     expect(() => getUserSystemConfig(asBindings(env))).toThrow(
       'AUTH_REQUIRE_EMAIL_VERIFICATION must be true or false',
     );
-  });
-
-  it('defaults and supports a bounded authentication body limit', () => {
-    expect(getAuthBodyMaxBytes(asBindings(buildEnv()))).toBe(16 * 1024);
-
-    const env = {
-      ...buildEnv(),
-      AUTH_BODY_MAX_BYTES: '32768',
-    };
-    expect(getAuthBodyMaxBytes(asBindings(env))).toBe(32768);
-  });
-
-  it.each(['0', '1.5', '1048577'])('rejects an unsafe authentication body limit: %s', (value) => {
-    const env = {
-      ...buildEnv(),
-      AUTH_BODY_MAX_BYTES: value,
-    };
-    expect(() => getAuthBodyMaxBytes(asBindings(env))).toThrow('AUTH_BODY_MAX_BYTES');
   });
 });

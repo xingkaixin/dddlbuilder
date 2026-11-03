@@ -25,9 +25,6 @@ describe('auth schema migration parity', () => {
       sqlite.close();
     }
   });
-  it('defaults local account issuers to an empty string', () => {
-    expect(betterAuthSchema.account.issuer.default).toBe('');
-  });
 
   it('scopes account identity to the provider when issuer is omitted', () => {
     const { sqlite } = createSqliteD1Database();

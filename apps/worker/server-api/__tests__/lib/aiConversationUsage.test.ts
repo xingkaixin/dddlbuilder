@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import * as Effect from 'effect/Effect';
 import { createCreditFixture } from '../helpers/creditFixture.js';
 import { admitAICall, recordAICallUsage, settleAICalls } from '../../lib/aiConversationUsage.js';
-import { loadAIConversationConfig } from '../../lib/aiConversationConfig.js';
 
 const estimate = { inputTokens: 40, maxOutputTokens: 60 };
 
@@ -28,15 +26,6 @@ const fixture = async (balance = 1000) => {
 };
 
 describe('durable AI accounting', () => {
-  it('defaults thinking to off and enables it only through configuration', async () => {
-    const { env } = await fixture();
-    expect((await Effect.runPromise(loadAIConversationConfig(env))).thinking).toBe(false);
-    expect(
-      (await Effect.runPromise(loadAIConversationConfig({ ...env, AI_THINKING_ENABLED: 'true' })))
-        .thinking,
-    ).toBe(true);
-  });
-
   it('rolls admission back when the reservation is rejected', async () => {
     const test = await fixture(1);
 

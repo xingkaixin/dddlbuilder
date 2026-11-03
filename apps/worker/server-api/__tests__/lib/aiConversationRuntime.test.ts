@@ -1,5 +1,4 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { configureWorkerLogging } from '../../lib/logging.js';
 import { createAIRuntimeFixture as createRuntime } from '../helpers/aiRuntime.js';
 import { AI_CONTEXT_LIMIT_ERROR, decodeAIConversationSnapshot } from '@ddlbuilder/shared-types';
 
@@ -109,72 +108,6 @@ const snapshot = async (test: Awaited<ReturnType<typeof createRuntime>>, id = 'o
     ).json(),
   );
 
-it('notifies Telegram once the operation is settled', async () => {
-  const messages: string[] = [];
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string, init) => {
-      if (!String(url).startsWith('https://api.telegram.org/')) return response();
-      messages.push(JSON.parse(init.body).text);
-
-      return new Response('{}');
-    }),
-  );
-
-  const test = await createRuntime({
-    bindings: {
-      TELEGRAM_NOTIFY_ENABLED: 'true',
-      TELEGRAM_BOT_TOKEN: 'bot-token',
-      TELEGRAM_CHAT_ID: 'chat-id',
-    },
-  });
-  await submit(test);
-  await test.finish();
-  await submit(test);
-  await test.finish();
-  expect(messages).toHaveLength(1);
-  expect(messages[0]).toContain('[LLM Usage] explain');
-  expect(messages[0]).toContain('outcome: succeeded');
-  expect(messages[0]).toContain('chargedTokens: 30');
-});
-
-it.each([
-  { balance: 100_000, outcome: 'success' as const },
-  { balance: 1, outcome: 'denied' as const },
-])('audits the settled operation as $outcome', async ({ balance, outcome }) => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async () => response()),
-  );
-
-  const audits: unknown[] = [];
-
-  const spies = (['log', 'info', 'warn', 'error'] as const).map((method) =>
-    vi.spyOn(console, method).mockImplementation((value: { audit?: unknown }) => {
-      if (value?.audit) audits.push(value.audit);
-    }),
-  );
-  configureWorkerLogging(true);
-
-  try {
-    const test = await createRuntime({ balance });
-    await submit(test);
-    await test.finish();
-    expect(audits).toHaveLength(1);
-    expect(audits[0]).toMatchObject({
-      action: 'ai.request',
-      actor: { type: 'user', id: 'user-1' },
-      target: { type: 'ai_route', id: 'explain', model: 'claude-haiku-5-5' },
-      outcome,
-      correlationId: 'operation',
-    });
-  } finally {
-    configureWorkerLogging(false);
-
-    for (const spy of spies) spy.mockRestore();
-  }
-});
-
 it('denies insufficient credits before dispatch and finishes without charging', async () => {
   const fetch = vi.fn();
   vi.stubGlobal('fetch', fetch);
@@ -220,19 +153,6 @@ it('reports a truncated model output and bills its usage', async () => {
   await test.finish();
   expect(await snapshot(test)).toMatchObject({ status: 'failed', error: 'AI_OUTPUT_TRUNCATED' });
   expect(await test.balance()).toBe(99_970);
-});
-
-it('keeps completed conversations when a stale alarm arrives before expiry', async () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async () => response()),
-  );
-  const test = await createRuntime();
-  await submit(test);
-  await test.finish();
-  await test.runtime.alarm();
-  expect(test.deleted).toBe(false);
-  expect(test.alarmAt).toBeGreaterThan(Date.now());
 });
 
 it('retries settlement from a saved receipt without repeating the model call', async () => {

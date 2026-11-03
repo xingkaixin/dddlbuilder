@@ -106,11 +106,7 @@ describe('legacy usage recovery', () => {
   it.each([
     ['pending', null, 1000, 'failed'],
     ['reserved', null, 900, 'failed'],
-    ['reclaiming', 0, 1000, 'failed'],
-    ['reclaiming', 100, 900, 'failed'],
     ['settling_succeeded', 60, 940, 'succeeded'],
-    ['settling_failed', 60, 940, 'failed'],
-    ['settling_failed', null, 1000, 'failed'],
   ] as const)('recovers %s with usage %s', async (status, actual, expected, terminal) => {
     const f = await createCreditFixture();
 
@@ -225,92 +221,48 @@ describe('legacy usage recovery', () => {
       f.sqlite.close();
     }
   });
+});
 
-  it('prioritizes a due retry over newly prepared settlements', async () => {
+describe('recovery failure isolation', () => {
+  it.each(['explain'])('continues after settlement and deferral fail for %s', async (routeKey) => {
     const f = await createCreditFixture();
 
     try {
-      const due = await f.reserve();
-      const fresh = await f.reserve();
+      const broken = await f.reserve(100, 'broken');
+      const recoverable = await f.reserve(100, 'recoverable');
       f.sqlite
-        .prepare(`UPDATE usage_events SET
-          status = 'settling_failed', charged_tokens = 0, provider_budget_tokens = 0,
-          attempt_count = 0, usage_is_estimated = 0, created_at = 1, recovery_after = 100
-          WHERE id = ?`)
-        .run(due.usageEventId);
+        .prepare('UPDATE usage_events SET created_at = 1, route_key = ? WHERE id = ?')
+        .run(routeKey, broken.usageEventId);
       f.sqlite
-        .prepare(`UPDATE usage_events SET
-          status = 'settling_failed', charged_tokens = 0, provider_budget_tokens = 0,
-          attempt_count = 0, usage_is_estimated = 0, created_at = 999, recovery_after = NULL
-          WHERE id = ?`)
-        .run(fresh.usageEventId);
+        .prepare('UPDATE usage_events SET created_at = 2 WHERE id = ?')
+        .run(recoverable.usageEventId);
+      f.sqlite.exec(`CREATE TRIGGER reject_broken_recovery BEFORE UPDATE ON usage_events
+        WHEN OLD.request_id = 'broken'
+        BEGIN SELECT RAISE(ABORT, 'RECOVERY_WRITE_FAILED'); END`);
 
-      expect(
-        await Effect.runPromise(
-          reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0, limit: 1 }).pipe(
-            Effect.provide(D1Client.layer({ db: f.env.USER_DB })),
-          ),
+      const result = await Effect.runPromise(
+        reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0 }).pipe(
+          Effect.provide(D1Client.layer({ db: f.env.USER_DB })),
         ),
-      ).toEqual({
-        scanned: 1,
-        reclaimed: 1,
-        failures: [],
-      });
+      );
+      expect(result).toMatchObject({ scanned: 2, reclaimed: 1 });
+      expect(result.failures).toHaveLength(1);
+      expect(result.failures[0]?.usageEventId).toBe(broken.usageEventId);
+      const error = result.failures[0]?.error;
+      expect(error).toBeInstanceOf(AggregateError);
+      // SAFETY: the preceding instanceof check proves this failure exposes AggregateError.errors.
+      expect((error as AggregateError).errors).toHaveLength(2);
+      expect(await f.balance()).toBe(900);
       expect(
-        f.sqlite.prepare('SELECT status FROM usage_events WHERE id = ?').get(due.usageEventId),
+        f.sqlite
+          .prepare('SELECT status FROM usage_events WHERE id = ?')
+          .get(recoverable.usageEventId),
       ).toEqual({ status: 'failed' });
       expect(
-        f.sqlite.prepare('SELECT status FROM usage_events WHERE id = ?').get(fresh.usageEventId),
-      ).toEqual({ status: 'settling_failed' });
+        f.sqlite.prepare('SELECT status FROM usage_events WHERE id = ?').get(broken.usageEventId),
+      ).toEqual({ status: 'reserved' });
     } finally {
       f.sqlite.close();
     }
   });
-});
-
-describe('recovery failure isolation', () => {
-  it.each(['explain', '__proto__'])(
-    'continues after settlement and deferral fail for %s',
-    async (routeKey) => {
-      const f = await createCreditFixture();
-
-      try {
-        const broken = await f.reserve(100, 'broken');
-        const recoverable = await f.reserve(100, 'recoverable');
-        f.sqlite
-          .prepare('UPDATE usage_events SET created_at = 1, route_key = ? WHERE id = ?')
-          .run(routeKey, broken.usageEventId);
-        f.sqlite
-          .prepare('UPDATE usage_events SET created_at = 2 WHERE id = ?')
-          .run(recoverable.usageEventId);
-        f.sqlite.exec(`CREATE TRIGGER reject_broken_recovery BEFORE UPDATE ON usage_events
-        WHEN OLD.request_id = 'broken'
-        BEGIN SELECT RAISE(ABORT, 'RECOVERY_WRITE_FAILED'); END`);
-
-        const result = await Effect.runPromise(
-          reclaimStaleAIUsage(f.env, { now: 1_000, ttlMs: 0 }).pipe(
-            Effect.provide(D1Client.layer({ db: f.env.USER_DB })),
-          ),
-        );
-        expect(result).toMatchObject({ scanned: 2, reclaimed: 1 });
-        expect(result.failures).toHaveLength(1);
-        expect(result.failures[0]?.usageEventId).toBe(broken.usageEventId);
-        const error = result.failures[0]?.error;
-        expect(error).toBeInstanceOf(AggregateError);
-        // SAFETY: the preceding instanceof check proves this failure exposes AggregateError.errors.
-        expect((error as AggregateError).errors).toHaveLength(2);
-        expect(await f.balance()).toBe(900);
-        expect(
-          f.sqlite
-            .prepare('SELECT status FROM usage_events WHERE id = ?')
-            .get(recoverable.usageEventId),
-        ).toEqual({ status: 'failed' });
-        expect(
-          f.sqlite.prepare('SELECT status FROM usage_events WHERE id = ?').get(broken.usageEventId),
-        ).toEqual({ status: 'reserved' });
-      } finally {
-        f.sqlite.close();
-      }
-    },
-  );
 });

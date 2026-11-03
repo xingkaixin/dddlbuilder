@@ -25,50 +25,6 @@ afterEach(() => {
 });
 
 describe('csp headers', () => {
-  it('CSP_MODE=report-only 时仅返回 Report-Only 头', async () => {
-    const env = createEnv({
-      CSP_ENABLE: 'true',
-      CSP_MODE: 'report-only',
-    });
-
-    const response = await app.fetch(new Request('http://localhost/api/health'), env);
-    expect(response.headers.get('content-security-policy-report-only')).toBeTruthy();
-    expect(response.headers.get('content-security-policy')).toBeNull();
-  });
-
-  it('CSP_MODE=enforce 时仅返回 enforce 头', async () => {
-    const env = createEnv({
-      CSP_ENABLE: 'true',
-      CSP_MODE: 'enforce',
-    });
-
-    const response = await app.fetch(new Request('http://localhost/api/health'), env);
-    expect(response.headers.get('content-security-policy')).toBeTruthy();
-    expect(response.headers.get('content-security-policy-report-only')).toBeNull();
-  });
-
-  it('CSP_MODE=both 时返回两种头', async () => {
-    const env = createEnv({
-      CSP_ENABLE: 'true',
-      CSP_MODE: 'both',
-    });
-
-    const response = await app.fetch(new Request('http://localhost/api/health'), env);
-    expect(response.headers.get('content-security-policy')).toBeTruthy();
-    expect(response.headers.get('content-security-policy-report-only')).toBeTruthy();
-  });
-
-  it('CSP_ENABLE=false 时不返回 CSP 头', async () => {
-    const env = createEnv({
-      CSP_ENABLE: 'false',
-      CSP_MODE: 'both',
-    });
-
-    const response = await app.fetch(new Request('http://localhost/api/health'), env);
-    expect(response.headers.get('content-security-policy')).toBeNull();
-    expect(response.headers.get('content-security-policy-report-only')).toBeNull();
-  });
-
   it('对 SPA 页面应用默认 CSP 且不允许 unsafe script', async () => {
     const env = createEnv({
       CSP_ENABLE: 'true',

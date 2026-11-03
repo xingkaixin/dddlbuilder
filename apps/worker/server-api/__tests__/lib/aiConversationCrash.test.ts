@@ -5,9 +5,21 @@ import { join } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { it, expect } from 'vitest';
 
-it.each(['explain', 'review'])(
-  'recovers a SIGKILLed %s generation and accounts both calls',
-  async (scenario) => {
+it.each([
+  { scenario: 'explain', expected: { snapshot: { text: 'Recovered answer' } } },
+  {
+    scenario: 'review',
+    expected: {
+      suppliedProjection: true,
+      snapshot: {
+        text: expect.stringContaining('stable-review-card'),
+        suggestions: [expect.objectContaining({ id: 'stable-review-card' })],
+      },
+    },
+  },
+])(
+  'recovers a SIGKILLed $scenario generation and accounts both calls',
+  async ({ scenario, expected }) => {
     const directory = mkdtempSync(join(tmpdir(), 'ddl-ai-recovery-'));
 
     const run = (mode: string) =>
@@ -37,21 +49,13 @@ it.each(['explain', 'review'])(
       second = run('resume');
       const result = await new Promise((resolve) => second?.once('message', resolve));
 
-      if (scenario === 'review')
-        expect(result).toMatchObject({
-          suppliedProjection: true,
-          snapshot: { suggestions: [expect.objectContaining({ id: 'stable-review-card' })] },
-        });
+      expect(result).toMatchObject(expected);
       expect(result).toMatchObject({
         type: 'completed',
         snapshot: {
           operationId: 'operation',
           conversationId: 'conversation',
           status: 'succeeded',
-          text:
-            scenario === 'explain'
-              ? 'Recovered answer'
-              : expect.stringContaining('stable-review-card'),
           accountingPending: false,
         },
         calls: { count: 2 },

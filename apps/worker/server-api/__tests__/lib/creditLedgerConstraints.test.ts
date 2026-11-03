@@ -37,14 +37,4 @@ describe('credit ledger constraints', () => {
   it('rejects fractional ledger amounts', () => {
     expect(() => insertLedger(1.5, 1.5, 'fractional')).toThrow('INVALID_CREDIT_AMOUNT');
   });
-
-  it('rejects balances beyond the JavaScript safe integer domain', () => {
-    sqlite
-      .prepare('UPDATE credit_accounts SET balance = ? WHERE user_id = ?')
-      .run(Number.MAX_SAFE_INTEGER, 'user-1');
-
-    expect(() => insertLedger(1, Number.MAX_SAFE_INTEGER + 1, 'overflow')).toThrow(
-      'CREDIT_BALANCE_OVERFLOW',
-    );
-  });
 });

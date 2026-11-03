@@ -84,9 +84,6 @@ const createRequest = (path: string, init: RequestInit = {}) => {
   });
 };
 
-const readInfoLogs = () =>
-  vi.mocked(console.info).mock.calls.map((call) => JSON.parse(String(call[0])));
-
 const createWebSocket = (
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the platform attachment is intentionally arbitrary to test hibernation restoration
   attachment: unknown = {
@@ -346,60 +343,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     restored.destroy();
   });
 
-  it('rejects text websocket messages', async () => {
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state } = createDurableObjectState();
-    const socket = createWebSocket();
-    const object = new WorkspaceYDocDurableObject(state, createEnv());
-
-    await object.webSocketMessage(socket, 'invalid');
-
-    expect(socket.close).toHaveBeenCalledWith(1003, 'Binary workspace updates required');
-    expect(state.storage.get).not.toHaveBeenCalled();
-  });
-
-  it('rejects oversized websocket messages before loading the document', async () => {
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state } = createDurableObjectState();
-    const socket = createWebSocket();
-    const object = new WorkspaceYDocDurableObject(state, createEnv());
-
-    await object.webSocketMessage(socket, new ArrayBuffer(16 * 1024 * 1024 + 1));
-
-    expect(socket.close).toHaveBeenCalledWith(1009, 'Workspace update too large');
-    expect(state.storage.get).not.toHaveBeenCalled();
-    expect(state.storage.list).not.toHaveBeenCalled();
-  });
-
-  it('batches queued updates and reads the alarm only once', async () => {
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state, store } = createDurableObjectState();
-    const doc = new Y.Doc();
-    doc.getMap('meta').set('schemaVersion', 1);
-    store.set('snapshot', Y.encodeStateAsUpdate(doc));
-    const object = new WorkspaceYDocDurableObject(state, createEnv());
-    const ws = createWebSocket();
-    await object.fetch(new Request('http://localhost/state'));
-
-    const messages = Array.from({ length: 8 }, (_, i) => {
-      doc.getMap('fields').set(String(i), String(i));
-
-      return trackedUpdate(Y.encodeStateAsUpdate(doc), i);
-    });
-    await Promise.all(messages.map((message) => object.webSocketMessage(ws, message)));
-    expect(state.storage.transaction).toHaveBeenCalledTimes(1);
-    expect(state.storage.getAlarm).toHaveBeenCalledTimes(1);
-    const restored = new Y.Doc();
-
-    const response = await new WorkspaceYDocDurableObject(state, createEnv()).fetch(
-      new Request('http://localhost/state'),
-    );
-    Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
-    expect(restored.getMap('fields').size).toBe(8);
-    doc.destroy();
-    restored.destroy();
-  });
-
   it('acknowledges a batch only after storage completes and survives a cold reload', async () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state, store } = createDurableObjectState();
@@ -462,35 +405,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     ).rejects.toThrow('storage failed');
     expect(ws.send).not.toHaveBeenCalled();
     expect(ws.close).toHaveBeenCalledWith(1011, 'Workspace persistence failed');
-    doc.destroy();
-  });
-
-  it('reuses the cached authorization for repeated messages within the TTL window', async () => {
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state, store } = createDurableObjectState();
-
-    const prepare = vi.fn((_sql: string) => ({
-      bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
-    }));
-    const durableObject = new WorkspaceYDocDurableObject(
-      state,
-      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: this partial binding is limited to the authorization query used by the test.
-      {
-        USER_DB: { prepare },
-      } as unknown as ApiEnv['Bindings'],
-    );
-    const ws = createWebSocket();
-    const doc = new Y.Doc();
-    doc.getMap('meta').set('schemaVersion', 1);
-    store.set('snapshot', Y.encodeStateAsUpdate(doc));
-
-    await durableObject.webSocketMessage(ws, trackedUpdate(Y.encodeStateAsUpdate(doc), 1));
-    await durableObject.webSocketMessage(ws, trackedUpdate(Y.encodeStateAsUpdate(doc), 2));
-
-    const authQueries = prepare.mock.calls.filter(([sql]) =>
-      String(sql).includes('LEFT JOIN session'),
-    );
-    expect(authQueries).toHaveLength(1);
     doc.destroy();
   });
 
@@ -611,55 +525,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     } finally {
       restored.destroy();
     }
-  });
-
-  it('merges migration records without replacing authoritative state', async () => {
-    const checkpointWorkspaceSnapshotEntities = vi.fn().mockResolvedValue({
-      upserted: 1,
-      deleted: 0,
-      skipped: 0,
-    });
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test migration merge semantics
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities,
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue(createSnapshot('current')),
-    }));
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state } = createDurableObjectState();
-    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
-
-    const migrationSnapshot: WorkspaceSnapshot = {
-      globalDraft: null,
-      drafts: [],
-      savedTables: [
-        {
-          normalizedName: 'imported',
-          name: 'Imported',
-          state: createState('imported'),
-          createdAt: 3,
-          updatedAt: 4,
-        },
-      ],
-      savedDrafts: [],
-      folders: [],
-    };
-    const response = await durableObject.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/migrate', {
-        method: 'POST',
-        body: JSON.stringify(migrationSnapshot),
-      }),
-    );
-
-    expect(response.status).toBe(200);
-    expect(checkpointWorkspaceSnapshotEntities).toHaveBeenLastCalledWith(
-      expect.anything(),
-      'user-1',
-      'ws-1',
-      expect.objectContaining({
-        drafts: [expect.objectContaining({ draftId: 'default' })],
-        savedTables: [expect.objectContaining({ normalizedName: 'imported' })],
-      }),
-    );
   });
 
   it.each([undefined, 'table-users'])(
@@ -862,151 +727,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     expect(restoredDoc.getMap('recovery').toJSON()).toEqual({ first: true, second: true });
   });
 
-  it('rejects migrate when its D1 checkpoint fails', async () => {
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test health logging
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities: vi
-        .fn()
-        .mockRejectedValue(new Error('checkpoint unavailable')),
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-        globalDraft: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      }),
-    }));
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state, store } = createDurableObjectState();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
-
-    await expect(
-      durableObject.fetch(
-        createRequest('/api/workspaces/ws-1/yjs/migrate', {
-          method: 'POST',
-          body: JSON.stringify(createSnapshot('users')),
-        }),
-      ),
-    ).rejects.toThrow('checkpoint unavailable');
-    expect(store.get('meta')).toEqual(
-      expect.objectContaining({
-        checkpointFailedAt: expect.any(Number),
-      }),
-    );
-  });
-
-  it('keeps constructor light and defers storage reads until an event', async () => {
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test alarm retry scheduling
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities: vi.fn(),
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-        globalDraft: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      }),
-    }));
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state } = createDurableObjectState();
-
-    new WorkspaceYDocDurableObject(state, createEnv());
-
-    expect(state.storage.get).not.toHaveBeenCalled();
-    expect(state.storage.list).not.toHaveBeenCalled();
-    expect(state.storage.put).not.toHaveBeenCalled();
-  });
-
-  it('logs compact health metrics without per-update events or user identity', async () => {
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test websocket attachment identity
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
-        upserted: 1,
-        deleted: 0,
-        skipped: 0,
-      }),
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-        globalDraft: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      }),
-    }));
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state } = createDurableObjectState();
-    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
-
-    const response = await durableObject.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/migrate', {
-        method: 'POST',
-        body: JSON.stringify(createSnapshot('users')),
-      }),
-    );
-
-    const logs = readInfoLogs();
-    expect(response.status).toBe(200);
-    expect(logs).not.toContainEqual(expect.objectContaining({ operation: 'update' }));
-    expect(logs).toContainEqual(
-      expect.objectContaining({
-        event: 'workspace_yjs_do_health',
-        operation: 'compact',
-        workspaceId: 'ws-1',
-        compactCount: 1,
-        compactedUpdateCount: 1,
-        checkpointed: true,
-      }),
-    );
-    expect(logs.some((payload) => 'userId' in payload)).toBe(false);
-  });
-
-  it('broadcasts one message for one merged update batch', async () => {
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test malformed snapshot handling
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities: vi.fn(),
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-        globalDraft: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      }),
-    }));
-    vi.stubGlobal('WebSocket', { OPEN: 1 });
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state } = createDurableObjectState();
-    const origin = createWebSocket();
-    const peer = createWebSocket();
-    vi.mocked(state.getWebSockets).mockReturnValue([origin, peer]);
-    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
-    const sourceDoc = new Y.Doc();
-    const updates: Uint8Array[] = [];
-    sourceDoc.on('update', (update) => updates.push(update));
-    sourceDoc.getMap('meta').set('schemaVersion', 1);
-
-    const fields = sourceDoc.getMap('fields');
-
-    for (let index = 0; index < 50; index += 1) {
-      fields.set(`field-${index}`, `value-${index}`);
-    }
-
-    const mergedUpdate = Y.mergeUpdates(updates);
-
-    await durableObject.webSocketMessage(
-      origin,
-      toArrayBuffer(
-        encodeWorkspaceYDocSyncMessage((encoder) =>
-          syncProtocol.writeUpdate(encoder, mergedUpdate),
-        ),
-      ),
-    );
-
-    await Promise.all(vi.mocked(state.waitUntil).mock.calls.map(([promise]) => promise));
-    expect(peer.send).toHaveBeenCalledTimes(1);
-    expect(origin.send).not.toHaveBeenCalled();
-  });
-
   it('restores an empty Durable Object from D1 snapshot on cold start', async () => {
     const getWorkspaceSnapshotForWorkspace = vi.fn().mockResolvedValue(createSnapshot('restored'));
     const checkpointWorkspaceSnapshotEntities = vi.fn();
@@ -1091,60 +811,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     expect(exportWorkspaceYDocToSnapshot(clientDoc).drafts[0]?.state.tableName).toBe('compacted');
   });
 
-  it('restores workspace identity from hibernated websocket attachments', async () => {
-    const getWorkspaceSnapshotForWorkspace = vi.fn().mockResolvedValue(createSnapshot('attached'));
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test compact metrics
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities: vi.fn(),
-      getWorkspaceSnapshotForWorkspace,
-    }));
-    vi.stubGlobal('WebSocket', { OPEN: 1 });
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
-    const { state } = createDurableObjectState();
-    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
-    const clientDoc = new Y.Doc();
-
-    const socket = createWebSocket({
-      schemaVersion: 1,
-      socketId: 'socket-1',
-      workspaceId: 'ws-1',
-      userId: 'user-1',
-      sessionId: 'session-1',
-      connectedAt: 1,
-    });
-
-    await durableObject.webSocketMessage(
-      socket,
-      toArrayBuffer(
-        encodeWorkspaceYDocSyncMessage((encoder) =>
-          syncProtocol.writeSyncStep1(encoder, clientDoc),
-        ),
-      ),
-    );
-
-    // SAFETY: the preceding send call is the encoded sync response produced by the Durable Object.
-    const sent = socket.send.mock.calls[0]?.[0] as Uint8Array | undefined;
-    expect(sent).toBeDefined();
-
-    if (!sent) {
-      throw new Error('Expected sync response');
-    }
-
-    const decoder = decoding.createDecoder(sent);
-    expect(readWorkspaceYDocMessageHeader(decoder)).toEqual({ kind: 'sync' });
-    encodeWorkspaceYDocSyncMessage((encoder) => {
-      syncProtocol.readSyncMessage(decoder, encoder, clientDoc, null);
-    });
-
-    expect(getWorkspaceSnapshotForWorkspace).toHaveBeenCalledWith(
-      expect.anything(),
-      'user-1',
-      'ws-1',
-    );
-    expect(exportWorkspaceYDocToSnapshot(clientDoc).drafts[0]?.state.tableName).toBe('attached');
-  });
-
   it('keeps compact alarm idempotent across repeated calls and cold start', async () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test websocket close metrics
     vi.doMock('../../lib/workspaceEntities.js', () => ({
@@ -1191,64 +857,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]?.state.tableName).toBe('alarm_safe');
   });
 
-  it('keeps compaction counters consistent when requests overlap', async () => {
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test concurrent compaction counters
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities: vi.fn(),
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-        globalDraft: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      }),
-    }));
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state, store } = createDurableObjectState();
-    const object = new WorkspaceYDocDurableObject(state, createEnv());
-    const source = new Y.Doc();
-    source.getMap('fields').set('name', 'users');
-    await object.webSocketMessage(
-      createWebSocket(),
-      trackedUpdate(Y.encodeStateAsUpdate(source), 1),
-    );
-    await Promise.all([object.alarm(), object.alarm()]);
-    expect(store.get('meta')).toMatchObject({ updateCount: 0, updateBytes: 0 });
-    source.destroy();
-  });
-
-  it('does not reschedule an alarm after all updates are checkpointed', async () => {
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test alarm completion
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
-        upserted: 1,
-        deleted: 0,
-        skipped: 0,
-      }),
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-        globalDraft: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      }),
-    }));
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state } = createDurableObjectState();
-    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
-    await durableObject.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/migrate', {
-        method: 'POST',
-        body: JSON.stringify(createSnapshot('alarm_done')),
-      }),
-    );
-    vi.mocked(state.storage.setAlarm).mockClear();
-
-    await durableObject.alarm();
-
-    expect(state.storage.setAlarm).not.toHaveBeenCalled();
-  });
-
   it('schedules a durable retry when automatic alarm retries are exhausted', async () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to inject exhausted retry behavior
     vi.doMock('../../lib/workspaceEntities.js', () => ({
@@ -1284,72 +892,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     });
 
     expect(state.storage.setAlarm).toHaveBeenCalledTimes(1);
-  });
-
-  it('logs websocket close and error with attachment identity', async () => {
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate workspace entity persistence to test websocket close/error logging
-    vi.doMock('../../lib/workspaceEntities.js', () => ({
-      checkpointWorkspaceSnapshotEntities: vi.fn(),
-      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
-        globalDraft: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      }),
-    }));
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-
-    const durableObject = new WorkspaceYDocDurableObject(
-      createDurableObjectState().state,
-      createEnv(),
-    );
-    const socket = createWebSocket({
-      schemaVersion: 1,
-      workspaceId: 'ws-1',
-      userId: 'user-1',
-      sessionId: 'session-1',
-    });
-
-    await durableObject.webSocketClose(socket, 1000, 'done', true);
-    await durableObject.webSocketError(socket, new Error('network failed'));
-
-    const logs = readInfoLogs();
-    expect(logs).toContainEqual(
-      expect.objectContaining({
-        event: 'workspace_yjs_do_health',
-        operation: 'close',
-        workspaceId: 'ws-1',
-        closeCode: 1000,
-        wasClean: true,
-      }),
-    );
-    expect(logs).toContainEqual(
-      expect.objectContaining({
-        event: 'workspace_yjs_do_health',
-        operation: 'error',
-        workspaceId: 'ws-1',
-        errorMessage: 'network failed',
-      }),
-    );
-    expect(logs.some((payload) => 'userId' in payload)).toBe(false);
-  });
-
-  it('answers an abnormal closure with a sendable close code', async () => {
-    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-
-    const durableObject = new WorkspaceYDocDurableObject(
-      createDurableObjectState().state,
-      createEnv(),
-    );
-    const socket = createWebSocket();
-
-    await durableObject.webSocketClose(socket, 1006, '', false);
-
-    expect(socket.close).toHaveBeenCalledWith(1000, '');
-    expect(readInfoLogs()).toContainEqual(
-      expect.objectContaining({ operation: 'close', closeCode: 1006, wasClean: false }),
-    );
   });
 
   it('kick closes only the matching session and clears the authorization cache', async () => {

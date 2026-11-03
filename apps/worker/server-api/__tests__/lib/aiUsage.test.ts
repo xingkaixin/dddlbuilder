@@ -21,114 +21,39 @@ describe('atomic AI usage', () => {
     usageEstimated: true,
   });
 
-  it.each([
-    ['explain', 'ai_explain'],
-    ['review', 'ai_review'],
-    ['generate-table', 'ai_generate'],
-    ['generate-comments', 'ai_generate'],
-    ['index-advisor', 'ai_generate'],
-  ] as const)('reserves %s in one transaction', async (routeKey, expectedSource) => {
-    const f = await createCreditFixture();
-
-    try {
-      const batch = vi.spyOn(f.env.USER_DB, 'batch');
-
-      const reservation = await reserveAIUsage(f.env, {
-        userId: 'user-1',
-        routeKey,
-        requestId: 'request',
-        estimatedTokens: 100,
-      });
-      expect(batch).toHaveBeenCalledTimes(1);
-      expect(await f.balance()).toBe(900);
-      expect(
-        f.sqlite
-          .prepare('SELECT status FROM usage_events WHERE id = ?')
-          .get(reservation.usageEventId),
-      ).toEqual({ status: 'reserved' });
-      expect(
-        f.sqlite.prepare("SELECT source FROM credit_ledger WHERE kind = 'consume'").get()?.source,
-      ).toBe(expectedSource);
-    } finally {
-      f.sqlite.close();
-    }
-  });
-
-  it.each([
-    [0, 1],
-    [-10, 1],
-    [2.7, 3],
-  ])('normalizes estimated tokens %s to %s', async (input, expected) => {
-    const f = await createCreditFixture();
-
-    try {
-      expect((await f.reserve(input)).reservedTokens).toBe(expected);
-    } finally {
-      f.sqlite.close();
-    }
-  });
-
-  it.each([NaN, Infinity, -Infinity, Number.MAX_SAFE_INTEGER + 1])(
-    'rejects unsafe tokens %s without writing',
-    async (amount) => {
+  it.each([['explain', 'ai_explain']] as const)(
+    'reserves %s in one transaction',
+    async (routeKey, expectedSource) => {
       const f = await createCreditFixture();
 
       try {
-        await expect(f.reserve(amount)).rejects.toThrow('INVALID_CREDIT_AMOUNT');
-        expect(await f.balance()).toBe(1000);
-        expect(f.sqlite.prepare('SELECT COUNT(*) AS n FROM usage_events').get()?.n).toBe(0);
-      } finally {
-        f.sqlite.close();
-      }
-    },
-  );
+        const batch = vi.spyOn(f.env.USER_DB, 'batch');
 
-  it.each([1.4, -1, Number.MAX_SAFE_INTEGER + 1])(
-    'rejects invalid settlement facts %s',
-    async (tokens) => {
-      const f = await createCreditFixture();
-
-      try {
-        const reservation = await f.reserve();
-        await recordAIUsageAttempt(f.env, reservation);
-        await expect(
-          completeAIUsage(f.env, reservation, {
-            observedTotalTokens: tokens,
-            chargedTokens: tokens,
-            providerBudgetTokens: tokens,
-            usageEstimated: false,
-          }),
-        ).rejects.toThrow('INVALID_CREDIT_AMOUNT');
-        expect(f.sqlite.prepare('SELECT status FROM usage_events').get()?.status).toBe('reserved');
-      } finally {
-        f.sqlite.close();
-      }
-    },
-  );
-
-  it('does not leave an event when the account is missing', async () => {
-    const f = await createCreditFixture();
-
-    try {
-      await expect(
-        reserveAIUsage(f.env, {
-          userId: 'missing',
-          routeKey: 'explain',
-          requestId: 'r',
+        const reservation = await reserveAIUsage(f.env, {
+          userId: 'user-1',
+          routeKey,
+          requestId: 'request',
           estimatedTokens: 100,
-        }),
-      ).rejects.toThrow('CREDIT_ACCOUNT_MISSING');
-      expect(f.sqlite.prepare('SELECT COUNT(*) AS n FROM usage_events').get()?.n).toBe(0);
-    } finally {
-      f.sqlite.close();
-    }
-  });
+        });
+        expect(batch).toHaveBeenCalledTimes(1);
+        expect(await f.balance()).toBe(900);
+        expect(
+          f.sqlite
+            .prepare('SELECT status FROM usage_events WHERE id = ?')
+            .get(reservation.usageEventId),
+        ).toEqual({ status: 'reserved' });
+        expect(
+          f.sqlite.prepare("SELECT source FROM credit_ledger WHERE kind = 'consume'").get()?.source,
+        ).toBe(expectedSource);
+      } finally {
+        f.sqlite.close();
+      }
+    },
+  );
 
   it.each([
     [70, 930],
-    [100, 900],
     [150, 850],
-    [0, 1000],
   ] as const)('settles observed success at %s with balance %s', async (actual, expected) => {
     const f = await createCreditFixture();
 

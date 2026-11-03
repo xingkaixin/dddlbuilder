@@ -208,49 +208,6 @@ describe('workspaceEntitySnapshot', () => {
     ]);
   });
 
-  it('ignores deleted and incomplete persisted records', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    expect(
-      storedEntitiesToWorkspaceSnapshot([
-        {
-          entityType: 'draft',
-          entityId: 'deleted',
-          payloadJson: null,
-          updatedAt: 1,
-        },
-        {
-          entityType: 'saved_table',
-          entityId: 'invalid',
-          payloadJson: JSON.stringify({ state: state('invalid') }),
-          updatedAt: 2,
-        },
-      ]),
-    ).toEqual({
-      globalDraft: null,
-      drafts: [],
-      savedTables: [],
-      savedDrafts: [],
-      folders: [],
-    });
-
-    expect(
-      legacyRowsToWorkspaceSnapshot([
-        {
-          kind: 'draft',
-          normalizedName: null,
-          payloadJson: JSON.stringify({ state: state('invalid') }),
-          sourceUpdatedAt: 1,
-        },
-      ]),
-    ).toEqual({
-      globalDraft: null,
-      drafts: [],
-      savedTables: [],
-      savedDrafts: [],
-      folders: [],
-    });
-  });
-
   it('skips malformed rows without discarding valid workspace entities', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 

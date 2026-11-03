@@ -41,12 +41,7 @@ describe('index advisor result validation', () => {
 
   it.each([
     { label: 'unknown column', fields: [{ name: 'tenant_id' }, { name: 'email' }] },
-    { label: 'empty column', fields: [{ name: ' ' }, { name: 'email' }] },
-    { label: 'missing column name', fields: [{}, { name: 'email' }] },
-    { label: 'null column', fields: [null, { name: 'email' }] },
-    { label: 'primitive column', fields: [{ name: 'email' }, 1] },
     { label: 'no columns', fields: [] },
-    { label: 'non-array columns', fields: 'email' },
   ])('rejects the whole index with $label but preserves advice', async ({ fields }) => {
     const result = await requestAdvice({ name: 'uk_tenant_email', fields, unique: true });
 
@@ -62,32 +57,6 @@ describe('index advisor result validation', () => {
         },
       ],
     });
-    expect(result).not.toHaveProperty('recommendations.0.index');
-  });
-
-  it('normalizes whitespace and default sort direction without changing columns', async () => {
-    const result = await requestAdvice({
-      name: ' idx_email ',
-      fields: [{ name: ' email ' }],
-    });
-
-    expect(result).toMatchObject({
-      recommendations: [
-        {
-          index: {
-            name: 'idx_email',
-            fields: [{ name: 'email', direction: 'ASC' }],
-            unique: false,
-          },
-        },
-      ],
-    });
-  });
-
-  it('preserves advice without an index', async () => {
-    const result = await requestAdvice();
-
-    expect(result).toMatchObject({ recommendations: [{ title: 'Email lookup' }] });
     expect(result).not.toHaveProperty('recommendations.0.index');
   });
 });

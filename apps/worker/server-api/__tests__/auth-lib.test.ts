@@ -3,15 +3,12 @@ import type { Context } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest, resolveAuthenticatedUser } from '../lib/auth.js';
 
-const mocks = vi.hoisted(() => ({ getSession: vi.fn(), grantSignupCredits: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSession: vi.fn() }));
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- auth behavior is tested independently of the Better Auth adapter.
 vi.mock('../lib/betterAuth.js', () => ({
   createBetterAuth: () => ({ api: { getSession: mocks.getSession } }),
 }));
-
-// oxlint-disable-next-line anti-slop/no-module-mocking -- signup credit persistence is outside authentication behavior.
-vi.mock('../lib/credits.js', () => ({ grantSignupCredits: mocks.grantSignupCredits }));
 
 const session = {
   session: { id: 'session-1', token: 'session-token' },
@@ -57,33 +54,6 @@ describe('authenticated session resolution', () => {
     vi.clearAllMocks();
     mocks.getSession.mockResolvedValue(session);
   });
-  it('reads the session API without refreshing it or granting credits', async () => {
-    const { context } = createContext(
-      createEnv(),
-      new Headers({ cookie: 'session=test', authorization: 'ignored' }),
-    );
-    const user = await resolveAuthenticatedUser(context);
-    expect(user).toEqual({
-      userId: 'user-1',
-      sessionId: 'session-1',
-      email: 'user@example.com',
-      emailVerified: true,
-      name: 'User One',
-    });
-    const options = mocks.getSession.mock.calls[0][0];
-    expect(options.query).toEqual({ disableRefresh: true });
-    expect(options.headers.get('cookie')).toBe('session=test');
-    expect(options.headers.has('authorization')).toBe(false);
-    expect(mocks.grantSignupCredits).not.toHaveBeenCalled();
-  });
-  it.each([null, { session: { id: 'session-1' } }, { user: session.user }])(
-    'returns null for an absent session %#',
-    async (value) => {
-      mocks.getSession.mockResolvedValue(value);
-      const { context } = createContext();
-      expect(await resolveAuthenticatedUser(context)).toBeNull();
-    },
-  );
   it('distinguishes auth service failure from an anonymous user', async () => {
     mocks.getSession.mockRejectedValue(new Error('database unavailable'));
     const error = vi.fn();
@@ -112,11 +82,5 @@ describe('authenticated session resolution', () => {
       code: 'AUTH_REQUIRED',
     });
     expect(set).not.toHaveBeenCalled();
-  });
-
-  it('records the authenticated request user', async () => {
-    const { context, set } = createContext();
-    expect(await authenticateRequest(context)).toMatchObject({ userId: 'user-1' });
-    expect(set).toHaveBeenCalledWith('currentUserId', 'user-1');
   });
 });

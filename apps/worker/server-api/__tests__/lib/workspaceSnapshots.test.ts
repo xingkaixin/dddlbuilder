@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
-import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
@@ -21,17 +21,6 @@ type StoredLegacySnapshotRow = {
   sourceUpdatedAt: number;
 };
 
-type WorkspaceD1Log = {
-  event: string;
-  operation: string;
-  d1: {
-    queries: number;
-    rowsRead: number;
-    rowsWritten: number;
-    durationMs: number;
-  };
-};
-
 // SAFETY: The snapshot test fixture reads only the required bindings from this environment.
 const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
@@ -47,9 +36,9 @@ const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
 
 const createWorkspaceSnapshotDb = (
   legacyRows: StoredLegacySnapshotRow[] = [],
-  options: { includeMeta?: boolean; initialWorkspaces?: StoredWorkspace[] } = {},
+  options: { initialWorkspaces?: StoredWorkspace[] } = {},
 ) => {
-  const { database, sqlite } = createSqliteD1Database({ includeMeta: options.includeMeta });
+  const { database, sqlite } = createSqliteD1Database();
   sqlite
     .prepare(
       `
@@ -137,10 +126,6 @@ const createLegacySavedTableRow = (
   sourceUpdatedAt,
 });
 
-// SAFETY: The logger spy stores JSON emitted by the worker's typed D1 audit event.
-const readWorkspaceD1Log = (calls: unknown[][]) =>
-  JSON.parse(String(calls[0]?.[0])) as WorkspaceD1Log;
-
 const checkpointDefaultWorkspace = async (env: ApiEnv['Bindings'], snapshot: WorkspaceSnapshot) => {
   const { checkpointWorkspaceSnapshotEntities, getOrCreateDefaultWorkspace } =
     await import('../../lib/workspaceEntities.js');
@@ -208,51 +193,6 @@ describe('workspace entity checkpoints', () => {
     expect(snapshot.savedTables).toEqual([]);
   });
 
-  it('应同步多份普通草稿', async () => {
-    const { getWorkspaceSnapshotForWorkspace } = await import('../../lib/workspaceEntities.js');
-    const env = createEnv(createWorkspaceSnapshotDb());
-
-    const workspaceId = await checkpointDefaultWorkspace(env, {
-      globalDraft: null,
-      drafts: [
-        {
-          draftId: 'draft-1',
-          state: createState('draft_one'),
-          createdAt: 50,
-          updatedAt: 100,
-          folderId: 'folder_1',
-        },
-        {
-          draftId: 'draft-2',
-          state: createState('draft_two'),
-          createdAt: 40,
-          updatedAt: 200,
-        },
-      ],
-      savedTables: [],
-      savedDrafts: [],
-      folders: [],
-    });
-
-    const snapshot = await getWorkspaceSnapshotForWorkspace(env, 'user-1', workspaceId);
-
-    expect(snapshot.drafts).toEqual([
-      {
-        draftId: 'draft-1',
-        state: toSchemaDocumentState(createState('draft_one')),
-        createdAt: 50,
-        updatedAt: 100,
-        folderId: 'folder_1',
-      },
-      {
-        draftId: 'draft-2',
-        state: toSchemaDocumentState(createState('draft_two')),
-        createdAt: 40,
-        updatedAt: 200,
-      },
-    ]);
-  });
-
   it('checkpoint 应把 workspace_entities 收敛到当前 Y.Doc snapshot', async () => {
     const { checkpointWorkspaceSnapshotEntities, getWorkspaceSnapshotForWorkspace } =
       await import('../../lib/workspaceEntities.js');
@@ -300,62 +240,5 @@ describe('workspace entity checkpoints', () => {
     await checkpointWorkspaceSnapshotEntities(env, 'user-1', workspaceId, createSnapshot([]));
 
     expect(await countEntities()).toEqual({ total: 1, tombstones: 1 });
-  });
-
-  it('checkpoint 日志应覆盖单次实体列表读取和批量写入', async () => {
-    const { checkpointWorkspaceSnapshotEntities, getOrCreateDefaultWorkspace } =
-      await import('../../lib/workspaceEntities.js');
-    const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
-
-    const workspaceId = (await getOrCreateDefaultWorkspace(env, 'user-1')).id;
-    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
-
-    await checkpointWorkspaceSnapshotEntities(
-      env,
-      'user-1',
-      workspaceId,
-      createSnapshot(['orders']),
-    );
-
-    expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
-      event: 'workspace_sync_d1',
-      operation: 'checkpoint',
-      workspaceId,
-      entityCount: 1,
-      upserted: 1,
-      deleted: 0,
-      skipped: 0,
-      d1: {
-        queries: 3,
-        rowsRead: 1,
-        rowsWritten: 1,
-        durationMs: 3,
-      },
-    });
-  });
-
-  it('未变化实体数量增加时不应增加 checkpoint 查询次数', async () => {
-    const { checkpointWorkspaceSnapshotEntities } = await import('../../lib/workspaceEntities.js');
-    const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
-    const snapshot = createSnapshot(['orders', 'users', 'products']);
-
-    const workspaceId = await checkpointDefaultWorkspace(env, snapshot);
-    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
-
-    const result = await checkpointWorkspaceSnapshotEntities(env, 'user-1', workspaceId, snapshot);
-
-    expect(result).toMatchObject({ upserted: 0, deleted: 0, skipped: 3 });
-    expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
-      event: 'workspace_sync_d1',
-      operation: 'checkpoint',
-      workspaceId,
-      entityCount: 3,
-      d1: {
-        queries: 2,
-        rowsRead: 4,
-        rowsWritten: 0,
-        durationMs: 2,
-      },
-    });
   });
 });

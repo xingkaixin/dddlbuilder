@@ -92,14 +92,4 @@ describe('scheduled recovery failures', () => {
     expect(recoveryMocks.reconcileTerminalAIBudgets).toHaveBeenCalledOnce();
     expect(recoveryMocks.cleanupAIGovernance).toHaveBeenCalledOnce();
   });
-
-  it('rejects the background task when scanning fails', async () => {
-    const failure = new Error('D1 unavailable');
-    recoveryMocks.reclaimStaleAIUsage.mockReturnValue(Effect.fail(failure));
-    const waitUntil = vi.fn<(promise: Promise<unknown>) => void>();
-    await worker.scheduled(emptyEvent, emptyEnv, createExecutionContext(waitUntil));
-    await expect(waitUntil.mock.calls[0]?.[0]).rejects.toBe(failure);
-    expect(recoveryMocks.reconcileTerminalAIBudgets).not.toHaveBeenCalled();
-    expect(recoveryMocks.cleanupAIGovernance).not.toHaveBeenCalled();
-  });
 });

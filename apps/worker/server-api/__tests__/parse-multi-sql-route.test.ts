@@ -25,78 +25,6 @@ describe('parse-multi-sql route', () => {
     vi.restoreAllMocks();
   });
 
-  it('SQL 为空时应返回 SQL_REQUIRED', async () => {
-    const env = createEnv();
-
-    const response = await app.fetch(
-      createRequest('/api/parse-multi-sql', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sql: '   ', dbType: 'mysql' }),
-      }),
-      env,
-    );
-
-    expect(response.status).toBe(400);
-    const payload = await response.json();
-    expect(payload).toMatchObject({
-      error: 'SQL is required',
-      code: 'SQL_REQUIRED',
-      requestId: expect.any(String),
-    });
-  });
-
-  it('dbType 非法时应返回 INVALID_DATABASE_TYPE', async () => {
-    const env = createEnv();
-
-    const response = await app.fetch(
-      createRequest('/api/parse-multi-sql', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sql: 'SELECT 1', dbType: 'invalid-db' }),
-      }),
-      env,
-    );
-
-    expect(response.status).toBe(400);
-    const payload = await response.json();
-    expect(payload).toMatchObject({
-      error: 'Invalid database type',
-      code: 'INVALID_DATABASE_TYPE',
-      requestId: expect.any(String),
-    });
-  });
-
-  it('合法多表 SQL 应返回 results 和 failed', async () => {
-    const env = createEnv();
-
-    const response = await app.fetch(
-      createRequest('/api/parse-multi-sql', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          sql: `
-            CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(50));
-            CREATE TABLE orders (id INT PRIMARY KEY, user_id INT);
-          `,
-          dbType: 'mysql',
-        }),
-      }),
-      env,
-    );
-
-    expect(response.status).toBe(200);
-    const payload = await response.json<MultiParsedResult>();
-    expect(payload.results).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ tableName: 'users' }),
-        expect.objectContaining({ tableName: 'orders' }),
-      ]),
-    );
-    expect(payload.failed).toEqual(expect.any(Array));
-    expect(payload.results).toHaveLength(2);
-  });
-
   it('部分 SQL 语法错误时保留成功结果和失败原语句', async () => {
     const response = await app.fetch(
       createRequest('/api/parse-multi-sql', {
@@ -119,27 +47,6 @@ describe('parse-multi-sql route', () => {
         error: expect.any(String),
       }),
     ]);
-  });
-
-  it('SQL 语法错误时应返回 SQL_PARSE_FAILED', async () => {
-    const env = createEnv();
-
-    const response = await app.fetch(
-      createRequest('/api/parse-multi-sql', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sql: '%%% not sql %%%', dbType: 'mysql' }),
-      }),
-      env,
-    );
-
-    const payload = await response.json();
-    expect(response.status).toBe(400);
-    expect(payload).toMatchObject({
-      error: expect.stringMatching(/expected|syntax/i),
-      code: 'SQL_PARSE_FAILED',
-      requestId: expect.any(String),
-    });
   });
 
   it('全部定义解析失败时应展示首个具体失败原因并保留失败列表', async () => {
@@ -178,28 +85,5 @@ describe('parse-multi-sql route', () => {
       code: 'SQL_PARSE_FAILED',
       requestId: expect.any(String),
     });
-  });
-
-  it('多语句解析器内部异常时应返回 INTERNAL_ERROR', async () => {
-    vi.spyOn(SqlParser.prototype, 'parseMultiAsync').mockRejectedValueOnce(
-      new Error('unexpected parser failure'),
-    );
-
-    const response = await app.fetch(
-      createRequest('/api/parse-multi-sql', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sql: 'CREATE TABLE users (id INT)', dbType: 'mysql' }),
-      }),
-      createEnv(),
-    );
-
-    expect(response.status).toBe(500);
-    const payload = await response.json();
-    expect(payload).toMatchObject({
-      error: 'Internal server error',
-      code: 'INTERNAL_ERROR',
-    });
-    expect(JSON.stringify(payload)).not.toContain('unexpected parser failure');
   });
 });

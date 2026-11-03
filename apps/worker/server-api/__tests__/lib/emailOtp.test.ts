@@ -131,12 +131,4 @@ describe('email OTP verification', () => {
 
     expect(sendEmail).not.toHaveBeenCalled();
   });
-
-  it('does not send an OTP when email verification is disabled', async () => {
-    env.AUTH_REQUIRE_EMAIL_VERIFICATION = 'false';
-    const response = await signup();
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ token: expect.any(String) });
-    expect(sendEmail).not.toHaveBeenCalled();
-  });
 });

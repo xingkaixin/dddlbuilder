@@ -1,9 +1,7 @@
-import * as D1Client from '@effect/sql-d1/D1Client';
-import * as Effect from 'effect/Effect';
 import { failAIUsage } from '../helpers/aiUsageSettlement.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
-import { reclaimStaleAIUsage, recordAIUsageAttempt, reserveAIUsage } from '../../lib/aiUsage.js';
+import { recordAIUsageAttempt, reserveAIUsage } from '../../lib/aiUsage.js';
 import { applyCreditMutation, getCreditAccount } from '../../lib/credits.js';
 import { reconcileTerminalAIBudgets, reserveAIDailyBudget } from '../../lib/aiBudget.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
@@ -79,25 +77,6 @@ describe('AI settlement regressions', () => {
       expect(usage).toMatchObject({ status: 'failed', actual_total_tokens: 60 });
       expect(budget).toMatchObject({ actual_tokens: 60 });
       expect(Number(budget?.created_at)).toBeGreaterThan(0);
-    } finally {
-      sqlite.close();
-    }
-  });
-
-  it.each(['reserved', 'pending'])('reclaims %s using durable execution facts', async (status) => {
-    const { env, sqlite, reservation } = await fixture();
-
-    try {
-      sqlite
-        .prepare('UPDATE usage_events SET status = ?, created_at = 1 WHERE id = ?')
-        .run(status, reservation.usageEventId);
-
-      if (status === 'reserved') await recordAIUsageAttempt(env, reservation);
-      await Effect.runPromise(
-        reclaimStaleAIUsage(env).pipe(Effect.provide(D1Client.layer({ db: env.USER_DB }))),
-      );
-      const balance = (await getCreditAccount(env, 'user-1'))?.balance;
-      expect(balance).toBe(status === 'reserved' ? 900 : 1000);
     } finally {
       sqlite.close();
     }

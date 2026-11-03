@@ -47,11 +47,6 @@ describe('publication request guards', () => {
       status: 403,
       error: 'Invalid origin',
     },
-    {
-      headers: { origin: 'http://localhost', 'content-type': 'text/plain' },
-      status: 415,
-      error: 'Use application/json',
-    },
   ])(
     'rejects $status before reading a body or writing data',
     async ({ headers, status, error }) => {

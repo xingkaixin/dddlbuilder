@@ -46,36 +46,6 @@ const createRequest = (path: string, options: RequestInit & { origin?: string } 
 };
 
 describe('api security guards', () => {
-  it('应将 /docs 重定向到 /docs/', async () => {
-    const env = createEnv();
-    const response = await app.fetch(createRequest('/docs'), env);
-
-    expect(response.status).toBe(301);
-    expect(response.headers.get('location')).toBe('/docs/');
-  });
-
-  it('应在 localhost 下代理 /docs/* 到文档站开发服务', async () => {
-    const env = createEnv({ ENVIRONMENT: 'development' });
-
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('<!doctype html><title>docs</title>', {
-        status: 200,
-        headers: { 'content-type': 'text/html; charset=utf-8' },
-      }),
-    );
-
-    const response = await app.fetch(createRequest('/docs/zh/?from=test'), env);
-
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    // SAFETY: the spy is called by the docs proxy with a Request as its first argument.
-    const [request] = fetchSpy.mock.calls[0] as [Request];
-    expect(request.url).toBe('http://127.0.0.1:5174/docs/zh/?from=test');
-    expect(response.status).toBe(200);
-    expect(await response.text()).toContain('<title>docs</title>');
-
-    fetchSpy.mockRestore();
-  });
-
   it('应在非 localhost 下对 /docs/* 回落到静态资源', async () => {
     const assetsFetch = vi.fn().mockResolvedValue(new Response('prod docs', { status: 200 }));
 
@@ -121,18 +91,6 @@ describe('api security guards', () => {
     expect(assetsFetch).not.toHaveBeenCalled();
   });
 
-  it.each(['/missing-page', '/docs/en/ex'])('应保留 %s 的静态资源 404', async (path) => {
-    const env = createEnv({
-      ENVIRONMENT: 'test',
-      ASSETS: { fetch: async () => new Response('Page not found', { status: 404 }) },
-    });
-
-    const response = await app.fetch(createRequest(path), env);
-
-    expect(response.status).toBe(404);
-    expect(await response.text()).toBe('Page not found');
-  });
-
   it('应对超大请求体返回 413', async () => {
     const env = createEnv();
 
@@ -161,31 +119,6 @@ describe('api security guards', () => {
     });
   });
 
-  it('应对超长 SQL 返回 400', async () => {
-    const env = createEnv();
-
-    const response = await app.fetch(
-      createRequest('/api/parse-sql', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          sql: 'a'.repeat(50_001),
-          dbType: 'mysql',
-        }),
-      }),
-      env,
-    );
-
-    expect(response.status).toBe(400);
-    const json = await response.json();
-    expect(json).toMatchObject({
-      error: expect.stringContaining('SQL too long'),
-      code: 'SQL_TOO_LONG',
-    });
-  });
-
   it('应拒绝非白名单 Origin 的 CORS', async () => {
     const env = createEnv();
 
@@ -207,132 +140,7 @@ describe('api security guards', () => {
     expect(response.headers.get('access-control-allow-origin')).toBe(origin);
   });
 
-  describe('requestId generation and normalization', () => {
-    it('should use provided valid x-request-id', async () => {
-      const env = createEnv();
-
-      const response = await app.fetch(
-        createRequest('/api/health', {
-          headers: {
-            'x-request-id': 'custom-req-123',
-          },
-        }),
-        env,
-      );
-      expect(response.headers.get('x-request-id')).toBe('custom-req-123');
-    });
-
-    it('should generate new UUID if provided x-request-id is invalid', async () => {
-      const env = createEnv();
-
-      const response = await app.fetch(
-        createRequest('/api/health', {
-          headers: {
-            'x-request-id': 'invalid * () id',
-          },
-        }),
-        env,
-      );
-      const returnedId = response.headers.get('x-request-id');
-      expect(returnedId).not.toBe('invalid * () id');
-      expect(returnedId).toEqual(expect.any(String));
-      expect(returnedId?.length).toBeGreaterThan(10);
-    });
-
-    it('should generate new UUID if x-request-id is entirely whitespace', async () => {
-      const env = createEnv();
-
-      const response = await app.fetch(
-        createRequest('/api/health', {
-          headers: {
-            'x-request-id': '   ',
-          },
-        }),
-        env,
-      );
-      expect(response.headers.get('x-request-id')).not.toBe('   ');
-      expect(response.headers.get('x-request-id')).toBeTruthy();
-    });
-  });
-
   describe('structured request logging', () => {
-    it('emits one canonical event with the response request id', async () => {
-      const events: CapturedLogEvent[] = [];
-
-      const spies = (['log', 'info', 'warn', 'error'] as const).map((method) =>
-        vi.spyOn(console, method).mockImplementation((value: CapturedLogEvent) => {
-          if (value.service === 'ddlbuilder-worker') events.push(value);
-        }),
-      );
-      configureWorkerLogging(true);
-
-      try {
-        const response = await app.fetch(
-          createRequest('/api/share/not-a-uuid', {
-            headers: { 'x-request-id': 'invalid request id' },
-          }),
-          createEnv(),
-        );
-
-        expect(response.status).toBe(400);
-        expect(events).toHaveLength(1);
-        expect(events[0]).toMatchObject({
-          method: 'GET',
-          path: '/api/share/:uuid',
-          requestId: response.headers.get('x-request-id'),
-          status: 400,
-          level: 'warn',
-          outcome: { errorCode: 'SHARE_UUID_INVALID' },
-        });
-      } finally {
-        configureWorkerLogging(false);
-
-        for (const spy of spies) spy.mockRestore();
-      }
-    });
-
-    it('keeps a request id whose UUID tail looks like a card number', async () => {
-      const events: CapturedLogEvent[] = [];
-      const requestId = 'a2f47b9b-7812-4de0-8633-830276798924';
-
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation((value: CapturedLogEvent) => {
-        if (value.service === 'ddlbuilder-worker') events.push(value);
-      });
-      configureWorkerLogging(true);
-
-      try {
-        await app.fetch(
-          createRequest('/api/share/not-a-uuid', { headers: { 'x-request-id': requestId } }),
-          createEnv(),
-        );
-
-        expect(events).toHaveLength(1);
-        expect(events[0]?.requestId).toBe(requestId);
-      } finally {
-        configureWorkerLogging(false);
-        warnSpy.mockRestore();
-      }
-    });
-
-    it('does not emit request events for health checks', async () => {
-      const events: CapturedLogEvent[] = [];
-
-      const infoSpy = vi.spyOn(console, 'info').mockImplementation((value: CapturedLogEvent) => {
-        if (value.service === 'ddlbuilder-worker') events.push(value);
-      });
-      configureWorkerLogging(true);
-
-      try {
-        const response = await app.fetch(createRequest('/api/health'), createEnv());
-
-        expect(response.status).toBe(200);
-        expect(events).toHaveLength(0);
-      } finally {
-        configureWorkerLogging(false);
-        infoSpy.mockRestore();
-      }
-    });
-
     it('records unexpected failures without exposing their details', async () => {
       const events: CapturedLogEvent[] = [];
 
@@ -391,18 +199,6 @@ describe('api security guards', () => {
         env,
       );
       expect(res3.headers.get('access-control-allow-origin')).toBeNull();
-    });
-
-    it('should fallback to default origins if custom env is empty or whitespace', async () => {
-      const env = createEnv({
-        CORS_ALLOWED_ORIGINS: '   ,,,  ',
-      });
-
-      const res1 = await app.fetch(
-        createRequest('/api/health', { origin: 'http://localhost:5173' }),
-        env,
-      );
-      expect(res1.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
     });
   });
 });

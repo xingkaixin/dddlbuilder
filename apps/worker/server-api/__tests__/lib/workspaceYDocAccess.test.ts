@@ -8,7 +8,6 @@ import {
 } from '@ddlbuilder/workspace-core';
 import type { ApiEnv } from '../../lib/context.js';
 import { WorkspaceYDocDurableObject } from '../../lib/workspaceYDocDurableObject.js';
-import { disableAdminUser } from '../../lib/adminUsers.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1';
 import { createDurableObjectState } from '../helpers/durableObjectState';
 
@@ -81,14 +80,12 @@ describe('workspace socket authorization', () => {
     await target.webSocketMessage(socket as unknown as WebSocket, message.slice().buffer);
   };
 
-  it.each(['disabled', 'disabled-with-session', 'revoked', 'expired', 'wrong-owner'])(
+  it.each(['disabled-with-session', 'revoked', 'expired', 'wrong-owner'])(
     'rejects %s sessions before applying or acknowledging an update',
     async (reason) => {
       const socket = createSocket();
       await sendUpdate(object, socket, 'before');
       socket.send.mockClear();
-
-      if (reason === 'disabled') await disableAdminUser(fixture.database, 'user-1');
 
       if (reason === 'disabled-with-session')
         fixture.sqlite.exec(

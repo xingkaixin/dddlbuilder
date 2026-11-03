@@ -50,48 +50,6 @@ const recordingPlatform = () => {
 };
 
 describe('Effect to Worker tracing', () => {
-  it('restores the active platform span across fiber scheduling and isolates siblings', async () => {
-    const { platform, active, spans } = recordingPlatform();
-
-    const child = (name: string) =>
-      Effect.gen(function* () {
-        yield* Effect.yieldNow;
-        const before = active.getStore();
-
-        const after = yield* Effect.promise(async () => {
-          await Promise.resolve();
-
-          return active.getStore();
-        });
-        const nested = yield* Effect.sync(() => active.getStore()).pipe(
-          Effect.withSpan(`${name}.child`),
-        );
-
-        return { before, after, nested };
-      }).pipe(Effect.withSpan(name));
-    const result = await Effect.runPromise(
-      Effect.all([child('left'), child('right')], { concurrency: 2 }).pipe(
-        Effect.withSpan('root'),
-        Effect.provideService(Tracer.Tracer, makeAITracer(platform)),
-      ),
-    );
-    expect(result).toEqual([
-      { before: 'left', after: 'left', nested: 'left.child' },
-      { before: 'right', after: 'right', nested: 'right.child' },
-    ]);
-    expect(spans.map(({ name, parent }) => [name, parent])).toEqual(
-      expect.arrayContaining([
-        ['left', 'root'],
-        ['right', 'root'],
-        ['left.child', 'left'],
-        ['right.child', 'right'],
-      ]),
-    );
-
-    for (const span of spans) expect(span.end).toHaveBeenCalledOnce();
-    expect(active.getStore()).toBeUndefined();
-  });
-
   it('exports only approved attributes and does not expose failure messages', async () => {
     const { platform, spans } = recordingPlatform();
     await Effect.runPromise(

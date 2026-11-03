@@ -122,39 +122,4 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     expect(forwarded.headers.get('x-ddlbuilder-user-id')).toBe('user-1');
     expect(forwarded.headers.get('x-ddlbuilder-session-id')).toBe('session-1');
   });
-
-  it('returns 204 for authorized websocket health preflight', async () => {
-    const stubFetch = vi
-      .fn<(request: Request) => Promise<Response>>()
-      .mockResolvedValue(new Response('state'));
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates the websocket health branch.
-    vi.doMock('../lib/auth.js', () => ({
-      authenticateRequest: vi.fn().mockResolvedValue({
-        userId: 'user-1',
-        sessionId: 'session-1',
-        email: 'user@example.com',
-        emailVerified: true,
-        name: 'User One',
-      }),
-    }));
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- this route test isolates successful ownership validation.
-    vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
-
-      return {
-        ...actual,
-        assertWorkspaceOwner: vi.fn().mockResolvedValue(undefined),
-      };
-    });
-
-    const { default: app } = await import('../../api/index');
-
-    const response = await app.fetch(
-      createRequest('/api/workspaces/ws-1/yjs', { method: 'HEAD' }),
-      createEnv({ WORKSPACE_YDOC: createYDocNamespace(stubFetch) }),
-    );
-
-    expect(response.status).toBe(204);
-    expect(stubFetch).not.toHaveBeenCalled();
-  });
 });

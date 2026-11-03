@@ -31,9 +31,6 @@ export const createAIRuntimeFixture = async (
   );
   const pending: Promise<unknown>[] = [];
 
-  let alarmAt = 0;
-  let deleted = false;
-
   const storage = {
     sql: {
       exec(query: string, ...bindings: (string | number | null)[]) {
@@ -57,12 +54,8 @@ export const createAIRuntimeFixture = async (
         throw error;
       }
     },
-    setAlarm: async (at: number) => {
-      alarmAt = at;
-    },
-    deleteAll: async () => {
-      deleted = true;
-    },
+    setAlarm: async () => {},
+    deleteAll: async () => {},
   };
   // SAFETY: this fixture implements the SQLite transaction and lifecycle surface used by the AI DO.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Test adapter implements only the DO APIs consumed by pi-durable.
@@ -81,12 +74,6 @@ export const createAIRuntimeFixture = async (
     ...test,
     runtime,
     durableSqlite: sqlite,
-    get alarmAt() {
-      return alarmAt;
-    },
-    get deleted() {
-      return deleted;
-    },
     async finish() {
       for (let i = 0; i < pending.length; i++) await pending[i];
     },

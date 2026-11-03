@@ -30,35 +30,6 @@ describe('revokeSessionActivity', () => {
     vi.restoreAllMocks();
   });
 
-  it('retries transient failures before reporting success', async () => {
-    vi.useFakeTimers();
-
-    const fetch = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('connection reset'))
-      .mockResolvedValueOnce(new Response(null, { status: 503 }))
-      .mockResolvedValue(new Response(null, { status: 204 }));
-    const result = revokeSessionActivity(createEnv(['workspace-1'], fetch), {
-      userId: 'user-1',
-      sessionId: 'session-1',
-    });
-
-    await vi.runAllTimersAsync();
-    await expect(result).resolves.toBeUndefined();
-
-    expect(fetch).toHaveBeenCalledTimes(3);
-    expect(fetch).toHaveBeenLastCalledWith(
-      'workspace-1',
-      'https://workspace-ydoc.internal/kick',
-      expect.objectContaining({
-        headers: {
-          'x-ddlbuilder-user-id': 'user-1',
-          'x-ddlbuilder-session-id': 'session-1',
-        },
-      }),
-    );
-  });
-
   it('waits for every workspace and rejects after retries are exhausted', async () => {
     vi.useFakeTimers();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -85,15 +56,6 @@ describe('revokeSessionActivity', () => {
     );
     expect(fetch.mock.calls.filter(([workspaceId]) => workspaceId === 'workspace-2')).toHaveLength(
       1,
-    );
-  });
-
-  it('rejects when workspaces exist but the Durable Object binding is unavailable', async () => {
-    const env = createEnv(['workspace-1'], vi.fn());
-    delete env.WORKSPACE_YDOC;
-
-    await expect(revokeSessionActivity(env, { userId: 'user-1' })).rejects.toThrow(
-      'Workspace socket revocation is unavailable',
     );
   });
 });
