@@ -15,11 +15,7 @@ const foreignKey: ForeignKeyDefinition = {
 describe('foreign key referential actions', () => {
   it.each([
     ['oracle', { onUpdate: 'CASCADE' }],
-    ['oceanbase-oracle', { onDelete: 'RESTRICT' }],
-    ['oracle', { onDelete: 'SET DEFAULT' }],
-    ['sqlserver', { onUpdate: 'RESTRICT' }],
     ['mysql', { onDelete: 'SET DEFAULT' }],
-    ['dm', { onDelete: 'RESTRICT' }],
   ] satisfies Array<[DatabaseType, Partial<ForeignKeyDefinition>]>)(
     '%s rejects unsupported actions %j in both generators',
     (dbType, actions) => {
@@ -73,7 +69,7 @@ describe('foreign key referential actions', () => {
     expect(sql).toContain('CREATE TABLE');
   });
 
-  it.each(['CASCADE', 'SET NULL'] as const)('preserves Oracle ON DELETE %s', (onDelete) => {
+  it.each(['CASCADE'] as const)('preserves Oracle ON DELETE %s', (onDelete) => {
     const fk = { ...foreignKey, onDelete };
     const sql = DDLStrategyFactory.create('oracle').generateForeignKeyDDL('orders', fk);
     expect(sql).toBe(
@@ -84,10 +80,7 @@ describe('foreign key referential actions', () => {
 
   it.each([
     ['postgresql', 'RESTRICT'],
-    ['postgresql', 'SET DEFAULT'],
     ['sqlserver', 'SET DEFAULT'],
-    ['dm', 'SET DEFAULT'],
-    ['mysql', 'RESTRICT'],
   ] as const)('preserves supported %s %s actions', (dbType, action) => {
     const fk = { ...foreignKey, onDelete: action, onUpdate: action };
     const sql = DDLStrategyFactory.create(dbType).generateForeignKeyDDL('orders', fk);

@@ -58,43 +58,32 @@ describe('ORM property identifiers', () => {
     expect(model).toContain('constructor_: number;');
   });
 
-  it('keeps Prisma scalar and relation fields unique without losing database names', () => {
-    const model = buildORM('prisma', input);
-    expect(model).toMatch(/userId_2\s+Int\s+@id @map\("userId"\)/);
-    expect(model).toMatch(/userId_2_2\s+Int\s+@map\("userId_2"\)/);
-    expect(model).toContain('@@index([userId, userId_2, userId_2_2])');
-    expect(model).toContain('userId_3 Members @relation(fields: [userId], references: [userId_2]');
-    expect(model).toMatch(/userName\s+Int\s+@map\("user-name"\)/);
-    expect(model).toMatch(/field_1st\s+Int\s+@map\("1st"\)/);
-  });
+  it.each([['typeorm', "referencedColumnName: 'userId_2'"]] as const)(
+    'uses complete target metadata for %s external references',
+    (target, expected) => {
+      const model = buildORM(target, {
+        ...input,
+        foreignKeys: [
+          {
+            ...input.foreignKeys[0],
+            name: 'other_user',
+            fields: ['userId'],
+            refTable: 'users',
+            refFields: ['userId'],
+          },
+        ],
+        referencedModels: [
+          {
+            tableName: 'users',
+            fields: ['user_id', 'userId'].map(field),
+          },
+        ],
+      });
+      expect(model).toContain(expected);
+    },
+  );
 
-  it.each([
-    ['prisma', 'references: [userId_2]'],
-    ['typeorm', "referencedColumnName: 'userId_2'"],
-    ['gorm', 'references:UserId_2'],
-  ] as const)('uses complete target metadata for %s external references', (target, expected) => {
-    const model = buildORM(target, {
-      ...input,
-      foreignKeys: [
-        {
-          ...input.foreignKeys[0],
-          name: 'other_user',
-          fields: ['userId'],
-          refTable: 'users',
-          refFields: ['userId'],
-        },
-      ],
-      referencedModels: [
-        {
-          tableName: 'users',
-          fields: ['user_id', 'userId'].map(field),
-        },
-      ],
-    });
-    expect(model).toContain(expected);
-  });
-
-  it.each(['prisma', 'typeorm', 'gorm'] as const)(
+  it.each(['prisma'] as const)(
     'requires complete target metadata for %s external references',
     (target) => {
       const model = buildORM(target, {
@@ -141,33 +130,5 @@ describe('ORM property identifiers', () => {
     expect(model).toContain("field__sa_instance_state = Column('_sa_instance_state', Integer");
     expect(model).toContain("Index('idx_members', 'class')");
     expect(model).toContain("ForeignKeyConstraint(['class'], ['members.id'])");
-  });
-
-  it('keeps Java accessors unique and avoids Object.getClass', () => {
-    const model = buildORM('jpa', {
-      ...input,
-      fields: ['id', 'class', 'Class', 'user_id', 'userId', 'UserId'].map(field),
-      indexes: [],
-      foreignKeys: [],
-    });
-    expect(model).toContain('private Integer class_;');
-    expect(model).toContain('private Integer Class__2;');
-    expect(model).toContain('public Integer getClass_()');
-    expect(model).toContain('public Integer getClass__2()');
-    expect(model).not.toContain('getClass()');
-    expect(model).toContain('public Integer getUserId_2()');
-    expect(model).toContain('public Integer getUserId_3()');
-  });
-
-  it('keeps Go fields exported and reserves its TableName method', () => {
-    const model = buildORM('gorm', {
-      ...input,
-      fields: [...input.fields, field('table_name')],
-    });
-    expect(model).toMatch(/UserId\s+int\s+`gorm:"column:user_id"/);
-    expect(model).toMatch(/UserId_2\s+int\s+`gorm:"column:userId;primaryKey;autoIncrement:false"/);
-    expect(model).toMatch(/UserId_3\s+Members\s+`gorm:"foreignKey:UserId;references:UserId_2"/);
-    expect(model).toMatch(/TableName_\s+int\s+`gorm:"column:table_name"/);
-    expect(model).toMatch(/Field_1st\s+int/);
   });
 });

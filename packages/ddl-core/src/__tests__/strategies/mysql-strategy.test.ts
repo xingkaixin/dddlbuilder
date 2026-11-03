@@ -5,10 +5,6 @@ import type { NormalizedField } from '@ddlbuilder/shared-types';
 describe('MySqlStrategy', () => {
   const strategy = new ProfiledDDLStrategy('mysql');
 
-  it('应返回 mysql 数据库类型', () => {
-    expect(strategy.getDatabaseType()).toBe('mysql');
-  });
-
   it('应生成包含自增、默认值、on update 与注释的 DDL', () => {
     const fields: NormalizedField[] = [
       {

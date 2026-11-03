@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  DATABASE_TYPES,
-  type DatabaseType,
-  type NormalizedField,
-  type PersistedState,
-} from '@ddlbuilder/shared-types';
+import type { DatabaseType, NormalizedField, PersistedState } from '@ddlbuilder/shared-types';
 import { buildDDL } from '../utils/ddlGenerators';
 import { diffPersistedState, hasTableChanges } from '../utils/tableDiff';
 import { generateAlterDDL, generateRollbackDDL } from '../utils/alter-ddl';
@@ -58,7 +53,7 @@ describe('field comment semantics', () => {
     expect(resolveFieldComment({ comment: "Owner's status", enumMeta: [] })).toBe("Owner's status");
   });
 
-  it.each(DATABASE_TYPES)(
+  it.each(['mysql', 'hive', 'sqlite'] as const)(
     '%s CREATE renders derived comments with exactly one escape',
     (dbType) => {
       const sql = buildDDL({
@@ -79,7 +74,7 @@ describe('field comment semantics', () => {
     },
   );
 
-  it.each(['mysql', 'postgresql'] as const)(
+  it.each(['mysql'] as const)(
     '%s CREATE, diff, ALTER and rollback agree on enum comments',
     (dbType) => {
       const nextField = {

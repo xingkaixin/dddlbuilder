@@ -1,8 +1,6 @@
 import type { ParserConstructor, ParserModule } from './types.js';
 
 let parserConstructorPromise: Promise<ParserConstructor> | null = null;
-const defaultParserModuleLoader = () => import('node-sql-parser');
-let parserModuleLoader: () => Promise<ParserModule> = defaultParserModuleLoader;
 
 // node-sql-parser exposes CommonJS and ESM module shapes; runtime checks are the interop boundary.
 // oxlint-disable anti-slop/no-runtime-typeof
@@ -35,16 +33,10 @@ const normalizeParserConstructor = (module: ParserModule) => {
 
 export const loadParserConstructor = (): Promise<ParserConstructor> => {
   if (!parserConstructorPromise) {
-    parserConstructorPromise = parserModuleLoader().then((module) =>
+    parserConstructorPromise = import('node-sql-parser').then((module) =>
       normalizeParserConstructor(module),
     );
   }
 
   return parserConstructorPromise;
-};
-
-// Test-only loader override to avoid brittle mocking around dynamic imports.
-export const __setParserModuleLoaderForTests = (loader: (() => Promise<ParserModule>) | null) => {
-  parserModuleLoader = loader ?? defaultParserModuleLoader;
-  parserConstructorPromise = null;
 };

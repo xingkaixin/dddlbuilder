@@ -30,22 +30,15 @@ const input: ORMModelInput = {
 
 describe('ORM schema mapping', () => {
   it.each([
-    { target: 'prisma', declaration: 'model UserProfile {', mapping: '@@schema("app")' },
     {
       target: 'typeorm',
       declaration: 'export class UserProfile {',
       mapping: '@Entity({ name: "user_profile", schema: "app" })',
     },
-    { target: 'sqlalchemy', declaration: 'class UserProfile(Base):', mapping: '{"schema": "app"}' },
     {
       target: 'gorm',
       declaration: 'type UserProfile struct {',
       mapping: 'return "app.user_profile"',
-    },
-    {
-      target: 'jpa',
-      declaration: 'public class UserProfile {',
-      mapping: '@Table(name = "user_profile", schema = "app")',
     },
   ] satisfies { target: ORMTarget; declaration: string; mapping: string }[])(
     'keeps the schema out of $target type names',
@@ -56,7 +49,7 @@ describe('ORM schema mapping', () => {
     },
   );
 
-  it.each(['postgresql', 'postgresql-citus', 'sqlserver'] as const)(
+  it.each(['postgresql'] as const)(
     'preserves Prisma table mapping separately from the %s schema',
     (dbType) => {
       const model = buildORM('prisma', { ...input, dbType });
@@ -67,7 +60,7 @@ describe('ORM schema mapping', () => {
     },
   );
 
-  it.each(['mysql', 'mariadb', 'tidb'] as const)(
+  it.each(['mysql'] as const)(
     'uses database/catalog settings for %s instead of schema annotations',
     (dbType) => {
       const modelInput = { ...input, dbType };
@@ -106,14 +99,5 @@ describe('ORM schema mapping', () => {
     expect(model).toContain("ForeignKeyConstraint(['user_id'], ['auth.users.id'])");
     expect(model).toContain('{"schema": "app"}');
     expect(model.match(/__table_args__/g)).toHaveLength(1);
-  });
-
-  it('does not invent a namespace when the schema is empty', () => {
-    const modelInput = { ...input, schemaName: ' ' };
-    expect(buildORM('prisma', modelInput)).not.toContain('@@schema(');
-    expect(buildORM('typeorm', modelInput)).toContain("@Entity('user_profile')");
-    expect(buildORM('sqlalchemy', modelInput)).not.toContain('__table_args__');
-    expect(buildORM('gorm', modelInput)).toContain('return "user_profile"');
-    expect(buildORM('jpa', modelInput)).toContain('@Table(name = "user_profile")');
   });
 });

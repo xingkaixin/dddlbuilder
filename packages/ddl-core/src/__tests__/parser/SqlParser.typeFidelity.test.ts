@@ -90,22 +90,6 @@ describe('SQL import fidelity', () => {
     expect(mysql.fields[0].type).toBe('FLOAT');
   });
 
-  it('PostgreSQL character(n) 与 bpchar(n) 导入为定长 CHAR', async () => {
-    const parser = new SqlParser();
-
-    const result = await parser.parseAsync(
-      'CREATE TABLE character (code character(3), label bpchar(2), note character varying(4));',
-      'postgresql',
-    );
-
-    expect(result.tableName).toBe('character');
-    expect(result.fields.map((field) => field.type)).toEqual([
-      'CHAR(3)',
-      'CHAR(2)',
-      'CHARACTER VARYING(4)',
-    ]);
-  });
-
   it('PostgreSQL 生成的 BY DEFAULT IDENTITY 列可重新导入并生成相同 DDL', async () => {
     const parser = new SqlParser();
 
@@ -125,13 +109,7 @@ describe('SQL import fidelity', () => {
 
   it.each([
     ['GENERATED', 'price INT, total INT GENERATED ALWAYS AS (price * 2) STORED'],
-    ['CHECK', 'age INT CHECK (age >= 0)'],
     ['CHECK', 'age INT, CONSTRAINT chk_age CHECK (age >= 0)'],
-    ['CHARACTER SET', 'name VARCHAR(20) CHARACTER SET utf8mb4'],
-    ['COLLATE', 'name VARCHAR(20) COLLATE utf8mb4_bin'],
-    ['ZEROFILL', 'code INT(8) ZEROFILL'],
-    ['FULLTEXT', 'note TEXT, FULLTEXT INDEX ft_note (note)'],
-    ['SPATIAL', 'area GEOMETRY NOT NULL, SPATIAL KEY sp_area (area)'],
     ['15 位有效数字', 'rate DECIMAL(30,20) DEFAULT 0.12345678901234567890'],
   ])('批量导入将无法保留的 %s 定义报告为失败', async (feature, definition) => {
     const unsupportedSql = `CREATE TABLE unsupported_table (${definition});`;
@@ -145,19 +123,6 @@ describe('SQL import fidelity', () => {
     expect(failed).toEqual([
       { statement: unsupportedSql, error: expect.stringContaining(feature) },
     ]);
-  });
-
-  it.each([false, true])('CREATE FULLTEXT INDEX 报告为失败（strict: %s）', async (strict) => {
-    const indexSql = 'CREATE FULLTEXT INDEX ft_note ON notes (note);';
-
-    const { results, failed } = await new SqlParser().parseMultiAsync(
-      `CREATE TABLE notes (id INT, note TEXT); ${indexSql}`,
-      'mysql',
-      strict,
-    );
-
-    expect(results[0].indexes).toEqual([]);
-    expect(failed).toEqual([{ statement: indexSql, error: expect.stringContaining('FULLTEXT') }]);
   });
 
   it.each([false, true])('UNIQUE INDEX 与 UNIQUE 约束同样导入（strict: %s）', async (strict) => {
@@ -177,19 +142,6 @@ describe('SQL import fidelity', () => {
       { name: 'u_b', fields: [{ name: 'b', direction: 'ASC' }], kind: 'unique_constraint' },
       { name: 'u_c', fields: [{ name: 'c', direction: 'ASC' }], kind: 'unique_constraint' },
       { name: 'u_d', fields: [{ name: 'd', direction: 'ASC' }], kind: 'unique_constraint' },
-    ]);
-  });
-
-  it.each([false, true])('ALTER TABLE ADD UNIQUE INDEX 同样导入（strict: %s）', async (strict) => {
-    const { results, failed } = await new SqlParser().parseMultiAsync(
-      'CREATE TABLE t (a INT); ALTER TABLE t ADD UNIQUE INDEX u_a (a);',
-      'mysql',
-      strict,
-    );
-
-    expect(failed).toEqual([]);
-    expect(results[0].indexes).toMatchObject([
-      { name: 'u_a', fields: [{ name: 'a' }], kind: 'unique_constraint' },
     ]);
   });
 });

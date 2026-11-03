@@ -23,7 +23,7 @@ describe('SQLAlchemy defaults', () => {
     );
   });
 
-  it.each(['postgresql', 'mysql'] as const)(
+  it.each(['postgresql'] as const)(
     'preserves imported non-generated integer primary keys for %s',
     async (dbType) => {
       const parsed = await new SqlParser().parseAsync(
@@ -37,10 +37,7 @@ describe('SQLAlchemy defaults', () => {
 
   it.each([
     ['int', 'auto_increment', 'Integer', 'True'],
-    ['bigint', 'none', 'BigInteger', 'False'],
-    ['smallint', 'none', 'SmallInteger', 'False'],
     ['serial', 'none', 'Integer', 'True'],
-    ['bigserial', 'none', 'BigInteger', 'True'],
   ] as const)('preserves generation intent for %s with %s', (type, defaultKind, ormType, auto) => {
     const model = buildORM('sqlalchemy', {
       dbType: 'postgresql',

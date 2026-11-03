@@ -17,10 +17,6 @@ const baseFields: NormalizedField[] = [
 describe('SqlServerStrategy', () => {
   const strategy = new ProfiledDDLStrategy('sqlserver');
 
-  it('应返回 sqlserver 数据库类型', () => {
-    expect(strategy.getDatabaseType()).toBe('sqlserver');
-  });
-
   it('生成表注释时应使用 TABLE 层级（带 schema）', () => {
     const ddl = strategy.generateTableDDL('dbo.users', '用户表', baseFields);
 

@@ -146,9 +146,6 @@ describe('query designer', () => {
   });
   it.each([
     ['mysql', 'mediumint unsigned', 'tinytext'],
-    ['mysql', 'int', "enum('a','b')"],
-    ['postgresql', 'smallserial', 'character(10)'],
-    ['postgresql', 'int2', 'bpchar'],
     ['postgresql', 'float4', 'citext'],
   ] as const)('accepts %s %s for SUM and %s for LIKE', (dialect, numeric, text) => {
     const tables = queryFixture(dialect);

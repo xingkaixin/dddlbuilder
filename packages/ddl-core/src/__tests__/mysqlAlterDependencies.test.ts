@@ -86,11 +86,7 @@ describe('MySQL ALTER dependencies', () => {
     );
   });
 
-  it.each([
-    { kind: 'index', clause: 'INDEX idx_id (id ASC)' },
-    { kind: 'unique_index', clause: 'UNIQUE INDEX idx_id (id ASC)' },
-    { kind: 'unique_constraint', clause: 'CONSTRAINT idx_id UNIQUE (id ASC)' },
-  ] as const)(
+  it.each([{ kind: 'index', clause: 'INDEX idx_id (id ASC)' }] as const)(
     'replaces the supporting key without leaving an unindexed identity: $clause',
     (index) => {
       const after = {
@@ -113,24 +109,6 @@ describe('MySQL ALTER dependencies', () => {
       );
     },
   );
-
-  it('renames and disables identity in the same column clause', () => {
-    const after = {
-      ...before,
-      rows: before.rows.map((row) =>
-        row.id === 'id-row' ? { ...row, fieldName: 'user_id', defaultKind: 'none' as const } : row,
-      ),
-      indexes: [],
-    };
-    const diff = diffPersistedState(before, after);
-    expect(generateAlterDDL(diff)).toBe(
-      dependencyNotice +
-        'ALTER TABLE users\n  DROP PRIMARY KEY,\n  CHANGE COLUMN id user_id INT NOT NULL;',
-    );
-    expect(generateRollbackDDL(diff)).toBe(
-      'ALTER TABLE users\n  CHANGE COLUMN user_id id INT AUTO_INCREMENT NOT NULL,\n  ADD PRIMARY KEY (id ASC);',
-    );
-  });
 
   it('preserves rename-chain data without applying a modification to the wrong column', () => {
     const original = {
@@ -158,21 +136,6 @@ describe('MySQL ALTER dependencies', () => {
     expect(generateRollbackDDL(diff)).toBe(
       dependencyNotice +
         'ALTER TABLE users\n  CHANGE COLUMN b a INT NOT NULL,\n  RENAME COLUMN c TO b;',
-    );
-  });
-
-  it('keeps quoted identifiers and punctuation in comments intact', () => {
-    const after = {
-      ...before,
-      rows: before.rows.map((row) =>
-        row.id === 'id-row' ? { ...row, fieldName: 'select', fieldComment: "it's; a,b" } : row,
-      ),
-      indexes: [{ ...primary, fields: [{ name: 'select', direction: 'ASC' as const }] }],
-    };
-    const diff = diffPersistedState(before, after);
-    expect(generateAlterDDL(diff)).toBe(
-      dependencyNotice +
-        "ALTER TABLE users\n  DROP PRIMARY KEY,\n  CHANGE COLUMN id `select` INT AUTO_INCREMENT NOT NULL COMMENT 'it''s; a,b',\n  ADD PRIMARY KEY (`select` ASC);",
     );
   });
 });

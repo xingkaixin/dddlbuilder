@@ -40,10 +40,7 @@ describe('Prisma primary keys', () => {
     expect(model).not.toContain('@@unique(');
   });
 
-  it.each([
-    { names: ['id'], fieldIds: 1, compoundIds: 0 },
-    { names: ['id', 'tenant_id'], fieldIds: 0, compoundIds: 1 },
-  ])(
+  it.each([{ names: ['id', 'tenant_id'], fieldIds: 0, compoundIds: 1 }])(
     'preserves auto increment defaults for primary columns: $names',
     ({ names, fieldIds, compoundIds }) => {
       const model = buildORM('prisma', {

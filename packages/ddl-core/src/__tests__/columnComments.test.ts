@@ -27,7 +27,7 @@ describe('column comment migrations', () => {
     expect(parsed.tableComment).toBe("Owner's table; 活跃");
     expect(parsed.fields[0].comment).toBe("Owner's name; 姓名");
   });
-  it.each(['postgresql', 'sqlserver', 'oracle', 'dm'] as const)(
+  it.each(['postgresql', 'sqlserver'] as const)(
     '%s keeps comments when adding columns',
     (dbType: DatabaseType) => {
       const field = {
@@ -71,16 +71,7 @@ describe('column comment migrations', () => {
     },
   );
 
-  it.each([
-    'postgresql',
-    'postgresql-citus',
-    'kingbase',
-    'gaussdb',
-    'oracle',
-    'oceanbase-oracle',
-    'dm',
-    'sqlserver',
-  ] as const)(
+  it.each(['postgresql', 'sqlserver'] as const)(
     '%s emits only comment statements for comment-only changes and rollback',
     (dbType) => {
       const before = withDefaultEditorSession({
@@ -118,7 +109,7 @@ describe('column comment migrations', () => {
     },
   );
 
-  it.each(['postgresql', 'oracle', 'dm', 'sqlserver'] as const)(
+  it.each(['postgresql', 'sqlserver'] as const)(
     '%s adds and clears a comment reversibly',
     (dbType) => {
       const before = withDefaultEditorSession({

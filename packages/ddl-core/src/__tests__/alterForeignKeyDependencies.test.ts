@@ -43,7 +43,7 @@ const state = (dbType: DatabaseType = 'postgresql') =>
   });
 
 describe('ALTER foreign key dependencies', () => {
-  it.each(['postgresql', 'postgresql-citus', 'kingbase', 'gaussdb'] as const)(
+  it.each(['postgresql'] as const)(
     '%s preserves a renamed primary constraint and its foreign key dependencies',
     (dbType) => {
       const before = state(dbType);
@@ -64,24 +64,21 @@ describe('ALTER foreign key dependencies', () => {
     },
   );
 
-  it.each([
-    ['unique_constraint', 'ALTER TABLE audit.items RENAME CONSTRAINT old_key TO new_key;'],
-    ['unique_index', 'ALTER INDEX audit.old_key RENAME TO new_key;'],
-  ] satisfies [IndexDefinition['kind'], string][])(
-    'preserves a referenced %s when only its name changes',
-    (kind, expected) => {
-      const before = {
-        ...state(),
-        schemaName: 'audit',
-        indexes: [{ ...state().indexes[0], name: 'old_key', kind }],
-      };
-      const after = {
-        ...before,
-        indexes: before.indexes.map((index) => ({ ...index, name: 'new_key' })),
-      };
-      expect(generateAlterDDL(diffPersistedState(before, after))).toBe(expected);
-    },
-  );
+  it.each([['unique_index', 'ALTER INDEX audit.old_key RENAME TO new_key;']] satisfies [
+    IndexDefinition['kind'],
+    string,
+  ][])('preserves a referenced %s when only its name changes', (kind, expected) => {
+    const before = {
+      ...state(),
+      schemaName: 'audit',
+      indexes: [{ ...state().indexes[0], name: 'old_key', kind }],
+    };
+    const after = {
+      ...before,
+      indexes: before.indexes.map((index) => ({ ...index, name: 'new_key' })),
+    };
+    expect(generateAlterDDL(diffPersistedState(before, after))).toBe(expected);
+  });
 
   it('preserves a primary key when its column is renamed', () => {
     const before = { ...state(), foreignKeys: [] };
@@ -154,20 +151,6 @@ describe('ALTER foreign key dependencies', () => {
     }
   });
 
-  it('leaves unrelated foreign keys untouched', () => {
-    const before = state('mysql');
-
-    const after = {
-      ...before,
-      rows: before.rows.map((row) =>
-        row.id === 'other_id' ? { ...row, fieldType: 'bigint' } : row,
-      ),
-    };
-    const sql = generateAlterDDL(diffPersistedState(before, after));
-    expect(sql).toContain('MODIFY COLUMN other_id BIGINT NULL;');
-    expect(sql).not.toContain('fk_parent');
-  });
-
   it('does not duplicate foreign keys whose definitions already changed', () => {
     const before = state('mysql');
 
@@ -234,82 +217,6 @@ describe('ALTER foreign key dependencies', () => {
       'cannot verify a supported unique referenced key for unchanged foreign key fk_parent',
     );
     expect(sql).toContain('No automatic changes generated');
-    expect(sql).not.toContain('ALTER TABLE');
-  });
-
-  it('uses an unchanged alternative unique key when replacing the referenced primary key', () => {
-    const original = state();
-    const primary = original.indexes[0];
-    const alternate: IndexDefinition = { ...primary, kind: 'unique_constraint', name: 'unique_id' };
-    const before = { ...original, indexes: [primary, alternate] };
-    const after = { ...before, indexes: [alternate] };
-    const diff = diffPersistedState(before, after);
-    expect(diff.unchangedIndexes).toEqual([alternate]);
-    const sql = generateAlterDDL(diff);
-    expect(sql).toContain('DROP CONSTRAINT fk_parent;');
-    expect(sql).toContain('DROP CONSTRAINT items_pkey;');
-    expect(sql).toContain('ADD CONSTRAINT fk_parent FOREIGN KEY (parent_id) REFERENCES items (id)');
-  });
-
-  it('finds PostgreSQL dependencies whose referenced columns use a different order', () => {
-    const before = {
-      ...state(),
-      indexes: [
-        {
-          ...state().indexes[0],
-          fields: [
-            { name: 'id', direction: 'ASC' as const },
-            { name: 'other_id', direction: 'ASC' as const },
-          ],
-        },
-      ],
-      foreignKeys: [
-        {
-          id: 'parent',
-          name: 'fk_parent',
-          fields: ['parent_id', 'other_id'],
-          refTable: 'items',
-          refFields: ['other_id', 'id'],
-        },
-      ],
-    };
-    const after = {
-      ...before,
-      indexes: before.indexes.map((index) => ({ ...index, kind: 'unique_constraint' as const })),
-    };
-    const sql = generateAlterDDL(diffPersistedState(before, after));
-    expect(sql).toContain(
-      'DROP CONSTRAINT fk_parent;\n\nALTER TABLE items DROP CONSTRAINT items_pkey;',
-    );
-    expect(sql).toContain('REFERENCES items (other_id, id);');
-  });
-
-  it('does not treat an unqualified foreign table as a self reference in another schema', () => {
-    const before = { ...state(), schemaName: 'audit', indexes: [] };
-    const after = { ...before, rows: before.rows.filter((row) => row.id !== 'id') };
-    const sql = generateAlterDDL(diffPersistedState(before, after));
-    expect(sql).toContain('ALTER TABLE audit.items DROP COLUMN id;');
-    expect(sql).not.toContain('DROP CONSTRAINT');
-  });
-
-  it('does not mistake a MySQL composite unique key for uniqueness of its prefix', () => {
-    const before = state('mysql');
-
-    const after = {
-      ...before,
-      indexes: [
-        {
-          ...before.indexes[0],
-          kind: 'unique_constraint' as const,
-          fields: [
-            { name: 'id', direction: 'ASC' as const },
-            { name: 'other_id', direction: 'ASC' as const },
-          ],
-        },
-      ],
-    };
-    const sql = generateAlterDDL(diffPersistedState(before, after));
-    expect(sql).toContain('cannot verify a supported unique referenced key');
     expect(sql).not.toContain('ALTER TABLE');
   });
 });

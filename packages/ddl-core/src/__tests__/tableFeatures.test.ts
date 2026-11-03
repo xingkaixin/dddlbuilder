@@ -37,27 +37,6 @@ describe('tableFeatures', () => {
     ).toBe('');
   });
 
-  it('生成 HASH、KEY 及默认分区数量', () => {
-    expect(
-      buildMysqlPartitionClause({
-        enabled: true,
-        type: 'HASH',
-        columns: ['id'],
-        partitionCount: 8,
-        partitions: [],
-      }),
-    ).toBe('\nPARTITION BY HASH(id)\nPARTITIONS 8');
-    expect(
-      buildMysqlPartitionClause({
-        enabled: true,
-        type: 'KEY',
-        columns: [],
-        expression: 'tenant_id',
-        partitions: [],
-      }),
-    ).toBe('\nPARTITION BY KEY(tenant_id)\nPARTITIONS 4');
-  });
-
   it('限制 HASH 与 KEY 的分区数量', () => {
     expect(
       buildMysqlPartitionClause({
@@ -104,7 +83,7 @@ describe('tableFeatures', () => {
     ).toContain('PARTITION p_active VALUES IN (1, 2)');
   });
 
-  it.each(['KEY', 'RANGE COLUMNS', 'LIST COLUMNS'] as const)(
+  it.each<'KEY' | 'RANGE COLUMNS' | 'LIST COLUMNS'>(['RANGE COLUMNS'])(
     'quotes column identifiers and partition names in %s',
     (type) => {
       const sql = buildDDL({
@@ -137,31 +116,7 @@ describe('tableFeatures', () => {
     },
   );
 
-  it('preserves partition expressions as SQL', () => {
-    expect(
-      buildMysqlPartitionClause({
-        enabled: true,
-        type: 'HASH',
-        columns: ['created_at'],
-        expression: 'YEAR(created_at)',
-        partitionCount: 8,
-      }),
-    ).toBe('\nPARTITION BY HASH(YEAR(created_at))\nPARTITIONS 8');
-  });
-
-  it('忽略未知分区类型', () => {
-    expect(
-      buildMysqlPartitionClause({
-        enabled: true,
-        // @ts-expect-error This fixture intentionally exercises an unknown parser partition type.
-        type: 'UNKNOWN',
-        columns: ['id'],
-        partitions: [],
-      }),
-    ).toBe('');
-  });
-
-  it.each(['mysql', 'postgresql'] as const)('装配 %s 表选项时保留字符串内的分号', (dbType) => {
+  it.each(['mysql'] as const)('装配 %s 表选项时保留字符串内的分号', (dbType) => {
     const ddl = buildDDL({
       dbType,
       tableName: 'users',

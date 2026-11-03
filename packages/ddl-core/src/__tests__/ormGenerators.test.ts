@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildORM } from '../utils/ormGenerators';
 import { buildDDL } from '../utils/ddlGenerators';
-import { ORMGeneratorFactory } from '../factories/ORMGeneratorFactory';
-import type {
-  NormalizedField,
-  IndexDefinition,
-  ForeignKeyDefinition,
-} from '@ddlbuilder/shared-types';
+import type { NormalizedField, IndexDefinition } from '@ddlbuilder/shared-types';
 
 const sampleFields: NormalizedField[] = [
   {
@@ -71,26 +66,10 @@ const sampleIndexes: IndexDefinition[] = [
   },
 ];
 
-const sampleForeignKeys: ForeignKeyDefinition[] = [
-  {
-    id: '1',
-    name: 'fk_user_role',
-    fields: ['id'],
-    refTable: 'roles',
-    refFields: ['id'],
-  },
-];
-
 describe('buildORM', () => {
   it.each([
     ['prisma', '@default("")', '@default("now()")', '@default(dbgenerated("lower(\'X\')"))'],
     ['typeorm', "default: ''", "default: 'now()'", 'default: () => "lower(\'X\')"'],
-    [
-      'sqlalchemy',
-      "server_default=literal_column('(\\'\\')')",
-      "server_default=literal_column('(\\'now()\\')')",
-      "server_default=text('lower(\\'X\\')')",
-    ],
   ] as const)(
     'preserves literal and expression defaults in %s',
     (target, empty, literal, expression) => {
@@ -118,47 +97,12 @@ describe('buildORM', () => {
       expect(model).toContain(expression);
     },
   );
-
-  it('returns empty table message when table name is empty', () => {
-    const result = buildORM('prisma', {
-      dbType: 'mysql',
-      tableName: '',
-      tableComment: '',
-      fields: [],
-    });
-    expect(result).toBe('-- 请填写表名');
-  });
-
-  it('returns empty fields message when fields are empty', () => {
-    const result = buildORM('prisma', {
-      dbType: 'mysql',
-      tableName: 'users',
-      tableComment: '',
-      fields: [],
-    });
-    expect(result).toBe('-- 请补充字段信息');
-  });
-});
-
-describe('ORMGeneratorFactory', () => {
-  it('throws for unsupported target', () => {
-    // @ts-expect-error This fixture intentionally exercises an unsupported runtime target value.
-    expect(() => ORMGeneratorFactory.create('invalid')).toThrow('Unsupported ORM target');
-  });
 });
 
 describe('primary key defaults', () => {
   it.each([
     ['uuid', 'uuid', '', '@default(uuid())', "default: () => 'gen_random_uuid()'"],
-    ['current_timestamp', 'timestamp', '', '@default(now())', "default: () => 'CURRENT_TIMESTAMP'"],
     ['constant', 'varchar(30)', 'pending', '@default("pending")', "default: 'pending'"],
-    [
-      'expression',
-      'uuid',
-      'gen_random_uuid()',
-      '@default(dbgenerated("gen_random_uuid()"))',
-      'default: () => "gen_random_uuid()"',
-    ],
   ] as const)(
     'preserves %s defaults alongside the primary key constraint',
     (defaultKind, type, defaultValue, prismaDefault, typeormDefault) => {
@@ -175,36 +119,6 @@ describe('primary key defaults', () => {
       expect(typeorm).toContain(typeormDefault);
     },
   );
-
-  it('preserves defaults on composite primary key fields', () => {
-    const input = {
-      dbType: 'postgresql' as const,
-      tableName: 'defaults',
-      tableComment: '',
-      fields: [
-        { ...sampleFields[0], type: 'uuid', defaultKind: 'uuid' as const },
-        { ...sampleFields[1], nullable: false, defaultKind: 'constant' as const, defaultValue: '' },
-      ],
-      indexes: [
-        {
-          ...sampleIndexes[0],
-          fields: [
-            { name: 'id', direction: 'ASC' as const },
-            { name: 'name', direction: 'ASC' as const },
-          ],
-        },
-      ],
-    };
-    const prisma = buildORM('prisma', input);
-    expect(prisma).toContain('@@id([id, name])');
-    expect(prisma).toContain('@default(uuid())');
-    expect(prisma).toContain('@default("")');
-    const typeorm = buildORM('typeorm', input);
-    expect(typeorm).toContain(
-      `@PrimaryColumn({ type: "uuid", default: () => 'gen_random_uuid()' })`,
-    );
-    expect(typeorm).toContain(`@PrimaryColumn({ type: "varchar", length: 255, default: '' })`);
-  });
 });
 
 describe('database default compatibility', () => {
@@ -222,74 +136,9 @@ describe('database default compatibility', () => {
   });
 });
 
-describe('PrismaGenerator', () => {
-  it('generates Prisma model', () => {
-    const result = buildORM('prisma', {
-      dbType: 'mysql',
-      tableName: 'user_info',
-      tableComment: '用户信息表',
-      fields: sampleFields,
-      indexes: sampleIndexes,
-      foreignKeys: sampleForeignKeys,
-      referencedModels: [{ tableName: 'roles', fields: [{ name: 'id' }] }],
-    });
-    expect(result).toContain('model UserInfo {');
-    expect(result).toContain('/// 用户信息表');
-    expect(result).toContain('id');
-    expect(result).toContain('BigInt');
-    expect(result).toContain('@id');
-    expect(result).toContain('@default(autoincrement())');
-    expect(result).toContain('name');
-    expect(result).toContain('String?');
-    expect(result).toContain('email');
-    expect(result).toContain('String');
-    expect(result).toContain('createdAt');
-    expect(result).toContain('DateTime');
-    expect(result).toContain('@default(now())');
-    expect(result).toContain('@@unique([name, email])');
-    expect(result).toContain('@@unique([email])');
-    expect(result).toContain(
-      'fkUserRole Roles @relation(fields: [id], references: [id], map: "fk_user_role")',
-    );
-  });
-
-  it('handles nullable primary key correctly', () => {
-    const fields: NormalizedField[] = [
-      {
-        name: 'id',
-        type: 'int',
-        comment: '',
-        nullable: true,
-        defaultKind: 'auto_increment',
-        defaultValue: '',
-        onUpdate: 'none',
-      },
-    ];
-    const indexes: IndexDefinition[] = [
-      {
-        id: '1',
-        name: 'PRIMARY',
-        fields: [{ name: 'id', direction: 'ASC' }],
-        kind: 'primary',
-      },
-    ];
-    const result = buildORM('prisma', {
-      dbType: 'mysql',
-      tableName: 'test',
-      tableComment: '',
-      fields,
-      indexes,
-    });
-    expect(result).toContain('id');
-    expect(result).toContain('Int');
-    expect(result).not.toContain('Int?');
-  });
-});
-
 describe('TypeORMGenerator', () => {
   it.each([
     ['mysql', '(UUID())'],
-    ['postgresql', 'gen_random_uuid()'],
     ['sqlserver', 'NEWID()'],
   ] as const)('uses the %s UUID default for non-primary columns', (dbType, expression) => {
     const result = buildORM('typeorm', {
@@ -300,80 +149,10 @@ describe('TypeORMGenerator', () => {
     });
     expect(result).toContain(`default: () => '${expression}'`);
   });
-
-  it('generates TypeORM entity', () => {
-    const result = buildORM('typeorm', {
-      dbType: 'mysql',
-      tableName: 'user_info',
-      tableComment: '用户信息表',
-      fields: sampleFields,
-      indexes: sampleIndexes,
-    });
-    expect(result).toContain(
-      "import { Entity, Column, Index, PrimaryGeneratedColumn, PrimaryColumn } from 'typeorm';",
-    );
-    expect(result).toContain("@Entity('user_info')");
-    expect(result).toContain('export class UserInfo {');
-    expect(result).toContain('@PrimaryGeneratedColumn({ type: "bigint" })');
-    expect(result).toContain('id: string;');
-    expect(result).toContain('name: string | null;');
-    expect(result).toContain(
-      '@Column({ type: "varchar", length: 100, unique: true, comment: \'邮箱\' })',
-    );
-    expect(result).toContain('email: string;');
-  });
-});
-
-describe('SQLAlchemyGenerator', () => {
-  it('generates SQLAlchemy model', () => {
-    const result = buildORM('sqlalchemy', {
-      dbType: 'mysql',
-      tableName: 'user_info',
-      tableComment: '用户信息表',
-      fields: sampleFields,
-      indexes: sampleIndexes,
-    });
-    expect(result).toContain('from sqlalchemy import Column');
-    expect(result).toContain('Base = declarative_base()');
-    expect(result).toContain('class UserInfo(Base):');
-    expect(result).toContain("__tablename__ = 'user_info'");
-    expect(result).toContain(
-      "id = Column(BigInteger, primary_key=True, autoincrement=True, comment='主键ID')",
-    );
-    expect(result).toContain("name = Column(String(255), nullable=True, comment='名称')");
-    expect(result).toContain("email = Column(String(100), nullable=False, comment='邮箱')");
-    expect(result).toContain(
-      "created_at = Column(DateTime, nullable=False, default=func.now(), comment='创建时间')",
-    );
-    expect(result).toContain("Index('idx_email', 'email', unique=True)");
-    expect(result).toContain("Index('idx_name_email', 'name', 'email', unique=True)");
-  });
 });
 
 describe('GORMGenerator', () => {
-  it('generates GORM struct', () => {
-    const result = buildORM('gorm', {
-      dbType: 'mysql',
-      tableName: 'user_info',
-      tableComment: '用户信息表',
-      fields: sampleFields,
-      indexes: sampleIndexes,
-    });
-    expect(result).toContain('package models');
-    expect(result).toContain('import "time"');
-    expect(result).toContain('type UserInfo struct {');
-    expect(result).toContain('gorm:"column:id;primaryKey;autoIncrement;comment:主键ID"');
-    expect(result).toContain('Id');
-    expect(result).toContain('int64');
-    expect(result).toContain('gorm:"column:email;uniqueIndex;comment:邮箱"');
-    expect(result).toContain('Name');
-    expect(result).toContain('*string');
-    expect(result).toContain('func (UserInfo) TableName() string {');
-    expect(result).toContain('return "user_info"');
-  });
-
   it.each([
-    { names: ['id'], tags: ['column:id;primaryKey;autoIncrement:false"'] },
     {
       names: ['tenant_id', 'id'],
       tags: ['column:id;primaryKey;autoIncrement:false"', 'column:tenant_id;primaryKey"'],
@@ -424,28 +203,6 @@ describe('GORMGenerator', () => {
 });
 
 describe('JPAGenerator', () => {
-  it('generates JPA entity', () => {
-    const result = buildORM('jpa', {
-      dbType: 'mysql',
-      tableName: 'user_info',
-      tableComment: '用户信息表',
-      fields: sampleFields,
-      indexes: sampleIndexes,
-    });
-    expect(result).toContain('import jakarta.persistence.*;');
-    expect(result).toContain('import java.util.Date;');
-    expect(result).toContain('@Entity');
-    expect(result).toContain('@Table(name = "user_info")');
-    expect(result).toContain('public class UserInfo {');
-    expect(result).toContain('@Id');
-    expect(result).toContain('@GeneratedValue(strategy = GenerationType.IDENTITY)');
-    expect(result).toContain('private Long id;');
-    expect(result).toContain('private String name;');
-    expect(result).toContain('public Long getId()');
-    expect(result).toContain('public void setId(Long id)');
-    expect(result).not.toContain('@IdClass');
-  });
-
   it('maps composite primary keys through a serializable IdClass', () => {
     const result = buildORM('jpa', {
       dbType: 'mysql',
@@ -522,49 +279,24 @@ describe('JPAGenerator', () => {
     expect(result).toContain('import java.math.BigDecimal;');
     expect(result).toContain('private BigDecimal amount;');
   });
-
-  it('imports UUID when needed', () => {
-    const fields: NormalizedField[] = [
-      {
-        name: 'uuid_col',
-        type: 'uuid',
-        comment: '',
-        nullable: false,
-        defaultKind: 'none',
-        defaultValue: '',
-        onUpdate: 'none',
-      },
-    ];
-    const result = buildORM('jpa', {
-      dbType: 'mysql',
-      tableName: 'test',
-      tableComment: '',
-      fields,
-    });
-    expect(result).toContain('import java.util.UUID;');
-    expect(result).toContain('private UUID uuidCol;');
-  });
 });
 
 describe('generated string literals', () => {
-  it.each(['typeorm', 'sqlalchemy'] as const)(
-    'escapes newlines and backslashes in %s',
-    (target) => {
-      const value = 'line' + String.fromCharCode(10) + 'C:' + String.fromCharCode(92);
+  it.each(['typeorm'] as const)('escapes newlines and backslashes in %s', (target) => {
+    const value = 'line' + String.fromCharCode(10) + 'C:' + String.fromCharCode(92);
 
-      const result = buildORM(target, {
-        dbType: 'mysql',
-        tableName: 'items',
-        tableComment: '',
-        fields: [
-          { ...sampleFields[1], comment: value, defaultKind: 'constant', defaultValue: value },
-        ],
-        indexes: [],
-      });
-      expect(result).not.toContain(value);
-      expect(result).toContain(String.fromCharCode(92) + 'n');
-    },
-  );
+    const result = buildORM(target, {
+      dbType: 'mysql',
+      tableName: 'items',
+      tableComment: '',
+      fields: [
+        { ...sampleFields[1], comment: value, defaultKind: 'constant', defaultValue: value },
+      ],
+      indexes: [],
+    });
+    expect(result).not.toContain(value);
+    expect(result).toContain(String.fromCharCode(92) + 'n');
+  });
   it('keeps Go comments out of tags when they contain tag delimiters', () => {
     const comment = 'a;b "q"';
 

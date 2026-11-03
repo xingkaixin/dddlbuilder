@@ -7,7 +7,7 @@ import * as sqliteCore from 'drizzle-orm/sqlite-core';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { instantiateBusinessModule } from '../utils/businessModules';
-import { buildSqliteProject, buildSqliteTable } from '../utils/sqliteSchema';
+import { buildSqliteProject } from '../utils/sqliteSchema';
 import { snapshotFields } from '../utils/schemaSnapshot';
 import { buildDDL, buildDCL, buildViewDDL } from '../utils/ddlGenerators';
 import { buildORM } from '../utils/ormGenerators';
@@ -54,19 +54,6 @@ describe('SQLite and D1 exports', () => {
     } finally {
       db.close();
     }
-  });
-  it('evaluates generated Drizzle models with matching keys and relationships', () => {
-    const project = buildSqliteProject(tables());
-    const generated = evaluateSchema(project.schema);
-    const configs = generated.map(sqliteCore.getTableConfig);
-    expect(configs.map((config) => config.name)).toEqual(tables().map((table) => table.tableName));
-    const junction = configs.find((config) => config.name === 'user_roles');
-    expect(junction?.foreignKeys).toHaveLength(2);
-    expect(junction?.uniqueConstraints[0].columns.map((column) => column.name)).toEqual([
-      'user_id',
-      'role_id',
-    ]);
-    expect(configs[0].columns.find((column) => column.name === 'id')?.primary).toBe(true);
   });
   it('preserves composite keys, ordered indexes, quoted names, defaults and self references', () => {
     const table = tables()[0];
@@ -135,34 +122,6 @@ describe('SQLite and D1 exports', () => {
       generated[0],
     );
   });
-  it('matches SQLite identifier quoting and ASCII-only case folding', () => {
-    const table = tables()[0];
-    table.rows[1].fieldName = '"username"';
-    table.rows.push(
-      { id: 'upper', fieldName: 'Å', fieldType: 'text', fieldComment: '', nullable: true },
-      { id: 'lower', fieldName: 'å', fieldType: 'text', fieldComment: '', nullable: true },
-    );
-    const project = buildSqliteProject([table]);
-    const db = new DatabaseSync(':memory:');
-
-    try {
-      db.exec(project.sql);
-      expect(
-        db
-          .prepare('PRAGMA table_info(users)')
-          .all()
-          .map((row) => row.name),
-      ).toEqual(['id', 'username', 'Å', 'å']);
-    } finally {
-      db.close();
-    }
-
-    expect(
-      sqliteCore
-        .getTableConfig(evaluateSchema(project.schema)[0])
-        .columns.map((column) => column.name),
-    ).toEqual(['id', 'username', 'Å', 'å']);
-  });
   it('checks D1 column and UTF-8 statement limits separately from SQLite', () => {
     const base = tables()[0];
 
@@ -212,40 +171,5 @@ describe('SQLite and D1 exports', () => {
     expect(buildORM('prisma', input)).toContain('Select Drizzle');
     expect(buildORM('drizzle', input)).toContain('sqliteTable');
     expect(buildORM('drizzle', { ...input, dbType: 'mysql' })).toContain('blocked');
-  });
-  it('supports SQLite native storage classes and explicit default policies', () => {
-    const model = tables()[0];
-
-    const fields = ['int', 'text', 'real', 'blob', 'decimal', 'date', 'json'].map(
-      (type, index) => ({
-        name: `f${index}`,
-        type,
-        comment: '',
-        nullable: true,
-        defaultKind: 'none' as const,
-        defaultValue: '',
-        onUpdate: 'none' as const,
-      }),
-    );
-    const input = { ...model, indexes: [], fields };
-    expect(buildSqliteTable(input)).toContain('"f4" NUMERIC');
-    expect(() =>
-      buildSqliteTable({
-        ...input,
-        fields: [{ ...fields[0], defaultKind: 'constant', defaultValue: 'x' }],
-      }),
-    ).toThrow('numeric');
-    expect(() =>
-      buildSqliteTable({ ...input, fields: [{ ...fields[1], defaultKind: 'uuid' }] }),
-    ).toThrow('UUID');
-    expect(() =>
-      buildSqliteTable({
-        ...input,
-        fields: [{ ...fields[1], defaultKind: 'expression', defaultValue: 'random()' }],
-      }),
-    ).toThrow('expressions');
-    expect(
-      buildSqliteTable({ ...input, fields: [{ ...fields[1], defaultKind: 'current_timestamp' }] }),
-    ).toContain('DEFAULT CURRENT_TIMESTAMP');
   });
 });

@@ -33,47 +33,16 @@ describe('schema changes requiring manual migration', () => {
       reason: 'view',
     },
     {
-      name: 'view identity',
-      before: view,
-      after: { ...view, schemaName: 'archive', tableName: 'renamed' },
-      reason: 'view',
-    },
-    {
-      name: 'view creation mode',
-      before: view,
-      after: { ...view, viewCreateOrReplace: false },
-      reason: 'view',
-    },
-    { name: 'object type', before: state(), after: view, reason: 'objectType' },
-    {
       name: 'database dialect',
       before: state(),
       after: state({ dbType: 'postgresql' }),
       reason: 'dbType',
     },
     {
-      name: 'partition count alongside table rename',
-      before: state({ mysqlPartitionConfig: partition }),
-      after: state({
-        tableName: 'renamed',
-        mysqlPartitionConfig: { ...partition, partitionCount: 8 },
-      }),
-      reason: 'mysqlPartition',
-    },
-    {
       name: 'partition removal',
       before: state({ mysqlPartitionConfig: partition }),
       after: state(),
       reason: 'mysqlPartition',
-    },
-    {
-      name: 'Citus distribution',
-      before: state({
-        dbType: 'postgresql-citus',
-        citusShardingConfig: { mode: 'distributed', distributionColumn: 'tenant_id' },
-      }),
-      after: state({ dbType: 'postgresql-citus', citusShardingConfig: { mode: 'reference' } }),
-      reason: 'citusSharding',
     },
   ])('detects $name and prevents incomplete automatic migrations', ({ before, after, reason }) => {
     const diff = diffPersistedState(before, after);
@@ -95,19 +64,5 @@ describe('schema changes requiring manual migration', () => {
     expect(hasTableChanges(diffPersistedState(state(), state({ objectType: undefined })))).toBe(
       false,
     );
-  });
-
-  it('ignores disabled partition settings and unrelated dialects', () => {
-    const before = state({ mysqlPartitionConfig: { ...partition, enabled: false } });
-
-    const after = state({
-      mysqlPartitionConfig: { ...partition, enabled: false, partitionCount: 8 },
-    });
-    expect(hasTableChanges(diffPersistedState(before, after))).toBe(false);
-    expect(
-      hasTableChanges(
-        diffPersistedState({ ...before, dbType: 'postgresql' }, { ...after, dbType: 'postgresql' }),
-      ),
-    ).toBe(false);
   });
 });

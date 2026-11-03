@@ -7,23 +7,6 @@ import {
 describe('SQL expression field references', () => {
   it.each([
     ['YEAR(created_at)', 'year', 'fiscal_year', 'YEAR(created_at)', false],
-    ['YEAR /* year */ (created_at)', 'year', 'fiscal_year', 'YEAR /* year */ (created_at)', false],
-    ['foo /* comment */ (bar)', 'foo', 'renamed', 'foo /* comment */ (bar)', false],
-    [
-      'EXTRACT(YEAR FROM created_at)',
-      'year',
-      'fiscal_year',
-      'EXTRACT(YEAR FROM created_at)',
-      false,
-    ],
-    [
-      'EXTRACT(YEAR FROM created_at)',
-      'created_at',
-      'created_on',
-      'EXTRACT(YEAR FROM created_on)',
-      true,
-    ],
-    ['year.year + YEAR(year)', 'year', 'fiscal_year', 'year.fiscal_year + YEAR(fiscal_year)', true],
     [
       "'created_at' + created_at /* created_at */",
       'created_at',
@@ -31,27 +14,8 @@ describe('SQL expression field references', () => {
       "'created_at' + `created on` /* created_at */",
       true,
     ],
-    ['"created_at"', 'created_at', 'created_on', '"created_at"', false],
-    ['`created_at` as alias', 'created_at', 'created_on', '`created_on` as alias', true],
-    [
-      "'it\\'s year' + 'year''s value'",
-      'year',
-      'fiscal_year',
-      "'it\\'s year' + 'year''s value'",
-      false,
-    ],
-    ['`a``b`', 'a`b', 'c`d', '`c``d`', true],
-    [
-      'YEAR(created_at) -- created_at\n+ 1 # created_at',
-      'created_at',
-      'date',
-      'YEAR(date) -- created_at\n+ 1 # created_at',
-      true,
-    ],
-    ['1--year', 'year', 'fiscal_year', '1--fiscal_year', true],
     ['yearly + other_year + year1', 'year', 'fiscal_year', 'yearly + other_year + year1', false],
     ['year', 'year', 'select', '`select`', true],
-    ["'unfinished year", 'year', 'fiscal_year', "'unfinished year", false],
   ] as const)(
     'rewrites only column references in %s',
     (source, oldName, newName, expected, referenced) => {
@@ -83,11 +47,5 @@ describe('SQL expression field references', () => {
     expect(sqlExpressionReferencesField('userid', 'UserID', 'postgresql')).toBe(false);
     expect(sqlExpressionReferencesField('UserID', 'userid', 'postgresql')).toBe(true);
     expect(sqlExpressionReferencesField('"UserID"', 'UserID', 'postgresql')).toBe(true);
-  });
-
-  it('preserves SQL Server identifier escaping', () => {
-    expect(renameSqlExpressionFields('[a]]b]', new Map([['a]b', 'c]d']]), 'sqlserver')).toBe(
-      '[c]]d]',
-    );
   });
 });

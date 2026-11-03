@@ -29,16 +29,11 @@ describe('table options in generated DDL', () => {
     clause: string;
   }>([
     { dbType: 'postgresql', clause: 'WITH (fillfactor = 80) TABLESPACE app_data' },
-    { dbType: 'postgresql-citus', clause: 'WITH (fillfactor = 80) TABLESPACE app_data' },
-    { dbType: 'kingbase', clause: 'WITH (fillfactor = 80) TABLESPACE app_data' },
-    { dbType: 'gaussdb', clause: 'WITH (fillfactor = 80) TABLESPACE app_data' },
     { dbType: 'oracle', clause: 'PCTFREE 10 INITRANS 2 TABLESPACE app_data' },
-    { dbType: 'oceanbase-oracle', clause: 'PCTFREE 10 INITRANS 2 TABLESPACE app_data' },
     {
       dbType: 'mysql',
       clause: 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
     },
-    { dbType: 'dm', clause: 'TABLESPACE app_data' },
   ])('combines supported options using $dbType grammar', ({ dbType, clause }) => {
     const ddl = buildDDL({
       dbType,

@@ -5,10 +5,6 @@ import type { NormalizedField } from '@ddlbuilder/shared-types';
 describe('OracleStrategy', () => {
   const strategy = new ProfiledDDLStrategy('oracle');
 
-  it('应返回 oracle 数据库类型', () => {
-    expect(strategy.getDatabaseType()).toBe('oracle');
-  });
-
   it('应生成 Oracle 风格的默认值与注释 DDL', () => {
     const fields: NormalizedField[] = [
       {

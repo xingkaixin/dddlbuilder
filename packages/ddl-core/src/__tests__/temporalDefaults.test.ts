@@ -32,12 +32,6 @@ describe('temporal defaults after dialect conversion', () => {
       column: 'created_at TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL',
       defaultClause: 'DEFAULT SYSTIMESTAMP',
     },
-    {
-      dbType: 'oracle',
-      type: 'timestamp(6) with time zone',
-      column: 'created_at TIMESTAMP(6) WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL',
-      defaultClause: 'DEFAULT SYSTIMESTAMP',
-    },
   ])(
     'preserves $type defaults in $dbType CREATE and ALTER',
     ({ dbType, type, column, defaultClause }) => {

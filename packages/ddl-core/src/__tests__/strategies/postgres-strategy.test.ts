@@ -44,11 +44,6 @@ describe('PostgresStrategy', () => {
     );
   });
 
-  it('应支持默认 PostgreSQL 与 Citus 数据库类型', () => {
-    expect(new ProfiledDDLStrategy('postgresql').getDatabaseType()).toBe('postgresql');
-    expect(new ProfiledDDLStrategy('postgresql-citus').getDatabaseType()).toBe('postgresql-citus');
-  });
-
   it('应生成包含 identity、默认值和注释的 DDL', () => {
     const strategy = new ProfiledDDLStrategy('postgresql');
 

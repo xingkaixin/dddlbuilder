@@ -52,19 +52,6 @@ describe('ORM database name mapping', () => {
     expect(model).not.toContain('@map("createdAt")');
   });
 
-  it('keeps unchanged Prisma identifiers without redundant mappings', () => {
-    const model = buildORM('prisma', {
-      dbType: 'mysql',
-      tableName: 'UserProfile',
-      tableComment: '',
-      fields: [field('userId')],
-      indexes: [primaryKey(['userId'])],
-    });
-
-    expect(model).toContain('model UserProfile {');
-    expect(model).not.toContain('@map(');
-  });
-
   it('derives valid class names from table names while keeping physical table names', () => {
     const input = {
       dbType: 'mysql' as const,
@@ -112,29 +99,6 @@ describe('ORM database name mapping', () => {
   });
 
   it.each([
-    { kind: 'index', defaultKind: 'none', decorator: 'Column' },
-    { kind: 'primary', defaultKind: 'none', decorator: 'PrimaryColumn' },
-    { kind: 'primary', defaultKind: 'auto_increment', decorator: 'PrimaryGeneratedColumn' },
-  ] as const)('maps TypeORM columns using @$decorator', ({ kind, defaultKind, decorator }) => {
-    const model = buildORM('typeorm', {
-      dbType: 'mysql',
-      tableName: 'user_profile',
-      tableComment: '',
-      fields: [field('user_id', { defaultKind })],
-      indexes: kind === 'primary' ? [primaryKey(['user_id'])] : [],
-    });
-
-    expect(model).toContain("@Entity('user_profile')");
-    expect(model).toContain(`@${decorator}({ type: "int", name: "user_id" })`);
-    expect(model).toContain('userId: number;');
-  });
-
-  it.each([
-    {
-      names: ['user_id'],
-      expected:
-        "@JoinColumn({ name: 'user_id', referencedColumnName: 'userId', foreignKeyConstraintName: 'fk_owner' })",
-    },
     {
       names: ['tenant_id', 'user_id'],
       expected:

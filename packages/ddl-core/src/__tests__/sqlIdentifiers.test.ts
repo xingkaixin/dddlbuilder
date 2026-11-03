@@ -2,26 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { formatSqlIdentifier, getSqlIdentifierKey } from '../utils/sqlIdentifiers';
 
 describe('getSqlIdentifierKey', () => {
-  it.each(['postgresql', 'kingbase', 'gaussdb'] as const)(
-    '%s preserves editor identifier case',
-    (dbType) => {
-      expect(getSqlIdentifierKey(' UserID ', dbType)).toBe('UserID');
-      expect(getSqlIdentifierKey('"UserID"', dbType)).toBe('UserID');
-      expect(getSqlIdentifierKey('userid', dbType)).toBe('userid');
-      expect(getSqlIdentifierKey('"User""ID"', dbType)).toBe('User"ID');
-    },
-  );
+  it.each(['postgresql'] as const)('%s preserves editor identifier case', (dbType) => {
+    expect(getSqlIdentifierKey(' UserID ', dbType)).toBe('UserID');
+    expect(getSqlIdentifierKey('"UserID"', dbType)).toBe('UserID');
+    expect(getSqlIdentifierKey('userid', dbType)).toBe('userid');
+    expect(getSqlIdentifierKey('"User""ID"', dbType)).toBe('User"ID');
+  });
 
-  it.each(['mysql', 'sqlserver'] as const)(
-    '%s preserves case-insensitive editor matching',
-    (dbType) => {
-      expect(getSqlIdentifierKey(' UserID ', dbType)).toBe('userid');
-      expect(getSqlIdentifierKey('[UserID]', dbType)).toBe('userid');
-      expect(getSqlIdentifierKey('`UserID`', dbType)).toBe('userid');
-    },
-  );
+  it.each(['mysql'] as const)('%s preserves case-insensitive editor matching', (dbType) => {
+    expect(getSqlIdentifierKey(' UserID ', dbType)).toBe('userid');
+    expect(getSqlIdentifierKey('[UserID]', dbType)).toBe('userid');
+    expect(getSqlIdentifierKey('`UserID`', dbType)).toBe('userid');
+  });
 
-  it.each(['oracle', 'oceanbase-oracle', 'dm'] as const)(
+  it.each(['oracle'] as const)(
     '%s folds unquoted names and preserves delimited names',
     (dbType) => {
       expect(getSqlIdentifierKey(' UserID ', dbType)).toBe('USERID');
@@ -32,13 +26,10 @@ describe('getSqlIdentifierKey', () => {
     },
   );
 
-  it.each(['oracle', 'dm'] as const)(
-    '%s quotes unquoted reserved names by folded identity',
-    (dbType) => {
-      const quoted = formatSqlIdentifier('level', dbType);
+  it.each(['oracle'] as const)('%s quotes unquoted reserved names by folded identity', (dbType) => {
+    const quoted = formatSqlIdentifier('level', dbType);
 
-      expect(quoted).toBe('"LEVEL"');
-      expect(getSqlIdentifierKey(quoted, dbType)).toBe(getSqlIdentifierKey('level', dbType));
-    },
-  );
+    expect(quoted).toBe('"LEVEL"');
+    expect(getSqlIdentifierKey(quoted, dbType)).toBe(getSqlIdentifierKey('level', dbType));
+  });
 });

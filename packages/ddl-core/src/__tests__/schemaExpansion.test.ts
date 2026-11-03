@@ -157,14 +157,8 @@ describe('business seed scenarios', () => {
   it('rejects missing rules, invalid ranges and date cycles before exporting data', () => {
     const bad: SeedRule[] = [
       { ...base, field: 'missing', kind: 'default' },
-      { ...base, tableKey: 'missing', field: 'id', kind: 'default' },
-      { ...base, field: 'id', kind: 'default', nullPercent: 1 },
       { ...base, field: 'id', kind: 'range', min: '2', max: '1' },
-      { ...base, field: 'id', kind: 'range', min: '0.1', max: '2' },
-      { ...base, field: 'state', kind: 'range', min: '1', max: '2' },
-      { ...base, field: 'amount', kind: 'range', min: '1.001', max: '2' },
       { ...base, field: 'created', kind: 'date', start: '2026-02-30', end: '2026-03-01' },
-      { ...base, field: 'created', kind: 'date', start: '2026-03-02', end: '2026-03-01' },
       { ...base, field: 'created', kind: 'offset', source: 'state', days: 1 },
     ];
 

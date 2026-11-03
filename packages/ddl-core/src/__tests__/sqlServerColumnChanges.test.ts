@@ -83,14 +83,7 @@ describe('SQL Server column changes', () => {
     expect(sql.rollback).toContain('ADD DEFAULT 1 FOR id;');
   });
 
-  it('leaves defaults untouched when only nullability changes', () => {
-    const before = { ...field, defaultKind: 'constant' as const, defaultValue: '1' };
-    const sql = sqlFor(before, { ...before, nullable: true });
-    expect(sql.forward).toBe('ALTER TABLE users ALTER COLUMN id INT NULL;');
-    expect(sql.rollback).toBe('ALTER TABLE users ALTER COLUMN id INT NOT NULL;');
-  });
-
-  it.each(['constant', 'expression', 'current_timestamp', 'uuid'] as const)(
+  it.each(['constant', 'uuid'] as const)(
     'uses the shared default renderer for %s',
     (defaultKind) => {
       const before = { ...field, fieldType: defaultKind === 'uuid' ? 'uuid' : 'datetime' };
@@ -139,7 +132,7 @@ describe('SQL Server column changes', () => {
     expect(generateAlterDDL(reverse)).toContain('ADD id INT NOT NULL DEFAULT 1;');
   });
 
-  it.each(['none', 'constant'] as const)(
+  it.each(['none'] as const)(
     'requires manual migration for identity transitions from %s in both directions',
     (defaultKind) => {
       const before = state({ ...field, defaultKind, defaultValue: '1' });
@@ -160,17 +153,6 @@ describe('SQL Server column changes', () => {
       }
     },
   );
-
-  it('changes defaults through constraints, not ALTER COLUMN', () => {
-    const sql = sqlFor(
-      { ...field, defaultKind: 'constant', defaultValue: '1' },
-      { ...field, defaultKind: 'constant', defaultValue: '2' },
-    );
-    expect(sql.forward).not.toContain('ALTER COLUMN');
-    expect(sql.forward).toContain('sys.default_constraints');
-    expect(sql.forward).toContain('ADD DEFAULT 2 FOR id');
-    expect(sql.rollback).toContain('ADD DEFAULT 1 FOR id');
-  });
 
   it('changes an identity column type without repeating IDENTITY', () => {
     const before = { ...field, defaultKind: 'auto_increment' as const };

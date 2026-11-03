@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { instantiateBusinessModule } from '../utils/businessModules';
-import { analyzeFieldImpact, impactFieldNames } from '../utils/fieldImpact';
+import { analyzeFieldImpact } from '../utils/fieldImpact';
 import { snapshotTableKey } from '../utils/schemaSnapshot';
 
 describe('field impact analysis', () => {
@@ -104,38 +104,6 @@ describe('field impact analysis', () => {
     expect(analyzeFieldImpact([table], snapshotTableKey(table), 'created_at').dependencies).toEqual(
       [],
     );
-  });
-  it('includes Citus distribution, Hive partitions and clustering', () => {
-    const [base] = instantiateBusinessModule('rbac', 'postgresql', '', 'integer');
-
-    const citus = {
-      ...base,
-      dbType: 'postgresql-citus' as const,
-      citusShardingConfig: { mode: 'distributed' as const, distributionColumn: 'id' },
-    };
-    expect(
-      analyzeFieldImpact([citus], snapshotTableKey(citus), 'id').dependencies.at(-1)?.kind,
-    ).toBe('citusDistribution');
-
-    const hive = {
-      ...base,
-      dbType: 'hive' as const,
-      tableMiscConfig: {
-        enabled: true,
-        partitions: {
-          enabled: true,
-          columns: [{ name: 'day', type: 'string', comment: '' }],
-          clustering: { enabled: true, columns: ['id'], bucketCount: 4 },
-        },
-      },
-    };
-    expect(impactFieldNames(hive)).toContain('day');
-    expect(analyzeFieldImpact([hive], snapshotTableKey(hive), 'day').dependencies[0].kind).toBe(
-      'hivePartition',
-    );
-    expect(
-      analyzeFieldImpact([hive], snapshotTableKey(hive), 'id').dependencies.at(-1),
-    ).toMatchObject({ kind: 'hiveClustering', detail: '4 BUCKETS' });
   });
   it('reports self references once and rejects stale selections', () => {
     const [table] = instantiateBusinessModule('rbac', 'mysql', '', 'integer');

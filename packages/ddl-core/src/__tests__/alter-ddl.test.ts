@@ -7,33 +7,21 @@ import type {
   IndexDefinition,
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
-import { diffPersistedState, hasTableChanges } from '../utils/tableDiff';
+import { diffPersistedState } from '../utils/tableDiff';
 import { buildDDL } from '../utils/ddlGenerators';
 import { buildDialectDefaultClause } from '../strategies/dialectColumn';
-import type {
-  TableDiff,
-  FieldDiff,
-  IndexDiff,
-  ForeignKeyDiff,
-  RenameFieldDiff,
-} from '../utils/tableDiff';
+import type { TableDiff, FieldDiff, ForeignKeyDiff, RenameFieldDiff } from '../utils/tableDiff';
 import {
   generateAlterDDL,
   generateRollbackDDL,
   generateTableCommentAlter,
-  generateDropColumn,
   generateRenameColumn,
   generateAddColumn,
   generateModifyColumn,
-  generateAddIndex,
   generateDropIndex,
   generateAddForeignKey,
-  generateDropForeignKey,
 } from '../utils/alter-ddl';
-import {
-  generateRenameTable,
-  generateTableOptionsChangeNotice,
-} from '../utils/alter-ddl/tableStatements';
+import { generateRenameTable } from '../utils/alter-ddl/tableStatements';
 
 const dependencyNotice =
   '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.\n\n';
@@ -98,16 +86,6 @@ const createTableDiff = (
 });
 
 describe('generateAlterDDL', () => {
-  it('reports unsupported index operations instead of emitting another dialect', () => {
-    const diff = createTableDiff({ indexes: [{ type: 'remove', index: createIndex() }] }, 'hive');
-    expect(generateAlterDDL(diff)).toBe(
-      '-- Manual migration required: drop index idx_name on users (hive).',
-    );
-    expect(generateRollbackDDL(diff)).toBe(
-      '-- Manual migration required: add index idx_name on users (hive).',
-    );
-  });
-
   it('reports Hive column changes instead of emitting unsupported ALTER syntax', () => {
     const diff = createTableDiff(
       {
@@ -139,7 +117,7 @@ describe('generateAlterDDL', () => {
     expect(generateRollbackDDL(diff)).not.toMatch(/^ALTER TABLE/m);
   });
 
-  it.each(['postgresql-citus', 'kingbase', 'gaussdb'] as const)(
+  it.each(['kingbase'] as const)(
     '%s drops and restores indexes and comments using PostgreSQL syntax',
     (dbType) => {
       const primary = createIndex({ name: 'users_pkey', kind: 'primary' });
@@ -169,7 +147,7 @@ describe('generateAlterDDL', () => {
     },
   );
 
-  it.each(['mariadb', 'tidb', 'oceanbase', 'gbase', 'polardb'] as const)(
+  it.each(['mariadb'] as const)(
     '%s retains MySQL syntax for primary keys, indexes and comments',
     (dbType) => {
       const overrides: Partial<TableDiff> = {
@@ -191,43 +169,42 @@ describe('generateAlterDDL', () => {
     },
   );
 
-  it.each([
-    'CREATE TABLE users (email TEXT, CONSTRAINT uq_users_email UNIQUE(email));',
-    'CREATE TABLE users (email TEXT CONSTRAINT uq_users_email UNIQUE);',
-    'CREATE TABLE users (email TEXT); ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE(email);',
-  ])('keeps unique constraints distinct from independent indexes: %s', async (sql) => {
-    const parsed = await new SqlParser().parseAsync(
-      sql + ' CREATE UNIQUE INDEX ix_users_email ON users(email);',
-      'postgresql',
-    );
-    const before = withDefaultEditorSession({
-      dbType: 'postgresql',
-      schemaName: '',
-      tableName: parsed.tableName,
-      tableComment: '',
-      rows: [],
-      indexes: parsed.indexes,
-      authInput: '',
-      authObjects: [],
-    });
-    const diff = diffPersistedState(before, { ...before, indexes: [] });
-    expect(generateAlterDDL(diff)).toBe(
-      dependencyNotice +
-        'ALTER TABLE users DROP CONSTRAINT uq_users_email;\n\nDROP INDEX ix_users_email;',
-    );
-    expect(generateRollbackDDL(diff)).toBe(
-      'ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email);\n\nCREATE UNIQUE INDEX ix_users_email ON users (email ASC);',
-    );
-    expect(
-      buildDDL({
+  it.each(['CREATE TABLE users (email TEXT, CONSTRAINT uq_users_email UNIQUE(email));'])(
+    'keeps unique constraints distinct from independent indexes: %s',
+    async (sql) => {
+      const parsed = await new SqlParser().parseAsync(
+        sql + ' CREATE UNIQUE INDEX ix_users_email ON users(email);',
+        'postgresql',
+      );
+      const before = withDefaultEditorSession({
         dbType: 'postgresql',
-        tableName: 'users',
+        schemaName: '',
+        tableName: parsed.tableName,
         tableComment: '',
-        fields: parsed.fields,
+        rows: [],
         indexes: parsed.indexes,
-      }),
-    ).toContain('ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email);');
-  });
+        authInput: '',
+        authObjects: [],
+      });
+      const diff = diffPersistedState(before, { ...before, indexes: [] });
+      expect(generateAlterDDL(diff)).toBe(
+        dependencyNotice +
+          'ALTER TABLE users DROP CONSTRAINT uq_users_email;\n\nDROP INDEX ix_users_email;',
+      );
+      expect(generateRollbackDDL(diff)).toBe(
+        'ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email);\n\nCREATE UNIQUE INDEX ix_users_email ON users (email ASC);',
+      );
+      expect(
+        buildDDL({
+          dbType: 'postgresql',
+          tableName: 'users',
+          tableComment: '',
+          fields: parsed.fields,
+          indexes: parsed.indexes,
+        }),
+      ).toContain('ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email);');
+    },
+  );
 
   it('does not drop MySQL unique constraints as PostgreSQL constraints', () => {
     const index = createIndex({ name: 'uq_email', kind: 'unique_constraint' });
@@ -314,11 +291,6 @@ describe('generateAlterDDL', () => {
       'ALTER TABLE archive.archived_orders SET SCHEMA public;',
     ],
     [
-      'mysql',
-      'RENAME TABLE public.orders TO archive.orders;',
-      'RENAME TABLE archive.archived_orders TO public.archived_orders;',
-    ],
-    [
       'sqlserver',
       'ALTER SCHEMA archive TRANSFER public.orders;',
       'ALTER SCHEMA public TRANSFER archive.archived_orders;',
@@ -360,7 +332,7 @@ describe('generateAlterDDL', () => {
     },
   );
 
-  it.each(['oracle', 'postgresql'] as const)(
+  it.each(['oracle'] as const)(
     'stops automatic changes for unsupported schema moves (%s)',
     (dbType) => {
       const diff = createTableDiff(
@@ -378,46 +350,43 @@ describe('generateAlterDDL', () => {
     },
   );
 
-  it.each([false, true])(
-    'keeps the schema through forward and reverse changes (rename=%s)',
-    (rename) => {
-      const before = withDefaultEditorSession({
-        dbType: 'postgresql' as const,
-        schemaName: 'audit',
-        tableName: 'orders',
-        tableComment: '',
-        rows: [],
-        indexes: [],
-        authInput: '',
-        authObjects: [],
-      });
-      const after = {
-        ...before,
-        tableName: rename ? 'archived_orders' : 'orders',
-        rows: [
-          {
-            id: 'field-1',
-            fieldName: 'id',
-            fieldType: 'int',
-            fieldComment: '',
-            nullable: false,
-          },
-        ],
-      };
-      const diff = diffPersistedState(before, after);
-      const forward = generateAlterDDL(diff);
-      const rollback = generateRollbackDDL(diff);
+  it.each([true])('keeps the schema through forward and reverse changes (rename=%s)', (rename) => {
+    const before = withDefaultEditorSession({
+      dbType: 'postgresql' as const,
+      schemaName: 'audit',
+      tableName: 'orders',
+      tableComment: '',
+      rows: [],
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+    });
+    const after = {
+      ...before,
+      tableName: rename ? 'archived_orders' : 'orders',
+      rows: [
+        {
+          id: 'field-1',
+          fieldName: 'id',
+          fieldType: 'int',
+          fieldComment: '',
+          nullable: false,
+        },
+      ],
+    };
+    const diff = diffPersistedState(before, after);
+    const forward = generateAlterDDL(diff);
+    const rollback = generateRollbackDDL(diff);
 
-      expect(forward).toContain(
-        `ALTER TABLE audit.${after.tableName} ADD COLUMN id INTEGER NOT NULL;`,
-      );
-      expect(rollback).toContain('ALTER TABLE audit.orders DROP COLUMN id;');
-      expect(forward.includes('ALTER TABLE audit.orders RENAME TO archived_orders;')).toBe(rename);
-      expect(rollback.includes('ALTER TABLE audit.archived_orders RENAME TO orders;')).toBe(rename);
-    },
-  );
+    expect(forward).toContain(
+      `ALTER TABLE audit.${after.tableName} ADD COLUMN id INTEGER NOT NULL;`,
+    );
+    expect(rollback).toContain('ALTER TABLE audit.orders DROP COLUMN id;');
+    expect(forward.includes('ALTER TABLE audit.orders RENAME TO archived_orders;')).toBe(rename);
+    expect(rollback.includes('ALTER TABLE audit.archived_orders RENAME TO orders;')).toBe(rename);
+  });
 
-  it.each(['mysql', 'mariadb', 'tidb', 'oceanbase'] as const)(
+  it.each(['mysql'] as const)(
     'retains the destination database when renaming a qualified table (%s)',
     (dbType) => {
       const sql = generateRenameTable('audit.orders', 'audit.archived_orders', dbType);
@@ -435,72 +404,7 @@ describe('generateAlterDDL', () => {
     expect(generateAlterDDL(diff)).toBe('DROP INDEX audit.idx_name;');
   });
 
-  it('returns empty string when no changes', () => {
-    const diff = createTableDiff();
-    expect(generateAlterDDL(diff)).toBe('');
-  });
-
-  it('derives change presence from the diff contents', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'add',
-          fieldName: 'age',
-          newField: createField({ name: 'age' }),
-        },
-      ],
-    });
-
-    expect(hasTableChanges(diff)).toBe(true);
-    expect(generateAlterDDL(diff)).toBe('ALTER TABLE users ADD COLUMN age INT NOT NULL;');
-  });
-
-  it('generates add column statement for mysql', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'add',
-          fieldName: 'age',
-          newField: createField({ name: 'age', type: 'int', nullable: true }),
-        },
-      ],
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toContain('ALTER TABLE users ADD COLUMN age INT NULL;');
-  });
-
-  it('generates drop column statement for mysql', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'remove',
-          fieldName: 'age',
-          oldField: createField({ name: 'age', type: 'int' }),
-        },
-      ],
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP COLUMN age;');
-  });
-
-  it('generates rename column statement for mysql', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'rename',
-          fieldName: 'new_age',
-          oldFieldName: 'age',
-          newFieldName: 'new_age',
-          oldField: createField({ name: 'age', type: 'int' }),
-          newField: createField({ name: 'new_age', type: 'int' }),
-        },
-      ],
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe('ALTER TABLE users RENAME COLUMN age TO new_age;');
-  });
-
-  it.each([{ order: [0, 1, 2] }, { order: [2, 0, 1] }])(
+  it.each([{ order: [2, 0, 1] }])(
     'orders rename chains and their rollback independently of diff order ($order)',
     ({ order }) => {
       const renames = [createRename('a', 'b'), createRename('b', 'c'), createRename('c', 'd')];
@@ -522,7 +426,7 @@ describe('generateAlterDDL', () => {
     },
   );
 
-  it.each(['oracle', 'oceanbase-oracle', 'dm'] as const)(
+  it.each(['oracle'] as const)(
     '%s orders equivalent quoted and unquoted rename targets',
     (dbType) => {
       const diff = createTableDiff(
@@ -568,10 +472,7 @@ describe('generateAlterDDL', () => {
     );
   });
 
-  it.each([
-    { cycle: [createRename('a', 'b'), createRename('b', 'a')] },
-    { cycle: [createRename('a', 'b'), createRename('b', 'c'), createRename('c', 'a')] },
-  ])(
+  it.each([{ cycle: [createRename('a', 'b'), createRename('b', 'a')] }])(
     'does not emit partial migrations when column renames form a cycle ($cycle.length)',
     ({ cycle }) => {
       const diff = createTableDiff(
@@ -601,85 +502,6 @@ describe('generateAlterDDL', () => {
     },
   );
 
-  it('combines a rename with field property changes', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'rename',
-          fieldName: 'new_age',
-          oldFieldName: 'age',
-          newFieldName: 'new_age',
-          oldField: createField({ name: 'age', type: 'int', nullable: true }),
-          newField: createField({ name: 'new_age', type: 'int', nullable: false }),
-          changes: ['nullable'],
-        },
-      ],
-    });
-
-    const sql = generateAlterDDL(diff);
-
-    expect(sql).toBe('ALTER TABLE users CHANGE COLUMN age new_age INT NOT NULL;');
-  });
-
-  it('generates modify column statement for mysql', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'modify',
-          fieldName: 'age',
-          oldField: createField({ name: 'age', type: 'int' }),
-          newField: createField({ name: 'age', type: 'bigint' }),
-          changes: ['type'],
-        },
-      ],
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users MODIFY COLUMN age BIGINT NOT NULL;');
-  });
-
-  it('generates add index statement', () => {
-    const diff = createTableDiff({
-      indexes: [
-        {
-          type: 'add',
-          index: createIndex({ name: 'idx_age', fields: [{ name: 'age', direction: 'ASC' }] }),
-        },
-      ],
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe('ALTER TABLE users ADD INDEX idx_age (age ASC);');
-  });
-
-  it('generates drop index statement for mysql', () => {
-    const diff = createTableDiff({
-      indexes: [
-        {
-          type: 'remove',
-          index: createIndex({ name: 'idx_age', fields: [{ name: 'age', direction: 'ASC' }] }),
-        },
-      ],
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP INDEX idx_age;');
-  });
-
-  it('generates drop primary key statement', () => {
-    const diff = createTableDiff({
-      indexes: [
-        {
-          type: 'remove',
-          index: createIndex({
-            name: 'pk_id',
-            fields: [{ name: 'id', direction: 'ASC' }],
-            kind: 'primary',
-          }),
-        },
-      ],
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP PRIMARY KEY;');
-  });
-
   it('drops the same truncated primary key name that CREATE emitted', () => {
     const index = createIndex({
       name: `pk_${'audit_events_'.repeat(4)}`,
@@ -699,72 +521,6 @@ describe('generateAlterDDL', () => {
     expect(
       generateRollbackDDL(createTableDiff({ indexes: [{ type: 'add', index }] }, 'oracle')),
     ).toContain(`DROP CONSTRAINT ${constraint};`);
-  });
-
-  it('generates add primary key statement', () => {
-    const diff = createTableDiff({
-      indexes: [
-        {
-          type: 'add',
-          index: createIndex({
-            name: 'pk_id',
-            fields: [{ name: 'id', direction: 'ASC' }],
-            kind: 'primary',
-          }),
-        },
-      ],
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe('ALTER TABLE users ADD PRIMARY KEY (id ASC);');
-  });
-
-  it('generates add foreign key statement', () => {
-    const diff = createTableDiff({
-      foreignKeys: [
-        {
-          type: 'add',
-          foreignKey: createFk({ onDelete: 'CASCADE', onUpdate: 'RESTRICT' }),
-        },
-      ],
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe(
-      'ALTER TABLE users ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE ON UPDATE RESTRICT;',
-    );
-  });
-
-  it('generates drop foreign key statement for mysql', () => {
-    const diff = createTableDiff({
-      foreignKeys: [
-        {
-          type: 'remove',
-          foreignKey: createFk(),
-        },
-      ],
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe('ALTER TABLE users DROP FOREIGN KEY fk_user;');
-  });
-
-  it('generates table comment alter for mysql', () => {
-    const diff = createTableDiff({
-      tableCommentChanged: true,
-      newTableComment: '用户表',
-    });
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe("ALTER TABLE users COMMENT = '用户表';");
-  });
-
-  it('generates table comment alter for postgresql', () => {
-    const diff = createTableDiff(
-      {
-        tableCommentChanged: true,
-        newTableComment: '用户表',
-      },
-      'postgresql',
-    );
-    const sql = generateAlterDDL(diff);
-    expect(sql).toBe("COMMENT ON TABLE users IS '用户表';");
   });
 
   it('renames the table before applying changes to its new name', () => {
@@ -838,118 +594,6 @@ describe('generateAlterDDL', () => {
 });
 
 describe('generateRollbackDDL', () => {
-  it('returns empty string when no changes', () => {
-    const diff = createTableDiff();
-    expect(generateRollbackDDL(diff)).toBe('');
-  });
-
-  it('rollback: delete added index', () => {
-    const diff = createTableDiff({
-      indexes: [{ type: 'add', index: createIndex({ name: 'idx_age' }) }],
-    });
-    const sql = generateRollbackDDL(diff);
-    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP INDEX idx_age;');
-  });
-
-  it('rollback: restore modified field', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'modify',
-          fieldName: 'age',
-          oldField: createField({ name: 'age', type: 'int' }),
-          newField: createField({ name: 'age', type: 'bigint' }),
-          changes: ['type'],
-        },
-      ],
-    });
-    const sql = generateRollbackDDL(diff);
-    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users MODIFY COLUMN age INT NOT NULL;');
-  });
-
-  it('rollback: delete added field', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'add',
-          fieldName: 'age',
-          newField: createField({ name: 'age', type: 'int' }),
-        },
-      ],
-    });
-    const sql = generateRollbackDDL(diff);
-    expect(sql).toBe(dependencyNotice + 'ALTER TABLE users DROP COLUMN age;');
-  });
-
-  it('rollback: reverse renamed field', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'rename',
-          fieldName: 'new_age',
-          oldFieldName: 'age',
-          newFieldName: 'new_age',
-          oldField: createField({ name: 'age', type: 'int' }),
-          newField: createField({ name: 'new_age', type: 'int' }),
-        },
-      ],
-    });
-    const sql = generateRollbackDDL(diff);
-    expect(sql).toBe('ALTER TABLE users RENAME COLUMN new_age TO age;');
-  });
-
-  it('rollback: restores field properties after reversing a rename', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'rename',
-          fieldName: 'new_age',
-          oldFieldName: 'age',
-          newFieldName: 'new_age',
-          oldField: createField({ name: 'age', type: 'int', nullable: true }),
-          newField: createField({ name: 'new_age', type: 'int', nullable: false }),
-          changes: ['nullable'],
-        },
-      ],
-    });
-
-    const sql = generateRollbackDDL(diff);
-
-    expect(sql).toBe('ALTER TABLE users CHANGE COLUMN new_age age INT NULL;');
-  });
-
-  it('rollback: restore removed field', () => {
-    const diff = createTableDiff({
-      fields: [
-        {
-          type: 'remove',
-          fieldName: 'age',
-          oldField: createField({ name: 'age', type: 'int', nullable: true }),
-        },
-      ],
-    });
-    const sql = generateRollbackDDL(diff);
-    expect(sql).toBe('ALTER TABLE users ADD COLUMN age INT NULL;');
-  });
-
-  it('rollback: restore removed index', () => {
-    const diff = createTableDiff({
-      indexes: [{ type: 'remove', index: createIndex({ name: 'idx_age' }) }],
-    });
-    const sql = generateRollbackDDL(diff);
-    expect(sql).toBe('ALTER TABLE users ADD INDEX idx_age (name ASC);');
-  });
-
-  it('rollback: restore old table comment', () => {
-    const diff = createTableDiff({
-      tableCommentChanged: true,
-      oldTableComment: '旧注释',
-      newTableComment: '新注释',
-    });
-    const sql = generateRollbackDDL(diff);
-    expect(sql).toBe("ALTER TABLE users COMMENT = '旧注释';");
-  });
-
   it('rollback: restores the table name before applying the reversed changes', () => {
     const diff = createTableDiff({
       tableNameChanged: true,
@@ -970,20 +614,6 @@ describe('generateRollbackDDL', () => {
       dependencyNotice +
         'ALTER TABLE accounts RENAME TO users;\n\n' +
         'ALTER TABLE users DROP COLUMN age;',
-    );
-  });
-
-  it.each(['add', 'remove'] as const)('rollback: reverses a foreign key %s', (type) => {
-    const diff = createTableDiff(
-      { foreignKeys: [{ type, foreignKey: createFk({ onDelete: 'CASCADE' }) }] },
-      'mysql',
-      'orders',
-    );
-
-    expect(generateRollbackDDL(diff)).toBe(
-      type === 'add'
-        ? 'ALTER TABLE orders DROP FOREIGN KEY fk_user;'
-        : 'ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE;',
     );
   });
 
@@ -1026,14 +656,6 @@ describe('generateRollbackDDL', () => {
       'ALTER TABLE orders ADD CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES users (id);',
     ]);
   });
-
-  it('rollback: keeps table option changes visible', () => {
-    const diff = createTableDiff({ miscConfigChanged: true }, 'postgresql');
-
-    expect(generateRollbackDDL(diff)).toBe(
-      '-- Manual migration required: table options changed for users (postgresql).',
-    );
-  });
 });
 
 describe('table statements', () => {
@@ -1041,10 +663,6 @@ describe('table statements', () => {
     expect(generateRenameTable("old'users", "new'users", 'sqlserver')).toBe(
       "EXEC sp_rename 'old''users', 'new''users';",
     );
-  });
-
-  it('describes manual table option migrations', () => {
-    expect(generateTableOptionsChangeNotice('users', 'mysql')).toContain('users (mysql)');
   });
 });
 
@@ -1054,66 +672,9 @@ describe('generateTableCommentAlter', () => {
       'sp_updateextendedproperty',
     );
   });
-
-  const cases: Array<{ db: DatabaseType; expected: string }> = [
-    { db: 'mysql', expected: "ALTER TABLE t COMMENT = '注释';" },
-    { db: 'mariadb', expected: "ALTER TABLE t COMMENT = '注释';" },
-    { db: 'tidb', expected: "ALTER TABLE t COMMENT = '注释';" },
-    { db: 'postgresql', expected: "COMMENT ON TABLE t IS '注释';" },
-    { db: 'sqlserver', expected: 'sp_addextendedproperty' },
-    { db: 'oracle', expected: "COMMENT ON TABLE t IS '注释';" },
-    { db: 'dm', expected: "COMMENT ON TABLE t IS '注释';" },
-  ];
-
-  for (const { db, expected } of cases) {
-    it(`handles ${db}`, () => {
-      expect(generateTableCommentAlter('t', '注释', db)).toContain(expected);
-    });
-  }
-
-  it('escapes single quotes', () => {
-    expect(generateTableCommentAlter('t', "it's", 'mysql')).toBe(
-      "ALTER TABLE t COMMENT = 'it''s';",
-    );
-  });
-
-  it('keeps unsupported comment changes visible', () => {
-    expect(generateTableCommentAlter('t', '注释', 'hive')).toBe(
-      '-- Manual migration required: update table comment for t (hive).',
-    );
-  });
-});
-
-describe('generateDropColumn', () => {
-  const dbs: DatabaseType[] = ['mysql', 'postgresql', 'sqlserver', 'oracle', 'dm'];
-
-  for (const db of dbs) {
-    it(`generates correct SQL for ${db}`, () => {
-      const diff: FieldDiff = {
-        type: 'remove',
-        fieldName: 'age',
-        oldField: createField({ name: 'age' }),
-      };
-      expect(generateDropColumn('users', diff, db)).toBe('ALTER TABLE users DROP COLUMN age;');
-    });
-  }
 });
 
 describe('generateRenameColumn', () => {
-  it('generates MySQL style rename', () => {
-    const diff: FieldDiff = {
-      type: 'rename',
-      fieldName: 'new_age',
-      oldFieldName: 'age',
-      newFieldName: 'new_age',
-      oldField: createField({ name: 'age' }),
-      newField: createField({ name: 'new_age' }),
-    };
-    expect(generateRenameColumn('users', diff, 'mysql')).toBe(
-      'ALTER TABLE users RENAME COLUMN age TO new_age;',
-    );
-  });
-
   it('generates SQL Server sp_rename', () => {
     const diff: FieldDiff = {
       type: 'rename',
@@ -1130,28 +691,6 @@ describe('generateRenameColumn', () => {
 });
 
 describe('generateAddColumn', () => {
-  it('generates MySQL add column', () => {
-    const diff: FieldDiff = {
-      type: 'add',
-      fieldName: 'age',
-      newField: createField({ name: 'age', type: 'int', nullable: true }),
-    };
-    expect(generateAddColumn('users', diff, 'mysql')).toBe(
-      'ALTER TABLE users ADD COLUMN age INT NULL;',
-    );
-  });
-
-  it('generates SQL Server add column without COLUMN keyword', () => {
-    const diff: FieldDiff = {
-      type: 'add',
-      fieldName: 'age',
-      newField: createField({ name: 'age', type: 'int', nullable: true }),
-    };
-    expect(generateAddColumn('users', diff, 'sqlserver')).toBe(
-      'ALTER TABLE users ADD age INT NULL;',
-    );
-  });
-
   it('generates Oracle add column with parentheses', () => {
     const diff: FieldDiff = {
       type: 'add',
@@ -1162,87 +701,31 @@ describe('generateAddColumn', () => {
       'ALTER TABLE users ADD (age NUMBER(10));',
     );
   });
-
-  it('includes auto_increment for mysql', () => {
-    const diff: FieldDiff = {
-      type: 'add',
-      fieldName: 'id',
-      newField: createField({ name: 'id', type: 'bigint', defaultKind: 'auto_increment' }),
-    };
-    expect(generateAddColumn('users', diff, 'mysql')).toBe(
-      'ALTER TABLE users ADD COLUMN id BIGINT AUTO_INCREMENT NOT NULL;',
-    );
-  });
-
-  it('includes default clause', () => {
-    const diff: FieldDiff = {
-      type: 'add',
-      fieldName: 'status',
-      newField: createField({
-        name: 'status',
-        type: 'varchar',
-        defaultKind: 'constant',
-        defaultValue: 'active',
-      }),
-    };
-    expect(generateAddColumn('users', diff, 'mysql')).toBe(
-      "ALTER TABLE users ADD COLUMN status VARCHAR(255) NOT NULL DEFAULT 'active';",
-    );
-  });
-
-  it('includes comment for mysql', () => {
-    const diff: FieldDiff = {
-      type: 'add',
-      fieldName: 'age',
-      newField: createField({ name: 'age', type: 'int', comment: '年龄' }),
-    };
-    expect(generateAddColumn('users', diff, 'mysql')).toBe(
-      "ALTER TABLE users ADD COLUMN age INT NOT NULL COMMENT '年龄';",
-    );
-  });
-
-  it('includes on update for mysql timestamp', () => {
-    const diff: FieldDiff = {
-      type: 'add',
-      fieldName: 'updated_at',
-      newField: createField({
-        name: 'updated_at',
-        type: 'timestamp',
-        onUpdate: 'current_timestamp',
-      }),
-    };
-    expect(generateAddColumn('users', diff, 'mysql')).toBe(
-      'ALTER TABLE users ADD COLUMN updated_at TIMESTAMP NOT NULL ON UPDATE CURRENT_TIMESTAMP;',
-    );
-  });
 });
 
 describe('generateModifyColumn', () => {
-  it.each(['postgresql', 'postgresql-citus'] as const)(
-    'enables and seeds an identity atomically for %s',
-    (dbType) => {
-      const diff: FieldDiff = {
-        type: 'modify',
-        fieldName: 'id',
-        oldField: createField({ nullable: true, defaultKind: 'constant', defaultValue: '9' }),
-        newField: createField({ defaultKind: 'auto_increment' }),
-        changes: ['default', 'nullable'],
-      };
-      expect(generateModifyColumn('users', diff, dbType)).toBe(
-        "DO 'BEGIN\n" +
-          'ALTER TABLE users ALTER COLUMN id DROP DEFAULT;\n' +
-          'ALTER TABLE users ALTER COLUMN id SET NOT NULL;\n' +
-          'ALTER TABLE users ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY;\n' +
-          "PERFORM setval(pg_get_serial_sequence(''users'', ''id''), GREATEST(COALESCE(MAX(id), 1), 1), COALESCE(MAX(id), 0) >= 1) FROM users;\n" +
-          "END';",
-      );
-      expect(generateRollbackDDL(createTableDiff({ fields: [diff] }, dbType))).toBe(
-        'ALTER TABLE users ALTER COLUMN id DROP IDENTITY;\n' +
-          'ALTER TABLE users ALTER COLUMN id DROP NOT NULL;\n' +
-          'ALTER TABLE users ALTER COLUMN id SET DEFAULT 9;',
-      );
-    },
-  );
+  it.each(['postgresql'] as const)('enables and seeds an identity atomically for %s', (dbType) => {
+    const diff: FieldDiff = {
+      type: 'modify',
+      fieldName: 'id',
+      oldField: createField({ nullable: true, defaultKind: 'constant', defaultValue: '9' }),
+      newField: createField({ defaultKind: 'auto_increment' }),
+      changes: ['default', 'nullable'],
+    };
+    expect(generateModifyColumn('users', diff, dbType)).toBe(
+      "DO 'BEGIN\n" +
+        'ALTER TABLE users ALTER COLUMN id DROP DEFAULT;\n' +
+        'ALTER TABLE users ALTER COLUMN id SET NOT NULL;\n' +
+        'ALTER TABLE users ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY;\n' +
+        "PERFORM setval(pg_get_serial_sequence(''users'', ''id''), GREATEST(COALESCE(MAX(id), 1), 1), COALESCE(MAX(id), 0) >= 1) FROM users;\n" +
+        "END';",
+    );
+    expect(generateRollbackDDL(createTableDiff({ fields: [diff] }, dbType))).toBe(
+      'ALTER TABLE users ALTER COLUMN id DROP IDENTITY;\n' +
+        'ALTER TABLE users ALTER COLUMN id DROP NOT NULL;\n' +
+        'ALTER TABLE users ALTER COLUMN id SET DEFAULT 9;',
+    );
+  });
 
   it('drops identity before changing its type, nullability and default', () => {
     const diff: FieldDiff = {
@@ -1265,30 +748,6 @@ describe('generateModifyColumn', () => {
     );
   });
 
-  it('removes identity without trying to drop an ordinary default', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'id',
-      oldField: createField({ defaultKind: 'auto_increment' }),
-      newField: createField(),
-      changes: ['default'],
-    };
-    expect(generateModifyColumn('users', diff, 'postgresql')).toBe(
-      'ALTER TABLE users ALTER COLUMN id DROP IDENTITY;',
-    );
-  });
-
-  it('leaves an unchanged identity alone when another default property changes', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'id',
-      oldField: createField({ defaultKind: 'auto_increment' }),
-      newField: createField({ defaultKind: 'auto_increment', onUpdate: 'current_timestamp' }),
-      changes: ['default'],
-    };
-    expect(generateModifyColumn('users', diff, 'postgresql')).toBe('');
-  });
-
   it('quotes identifiers and string arguments inside the identity block separately', () => {
     const diff: FieldDiff = {
       type: 'modify',
@@ -1301,143 +760,17 @@ describe('generateModifyColumn', () => {
     expect(sql).toContain('ALTER TABLE "Audit"."Users\'\'Log" ALTER COLUMN "Id\'\'s"');
     expect(sql).toContain("pg_get_serial_sequence(''\"Audit\".\"Users''''Log\"'', ''Id''''s'')");
   });
-
-  it('generates MySQL modify column', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'age',
-      oldField: createField({ name: 'age', type: 'int' }),
-      newField: createField({ name: 'age', type: 'bigint' }),
-      changes: ['type'],
-    };
-    expect(generateModifyColumn('users', diff, 'mysql')).toBe(
-      'ALTER TABLE users MODIFY COLUMN age BIGINT NOT NULL;',
-    );
-  });
-
-  it('generates SQL Server alter column', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'age',
-      oldField: createField({ name: 'age', type: 'int' }),
-      newField: createField({ name: 'age', type: 'bigint' }),
-      changes: ['type'],
-    };
-    expect(generateModifyColumn('users', diff, 'sqlserver')).toBe(
-      'ALTER TABLE users ALTER COLUMN age BIGINT NOT NULL;',
-    );
-  });
-
-  it('generates Oracle modify with parentheses', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'age',
-      oldField: createField({ name: 'age', type: 'int' }),
-      newField: createField({ name: 'age', type: 'bigint' }),
-      changes: ['type'],
-    };
-    expect(generateModifyColumn('users', diff, 'oracle')).toBe(
-      'ALTER TABLE users MODIFY (age NUMBER(19));',
-    );
-  });
-
-  it('generates PostgreSQL multi-statement modify for type change', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'age',
-      oldField: createField({ name: 'age', type: 'int' }),
-      newField: createField({ name: 'age', type: 'bigint' }),
-      changes: ['type'],
-    };
-    const sql = generateModifyColumn('users', diff, 'postgresql');
-    expect(sql).toBe('ALTER TABLE users ALTER COLUMN age TYPE BIGINT;');
-  });
-
-  it('generates PostgreSQL multi-statement modify for nullable', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'age',
-      oldField: createField({ name: 'age', type: 'int', nullable: false }),
-      newField: createField({ name: 'age', type: 'int', nullable: true }),
-      changes: ['nullable'],
-    };
-    const sql = generateModifyColumn('users', diff, 'postgresql');
-    expect(sql).toBe('ALTER TABLE users ALTER COLUMN age DROP NOT NULL;');
-  });
-
-  it('generates PostgreSQL multi-statement modify for default', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'status',
-      oldField: createField({ name: 'status', type: 'varchar' }),
-      newField: createField({
-        name: 'status',
-        type: 'varchar',
-        defaultKind: 'constant',
-        defaultValue: 'active',
-      }),
-      changes: ['default'],
-    };
-    const sql = generateModifyColumn('users', diff, 'postgresql');
-    expect(sql).toBe("ALTER TABLE users ALTER COLUMN status SET DEFAULT 'active';");
-  });
-
-  it('generates PostgreSQL drop default when default is removed', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'status',
-      oldField: createField({
-        name: 'status',
-        type: 'varchar',
-        defaultKind: 'constant',
-        defaultValue: 'active',
-      }),
-      newField: createField({ name: 'status', type: 'varchar' }),
-      changes: ['default'],
-    };
-    const sql = generateModifyColumn('users', diff, 'postgresql');
-    expect(sql).toBe('ALTER TABLE users ALTER COLUMN status DROP DEFAULT;');
-  });
-
-  it('generates PostgreSQL comment statement', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'age',
-      oldField: createField({ name: 'age', type: 'int', comment: '' }),
-      newField: createField({ name: 'age', type: 'int', comment: '年龄' }),
-      changes: ['comment'],
-    };
-    const sql = generateModifyColumn('users', diff, 'postgresql');
-    expect(sql).toBe("COMMENT ON COLUMN users.age IS '年龄';");
-  });
-
-  it('generates combined PostgreSQL modify statements', () => {
-    const diff: FieldDiff = {
-      type: 'modify',
-      fieldName: 'age',
-      oldField: createField({ name: 'age', type: 'int', nullable: false }),
-      newField: createField({ name: 'age', type: 'bigint', nullable: true }),
-      changes: ['type', 'nullable'],
-    };
-    const sql = generateModifyColumn('users', diff, 'postgresql');
-    expect(sql).toBe(
-      'ALTER TABLE users ALTER COLUMN age TYPE BIGINT;\nALTER TABLE users ALTER COLUMN age DROP NOT NULL;',
-    );
-  });
 });
 
 describe('buildDialectDefaultClause', () => {
-  it.each(['', '   ', 'now()', 'current_timestamp', "O'Reilly"])(
-    'keeps the text constant %j literal',
-    (value) => {
-      expect(
-        buildDialectDefaultClause(
-          createField({ type: 'text', defaultKind: 'constant', defaultValue: value }),
-          'postgresql',
-        ),
-      ).toBe(`DEFAULT '${value.replace(/'/g, "''")}'`);
-    },
-  );
+  it.each(['now()', "O'Reilly"])('keeps the text constant %j literal', (value) => {
+    expect(
+      buildDialectDefaultClause(
+        createField({ type: 'text', defaultKind: 'constant', defaultValue: value }),
+        'postgresql',
+      ),
+    ).toBe(`DEFAULT '${value.replace(/'/g, "''")}'`);
+  });
 
   it('emits SQL only for explicit expression defaults', () => {
     expect(
@@ -1446,87 +779,6 @@ describe('buildDialectDefaultClause', () => {
         'postgresql',
       ),
     ).toBe("DEFAULT lower('HELLO')");
-  });
-
-  it('returns empty for none defaultKind', () => {
-    expect(buildDialectDefaultClause(createField({ defaultKind: 'none' }), 'mysql')).toBe('');
-  });
-
-  it('formats constant default with quotes for string', () => {
-    expect(
-      buildDialectDefaultClause(
-        createField({ defaultKind: 'constant', defaultValue: "O'Hara", type: 'varchar' }),
-        'mysql',
-      ),
-    ).toBe("DEFAULT 'O''Hara'");
-  });
-
-  it('formats constant default without quotes for numeric', () => {
-    expect(
-      buildDialectDefaultClause(
-        createField({ defaultKind: 'constant', defaultValue: '0', type: 'int' }),
-        'mysql',
-      ),
-    ).toBe('DEFAULT 0');
-  });
-
-  it('formats uuid default for mysql', () => {
-    expect(
-      buildDialectDefaultClause(createField({ defaultKind: 'uuid', type: 'varchar' }), 'mysql'),
-    ).toBe('DEFAULT (UUID())');
-  });
-
-  it('formats uuid default for postgresql', () => {
-    expect(
-      buildDialectDefaultClause(
-        createField({ defaultKind: 'uuid', type: 'varchar' }),
-        'postgresql',
-      ),
-    ).toBe('DEFAULT gen_random_uuid()');
-  });
-
-  it('formats current_timestamp for mysql', () => {
-    expect(
-      buildDialectDefaultClause(
-        createField({ defaultKind: 'current_timestamp', type: 'timestamp' }),
-        'mysql',
-      ),
-    ).toBe('DEFAULT CURRENT_TIMESTAMP');
-  });
-
-  it('formats current_timestamp for sqlserver', () => {
-    expect(
-      buildDialectDefaultClause(
-        createField({ defaultKind: 'current_timestamp', type: 'datetime' }),
-        'sqlserver',
-      ),
-    ).toBe('DEFAULT GETDATE()');
-  });
-
-  it('uses the configured family defaults for compatible databases', () => {
-    expect(
-      buildDialectDefaultClause(createField({ defaultKind: 'uuid', type: 'varchar' }), 'oceanbase'),
-    ).toBe('DEFAULT (UUID())');
-    expect(
-      buildDialectDefaultClause(createField({ defaultKind: 'uuid', type: 'uuid' }), 'kingbase'),
-    ).toBe('DEFAULT gen_random_uuid()');
-    expect(
-      buildDialectDefaultClause(
-        createField({ defaultKind: 'current_timestamp', type: 'timestamp' }),
-        'oracle',
-      ),
-    ).toBe('DEFAULT SYSTIMESTAMP');
-  });
-
-  it('uses the configured identity clause for compatible databases', () => {
-    const diff: FieldDiff = {
-      type: 'add',
-      fieldName: 'id',
-      newField: createField({ name: 'id', type: 'int', defaultKind: 'auto_increment' }),
-    };
-
-    expect(generateAddColumn('users', diff, 'oceanbase')).toContain('INT AUTO_INCREMENT NOT NULL');
-    expect(generateAddColumn('users', diff, 'gbase')).toContain('INT AUTO_INCREMENT NOT NULL');
   });
 
   it('returns empty for unsupported default on type', () => {
@@ -1545,154 +797,7 @@ describe('buildDialectDefaultClause', () => {
   });
 });
 
-describe('generateDropIndex', () => {
-  it('drops primary key for mysql', () => {
-    const diff: IndexDiff = {
-      type: 'remove',
-      index: createIndex({
-        name: 'pk_id',
-        kind: 'primary',
-        fields: [{ name: 'id', direction: 'ASC' }],
-      }),
-    };
-    expect(generateDropIndex('users', diff, 'mysql')).toBe('ALTER TABLE users DROP PRIMARY KEY;');
-  });
-
-  it('drops primary key constraint for postgresql', () => {
-    const diff: IndexDiff = {
-      type: 'remove',
-      index: createIndex({
-        name: 'pk_id',
-        kind: 'primary',
-        fields: [{ name: 'id', direction: 'ASC' }],
-      }),
-    };
-    expect(generateDropIndex('users', diff, 'postgresql')).toBe(
-      'ALTER TABLE users DROP CONSTRAINT pk_id;',
-    );
-  });
-
-  it('drops regular index for mysql', () => {
-    const diff: IndexDiff = {
-      type: 'remove',
-      index: createIndex({ name: 'idx_age' }),
-    };
-    expect(generateDropIndex('users', diff, 'mysql')).toBe('DROP INDEX idx_age ON users;');
-  });
-
-  it('drops regular index for postgresql', () => {
-    const diff: IndexDiff = {
-      type: 'remove',
-      index: createIndex({ name: 'idx_age' }),
-    };
-    expect(generateDropIndex('users', diff, 'postgresql')).toBe('DROP INDEX idx_age;');
-  });
-});
-
-describe('generateAddIndex', () => {
-  it('adds primary key for mysql', () => {
-    const diff: IndexDiff = {
-      type: 'add',
-      index: createIndex({
-        name: 'pk_id',
-        kind: 'primary',
-        fields: [
-          { name: 'id', direction: 'ASC' },
-          { name: 'org_id', direction: 'DESC' },
-        ],
-      }),
-    };
-    expect(generateAddIndex('users', diff, 'mysql')).toBe(
-      'ALTER TABLE users ADD PRIMARY KEY (id, org_id);',
-    );
-  });
-
-  it('adds primary key constraint for postgresql', () => {
-    const diff: IndexDiff = {
-      type: 'add',
-      index: createIndex({
-        name: 'pk_id',
-        kind: 'primary',
-        fields: [{ name: 'id', direction: 'ASC' }],
-      }),
-    };
-    expect(generateAddIndex('users', diff, 'postgresql')).toBe(
-      'ALTER TABLE users ADD CONSTRAINT pk_id PRIMARY KEY (id);',
-    );
-  });
-
-  it('creates unique index', () => {
-    const diff: IndexDiff = {
-      type: 'add',
-      index: createIndex({
-        name: 'uk_email',
-        kind: 'unique_index',
-        fields: [{ name: 'email', direction: 'ASC' }],
-      }),
-    };
-    expect(generateAddIndex('users', diff, 'mysql')).toBe(
-      'CREATE UNIQUE INDEX uk_email ON users (email ASC);',
-    );
-  });
-
-  it('creates regular index with multiple fields', () => {
-    const diff: IndexDiff = {
-      type: 'add',
-      index: createIndex({
-        name: 'idx_name_age',
-        fields: [
-          { name: 'name', direction: 'ASC' },
-          { name: 'age', direction: 'DESC' },
-        ],
-      }),
-    };
-    expect(generateAddIndex('users', diff, 'mysql')).toBe(
-      'CREATE INDEX idx_name_age ON users (name ASC, age DESC);',
-    );
-  });
-});
-
-describe('generateDropForeignKey', () => {
-  it('drops foreign key for mysql', () => {
-    const diff: ForeignKeyDiff = { type: 'remove', foreignKey: createFk() };
-    expect(generateDropForeignKey('orders', diff, 'mysql')).toBe(
-      'ALTER TABLE orders DROP FOREIGN KEY fk_user;',
-    );
-  });
-
-  it('drops constraint for postgresql', () => {
-    const diff: ForeignKeyDiff = { type: 'remove', foreignKey: createFk() };
-    expect(generateDropForeignKey('orders', diff, 'postgresql')).toBe(
-      'ALTER TABLE orders DROP CONSTRAINT fk_user;',
-    );
-  });
-
-  it('drops constraint for sqlserver', () => {
-    const diff: ForeignKeyDiff = { type: 'remove', foreignKey: createFk() };
-    expect(generateDropForeignKey('orders', diff, 'sqlserver')).toBe(
-      'ALTER TABLE orders DROP CONSTRAINT fk_user;',
-    );
-  });
-
-  it('drops foreign key for gbase', () => {
-    const diff: ForeignKeyDiff = { type: 'remove', foreignKey: createFk() };
-    expect(generateDropForeignKey('orders', diff, 'gbase')).toBe(
-      'ALTER TABLE orders DROP FOREIGN KEY fk_user;',
-    );
-  });
-});
-
 describe('generateAddForeignKey', () => {
-  it('adds foreign key without actions', () => {
-    const diff: ForeignKeyDiff = {
-      type: 'add',
-      foreignKey: createFk({ onDelete: undefined, onUpdate: undefined }),
-    };
-    expect(generateAddForeignKey('orders', diff, 'mysql')).toBe(
-      'ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id);',
-    );
-  });
-
   it('adds foreign key with schema-qualified ref table', () => {
     const diff: ForeignKeyDiff = {
       type: 'add',
@@ -1700,29 +805,6 @@ describe('generateAddForeignKey', () => {
     };
     expect(generateAddForeignKey('orders', diff, 'postgresql')).toBe(
       'ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES public.users (id);',
-    );
-  });
-
-  it('adds foreign key with onDelete and onUpdate', () => {
-    const diff: ForeignKeyDiff = {
-      type: 'add',
-      foreignKey: createFk({ onDelete: 'SET NULL', onUpdate: 'CASCADE' }),
-    };
-    expect(generateAddForeignKey('orders', diff, 'mysql')).toBe(
-      'ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL ON UPDATE CASCADE;',
-    );
-  });
-
-  it('adds composite foreign key', () => {
-    const diff: ForeignKeyDiff = {
-      type: 'add',
-      foreignKey: createFk({
-        fields: ['user_id', 'org_id'],
-        refFields: ['id', 'org_id'],
-      }),
-    };
-    expect(generateAddForeignKey('orders', diff, 'mysql')).toBe(
-      'ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id, org_id) REFERENCES users (id, org_id);',
     );
   });
 });

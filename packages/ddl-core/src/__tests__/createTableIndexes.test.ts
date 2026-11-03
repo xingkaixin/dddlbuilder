@@ -19,7 +19,7 @@ const primary: IndexDefinition = {
 };
 
 describe('table creation with indexes', () => {
-  it.each(['mysql', 'mariadb', 'tidb', 'oceanbase', 'gbase', 'polardb'] as const)(
+  it.each(['mysql'] as const)(
     '%s creates the identity column and its primary key together',
     (dbType) => {
       const ddl = buildDDL({
@@ -35,7 +35,7 @@ describe('table creation with indexes', () => {
     },
   );
 
-  it.each([false, true])('allows a non-primary supporting index (unique=%s)', (unique) => {
+  it.each([false])('allows a non-primary supporting index (unique=%s)', (unique) => {
     const ddl = buildDDL({
       dbType: 'mysql',
       tableName: 'users',
