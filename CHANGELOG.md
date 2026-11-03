@@ -13,11 +13,17 @@
 - **Full pages for ER diagram and tools**: The ER diagram, tools and settings each have their own address and work with refresh and the browser Back button. You can pin tools to the home page and the command palette.
 - **Moved entries**: Import and AI generation are in the sidebar. Share, History and Properties are in the table header. Misc, sharding, partition and Hive partition settings are grouped under the Advanced tab. Docs and feedback are in the header Help menu.
 - **Docs site**: The docs layout and home page are redesigned. On phones, a bottom bar opens the page list and the outline.
+- **New logo**: The logo, browser icon, share preview image and sign-in emails use the new whale mark.
+- **Faster responses**: Opening the editor connects to workspace sync sooner, and sign-in checks and AI requests need fewer database queries.
+- **Guides**: Chinese, English and Japanese guides now match the new interface, and the steps for nullable fields and SQL import are corrected.
 
 ### Fixed
 - **Interface language**: Empty-table hints in the output area, comments in routine templates and the empty Mock data hint now follow the interface language instead of always showing Chinese.
 - **Frozen columns**: The last frozen column was missing its row dividers. They are back.
 - **Folders in an empty project**: Folders you create before saving any table now appear in the sidebar right away.
+- **Japanese interface**: Mistranslated Japanese text, such as the labels for Apply, Restart and View, is corrected. SQL samples and identifiers that had been translated are restored, and terms are consistent.
+- **Raw text keys**: The routine template heading in the output area and the failure messages for field templates and table blueprints showed internal text keys. They now show readable text.
+- **Untranslated messages**: The message after applying a schema from the AI Table Workshop now follows the interface language. The import dialog names Dameng, Kingbase and GBase the same way as the database selector.
 
 ## [0.25.8] - 2026-10-20
 
