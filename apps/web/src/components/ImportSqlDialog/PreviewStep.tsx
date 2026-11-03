@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Eye, ArrowLeft, ArrowRight, Trash2 } from '@/components/icons';
+import { ArrowDown, ArrowUp, Eye, Trash2 } from '@/components/icons';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import type { PreviewFieldKey } from './types';
 import { useTranslation } from 'react-i18next';
@@ -111,7 +111,7 @@ export function PreviewStep({
                       disabled={index === 0}
                       aria-label={`Move up #${index + 1}`}
                     >
-                      <ArrowLeft className="h-4 w-4" />
+                      <ArrowUp className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -121,7 +121,7 @@ export function PreviewStep({
                       disabled={index === parsedResult.fields.length - 1}
                       aria-label={`Move down #${index + 1}`}
                     >
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowDown className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
