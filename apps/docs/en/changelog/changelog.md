@@ -6,6 +6,15 @@ outline: [2, 2]
 
 ## [Unreleased]
 
+### Improved
+- **Hand-drawn icons**: Icons on buttons, status messages and feature entries now use the same hand-drawn style as the rest of the site. AI actions, field templates, table templates, index kinds, workspace, replica and shard used to share one icon; each now has its own. All database types use the same database icon.
+- **Icon motion**: Arrows rotate when you expand or collapse a section, and a folder's front flap opens when you expand it. When copying finishes, loading starts, playback starts or pauses, or sync status changes, the new icon scales in.
+
+### Fixed
+- **Reorder buttons in import preview**: In the preview step of SQL import, the buttons that reorder fields showed left and right arrows. They now show up and down arrows, matching how the fields are listed.
+- **Drag handles in the index list**: Index rows cannot be reordered by dragging, but each row showed a drag handle. The handles are removed.
+- **Sign-in security**: The authentication library better-auth is upgraded to 1.7.16. This fixes an issue where concurrent requests could exceed the attempt limit for email verification codes.
+
 ## [0.26.0] - 2026-11-03
 
 ### Added
