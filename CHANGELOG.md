@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-11-04
+
 ### Improved
 - **Hand-drawn icons**: Icons on buttons, status messages and feature entries now use the same hand-drawn style as the rest of the site. AI actions, field templates, table templates, index kinds, workspace, replica and shard used to share one icon; each now has its own. All database types use the same database icon.
 - **Icon motion**: Arrows rotate when you expand or collapse a section, and a folder's front flap opens when you expand it. When copying finishes, loading starts, playback starts or pauses, or sync status changes, the new icon scales in.
