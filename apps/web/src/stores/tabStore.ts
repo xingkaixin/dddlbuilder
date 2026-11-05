@@ -16,6 +16,7 @@ export interface WorkspaceTab {
 }
 
 export const isWorkspaceTabDirty = (tab: WorkspaceTab) =>
+  !tab.isLoading &&
   tab.source.kind === 'saved_table' &&
   buildSchemaStateSignature(tab.stateSnapshot) !== tab.source.baseSignature;
 
