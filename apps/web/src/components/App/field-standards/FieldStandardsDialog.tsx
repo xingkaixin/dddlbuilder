@@ -329,7 +329,11 @@ export function FieldStandardsDialog({ onClose }: { onClose: () => void }) {
                 >
                   {t('fieldStandards.confirmImport')}
                 </Button>
-                <Button variant="ghost" onClick={() => dispatch({ type: 'importCleared' })}>
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => dispatch({ type: 'importCleared' })}
+                >
                   {t('fieldStandards.cancel')}
                 </Button>
               </div>

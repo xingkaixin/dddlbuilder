@@ -445,6 +445,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                           variant="ghost"
                           size="icon"
                           className="absolute right-1 top-2 h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                          disabled={actionLoading}
                           onClick={(e) => {
                             e.stopPropagation();
                             dispatch({ type: 'deleteRequested', id: v.id });

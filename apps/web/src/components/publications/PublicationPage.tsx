@@ -218,6 +218,7 @@ function ProposalComments({ id, isOwner }: { id: string; isOwner: boolean }) {
             <Textarea
               value={body}
               maxLength={4000}
+              readOnly={mutation.isPending}
               onChange={(event) =>
                 dispatch({ type: 'fieldChanged', field: 'body', value: event.target.value })
               }

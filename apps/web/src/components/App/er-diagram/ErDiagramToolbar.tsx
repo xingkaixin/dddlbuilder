@@ -3,14 +3,13 @@ import { Panel, useReactFlow } from '@xyflow/react';
 import { ZoomIn, ZoomOut, Maximize, Plus, LayoutGrid } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
-import { useTimers } from '@/hooks/useTimers';
 
 interface ErDiagramToolbarProps {
-  onAddTable: () => void;
+  onAddTable: () => Promise<void>;
   onAutoLayout: () => void;
 }
 
-const addingReducer = (_adding: boolean, event: 'addStarted' | 'cooldownEnded') =>
+const addingReducer = (_adding: boolean, event: 'addStarted' | 'addSettled') =>
   event === 'addStarted';
 
 export const ErDiagramToolbar = memo(function ErDiagramToolbar({
@@ -20,13 +19,11 @@ export const ErDiagramToolbar = memo(function ErDiagramToolbar({
   const { t } = useTranslation();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const [isAdding, dispatchAdding] = useReducer(addingReducer, false);
-  const { schedule } = useTimers();
 
   const handleAddTable = useCallback(() => {
     dispatchAdding('addStarted');
-    onAddTable();
-    schedule(() => dispatchAdding('cooldownEnded'), 300);
-  }, [onAddTable, schedule]);
+    void onAddTable().finally(() => dispatchAdding('addSettled'));
+  }, [onAddTable]);
 
   return (
     <Panel position="top-left" className="flex items-center gap-2 m-2">

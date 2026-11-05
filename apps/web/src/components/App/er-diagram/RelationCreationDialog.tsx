@@ -169,7 +169,7 @@ export function RelationCreationDialog({
   const targetHasKeys = targetFields.some((field) => field.isKey);
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+    <Dialog open onOpenChange={(open) => !open && !isSaving && onCancel()}>
       <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto p-0">
         <DialogHeader className="border-b px-6 py-5">
           <DialogTitle className="flex items-center gap-2">

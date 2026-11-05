@@ -283,11 +283,13 @@ function CanvasInner({
     schedule(() => fitView({ padding: 0.2 }), 100);
   }, [fitView, schedule]);
 
-  const handleAddTable = useCallback(() => {
-    void onAddTable().then((added) => {
-      if (added) fitViewSoon();
-    });
-  }, [fitViewSoon, onAddTable]);
+  const handleAddTable = useCallback(
+    () =>
+      onAddTable().then((added) => {
+        if (added) fitViewSoon();
+      }),
+    [fitViewSoon, onAddTable],
+  );
 
   const handleConnect = useCallback(
     (connection: Connection) => {
@@ -325,35 +327,37 @@ function CanvasInner({
   const handleCreateRelationship = useCallback(
     async (intent: TableRelationshipIntent) => {
       if (!pendingRelationship) return;
+      let result: Awaited<ReturnType<typeof onUpdateTable>>;
 
       try {
-        const result = await onUpdateTable(
-          pendingRelationship.sourceRecord,
-          (source, readTable) => {
-            const target = readTable(pendingRelationship.targetRecord);
+        result = await onUpdateTable(pendingRelationship.sourceRecord, (source, readTable) => {
+          const target = readTable(pendingRelationship.targetRecord);
 
-            if (!target || target.trashedAt)
-              throw new Error(t('erDiagram.relationship.saveFailed'));
-            const planned = planTableRelationship({ source, target: target.state }, intent);
+          if (!target || target.trashedAt) throw new Error(t('erDiagram.relationship.saveFailed'));
+          const planned = planTableRelationship({ source, target: target.state }, intent);
 
-            if (!planned.ok) throw new Error(t(`erDiagram.relationship.errors.${planned.error}`));
+          if (!planned.ok) throw new Error(t(`erDiagram.relationship.errors.${planned.error}`));
 
-            return planned.plan.sourceState;
-          },
-        );
-
-        if (!result.ok) {
-          showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
-
-          return;
-        }
-
-        await onRefresh();
-        dispatch({ type: 'relationshipClosed' });
-        showToast(t('erDiagram.relationship.success'));
+          return planned.plan.sourceState;
+        });
       } catch {
         showToast(t('erDiagram.relationship.saveFailed'));
+
+        return;
       }
+
+      if (!result.ok) {
+        showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
+
+        return;
+      }
+
+      dispatch({ type: 'relationshipClosed' });
+      showToast(t('erDiagram.relationship.success'));
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected promises may contain any thrown JavaScript value.
+      await onRefresh().catch((error: unknown) => {
+        console.error('[er-diagram] refresh after relationship save failed', error);
+      });
     },
     [onRefresh, onUpdateTable, pendingRelationship, showToast, t],
   );

@@ -206,22 +206,29 @@ export function importDialogReducer(
         failedItems: action.failedItems,
       };
     case 'advance':
+      if (state.operation.kind === 'importing') return state;
+
       if (state.mode === 'workspace' && state.step === 'preview') {
-        return { ...state, step: 'confirm' };
+        return { ...state, step: 'confirm', operation: { kind: 'idle' } };
       }
 
       if (state.mode === 'saved' && state.step === 'select') {
-        return { ...state, step: 'save' };
+        return { ...state, step: 'save', operation: { kind: 'idle' } };
       }
 
       return state;
     case 'back':
+      if (state.operation.kind === 'importing') return state;
+
       if (state.mode === 'workspace') {
-        if (state.step === 'confirm') return { ...state, step: 'preview' };
-        if (state.step === 'preview') return { ...state, step: 'validate' };
+        if (state.step === 'confirm')
+          return { ...state, step: 'preview', operation: { kind: 'idle' } };
+        if (state.step === 'preview')
+          return { ...state, step: 'validate', operation: { kind: 'idle' } };
       } else {
-        if (state.step === 'save') return { ...state, step: 'select' };
-        if (state.step === 'select') return { ...state, step: 'validate' };
+        if (state.step === 'save') return { ...state, step: 'select', operation: { kind: 'idle' } };
+        if (state.step === 'select')
+          return { ...state, step: 'validate', operation: { kind: 'idle' } };
       }
 
       return state;

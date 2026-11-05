@@ -501,7 +501,10 @@ export function ImportSqlDialog({
         : true;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(nextOpen) => (nextOpen || !isImporting) && setOpen(nextOpen)}
+    >
       <DialogContent className="sm:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>{t('importSql.title')}</DialogTitle>
@@ -660,7 +663,7 @@ export function ImportSqlDialog({
           )}
           {step === 'save' && (
             <>
-              <Button variant="outline" onClick={handleBack}>
+              <Button variant="outline" onClick={handleBack} disabled={isImporting}>
                 {t('importSql.previous')}
               </Button>
               <Button onClick={handleConfirmBatchImport} disabled={isImporting}>

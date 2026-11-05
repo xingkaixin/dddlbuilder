@@ -283,23 +283,43 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleResetPassword}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetPassword}
+              disabled={resetPasswordMutation.isPending}
+            >
               <Mail className="mr-1.5 h-4 w-4" />
               {t('admin.detail.sendResetEmail')}
             </Button>
 
             {user.emailVerified ? (
-              <Button variant="outline" size="sm" onClick={() => handleEmailVerification(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEmailVerification(false)}
+                disabled={emailVerificationMutation.isPending}
+              >
                 {t('admin.detail.markEmailUnverified')}
               </Button>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => handleEmailVerification(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEmailVerification(true)}
+                disabled={emailVerificationMutation.isPending}
+              >
                 {t('admin.detail.markEmailVerified')}
               </Button>
             )}
 
             {user.disabled ? (
-              <Button variant="outline" size="sm" onClick={handleEnable}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEnable}
+                disabled={enableMutation.isPending}
+              >
                 <PlusCircle className="mr-1.5 h-4 w-4" />
                 {t('admin.detail.enableUser')}
               </Button>
@@ -507,7 +527,9 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       {/* Add Credits Dialog */}
       <AlertDialog
         open={creditsDialogOpen}
-        onOpenChange={(open) => dispatch({ type: 'creditsDialogOpenChanged', open })}
+        onOpenChange={(open) =>
+          !grantCreditsMutation.isPending && dispatch({ type: 'creditsDialogOpenChanged', open })
+        }
       >
         <AlertDialogContent>
           <form onSubmit={handleGrantCredits}>
@@ -543,7 +565,9 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
               </div>
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel type="button">{t('common.cancel')}</AlertDialogCancel>
+              <AlertDialogCancel type="button" disabled={grantCreditsMutation.isPending}>
+                {t('common.cancel')}
+              </AlertDialogCancel>
               <Button
                 type="submit"
                 disabled={grantCreditsMutation.isPending || !isValidCreditAmount(creditAmount)}

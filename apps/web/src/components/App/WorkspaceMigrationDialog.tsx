@@ -40,7 +40,7 @@ export function WorkspaceMigrationDialog() {
       open={workspaceMigration.open}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
-          workspaceMigration.dismiss();
+          if (!workspaceMigration.running) workspaceMigration.dismiss();
 
           return;
         }
