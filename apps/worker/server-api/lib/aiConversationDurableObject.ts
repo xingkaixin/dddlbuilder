@@ -34,7 +34,7 @@ import {
   AI_CREDIT_EXHAUSTED_ERROR,
   createAIConversationModels,
 } from './aiConversationModels.js';
-import { loadAIConversationConfig, AI_RETENTION_MS } from './aiConversationConfig.js';
+import { loadAIConversationConfig } from './aiConversationConfig.js';
 import {
   type AIOperation,
   type AIUsageReceipt,
@@ -356,7 +356,8 @@ export class AIConversationDurableObject {
       results.items.push({ id: operation.id, snapshot: JSON.parse(JSON.stringify(snapshot)) });
     }, context);
     this.syncedReceipts.clear();
-    await this.ctx.storage.setAlarm(Date.now() + AI_RETENTION_MS);
+    // The alarm reads retention from D1, so a delete requested during settlement is not postponed.
+    await this.ctx.storage.setAlarm(Date.now());
     this.report(operation, usage, record);
   }
 
