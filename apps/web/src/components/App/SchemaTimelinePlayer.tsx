@@ -61,7 +61,7 @@ type PlaybackState = {
 };
 
 type PlaybackEvent =
-  | { type: 'playToggled' }
+  | { type: 'playToggled'; lastFrame: number }
   | { type: 'ticked'; lastFrame: number }
   | { type: 'frameSelected'; frame: number }
   | { type: 'previousStepped' }
@@ -73,7 +73,12 @@ const initialPlaybackState: PlaybackState = { frame: 0, playing: false, speed: 1
 function playbackReducer(state: PlaybackState, event: PlaybackEvent): PlaybackState {
   switch (event.type) {
     case 'playToggled':
-      return { ...state, playing: !state.playing };
+      if (state.playing) return { ...state, playing: false };
+      if (event.lastFrame <= 0) return state;
+
+      return state.frame >= event.lastFrame
+        ? { ...state, playing: true, frame: 0 }
+        : { ...state, playing: true };
     case 'ticked':
       return state.frame >= event.lastFrame
         ? { ...state, playing: false }
@@ -184,11 +189,12 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
       enabled: open && Boolean(target),
       select: chronological,
     });
-    const [{ frame: currentFrame, playing: isPlaying, speed }, dispatch] = useReducer(
+    const [{ frame, playing: isPlaying, speed }, dispatch] = useReducer(
       playbackReducer,
       initialPlaybackState,
     );
     const lastFrame = versions.length - 1;
+    const currentFrame = Math.max(0, Math.min(frame, lastFrame));
 
     // Precompute diffs for each frame
     const frameDiffs = useMemo<(TableDiff | null)[]>(() => {
@@ -207,7 +213,10 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
       isPlaying && versions.length > 1 ? SPEED_INTERVAL_MS[speed] : null,
     );
 
-    const handlePlayPause = useCallback(() => dispatch({ type: 'playToggled' }), []);
+    const handlePlayPause = useCallback(
+      () => dispatch({ type: 'playToggled', lastFrame }),
+      [lastFrame],
+    );
 
     const handlePrev = useCallback(() => dispatch({ type: 'previousStepped' }), []);
 
