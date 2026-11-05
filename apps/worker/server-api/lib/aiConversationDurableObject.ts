@@ -703,7 +703,14 @@ export class AIConversationDurableObject {
             { ownership: { kind: 'ownerless' } },
             context,
           );
-          this.conversation = await this.creatingConversation;
+
+          try {
+            this.conversation = await this.creatingConversation;
+          } catch (error) {
+            // A cached rejection would fail every later submission until the object restarts.
+            this.creatingConversation = undefined;
+            throw error;
+          }
         }
 
         const conversation = this.conversation;
