@@ -2,7 +2,6 @@ import type { Context } from 'hono';
 import type { ApiEnv } from './lib/context.js';
 import { errorResponse } from './lib/http.js';
 import type { AIRouteKey } from './lib/aiRouteKey.js';
-import { reserveAIDailyBudget } from './lib/aiBudget.js';
 import type { OpenAIConfig } from './lib/openaiConfig.js';
 
 export type OpenAIUsageSnapshot = {
@@ -156,58 +155,6 @@ export async function enforceOpenAIRateLimit(
     limit: rule.maxRequests,
     remaining: 0,
     windowMs: rule.windowMs,
-  };
-}
-
-export async function enforceOpenAIDailyBudget(
-  c: Context<ApiEnv>,
-  usageEventId: string,
-  estimatedTokens: number,
-  config: OpenAIConfig,
-): Promise<{
-  response: Response | null;
-  budgetHit: boolean;
-  limitTokens: number | null;
-  usedTokens: number | null;
-}> {
-  if (!config.dailyBudgetEnabled || config.dailyBudgetMaxTokens <= 0) {
-    return {
-      response: null,
-      budgetHit: false,
-      limitTokens: null,
-      usedTokens: null,
-    };
-  }
-
-  const maximumAttemptBudget =
-    estimatedTokens > Math.floor(Number.MAX_SAFE_INTEGER / config.retryMaxAttempts)
-      ? Number.MAX_SAFE_INTEGER
-      : estimatedTokens * config.retryMaxAttempts;
-
-  const usedTokens = await reserveAIDailyBudget(
-    c.env,
-    usageEventId,
-    maximumAttemptBudget,
-    config.dailyBudgetMaxTokens,
-  );
-
-  c.header('X-Budget-Limit-Tokens', String(config.dailyBudgetMaxTokens));
-  c.header('X-Budget-Used-Tokens', String(usedTokens ?? config.dailyBudgetMaxTokens));
-
-  if (usedTokens !== null) {
-    return {
-      response: null,
-      budgetHit: false,
-      limitTokens: config.dailyBudgetMaxTokens,
-      usedTokens,
-    };
-  }
-
-  return {
-    response: errorResponse(c, 429, '服务预算已达上限，请稍后再试', 'BUDGET_EXCEEDED'),
-    budgetHit: true,
-    limitTokens: config.dailyBudgetMaxTokens,
-    usedTokens: config.dailyBudgetMaxTokens,
   };
 }
 
