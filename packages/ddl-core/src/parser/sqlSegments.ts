@@ -5,7 +5,7 @@ export interface SqlScanOptions {
 export const LEADING_SQL_TRIVIA = /^(?:\s|--[^\r\n]*|\/\*[\s\S]*?\*\/)*/;
 
 function* sqlSegments(sql: string, { backslashEscapes = true }: SqlScanOptions = {}) {
-  const tokens = /[eE]'|'|"|`|\[|--|\/\*|\$(?:[\p{L}_][\p{L}\p{N}_]*)?\$/gu;
+  const tokens = /(?<![\p{L}\p{N}_$])[eE]'|'|"|`|\[|--|\/\*|\$(?:[\p{L}_][\p{L}\p{N}_]*)?\$/gu;
   let offset = 0;
 
   for (let match = tokens.exec(sql); match; match = tokens.exec(sql)) {

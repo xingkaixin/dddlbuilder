@@ -10,4 +10,13 @@ describe('SQL lexical boundaries', () => {
     expect(splitSqlStatements(sql)).toHaveLength(2);
     expect(splitSqlStatements(sql).join('')).toBe(sql);
   });
+
+  it('only treats a standalone E prefix as an escape string', () => {
+    const sql = "SELECT 1 WHERE p LIKE'C:\\'; SELECT 2;";
+
+    expect(splitSqlStatements(sql, { backslashEscapes: false })).toHaveLength(2);
+    expect(
+      splitSqlStatements("SELECT E'it\\'s; safe'; SELECT 2;", { backslashEscapes: false }),
+    ).toHaveLength(2);
+  });
 });
