@@ -83,11 +83,17 @@ function AlertDialogDescription({ className, ...props }: AlertDialogPrimitive.De
   );
 }
 
-function AlertDialogAction({ className, ...props }: ButtonProps) {
+function AlertDialogAction({ className, onClick, ...props }: ButtonProps) {
   return (
     <AlertDialogPrimitive.Close
       data-slot="alert-dialog-action"
       render={<Button className={className} />}
+      onClick={(event) => {
+        onClick?.(event);
+
+        // Base UI's Close ignores defaultPrevented; callers use preventDefault to keep the dialog open while their action runs.
+        if (event.defaultPrevented) event.preventBaseUIHandler();
+      }}
       {...props}
     />
   );

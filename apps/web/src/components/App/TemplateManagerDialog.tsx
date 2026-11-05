@@ -67,6 +67,7 @@ type ManagerState = {
   editStatus: EditStatus;
   isDeleteDialogOpen: boolean;
   deleteTarget: FieldTemplate | null;
+  deleting: boolean;
 };
 
 type ManagerEvent =
@@ -82,6 +83,7 @@ type ManagerEvent =
   | { type: 'saveSettled' }
   | { type: 'deleteRequested'; template: FieldTemplate }
   | { type: 'deleteDialogOpenChanged'; open: boolean }
+  | { type: 'deleteStarted' }
   | { type: 'deleteFinished' };
 
 const idleEditStatus: EditStatus = { status: 'idle' };
@@ -96,6 +98,7 @@ const initialManagerState: ManagerState = {
   editStatus: idleEditStatus,
   isDeleteDialogOpen: false,
   deleteTarget: null,
+  deleting: false,
 };
 
 function managerReducer(state: ManagerState, event: ManagerEvent): ManagerState {
@@ -113,7 +116,9 @@ function managerReducer(state: ManagerState, event: ManagerEvent): ManagerState 
         editStatus: idleEditStatus,
       };
     case 'editDialogOpenChanged':
-      return { ...state, isEditDialogOpen: event.open };
+      return state.editStatus.status === 'saving'
+        ? state
+        : { ...state, isEditDialogOpen: event.open };
     case 'editNameChanged':
       return {
         ...state,
@@ -140,9 +145,11 @@ function managerReducer(state: ManagerState, event: ManagerEvent): ManagerState 
     case 'deleteRequested':
       return { ...state, deleteTarget: event.template, isDeleteDialogOpen: true };
     case 'deleteDialogOpenChanged':
-      return { ...state, isDeleteDialogOpen: event.open };
+      return state.deleting ? state : { ...state, isDeleteDialogOpen: event.open };
+    case 'deleteStarted':
+      return { ...state, deleting: true };
     case 'deleteFinished':
-      return { ...state, isDeleteDialogOpen: false, deleteTarget: null };
+      return { ...state, isDeleteDialogOpen: false, deleteTarget: null, deleting: false };
   }
 }
 
@@ -173,6 +180,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         editStatus,
         isDeleteDialogOpen,
         deleteTarget,
+        deleting,
       },
       dispatch,
     ] = useReducer(managerReducer, initialManagerState);
@@ -289,7 +297,8 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
 
     // 确认删除
     const handleConfirmDelete = useCallback(async () => {
-      if (!deleteTarget) return;
+      if (!deleteTarget || deleting) return;
+      dispatch({ type: 'deleteStarted' });
       const result = await onDeleteTemplate(deleteTarget.id);
 
       if (result.ok) {
@@ -299,7 +308,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       }
 
       dispatch({ type: 'deleteFinished' });
-    }, [deleteTarget, onDeleteTemplate, showToast, t]);
+    }, [deleteTarget, deleting, onDeleteTemplate, showToast, t]);
 
     return (
       <>
@@ -431,6 +440,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
               <Button
                 variant="outline"
                 onClick={() => dispatch({ type: 'editDialogOpenChanged', open: false })}
+                disabled={isSaving}
               >
                 {t('templateManager.editor.cancel')}
               </Button>
@@ -460,12 +470,15 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>{t('templateManager.delete.cancel')}</AlertDialogCancel>
+              <AlertDialogCancel disabled={deleting}>
+                {t('templateManager.delete.cancel')}
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={(e) => {
                   e.preventDefault();
                   void handleConfirmDelete();
                 }}
+                disabled={deleting}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {t('templateManager.delete.confirm')}

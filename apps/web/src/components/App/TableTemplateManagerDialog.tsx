@@ -39,6 +39,7 @@ type ManagerState = {
   searchTerm: string;
   editingTemplate: TableTemplate | null;
   editName: string;
+  renaming: boolean;
   deleteTarget: TableTemplate | null;
 };
 
@@ -46,6 +47,8 @@ type ManagerEvent =
   | { type: 'searchChanged'; searchTerm: string }
   | { type: 'renameOpened'; template: TableTemplate }
   | { type: 'editNameChanged'; name: string }
+  | { type: 'renameStarted' }
+  | { type: 'renameSettled' }
   | { type: 'renameClosed' }
   | { type: 'deleteRequested'; template: TableTemplate }
   | { type: 'deleteClosed' };
@@ -54,6 +57,7 @@ const initialManagerState: ManagerState = {
   searchTerm: '',
   editingTemplate: null,
   editName: '',
+  renaming: false,
   deleteTarget: null,
 };
 
@@ -65,8 +69,12 @@ function managerReducer(state: ManagerState, event: ManagerEvent): ManagerState 
       return { ...state, editingTemplate: event.template, editName: event.template.name };
     case 'editNameChanged':
       return { ...state, editName: event.name };
+    case 'renameStarted':
+      return { ...state, renaming: true };
+    case 'renameSettled':
+      return { ...state, renaming: false };
     case 'renameClosed':
-      return { ...state, editingTemplate: null };
+      return state.renaming ? state : { ...state, editingTemplate: null };
     case 'deleteRequested':
       return { ...state, deleteTarget: event.template };
     case 'deleteClosed':
@@ -87,10 +95,8 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
     const { t } = useTranslation();
     const { showToast } = useToast();
 
-    const [{ searchTerm, editingTemplate, editName, deleteTarget }, dispatch] = useReducer(
-      managerReducer,
-      initialManagerState,
-    );
+    const [{ searchTerm, editingTemplate, editName, renaming, deleteTarget }, dispatch] =
+      useReducer(managerReducer, initialManagerState);
 
     const filteredTemplates = useMemo(() => {
       const term = searchTerm.trim().toLowerCase();
@@ -111,11 +117,13 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
     );
 
     const handleRename = useCallback(async () => {
-      if (!editingTemplate) return;
+      if (!editingTemplate || renaming) return;
       const nextName = editName.trim();
 
       if (!nextName) return;
+      dispatch({ type: 'renameStarted' });
       const result = await onRenameTemplate(editingTemplate.id, nextName);
+      dispatch({ type: 'renameSettled' });
 
       if (result.ok) {
         showToast(t('tableTemplate.toast.renamed', { name: nextName }));
@@ -123,7 +131,7 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
       } else {
         showToast(result.message ?? t('tableTemplate.toast.renameFailed'));
       }
-    }, [editName, editingTemplate, onRenameTemplate, showToast, t]);
+    }, [editName, editingTemplate, onRenameTemplate, renaming, showToast, t]);
 
     const handleDuplicate = useCallback(
       async (template: TableTemplate) => {
@@ -249,10 +257,14 @@ export const TableTemplateManagerDialog = memo<TableTemplateManagerDialogProps>(
               />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => dispatch({ type: 'renameClosed' })}>
+              <Button
+                variant="outline"
+                onClick={() => dispatch({ type: 'renameClosed' })}
+                disabled={renaming}
+              >
                 {t('tableTemplate.manager.cancel')}
               </Button>
-              <Button onClick={() => void handleRename()} disabled={!editName.trim()}>
+              <Button onClick={() => void handleRename()} disabled={renaming || !editName.trim()}>
                 {t('tableTemplate.manager.save')}
               </Button>
             </DialogFooter>

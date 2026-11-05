@@ -45,7 +45,7 @@ function folderFormReducer(state: FolderFormState, event: FolderFormEvent): Fold
     case 'nameChanged':
       return { ...state, name: event.name, error: '' };
     case 'submitStarted':
-      return { ...state, loading: true };
+      return { ...state, loading: true, error: '' };
     case 'submitFailed':
       return { ...state, error: event.error };
     case 'submitSettled':
@@ -66,6 +66,7 @@ export const FolderDialog = memo<FolderDialogProps>(
     );
 
     const handleConfirm = useCallback(async () => {
+      if (loading) return;
       const trimmed = name.trim();
 
       if (!trimmed) {
@@ -87,7 +88,7 @@ export const FolderDialog = memo<FolderDialogProps>(
       } finally {
         dispatch({ type: 'submitSettled' });
       }
-    }, [name, onConfirm, onOpenChange, t]);
+    }, [loading, name, onConfirm, onOpenChange, t]);
 
     const title =
       mode === 'create'
@@ -105,7 +106,7 @@ export const FolderDialog = memo<FolderDialogProps>(
           });
 
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={(next) => !loading && onOpenChange(next)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
@@ -130,7 +131,7 @@ export const FolderDialog = memo<FolderDialogProps>(
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               {t('savedTables.folderDialog.cancel')}
             </Button>
             <Button onClick={handleConfirm} disabled={loading}>
@@ -178,7 +179,7 @@ export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
     const hasContent = tableCount > 0 || folder.children.length > 0;
 
     return (
-      <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialog open={open} onOpenChange={(next) => !loading && onOpenChange(next)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('savedTables.deleteFolderDialog.title')}</AlertDialogTitle>
