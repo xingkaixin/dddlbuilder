@@ -105,10 +105,9 @@ export const observeAIOperation = async (
 const stopOnCancel = (operationId: string, signal: AbortSignal) => {
   const stop = () => {
     if (signal.reason === 'stop' || signal.reason === 'superseded') {
-      stopAIOperation(operationId).then(
-        () => forgetAIOperation(operationId),
-        () => undefined,
-      );
+      // The user abandoned this operation, so a failed stop request must not leave it resumable.
+      forgetAIOperation(operationId);
+      stopAIOperation(operationId).catch(() => undefined);
     }
   };
 
