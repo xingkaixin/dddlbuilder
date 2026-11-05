@@ -1,5 +1,5 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
@@ -49,6 +49,8 @@ export function useRenameDeleteActions({
   const renameName = renameDialog.data.name;
   const renameTarget = renameDialog.data.target;
   const deleteTarget = deleteDialog.data.target;
+  const renamingRef = useRef(false);
+  const deletingRef = useRef(false);
 
   const handleOpenRenameDialog = useCallback(
     (item: SavedTableSummary) => {
@@ -70,26 +72,33 @@ export function useRenameDeleteActions({
   );
 
   const handleConfirmRename = useCallback(async () => {
-    if (!renameTarget) return;
-    const result = await renameTable(renameTarget, renameName);
+    if (renamingRef.current) return;
+    renamingRef.current = true;
 
-    if (!result.ok) {
-      if (result.reason === 'duplicate') {
-        renameDialog.setError(t('savedTables.toast.nameExists'));
+    try {
+      if (!renameTarget) return;
+      const result = await renameTable(renameTarget, renameName);
+
+      if (!result.ok) {
+        if (result.reason === 'duplicate') {
+          renameDialog.setError(t('savedTables.toast.nameExists'));
+
+          return;
+        }
+
+        showToast(result.message ?? t('savedTables.toast.renameFailed'));
 
         return;
       }
 
-      showToast(result.message ?? t('savedTables.toast.renameFailed'));
-
-      return;
+      const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
+      showToast(t('savedTables.toast.tableRenamed', { name: displayName }));
+      renameSavedTableDraft?.(renameTarget, result.normalizedName, displayName);
+      onTabRename?.(renameTarget, result.normalizedName, displayName);
+      renameDialog.closeDialog();
+    } finally {
+      renamingRef.current = false;
     }
-
-    const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
-    showToast(t('savedTables.toast.tableRenamed', { name: displayName }));
-    renameSavedTableDraft?.(renameTarget, result.normalizedName, displayName);
-    onTabRename?.(renameTarget, result.normalizedName, displayName);
-    renameDialog.closeDialog();
   }, [
     renameTarget,
     renameTable,
@@ -118,18 +127,25 @@ export function useRenameDeleteActions({
   );
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!deleteTarget) return;
-    const result = await deleteTable(deleteTarget);
+    if (deletingRef.current) return;
+    deletingRef.current = true;
 
-    if (!result.ok) {
-      showToast(result.message ?? t('savedTables.toast.deleteFailed'));
-    } else {
-      removeSavedTableDraft?.(deleteTarget);
-      showToast(t('savedTables.toast.tableTrashed', { name: deleteTarget.name }));
-      onTabRemove?.(deleteTarget);
+    try {
+      if (!deleteTarget) return;
+      const result = await deleteTable(deleteTarget);
+
+      if (!result.ok) {
+        showToast(result.message ?? t('savedTables.toast.deleteFailed'));
+      } else {
+        removeSavedTableDraft?.(deleteTarget);
+        showToast(t('savedTables.toast.tableTrashed', { name: deleteTarget.name }));
+        onTabRemove?.(deleteTarget);
+      }
+
+      deleteDialog.closeDialog();
+    } finally {
+      deletingRef.current = false;
     }
-
-    deleteDialog.closeDialog();
   }, [deleteTarget, deleteTable, showToast, removeSavedTableDraft, deleteDialog, onTabRemove, t]);
 
   return {

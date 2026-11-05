@@ -1,5 +1,5 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
@@ -76,6 +76,8 @@ export function useSaveLoadActions({
   const { t } = useTranslation();
   const loadedTableName = loadedTableSource?.tableName ?? null;
   const saveName = saveDialog.data.name;
+  // Saving is triggered from both the dialog and a shortcut, so a repeat while it runs would write twice.
+  const savingRef = useRef(false);
 
   const resolveSavedTable = useCallback(
     async (target: SavedTableSummary) => {
@@ -120,93 +122,100 @@ export function useSaveLoadActions({
   }, [loadedTableName, tableName, saveDialog]);
 
   const handleConfirmSave = useCallback(async () => {
-    if (!canSaveCurrent) {
-      showToast(t('savedTables.toast.noChangesToSave'));
-
-      return;
-    }
-
-    const nextState = buildPersistedState();
-    const nextSignature = buildSchemaStateSignature(nextState);
-
-    let savedNormalizedName = '';
-    let savedTableId: string | undefined;
-    let savedDisplayName = '';
-    let saveMode: 'create' | 'update' = 'create';
-
-    if (hasLoadedTable && loadedTableSource) {
-      const result = await overwriteTable(loadedTableSource, nextState);
-
-      if (!result.ok) {
-        if (result.reason === 'not_found') {
-          showToast(t('savedTables.toast.tableNotFound'));
-
-          return;
-        }
-
-        showToast(result.message ?? t('savedTables.toast.updateFailed'));
-
-        return;
-      }
-
-      savedNormalizedName = result.normalizedName;
-      savedTableId = result.tableId ?? loadedTableSource.tableId;
-      savedDisplayName = loadedTableName ?? saveName;
-      saveMode = 'update';
-      showToast(t('savedTables.toast.tableUpdated', { name: loadedTableName ?? saveName }));
-    } else {
-      const result = await saveTable(saveName, nextState, sourceDraftId);
-
-      if (!result.ok) {
-        if (result.reason === 'duplicate') {
-          saveDialog.setError(t('savedTables.toast.nameExists'));
-
-          return;
-        }
-
-        showToast(result.message ?? t('savedTables.toast.saveFailed'));
-
-        return;
-      }
-
-      const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
-      const normalizedName = result.normalizedName;
-      savedNormalizedName = normalizedName;
-      savedTableId = result.tableId;
-      savedDisplayName = displayName;
-      saveMode = 'create';
-      showToast(t('savedTables.toast.tableSaved', { name: displayName }));
-    }
-
-    saveDialog.closeDialog();
+    if (savingRef.current) return;
+    savingRef.current = true;
 
     try {
-      if (saveMode === 'update' && savedNormalizedName) {
-        await createTableVersion(
-          { normalizedName: savedNormalizedName, tableId: savedTableId },
-          nextState,
-        );
-      } else if (saveMode === 'create' && savedNormalizedName) {
-        await createTableVersion(
-          { normalizedName: savedNormalizedName, tableId: savedTableId },
-          nextState,
-          INITIAL_VERSION_MESSAGE_KEY,
-        );
+      if (!canSaveCurrent) {
+        showToast(t('savedTables.toast.noChangesToSave'));
+
+        return;
       }
 
-      refreshTableVersions();
-    } catch (versionError) {
-      console.error('[saved-table] failed to create version', versionError);
-    }
+      const nextState = buildPersistedState();
+      const nextSignature = buildSchemaStateSignature(nextState);
 
-    await onSaveSuccess?.({
-      normalizedName: savedNormalizedName,
-      ...(savedTableId ? { tableId: savedTableId } : {}),
-      displayName: savedDisplayName,
-      baseSignature: nextSignature,
-      baseState: nextState,
-      mode: saveMode,
-    });
+      let savedNormalizedName = '';
+      let savedTableId: string | undefined;
+      let savedDisplayName = '';
+      let saveMode: 'create' | 'update' = 'create';
+
+      if (hasLoadedTable && loadedTableSource) {
+        const result = await overwriteTable(loadedTableSource, nextState);
+
+        if (!result.ok) {
+          if (result.reason === 'not_found') {
+            showToast(t('savedTables.toast.tableNotFound'));
+
+            return;
+          }
+
+          showToast(result.message ?? t('savedTables.toast.updateFailed'));
+
+          return;
+        }
+
+        savedNormalizedName = result.normalizedName;
+        savedTableId = result.tableId ?? loadedTableSource.tableId;
+        savedDisplayName = loadedTableName ?? saveName;
+        saveMode = 'update';
+        showToast(t('savedTables.toast.tableUpdated', { name: loadedTableName ?? saveName }));
+      } else {
+        const result = await saveTable(saveName, nextState, sourceDraftId);
+
+        if (!result.ok) {
+          if (result.reason === 'duplicate') {
+            saveDialog.setError(t('savedTables.toast.nameExists'));
+
+            return;
+          }
+
+          showToast(result.message ?? t('savedTables.toast.saveFailed'));
+
+          return;
+        }
+
+        const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
+        const normalizedName = result.normalizedName;
+        savedNormalizedName = normalizedName;
+        savedTableId = result.tableId;
+        savedDisplayName = displayName;
+        saveMode = 'create';
+        showToast(t('savedTables.toast.tableSaved', { name: displayName }));
+      }
+
+      saveDialog.closeDialog();
+
+      try {
+        if (saveMode === 'update' && savedNormalizedName) {
+          await createTableVersion(
+            { normalizedName: savedNormalizedName, tableId: savedTableId },
+            nextState,
+          );
+        } else if (saveMode === 'create' && savedNormalizedName) {
+          await createTableVersion(
+            { normalizedName: savedNormalizedName, tableId: savedTableId },
+            nextState,
+            INITIAL_VERSION_MESSAGE_KEY,
+          );
+        }
+
+        refreshTableVersions();
+      } catch (versionError) {
+        console.error('[saved-table] failed to create version', versionError);
+      }
+
+      await onSaveSuccess?.({
+        normalizedName: savedNormalizedName,
+        ...(savedTableId ? { tableId: savedTableId } : {}),
+        displayName: savedDisplayName,
+        baseSignature: nextSignature,
+        baseState: nextState,
+        mode: saveMode,
+      });
+    } finally {
+      savingRef.current = false;
+    }
   }, [
     canSaveCurrent,
     showToast,
