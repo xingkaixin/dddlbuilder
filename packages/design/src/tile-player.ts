@@ -31,8 +31,9 @@ export function attachTilePlayer(node: HTMLElement, order = 0): () => void {
   }
 
   function replay() {
-    if (playing || !node.hasAttribute('data-played')) return;
+    if (playing || node.hasAttribute('data-blur') || !node.hasAttribute('data-played')) return;
     node.setAttribute('data-blur', '');
+    clearTimeout(timer);
     timer = setTimeout(() => {
       play();
       node.removeAttribute('data-blur');
