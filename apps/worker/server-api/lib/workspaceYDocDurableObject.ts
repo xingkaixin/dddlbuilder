@@ -425,11 +425,14 @@ export class WorkspaceYDocDurableObject {
     }
 
     this.queuePersistUpdate(update);
+    // Peers only receive updates that survive a restart; a failed write closes the sender, which re-syncs.
     this.state.waitUntil(
-      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Promise rejection values are arbitrary platform failures.
-      this.broadcastUpdate(update, origin).catch((error: unknown) => {
-        console.error('[workspace-yjs-do] broadcast failed', error);
-      }),
+      this.awaitPersisted()
+        .then(() => this.broadcastUpdate(update, origin))
+        // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Promise rejection values are arbitrary platform failures.
+        .catch((error: unknown) => {
+          console.error('[workspace-yjs-do] broadcast failed', error);
+        }),
     );
   };
 
