@@ -11,7 +11,7 @@ import type {
 } from '@ddlbuilder/shared-types/ai-generate';
 import { parsePartialTableSchema } from '@/utils/parsePartialTableSchema';
 import { useLocale } from '@/i18n/LocaleContext';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { useAIRequestAccess } from './useAIRequestAccess';
 import { useLatestRequest } from './useLatestRequest';
 

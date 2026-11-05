@@ -5,7 +5,7 @@ import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 import type { BuilderTab } from '@/utils/tabUtils';
 import { applyAISchemaChanges } from '../aiSchemaPatchTransition';
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 interface UseAISchemaPatchFlowParams {
   currentState: PersistedState;

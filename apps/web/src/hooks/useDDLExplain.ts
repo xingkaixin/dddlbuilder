@@ -1,7 +1,7 @@
 import { fetchAIConversation } from '@/services/aiConversationService';
 import { useCallback, useReducer } from 'react';
 import { readTextStream } from '@/services/streamingText';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { useLocale } from '@/i18n/LocaleContext';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
 import { useAIRequestAccess } from './useAIRequestAccess';

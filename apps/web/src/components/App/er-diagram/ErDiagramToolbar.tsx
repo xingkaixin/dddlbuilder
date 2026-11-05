@@ -13,7 +13,10 @@ interface ErDiagramToolbarProps {
 const addingReducer = (_adding: boolean, event: 'addStarted' | 'cooldownEnded') =>
   event === 'addStarted';
 
-function ErDiagramToolbar({ onAddTable, onAutoLayout }: ErDiagramToolbarProps) {
+export const ErDiagramToolbar = memo(function ErDiagramToolbar({
+  onAddTable,
+  onAutoLayout,
+}: ErDiagramToolbarProps) {
   const { t } = useTranslation();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const [isAdding, dispatchAdding] = useReducer(addingReducer, false);
@@ -75,6 +78,4 @@ function ErDiagramToolbar({ onAddTable, onAutoLayout }: ErDiagramToolbarProps) {
       </Button>
     </Panel>
   );
-}
-
-export default memo(ErDiagramToolbar);
+});

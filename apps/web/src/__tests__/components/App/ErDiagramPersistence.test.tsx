@@ -6,7 +6,7 @@ import { createFieldRow } from '@/__tests__/utils/testFactories';
 import { render } from '@/__tests__/utils/test-utils';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { useSavedTables } from '@/hooks/useSavedTables';
-import ErPage from '@/components/App/ErPage';
+import { ErPage } from '@/components/App/ErPage';
 import { getSavedTableFromYDoc, upsertSavedTableInYDoc } from '@/services/workspaceYDocAdapter';
 import { getSavedTable, updateSavedTable } from '@/utils/savedTablesDb';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';

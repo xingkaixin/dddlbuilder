@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { toast } from 'sonner';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { markWorkspaceCleanupPending } from '@/services/workspaceCacheRegistry';
 import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
 import { prepareWorkspaceSignOut } from '@/services/workspaceYDocStorage';

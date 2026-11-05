@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { ApiError } from '@/services/apiError';
 import { translateAuthError } from './authErrors';
 import type { getBetterAuthClient } from './betterAuthClient';

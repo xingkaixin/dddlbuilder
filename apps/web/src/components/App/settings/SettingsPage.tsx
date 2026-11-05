@@ -202,7 +202,7 @@ function EditorSettings() {
   );
 }
 
-export default function SettingsPage() {
+export function SettingsPage() {
   const { t } = useTranslation();
   const { status } = useAuthIdentity();
   const signedIn = status === 'signed_in';

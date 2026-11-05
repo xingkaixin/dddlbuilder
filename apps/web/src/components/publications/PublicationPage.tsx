@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { downloadFile } from '@/utils/mockDataGenerator';
 
-export default function PublicationPage({ id }: { id: string }) {
+export function PublicationPage({ id }: { id: string }) {
   const { t, i18n } = useTranslation();
   const { userId, status } = useAuthIdentity();
 

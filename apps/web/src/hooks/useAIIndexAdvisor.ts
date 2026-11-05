@@ -1,7 +1,7 @@
 import { useCallback, useReducer } from 'react';
 import type { AIIndexAdvisorRequest, AIIndexAdvisorResult } from '@ddlbuilder/shared-types';
 import { assertAIIndexAdvisorTarget, requestAIIndexAdvice } from '@/services/aiIndexAdvisorService';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { useAIRequestAccess } from './useAIRequestAccess';
 import { useLatestRequest } from './useLatestRequest';
 

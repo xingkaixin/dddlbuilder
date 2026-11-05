@@ -8,7 +8,9 @@ import { useTimers } from '@/hooks/useTimers';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 
-const SqlCodeBlock = lazy(() => import('../SqlCodeBlock'));
+const SqlCodeBlock = lazy(() =>
+  import('../SqlCodeBlock').then((m) => ({ default: m.SqlCodeBlock })),
+);
 
 const CODE_FALLBACK_STYLE: CSSProperties = {
   fontFamily: '"Roboto Mono", monospace',

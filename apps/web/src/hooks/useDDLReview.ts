@@ -3,7 +3,7 @@ import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartial
 import { requestDDLReview, resumeDDLReview } from '@/services/reviewService';
 import { hasResumableAIOperation } from '@/services/aiConversationService';
 import { useLocale } from '@/i18n/LocaleContext';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { useAIRequestAccess } from './useAIRequestAccess';
 import type {
   DDLReviewResult,

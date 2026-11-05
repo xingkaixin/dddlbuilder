@@ -8,7 +8,7 @@ import {
 } from '@ddlbuilder/shared-types/ddl-review';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 type ReviewRequestPayload = {
   ddl: string;

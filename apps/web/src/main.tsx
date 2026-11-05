@@ -7,7 +7,7 @@ import './index.css';
 import './assets/fonts/roboto-mono/fonts.css';
 import './assets/fonts/xiaolai/fonts.css';
 import './assets/fonts/klee-one/fonts.css';
-import App from './App.tsx';
+import { AppView } from './components/App/AppView';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { appQueryClient } from './lib/queryClient';
 import { Toaster } from './components/ui/sonner';
@@ -17,7 +17,7 @@ import { WorkspaceYDocProvider } from './providers/WorkspaceYDocProvider';
 import { isAdminPath } from './admin/lib/adminPath';
 import { listenForCommandShortcut } from './lib/commandShortcut';
 import { notifyAuthCallbackError } from './auth/useAuthCallbackCommand';
-import i18n from './i18n';
+import { i18n } from './i18n';
 
 const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
 // SAFETY: the Vite root element is checked for null before this React mount assertion.
@@ -36,7 +36,9 @@ const isAdmin = isAdminPath();
 if (!isAdmin) notifyAuthCallbackError();
 
 const publicationId = /^\/publications\/([a-zA-Z0-9-]+)\/?$/.exec(location.pathname)?.[1];
-const PublicationPage = lazy(() => import('./components/publications/PublicationPage'));
+const PublicationPage = lazy(() =>
+  import('./components/publications/PublicationPage').then((m) => ({ default: m.PublicationPage })),
+);
 
 if (!isAdmin && !publicationId) {
   document.documentElement.dataset.surface = 'app';
@@ -78,7 +80,7 @@ createRoot(rootElement).render(
                   </Suspense>
                 ) : (
                   <WorkspaceYDocProvider>
-                    <App />
+                    <AppView />
                   </WorkspaceYDocProvider>
                 )}
               </AuthSessionProvider>

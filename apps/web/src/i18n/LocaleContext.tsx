@@ -6,7 +6,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import i18n from './index';
+import { i18n } from './index';
 import { DEFAULT_LOCALE, LOCAL_STORAGE_KEY, type AppLocale, normalizeLocale } from './types';
 
 interface LocaleContextValue {

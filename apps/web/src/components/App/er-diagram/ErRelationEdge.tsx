@@ -4,7 +4,7 @@ import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from '@xyf
 import { X } from '@/components/icons';
 import type { ErEdgeData } from './types';
 
-function ErRelationEdge(props: EdgeProps) {
+export const ErRelationEdge = memo(function ErRelationEdge(props: EdgeProps) {
   const { t } = useTranslation();
 
   const {
@@ -83,6 +83,4 @@ function ErRelationEdge(props: EdgeProps) {
       </EdgeLabelRenderer>
     </>
   );
-}
-
-export default memo(ErRelationEdge);
+});

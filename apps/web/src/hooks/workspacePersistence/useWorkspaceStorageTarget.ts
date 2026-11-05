@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type * as Y from 'yjs';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import type { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 interface UseWorkspaceStorageTargetParams {
   scope: WorkspaceScope | null;

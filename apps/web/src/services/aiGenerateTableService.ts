@@ -8,7 +8,7 @@ import {
 } from '@ddlbuilder/shared-types/ai-generate';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { normalizeGeneratedTableSchema } from '@/utils/normalizeAiEnumValue';
 
 export interface GenerateTableRequestOptions {

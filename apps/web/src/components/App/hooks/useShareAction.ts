@@ -4,7 +4,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
 import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 type ShareLinkCacheRecord = {
   signature: string;

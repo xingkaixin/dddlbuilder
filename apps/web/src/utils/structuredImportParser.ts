@@ -1,7 +1,7 @@
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import type { Range, WorkSheet } from 'xlsx';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { assertSafeExcelArchive } from '@/utils/excelArchiveGuard';
 import {
   EXCEL_WORKBOOK_LIMITS,

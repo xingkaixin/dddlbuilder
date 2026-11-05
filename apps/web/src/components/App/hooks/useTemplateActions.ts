@@ -2,7 +2,7 @@ import { useCallback, useReducer, type Dispatch, type SetStateAction } from 'rea
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import { instantiateTemplateFields } from '@/utils/fieldTemplates';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 interface CreateTemplateResult {
   ok: boolean;

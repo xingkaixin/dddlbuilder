@@ -5,7 +5,7 @@ import {
   type AICommentRequest,
   type AICommentResult,
 } from '@ddlbuilder/shared-types/ai-generate';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 export async function requestAIComments(
   payload: AICommentRequest,

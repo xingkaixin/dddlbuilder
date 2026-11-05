@@ -29,7 +29,7 @@ function revealInPane(line: HTMLElement | null) {
   else if (lineBox.bottom > paneBox.bottom) pane.scrollTop += lineBox.bottom - paneBox.bottom;
 }
 
-export default function SqlCodeBlock({ code, activeLine }: SqlCodeBlockProps) {
+export function SqlCodeBlock({ code, activeLine }: SqlCodeBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme === 'dark' ? 'one-dark-pro' : 'one-light';

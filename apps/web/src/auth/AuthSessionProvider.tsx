@@ -9,7 +9,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import {
   readWorkspaceIdentity,

@@ -1,6 +1,6 @@
 import { useCallback, useReducer, useRef } from 'react';
 import { toast } from 'sonner';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 type AuthCallbackCommand =
   | { type: 'verify-email' }

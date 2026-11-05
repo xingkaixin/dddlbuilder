@@ -39,7 +39,7 @@ const TOOL_COMPONENTS = {
   refresh: SnapshotRefreshTool,
 } as const satisfies Record<PageToolId, ComponentType>;
 
-export default function ToolDetail({ toolId }: { toolId: PageToolId }) {
+export function ToolDetail({ toolId }: { toolId: PageToolId }) {
   const Tool = TOOL_COMPONENTS[toolId];
 
   return (

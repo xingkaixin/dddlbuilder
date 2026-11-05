@@ -6,7 +6,7 @@ import {
   resumeAIConversation,
 } from '@/services/aiConversationService';
 import { readTextStream } from '@/services/streamingText';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 const identity = { operationId: 'op', conversationId: 'conversation', userId: 'user' };
 const snapshot = (text: string, status = 'running') => ({

@@ -3,7 +3,7 @@ import * as Schema from 'effect/Schema';
 import { cleanup, fireEvent, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { setupSchemaTools, renderTool } from '@/__tests__/utils/schemaTools';
 import { PublishPanel } from '@/components/publications/PublishPanel';
-import PublicationPage from '@/components/publications/PublicationPage';
+import { PublicationPage } from '@/components/publications/PublicationPage';
 import {
   PublicationWriteSchema,
   CommentWriteSchema,

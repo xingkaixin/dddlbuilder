@@ -1,4 +1,4 @@
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { executeBusinessDataTask, type BusinessDataReply, type BusinessDataTask } from './tasks';
 
 self.onmessage = async (event: MessageEvent<{ task: BusinessDataTask; locale: string }>) => {

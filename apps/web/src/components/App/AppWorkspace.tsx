@@ -16,10 +16,16 @@ import type { AppWorkspaceModel } from './buildAppWorkspaceModel';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 
-const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
-const ErPage = lazy(() => import('./ErPage'));
-const SettingsPage = lazy(() => import('./settings/SettingsPage'));
-const ToolsPage = lazy(() => import('@/components/schema-tools/ToolsPage'));
+const FireworksOverlay = lazy(() =>
+  import('@/components/FireworksOverlay').then((m) => ({ default: m.FireworksOverlay })),
+);
+const ErPage = lazy(() => import('./ErPage').then((m) => ({ default: m.ErPage })));
+const SettingsPage = lazy(() =>
+  import('./settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+);
+const ToolsPage = lazy(() =>
+  import('@/components/schema-tools/ToolsPage').then((m) => ({ default: m.ToolsPage })),
+);
 
 interface AppWorkspaceProps {
   model: AppWorkspaceModel;
