@@ -4,7 +4,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 import type { BuilderTab } from '@/utils/tabUtils';
 import { applyAISchemaChanges } from '../aiSchemaPatchTransition';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { i18n } from '@/i18n';
 
 interface UseAISchemaPatchFlowParams {

@@ -28,7 +28,6 @@ import { useAuthAccountActions, type AuthAccountActions } from './useAuthAccount
 import { executeWorkspaceSignOut } from './workspaceSignOut';
 
 export { fetchCurrentUser, fetchCreditBalance };
-export { translateAuthError } from './authErrors';
 
 export type AuthIdentityState = {
   status: 'loading' | 'signed_out' | 'signed_in';

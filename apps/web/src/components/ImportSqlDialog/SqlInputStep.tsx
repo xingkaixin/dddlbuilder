@@ -8,7 +8,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle2, Download, IconSwap } from '@/components/icons';
 import { isDatabaseType, type DatabaseType } from '@ddlbuilder/shared-types';
-import type { ImportMode, ImportSourceType, ValidationResult } from './types';
+import type { ImportMode, ValidationResult } from './types';
+import type { ImportSourceType } from '../../utils/importLimits';
 import { useTranslation } from 'react-i18next';
 import { useReducer } from 'react';
 

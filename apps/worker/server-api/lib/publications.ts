@@ -5,7 +5,7 @@ import {
   PublicationCommentsSchema,
   type Publication,
   type PublicationWrite,
-} from '@ddlbuilder/shared-types/api';
+} from '@ddlbuilder/shared-types/publications';
 import { decodeDeliveryTables } from '@ddlbuilder/workspace-core';
 import { compareSchemaSnapshots } from '@ddlbuilder/ddl-core';
 import { DomainError } from './http.js';

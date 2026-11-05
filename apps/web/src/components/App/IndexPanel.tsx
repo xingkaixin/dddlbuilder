@@ -7,7 +7,12 @@ import {
   type IndexField,
   type IndexKind,
 } from '@ddlbuilder/shared-types';
-import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
+import {
+  buildPrimaryKeyName,
+  buildIndexName,
+  getIdentifierNameMaxLength as getIndexNameMaxLength,
+  truncateIdentifierName as truncateIndexName,
+} from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -31,13 +36,8 @@ import {
   X,
 } from '@/components/icons';
 import { cn } from '@/lib/utils';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { insertIndexDefinition, replaceIndexDefinition } from '@/stores/indexDefinitionMutations';
-import {
-  buildIndexName,
-  getIdentifierNameMaxLength as getIndexNameMaxLength,
-  truncateIdentifierName as truncateIndexName,
-} from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
 
 interface IndexPanelProps {

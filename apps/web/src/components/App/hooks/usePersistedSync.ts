@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSavePayload, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
-import { buildPersistedStateSignature } from '@/utils/persistedStateSignature';
+import { buildPersistedStateSignature } from '@ddlbuilder/workspace-core';
 
 interface UsePersistedSyncParams {
   hydrated: boolean;

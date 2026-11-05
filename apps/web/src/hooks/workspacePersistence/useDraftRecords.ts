@@ -15,7 +15,7 @@ import { deleteDraft, listDraftsByStatus, readDraft, writeDraft } from '@/utils/
 import {
   buildPersistedStateSignature,
   buildSchemaStateSignature,
-} from '@/utils/persistedStateSignature';
+} from '@ddlbuilder/workspace-core';
 import { getDraftDisplayName, resolveUniqueDraftName, type GlobalDraftRecord } from './normalize';
 import { toDraftSummary, type DraftEntry } from './hydration';
 import type { usePersistenceQueue } from './usePersistenceQueue';

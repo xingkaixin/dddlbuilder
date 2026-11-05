@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, cleanup, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { fireEvent, cleanup, screen, waitFor } from '@testing-library/react';
 import { setupSchemaTools, renderTool as render } from '@/__tests__/utils/schemaTools';
 import { BusinessModuleTool } from '@/components/schema-tools/BusinessModuleTool';
 import { listSavedTables } from '@/utils/savedTablesDb';

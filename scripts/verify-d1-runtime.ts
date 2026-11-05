@@ -1,7 +1,8 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { prepareLocalD1Runtime, REQUIRED_RUNTIME_TABLES, verifyLocalD1Runtime } from './d1-runtime';
+import { prepareLocalD1Runtime, verifyLocalD1Runtime } from './d1-runtime';
+import { REQUIRED_RUNTIME_TABLES } from './d1-utils';
 
 const persistDir = mkdtempSync(path.join(tmpdir(), 'ddlbuilder-d1-runtime-'));
 const options = {

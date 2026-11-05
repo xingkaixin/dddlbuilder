@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState, FieldRow } from '@ddlbuilder/shared-types';
-import type { SeedRule } from '@ddlbuilder/shared-types/api';
-import { decodeSeedScenario } from '@ddlbuilder/shared-types/api';
+import type { SeedRule } from '@ddlbuilder/shared-types/seed-scenario';
+import { decodeSeedScenario } from '@ddlbuilder/shared-types/seed-scenario';
 import { refreshSchemaSnapshot } from '../utils/schemaRefresh';
 import { assessMysqlToPostgres } from '../utils/migrationAssessment';
 import { generateRelationalSeed } from '../utils/relationalSeed';

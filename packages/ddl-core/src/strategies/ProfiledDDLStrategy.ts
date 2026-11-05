@@ -5,7 +5,7 @@ import type {
   SqlFormatMode,
   TableMiscConfig,
 } from '@ddlbuilder/shared-types';
-import { getSchemaAndTable } from '../utils/databaseTypeMapping';
+import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 import { DIALECT_PROFILES } from './dialectProfiles';
 import type { DialectProfile } from './dialectProfiles';

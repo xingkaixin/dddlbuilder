@@ -2,7 +2,7 @@ import { memo, type ComponentProps, type ReactNode } from 'react';
 import { Index, Key, UniqueIndex } from '@/components/icons';
 import type { DatabaseType, SchemaObjectType } from '@ddlbuilder/shared-types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { cn } from '@/lib/utils';
 import { getAvailableTabs, isBuilderTab, type BuilderTab } from '@/utils/tabUtils';
 import { useTranslation } from 'react-i18next';

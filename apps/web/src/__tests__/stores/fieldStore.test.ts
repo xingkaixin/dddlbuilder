@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { createFieldRow } from '@/__tests__/utils/testFactories';
 
 describe('fieldStore', () => {

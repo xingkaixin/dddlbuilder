@@ -4,7 +4,7 @@ import { createEntityId, type PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import { useToast } from '@/hooks/useToast';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
-import { useTabStore } from '@/stores';
+import { useTabStore } from '@/stores/tabStore';
 import { createEmptyRow } from '@/utils/helpers';
 import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
 import { usePreferencesStore } from '@/stores/preferencesStore';

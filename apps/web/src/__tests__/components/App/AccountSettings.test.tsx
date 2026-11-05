@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, act } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
+import { screen, act } from '@testing-library/react';
 import { CreditSettings } from '@/components/App/settings/CreditSettings';
 import { fetchCreditLedger } from '@/services/creditService';
 

@@ -1,4 +1,7 @@
-import { decodeSchemaSnapshotEnvelope, type StandardSummary } from '@ddlbuilder/shared-types/api';
+import {
+  decodeSchemaSnapshotEnvelope,
+  type StandardSummary,
+} from '@ddlbuilder/shared-types/publications';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { decodePersistedState } from './persistedStateCodec.js';
 

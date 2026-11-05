@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { applySavedState } from '@/components/App/applySavedState';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 
 const state: PersistedState = {
   schemaName: '',

@@ -1,5 +1,6 @@
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
-import { decodeMeResponse, type MeApiResponse } from '@ddlbuilder/shared-types/api';
+import { type MeApiResponse } from '@ddlbuilder/shared-types/api';
+import { decodeMeResponse } from '@ddlbuilder/shared-types/account-contracts';
 import * as Option from 'effect/Option';
 import { ApiError } from '@/services/apiError';
 

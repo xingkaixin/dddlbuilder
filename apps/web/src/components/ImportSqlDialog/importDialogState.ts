@@ -10,13 +10,13 @@ import type {
   ConflictStrategy,
   FailedItem,
   ImportMode,
-  ImportSourceType,
   ParsedTableItem,
   PreviewFieldKey,
   SavedStep,
   ValidationResult,
   WorkspaceStep,
 } from './types';
+import type { ImportSourceType } from '../../utils/importLimits';
 
 type ImportOperation = { kind: 'idle' | 'importing' } | { kind: 'failed'; error: string };
 

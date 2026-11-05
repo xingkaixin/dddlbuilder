@@ -1,4 +1,4 @@
-import type { SeedRule } from '@ddlbuilder/shared-types/api';
+import type { SeedRule } from '@ddlbuilder/shared-types/seed-scenario';
 import { compileSeedScenario } from './seedScenario.js';
 import type { ForeignKeyDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import { buildQualifiedTableName, parseFieldType } from './databaseTypeMapping.js';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 
 describe('shardingStore', () => {
   it('应该设置分片模式并在 reference 时清空分布列', () => {

@@ -1,6 +1,6 @@
 import { RefreshCw, Table, Workspace } from '@/components/icons';
 import { cn } from '@/lib/utils';
-import type { StandardSummary } from '@ddlbuilder/shared-types/api';
+import type { StandardSummary } from '@ddlbuilder/shared-types/publications';
 import { SnapshotFileInput } from './SnapshotFileInput';
 import { useReducer } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';

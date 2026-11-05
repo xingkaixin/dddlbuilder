@@ -1,8 +1,10 @@
-import { AmbiguousTableOverwriteError } from '@/utils/savedTableBatchImport';
+import {
+  AmbiguousTableOverwriteError,
+  buildSavedTableBatchImportPlan,
+} from '@/utils/savedTableBatchImport';
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { SavedTableRecord } from '@/utils/savedTablesDb';
-import { buildSavedTableBatchImportPlan } from '@/utils/savedTableBatchImport';
+import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { createFieldRow, createPersistedState } from '@/__tests__/utils/testFactories';
 
 const createState = (tableName: string): PersistedState => createPersistedState({ tableName });

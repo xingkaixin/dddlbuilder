@@ -7,7 +7,7 @@ import { useTable, flexRender } from '@tanstack/react-table';
 import { DragDropVerticalIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { DatabaseType, EnumValueMeta, FieldRow } from '@ddlbuilder/shared-types';
-import { buildDuplicateNameSet } from '@/stores';
+import { buildDuplicateNameSet } from '@/stores/fieldStore';
 import { isReservedKeyword, createEmptyRow, toStringSafe } from '@/utils/helpers';
 import { FieldRowStateContext, useFieldColumns, getEditableColumnKeys } from './table/columns';
 import { fieldTableFeatures, type FieldTableRow } from './table/tableFeatures';

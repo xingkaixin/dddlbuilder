@@ -5,8 +5,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildD1ExecuteArgs, listMigrationFiles, writeLocalD1Config } from './d1-utils';
 
-export { REQUIRED_RUNTIME_TABLES } from './d1-utils';
-
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 type D1RuntimeOptions = {

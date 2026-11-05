@@ -13,7 +13,7 @@
 ### 契约
 
 - 跨网络的请求、响应和事件契约定义在 `packages/shared-types/src/` 的 Schema 中，类型从 Schema 推导。Worker 返回前校验，前端复用同一份解码器。历史数据兼容交给 `workspace-core` 的领域解码器，不在接口 Schema 中重复归一化。
-- 文件分工：`aiContracts.ts`（AI 请求、注释与索引建议）、`aiGenerate.ts`（生成表结构）、`ddlReview.ts`（DDL 审查）、`aiStream.ts`（NDJSON 事件）、`apiContracts.ts`（SQL 解析、分享、workspace）、`accountContracts.ts`（账户、额度、管理，经 `shared-types/api` 导出）。
+- 文件分工：`aiContracts.ts`（AI 请求、注释与索引建议）、`aiGenerate.ts`（生成表结构）、`ddlReview.ts`（DDL 审查）、`aiStream.ts`（NDJSON 事件）、`apiContracts.ts`（SQL 解析、分享、workspace）、`accountContracts.ts`（账户、额度、管理，经 `shared-types/account-contracts` 导出）。
 - 字段引用、建议编号、字段身份和方言规则等业务规则留在 Worker 或业务层，不放进 Schema。
 - NDJSON 事件 Schema 只校验单帧；终止顺序、字节分片和取消由流读取器负责。
 - 管理请求先校验再执行副作用。账本时间在网络层保持字符串，用户端解码后转换为毫秒。

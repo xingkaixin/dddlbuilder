@@ -5,7 +5,8 @@ import {
   type IndexDefinition,
 } from '@ddlbuilder/shared-types';
 import { diffPersistedState } from '../utils/tableDiff';
-import { generateAlterDDL, generateRollbackDDL } from '../utils/alter-ddl';
+import { generateAlterDDL } from '../utils/alter-ddl/generateAlterDDL';
+import { generateRollbackDDL } from '../utils/alter-ddl/generateRollbackDDL';
 
 const state = (dbType: DatabaseType = 'postgresql') =>
   withDefaultEditorSession({

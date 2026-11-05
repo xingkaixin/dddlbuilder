@@ -1,12 +1,10 @@
 import { DrizzleGenerator } from '../generators/DrizzleGenerator';
 import type { ORMGenerator, ORMTarget } from '../interfaces/ORMGenerator.js';
-import {
-  PrismaGenerator,
-  TypeORMGenerator,
-  SQLAlchemyGenerator,
-  GORMGenerator,
-  JPAGenerator,
-} from '../generators/index.js';
+import { PrismaGenerator } from '../generators/PrismaGenerator.js';
+import { TypeORMGenerator } from '../generators/TypeORMGenerator.js';
+import { SQLAlchemyGenerator } from '../generators/SQLAlchemyGenerator.js';
+import { GORMGenerator } from '../generators/GORMGenerator.js';
+import { JPAGenerator } from '../generators/JPAGenerator.js';
 
 const generators = new Map<ORMTarget, ORMGenerator>();
 

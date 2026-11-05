@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { DatabaseType, NormalizedField, PersistedState } from '@ddlbuilder/shared-types';
 import { buildDDL } from '../utils/ddlGenerators';
 import { diffPersistedState, hasTableChanges } from '../utils/tableDiff';
-import { generateAlterDDL, generateRollbackDDL } from '../utils/alter-ddl';
+import { generateAlterDDL } from '../utils/alter-ddl/generateAlterDDL';
+import { generateRollbackDDL } from '../utils/alter-ddl/generateRollbackDDL';
 import { resolveFieldComment } from '../utils/fieldComment';
 
 const field: NormalizedField = {

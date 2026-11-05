@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { diffPersistedState, hasTableChanges } from '../utils/tableDiff';
-import { generateAlterDDL, generateRollbackDDL } from '../utils/alter-ddl';
+import { generateAlterDDL } from '../utils/alter-ddl/generateAlterDDL';
+import { generateRollbackDDL } from '../utils/alter-ddl/generateRollbackDDL';
 
 const state = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   objectType: 'table',

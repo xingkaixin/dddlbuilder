@@ -11,7 +11,7 @@ import type {
   WorkspaceSelection,
 } from '@ddlbuilder/shared-types/workspace';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import type { useTabLifecycle } from './useTabLifecycle';
 import { i18n } from '@/i18n';
 import { SHARE_COPY_SAVED_TOAST_KEY } from '@/hooks/workspacePersistence/shareRoute';

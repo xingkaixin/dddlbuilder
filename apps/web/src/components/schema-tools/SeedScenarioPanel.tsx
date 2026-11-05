@@ -1,6 +1,10 @@
 import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
-import { decodeSeedScenario, type SeedRule, type SeedScenario } from '@ddlbuilder/shared-types/api';
+import {
+  decodeSeedScenario,
+  type SeedRule,
+  type SeedScenario,
+} from '@ddlbuilder/shared-types/seed-scenario';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { snapshotTableKey, snapshotTableLabel } from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';

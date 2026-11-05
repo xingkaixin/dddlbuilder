@@ -27,7 +27,7 @@ import {
 } from '@ddlbuilder/shared-types';
 import type { ApiEnv } from './context.js';
 import type { AIRouteKey } from './aiRouteKey.js';
-import type { ApiErrorCode } from './http.js';
+import type { ApiErrorCode } from '@ddlbuilder/shared-types/api';
 import { prepareAIScenario } from './aiScenarios.js';
 import {
   AI_ADMISSION_ERROR,

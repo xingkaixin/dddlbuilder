@@ -20,11 +20,11 @@ import {
   Send,
   Sparkles,
 } from '@/components/icons';
+import { useAIGenerateTable } from '@/hooks/useAIGenerateTable';
 import {
-  useAIGenerateTable,
   type GeneratedTableSchema,
   type PartialTableSchema,
-} from '@/hooks/useAIGenerateTable';
+} from '@ddlbuilder/shared-types/ai-generate';
 import type { FieldRow, IndexDefinition, DatabaseType } from '@ddlbuilder/shared-types';
 import { buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 import { diffPersistedState, type FieldDiff } from '@ddlbuilder/ddl-core';

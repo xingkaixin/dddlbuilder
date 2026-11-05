@@ -15,7 +15,7 @@ import {
   AdminDisableRequestSchema,
   AdminEmailVerificationRequestSchema,
   AdminCreditGrantRequestSchema,
-} from '@ddlbuilder/shared-types/api';
+} from '@ddlbuilder/shared-types/account-contracts';
 import type { Context, Hono, MiddlewareHandler } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { createAdminSession, resolveAdminSession, deleteAdminSession } from '../lib/adminAuth.js';

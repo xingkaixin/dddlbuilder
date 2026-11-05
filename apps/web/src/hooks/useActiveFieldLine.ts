@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useAppUiStore, useEditorStore } from '@/stores';
+import { useAppUiStore } from '@/stores/appUiStore';
+import { useEditorStore } from '@/stores/editorStore';
 
 const QUOTES = /[`"[\]]/g;
 

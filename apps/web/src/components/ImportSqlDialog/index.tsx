@@ -34,7 +34,8 @@ import { TableSelectStep } from './TableSelectStep';
 import { SaveConfigStep } from './SaveConfigStep';
 import { createImportDialogState, importDialogReducer } from './importDialogState';
 import { getImportCharacterLimit, getImportFileByteLimit, toMebibytes } from '@/utils/importLimits';
-import type { ImportSourceType, ParsedTableItem, PreviewFieldKey } from './types';
+import type { ParsedTableItem, PreviewFieldKey } from './types';
+import type { ImportSourceType } from '../../utils/importLimits';
 
 interface ImportSqlDialogProps {
   currentDbType: DatabaseType;

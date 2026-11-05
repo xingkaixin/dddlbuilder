@@ -20,7 +20,8 @@ import {
   generateTableOptionsChangeNotice,
   generateTableSchemaChange,
 } from './tableStatements';
-import { buildQualifiedTableName, getSchemaAndTable } from '../databaseTypeMapping';
+import { buildQualifiedTableName } from '../databaseTypeMapping';
+import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 import { getDatabaseFamily } from '../databaseFamily';
 import { generateMysqlAlterStatement } from './mysqlAlterStatement';
 import { getForeignKeyIssue } from '../foreignKeys';

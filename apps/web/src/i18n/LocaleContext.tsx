@@ -7,7 +7,8 @@ import {
   type ReactNode,
 } from 'react';
 import { i18n } from './index';
-import { DEFAULT_LOCALE, LOCAL_STORAGE_KEY, type AppLocale, normalizeLocale } from './types';
+import { DEFAULT_LOCALE, LOCAL_STORAGE_KEY, normalizeLocale } from './types';
+import { type AppLocale } from '@ddlbuilder/shared-types/locale';
 
 interface LocaleContextValue {
   locale: AppLocale;

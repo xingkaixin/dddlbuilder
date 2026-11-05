@@ -18,10 +18,6 @@ const customRender = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>
   return render(ui, { wrapper: Wrapper, ...options });
 };
 
-// Re-export everything from testing-library
-export * from '@testing-library/react';
-export { default as userEvent } from '@testing-library/user-event';
-
 // Override the default render with our custom one
 export { customRender as render };
 

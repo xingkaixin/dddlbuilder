@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createFieldRow } from '@/__tests__/utils/testFactories';
-import { act, fireEvent, render, screen } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { IndexPanel } from '@/components/App/IndexPanel';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 
 function setupStores() {
   useEditorStore.getState().setTableName('orders');

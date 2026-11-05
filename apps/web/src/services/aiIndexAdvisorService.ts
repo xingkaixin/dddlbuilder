@@ -4,7 +4,7 @@ import {
   decodeAIIndexAdvisorResult,
   type AIIndexAdvisorRequest,
   type AIIndexAdvisorResult,
-} from '@ddlbuilder/shared-types/ai-generate';
+} from '@ddlbuilder/shared-types/ai-contracts';
 import { i18n } from '@/i18n';
 
 export async function requestAIIndexAdvice(

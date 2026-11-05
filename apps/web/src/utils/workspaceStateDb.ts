@@ -1,12 +1,15 @@
-import { decodeSavedDraftBase } from '@ddlbuilder/workspace-core';
+import {
+  decodeSavedDraftBase,
+  DEFAULT_DRAFT_ID,
+  decodePersistedState,
+} from '@ddlbuilder/workspace-core';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
   SavedTableDraftRecord,
   WorkspaceScope,
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
-import { DEFAULT_DRAFT_ID, decodePersistedState } from '@ddlbuilder/workspace-core';
-import { STORAGE_KEY } from '@/utils/constants';
+import { STORAGE_KEY } from '@/utils/constants/uiDefaults';
 import {
   STORE_NAME,
   WORKSPACE_GLOBAL_DRAFT_STORE_NAME,

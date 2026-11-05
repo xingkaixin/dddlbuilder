@@ -1,10 +1,6 @@
 import { rmSync } from 'node:fs';
-import {
-  e2eD1RuntimeOptions,
-  prepareLocalD1Runtime,
-  REQUIRED_RUNTIME_TABLES,
-  verifyLocalD1Runtime,
-} from './d1-runtime';
+import { e2eD1RuntimeOptions, prepareLocalD1Runtime, verifyLocalD1Runtime } from './d1-runtime';
+import { REQUIRED_RUNTIME_TABLES } from './d1-utils';
 
 rmSync(e2eD1RuntimeOptions.persistDir, { recursive: true, force: true });
 

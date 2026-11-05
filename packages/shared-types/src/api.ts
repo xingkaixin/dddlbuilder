@@ -1,7 +1,5 @@
 import type { MeResponseSchema } from './accountContracts.js';
 
-export * from './accountContracts.js';
-
 import type {
   ApiMetaSchema,
   CurrentWorkspaceResponseSchema,
@@ -65,6 +63,3 @@ export type WorkspaceMigrationConflict = WorkspaceMigrationResult['conflicts'][n
 export type CurrentWorkspaceResponseWithMeta = typeof CurrentWorkspaceResponseSchema.Type;
 
 export type MeApiResponse = typeof MeResponseSchema.Type;
-
-export * from './publications.js';
-export * from './seedScenario.js';

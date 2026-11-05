@@ -11,7 +11,7 @@ import { requestSqlParse } from '@/services/sqlParseService';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
 import { lintSchema, type SchemaLintIssue } from '@/utils/schemaLint';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { applySchemaPatchOperations, parseSchemaPatchOperations } from './schemaPatch';
 import { createWebMcpTools, WebMcpToolError, type ToolInput } from './tools';
 import {

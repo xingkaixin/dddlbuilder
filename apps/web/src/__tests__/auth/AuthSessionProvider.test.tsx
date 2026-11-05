@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
-import { act, render, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
+import { act, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useEffect } from 'react';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';

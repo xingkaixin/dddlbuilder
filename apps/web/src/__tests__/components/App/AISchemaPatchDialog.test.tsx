@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
-import { act, render, screen, fireEvent, waitFor } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
+import { act, screen, fireEvent, waitFor } from '@testing-library/react';
 import { withDefaultEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import { AppDialogLayer } from '@/components/App/AppDialogLayer';
 // 预先加载懒加载的对话框模块，避免首个用例把模块转换耗时算进查询超时。

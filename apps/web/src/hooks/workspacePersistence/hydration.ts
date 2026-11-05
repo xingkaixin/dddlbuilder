@@ -8,7 +8,7 @@ import type {
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { DEFAULT_DRAFT_ID, type WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { buildDraftSummary, type GlobalDraftRecord } from './normalize';
 import type { WorkspaceBootstrap } from './bootstrap';
 

@@ -3,7 +3,7 @@ import { toIsoTimestamp } from './timestamps.js';
 import { DomainError } from './http.js';
 import { getUserSystemConfig } from './userSystemConfig.js';
 
-import type { CreditLedgerItem } from '@ddlbuilder/shared-types/api';
+import type { CreditLedgerItem } from '@ddlbuilder/shared-types/account-contracts';
 
 export type CreditLedgerKind = CreditLedgerItem['kind'];
 

@@ -1,7 +1,5 @@
 import { splitQualifiedName } from '@ddlbuilder/shared-types';
 
-export { splitQualifiedName, getSchemaAndTable } from '@ddlbuilder/shared-types';
-
 import type { DatabaseType, ParsedFieldType } from '@ddlbuilder/shared-types';
 import { TypeMapper } from './TypeMapper.js';
 import { escapeSqlString, getDatabaseFamily } from './databaseFamily.js';

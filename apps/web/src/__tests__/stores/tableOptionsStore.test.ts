@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 
 describe('tableOptionsStore', () => {
   it('应该限制数据库数值选项', () => {

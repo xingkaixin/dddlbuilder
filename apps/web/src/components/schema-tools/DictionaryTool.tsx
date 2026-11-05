@@ -1,6 +1,6 @@
 import { Download, Share2 } from '@/components/icons';
 import { ToolLayout } from './ToolLayout';
-import type { StandardSummary } from '@ddlbuilder/shared-types/api';
+import type { StandardSummary } from '@ddlbuilder/shared-types/publications';
 import { encodeDeliverySnapshot } from '@ddlbuilder/workspace-core';
 import { DictionaryReader } from './DictionaryReader';
 import { PublishPanel } from '@/components/publications/PublishPanel';

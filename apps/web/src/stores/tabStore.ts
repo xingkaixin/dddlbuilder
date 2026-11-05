@@ -6,7 +6,7 @@ import {
 import { create } from 'zustand';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSelection, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 
 export interface WorkspaceTab {
   id: string;

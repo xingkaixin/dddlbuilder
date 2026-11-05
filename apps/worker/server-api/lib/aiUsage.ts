@@ -9,8 +9,6 @@ import type { AIRouteKey } from './aiRouteKey.js';
 import { buildOpenAIConfig, getAIUsageReclaimTtlMs } from './openaiConfig.js';
 import { DomainError } from './http.js';
 
-export type { AIRouteKey } from './aiRouteKey.js';
-
 export type AIUsageReservation<RouteKey extends AIRouteKey = AIRouteKey> = {
   usageEventId: string;
   userId: string;

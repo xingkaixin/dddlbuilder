@@ -32,9 +32,9 @@ export {
   supportsAutoIncrement,
   supportsDefaultCurrentTimestamp,
   supportsOnUpdateCurrentTimestamp,
-  getSchemaAndTable,
   buildQualifiedTableName,
 } from './utils/databaseTypeMapping.js';
+export { getSchemaAndTable } from '@ddlbuilder/shared-types';
 export { buildPrimaryKeyName } from './utils/primaryKeyNaming.js';
 export { getSqlIdentifierKey } from './utils/sqlIdentifiers.js';
 export {
@@ -46,7 +46,8 @@ export {
   truncateIdentifierName,
   getIdentifierNameMaxLength,
 } from './utils/identifierNaming.js';
-export { generateAlterDDL, generateRollbackDDL } from './utils/alter-ddl/index.js';
+export { generateAlterDDL } from './utils/alter-ddl/generateAlterDDL.js';
+export { generateRollbackDDL } from './utils/alter-ddl/generateRollbackDDL.js';
 export {
   supportsStorageOption,
   supportsEngineOption,
@@ -92,7 +93,22 @@ export {
   type MigrationAssessmentItem,
   type MigrationAssessmentLevel,
 } from './utils/migrationAssessment.js';
-export * from './data-import/types.js';
+export {
+  type DataImportDialect,
+  type DataDateFormat,
+  type BusinessData,
+  type DataImportOptions,
+  DEFAULT_DATA_IMPORT_OPTIONS,
+  BUSINESS_DATA_LIMITS,
+  type DataImportColumn,
+  type DataImportTarget,
+  type DataImportIssueCode,
+  type DataImportIssue,
+  type DataImportResult,
+  dataImportValue,
+  isDataImportName,
+  utf8Length,
+} from './data-import/types.js';
 export { inferDataImportColumns } from './data-import/inference.js';
 export {
   existingDataImportTarget,

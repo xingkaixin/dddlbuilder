@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { isWorkspaceTabDirty, useTabStore } from '@/stores/tabStore';
 import { createPersistedState } from '@/__tests__/utils/testFactories';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 
 function resetTabStore() {

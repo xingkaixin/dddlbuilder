@@ -1,9 +1,6 @@
 import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
-import {
-  escapeSingleQuotes,
-  formatSqlTableName,
-  getSchemaAndTable,
-} from '../utils/databaseTypeMapping';
+import { escapeSingleQuotes, formatSqlTableName } from '../utils/databaseTypeMapping';
+import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 import { formatSqlIdentifier, unquoteSqlIdentifier } from '../utils/sqlIdentifiers';
 import { DIALECT_PROFILES } from './dialectProfiles';
 

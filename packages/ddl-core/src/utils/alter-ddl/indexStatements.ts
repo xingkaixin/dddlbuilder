@@ -3,11 +3,8 @@ import { formatSqlIdentifier } from '../sqlIdentifiers';
 import { getDatabaseFamily } from '../databaseFamily';
 import { resolveIndexName } from '../primaryKeyNaming';
 import type { IndexDiff } from '../tableDiff';
-import {
-  buildQualifiedTableName,
-  getSchemaAndTable,
-  formatSqlTableName,
-} from '../databaseTypeMapping';
+import { buildQualifiedTableName, formatSqlTableName } from '../databaseTypeMapping';
+import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 
 export function generateDropIndex(
   tableName: string,

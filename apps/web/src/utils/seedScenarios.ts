@@ -1,4 +1,4 @@
-import { decodeSeedScenario, type SeedScenario } from '@ddlbuilder/shared-types/api';
+import { decodeSeedScenario, type SeedScenario } from '@ddlbuilder/shared-types/seed-scenario';
 
 const storageKey = 'ddlbuilder:seed-scenarios:v1';
 

@@ -1,4 +1,4 @@
-import type { AICommentRequest } from '@ddlbuilder/shared-types/ai-generate';
+import type { AICommentRequest } from '@ddlbuilder/shared-types/ai-contracts';
 
 const TARGET_LANGUAGE: Record<AICommentRequest['targetLocale'], string> = {
   'zh-CN': '中文',

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { type FieldRow } from '@ddlbuilder/shared-types';
 import { getSqlIdentifierKey } from '@ddlbuilder/ddl-core';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
 import { Button } from '@/components/ui/button';

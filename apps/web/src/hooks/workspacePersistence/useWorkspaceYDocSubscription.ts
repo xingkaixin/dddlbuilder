@@ -21,12 +21,12 @@ import {
   WorkspaceYDocOrigin,
   upsertSavedDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { pickInitialDraft } from './hydration';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 import { mergeSchemaStates } from '@/services/schemaStateMerge';
 import { isSameWorkspaceSource } from './normalize';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { toEditorSessionSnapshot } from '@/stores/editorDocumentCodec';
 import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { TableMiscConfig, HivePartitionConfig } from '@ddlbuilder/shared-types';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 
 export interface UseTableOptionsReturn {
   tableMiscConfig: TableMiscConfig;

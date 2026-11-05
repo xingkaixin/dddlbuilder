@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, cleanup, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { fireEvent, cleanup, screen, waitFor } from '@testing-library/react';
 import { DictionaryTool } from '@/components/schema-tools/DictionaryTool';
 import { parseSqlSnapshot } from '@/components/schema-tools/sqlSnapshot';
 

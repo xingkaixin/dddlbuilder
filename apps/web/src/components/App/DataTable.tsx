@@ -8,7 +8,9 @@ import { DragDropVerticalIcon } from '@/components/icons';
 import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import { normalizeAddCount, type EnumValueMeta } from '@ddlbuilder/shared-types';
-import { buildDuplicateNameSet, useAppUiStore, useEditorStore } from '@/stores';
+import { buildDuplicateNameSet } from '@/stores/fieldStore';
+import { useAppUiStore } from '@/stores/appUiStore';
+import { useEditorStore } from '@/stores/editorStore';
 import {
   FieldRowStateContext,
   useFieldColumns,

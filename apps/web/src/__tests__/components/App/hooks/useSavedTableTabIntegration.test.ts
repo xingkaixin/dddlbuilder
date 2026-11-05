@@ -7,7 +7,7 @@ import { useTabLifecycle } from '@/components/App/hooks/useTabLifecycle';
 import { useTabStore } from '@/stores/tabStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 
 describe('useSavedTableTabIntegration', () => {
   beforeEach(() => useTabStore.setState({ tabs: [], activeTabId: null }));

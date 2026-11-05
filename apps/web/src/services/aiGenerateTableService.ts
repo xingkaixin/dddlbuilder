@@ -3,9 +3,9 @@ import { readTextStream } from '@/services/streamingText';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
 import {
   decodeGeneratedTable,
-  type ConversationMessage,
   type GeneratedTableSchema,
 } from '@ddlbuilder/shared-types/ai-generate';
+import { type ConversationMessage } from '@ddlbuilder/shared-types/ai-contracts';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import { i18n } from '@/i18n';

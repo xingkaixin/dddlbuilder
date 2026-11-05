@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupSchemaTools } from '@/__tests__/utils/schemaTools';
-import { decodeSeedScenario } from '@ddlbuilder/shared-types/api';
+import { decodeSeedScenario } from '@ddlbuilder/shared-types/seed-scenario';
 import { readSeedScenarios, storeSeedScenario } from '@/utils/seedScenarios';
 
 let harness: ReturnType<typeof setupSchemaTools>;
