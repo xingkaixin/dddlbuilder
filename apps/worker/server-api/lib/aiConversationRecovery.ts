@@ -37,7 +37,9 @@ const recoverOperation = async (
 
   if (response.status === 409 && expired) {
     await settleAICalls(env, operation.id, operation.route_key);
-    await env.USER_DB.prepare('UPDATE ai_operations SET completed_at = ? WHERE id = ?')
+    await env.USER_DB.prepare(
+      'UPDATE ai_operations SET completed_at = COALESCE(completed_at, ?) WHERE id = ?',
+    )
       .bind(Date.now(), operation.id)
       .run();
   } else if (!response.ok) throw new Error(`AI recovery HTTP ${response.status}`);

@@ -339,7 +339,7 @@ export class AIConversationDurableObject {
       operation.status === 'succeeded',
     );
     const record = await this.env.USER_DB.prepare(
-      'UPDATE ai_operations SET completed_at = ? WHERE id = ? RETURNING user_id, submitted_at',
+      'UPDATE ai_operations SET completed_at = COALESCE(completed_at, ?) WHERE id = ? RETURNING user_id, submitted_at',
     )
       .bind(Date.now(), operation.id)
       .first<Pick<AIOperation, 'user_id' | 'submitted_at'>>();
@@ -502,7 +502,9 @@ export class AIConversationDurableObject {
       await this.conversation.abort(context);
     } else {
       if (!access.session_active) {
-        await this.env.USER_DB.prepare('UPDATE ai_operations SET stopped_at = ? WHERE id = ?')
+        await this.env.USER_DB.prepare(
+          'UPDATE ai_operations SET stopped_at = COALESCE(stopped_at, ?) WHERE id = ?',
+        )
           .bind(Date.now(), operation.id)
           .run();
         await this.conversation.abort(context);
@@ -863,7 +865,9 @@ export class AIConversationDurableObject {
 
       await this.runtime().harness.close(context);
       await this.ctx.storage.deleteAll();
-      await this.env.USER_DB.prepare('UPDATE ai_conversations SET deleted_at = ? WHERE id = ?')
+      await this.env.USER_DB.prepare(
+        'UPDATE ai_conversations SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?',
+      )
         .bind(Date.now(), operation.conversationId)
         .run();
 

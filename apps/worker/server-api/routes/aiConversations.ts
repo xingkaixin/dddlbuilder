@@ -270,7 +270,9 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
       await forward(c, conversation.id, operation.id, user.userId, '/stop');
     }
 
-    await c.env.USER_DB.prepare('UPDATE ai_conversations SET deleted_at = ? WHERE id = ?')
+    await c.env.USER_DB.prepare(
+      'UPDATE ai_conversations SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?',
+    )
       .bind(Date.now(), conversation.id)
       .run();
 
