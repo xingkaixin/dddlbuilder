@@ -53,6 +53,11 @@ export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortabl
 
   const rowIds = useMemo(() => rows.map((row) => row.id), [rows]);
 
+  // A cancelled drag never reaches handleDragEnd, so the next drag must not inherit its target.
+  const resetDragTarget = useCallback(() => {
+    lastOverIdRef.current = null;
+  }, []);
+
   const handleDragMove = useCallback((event: DragMoveEvent) => {
     if (event.over) {
       lastOverIdRef.current = String(event.over.id);
@@ -85,6 +90,7 @@ export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortabl
   return {
     sensors,
     rowIds,
+    resetDragTarget,
     handleDragMove,
     handleDragEnd,
   };

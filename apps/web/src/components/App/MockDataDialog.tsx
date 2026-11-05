@@ -25,6 +25,7 @@ import {
 import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
 import { generateMockData, downloadFile, type MockExportFormat } from '@/utils/mockDataGenerator';
 import { useTranslation } from 'react-i18next';
+import { useTimers } from '@/hooks/useTimers';
 
 interface MockDataDialogProps {
   open: boolean;
@@ -95,6 +96,7 @@ export const MockDataDialog = memo<MockDataDialogProps>(
       mockDataReducer,
       initialMockDataState,
     );
+    const { schedule, clearAll } = useTimers();
 
     const output = useMemo(() => {
       if (!open) return null;
@@ -114,11 +116,12 @@ export const MockDataDialog = memo<MockDataDialogProps>(
 
     const handleCopy = useCallback(async () => {
       const copied = await copyText(currentContent);
+      clearAll();
       dispatch({ type: 'copyFinished', copied });
 
       if (!copied) return;
-      window.setTimeout(() => dispatch({ type: 'copyExpired' }), 2000);
-    }, [currentContent]);
+      schedule(() => dispatch({ type: 'copyExpired' }), 2000);
+    }, [clearAll, currentContent, schedule]);
 
     const handleDownload = useCallback(() => {
       const safeName = (tableName || 'table').replace(/[^\w-]/g, '_');

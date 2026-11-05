@@ -154,11 +154,16 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
             }}
             onMouseDown={() => {
               isInteractingRef.current = true;
-            }}
-            onMouseUp={() => {
-              setTimeout(() => {
-                isInteractingRef.current = false;
-              }, 100);
+              // Listen on document: a press released outside the portal never reaches its mouseup.
+              document.addEventListener(
+                'mouseup',
+                () => {
+                  setTimeout(() => {
+                    isInteractingRef.current = false;
+                  }, 100);
+                },
+                { once: true },
+              );
             }}
           >
             <Button

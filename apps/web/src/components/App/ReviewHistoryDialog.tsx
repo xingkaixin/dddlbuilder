@@ -73,7 +73,7 @@ interface HistoryDialogState {
 }
 
 type HistoryDialogEvent =
-  | { type: 'reviewToggled' | 'deleteRequested'; id: string }
+  | { type: 'reviewToggled' | 'deleteRequested' | 'reviewDeleted'; id: string }
   | { type: 'deleteDismissed' };
 
 const initialHistoryDialogState: HistoryDialogState = { expandedId: null, deleteConfirmId: null };
@@ -89,6 +89,11 @@ function historyDialogReducer(
       return { ...state, deleteConfirmId: event.id };
     case 'deleteDismissed':
       return { ...state, deleteConfirmId: null };
+    case 'reviewDeleted':
+      return {
+        expandedId: state.expandedId === event.id ? null : state.expandedId,
+        deleteConfirmId: null,
+      };
   }
 }
 
@@ -126,7 +131,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
 
       try {
         await removeReview({ id: deleteConfirmId, reviewTarget: target });
-        dispatch({ type: 'deleteDismissed' });
+        dispatch({ type: 'reviewDeleted', id: deleteConfirmId });
         await queryClient.invalidateQueries({ queryKey: reviewHistoryQueryKeys.list(target) });
         showToast(t('reviewHistory.deleteSuccess'));
       } catch {

@@ -71,7 +71,7 @@ export function useSuggestionAnimation() {
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const triggerIndexAnimation = useCallback((indexId: string, kind: IndexAnimationType) => {
-    const timeoutKey = `index-${indexId}`;
+    const timeoutKey = `index-${kind}-${indexId}`;
     clearTimeout(timeoutsRef.current.get(timeoutKey));
 
     dispatch({ type: 'indexAnimationStarted', indexId, kind });

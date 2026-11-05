@@ -387,11 +387,12 @@ export const DataTable = memo<DataTableProps>(
       [clearAll, schedule],
     );
 
-    const { sensors, rowIds, handleDragMove, handleDragEnd } = useSortableFieldRows({
-      rows,
-      setRows,
-      onDragResult: handleDragResult,
-    });
+    const { sensors, rowIds, resetDragTarget, handleDragMove, handleDragEnd } =
+      useSortableFieldRows({
+        rows,
+        setRows,
+        onDragResult: handleDragResult,
+      });
 
     const { getStickyLeft, frozenAreaWidth, effectiveFreezeColumns } = useFreezeColumns(
       COLUMN_WIDTHS,
@@ -462,8 +463,10 @@ export const DataTable = memo<DataTableProps>(
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            onDragStart={resetDragTarget}
             onDragMove={handleDragMove}
             onDragEnd={handleDragEnd}
+            onDragCancel={resetDragTarget}
           >
             <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
               <table
