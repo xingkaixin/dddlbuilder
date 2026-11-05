@@ -9,10 +9,16 @@
     {
       "name": "anti-slop-effect",
       "specifier": "./tools/oxlint/anti-slop/effect/index.ts"
+    },
+    {
+      "name": "project",
+      "specifier": "./tools/oxlint/project/index.ts"
     }
   ],
   "rules": {
     "oxc/no-accumulating-spread": "error",
+    "import/no-default-export": "error",
+    "project/no-re-export": "error",
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-reduce-accumulator-copy": "error",
     "anti-slop/no-chained-type-assertions": "error",
@@ -160,6 +166,25 @@
       "files": ["apps/web/src/__tests__/**"],
       "rules": {
         "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["**/*.config.{ts,js}"],
+      "rules": {
+        "import/no-default-export": "off"
+      }
+    },
+    {
+      "files": ["packages/*/src/index.ts", "packages/ddl-core/src/parser/index.ts"],
+      "rules": {
+        "project/no-re-export": "off"
+      }
+    },
+    {
+      "files": ["apps/worker/api/index.ts"],
+      "rules": {
+        "import/no-default-export": "off",
+        "project/no-re-export": "off"
       }
     }
   ],
