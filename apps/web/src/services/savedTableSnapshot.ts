@@ -1,6 +1,6 @@
 import { withDefaultEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { mergeSchemaStates } from './schemaStateMerge';
 
 interface SavedTableSnapshotRecord {

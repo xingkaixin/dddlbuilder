@@ -9,7 +9,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import {
   readWorkspaceIdentity,
@@ -28,7 +28,6 @@ import { useAuthAccountActions, type AuthAccountActions } from './useAuthAccount
 import { executeWorkspaceSignOut } from './workspaceSignOut';
 
 export { fetchCurrentUser, fetchCreditBalance };
-export { translateAuthError } from './authErrors';
 
 export type AuthIdentityState = {
   status: 'loading' | 'signed_out' | 'signed_in';

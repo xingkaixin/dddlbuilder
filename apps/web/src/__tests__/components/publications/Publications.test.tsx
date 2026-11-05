@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Schema from 'effect/Schema';
-import { cleanup, fireEvent, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { setupSchemaTools, renderTool } from '@/__tests__/utils/schemaTools';
 import { PublishPanel } from '@/components/publications/PublishPanel';
-import PublicationPage from '@/components/publications/PublicationPage';
+import { PublicationPage } from '@/components/publications/PublicationPage';
 import {
   PublicationWriteSchema,
   CommentWriteSchema,
   type Publication,
   type PublicationComment,
-} from '@ddlbuilder/shared-types/api';
+} from '@ddlbuilder/shared-types/publications';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 
 const table: PersistedState = {

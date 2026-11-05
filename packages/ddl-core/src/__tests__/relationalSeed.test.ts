@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
 import type { PersistedState, FieldRow, ForeignKeyDefinition } from '@ddlbuilder/shared-types';
-import type { SeedRule } from '@ddlbuilder/shared-types/api';
+import type { SeedRule } from '@ddlbuilder/shared-types/seed-scenario';
 import { generateRelationalSeed } from '../utils/relationalSeed';
 import { snapshotTableKey } from '../utils/schemaSnapshot';
 

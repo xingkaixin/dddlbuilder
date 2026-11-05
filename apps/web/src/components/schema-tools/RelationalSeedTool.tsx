@@ -1,6 +1,6 @@
 import { ToolLayout } from './ToolLayout';
 import { SeedScenarioPanel } from './SeedScenarioPanel';
-import type { SeedRule, SeedScenario } from '@ddlbuilder/shared-types/api';
+import type { SeedRule, SeedScenario } from '@ddlbuilder/shared-types/seed-scenario';
 import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PersistedState } from '@ddlbuilder/shared-types';

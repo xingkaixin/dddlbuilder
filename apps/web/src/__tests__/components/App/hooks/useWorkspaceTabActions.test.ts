@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useWorkspaceTabActions } from '@/components/App/hooks/useWorkspaceTabActions';
-import { useTabStore } from '@/stores';
+import { useTabStore } from '@/stores/tabStore';
 
 type WorkspaceTabActionsParams = Parameters<typeof useWorkspaceTabActions>[0];
 

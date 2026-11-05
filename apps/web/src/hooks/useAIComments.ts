@@ -2,7 +2,7 @@ import { useCallback, useReducer } from 'react';
 import type { AICommentMode, AICommentRequest, AICommentResult } from '@ddlbuilder/shared-types';
 import { requestAIComments, assertAICommentTarget } from '@/services/aiCommentService';
 import { useLocale } from '@/i18n/LocaleContext';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { useAIRequestAccess } from './useAIRequestAccess';
 import { useLatestRequest } from './useLatestRequest';
 

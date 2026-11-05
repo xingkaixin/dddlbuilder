@@ -23,33 +23,6 @@ import {
   type WorkspaceEntityWrite,
 } from './workspaceEntityDeletion';
 
-export { openDb } from './workspaceDb';
-export {
-  DB_NAME,
-  DB_VERSION,
-  FOLDER_STORE_NAME,
-  REVIEW_STORE_NAME,
-  STORE_NAME,
-  TABLE_TEMPLATE_STORE_NAME,
-  TEMPLATE_STORE_NAME,
-  VERSION_STORE_NAME,
-  WORKSPACE_ENTITY_META_STORE_NAME,
-  WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
-  WORKSPACE_SAVED_DRAFTS_STORE_NAME,
-  WORKSPACE_SESSION_STORE_NAME,
-} from './workspaceDb';
-export type {
-  FieldTemplate,
-  SavedTableMetadata,
-  SavedTableRecord,
-  TableBlueprint,
-  TableFolder,
-  TableTemplate,
-  TableVersion,
-  TableVersionMetadata,
-  TemplateField,
-} from './workspaceStorageTypes';
-
 export const DEFAULT_SAVED_TABLE_NAME = '未命名表';
 
 const withScopeKey = (scope: WorkspaceScope, normalizedName: string) =>

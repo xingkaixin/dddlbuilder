@@ -4,9 +4,9 @@ import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { TableFolder } from '@/utils/workspaceStorageTypes';
 import type { WorkspaceDraftCatalog } from '@/hooks/usePersistedState';
-import { useTabStore } from '@/stores';
+import { useTabStore } from '@/stores/tabStore';
 import { findFolderTreeNode, getFolderTreeNodeIds } from '@/utils/folderModel';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 type FolderDialogsState = {
   isFolderDialogOpen: boolean;

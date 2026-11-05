@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
+import { fireEvent, screen } from '@testing-library/react';
 import { EditorSurface, type EditorSurfaceModel } from '@/components/App/EditorSurface';
 import { describe, expect, it, vi } from 'vitest';
 

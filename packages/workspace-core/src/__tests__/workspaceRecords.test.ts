@@ -3,14 +3,17 @@ import * as Y from 'yjs';
 import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import {
   listWorkspaceDrafts,
-  listWorkspaceSavedTables,
   listWorkspaceTrashedDrafts,
-  listWorkspaceTrashedSavedTables,
   subscribeWorkspaceYDoc,
   upsertWorkspaceDraft,
-  upsertWorkspaceSavedTable,
 } from '../workspaceRecords';
-import { deleteWorkspaceSavedDraft, upsertWorkspaceSavedDraft } from '../workspaceSavedRecords';
+import {
+  listWorkspaceSavedTables,
+  listWorkspaceTrashedSavedTables,
+  upsertWorkspaceSavedTable,
+  deleteWorkspaceSavedDraft,
+  upsertWorkspaceSavedDraft,
+} from '../workspaceSavedRecords';
 
 const createState = (tableName: string): SchemaDocumentState => ({
   schemaName: 'public',

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import SqlCodeBlock from '@/components/App/SqlCodeBlock';
+import { SqlCodeBlock } from '@/components/App/SqlCodeBlock';
 
 const theme = vi.hoisted(() => ({ resolvedTheme: 'light' }));
 

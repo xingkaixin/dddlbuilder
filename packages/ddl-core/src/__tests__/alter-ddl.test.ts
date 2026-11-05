@@ -11,16 +11,16 @@ import { diffPersistedState } from '../utils/tableDiff';
 import { buildDDL } from '../utils/ddlGenerators';
 import { buildDialectDefaultClause } from '../strategies/dialectColumn';
 import type { TableDiff, FieldDiff, ForeignKeyDiff, RenameFieldDiff } from '../utils/tableDiff';
+import { generateAlterDDL } from '../utils/alter-ddl/generateAlterDDL';
+import { generateRollbackDDL } from '../utils/alter-ddl/generateRollbackDDL';
 import {
-  generateAlterDDL,
-  generateRollbackDDL,
   generateTableCommentAlter,
   generateRenameColumn,
   generateAddColumn,
   generateModifyColumn,
-  generateDropIndex,
-  generateAddForeignKey,
-} from '../utils/alter-ddl';
+} from '../utils/alter-ddl/columnStatements';
+import { generateDropIndex } from '../utils/alter-ddl/indexStatements';
+import { generateAddForeignKey } from '../utils/alter-ddl/foreignKeyStatements';
 import { generateRenameTable } from '../utils/alter-ddl/tableStatements';
 
 const dependencyNotice =

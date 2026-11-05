@@ -17,7 +17,7 @@ import {
 } from '@/utils/folderModel';
 import { useWorkspaceAuthority } from './useWorkspaceAuthority';
 import { requireReadyWorkspaceStorage } from './useWorkspaceStorageTarget';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 export function useFolderPersistence() {
   const authority = useWorkspaceAuthority();

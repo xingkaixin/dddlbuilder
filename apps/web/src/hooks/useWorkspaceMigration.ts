@@ -6,8 +6,8 @@ import {
   clearWorkspaceMigrationDismissed,
   commitWorkspaceMigration,
   dismissWorkspaceMigration,
-  type WorkspaceMigrationPayload,
 } from '@/services/workspaceMigrationService';
+import { type WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
 import {
   workspaceMigrationProposalOptions,
   workspaceMigrationQueryKeys,

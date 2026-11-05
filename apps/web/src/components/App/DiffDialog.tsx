@@ -13,7 +13,9 @@ import { generateAlterDDL, generateRollbackDDL, hasTableChanges } from '@ddlbuil
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 
-const SqlCodeBlock = lazy(() => import('./SqlCodeBlock'));
+const SqlCodeBlock = lazy(() =>
+  import('./SqlCodeBlock').then((m) => ({ default: m.SqlCodeBlock })),
+);
 
 interface DiffDialogProps {
   open: boolean;

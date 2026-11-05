@@ -4,16 +4,16 @@ import {
   AIIndexProviderSchema,
 } from './aiProviderContracts.js';
 import * as Schema from 'effect/Schema';
+import { GeneratedTableProviderSchema } from '@ddlbuilder/shared-types/ai-generate';
 import {
   AIExplainRequestSchema,
   AIReviewRequestSchema,
   AIGenerateTableRequestSchema,
   AICommentRequestSchema,
   AIIndexAdvisorRequestSchema,
-  GeneratedTableProviderSchema,
   AICommentResultSchema,
   AIIndexAdvisorProviderResultSchema,
-} from '@ddlbuilder/shared-types/ai-generate';
+} from '@ddlbuilder/shared-types/ai-contracts';
 import {
   type DDLReviewResultSchema,
   ddlReviewProviderSchema,

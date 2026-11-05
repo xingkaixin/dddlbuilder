@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useTabLifecycle } from '@/components/App/hooks/useTabLifecycle';
-import { useTabStore } from '@/stores';
+import { useTabStore } from '@/stores/tabStore';
 
 const mocks = vi.hoisted(() => ({ applySavedState: vi.fn() }));
 

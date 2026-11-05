@@ -11,12 +11,10 @@ import type {
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
-import {
-  buildSchemaStateSignature,
-  normalizeSchemaStateSignature,
-} from '@/utils/persistedStateSignature';
+import { normalizeSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { diffPersistedState, type TableDiff } from '@ddlbuilder/ddl-core';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 
 interface UseDerivedTableStateDeps {
   // 基础表数据

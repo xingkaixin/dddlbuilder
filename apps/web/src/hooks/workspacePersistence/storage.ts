@@ -1,4 +1,4 @@
-import { STORAGE_KEY } from '@/utils/constants';
+import { STORAGE_KEY } from '@/utils/constants/uiDefaults';
 
 const SHARE_UUID_REGEX =
   /^\/share\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;

@@ -43,7 +43,9 @@ import {
   retryPendingWorkspaceCleanup,
 } from '@/services/workspaceAccountService';
 import { isWorkspaceWriteTargetPending } from '@/services/workspaceYDocAuthority';
-import { useAppUiStore, useEditorStore, useTabStore } from '@/stores';
+import { useAppUiStore } from '@/stores/appUiStore';
+import { useEditorStore } from '@/stores/editorStore';
+import { useTabStore } from '@/stores/tabStore';
 
 type WorkspaceYDocContextValue = {
   doc: Y.Doc | null;

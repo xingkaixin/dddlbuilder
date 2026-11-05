@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
+import { fireEvent, screen } from '@testing-library/react';
 import { ForeignKeyPanel } from '@/components/App/ForeignKeyPanel';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 
 describe('ForeignKeyPanel dialect actions', () => {
   beforeEach(() => {

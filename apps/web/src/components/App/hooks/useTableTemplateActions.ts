@@ -2,7 +2,7 @@ import { useCallback, useReducer } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { TableBlueprint, TableTemplate } from '@/hooks/useTableTemplates';
 import { applyBlueprintToState, createBlueprintFromState } from '@/utils/tableTemplates';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 type TableTemplateDialogsState = {
   isManagerOpen: boolean;

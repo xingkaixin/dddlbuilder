@@ -8,7 +8,7 @@ import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
 import { INITIAL_VERSION_MESSAGE_KEY } from '@/utils/tableVersions';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 
 type SaveDialogData = {
   name: string;

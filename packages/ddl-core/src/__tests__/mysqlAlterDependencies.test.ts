@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { withDefaultEditorSession, type IndexDefinition } from '@ddlbuilder/shared-types';
 import { diffPersistedState } from '../utils/tableDiff';
-import { generateAlterDDL, generateRollbackDDL } from '../utils/alter-ddl';
+import { generateAlterDDL } from '../utils/alter-ddl/generateAlterDDL';
+import { generateRollbackDDL } from '../utils/alter-ddl/generateRollbackDDL';
 
 const dependencyNotice =
   '-- Manual migration required for foreign keys from other tables that reference changed columns or keys. Their definitions are not available in this single-table diff; coordinate those changes before running this SQL.\n\n';

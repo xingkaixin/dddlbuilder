@@ -39,8 +39,6 @@ import {
 } from '@/utils/workspaceStateDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
-export type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
-
 const hasSchemaDocumentContent = (state: SchemaDocumentState): boolean =>
   state.objectType === 'view'
     ? Boolean(state.viewDefinition?.trim())

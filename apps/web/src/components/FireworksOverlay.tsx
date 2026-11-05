@@ -59,7 +59,7 @@ const subscribeReducedMotion = (onChange: () => void) => {
 
 const getReducedMotion = () => window.matchMedia(REDUCED_MOTION_QUERY).matches;
 
-export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) {
+export function FireworksOverlay({ onComplete }: FireworksOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [{ stars, fireworkCount, showClose }, dispatch] = useReducer(

@@ -4,7 +4,7 @@ import type { EditorLayout } from '@/stores/preferencesStore';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { DATABASE_OPTIONS } from './databaseOptions';
 import { TableConfig } from './TableConfig';
 import { SchemaLintPanel } from './SchemaLintPanel';

@@ -3,7 +3,7 @@ import type * as Y from 'yjs';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { useWorkspaceYDocDocument } from '@/providers/WorkspaceYDocProvider';
 import { WorkspaceYDocOrigin } from '@/services/workspaceYDocAdapter';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 type WorkspaceYDocGatewayOptions = {
   enabled?: boolean;

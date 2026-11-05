@@ -16,7 +16,7 @@ import {
 } from './toolCatalog';
 import { openTool, type ToolActions } from './toolActions';
 
-const ToolDetail = lazy(() => import('./ToolDetail'));
+const ToolDetail = lazy(() => import('./ToolDetail').then((m) => ({ default: m.ToolDetail })));
 
 interface ToolsPageProps {
   toolId: string | null;
@@ -154,7 +154,7 @@ function ToolList({ actions }: { actions: ToolActions }) {
   );
 }
 
-export default function ToolsPage({ toolId, actions }: ToolsPageProps) {
+export function ToolsPage({ toolId, actions }: ToolsPageProps) {
   const { t } = useTranslation();
   const scope = useWorkspaceScope();
 

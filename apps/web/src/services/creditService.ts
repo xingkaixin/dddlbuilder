@@ -2,7 +2,7 @@ import {
   decodeCreditBalanceResponse,
   decodeCreditLedgerResponse,
   type CreditLedgerItem as WireCreditLedgerItem,
-} from '@ddlbuilder/shared-types/api';
+} from '@ddlbuilder/shared-types/account-contracts';
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
 import * as Option from 'effect/Option';
 import { ApiError } from '@/services/apiError';

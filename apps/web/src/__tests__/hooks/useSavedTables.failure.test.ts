@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook as testingLibraryRenderHook, act, waitFor } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import type { SavedTableRecord } from '@/utils/savedTablesDb';
+import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { AdminUserDetailView } from '@/admin/AdminUserDetail';
 
 const mocks = vi.hoisted(() => ({

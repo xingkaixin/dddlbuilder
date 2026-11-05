@@ -1,5 +1,5 @@
 import * as Schema from 'effect/Schema';
-import { PublicationWriteSchema, CommentWriteSchema } from '@ddlbuilder/shared-types/api';
+import { PublicationWriteSchema, CommentWriteSchema } from '@ddlbuilder/shared-types/publications';
 import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest, resolveAuthenticatedUser } from '../lib/auth.js';

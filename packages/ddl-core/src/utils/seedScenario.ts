@@ -1,5 +1,5 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { SeedRule } from '@ddlbuilder/shared-types/api';
+import type { SeedRule } from '@ddlbuilder/shared-types/seed-scenario';
 import {
   createSeedColumn,
   seedBaseType,

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { VersionHistoryTarget } from '@/stores';
+import type { VersionHistoryTarget } from '@/stores/appUiStore';
 import type { BuilderTab } from '@/utils/tabUtils';
 
 interface UseNavigationActionsParams {

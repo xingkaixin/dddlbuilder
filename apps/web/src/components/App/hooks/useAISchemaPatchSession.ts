@@ -2,7 +2,8 @@ import { useCallback, useMemo, useReducer } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import type { TableTemplate } from '@/hooks/useTableTemplates';
-import { useAIGenerateTable, type GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
+import { useAIGenerateTable } from '@/hooks/useAIGenerateTable';
+import { type GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { useTranslation } from 'react-i18next';
 import {
   buildAISchemaChanges,

@@ -10,9 +10,9 @@ import { buildQualifiedTableName, supportsMysqlPartition } from '@ddlbuilder/ddl
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useOrmGeneration } from '@/hooks/useOrmGeneration';
 import { useTabStore, type WorkspaceTab } from '@/stores/tabStore';
-import { buildNormalizedFields } from '@/stores';
+import { buildNormalizedFields } from '@/stores/fieldStore';
 import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { useToast } from '@/hooks/useToast';
 import { lintSchema } from '@/utils/schemaLint';
 import { useDerivedTableState } from './useDerivedTableState';

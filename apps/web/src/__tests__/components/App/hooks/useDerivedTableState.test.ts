@@ -2,11 +2,11 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 import { SqlParser } from '@ddlbuilder/ddl-core/parser';
 import { hasTableChanges } from '@ddlbuilder/ddl-core';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { useDerivedTableState } from '@/components/App/hooks/useDerivedTableState';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 
 afterEach(() => {
   cleanup();

@@ -1,7 +1,7 @@
 import * as Result from 'effect/Result';
 import * as Schema from 'effect/Schema';
 import * as SchemaIssue from 'effect/SchemaIssue';
-import type { ApiErrorCode } from './http.js';
+import type { ApiErrorCode } from '@ddlbuilder/shared-types/api';
 
 export type AIRequestRejection = { status: 400 | 413; code: ApiErrorCode; message: string };
 

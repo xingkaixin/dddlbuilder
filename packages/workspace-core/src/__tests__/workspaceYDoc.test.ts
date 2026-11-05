@@ -11,7 +11,7 @@ import {
   renameWorkspaceSavedTable,
   upsertWorkspaceSavedDraft,
   upsertWorkspaceSavedTable,
-} from '../workspaceRecords';
+} from '../workspaceSavedRecords';
 import {
   exportWorkspaceYDocToSnapshot,
   mergeWorkspaceSnapshotIntoYDoc,

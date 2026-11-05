@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import {
   buildDictionary,
   dictionaryHtml,

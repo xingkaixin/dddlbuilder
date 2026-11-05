@@ -7,7 +7,7 @@ import {
   upsertSavedDraftInYDoc,
   upsertSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   schemaName: 'public',

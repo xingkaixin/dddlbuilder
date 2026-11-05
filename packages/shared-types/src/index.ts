@@ -84,8 +84,10 @@ export type {
   GeneratedField,
   GeneratedIndex,
   GeneratedDesignDecision,
-  ConversationMessage,
   PartialTableSchema,
+} from './aiGenerate.js';
+export type {
+  ConversationMessage,
   AICommentMode,
   AICommentRequest,
   AICommentResult,
@@ -97,7 +99,7 @@ export type {
   AIIndexAdvisorRecommendation,
   AIIndexAdvisorRecommendationCategory,
   AIIndexAdvisorResult,
-} from './aiGenerate.js';
+} from './aiContracts.js';
 
 export { splitQualifiedName, getSchemaAndTable } from './qualifiedName';
 

@@ -1,7 +1,7 @@
 import type { DatabaseType, IndexDefinition } from '@ddlbuilder/shared-types';
 import type { IndexDiff, ModifyFieldDiff, RenameFieldDiff, TableDiff } from '../tableDiff';
 import { getDatabaseFamily } from '../databaseFamily';
-import { getSchemaAndTable } from '../databaseTypeMapping';
+import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 import { getSqlIdentifierKey } from '../sqlIdentifiers';
 import { altersSqlServerColumn } from './sqlServerColumnStatements';
 

@@ -27,7 +27,7 @@ import {
   TableProperties,
   WandSparkles,
 } from '@/components/icons';
-import { COLUMN_HEADERS } from '@/utils/constants';
+import { COLUMN_HEADERS } from '@/utils/constants/uiDefaults';
 import { FIELD_COLUMNS, usePreferencesStore } from '@/stores/preferencesStore';
 import { FIELD_COLUMN_LABELS } from './fieldColumnLabels';
 import { cn } from '@/lib/utils';

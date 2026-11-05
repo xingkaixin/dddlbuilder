@@ -1,5 +1,5 @@
 import type { DatabaseType, IndexDefinition } from '@ddlbuilder/shared-types';
-import { getSchemaAndTable } from './databaseTypeMapping.js';
+import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 import {
   DEFAULT_IDENTIFIER_NAME_MAX_LENGTH,
   getIdentifierNameMaxLength,

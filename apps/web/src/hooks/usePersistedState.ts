@@ -16,7 +16,7 @@ import {
 import {
   buildPersistedStateSignature,
   buildSchemaStateSignature,
-} from '@/utils/persistedStateSignature';
+} from '@ddlbuilder/workspace-core';
 import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { useWorkspaceScopeState } from '@/hooks/useWorkspaceScope';
 import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
@@ -41,7 +41,7 @@ import {
 } from './workspacePersistence/useWorkspaceYDocSubscription';
 import { useWorkspaceSnapshotRefresh } from './workspacePersistence/useWorkspaceSnapshotRefresh';
 import { useWorkspaceStorageTarget } from './workspacePersistence/useWorkspaceStorageTarget';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { toEditorSessionSnapshot } from '@/stores/editorDocumentCodec';
 
 const isSamePersistedState = (left: PersistedState, right: PersistedState) =>

@@ -5,8 +5,8 @@ import type {
   WorkspaceSelection,
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
-import { useTabStore, type WorkspaceTab } from '@/stores';
-import { buildPersistedStateSignature } from '@/utils/persistedStateSignature';
+import { useTabStore, type WorkspaceTab } from '@/stores/tabStore';
+import { buildPersistedStateSignature } from '@ddlbuilder/workspace-core';
 import { useShallow } from 'zustand/react/shallow';
 import { applySavedState } from '../applySavedState';
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 
 describe('partitionStore', () => {
   it('应该在切换分区类型时清空分区定义与字段', () => {

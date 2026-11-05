@@ -1,4 +1,4 @@
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { useShallow } from 'zustand/react/shallow';
 
 /**

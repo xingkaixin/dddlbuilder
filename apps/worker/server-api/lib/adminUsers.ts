@@ -3,13 +3,7 @@ import type {
   AdminUserSummary,
   AdminUserDetail,
   AdminUsageEvent,
-} from '@ddlbuilder/shared-types/api';
-
-export type {
-  AdminUserSummary,
-  AdminUserDetail,
-  AdminUsageEvent,
-} from '@ddlbuilder/shared-types/api';
+} from '@ddlbuilder/shared-types/account-contracts';
 
 type Pagination = {
   limit: number;

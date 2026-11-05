@@ -8,7 +8,7 @@ import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables'
 import { useEditorStore } from '@/stores/editorStore';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
 import { useTabStore } from '@/stores/tabStore';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 
 const getCurrentState = () => toPersistedState(useEditorStore.getState());
 

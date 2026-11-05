@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useFolderActions } from '@/components/App/hooks/useFolderActions';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
-import { useTabStore } from '@/stores';
+import { useTabStore } from '@/stores/tabStore';
 
 const targetFolder: FolderTreeNode = {
   id: 'folder-a',

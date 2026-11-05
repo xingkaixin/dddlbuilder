@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { vi } from 'vitest';
 
 // Ensure events created from globalThis are compatible with jsdom EventTarget.

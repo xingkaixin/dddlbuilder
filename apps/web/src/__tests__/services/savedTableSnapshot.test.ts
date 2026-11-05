@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { withDefaultEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
-import { decodeSavedDraftBase } from '@ddlbuilder/workspace-core';
+import { buildSchemaStateSignature, decodeSavedDraftBase } from '@ddlbuilder/workspace-core';
 
 const base = withDefaultEditorSession({
   schemaName: '',

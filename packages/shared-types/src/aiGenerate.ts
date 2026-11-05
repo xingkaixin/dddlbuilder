@@ -95,5 +95,3 @@ export const isGeneratedDesignDecision = Schema.is(GeneratedDesignDecisionSchema
 export const decodeGeneratedTable = Schema.decodeUnknownSync(
   Schema.fromJsonString(GeneratedTableProviderSchema),
 );
-
-export * from './aiContracts.js';

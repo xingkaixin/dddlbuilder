@@ -7,7 +7,7 @@ import {
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { decodePersistedState } from '@ddlbuilder/workspace-core';
 import * as Option from 'effect/Option';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { ApiError } from '@/services/apiError';
 
 const SHARE_API_ENDPOINT = '/api/share';

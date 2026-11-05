@@ -5,7 +5,7 @@ import {
   PublicationCommentsSchema,
   type PublicationWrite,
   type CommentWrite,
-} from '@ddlbuilder/shared-types/api';
+} from '@ddlbuilder/shared-types/publications';
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
 import { ApiError } from './apiError';
 

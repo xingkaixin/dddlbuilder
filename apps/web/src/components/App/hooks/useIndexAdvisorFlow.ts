@@ -15,7 +15,8 @@ import {
   getSqlIdentifierKey,
 } from '@ddlbuilder/ddl-core';
 import { insertIndexDefinition } from '@/stores/indexDefinitionMutations';
-import { buildNormalizedFields, useEditorStore } from '@/stores';
+import { buildNormalizedFields } from '@/stores/fieldStore';
+import { useEditorStore } from '@/stores/editorStore';
 import { useTranslation } from 'react-i18next';
 
 interface UseIndexAdvisorFlowParams {

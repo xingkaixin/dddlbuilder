@@ -3,9 +3,9 @@ import { getDatabaseFamily } from '../databaseFamily';
 import {
   buildQualifiedTableName,
   escapeSingleQuotes,
-  getSchemaAndTable,
   formatSqlTableName,
 } from '../databaseTypeMapping';
+import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 
 import { formatSqlIdentifier, unquoteSqlIdentifier } from '../sqlIdentifiers';
 

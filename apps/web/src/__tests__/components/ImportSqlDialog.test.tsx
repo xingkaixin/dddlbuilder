@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { ImportSqlDialog } from '@/components/ImportSqlDialog';
 import { requestMultiSqlParse, requestSqlParse } from '@/services/sqlParseService';
 import { ApiError } from '@/services/apiError';

@@ -7,7 +7,7 @@ import type {
 } from '@ddlbuilder/shared-types/workspace';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import { DEFAULT_DRAFT_ID, listSavedDrafts } from '@/utils/workspaceStateDb';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { getWorkspaceBootstrap } from './bootstrap';
 import {
   collectBootstrapDrafts,

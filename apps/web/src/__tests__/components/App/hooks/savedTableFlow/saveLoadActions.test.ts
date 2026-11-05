@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { type PersistedState, normalizePersistedRows } from '@ddlbuilder/shared-types';
 import { useSaveLoadActions } from '@/components/App/hooks/savedTableFlow/saveLoadActions';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- keep version-message lookup deterministic while testing saved-table actions.
 vi.mock('@/utils/tableVersions', () => ({

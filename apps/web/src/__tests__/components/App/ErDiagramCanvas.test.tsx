@@ -5,7 +5,7 @@ import { createFieldRow } from '@/__tests__/utils/testFactories';
 import type { ErEdgeData } from '@/components/App/er-diagram/types';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { buildSavedTableBatchImportPlan } from '@/utils/savedTableBatchImport';
-import ErDiagramCanvas from '@/components/App/er-diagram/ErDiagramCanvas';
+import { ErDiagramCanvas } from '@/components/App/er-diagram/ErDiagramCanvas';
 import {
   applySavedTableStateUpdate,
   type SavedTableStateUpdate,

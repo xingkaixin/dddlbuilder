@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { withDefaultEditorSession } from '@ddlbuilder/shared-types';
 import { VersionHistoryDialog } from '@/components/App/VersionHistoryDialog';
 import { listVersions, getVersion } from '@/utils/tableVersions';

@@ -4,8 +4,6 @@ import type { ApiErrorCode, ApiErrorPayload, ApiMeta } from '@ddlbuilder/shared-
 import type { ApiEnv } from './context.js';
 import { getRequestLogger } from './logging.js';
 
-export type { ApiErrorCode, ApiErrorPayload, ApiMeta } from '@ddlbuilder/shared-types/api';
-
 const REQUEST_ID_CONTEXT_KEY = 'requestId';
 
 export const getRequestId = (c: Context<ApiEnv>): string | undefined => {

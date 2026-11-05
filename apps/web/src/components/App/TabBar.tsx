@@ -2,7 +2,7 @@ import { memo, useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, X, Loader2, ChevronDown } from '@/components/icons';
 import { cn } from '@/lib/utils';
-import type { WorkspaceTab } from '@/stores';
+import type { WorkspaceTab } from '@/stores/tabStore';
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -64,6 +64,18 @@ export {
 export {
   deleteWorkspaceDraft,
   deleteWorkspaceFolder,
+  getWorkspaceSourceState,
+  listWorkspaceDrafts,
+  listWorkspaceDraftRecords,
+  listWorkspaceFolders,
+  listWorkspaceTrashedDrafts,
+  subscribeWorkspaceYDoc,
+  upsertWorkspaceDraft,
+  upsertWorkspaceFolder,
+  type WorkspaceDraftRecord,
+  type WorkspaceYDocChange,
+} from './workspaceRecords';
+export {
   deleteWorkspaceSavedDraft,
   deleteWorkspaceSavedTable,
   getWorkspaceSavedDraft,
@@ -71,26 +83,16 @@ export {
   updateWorkspaceSavedTableMetadata,
   renameWorkspaceSavedTable,
   renameWorkspaceSavedDraft,
-  getWorkspaceSourceState,
-  listWorkspaceDrafts,
-  listWorkspaceDraftRecords,
-  listWorkspaceFolders,
   listWorkspaceSavedDrafts,
   listWorkspaceSavedTables,
-  listWorkspaceTrashedDrafts,
   listWorkspaceTrashedSavedTables,
-  subscribeWorkspaceYDoc,
   recreateWorkspaceSavedTable,
-  upsertWorkspaceDraft,
-  upsertWorkspaceFolder,
   upsertWorkspaceSavedDraft,
   upsertWorkspaceSavedTable,
-  type WorkspaceDraftRecord,
   type WorkspaceSavedDraftRecord,
   type WorkspaceSavedTableRecord,
   type WorkspaceSavedTableMetadataUpdate,
-  type WorkspaceYDocChange,
-} from './workspaceRecords';
+} from './workspaceSavedRecords';
 
 export {
   decodeDeliveryTables,

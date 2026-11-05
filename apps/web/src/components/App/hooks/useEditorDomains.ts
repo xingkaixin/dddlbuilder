@@ -2,7 +2,7 @@ import { useAppSelectors } from './useAppSelectors';
 import { useAppUiSelectors } from './useAppUiSelectors';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useTableOptions } from '@/hooks/useTableOptions';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { useShallow } from 'zustand/react/shallow';
 
 export function useEditorDomains() {

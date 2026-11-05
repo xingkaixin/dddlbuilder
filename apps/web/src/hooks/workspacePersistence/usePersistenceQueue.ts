@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { toast } from 'sonner';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 interface PersistenceTask {
   key: string;

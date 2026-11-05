@@ -1,4 +1,4 @@
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
 import { AI_CONTEXT_LIMIT_ERROR } from '@ddlbuilder/shared-types';
 

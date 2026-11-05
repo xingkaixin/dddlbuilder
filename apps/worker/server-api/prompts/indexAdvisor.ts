@@ -1,4 +1,4 @@
-import type { AIIndexAdvisorRequest } from '@ddlbuilder/shared-types/ai-generate';
+import type { AIIndexAdvisorRequest } from '@ddlbuilder/shared-types/ai-contracts';
 
 export const INDEX_ADVISOR_SYSTEM_PROMPT = `你是一位数据库性能优化专家，负责根据当前表结构、现有索引和典型查询 SQL 推荐索引优化方案。
 

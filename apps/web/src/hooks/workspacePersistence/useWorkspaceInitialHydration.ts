@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import type * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {

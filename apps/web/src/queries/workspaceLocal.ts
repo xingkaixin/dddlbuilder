@@ -11,7 +11,7 @@ import {
 } from '@/utils/savedTablesDb';
 import { buildFolderTreeModel } from '@/utils/folderModel';
 import { listFolders } from '@/utils/tableFolders';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 export const workspaceLocalQueryKeys = {
   scope: (scope: WorkspaceScope | null) => ['workspace-local', scope] as const,

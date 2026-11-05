@@ -3,7 +3,7 @@ import { getSqlIdentifierKey } from '@ddlbuilder/ddl-core';
 import { requestMultiSqlParse } from '@/services/sqlParseService';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { getImportCharacterLimit } from '@/utils/importLimits';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 export async function parseSqlSnapshot(
   sql: string,

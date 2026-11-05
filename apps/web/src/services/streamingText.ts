@@ -1,7 +1,7 @@
 import type { DDLReviewSuggestion } from '@ddlbuilder/shared-types/ddl-review';
 import { logAiStreamDebug } from '@/services/aiStreamDebug';
 import { getAIErrorMessage } from '@/services/aiApi';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { decodeAIStreamEvent } from '@ddlbuilder/shared-types';
 
 const DEFAULT_STREAM_UPDATE_INTERVAL_MS = 33;

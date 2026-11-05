@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 
 describe('authStore', () => {
   it('应该忽略重复和空白授权对象', () => {

@@ -1,14 +1,13 @@
 import { splitSqlStatements } from './sqlSegments.js';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { preprocessOracle } from './preprocessors/OraclePreprocessor.js';
+import { preprocessSqlServer } from './preprocessors/SqlServerPreprocessor.js';
 import {
-  preprocessOracle,
-  preprocessSqlServer,
   extractStandaloneComments,
   foldUnquotedPostgresIdentifiers,
   normalizePostgresCharTypes,
-  type PreprocessResult,
-  type PreprocessedTableMetadata,
-} from './preprocessors/index.js';
+} from './preprocessors/PostgresPreprocessor.js';
+import { type PreprocessResult, type PreprocessedTableMetadata } from './preprocessors/types.js';
 import {
   assertRepresentableIndexType,
   parseCreateIndex,
@@ -29,8 +28,6 @@ import { getDatabaseFamily, getSqlParserDialect } from '../utils/databaseFamily.
 import { getSqlIdentifierKey } from '../utils/sqlIdentifiers.js';
 import { SqlParseError } from './SqlParseError.js';
 import { validateSnapshotStatement } from './snapshotValidation.js';
-
-export type { ParsedResult } from './types.js';
 
 type ScopedGrant = {
   tableName: string;

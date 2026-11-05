@@ -1,5 +1,5 @@
 import * as Schema from 'effect/Schema';
-import { MeResponseSchema } from '@ddlbuilder/shared-types/api';
+import { MeResponseSchema } from '@ddlbuilder/shared-types/account-contracts';
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser } from '../lib/auth.js';

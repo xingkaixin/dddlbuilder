@@ -8,7 +8,7 @@ import {
   getFolderTreeNodeIds,
   moveFolderRecord,
 } from '@/utils/folderModel';
-import type { TableFolder } from '@/utils/savedTablesDb';
+import type { TableFolder } from '@/utils/workspaceStorageTypes';
 
 const folders: TableFolder[] = [
   { id: 'root', name: 'Root', order: 1, createdAt: 1, updatedAt: 1 },

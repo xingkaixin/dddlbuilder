@@ -9,7 +9,7 @@ import {
   readPublicationComments,
   resolvePublicationComment,
 } from '../../lib/publications';
-import type { PublicationWrite } from '@ddlbuilder/shared-types/api';
+import type { PublicationWrite } from '@ddlbuilder/shared-types/publications';
 
 const table = {
   schemaName: '',

@@ -3,7 +3,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import {
   buildPersistedStateSignature,
   buildSchemaStateSignature,
-} from '@/utils/persistedStateSignature';
+} from '@ddlbuilder/workspace-core';
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   schemaName: '',

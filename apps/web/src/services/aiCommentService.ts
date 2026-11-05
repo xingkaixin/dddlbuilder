@@ -4,8 +4,8 @@ import {
   decodeAICommentResult,
   type AICommentRequest,
   type AICommentResult,
-} from '@ddlbuilder/shared-types/ai-generate';
-import i18n from '@/i18n';
+} from '@ddlbuilder/shared-types/ai-contracts';
+import { i18n } from '@/i18n';
 
 export async function requestAIComments(
   payload: AICommentRequest,

@@ -12,7 +12,9 @@ import { usePreferencesStore } from '@/stores/preferencesStore';
 import { createEmptyRow } from '@/utils/helpers';
 import { erDiagramTablesOptions } from '@/queries/erDiagram';
 
-const ErDiagramCanvas = lazy(() => import('./er-diagram/ErDiagramCanvas'));
+const ErDiagramCanvas = lazy(() =>
+  import('./er-diagram/ErDiagramCanvas').then((m) => ({ default: m.ErDiagramCanvas })),
+);
 
 export interface ErPageProps {
   ready: boolean;
@@ -28,7 +30,7 @@ export interface ErPageProps {
 const INITIAL_ROWS = Array.from({ length: 4 }, () => createEmptyRow());
 const EMPTY_TABLES: SavedTableRecord[] = [];
 
-export default function ErPage({
+export function ErPage({
   ready,
   onSelectTable,
   saveTable,

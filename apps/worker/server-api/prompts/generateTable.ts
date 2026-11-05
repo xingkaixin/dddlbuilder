@@ -1,6 +1,6 @@
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
-import type { ConversationMessage } from '@ddlbuilder/shared-types/ai-generate';
+import type { ConversationMessage } from '@ddlbuilder/shared-types/ai-contracts';
 
 const BASE_SYSTEM_PROMPT_TEMPLATES: Record<Exclude<AppLocale, 'ja-JP'>, string> = {
   'zh-CN': `你是一位资深的数据库架构师。根据用户的自然语言描述，生成符合 {{DB}} 数据库规范的表结构。

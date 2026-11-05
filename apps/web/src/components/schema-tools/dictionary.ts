@@ -1,6 +1,6 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { getSqlIdentifierKey } from '@ddlbuilder/ddl-core';
-import type { StandardSummary } from '@ddlbuilder/shared-types/api';
+import type { StandardSummary } from '@ddlbuilder/shared-types/publications';
 import type { TFunction } from 'i18next';
 
 export interface DictionarySection {

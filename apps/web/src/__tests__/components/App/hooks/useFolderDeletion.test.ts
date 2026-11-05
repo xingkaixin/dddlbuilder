@@ -9,7 +9,8 @@ import { useFolders } from '@/hooks/useFolders';
 import { useFolderActions } from '@/components/App/hooks/useFolderActions';
 import { useTabLifecycle } from '@/components/App/hooks/useTabLifecycle';
 import { useSavedTablesFilter } from '@/components/App/saved-tables/useSavedTablesFilter';
-import { useEditorStore, useTabStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
+import { useTabStore } from '@/stores/tabStore';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
 import {
   getDraftRecordFromYDoc,

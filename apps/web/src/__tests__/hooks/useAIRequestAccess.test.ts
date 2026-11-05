@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAIRequestAccess } from '@/hooks/useAIRequestAccess';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 
 const mocks = vi.hoisted(() => ({
   useAuthIdentity: vi.fn(),

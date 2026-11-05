@@ -17,8 +17,6 @@ import {
   renameFolderRecord,
 } from './folderModel';
 
-export type { FolderTreeNode } from './folderModel';
-
 const withScopeKey = (scope: WorkspaceScope, id: string) => buildScopedWorkspaceKey(scope, id);
 
 const decodeScopedFolder = (folder: TableFolder, scope: WorkspaceScope): TableFolder | null => {

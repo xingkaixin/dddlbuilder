@@ -30,7 +30,7 @@ import type { FieldTemplate, TemplateField } from '@/hooks/useFieldTemplates';
 import type { DatabaseType, FieldRow } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
 import { instantiateTemplateFields, toTemplateFields } from '@/utils/fieldTemplates';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { TemplateListItem } from './TemplateListItem';
 import { TemplateFieldTable } from './TemplateFieldTable';
 import { useToast } from '@/hooks/useToast';

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { STORAGE_KEY } from '@/utils/constants';
+import { STORAGE_KEY } from '@/utils/constants/uiDefaults';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceScope, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import {

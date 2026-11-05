@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const sqlParserRuntimeImportFiles = [
   '../../parser/SqlParser.ts',
   '../../parser/SqlParseError.ts',
-  '../../parser/preprocessors/index.ts',
+  '../../parser/preprocessors/types.ts',
   '../../parser/preprocessors/OraclePreprocessor.ts',
   '../../parser/preprocessors/PostgresPreprocessor.ts',
   '../../parser/preprocessors/SqlServerPreprocessor.ts',

@@ -3,7 +3,7 @@ import {
   CreditLedgerQuerySchema,
   CreditBalanceResponseSchema,
   CreditLedgerResponseSchema,
-} from '@ddlbuilder/shared-types/api';
+} from '@ddlbuilder/shared-types/account-contracts';
 import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser as resolveSessionUser } from '../lib/auth.js';

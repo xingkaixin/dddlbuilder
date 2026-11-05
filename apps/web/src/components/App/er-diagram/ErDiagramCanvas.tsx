@@ -26,9 +26,9 @@ import type { SaveTableResult } from '@/hooks/useSavedTables';
 import { useTimers } from '@/hooks/useTimers';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
-import ErTableNode from './ErTableNode';
-import ErRelationEdge from './ErRelationEdge';
-import ErDiagramToolbar from './ErDiagramToolbar';
+import { ErTableNode } from './ErTableNode';
+import { ErRelationEdge } from './ErRelationEdge';
+import { ErDiagramToolbar } from './ErDiagramToolbar';
 import { RelationCreationDialog } from './RelationCreationDialog';
 import { planTableRelationship, type TableRelationshipIntent } from './tableRelationship';
 
@@ -421,7 +421,7 @@ function CanvasInner({
   );
 }
 
-function ErDiagramCanvas({
+export const ErDiagramCanvas = memo(function ErDiagramCanvas({
   tables,
   loading,
   onSelectTable,
@@ -441,6 +441,4 @@ function ErDiagramCanvas({
       />
     </ReactFlowProvider>
   );
-}
-
-export default memo(ErDiagramCanvas);
+});

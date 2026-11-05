@@ -4,7 +4,7 @@ import type { AICommentMode } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import { useAIComments } from '@/hooks/useAIComments';
 import { useToast } from '@/hooks/useToast';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 
 interface UseAICommentActionsParams {
   documentKey: string;

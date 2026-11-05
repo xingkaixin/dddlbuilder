@@ -6,7 +6,7 @@ import {
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { MultiParsedResult, ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import * as Option from 'effect/Option';
-import i18n from '@/i18n';
+import { i18n } from '@/i18n';
 import { ApiError } from '@/services/apiError';
 
 const SQL_PARSE_API_ENDPOINT = '/api/parse-sql';

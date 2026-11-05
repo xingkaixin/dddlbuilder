@@ -4,7 +4,7 @@ import type { AICommentResult } from '@ddlbuilder/shared-types';
 import { useAICommentActions } from '@/components/App/hooks/useAICommentActions';
 import { useEditorStore } from '@/stores/editorStore';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
-import { buildSchemaStateSignature } from '@/utils/persistedStateSignature';
+import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const mocks = vi.hoisted(() => ({

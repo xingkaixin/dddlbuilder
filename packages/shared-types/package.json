@@ -5,9 +5,13 @@
   "exports": {
     ".": "./src/index.ts",
     "./api": "./src/api.ts",
+    "./account-contracts": "./src/accountContracts.ts",
+    "./publications": "./src/publications.ts",
+    "./seed-scenario": "./src/seedScenario.ts",
     "./workspace": "./src/workspace.ts",
     "./locale": "./src/locale.ts",
     "./ai-generate": "./src/aiGenerate.ts",
+    "./ai-contracts": "./src/aiContracts.ts",
     "./ddl-review": "./src/ddlReview.ts",
     "./api-contracts": "./src/apiContracts.ts"
   },

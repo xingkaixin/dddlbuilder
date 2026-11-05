@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { X, Pencil, Link2, Plus } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import type { ForeignKeyAction } from '@ddlbuilder/shared-types';
 import { useTranslation } from 'react-i18next';
 import {

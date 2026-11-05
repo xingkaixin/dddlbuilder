@@ -5,8 +5,8 @@ import {
   escapeSingleQuotes,
   getFieldTypeForDatabase,
   formatSqlTableName,
-  getSchemaAndTable,
 } from '../databaseTypeMapping';
+import { getSchemaAndTable } from '@ddlbuilder/shared-types';
 import { buildDialectColumn, buildDialectDefaultClause } from '../../strategies/dialectColumn';
 import { formatSqlIdentifier, unquoteSqlIdentifier } from '../sqlIdentifiers';
 import { buildColumnComment, buildExtendedProperty } from '../../strategies/dialectComments';

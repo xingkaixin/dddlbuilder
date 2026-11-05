@@ -1,4 +1,4 @@
-import { useAppUiStore } from '@/stores';
+import { useAppUiStore } from '@/stores/appUiStore';
 import { useShallow } from 'zustand/react/shallow';
 
 export function useAppUiSelectors() {

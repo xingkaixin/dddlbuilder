@@ -8,23 +8,16 @@ import {
   decodeAdminCreditGrantResponse,
   decodeAdminLedgerResponse,
   decodeAdminUsageResponse,
-} from '@ddlbuilder/shared-types/api';
+} from '@ddlbuilder/shared-types/account-contracts';
 import { decodeApiError } from '@ddlbuilder/shared-types/api-contracts';
 import * as Option from 'effect/Option';
-
-export type {
-  AdminUserSummary,
-  AdminUserDetail,
-  CreditLedgerItem,
-  AdminUsageEvent as UsageEventItem,
-} from '@ddlbuilder/shared-types/api';
 
 import type {
   AdminUserSummary,
   AdminUserDetail,
   CreditLedgerItem,
   AdminUsageEvent as UsageEventItem,
-} from '@ddlbuilder/shared-types/api';
+} from '@ddlbuilder/shared-types/account-contracts';
 
 type Decoder<T> = (
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- decoders are the shared API boundary for untrusted JSON.

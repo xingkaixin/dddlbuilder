@@ -19,28 +19,7 @@ import {
 } from './workspaceYDoc';
 import { getWorkspaceSavedTable, readWorkspaceSavedRecordIdentity } from './workspaceSavedRecords';
 
-export {
-  upsertWorkspaceSavedTable,
-  recreateWorkspaceSavedTable,
-  deleteWorkspaceSavedTable,
-  getWorkspaceSavedTable,
-  updateWorkspaceSavedTableMetadata,
-  listWorkspaceSavedTables,
-  listWorkspaceTrashedSavedTables,
-  upsertWorkspaceSavedDraft,
-  deleteWorkspaceSavedDraft,
-  getWorkspaceSavedDraft,
-  listWorkspaceSavedDrafts,
-  renameWorkspaceSavedDraft,
-  renameWorkspaceSavedTable,
-  type WorkspaceSavedTableRecord,
-  type WorkspaceSavedTableMetadataUpdate,
-  type WorkspaceSavedDraftRecord,
-} from './workspaceSavedRecords';
-
 export type WorkspaceDraftRecord = Omit<WorkspaceSnapshot['drafts'][number], 'draftId'>;
-
-export type { WorkspaceYDocCollection } from './workspaceYDoc';
 
 export type WorkspaceYDocChange = {
   collection: WorkspaceYDocCollection;

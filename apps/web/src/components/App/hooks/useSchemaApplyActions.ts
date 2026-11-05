@@ -6,7 +6,7 @@ import type {
   DDLReviewResult as ReviewResult,
   DDLReviewStructuredSuggestion as StructuredSuggestion,
 } from '@ddlbuilder/shared-types/ddl-review';
-import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
+import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';

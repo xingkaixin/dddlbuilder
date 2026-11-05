@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as Schema from 'effect/Schema';
-import { AIGenerateTableRequestSchema } from '@ddlbuilder/shared-types/ai-generate';
+import { AIGenerateTableRequestSchema } from '@ddlbuilder/shared-types/ai-contracts';
 
 describe('shared AI contracts', () => {
   it('defaults absent history but rejects malformed conversation entries', () => {

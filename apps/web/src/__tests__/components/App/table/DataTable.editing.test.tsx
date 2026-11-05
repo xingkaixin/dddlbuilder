@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { fireEvent, render } from '@/__tests__/utils/test-utils';
+import { render } from '@/__tests__/utils/test-utils';
+import { fireEvent } from '@testing-library/react';
 import { DataTable } from '@/components/App/DataTable';
-import { useEditorStore } from '@/stores';
+import { useEditorStore } from '@/stores/editorStore';
 import { createEmptyRow } from '@/utils/helpers';
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- Drag sensors are replaced with deterministic test primitives.
