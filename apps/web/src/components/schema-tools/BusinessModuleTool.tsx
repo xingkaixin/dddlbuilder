@@ -72,7 +72,9 @@ export function BusinessModuleTool() {
       ? save.data.successCount
       : null;
   const message = savedCount === null ? '' : t('modelTools.saved', { count: savedCount });
-  const error = save.data && savedCount === null ? t('modelTools.saveConflict') : '';
+
+  const error =
+    save.isError || (save.data && savedCount === null) ? t('modelTools.saveConflict') : '';
 
   const generated = useMemo(() => {
     try {
