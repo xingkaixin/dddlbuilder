@@ -12,6 +12,7 @@ overrides:
   mdast-util-to-hast: ^13.2.1
   '@esbuild-kit/core-utils>esbuild': '^0.28.2'
   'zod@<4.6.6': '^4.6.6'
+  'miniflare@5.20261023.3-beta>undici': '7.30.2'
 catalog:
   '@cloudflare/config': 0.29.0
   '@types/node': ^26.6.6
