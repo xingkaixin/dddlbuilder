@@ -12,18 +12,18 @@ overrides:
   mdast-util-to-hast: ^13.2.1
   '@esbuild-kit/core-utils>esbuild': '^0.28.2'
   'zod@<4.6.6': '^4.6.6'
-  'miniflare@5.20261023.3-beta>undici': '7.30.2'
+  'miniflare@5.20261113.0-beta>undici': '7.30.2'
 catalog:
-  '@cloudflare/config': 0.29.0
+  '@cloudflare/config': 0.32.1
   '@types/node': ^26.6.6
-  '@vitest/coverage-v8': ^5.0.5
-  'better-auth': ^1.7.16
+  '@vitest/coverage-v8': ^5.1.0
+  'better-auth': ^1.7.25
   'drizzle-orm': ^0.45.4
-  'effect': 4.1.1
-  'hono': ^4.13.14
-  'lib0': '^0.2.119'
+  'effect': 4.1.4
+  'hono': ^4.13.18
+  'lib0': ^0.2.120
   'typescript': '~7.0.2'
-  'vite': ^8.3.5
-  'vitest': ^5.0.5
+  'vite': ^8.3.8
+  'vitest': ^5.1.0
   'y-protocols': '^1.0.7'
   'yjs': '^13.6.33'

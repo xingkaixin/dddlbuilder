@@ -370,12 +370,25 @@ it('refunds a reservation when the global budget denies dispatch', async () => {
   expect(await test.balance()).toBe(100_000);
 });
 
-it('keeps conversation history across rounds and serves prior completed operations', async () => {
+it('keeps conversation history and bills once per round when threads are unavailable', async () => {
   const payloads: string[] = [];
   vi.stubGlobal(
     'fetch',
     vi.fn(async (_url, init: RequestInit) => {
       payloads.push(String(init.body));
+
+      if (payloads.length === 2 && String(init.body).includes('"thread":'))
+        return Response.json(
+          {
+            type: 'error',
+            error: {
+              type: 'invalid_request_error',
+              message: 'Message thread expired',
+              details: { error_code: 'thread_not_found' },
+            },
+          },
+          { status: 400 },
+        );
 
       return response(payloads.length === 1 ? 'First answer' : 'Second answer');
     }),
@@ -396,11 +409,15 @@ it('keeps conversation history across rounds and serves prior completed operatio
     }),
   );
   await test.finish();
+  expect(await test.balance()).toBe(99_940);
   expect(payloads).toHaveLength(2);
   expect(payloads[1]).toContain('First answer');
   expect(payloads[1]).toContain('SELECT 2');
   expect(await snapshot(test)).toMatchObject({ status: 'succeeded', text: 'First answer' });
-  expect(await test.balance()).toBe(99_940);
+  expect(await snapshot(test, 'second')).toMatchObject({
+    status: 'succeeded',
+    text: 'Second answer',
+  });
 });
 
 it('scopes persisted review suggestions to their own operation', async () => {

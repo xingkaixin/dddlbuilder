@@ -67,6 +67,8 @@ export const createAIConversationModels = async (
           const upstream = provider.streamSimple(model, context, {
             ...options,
             maxRetries: 0,
+            // Thread fallback resends without settling the rejected call's usage reservation.
+            disableContinuation: true,
             fetch: async (input, init) => {
               options?.signal?.throwIfAborted();
 
