@@ -16,6 +16,19 @@ import { toSchemaDocumentState } from '@ddlbuilder/shared-types';
 
 type JsonLike = Record<string, unknown>;
 
+type TextEncoderRuntime = typeof globalThis & {
+  TextEncoder: new () => {
+    encode: (input: string) => Uint8Array;
+  };
+};
+
+const encodeUtf8 = (input: string): Uint8Array => {
+  // SAFETY: browser and Worker runtimes provide globalThis.TextEncoder.
+  const runtime = globalThis as TextEncoderRuntime;
+
+  return new runtime.TextEncoder().encode(input);
+};
+
 const isRecord = (value: unknown): value is JsonLike =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -122,7 +135,7 @@ export const buildSchemaStateSignature = (state: SchemaDocumentState) => {
   const cached = schemaStateSignatures.get(state);
 
   if (cached) return cached;
-  const bytes = new TextEncoder().encode(JSON.stringify(normalizeSchemaStateForSignature(state)));
+  const bytes = encodeUtf8(JSON.stringify(normalizeSchemaStateForSignature(state)));
   const signature = `sha256:${Array.from(digest(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
   schemaStateSignatures.set(state, signature);
 
@@ -142,9 +155,7 @@ export const normalizePersistedStateForSignature = (state: PersistedState) => ({
 });
 
 export const buildPersistedStateSignature = (state: PersistedState) => {
-  const bytes = new TextEncoder().encode(
-    JSON.stringify(normalizePersistedStateForSignature(state)),
-  );
+  const bytes = encodeUtf8(JSON.stringify(normalizePersistedStateForSignature(state)));
 
   return `sha256:${Array.from(digest(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 };

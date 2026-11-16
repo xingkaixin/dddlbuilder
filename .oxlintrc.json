@@ -19,6 +19,7 @@
     "oxc/no-accumulating-spread": "error",
     "import/no-default-export": "error",
     "project/no-re-export": "error",
+    "project/package-boundaries": "error",
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-reduce-accumulator-copy": "error",
     "anti-slop/no-chained-type-assertions": "error",
@@ -186,6 +187,54 @@
         "import/no-default-export": "off",
         "project/no-re-export": "off"
       }
+    },
+    {
+      "files": [
+        "packages/{db,ddl-core,design,shared-types,workspace-core}/{src,schema}/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "import/no-nodejs-modules": "error",
+        "no-restricted-globals": [
+          "error",
+          {
+            "checkGlobalObject": true,
+            "globals": [
+              "fetch",
+              "XMLHttpRequest",
+              "WebSocket",
+              "EventSource",
+              "localStorage",
+              "sessionStorage",
+              "indexedDB",
+              "caches",
+              "window",
+              "document",
+              "navigator",
+              "HTMLElement",
+              "Element",
+              "Node",
+              "matchMedia",
+              "IntersectionObserver",
+              "DurableObject",
+              "D1Database",
+              "KVNamespace",
+              "R2Bucket"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/design/src/tile-player.ts"],
+      "rules": {
+        "no-restricted-globals": "off"
+      }
+    },
+    {
+      "files": ["packages/*/**/__tests__/**", "packages/*/**/*.{test,spec}.{ts,tsx}"],
+      "rules": {
+        "import/no-nodejs-modules": "off"
+      }
     }
   ],
   "settings": {
@@ -233,6 +282,7 @@
     ".opencode/**",
     ".pi/**",
     ".roo/**",
+    ".ryugi/**",
     ".windsurf/**",
     ".temp/**",
     "tools/oxlint/anti-slop/**"

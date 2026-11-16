@@ -1,7 +1,7 @@
 {
   "extends": "@ddlbuilder/tsconfig/base.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM"],
+    "lib": ["ES2022"],
     "noEmit": true
   },
   "include": ["src"]

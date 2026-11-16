@@ -5,14 +5,14 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "dependencies": {
-    "drizzle-orm": "catalog:"
-  },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json src/ && oxfmt --config ../../.oxfmtrc.json --check src/",
-    "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix src/ && oxfmt --config ../../.oxfmtrc.json --write src/",
-    "format": "oxfmt --config ../../.oxfmtrc.json --write src/"
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json src/ schema/ && oxfmt --config ../../.oxfmtrc.json --check src/ schema/",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix src/ schema/ && oxfmt --config ../../.oxfmtrc.json --write src/ schema/",
+    "format": "oxfmt --config ../../.oxfmtrc.json --write src/ schema/"
+  },
+  "dependencies": {
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*"
