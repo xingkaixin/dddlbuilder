@@ -18,7 +18,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { openDurableObjectSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/cloudflare';
 import type { AssistantMessage } from '@earendil-works/pi-ai';
-import type { JsonValue } from '@earendil-works/chord';
+import type { JsonValue } from '@earendil-works/chord/json';
 import * as Effect from 'effect/Effect';
 import {
   AI_CONTEXT_LIMIT_ERROR,
