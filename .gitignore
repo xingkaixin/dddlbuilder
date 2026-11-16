@@ -47,6 +47,7 @@ coverage/
 # agent
 .claude
 .agents
+.ryugi
 
 # agent skill
 skills-lock.json
