@@ -165,7 +165,7 @@ CF_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 
 AI 运行时：
 
-AI 使用 pi-durable 内置 Conversation 和 GenerationTask，状态持久化到独立的 SQLite Durable Object。建表、修改、审查、解释、注释和索引建议共用这条链路。关闭页面只停止观察；从“AI 任务”入口可重新查看当前浏览器标签页发起的结果，主动点击停止才取消执行。会话保留 30 天。服务端重启可能重新调用模型，不承诺从上一个 token 接着生成。
+AI 使用 pi-durable 内置 Conversation 和 GenerationTask，状态持久化到独立的 SQLite Durable Object。建表、修改、审查、解释、注释和索引建议共用这条链路。审查在切换表或刷新页面时只分离观察，回到同一表且 DDL 未变时在原面板恢复；其余面板关闭或主动点击停止时取消执行。会话保留 30 天。服务端重启可能重新调用模型，不承诺从上一个 token 接着生成。
 
 `OPENAI_RATELIMIT_*` 和 `OPENAI_DAILY_BUDGET_*` 为兼容现有部署配置继续有效；旧供应商、重试和超时变量不再控制新运行时。一轮最多两次物理模型调用，总期限五分钟，SDK 自动重试关闭。
 
