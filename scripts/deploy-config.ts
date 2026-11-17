@@ -1,4 +1,4 @@
-import { InputConfigSchema } from '@cloudflare/config';
+import { CloudflareConfigSchema } from '@cloudflare/config';
 import { getWorkerConfig } from '../apps/worker/cloudflare.config';
 
 const AI_USAGE_RECOVERY_CRON = '*/10 * * * *';
@@ -11,7 +11,7 @@ export const assertAIUsageCronConfigured = (worker: ReturnType<typeof getWorkerC
 
 export const readWorkerConfig = (mode: string) => {
   const worker = getWorkerConfig(mode);
-  const result = InputConfigSchema.safeParse({ worker });
+  const result = CloudflareConfigSchema.safeParse({ worker });
 
   if (!result.success) {
     throw new Error(`Invalid Worker configuration (${mode}): ${result.error.message}`);

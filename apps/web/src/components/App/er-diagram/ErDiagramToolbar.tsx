@@ -59,7 +59,7 @@ export const ErDiagramToolbar = memo(function ErDiagramToolbar({
         size="icon"
         variant="outline"
         className="h-8 w-8"
-        onClick={() => fitView({ padding: 0.2 })}
+        onClick={() => fitView({ padding: '8.33%' })}
         title={t('erDiagram.toolbar.fitView')}
       >
         <Maximize className="h-3.5 w-3.5" />
