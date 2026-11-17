@@ -1,3 +1,5 @@
+@layer theme, base, xyflow, components, utilities;
+
 @import 'tailwindcss';
 @import '@ddlbuilder/design/tokens.css' layer(base);
 @import '@ddlbuilder/design/sketch.css' layer(base);

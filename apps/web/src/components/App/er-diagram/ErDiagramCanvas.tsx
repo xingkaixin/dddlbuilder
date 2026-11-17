@@ -5,19 +5,17 @@ import {
   Background,
   MiniMap,
   ReactFlowProvider,
-  applyEdgeChanges,
-  applyNodeChanges,
   useReactFlow,
   type Node,
   type Edge,
   type Connection,
-  type EdgeChange,
-  type NodeChange,
+  type EdgeChangeset,
+  type NodeChangeset,
   type NodeTypes,
   type EdgeTypes,
   MarkerType,
 } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+import '@xyflow/react/style.css';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { ErNodeData, ErEdgeData } from './types';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
@@ -151,8 +149,8 @@ type CanvasState = {
 
 type CanvasEvent =
   | { type: 'graphSourceChanged'; nodes: Node[]; edges: Edge[] }
-  | { type: 'nodesChanged'; changes: NodeChange[] }
-  | { type: 'edgesChanged'; changes: EdgeChange[] }
+  | { type: 'nodesChanged'; changes: NodeChangeset }
+  | { type: 'edgesChanged'; changes: EdgeChangeset }
   | { type: 'autoLayoutApplied' }
   | { type: 'relationshipProposed'; relationship: PendingRelationship }
   | { type: 'relationshipClosed' };
@@ -205,9 +203,9 @@ function canvasReducer(state: CanvasState, event: CanvasEvent): CanvasState {
         edges: event.edges === state.sourceEdges ? state.edges : event.edges,
       };
     case 'nodesChanged':
-      return { ...state, nodes: applyNodeChanges(event.changes, state.nodes) };
+      return { ...state, nodes: event.changes.applyTo(state.nodes) };
     case 'edgesChanged':
-      return { ...state, edges: applyEdgeChanges(event.changes, state.edges) };
+      return { ...state, edges: event.changes.applyTo(state.edges) };
     case 'autoLayoutApplied':
       return { ...state, nodes: gridLayout(state.nodes) };
     case 'relationshipProposed':
@@ -271,16 +269,17 @@ function CanvasInner({
   }
 
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => dispatch({ type: 'nodesChanged', changes }),
+    (changes: NodeChangeset) => dispatch({ type: 'nodesChanged', changes }),
     [],
   );
   const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => dispatch({ type: 'edgesChanged', changes }),
+    (changes: EdgeChangeset) => dispatch({ type: 'edgesChanged', changes }),
     [],
   );
 
   const fitViewSoon = useCallback(() => {
-    schedule(() => fitView({ padding: 0.2 }), 100);
+    // React Flow 13 measures padding per side; 8.33% preserves the previous 0.2 ratio.
+    schedule(() => fitView({ padding: '8.33%' }), 100);
   }, [fitView, schedule]);
 
   const handleAddTable = useCallback(
@@ -364,7 +363,7 @@ function CanvasInner({
 
   const handleAutoLayout = useCallback(() => {
     dispatch({ type: 'autoLayoutApplied' });
-    schedule(() => fitView({ padding: 0.2 }), 50);
+    schedule(() => fitView({ padding: '8.33%' }), 50);
   }, [fitView, schedule]);
 
   if (loading) {
@@ -394,7 +393,7 @@ function CanvasInner({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ padding: '8.33%' }}
         onInit={fitViewSoon}
         minZoom={0.2}
         maxZoom={2}
