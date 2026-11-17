@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@cloudflare/config": "catalog:",
-    "@cloudflare/vite-plugin": "2.0.0-beta.v.17",
+    "@cloudflare/vite-plugin": "2.0.0-rc.0",
     "@cloudflare/workers-types": "^5.20261117.1",
     "@ddlbuilder/tsconfig": "workspace:*",
     "@types/node": "catalog:",

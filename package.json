@@ -55,7 +55,7 @@
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "^5.1.0",
     "lib0": "catalog:",
-    "miniflare": "5.20261113.0-beta",
+    "miniflare": "5.20261117.0-beta",
     "oxfmt": "^0.79.0",
     "oxlint": "^1.94.0",
     "oxlint-tsgolint": "^7.0.2007",

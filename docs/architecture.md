@@ -74,4 +74,6 @@ ddl-core, workspace-core → shared-types
 
 - pnpm workspace + Turbo；多个 workspace 共用的依赖版本放在 `pnpm-workspace.yaml` 的 `catalog`。
 - 部署使用 `cf` CLI 和 `apps/worker/cloudflare.config.ts`，分 `development`、`production`、`e2e` 三个 mode。部署前记录 D1 Time Travel 恢复点，再执行远程迁移。
+- `cf` 1.0 RC 与 Vite 插件 2.0 RC 使用 Build Output v1（`.cloudflare/output/v1/`）。升级这组工具后重新构建，不能直接部署旧格式的产物。配置校验使用 `CloudflareConfigSchema`。
+- Miniflare 的 `undici` 通过 workspace override 固定到 7.30.2，覆盖构建工具引入的各个 Miniflare 版本，避免升级后重新安装存在已知漏洞的 7.30.1。
 - 测试与验证策略见 `AGENTS.md`。
