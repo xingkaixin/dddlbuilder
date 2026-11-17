@@ -159,7 +159,7 @@ const sweptContexts = new WeakSet<object>();
 
 const buildBetterAuth = (env: ApiEnv['Bindings']) => {
   const config = getUserSystemConfig(env);
-  const db = drizzle(env.USER_DB, { schema: { ...betterAuthSchema, ...betterAuthRelations } });
+  const db = drizzle(env.USER_DB, { relations: betterAuthRelations });
   const authBaseUrl = new URL(config.betterAuthUrl);
 
   const trustedOrigins = new Set([

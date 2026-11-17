@@ -5,6 +5,8 @@
 ## 认证与会话
 
 - Better Auth 运行在 Worker 内，数据存 D1，邮件经 Resend 发送。登录方式为邮箱 + 密码，邮箱用六位验证码验证。
+- Drizzle ORM 跟随 1.0 RC 通道，认证关联使用 Relational Queries v2 的 `defineRelations`，通过 `relations` 传给 D1 驱动。Better Auth 的关联查询保持启用。
+- Better Auth 1.7.25 的 Drizzle 适配器仍使用旧的关联查询过滤格式，仓库通过 pnpm 补丁改用 RQB v2 的 `RAW` 回调，并在回调中使用查询别名构造过滤和排序。上游修复后，验证邮箱验证码、会话和运行时端到端测试再移除补丁。
 - 浏览器使用 cookie session，不使用 bearer token。
 - 业务数据直接以 Better Auth 的 `user.id` 作为用户主键，不维护外部身份映射。
 - 认证接口在交给 Better Auth 之前，先做按 IP 的 D1 限流。Better Auth 自带的限流关闭，不依赖进程内计数。

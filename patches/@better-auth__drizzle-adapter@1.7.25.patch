@@ -1,0 +1,38 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index fd9479aab5d0473acc1e0fba8098db0983abf3ab..b6a6187363b13387b1a02c4a04dac2bae29b996c 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -115,8 +115,7 @@ const drizzleAdapter = (db, config) => {
+ 			};
+ 			return inTransaction ? fetchInserted(db) : db.transaction(fetchInserted);
+ 		};
+-		function convertWhereClause(where, model, modelKey) {
+-			const schemaModel = getSchema(model);
++		function convertWhereClause(where, model, modelKey, schemaModel = getSchema(model)) {
+ 			const resolveFieldName = (where) => {
+ 				const field = getFieldName({
+ 					model: modelKey,
+@@ -338,7 +337,7 @@ const drizzleAdapter = (db, config) => {
+ 							});
+ 						}
+ 						const res = await db.query[queryModel].findFirst({
+-							where: clause[0],
++							where: where?.length ? { RAW: (fields) => convertWhereClause(where, model, modelKey, fields)[0] } : void 0,
+ 							columns: select?.length && select.length > 0 ? select.reduce((acc, field) => {
+ 								acc[getFieldName({
+ 									model: modelKey,
+@@ -394,12 +393,12 @@ const drizzleAdapter = (db, config) => {
+ 							});
+ 						}
+ 						let orderBy = void 0;
+-						if (sortBy?.field) orderBy = [sortFn(table[getFieldName({
++						if (sortBy?.field) orderBy = (fields) => [sortFn(fields[getFieldName({
+ 							model: modelKey,
+ 							field: sortBy?.field
+ 						})])];
+ 						const res = await db.query[queryModel].findMany({
+-							where: clause[0],
++							where: where?.length ? { RAW: (fields) => convertWhereClause(where, model, modelKey, fields)[0] } : void 0,
+ 							with: includes,
+ 							columns: select?.length && select.length > 0 ? select.reduce((acc, field) => {
+ 								acc[getFieldName({

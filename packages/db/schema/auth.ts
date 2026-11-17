@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { defineRelations } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const authUser = sqliteTable(
@@ -84,15 +84,15 @@ export const betterAuthSchema = {
   verification: authVerification,
 };
 
-export const betterAuthRelations = {
-  userRelations: relations(authUser, ({ many }) => ({
-    sessions: many(authSession),
-    accounts: many(authAccount),
-  })),
-  sessionRelations: relations(authSession, ({ one }) => ({
-    user: one(authUser, { fields: [authSession.userId], references: [authUser.id] }),
-  })),
-  accountRelations: relations(authAccount, ({ one }) => ({
-    user: one(authUser, { fields: [authAccount.userId], references: [authUser.id] }),
-  })),
-};
+export const betterAuthRelations = defineRelations(betterAuthSchema, (r) => ({
+  user: {
+    sessions: r.many.session({ from: r.user.id, to: r.session.userId }),
+    accounts: r.many.account({ from: r.user.id, to: r.account.userId }),
+  },
+  session: {
+    user: r.one.user({ from: r.session.userId, to: r.user.id }),
+  },
+  account: {
+    user: r.one.user({ from: r.account.userId, to: r.user.id }),
+  },
+}));
