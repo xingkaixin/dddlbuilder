@@ -296,20 +296,22 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     const persistence = new IndexeddbPersistence(buildWorkspaceYDocName(workspaceId), doc);
     persistenceRef.current = persistence;
     let disposal: Promise<void> | null = null;
+    let unregister = noop;
 
     const dispose = (connectionState: 'idle' | 'error' = 'error') => {
       if (disposal) return disposal;
       cancelled = true;
+      unregister();
       clientRef.current?.destroy();
       clientRef.current = null;
       persistenceRef.current = null;
       doc.destroy();
       dispatch({ type: 'docDisposed', doc, scope, connectionState });
-      disposal = persistence.destroy().finally(unregister);
+      disposal = persistence.destroy();
 
       return disposal;
     };
-    const unregister = registerWorkspaceYDocOwner(workspaceId, {
+    unregister = registerWorkspaceYDocOwner(workspaceId, {
       dispose,
       prepareSignOut: async () => {
         const client = clientRef.current;

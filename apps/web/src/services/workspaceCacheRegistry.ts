@@ -38,7 +38,12 @@ export const rememberWorkspaceCache = (scope: UserWorkspaceScope) => {
   const caches = readWorkspaceCaches();
 
   if (
-    caches.some((cache) => cache.userId === scope.userId && cache.workspaceId === scope.workspaceId)
+    caches.some(
+      (cache) =>
+        cache.userId === scope.userId &&
+        cache.workspaceId === scope.workspaceId &&
+        cache.status === 'active',
+    )
   )
     return;
   writeCaches([

@@ -85,6 +85,17 @@ describe('workspaceAccountService', () => {
     expect(readWorkspaceIdentity()).toBeNull();
   });
 
+  it('reactivates a pending-cleanup cache when the same user signs back in before reload', async () => {
+    markWorkspaceCleanupPending(scope);
+    await writeDraft('draft', { state: createState('offline_after_relogin'), updatedAt: 1 }, scope);
+
+    rememberWorkspaceCache(scope);
+    expect(readWorkspaceCaches()).toEqual([{ ...scope, status: 'active' }]);
+
+    await retryPendingWorkspaceCleanup();
+    expect((await readDraft('draft', scope))?.state.tableName).toBe('offline_after_relogin');
+  });
+
   it('远端永久删除清理历史，旧副本重现实体也不自动清 deleted marker', async () => {
     const doc = new Y.Doc();
     const remote = new Y.Doc();
