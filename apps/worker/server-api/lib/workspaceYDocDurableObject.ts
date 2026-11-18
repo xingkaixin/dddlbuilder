@@ -82,6 +82,7 @@ export class WorkspaceYDocDurableObject {
   private workspaceId: string | undefined;
   private userId: string | undefined;
   private identityUnsaved = false;
+  private authEpoch = 0;
   private authCache: { key: string; sessionIds: Set<string>; expiresAt: number } | null = null;
   private readonly state: DurableObjectState;
   private readonly env: ApiEnv['Bindings'];
@@ -300,6 +301,7 @@ export class WorkspaceYDocDurableObject {
   async alarm(alarmInfo?: AlarmInvocationInfo) {
     this.alarmScheduled = false;
     await this.loadDoc();
+    await this.awaitPersisted();
 
     if (!this.hasPendingCheckpoint()) return;
 
@@ -420,7 +422,7 @@ export class WorkspaceYDocDurableObject {
     // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Yjs origin is an opaque caller-owned value.
     origin: unknown,
   ) => {
-    if (this.validationDoc && origin !== this.validatedSocket) {
+    if (this.validationDoc && (this.validatedSocket === null || origin !== this.validatedSocket)) {
       Y.applyUpdate(this.validationDoc, update);
     }
 
@@ -450,39 +452,39 @@ export class WorkspaceYDocDurableObject {
 
     const persist = Promise.resolve().then(() => this.drainPendingUpdates());
     this.persistQueue = persist;
-    void persist.then(
-      () => {
-        if (this.persistQueue === persist) this.persistQueue = null;
-      },
-      () => {
-        if (this.persistQueue === persist) this.persistQueue = null;
-      },
-    );
+    void persist.catch(() => undefined);
   }
 
   private async drainPendingUpdates() {
-    while (this.pendingUpdates.length > 0) {
-      const pending = this.pendingUpdates.slice();
+    try {
+      while (this.pendingUpdates.length > 0) {
+        const pending = this.pendingUpdates.slice();
 
-      try {
-        await appendWorkspaceYDocUpdates(this.state.storage, pending, this.storedMeta());
+        try {
+          await appendWorkspaceYDocUpdates(this.state.storage, pending, this.storedMeta());
 
-        if (this.updateCount >= COMPACT_UPDATE_COUNT || this.updateBytes >= COMPACT_UPDATE_BYTES) {
-          this.scheduleCompact();
+          if (
+            this.updateCount >= COMPACT_UPDATE_COUNT ||
+            this.updateBytes >= COMPACT_UPDATE_BYTES
+          ) {
+            this.scheduleCompact();
+          }
+
+          await this.ensureAlarm();
+          this.pendingUpdates.splice(0, pending.length);
+        } catch (error) {
+          const persistError = error instanceof Error ? error : new Error(String(error));
+          logWorkspaceYDocHealth('persist_failed', {
+            workspaceId: this.workspaceId,
+            seq: pending[0].seq,
+            errorMessage: persistError.message,
+          });
+          console.error('[workspace-yjs-do] persist failed', error);
+          throw persistError;
         }
-
-        await this.ensureAlarm();
-        this.pendingUpdates.splice(0, pending.length);
-      } catch (error) {
-        const persistError = error instanceof Error ? error : new Error(String(error));
-        logWorkspaceYDocHealth('persist_failed', {
-          workspaceId: this.workspaceId,
-          seq: pending[0].seq,
-          errorMessage: persistError.message,
-        });
-        console.error('[workspace-yjs-do] persist failed', error);
-        throw persistError;
       }
+    } finally {
+      this.persistQueue = null;
     }
   }
 
@@ -496,14 +498,17 @@ export class WorkspaceYDocDurableObject {
   }
 
   private async awaitPersisted() {
-    this.startPersisting();
-    await this.persistQueue;
+    while (this.pendingUpdates.length > 0 || this.persistQueue) {
+      this.startPersisting();
+      await this.persistQueue;
+    }
   }
 
   // 登出等撤销事件推送至此：失效授权缓存并立即断开匹配的 socket
   private handleKick(request: Request): Response {
     const sessionId = request.headers.get('x-ddlbuilder-session-id');
     const userId = request.headers.get('x-ddlbuilder-user-id');
+    this.authEpoch += 1;
     this.authCache = null;
 
     for (const socket of this.state.getWebSockets()) {
@@ -521,21 +526,27 @@ export class WorkspaceYDocDurableObject {
   }
 
   private async authorizedSessionIds(): Promise<Set<string>> {
-    const key = `${this.workspaceId ?? ''}:${this.userId ?? ''}`;
-    const now = Date.now();
+    for (;;) {
+      const key = `${this.workspaceId ?? ''}:${this.userId ?? ''}`;
+      const now = Date.now();
 
-    if (this.authCache && this.authCache.key === key && this.authCache.expiresAt > now) {
-      return this.authCache.sessionIds;
+      if (this.authCache && this.authCache.key === key && this.authCache.expiresAt > now) {
+        return this.authCache.sessionIds;
+      }
+
+      const epoch = this.authEpoch;
+
+      const { sessionIds } = await readSessionAccess(
+        this.env,
+        this.userId ?? '',
+        this.workspaceId ?? '',
+      );
+
+      if (epoch !== this.authEpoch) continue;
+      this.authCache = { key, sessionIds, expiresAt: now + AUTH_CACHE_TTL_MS };
+
+      return sessionIds;
     }
-
-    const { sessionIds } = await readSessionAccess(
-      this.env,
-      this.userId ?? '',
-      this.workspaceId ?? '',
-    );
-    this.authCache = { key, sessionIds, expiresAt: now + AUTH_CACHE_TTL_MS };
-
-    return sessionIds;
   }
 
   private async authorizeSockets(sockets: WebSocket[]): Promise<WebSocket[]> {
@@ -797,6 +808,7 @@ export class WorkspaceYDocDurableObject {
       if (!this.workspaceId) {
         this.workspaceId = identity.workspaceId;
         this.identityUnsaved = true;
+        this.authEpoch += 1;
         this.authCache = null;
       }
     }
@@ -809,6 +821,7 @@ export class WorkspaceYDocDurableObject {
       if (!this.userId) {
         this.userId = identity.userId;
         this.identityUnsaved = true;
+        this.authEpoch += 1;
         this.authCache = null;
       }
     }

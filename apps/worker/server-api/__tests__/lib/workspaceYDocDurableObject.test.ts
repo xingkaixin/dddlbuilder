@@ -952,4 +952,172 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     expect(authQueries).toBe(1);
     doc.destroy();
   });
+
+  it('persists an update arriving while the previous persist promise is settling', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+
+    const { exportWorkspaceYDocToSnapshot, importWorkspaceSnapshotToYDoc } =
+      await import('@ddlbuilder/workspace-core');
+    const { state, store } = createDurableObjectState();
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    await durableObject.fetch(createRequest('/state'));
+
+    const warmup = new Y.Doc();
+    await durableObject.webSocketMessage(
+      createWebSocket(),
+      toArrayBuffer(
+        encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, warmup)),
+      ),
+    );
+    warmup.destroy();
+
+    const buildUpdateMessage = (tableName: string, updatedAt: number, requestId: number) => {
+      const clientDoc = new Y.Doc();
+      importWorkspaceSnapshotToYDoc(clientDoc, createSnapshot(tableName, updatedAt));
+      const update = Y.encodeStateAsUpdate(clientDoc);
+      clientDoc.destroy();
+
+      return trackedUpdate(update, requestId);
+    };
+
+    const persistedOnAck = new Map<number, boolean>();
+
+    const createAckSocket = () => {
+      const ws = createWebSocket();
+      ws.send.mockImplementation((payload: Uint8Array) => {
+        const header = readWorkspaceYDocMessageHeader(decoding.createDecoder(payload));
+
+        if (header.kind === 'persisted') {
+          const key = `update:${header.requestId.toString().padStart(16, '0')}`;
+          persistedOnAck.set(header.requestId, store.has(key));
+        }
+      });
+
+      return ws;
+    };
+
+    let secondMessage: Promise<void> | undefined;
+    vi.mocked(state.storage.setAlarm).mockImplementationOnce(async () => {
+      secondMessage = durableObject.webSocketMessage(
+        createAckSocket(),
+        buildUpdateMessage('table_two', 20, 2),
+      );
+    });
+
+    await durableObject.webSocketMessage(createAckSocket(), buildUpdateMessage('table_one', 10, 1));
+    await secondMessage;
+
+    expect(persistedOnAck.get(1)).toBe(true);
+    expect(persistedOnAck.get(2)).toBe(true);
+    const cold = new WorkspaceYDocDurableObject(state, createEnv());
+    const response = await cold.fetch(createRequest('/state'));
+    const restored = new Y.Doc();
+    Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
+    expect(exportWorkspaceYDocToSnapshot(restored).drafts[0]?.state.tableName).toBe('table_two');
+    restored.destroy();
+  });
+
+  it('validates child updates against tables added through migrate on a warm object', async () => {
+    // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate D1 entity checkpointing to exercise validationDoc state after migrate
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
+        upserted: 1,
+        deleted: 0,
+        skipped: 0,
+      }),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    await durableObject.fetch(createRequest('/state'));
+    await durableObject.fetch(
+      createRequest('/api/workspaces/ws-1/yjs/migrate', {
+        method: 'POST',
+        body: JSON.stringify(createSnapshot('migrated_table')),
+      }),
+    );
+
+    const initialResponse = await durableObject.fetch(createRequest('/state'));
+    const clientDoc = new Y.Doc();
+    Y.applyUpdate(clientDoc, new Uint8Array(await initialResponse.arrayBuffer()));
+    const baseVector = Y.encodeStateVector(clientDoc);
+    const defaultDraft = clientDoc.getMap<Y.Map<unknown>>('drafts').get('default');
+    defaultDraft?.set('scalar', 'malformed-scalar');
+    const delta = Y.encodeStateAsUpdate(clientDoc, baseVector);
+    clientDoc.destroy();
+
+    const ws = createWebSocket();
+    await durableObject.webSocketMessage(ws, trackedUpdate(delta, 1));
+    expect(ws.close).toHaveBeenCalledWith(1008, 'Invalid workspace update');
+
+    const cold = new WorkspaceYDocDurableObject(state, createEnv());
+    expect((await cold.fetch(createRequest('/state'))).status).toBe(200);
+  });
+
+  it('discards stale D1 authorization reads when a kick arrives mid-lookup', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const initDoc = new Y.Doc();
+    initDoc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(initDoc));
+    initDoc.destroy();
+
+    let resolveFirstLookup: ((value: { results: Array<{ id: string }> }) => void) | undefined;
+    let lookupCount = 0;
+
+    const prepare = vi.fn(() => ({
+      bind: () => ({
+        all: () => {
+          lookupCount += 1;
+
+          if (lookupCount === 1) {
+            return new Promise<{ results: Array<{ id: string }> }>((resolve) => {
+              resolveFirstLookup = resolve;
+            });
+          }
+
+          return Promise.resolve({ results: [] });
+        },
+      }),
+    }));
+
+    const durableObject = new WorkspaceYDocDurableObject(
+      state,
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: this partial D1 binding implements the authorization query exercised here.
+      { USER_DB: { prepare } } as unknown as ApiEnv['Bindings'],
+    );
+    const ws = createWebSocket();
+    const updateDoc = new Y.Doc();
+    updateDoc.getMap('meta').set('schemaVersion', 1);
+
+    const messagePromise = durableObject.webSocketMessage(
+      ws,
+      trackedUpdate(Y.encodeStateAsUpdate(updateDoc), 1),
+    );
+    updateDoc.destroy();
+
+    await vi.waitFor(() => expect(resolveFirstLookup).toBeDefined());
+    await durableObject.fetch(
+      new Request('http://localhost/kick', {
+        method: 'POST',
+        headers: {
+          'x-ddlbuilder-user-id': 'user-1',
+          'x-ddlbuilder-session-id': 'session-1',
+        },
+      }),
+    );
+    resolveFirstLookup?.({ results: [{ id: 'session-1' }] });
+    await messagePromise;
+
+    expect(ws.close).toHaveBeenCalledWith(1008, 'Workspace access denied');
+    expect(ws.send).not.toHaveBeenCalled();
+  });
 });
