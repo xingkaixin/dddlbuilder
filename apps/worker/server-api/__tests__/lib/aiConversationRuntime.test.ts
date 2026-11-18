@@ -541,6 +541,50 @@ it('accepts only one of two concurrent operations', async () => {
   expect(statuses).toEqual([200, 409]);
 });
 
+it('rejects a first submission whose access read finishes after deletion resets the runtime', async () => {
+  const test = await createRuntime();
+  let signalAccessRead!: () => void;
+  let releaseAccessRead!: () => void;
+
+  const accessRead = new Promise<void>((resolve) => {
+    signalAccessRead = resolve;
+  });
+  const release = new Promise<void>((resolve) => {
+    releaseAccessRead = resolve;
+  });
+  const prepare = test.env.USER_DB.prepare.bind(test.env.USER_DB);
+
+  const read = vi.spyOn(test.env.USER_DB, 'prepare').mockImplementationOnce((query) => {
+    const statement = prepare(query);
+    const bind = statement.bind.bind(statement);
+    statement.bind = (...values: unknown[]) => {
+      const bound = bind(...values);
+      const first = bound.first.bind(bound);
+      bound.first = async <T>() => {
+        const access = await first<T>();
+        signalAccessRead();
+        await release;
+
+        return access;
+      };
+
+      return bound;
+    };
+
+    return statement;
+  });
+  const submission = submit(test);
+  await accessRead;
+  test.sqlite.exec(
+    "UPDATE ai_operations SET stopped_at = 1 WHERE id = 'operation'; UPDATE ai_conversations SET deleted_at = 1 WHERE id = 'conversation'",
+  );
+  await test.runtime.alarm();
+  read.mockRestore();
+  releaseAccessRead();
+
+  expect((await submission).status).toBe(409);
+});
+
 it('skips retention deletion when a new operation arrives mid-alarm and resets warm state after expiry', async () => {
   vi.stubGlobal(
     'fetch',
@@ -589,6 +633,9 @@ it('skips retention deletion when a new operation arrives mid-alarm and resets w
   });
 
   vi.restoreAllMocks();
+  test.sqlite.exec(
+    "INSERT INTO ai_operations (id, conversation_id, user_id, session_id, created_at) VALUES ('prepared', 'conversation', 'user-1', 'session', 3)",
+  );
   test.sqlite.prepare("UPDATE ai_conversations SET expires_at = 1 WHERE id = 'conversation'").run();
   await test.runtime.alarm();
   expect(
@@ -728,6 +775,54 @@ it('backs off unrecoverable overage operations during cron recovery until credit
   });
   await recoverAIConversations(recoveryEnv);
   expect(recoveryCalls).toBe(2);
+  expect(
+    test.sqlite
+      .prepare(
+        "SELECT completed_at IS NOT NULL AS completed FROM ai_operations WHERE id = 'operation'",
+      )
+      .get(),
+  ).toEqual({ completed: 1 });
+});
+
+it('recovers an operation waiting behind a full batch of debt retries that are due again', async () => {
+  const test = await createRuntime();
+  const now = Date.now();
+  test.sqlite
+    .prepare("UPDATE ai_operations SET submitted_at = ?, deadline_at = 1 WHERE id = 'operation'")
+    .run(now - 10_000);
+
+  const addConversation = test.sqlite.prepare(
+    "INSERT INTO ai_conversations (id, user_id, route_key, created_at, expires_at) VALUES (?, 'user-1', 'explain', 1, ?)",
+  );
+  const addDebtOperation = test.sqlite.prepare(
+    "INSERT INTO ai_operations (id, conversation_id, user_id, session_id, created_at, submitted_at, deadline_at) VALUES (?, ?, 'user-1', 'session', 1, 1, 1)",
+  );
+  const addUsage = test.sqlite.prepare(
+    "INSERT INTO usage_events (id, user_id, route_key, request_id, status, estimated_tokens, charged_tokens, created_at, recovery_after) VALUES (?, 'user-1', 'explain', ?, 'settling_failed', 50, 100, 1, ?)",
+  );
+  const addCall = test.sqlite.prepare(
+    "INSERT INTO ai_call_attempts (id, operation_id, usage_id, provider, model, estimated_tokens, estimated_input_tokens, created_at) VALUES (?, ?, ?, 'anthropic', 'model', 50, 10, 1)",
+  );
+
+  for (let index = 0; index < 100; index += 1) {
+    const id = `debt-${index}`;
+    addConversation.run(id, now + 600_000);
+    addDebtOperation.run(id, id);
+    addUsage.run(id, id, now - 1_000);
+    addCall.run(id, id, id);
+  }
+
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: Cron calls only name lookup and fetch on this fixture.
+  const namespace = {
+    idFromName: (name: string) => name,
+    get: (name: string) => ({
+      fetch: async () => new Response(null, { status: name === 'conversation' ? 409 : 503 }),
+    }),
+  } as unknown as DurableObjectNamespace;
+
+  await expect(
+    recoverAIConversations({ ...test.env, AI_CONVERSATIONS: namespace }),
+  ).rejects.toThrow('AI conversation recovery failed');
   expect(
     test.sqlite
       .prepare(

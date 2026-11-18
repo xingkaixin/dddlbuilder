@@ -70,16 +70,19 @@ export const recoverAIConversations = async (env: ApiEnv['Bindings']) => {
   const now = Date.now();
 
   const { results } = await env.USER_DB.prepare(`
-    SELECT o.id, o.user_id, o.conversation_id, o.deadline_at, c.route_key
-    FROM ai_operations o JOIN ai_conversations c ON c.id = o.conversation_id
-    WHERE o.submitted_at IS NOT NULL
-      AND o.completed_at IS NULL
-      AND NOT EXISTS (
-        SELECT 1 FROM ai_call_attempts a
-        JOIN usage_events u ON u.id = a.usage_id
-        WHERE a.operation_id = o.id AND u.recovery_after > ?
-      )
-    ORDER BY o.submitted_at LIMIT 100
+    WITH recovery_queue AS (
+      SELECT o.id, o.user_id, o.conversation_id, o.deadline_at, c.route_key,
+        COALESCE((
+          SELECT MAX(u.recovery_after) FROM ai_call_attempts a
+          JOIN usage_events u ON u.id = a.usage_id
+          WHERE a.operation_id = o.id
+        ), o.submitted_at) AS retry_at
+      FROM ai_operations o JOIN ai_conversations c ON c.id = o.conversation_id
+      WHERE o.submitted_at IS NOT NULL AND o.completed_at IS NULL
+    )
+    SELECT id, user_id, conversation_id, deadline_at, route_key
+    FROM recovery_queue WHERE retry_at <= ?
+    ORDER BY retry_at, id LIMIT 100
   `)
     .bind(now)
     .all<RecoverableOperation>();

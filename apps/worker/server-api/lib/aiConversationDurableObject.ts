@@ -140,15 +140,18 @@ export class AIConversationDurableObject {
     return this.ready;
   }
 
-  private async resetStorage() {
-    await this.harness?.close(context);
-    this.harness = undefined;
-    this.storage = undefined;
-    this.conversation = undefined;
-    this.creatingConversation = undefined;
-    this.syncedReceipts.clear();
+  private resetStorage() {
     this.ready = undefined;
-    await this.ctx.storage.deleteAll();
+
+    return this.ctx.blockConcurrencyWhile(async () => {
+      await this.harness?.close(context);
+      this.harness = undefined;
+      this.storage = undefined;
+      this.conversation = undefined;
+      this.creatingConversation = undefined;
+      this.syncedReceipts.clear();
+      await this.ctx.storage.deleteAll();
+    });
   }
 
   private async initialize() {
@@ -662,7 +665,8 @@ export class AIConversationDurableObject {
   }
 
   async fetch(request: Request) {
-    await this.ensureReady();
+    const ready = this.ensureReady();
+    await ready;
     const url = new URL(request.url);
     const operationId = url.searchParams.get('operation');
     const userId = request.headers.get('x-ai-user');
@@ -670,6 +674,8 @@ export class AIConversationDurableObject {
 
     if (!operation || operation.user_id !== userId)
       return new Response('Not found', { status: 404 });
+
+    if (ready !== this.ready) return new Response('Operation no longer current', { status: 409 });
 
     if (url.pathname === '/delete') {
       await this.ctx.storage.setAlarm(Date.now() + 1);
@@ -695,8 +701,10 @@ export class AIConversationDurableObject {
 
     if (request.method === 'POST' && url.pathname === '/submit') {
       const body: { route: AIRouteKey; input: JsonValue } = await request.json();
-      const previous = (await this.state()).operation;
       const busy = () => new Response('Conversation busy', { status: 409 });
+
+      if (ready !== this.ready) return busy();
+      const previous = (await this.state()).operation;
 
       if (
         previous &&
@@ -720,6 +728,8 @@ export class AIConversationDurableObject {
         this.start();
         await this.running?.catch(() => undefined);
       }
+
+      if (ready !== this.ready) return busy();
 
       if ((await this.state()).operation?.id !== operation.id) {
         assertAIOperationAccess(operation);
@@ -919,6 +929,7 @@ export class AIConversationDurableObject {
               AND NOT EXISTS (
                 SELECT 1 FROM ai_operations o
                 WHERE o.conversation_id = ai_conversations.id
+                  AND o.submitted_at IS NOT NULL
                   AND o.completed_at IS NULL
                   AND o.stopped_at IS NULL
               )

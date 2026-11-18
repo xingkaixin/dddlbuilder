@@ -271,7 +271,7 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const now = Date.now();
 
-      const { results: newlyStopped } = await c.env.USER_DB.prepare(`
+      await c.env.USER_DB.prepare(`
         UPDATE ai_operations
         SET
           stopped_at = COALESCE(stopped_at, ?),
@@ -280,10 +280,9 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
             ELSE completed_at
           END
         WHERE conversation_id = ? AND completed_at IS NULL AND stopped_at IS NULL
-        RETURNING id, submitted_at
       `)
         .bind(now, now, conversation.id)
-        .all<{ id: string; submitted_at: number | null }>();
+        .run();
 
       const { results: pendingSubmitted } = await c.env.USER_DB.prepare(
         'SELECT id FROM ai_operations WHERE conversation_id = ? AND completed_at IS NULL AND submitted_at IS NOT NULL',
@@ -291,13 +290,8 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
         .bind(conversation.id)
         .all<{ id: string }>();
 
-      const toStop = new Set([
-        ...newlyStopped.filter((row) => row.submitted_at !== null).map((row) => row.id),
-        ...pendingSubmitted.map((row) => row.id),
-      ]);
-
-      for (const operationId of toStop) {
-        const stopResponse = await forward(c, conversation.id, operationId, user.userId, '/stop');
+      for (const operation of pendingSubmitted) {
+        const stopResponse = await forward(c, conversation.id, operation.id, user.userId, '/stop');
 
         if (!stopResponse.ok && stopResponse.status !== 404 && stopResponse.status !== 409) {
           await stopResponse.body?.cancel();

@@ -32,7 +32,7 @@ VARIABLES
   opCompleted,       \* D1 ai_operations.completed_at != NULL
   chargedAfterDelete,\* TRUE if admitAICall reserved/charged credits AFTER DELETE completed (`deletePhase = "done"`)
   submitPhase,       \* HTTP POST /ai/operations/:id phase:
-                     \*   "init" -> "authorized" -> "marked_submitted" -> "do_creating" -> "do_running" -> "done"
+                     \*   "init" -> "authorized" -> "marked_submitted" -> "do_authorized" -> "do_creating" -> "do_running" -> "done"
   deletePhase,       \* HTTP DELETE /ai/conversations/:id phase:
                      \*   "idle" -> "scanned_ops" -> "stopped_ops" -> "marked_deleted" -> "done"
   scannedSubmitted,  \* whether DELETE's SELECT saw opSubmitted = TRUE
@@ -83,17 +83,24 @@ SubmitMarkD1 ==
           /\ UNCHANGED <<convDeleted, opStopped, opCompleted, chargedAfterDelete,
                          deletePhase, scannedSubmitted, doHasState, doAlarmArmed, doStorageWiped, corruptedCommit>>
 
-\* aiConversationDurableObject.ts:697-715 `/submit` checks assertAIOperationAccess (which ignores convDeleted!)
-\* and awaits loadAIConversationConfig / createConversation before committing State.operation
-SubmitDOBegin ==
+\* The D1 read can finish with a previously authorized row after the alarm resets the DO.
+SubmitDOReadAccess ==
   /\ submitPhase = "marked_submitted"
   /\ IF opStopped \/ opCompleted \/ (GuardConversationDeleted /\ convDeleted)
      THEN /\ submitPhase' = "done"
           /\ UNCHANGED <<convDeleted, opSubmitted, opStopped, opCompleted, chargedAfterDelete,
                          deletePhase, scannedSubmitted, doHasState, doAlarmArmed, doStorageWiped, corruptedCommit>>
-     ELSE /\ submitPhase' = "do_creating"
+     ELSE /\ submitPhase' = "do_authorized"
           /\ UNCHANGED <<convDeleted, opSubmitted, opStopped, opCompleted, chargedAfterDelete,
                          deletePhase, scannedSubmitted, doHasState, doAlarmArmed, doStorageWiped, corruptedCommit>>
+
+SubmitDOBegin ==
+  /\ submitPhase = "do_authorized"
+  /\ submitPhase' = IF GuardConversationDeleted /\ doStorageWiped
+                    THEN "done"
+                    ELSE "do_creating"
+  /\ UNCHANGED <<convDeleted, opSubmitted, opStopped, opCompleted, chargedAfterDelete,
+                 deletePhase, scannedSubmitted, doHasState, doAlarmArmed, doStorageWiped, corruptedCommit>>
 
 \* aiConversationDurableObject.ts:720-756 `/submit` commits State.operation and calls this.start()
 SubmitDOCommit ==
@@ -181,6 +188,7 @@ DOAlarmFire ==
 Next ==
   \/ SubmitAuthorize
   \/ SubmitMarkD1
+  \/ SubmitDOReadAccess
   \/ SubmitDOBegin
   \/ SubmitDOCommit
   \/ ExecuteAdmitAndCharge
@@ -198,7 +206,7 @@ TypeOK ==
   /\ opStopped \in BOOLEAN
   /\ opCompleted \in BOOLEAN
   /\ chargedAfterDelete \in BOOLEAN
-  /\ submitPhase \in {"init", "authorized", "marked_submitted", "do_creating", "do_running", "done"}
+  /\ submitPhase \in {"init", "authorized", "marked_submitted", "do_authorized", "do_creating", "do_running", "done"}
   /\ deletePhase \in {"idle", "scanned_ops", "stopped_ops", "marked_deleted", "done"}
   /\ scannedSubmitted \in BOOLEAN
   /\ doHasState \in BOOLEAN
