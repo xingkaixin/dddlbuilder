@@ -3,7 +3,11 @@ import {
   readWorkspaceCaches,
   rememberWorkspaceCache,
 } from '@/services/workspaceCacheRegistry';
-import { writeWorkspaceIdentity, readWorkspaceIdentity } from '@/services/workspaceIdentity';
+import {
+  parseWorkspaceIdentity,
+  writeWorkspaceIdentity,
+  readWorkspaceIdentity,
+} from '@/services/workspaceIdentity';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import * as Y from 'yjs';
 import { watchWorkspaceHistory } from '@/services/workspaceHistoryCleanup';
@@ -83,6 +87,23 @@ describe('workspaceAccountService', () => {
     await retryPendingWorkspaceCleanup();
     expect(readWorkspaceCaches()).toEqual([]);
     expect(readWorkspaceIdentity()).toBeNull();
+  });
+
+  it('reactivates a pending-cleanup cache when the same user signs back in before reload', async () => {
+    const older = { ...scope, workspaceId: 'older' };
+    rememberWorkspaceCache(older);
+    markWorkspaceCleanupPending(scope);
+    await writeDraft('draft', { state: createState('old'), updatedAt: 1 }, older);
+    await writeDraft('draft', { state: createState('offline_after_relogin'), updatedAt: 1 }, scope);
+
+    rememberWorkspaceCache(scope);
+    writeWorkspaceIdentity(scope);
+
+    await retryPendingWorkspaceCleanup();
+    expect(readWorkspaceCaches()).toEqual([{ ...scope, status: 'active' }]);
+    expect(await readDraft('draft', older)).toBeNull();
+    expect((await readDraft('draft', scope))?.state.tableName).toBe('offline_after_relogin');
+    expect(parseWorkspaceIdentity(readWorkspaceIdentity())).toEqual(scope);
   });
 
   it('远端永久删除清理历史，旧副本重现实体也不自动清 deleted marker', async () => {

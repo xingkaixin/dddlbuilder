@@ -79,6 +79,7 @@ export {
   deleteWorkspaceSavedDraft,
   deleteWorkspaceSavedTable,
   getWorkspaceSavedDraft,
+  getWorkspaceSavedDraftNode,
   getWorkspaceSavedTable,
   updateWorkspaceSavedTableMetadata,
   renameWorkspaceSavedTable,

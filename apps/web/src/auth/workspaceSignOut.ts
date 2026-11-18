@@ -3,14 +3,10 @@ import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { toast } from 'sonner';
 import { i18n } from '@/i18n';
 import { markWorkspaceCleanupPending } from '@/services/workspaceCacheRegistry';
-import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
+import { clearLocalWorkspaceData, retryWorkspaceCleanup } from '@/services/workspaceAccountService';
 import { prepareWorkspaceSignOut } from '@/services/workspaceYDocStorage';
-import {
-  parseWorkspaceIdentity,
-  readWorkspaceIdentity,
-  writeWorkspaceIdentity,
-} from '@/services/workspaceIdentity';
-import { authQueryKeys } from '@/queries/auth';
+import { writeWorkspaceIdentity } from '@/services/workspaceIdentity';
+import { authQueryKeys, currentUserOptions } from '@/queries/auth';
 import { creditQueryKeys } from '@/queries/credits';
 import { workspaceQueryKeys } from '@/queries/workspaces';
 import { workspaceMigrationQueryKeys } from '@/queries/workspaceMigration';
@@ -21,20 +17,6 @@ interface ExecuteWorkspaceSignOutInput {
   queryClient: QueryClient;
   remoteSignOut: () => Promise<void>;
 }
-
-const retryWorkspaceCleanup = (scope: UserWorkspaceScope) => {
-  void clearLocalWorkspaceData(scope)
-    .then(() => {
-      if (parseWorkspaceIdentity(readWorkspaceIdentity())?.userId === scope.userId) {
-        writeWorkspaceIdentity(null);
-      }
-    })
-    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rejected promises may contain any thrown JavaScript value.
-    .catch((error: unknown) => {
-      console.error('[workspace] cleanup retry failed', error);
-      toast.error(i18n.t('workspaceYDoc.signOut.cleanupFailed'));
-    });
-};
 
 export const executeWorkspaceSignOut = async ({
   scope,
@@ -57,6 +39,37 @@ export const executeWorkspaceSignOut = async ({
   let cleanupRegistered = !scope;
 
   if (scope) {
+    const retryCleanup = async () => {
+      if (!cleanupRegistered) {
+        // 其他标签重新登录时可能沿用同一条本地身份记录。
+        const session = await queryClient.fetchQuery({
+          ...currentUserOptions(),
+          staleTime: 0,
+          networkMode: 'always',
+        });
+
+        if (session.signedIn) return;
+        markWorkspaceCleanupPending(scope);
+        cleanupRegistered = true;
+      }
+
+      await retryWorkspaceCleanup(scope.userId);
+    };
+
+    const showCleanupFailure = () => {
+      toast.error(i18n.t('workspaceYDoc.signOut.cleanupFailed'), {
+        action: {
+          label: i18n.t('workspaceYDoc.signOut.retryCleanup'),
+          onClick: () => {
+            void retryCleanup().catch((error) => {
+              console.error('[workspace] cleanup retry failed', error);
+              showCleanupFailure();
+            });
+          },
+        },
+      });
+    };
+
     try {
       markWorkspaceCleanupPending(scope);
       cleanupRegistered = true;
@@ -70,12 +83,7 @@ export const executeWorkspaceSignOut = async ({
         }),
         error,
       );
-      toast.error(i18n.t('workspaceYDoc.signOut.cleanupFailed'), {
-        action: {
-          label: i18n.t('workspaceYDoc.signOut.retryCleanup'),
-          onClick: () => retryWorkspaceCleanup(scope),
-        },
-      });
+      showCleanupFailure();
     }
   }
 

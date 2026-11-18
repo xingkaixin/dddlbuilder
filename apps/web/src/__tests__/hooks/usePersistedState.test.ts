@@ -497,13 +497,31 @@ describe('usePersistedState', () => {
     expect(result.current.persistedState?.tableName).toBe('kept');
   });
 
-  it.each([1, 3])('远端保存清理草稿后恢复离线端未保存的修改，客户端 ID=%s', async (clientId) => {
+  it.each([
+    { clientId: 1, splitUpdate: false, tab: 'same' },
+    { clientId: 3, splitUpdate: false, tab: 'same' },
+    { clientId: 1, splitUpdate: true, tab: 'same' },
+    { clientId: 1, splitUpdate: true, tab: 'other-draft' },
+    { clientId: 1, splitUpdate: true, tab: 'other-table' },
+    { clientId: 1, splitUpdate: true, tab: 'reopen-between-frames' },
+    { clientId: 1, splitUpdate: true, tab: 'edit-reopened-table' },
+    { clientId: 1, splitUpdate: true, tab: 'edit-between-frames' },
+    { clientId: 1, splitUpdate: true, tab: 'remote-updates-shared-draft' },
+  ])('远端保存后保留本地修改 %j', async (scenario) => {
+    const { clientId, splitUpdate, tab } = scenario;
     const doc = new Y.Doc();
     doc.clientID = 10;
     const base = createState('users');
     const target = { tableId: 'table-1', normalizedName: 'users' };
+    const secondTarget = { tableId: 'table-2', normalizedName: 'projects' };
     const record = { ...target, name: 'Users', state: base, createdAt: 1, updatedAt: 1 };
     upsertSavedTableInYDoc(doc, record);
+    upsertSavedTableInYDoc(doc, {
+      ...record,
+      ...secondTarget,
+      name: 'Projects',
+      state: createState('projects'),
+    });
     const remote = new Y.Doc();
     Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
     doc.clientID = clientId;
@@ -513,16 +531,24 @@ describe('usePersistedState', () => {
     const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
     await waitFor(() => expect(result.current.hydrated).toBe(true));
 
-    const loaded = result.current.resolveWorkspaceSnapshot({
+    const openSavedTable = async (source: WorkspaceSavePayload['source']) => {
+      const snapshot = result.current.resolveWorkspaceSnapshot(source);
+
+      if (!snapshot || snapshot.source.kind !== 'saved_table')
+        throw new Error('Saved table snapshot missing');
+      await act(async () =>
+        result.current.selectWorkspaceSnapshot(snapshot.source, snapshot.state),
+      );
+
+      return { ...snapshot, source: snapshot.source };
+    };
+    const loaded = await openSavedTable({
       kind: 'saved_table',
       ...target,
       tableName: 'Users',
       baseSignature: '',
     });
 
-    if (!loaded || loaded.source.kind !== 'saved_table')
-      throw new Error('Saved table snapshot missing');
-    act(() => result.current.selectWorkspaceSnapshot(loaded.source, loaded.state));
     await act(async () =>
       result.current.saveState({
         source: loaded.source,
@@ -530,6 +556,45 @@ describe('usePersistedState', () => {
       }),
     );
     expect(getSavedDraftFromYDoc(doc, target)?.state.tableComment).toBe('offline edit');
+
+    if (tab === 'other-table') {
+      const second = await openSavedTable({
+        kind: 'saved_table',
+        ...secondTarget,
+        tableName: 'Projects',
+        baseSignature: '',
+      });
+      await act(async () =>
+        result.current.saveState({
+          source: second.source,
+          state: { ...second.state, tableComment: 'offline project edit' },
+        }),
+      );
+    } else if (tab !== 'same') {
+      await act(async () =>
+        result.current.selectWorkspaceSnapshot(
+          { kind: 'draft', draftId: 'another' },
+          createState('another'),
+        ),
+      );
+    }
+
+    const editPermissions = async () => {
+      const reopened = await openSavedTable(loaded.source);
+
+      await act(async () =>
+        result.current.saveState({
+          source: reopened.source,
+          state: { ...reopened.state, authInput: 'local_role' },
+        }),
+      );
+    };
+
+    if (tab === 'edit-reopened-table') await editPermissions();
+    const sharedDraft = tab === 'remote-updates-shared-draft';
+
+    if (sharedDraft) Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+
     upsertSavedDraftInYDoc(remote, target, {
       state: { ...base, tableComment: 'remote edit' },
       tableName: 'Users',
@@ -541,18 +606,239 @@ describe('usePersistedState', () => {
       state: { ...base, tableComment: 'remote edit', schemaName: 'app' },
       updatedAt: 3,
     });
+
+    if (splitUpdate) act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote'));
+
+    if (tab === 'reopen-between-frames') await openSavedTable(loaded.source);
+
+    if (tab === 'edit-between-frames') await editPermissions();
     deleteSavedDraftFromYDoc(remote, target);
     act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote'));
+
+    const expectedTable =
+      tab === 'other-table'
+        ? 'projects'
+        : tab === 'other-draft' || sharedDraft
+          ? 'another'
+          : 'users';
+    expect(result.current.persistedState?.tableName).toBe(expectedTable);
+
+    if (expectedTable !== 'users') await openSavedTable(loaded.source);
+
     expect(result.current.persistedState).toMatchObject({
-      tableComment: 'offline edit',
+      tableComment: sharedDraft ? 'remote edit' : 'offline edit',
       schemaName: 'app',
+      authInput: tab === 'edit-reopened-table' || tab === 'edit-between-frames' ? 'local_role' : '',
     });
-    expect(getSavedDraftFromYDoc(doc, target)?.state).toMatchObject({
-      tableComment: 'offline edit',
-    });
+    expect(getSavedDraftFromYDoc(doc, target)?.state.tableComment ?? null).toBe(
+      sharedDraft ? null : 'offline edit',
+    );
     expect(result.current.resolveWorkspaceSnapshot(loaded.source)?.state).toEqual(
       result.current.persistedState,
     );
+    unmount();
+    doc.destroy();
+    remote.destroy();
+  });
+
+  it.each([
+    { edit: '新增权限', schemaName: 'app' },
+    { edit: '首次新增权限', schemaName: 'app' },
+    { edit: '重开后新增权限再清空备注', schemaName: 'app' },
+    { edit: '清空备注再重开', schemaName: '' },
+    { edit: '清空备注再重开', schemaName: 'app' },
+  ])('远端保存分帧期间保留自动保存的输入 %j', async ({ edit, schemaName }) => {
+    const doc = new Y.Doc();
+    doc.clientID = 1;
+    const base = createState('users');
+    const target = { tableId: 'table-1', normalizedName: 'users' };
+    const record = { ...target, name: 'Users', state: base, createdAt: 1, updatedAt: 1 };
+    upsertSavedTableInYDoc(doc, record);
+    const otherState = createState('another');
+    upsertDraftInYDoc(doc, 'another', { state: otherState, updatedAt: 1 });
+    const remote = new Y.Doc();
+    remote.clientID = 2;
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+
+    const source = {
+      kind: 'saved_table',
+      ...target,
+      tableName: 'Users',
+      baseSignature: buildSchemaStateSignature(base),
+    } as const;
+    await writeWorkspaceSession(
+      { activeSource: source, updatedAt: 1 },
+      { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
+    );
+    useTabStore.setState({ tabs: [], activeTabId: null });
+    useEditorStore.getState().resetDocument();
+
+    const otherTabId = useTabStore
+      .getState()
+      .addTab({ source: { kind: 'draft', draftId: 'another' }, stateSnapshot: otherState });
+    const tableTabId = useTabStore.getState().addTab({ source, stateSnapshot: base });
+    mockSignedInWorkspaceYDoc(doc);
+    const { wrapper } = createQueryClientWrapper();
+    const getCurrentState = () => toPersistedState(useEditorStore.getState());
+
+    const { result, unmount } = renderHook(
+      () => {
+        const persistence = useTestPersistedState();
+        const editor = useEditorStore();
+        const currentState = useMemo(() => toPersistedState(editor), [editor]);
+
+        const tabs = useTabLifecycle({
+          enabled: persistence.hydrated && !persistence.isShareView,
+          getCurrentState,
+          saveState: persistence.saveState,
+          selectWorkspaceSnapshot: persistence.selectWorkspaceSnapshot,
+          resolveWorkspaceSnapshot: persistence.resolveWorkspaceSnapshot,
+          resetWorkspaceSelection: persistence.resetWorkspaceSelection,
+        });
+        // 与 useAppController 一致：自动保存使用标签持有的来源，远端刷新后它可能仍是旧基线。
+        usePersistedSync({
+          hydrated: persistence.hydrated,
+          enabled: tabs.activeWorkspaceTab != null && !tabs.activeWorkspaceTab.isLoading,
+          persistedState: persistence.persistedState,
+          activeSource: tabs.activeWorkspaceTab?.source ?? persistence.activeSource,
+          saveState: persistence.saveState,
+          currentState,
+          getCurrentState,
+          applyPersistedState: applySavedState,
+        });
+
+        return { persistence, tabs };
+      },
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.persistence.hydrated).toBe(true));
+    await waitFor(() => expect(useEditorStore.getState().tableName).toBe('users'));
+
+    const initialComment = edit === '首次新增权限' ? null : 'offline edit';
+
+    if (initialComment) act(() => useEditorStore.getState().setTableComment(initialComment));
+    await waitFor(() =>
+      expect(getSavedDraftFromYDoc(doc, target)?.state.tableComment ?? null).toBe(initialComment),
+    );
+
+    upsertSavedDraftInYDoc(remote, target, {
+      state: { ...base, tableComment: 'remote edit' },
+      tableName: 'Users',
+      baseSignature: source.baseSignature,
+      updatedAt: 2,
+    });
+    upsertSavedTableInYDoc(remote, {
+      ...record,
+      state: { ...base, tableComment: 'remote edit', schemaName },
+      updatedAt: 3,
+    });
+    act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote'));
+
+    const reopenTable = () => {
+      act(() => result.current.tabs.switchToTabById(otherTabId));
+      expect(getCurrentState().tableName).toBe('another');
+      act(() => result.current.tabs.switchToTabById(tableTabId));
+    };
+
+    if (edit === '重开后新增权限再清空备注') reopenTable();
+
+    const authInput = edit === '清空备注再重开' ? '' : 'local_role';
+
+    if (authInput) act(() => useEditorStore.getState().setAuthInput(authInput));
+    await waitFor(() =>
+      expect(getSavedDraftFromYDoc(doc, target)?.state.authInput).toBe(authInput),
+    );
+
+    const tableComment =
+      edit === '新增权限' || edit === '首次新增权限' ? (initialComment ?? 'remote edit') : '';
+
+    if (tableComment === '') act(() => useEditorStore.getState().setTableComment(''));
+
+    const expected = { tableComment, schemaName, authInput };
+    await waitFor(() => expect(getSavedDraftFromYDoc(doc, target)?.state).toMatchObject(expected));
+
+    if (edit === '清空备注再重开') reopenTable();
+
+    expect(getCurrentState()).toMatchObject(expected);
+
+    deleteSavedDraftFromYDoc(remote, target);
+    act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote'));
+
+    await waitFor(() => expect(useEditorStore.getState()).toMatchObject(expected));
+    expect(getSavedDraftFromYDoc(doc, target)?.state).toMatchObject(expected);
+    unmount();
+    doc.destroy();
+    remote.destroy();
+    useTabStore.setState({ tabs: [], activeTabId: null });
+    useEditorStore.getState().resetDocument();
+  });
+
+  it('远端保存首帧后重新打开，主动清空远端备注不会被删除帧恢复', async () => {
+    const doc = new Y.Doc();
+    doc.clientID = 1;
+    const base = createState('users');
+    const target = { tableId: 'table-1', normalizedName: 'users' };
+    const record = { ...target, name: 'Users', state: base, createdAt: 1, updatedAt: 1 };
+    upsertSavedTableInYDoc(doc, record);
+    const remote = new Y.Doc();
+    remote.clientID = 2;
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    mockSignedInWorkspaceYDoc(doc);
+    const { wrapper } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    const openSavedTable = async () => {
+      const snapshot = result.current.resolveWorkspaceSnapshot({
+        kind: 'saved_table',
+        ...target,
+        tableName: 'Users',
+        baseSignature: '',
+      });
+
+      if (!snapshot || snapshot.source.kind !== 'saved_table')
+        throw new Error('Saved table snapshot missing');
+      await act(async () =>
+        result.current.selectWorkspaceSnapshot(snapshot.source, snapshot.state),
+      );
+
+      return { ...snapshot, source: snapshot.source };
+    };
+    const loaded = await openSavedTable();
+    await act(async () =>
+      result.current.saveState({
+        source: loaded.source,
+        state: { ...loaded.state, tableComment: 'offline edit' },
+      }),
+    );
+
+    upsertSavedDraftInYDoc(remote, target, {
+      state: { ...base, tableComment: 'remote edit' },
+      tableName: 'Users',
+      baseSignature: loaded.source.baseSignature,
+      updatedAt: 2,
+    });
+    upsertSavedTableInYDoc(remote, {
+      ...record,
+      state: { ...base, tableComment: 'remote edit', schemaName: 'app' },
+      updatedAt: 3,
+    });
+    act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote'));
+
+    const reopened = await openSavedTable();
+    expect(reopened.state.tableComment).toBe('remote edit');
+    await act(async () =>
+      result.current.saveState({
+        source: reopened.source,
+        state: { ...reopened.state, tableComment: base.tableComment },
+      }),
+    );
+    deleteSavedDraftFromYDoc(remote, target);
+    act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote'));
+
+    expect(result.current.persistedState).toMatchObject({ tableComment: '', schemaName: 'app' });
+    expect(getSavedDraftFromYDoc(doc, target)?.state.tableComment).toBe('');
+    expect(result.current.resolveWorkspaceSnapshot(loaded.source)?.state.tableComment).toBe('');
     unmount();
     doc.destroy();
     remote.destroy();
@@ -1129,5 +1415,62 @@ describe('usePersistedState', () => {
       SHARE_STORAGE_KEY,
       JSON.stringify(remoteState),
     );
+  });
+
+  it('丢弃已保存表草稿后，远端更新该表不会复活旧草稿', async () => {
+    const doc = new Y.Doc();
+    const remote = new Y.Doc();
+    const base = createState('users');
+    const target = { tableId: 'table-1', normalizedName: 'users' };
+    const record = { ...target, name: 'Users', state: base, createdAt: 1, updatedAt: 1 };
+    upsertSavedTableInYDoc(doc, record);
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    mockSignedInWorkspaceYDoc(doc);
+    const { wrapper } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    const loaded = result.current.resolveWorkspaceSnapshot({
+      kind: 'saved_table',
+      ...target,
+      tableName: 'Users',
+      baseSignature: '',
+    });
+
+    if (!loaded || loaded.source.kind !== 'saved_table')
+      throw new Error('Saved table snapshot missing');
+    act(() => result.current.selectWorkspaceSnapshot(loaded.source, loaded.state));
+    act(() =>
+      result.current.saveState({
+        source: loaded.source,
+        state: { ...loaded.state, tableComment: 'discarded edit' },
+      }),
+    );
+    expect(getSavedDraftFromYDoc(doc, target)?.state.tableComment).toBe('discarded edit');
+
+    act(() => {
+      result.current.removeSavedTableDraft(target);
+      result.current.selectWorkspaceSnapshot(loaded.source, loaded.state);
+    });
+    expect(getSavedDraftFromYDoc(doc, target)).toBeNull();
+
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    upsertSavedTableInYDoc(remote, {
+      ...record,
+      folderId: 'folder-1',
+      state: { ...base, schemaName: 'analytics' },
+      updatedAt: 2,
+    });
+    act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote'));
+
+    expect(getSavedDraftFromYDoc(doc, target)).toBeNull();
+    expect(result.current.getSavedTableDraft(target)).toBeNull();
+    expect(result.current.persistedState).toMatchObject({
+      tableComment: '',
+      schemaName: 'analytics',
+    });
+    unmount();
+    doc.destroy();
+    remote.destroy();
   });
 });

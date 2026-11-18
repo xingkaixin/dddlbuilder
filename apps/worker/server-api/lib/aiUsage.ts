@@ -242,7 +242,7 @@ export const prepareAIUsageSettlement = async (
           OR (attempt_count = 0 AND ? = 1)
           OR (attempt_count > 0 AND ? = 0)
           OR EXISTS (SELECT 1 FROM ai_call_attempts c WHERE c.usage_id = usage_events.id
-            AND c.usage_complete = 1 AND c.observed_tokens = 0 AND c.succeeded = 0 AND c.completed_at IS NOT NULL)
+            AND c.usage_complete = 1 AND c.observed_tokens = 0 AND c.completed_at IS NOT NULL)
         )
     `).bind(
           settlingStatus,
@@ -458,7 +458,7 @@ const RECLAIMABLE_STATUSES: readonly AIUsageStatus[] = [
   AI_USAGE_STATUS.settlingSucceeded,
   AI_USAGE_STATUS.settlingFailed,
 ];
-const AI_USAGE_RECOVERY_RETRY_DELAY_MS = 15 * 60 * 1000;
+export const AI_USAGE_RECOVERY_RETRY_DELAY_MS = 15 * 60 * 1000;
 
 type StaleUsageRow = {
   id: string;

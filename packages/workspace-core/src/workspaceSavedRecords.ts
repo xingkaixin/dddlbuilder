@@ -297,6 +297,9 @@ export const deleteWorkspaceSavedDraft = (doc: Y.Doc, target: SavedTableTarget) 
   if (entry) getWorkspaceRoot(doc).savedDrafts.delete(entry[0]);
 };
 
+export const getWorkspaceSavedDraftNode = (doc: Y.Doc, target: SavedTableTarget) =>
+  findSavedDraftEntry(doc, target)?.[1] ?? null;
+
 export const getWorkspaceSavedDraft = (
   doc: Y.Doc,
   target: SavedTableTarget,

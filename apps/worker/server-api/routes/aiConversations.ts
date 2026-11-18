@@ -129,7 +129,20 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
 
             if (conversation.route_key !== input.route)
               throw new DomainError(409, 'INVALID_JSON', 'AI scenario mismatch');
-            await insertOperation.run();
+            const now = Date.now();
+
+            const inserted = await c.env.USER_DB.prepare(`
+              INSERT INTO ai_operations (id, conversation_id, user_id, session_id, created_at)
+              SELECT ?, id, ?, ?, ?
+              FROM ai_conversations
+              WHERE id = ? AND user_id = ? AND deleted_at IS NULL AND expires_at > ?
+              RETURNING id
+            `)
+              .bind(operationId, user.userId, user.sessionId, now, conversationId, user.userId, now)
+              .first<{ id: string }>();
+
+            if (!inserted)
+              throw new DomainError(404, 'SERVICE_UNAVAILABLE', 'AI conversation not found');
           } else {
             await c.env.USER_DB.batch([
               c.env.USER_DB.prepare(
@@ -190,20 +203,19 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
 
     if (operation.input_hash && operation.input_hash !== hash)
       throw new DomainError(409, 'INVALID_JSON', 'Operation input cannot change');
+    const now = Date.now();
 
     const [accepted] = await c.env.USER_DB.batch([
       c.env.USER_DB.prepare(`UPDATE ai_operations SET input_hash = ?, submitted_at = COALESCE(submitted_at, ?), deadline_at = COALESCE(deadline_at, ?)
-      WHERE id = ? AND (input_hash IS NULL OR input_hash = ?) AND stopped_at IS NULL RETURNING id`).bind(
-        hash,
-        Date.now(),
-        Date.now() + AI_OPERATION_TIMEOUT_MS,
-        operation.id,
-        hash,
-      ),
-      c.env.USER_DB.prepare('UPDATE ai_conversations SET expires_at = ? WHERE id = ?').bind(
-        Date.now() + AI_RETENTION_MS,
-        operation.conversation_id,
-      ),
+      WHERE id = ? AND (input_hash IS NULL OR input_hash = ?) AND stopped_at IS NULL
+        AND EXISTS (
+          SELECT 1 FROM ai_conversations c
+          WHERE c.id = ai_operations.conversation_id AND c.deleted_at IS NULL AND c.expires_at > ?
+        )
+      RETURNING id`).bind(hash, now, now + AI_OPERATION_TIMEOUT_MS, operation.id, hash, now),
+      c.env.USER_DB.prepare(
+        'UPDATE ai_conversations SET expires_at = ? WHERE id = ? AND deleted_at IS NULL AND expires_at > ?',
+      ).bind(now + AI_RETENTION_MS, operation.conversation_id, now),
     ]);
 
     if (!accepted?.results.length)
@@ -254,27 +266,63 @@ export function registerAIConversationRoutes(app: Hono<ApiEnv>) {
   app.delete('/ai/conversations/:id', async (c) => {
     const user = await authenticateRequest(c);
     const conversation = await ownedConversation(c, c.req.param('id'), user.userId);
+    let deleted = false;
 
-    const { results } = await c.env.USER_DB.prepare(
-      'SELECT id FROM ai_operations WHERE conversation_id = ? AND completed_at IS NULL AND submitted_at IS NOT NULL',
-    )
-      .bind(conversation.id)
-      .all<{ id: string }>();
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const now = Date.now();
 
-    for (const operation of results) {
-      await c.env.USER_DB.prepare(
-        'UPDATE ai_operations SET stopped_at = COALESCE(stopped_at, ?) WHERE id = ?',
-      )
-        .bind(Date.now(), operation.id)
+      await c.env.USER_DB.prepare(`
+        UPDATE ai_operations
+        SET
+          stopped_at = COALESCE(stopped_at, ?),
+          completed_at = CASE
+            WHEN submitted_at IS NULL THEN COALESCE(completed_at, ?)
+            ELSE completed_at
+          END
+        WHERE conversation_id = ? AND completed_at IS NULL AND stopped_at IS NULL
+      `)
+        .bind(now, now, conversation.id)
         .run();
-      await forward(c, conversation.id, operation.id, user.userId, '/stop');
+
+      const { results: pendingSubmitted } = await c.env.USER_DB.prepare(
+        'SELECT id FROM ai_operations WHERE conversation_id = ? AND completed_at IS NULL AND submitted_at IS NOT NULL',
+      )
+        .bind(conversation.id)
+        .all<{ id: string }>();
+
+      for (const operation of pendingSubmitted) {
+        const stopResponse = await forward(c, conversation.id, operation.id, user.userId, '/stop');
+
+        if (!stopResponse.ok && stopResponse.status !== 404 && stopResponse.status !== 409) {
+          await stopResponse.body?.cancel();
+          throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'AI operation stop failed');
+        }
+
+        await stopResponse.body?.cancel();
+      }
+
+      const marked = await c.env.USER_DB.prepare(`
+        UPDATE ai_conversations
+        SET deleted_at = COALESCE(deleted_at, ?)
+        WHERE id = ?
+          AND NOT EXISTS (
+            SELECT 1 FROM ai_operations o
+            WHERE o.conversation_id = ai_conversations.id
+              AND o.completed_at IS NULL
+              AND o.stopped_at IS NULL
+          )
+        RETURNING id
+      `)
+        .bind(Date.now(), conversation.id)
+        .first<{ id: string }>();
+
+      if (marked) {
+        deleted = true;
+        break;
+      }
     }
 
-    await c.env.USER_DB.prepare(
-      'UPDATE ai_conversations SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?',
-    )
-      .bind(Date.now(), conversation.id)
-      .run();
+    if (!deleted) throw new DomainError(409, 'SERVICE_UNAVAILABLE', 'AI conversation busy');
 
     const latest = await c.env.USER_DB.prepare(
       'SELECT id FROM ai_operations WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 1',

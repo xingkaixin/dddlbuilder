@@ -16,7 +16,10 @@ import {
   exportWorkspaceYDocToSnapshot,
   upsertDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
-import { commitLegacyWorkspaceYDoc } from '@/services/workspaceYDocStorage';
+import {
+  commitLegacyWorkspaceYDoc,
+  prepareWorkspaceSignOut,
+} from '@/services/workspaceYDocStorage';
 import {
   clearLegacyWorkspaceData,
   retryPendingWorkspaceCleanup,
@@ -43,6 +46,7 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
 const persistence = vi.hoisted(() => ({
   update: null as Uint8Array | null,
   committed: false,
+  destroyPromise: null as Promise<void> | null,
   databases: [] as Array<{ onversionchange: (() => void) | null }>,
 }));
 
@@ -83,9 +87,10 @@ vi.mock('y-indexeddb', async () => {
         });
       }
       destroy() {
-        return Promise.resolve();
+        return persistence.destroyPromise ?? Promise.resolve();
       }
     },
+    fetchUpdates: async () => {},
   };
 });
 
@@ -97,6 +102,7 @@ vi.mock('@/services/workspaceMigrationService', () => ({
 const connect = vi.fn(() => Promise.resolve());
 const destroy = vi.fn();
 const retryClient = vi.fn();
+const flushAndWaitForSync = vi.fn(() => Promise.resolve());
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- Network sync lifecycle is controlled to assert connect/retry/destroy behavior.
 vi.mock('@/services/workspaceYDocSyncClient', () => ({
@@ -105,6 +111,7 @@ vi.mock('@/services/workspaceYDocSyncClient', () => ({
       connect = connect;
       destroy = destroy;
       retry = retryClient;
+      flushAndWaitForSync = flushAndWaitForSync;
     },
   ),
 }));
@@ -303,5 +310,23 @@ describe('WorkspaceYDocProvider', () => {
     expect(
       exportWorkspaceYDocToSnapshot(requireDoc(second.result.current.doc)).savedTables,
     ).toHaveLength(1);
+  });
+
+  it('unregisters a disposed owner immediately even while persistence.destroy is pending', async () => {
+    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(emptySnapshot());
+    persistence.destroyPromise = new Promise<void>(() => {});
+
+    try {
+      const first = await startProvider();
+      first.unmount();
+
+      const second = await startProvider();
+      await waitFor(() => expect(connect).toHaveBeenCalledTimes(2));
+      await expect(prepareWorkspaceSignOut('ws-1')).resolves.toBeUndefined();
+      expect(flushAndWaitForSync).toHaveBeenCalledOnce();
+      second.unmount();
+    } finally {
+      persistence.destroyPromise = null;
+    }
   });
 });

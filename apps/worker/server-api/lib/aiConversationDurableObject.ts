@@ -118,7 +118,7 @@ export class AIConversationDurableObject {
   private projection = Promise.resolve();
   private readonly observers = new Set<() => void>();
   private readonly syncedReceipts = new Set<string>();
-  private readonly ready: Promise<void>;
+  private ready?: Promise<void>;
 
   private readonly ctx: DurableObjectState;
   private readonly env: ApiEnv['Bindings'];
@@ -126,7 +126,32 @@ export class AIConversationDurableObject {
   constructor(ctx: DurableObjectState, env: ApiEnv['Bindings']) {
     this.ctx = ctx;
     this.env = env;
-    this.ready = ctx.blockConcurrencyWhile(() => this.initialize());
+    this.ready = this.ensureReady();
+  }
+
+  private ensureReady() {
+    this.ready ??= this.ctx
+      .blockConcurrencyWhile(() => this.initialize())
+      .catch((error) => {
+        this.ready = undefined;
+        throw error;
+      });
+
+    return this.ready;
+  }
+
+  private resetStorage() {
+    this.ready = undefined;
+
+    return this.ctx.blockConcurrencyWhile(async () => {
+      await this.harness?.close(context);
+      this.harness = undefined;
+      this.storage = undefined;
+      this.conversation = undefined;
+      this.creatingConversation = undefined;
+      this.syncedReceipts.clear();
+      await this.ctx.storage.deleteAll();
+    });
   }
 
   private async initialize() {
@@ -499,7 +524,12 @@ export class AIConversationDurableObject {
 
     if (!access) throw new Error('AI operation missing');
 
-    if (access.stopped_at || access.completed_at || (access.deadline_at ?? 0) <= Date.now()) {
+    if (
+      !access.conversation_active ||
+      access.stopped_at ||
+      access.completed_at ||
+      (access.deadline_at ?? 0) <= Date.now()
+    ) {
       await this.conversation.abort(context);
     } else {
       if (!access.session_active) {
@@ -635,7 +665,8 @@ export class AIConversationDurableObject {
   }
 
   async fetch(request: Request) {
-    await this.ready;
+    const ready = this.ensureReady();
+    await ready;
     const url = new URL(request.url);
     const operationId = url.searchParams.get('operation');
     const userId = request.headers.get('x-ai-user');
@@ -643,6 +674,8 @@ export class AIConversationDurableObject {
 
     if (!operation || operation.user_id !== userId)
       return new Response('Not found', { status: 404 });
+
+    if (ready !== this.ready) return new Response('Operation no longer current', { status: 409 });
 
     if (url.pathname === '/delete') {
       await this.ctx.storage.setAlarm(Date.now() + 1);
@@ -668,8 +701,10 @@ export class AIConversationDurableObject {
 
     if (request.method === 'POST' && url.pathname === '/submit') {
       const body: { route: AIRouteKey; input: JsonValue } = await request.json();
-      const previous = (await this.state()).operation;
       const busy = () => new Response('Conversation busy', { status: 409 });
+
+      if (ready !== this.ready) return busy();
+      const previous = (await this.state()).operation;
 
       if (
         previous &&
@@ -694,6 +729,8 @@ export class AIConversationDurableObject {
         await this.running?.catch(() => undefined);
       }
 
+      if (ready !== this.ready) return busy();
+
       if ((await this.state()).operation?.id !== operation.id) {
         assertAIOperationAccess(operation);
         const config = await Effect.runPromise(loadAIConversationConfig(this.env));
@@ -707,10 +744,8 @@ export class AIConversationDurableObject {
 
           try {
             this.conversation = await this.creatingConversation;
-          } catch (error) {
-            // A cached rejection would fail every later submission until the object restarts.
+          } finally {
             this.creatingConversation = undefined;
-            throw error;
           }
         }
 
@@ -768,9 +803,8 @@ export class AIConversationDurableObject {
         .bind(Date.now(), operation.id)
         .run();
       await this.conversation?.abort(context);
-
-      if (this.running) await this.running;
       this.start();
+      await this.running;
     } else this.start();
 
     if (url.pathname === '/events') return this.events(request.signal);
@@ -849,11 +883,12 @@ export class AIConversationDurableObject {
   }
 
   async alarm() {
-    await this.ready;
+    await this.ensureReady();
     const { operation } = await this.state();
 
     if (!operation) {
-      await this.ctx.storage.deleteAll();
+      if (this.creatingConversation || this.running) return;
+      await this.resetStorage();
 
       return;
     }
@@ -865,19 +900,72 @@ export class AIConversationDurableObject {
         .bind(operation.conversationId)
         .first<{ expires_at: number; deleted_at: number | null }>();
 
+      const latest = (await this.state()).operation;
+
+      if (
+        this.creatingConversation ||
+        this.running ||
+        latest?.id !== operation.id ||
+        latest.status === 'running' ||
+        latest.accountingPending
+      ) {
+        return;
+      }
+
       if (retention && !retention.deleted_at && retention.expires_at > Date.now()) {
         await this.ctx.storage.setAlarm(retention.expires_at);
 
         return;
       }
 
-      await this.runtime().harness.close(context);
-      await this.ctx.storage.deleteAll();
-      await this.env.USER_DB.prepare(
-        'UPDATE ai_conversations SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?',
-      )
-        .bind(Date.now(), operation.conversationId)
-        .run();
+      const now = Date.now();
+
+      const expired = retention
+        ? await this.env.USER_DB.prepare(`
+            UPDATE ai_conversations
+            SET deleted_at = COALESCE(deleted_at, ?)
+            WHERE id = ?
+              AND (deleted_at IS NOT NULL OR expires_at <= ?)
+              AND NOT EXISTS (
+                SELECT 1 FROM ai_operations o
+                WHERE o.conversation_id = ai_conversations.id
+                  AND o.submitted_at IS NOT NULL
+                  AND o.completed_at IS NULL
+                  AND o.stopped_at IS NULL
+              )
+            RETURNING id
+          `)
+            .bind(now, operation.conversationId, now)
+            .first<{ id: string }>()
+        : { id: operation.conversationId };
+
+      if (!expired) {
+        const refreshed = await this.env.USER_DB.prepare(
+          'SELECT expires_at, deleted_at FROM ai_conversations WHERE id = ?',
+        )
+          .bind(operation.conversationId)
+          .first<{ expires_at: number; deleted_at: number | null }>();
+
+        if (refreshed && !refreshed.deleted_at) {
+          await this.ctx.storage.setAlarm(Math.max(Date.now() + 1_000, refreshed.expires_at));
+        }
+
+        return;
+      }
+
+      const afterMark = (await this.state()).operation;
+
+      if (
+        this.creatingConversation ||
+        this.running ||
+        afterMark?.id !== operation.id ||
+        afterMark.status === 'running' ||
+        afterMark.accountingPending
+      ) {
+        return;
+      }
+
+      await this.resetStorage();
 
       return;
     }
@@ -887,8 +975,12 @@ export class AIConversationDurableObject {
 
     if (!access) {
       await this.conversation?.abort(context);
-      await this.runtime().harness.close(context);
-      await this.ctx.storage.deleteAll();
+      await this.running?.catch(() => undefined);
+      const current = (await this.state()).operation;
+
+      if (!this.creatingConversation && !this.running && current?.id === operation.id) {
+        await this.resetStorage();
+      }
 
       return;
     }
