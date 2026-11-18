@@ -196,18 +196,31 @@ export function useWorkspaceYDocSubscription({
             }
           }
 
+          const tableSignature = buildSchemaStateSignature(savedTable.state);
+
+          if (
+            !savedDraft &&
+            change?.collection === 'savedDrafts' &&
+            tableSignature === source.baseSignature
+          ) {
+            lastLocalSaveRef.current = null;
+          }
+
+          const currentPending = lastLocalSaveRef.current;
+
           // 远端保存会删除共享草稿节点，但尚未同步的本地输入仍需重新落回草稿。
           const pendingDraft =
             !savedDraft &&
             savedTable.trashedAt == null &&
-            pending?.source.kind === 'saved_table' &&
-            isSameWorkspaceSource(pending.source, source) &&
-            buildSchemaStateSignature(pending.localState) !== source.baseSignature
+            currentPending?.source.kind === 'saved_table' &&
+            isSameWorkspaceSource(currentPending.source, source) &&
+            tableSignature !== currentPending.source.baseSignature &&
+            buildSchemaStateSignature(currentPending.localState) !== source.baseSignature
               ? {
-                  state: pending.localState,
+                  state: currentPending.localState,
                   tableName: source.tableName,
-                  baseSignature: pending.source.baseSignature,
-                  baseState: pending.baseState,
+                  baseSignature: currentPending.source.baseSignature,
+                  baseState: currentPending.baseState,
                   updatedAt: Date.now(),
                 }
               : null;
@@ -272,7 +285,10 @@ export function useWorkspaceYDocSubscription({
     ]);
     refreshFromYDoc();
 
-    return unsubscribe;
+    return () => {
+      lastLocalSaveRef.current = null;
+      unsubscribe();
+    };
   }, [
     activeSourceRef,
     applyYDocState,

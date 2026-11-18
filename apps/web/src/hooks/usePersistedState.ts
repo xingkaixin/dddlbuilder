@@ -1,4 +1,4 @@
-import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
+import { isSameSavedTable, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback, useReducer, useRef } from 'react';
 import { withEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
 import { getWorkspaceSnapshotFromYDoc } from '@/services/workspaceYDocAdapter';
@@ -276,6 +276,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   );
 
   const resetToDefaultDraft = useCallback(() => {
+    lastLocalSaveRef.current = null;
     syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
     writtenSessionRef.current = null;
     void enqueuePersistence('workspace-session', 'clear workspace session', () =>
@@ -288,6 +289,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     (source: WorkspaceSelection, state: PersistedState) => {
       if (shareId) return;
 
+      lastLocalSaveRef.current = null;
       syncActiveSource(source);
       setPersistedState(state);
 
@@ -303,6 +305,15 @@ export function usePersistedState(): UsePersistedStateReturn {
   const selectWorkspaceSnapshot = useCallback(
     (source: WorkspaceSelection, state: PersistedState) => {
       if (shareId) return;
+
+      if (
+        source.kind !== 'saved_table' ||
+        buildSchemaStateSignature(state) === source.baseSignature ||
+        lastLocalSaveRef.current?.source.kind !== 'saved_table' ||
+        !isSameWorkspaceSource(lastLocalSaveRef.current.source, source)
+      ) {
+        lastLocalSaveRef.current = null;
+      }
 
       syncActiveSource(source);
       setPersistedStateIfChanged(state);
@@ -346,31 +357,35 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (payload.source.kind === 'draft') {
         if (!saveDraftState(payload.source.draftId, payload.state, { activeOnly: true })) return;
       } else {
-        if (persistedState) {
-          lastLocalSaveRef.current = {
-            source: payload.source,
-            baseState: persistedState,
-            localState: payload.state,
-          };
-        }
-
         const { tableName, baseSignature } = payload.source;
         const existingDraft = getSavedTableDraft(payload.source);
         const isDirty = buildSchemaStateSignature(payload.state) !== payload.source.baseSignature;
 
         if (!isDirty) {
+          lastLocalSaveRef.current = null;
+
           if (existingDraft) dropSavedTableDraft(payload.source);
-        } else if (
-          !existingDraft ||
-          existingDraft.baseSignature !== baseSignature ||
-          !isSamePersistedState(existingDraft.state, payload.state)
-        ) {
-          persistSavedTableDraft(payload.source, {
-            state: payload.state,
-            tableName,
-            baseSignature,
-            updatedAt: Date.now(),
-          });
+        } else {
+          if (persistedState) {
+            lastLocalSaveRef.current = {
+              source: payload.source,
+              baseState: persistedState,
+              localState: payload.state,
+            };
+          }
+
+          if (
+            !existingDraft ||
+            existingDraft.baseSignature !== baseSignature ||
+            !isSamePersistedState(existingDraft.state, payload.state)
+          ) {
+            persistSavedTableDraft(payload.source, {
+              state: payload.state,
+              tableName,
+              baseSignature,
+              updatedAt: Date.now(),
+            });
+          }
         }
       }
 
@@ -416,6 +431,20 @@ export function usePersistedState(): UsePersistedStateReturn {
     [moveDraftToTrash, resetToDefaultDraft],
   );
 
+  const clearSavedTableDraft = useCallback(
+    (target: SavedTableTarget) => {
+      if (
+        lastLocalSaveRef.current?.source.kind === 'saved_table' &&
+        isSameSavedTable(lastLocalSaveRef.current.source, target)
+      ) {
+        lastLocalSaveRef.current = null;
+      }
+
+      removeSavedTableDraft(target);
+    },
+    [removeSavedTableDraft],
+  );
+
   return {
     status: {
       hydrationFailed,
@@ -446,7 +475,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     },
     savedTableDrafts: {
       getSavedTableDraft,
-      removeSavedTableDraft,
+      removeSavedTableDraft: clearSavedTableDraft,
       renameSavedTableDraft,
       persistSavedTableDraft,
     },

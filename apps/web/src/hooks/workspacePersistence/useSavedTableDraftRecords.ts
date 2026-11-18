@@ -16,10 +16,7 @@ import {
 import { deleteSavedDraft, renameSavedDraftKey, upsertSavedDraft } from '@/utils/workspaceStateDb';
 import { getSavedTable } from '@/utils/savedTablesDb';
 import type { usePersistenceQueue } from './usePersistenceQueue';
-import {
-  requireReadyWorkspaceStorage,
-  type WorkspaceStorageTarget,
-} from './useWorkspaceStorageTarget';
+import type { WorkspaceStorageTarget } from './useWorkspaceStorageTarget';
 
 interface UseSavedTableDraftRecordsParams {
   disabled: boolean;
@@ -88,39 +85,38 @@ export function useSavedTableDraftRecords({
       if (!nextRecord.baseState && existing?.baseSignature === nextRecord.baseSignature)
         nextRecord.baseState = existing.baseState;
       recordsRef.current.set(key, nextRecord);
+
+      if (storage.kind === 'loading') return;
+
+      if (storage.kind === 'ydoc') {
+        storage.transact((doc) =>
+          upsertSavedDraftInYDoc(
+            doc,
+            target,
+            withSavedBase(
+              nextRecord,
+              nextRecord.baseState ? undefined : getSavedTableFromYDoc(doc, target)?.state,
+            ),
+            { compactSnapshotBase: true },
+          ),
+        );
+
+        return;
+      }
+
+      const scope = storage.scope;
       void enqueuePersistence(
         `saved-draft:${key}`,
         'save saved-table draft',
-        async () => {
-          const destination = requireReadyWorkspaceStorage(storage);
-
-          if (destination.kind === 'ydoc') {
-            destination.transact((doc) =>
-              upsertSavedDraftInYDoc(
-                doc,
-                target,
-                withSavedBase(
-                  nextRecord,
-                  nextRecord.baseState ? undefined : getSavedTableFromYDoc(doc, target)?.state,
-                ),
-                { compactSnapshotBase: true },
-              ),
-            );
-
-            return;
-          }
-
-          await upsertSavedDraft(
+        async () =>
+          upsertSavedDraft(
             normalizedName,
             withSavedBase(
               nextRecord,
-              nextRecord.baseState
-                ? undefined
-                : (await getSavedTable(target, destination.scope))?.state,
+              nextRecord.baseState ? undefined : (await getSavedTable(target, scope))?.state,
             ),
-            destination.scope,
-          );
-        },
+            scope,
+          ),
         { replaceable: true },
       );
     },
@@ -137,15 +133,16 @@ export function useSavedTableDraftRecords({
         recordsRef.current.delete(normalizedName);
       }
 
-      void enqueuePersistence(`saved-draft:${key}`, 'delete saved-table draft', async () => {
-        const destination = requireReadyWorkspaceStorage(storage);
+      if (storage.kind === 'loading') return;
 
-        if (destination.kind === 'ydoc') {
-          destination.transact((doc) => deleteSavedDraftFromYDoc(doc, target));
-        }
+      if (storage.kind === 'ydoc') {
+        storage.transact((doc) => deleteSavedDraftFromYDoc(doc, target));
+      }
 
-        await deleteSavedDraft(normalizedName, destination.scope);
-      });
+      const scope = storage.scope;
+      void enqueuePersistence(`saved-draft:${key}`, 'delete saved-table draft', () =>
+        deleteSavedDraft(normalizedName, scope),
+      );
     },
     [enqueuePersistence, storage],
   );
@@ -182,26 +179,27 @@ export function useSavedTableDraftRecords({
           recordsRef.current.delete(fromNormalizedName);
       }
 
-      void enqueuePersistence(`saved-draft:${oldKey}`, 'rename saved-table draft', async () => {
-        const destination = requireReadyWorkspaceStorage(storage);
+      if (storage.kind === 'loading') return;
 
-        if (destination.kind === 'ydoc') {
-          destination.transact((doc) =>
-            renameSavedDraftInYDoc(doc, target, toNormalizedName, nextTableName),
+      if (storage.kind === 'ydoc') {
+        storage.transact((doc) =>
+          renameSavedDraftInYDoc(doc, target, toNormalizedName, nextTableName),
+        );
+
+        if (keyChanged) {
+          const scope = storage.scope;
+          void enqueuePersistence(`saved-draft:${oldKey}`, 'rename saved-table draft', () =>
+            deleteSavedDraft(fromNormalizedName, scope),
           );
-
-          if (keyChanged) await deleteSavedDraft(fromNormalizedName, destination.scope);
-
-          return;
         }
 
-        await renameSavedDraftKey(
-          fromNormalizedName,
-          toNormalizedName,
-          nextTableName,
-          destination.scope,
-        );
-      });
+        return;
+      }
+
+      const scope = storage.scope;
+      void enqueuePersistence(`saved-draft:${oldKey}`, 'rename saved-table draft', () =>
+        renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, scope),
+      );
     },
     [disabled, enqueuePersistence, getRecord, storage],
   );

@@ -1130,4 +1130,61 @@ describe('usePersistedState', () => {
       JSON.stringify(remoteState),
     );
   });
+
+  it('丢弃已保存表草稿后，远端更新该表不会复活旧草稿', async () => {
+    const doc = new Y.Doc();
+    const remote = new Y.Doc();
+    const base = createState('users');
+    const target = { tableId: 'table-1', normalizedName: 'users' };
+    const record = { ...target, name: 'Users', state: base, createdAt: 1, updatedAt: 1 };
+    upsertSavedTableInYDoc(doc, record);
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    mockSignedInWorkspaceYDoc(doc);
+    const { wrapper } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(() => useTestPersistedState(), { wrapper });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    const loaded = result.current.resolveWorkspaceSnapshot({
+      kind: 'saved_table',
+      ...target,
+      tableName: 'Users',
+      baseSignature: '',
+    });
+
+    if (!loaded || loaded.source.kind !== 'saved_table')
+      throw new Error('Saved table snapshot missing');
+    act(() => result.current.selectWorkspaceSnapshot(loaded.source, loaded.state));
+    act(() =>
+      result.current.saveState({
+        source: loaded.source,
+        state: { ...loaded.state, tableComment: 'discarded edit' },
+      }),
+    );
+    expect(getSavedDraftFromYDoc(doc, target)?.state.tableComment).toBe('discarded edit');
+
+    act(() => {
+      result.current.removeSavedTableDraft(target);
+      result.current.selectWorkspaceSnapshot(loaded.source, loaded.state);
+    });
+    expect(getSavedDraftFromYDoc(doc, target)).toBeNull();
+
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    upsertSavedTableInYDoc(remote, {
+      ...record,
+      folderId: 'folder-1',
+      state: { ...base, schemaName: 'analytics' },
+      updatedAt: 2,
+    });
+    act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote'));
+
+    expect(getSavedDraftFromYDoc(doc, target)).toBeNull();
+    expect(result.current.getSavedTableDraft(target)).toBeNull();
+    expect(result.current.persistedState).toMatchObject({
+      tableComment: '',
+      schemaName: 'analytics',
+    });
+    unmount();
+    doc.destroy();
+    remote.destroy();
+  });
 });
