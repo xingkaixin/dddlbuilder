@@ -1,7 +1,10 @@
-import { isSameSavedTable, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
+import { savedTableKey, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback, useReducer, useRef } from 'react';
 import { withEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
-import { getWorkspaceSnapshotFromYDoc } from '@/services/workspaceYDocAdapter';
+import {
+  getSavedTableFromYDoc,
+  getWorkspaceSnapshotFromYDoc,
+} from '@/services/workspaceYDocAdapter';
 import type {
   DraftSummary,
   SavedTableDraftRecord,
@@ -16,6 +19,7 @@ import {
 import {
   buildPersistedStateSignature,
   buildSchemaStateSignature,
+  getWorkspaceSavedDraftNode,
 } from '@ddlbuilder/workspace-core';
 import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { useWorkspaceScopeState } from '@/hooks/useWorkspaceScope';
@@ -43,6 +47,7 @@ import { useWorkspaceSnapshotRefresh } from './workspacePersistence/useWorkspace
 import { useWorkspaceStorageTarget } from './workspacePersistence/useWorkspaceStorageTarget';
 import { useEditorStore } from '@/stores/editorStore';
 import { toEditorSessionSnapshot } from '@/stores/editorDocumentCodec';
+import { mergeSchemaStates } from '@/services/schemaStateMerge';
 
 const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
   buildPersistedStateSignature(left) === buildPersistedStateSignature(right);
@@ -144,7 +149,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   const { enqueue: enqueuePersistence } = usePersistenceQueue();
 
   const activeSourceRef = useRef<WorkspaceSelection>(DEFAULT_SOURCE);
-  const lastLocalSaveRef = useRef<PendingLocalSave | null>(null);
+  const pendingLocalSavesRef = useRef(new Map<string, PendingLocalSave>());
   const writtenSessionRef = useRef<{ scopeKey: string; source: WorkspaceSelection } | null>(null);
 
   const { scope: currentScope, ready: workspaceScopeReady } = useWorkspaceScopeState();
@@ -235,7 +240,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     runInYDoc,
     activeSourceRef,
     persistedState,
-    lastLocalSaveRef,
+    pendingLocalSavesRef,
     replaceSavedTableDrafts,
     applyYDocState: setPersistedState,
     setPersistedStateIfChanged,
@@ -276,7 +281,6 @@ export function usePersistedState(): UsePersistedStateReturn {
   );
 
   const resetToDefaultDraft = useCallback(() => {
-    lastLocalSaveRef.current = null;
     syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
     writtenSessionRef.current = null;
     void enqueuePersistence('workspace-session', 'clear workspace session', () =>
@@ -289,7 +293,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     (source: WorkspaceSelection, state: PersistedState) => {
       if (shareId) return;
 
-      lastLocalSaveRef.current = null;
       syncActiveSource(source);
       setPersistedState(state);
 
@@ -306,13 +309,15 @@ export function usePersistedState(): UsePersistedStateReturn {
     (source: WorkspaceSelection, state: PersistedState) => {
       if (shareId) return;
 
-      if (
-        source.kind !== 'saved_table' ||
-        buildSchemaStateSignature(state) === source.baseSignature ||
-        lastLocalSaveRef.current?.source.kind !== 'saved_table' ||
-        !isSameWorkspaceSource(lastLocalSaveRef.current.source, source)
-      ) {
-        lastLocalSaveRef.current = null;
+      if (source.kind === 'saved_table') {
+        const key = savedTableKey(source);
+        const pending = pendingLocalSavesRef.current.get(key);
+
+        if (
+          pending?.source.baseSignature === source.baseSignature &&
+          buildSchemaStateSignature(state) === source.baseSignature
+        )
+          pendingLocalSavesRef.current.delete(key);
       }
 
       syncActiveSource(source);
@@ -348,49 +353,71 @@ export function usePersistedState(): UsePersistedStateReturn {
         return;
       }
 
-      const currentSource = activeSourceRef.current;
+      // 远端刷新后的表名和基线由工作区选择持有，标签来源用于确认保存目标。
+      const source = activeSourceRef.current;
 
-      if (!isSameWorkspaceSource(payload.source, currentSource)) {
+      if (!isSameWorkspaceSource(payload.source, source)) {
         return;
       }
 
-      if (payload.source.kind === 'draft') {
-        if (!saveDraftState(payload.source.draftId, payload.state, { activeOnly: true })) return;
+      if (source.kind === 'draft') {
+        if (!saveDraftState(source.draftId, payload.state, { activeOnly: true })) return;
       } else {
-        const { tableName, baseSignature } = payload.source;
-        const existingDraft = getSavedTableDraft(payload.source);
-        const isDirty = buildSchemaStateSignature(payload.state) !== payload.source.baseSignature;
+        const { tableName, baseSignature } = source;
+        const key = savedTableKey(source);
+        const existingDraft = getSavedTableDraft(source);
+        const pending = pendingLocalSavesRef.current.get(key);
+        let state = payload.state;
+        let seenState = persistedState;
+        let savedTableState: PersistedState | undefined;
 
-        if (!isDirty) {
-          lastLocalSaveRef.current = null;
+        // 即使已保存表未变，重新打开也可能换掉编辑器里正在编辑的草稿。
+        if (yDoc && pending && persistedState && pending.seenState !== persistedState) {
+          const rebased = mergeSchemaStates(pending.baseState, persistedState, pending.localState);
+          state = mergeSchemaStates(persistedState, rebased, payload.state);
+          savedTableState = getSavedTableFromYDoc(yDoc, source)?.state;
 
-          if (existingDraft) dropSavedTableDraft(payload.source);
-        } else {
-          if (persistedState) {
-            lastLocalSaveRef.current = {
-              source: payload.source,
-              baseState: persistedState,
-              localState: payload.state,
-            };
+          if (!isSamePersistedState(state, payload.state)) {
+            setPersistedStateIfChanged(state);
+            seenState = state;
           }
+        }
 
+        if (buildSchemaStateSignature(state) === baseSignature) {
+          pendingLocalSavesRef.current.delete(key);
+
+          if (existingDraft) dropSavedTableDraft(source);
+        } else {
           if (
             !existingDraft ||
             existingDraft.baseSignature !== baseSignature ||
-            !isSamePersistedState(existingDraft.state, payload.state)
+            !isSamePersistedState(existingDraft.state, state)
           ) {
-            persistSavedTableDraft(payload.source, {
-              state: payload.state,
+            persistSavedTableDraft(source, {
+              state,
               tableName,
               baseSignature,
               updatedAt: Date.now(),
             });
           }
+
+          if (yDoc && persistedState) {
+            // 删除帧可能仍针对写入前的草稿，所以保留该草稿的基线签名。
+            pendingLocalSavesRef.current.set(key, {
+              source: pending?.source ?? {
+                ...source,
+                baseSignature: existingDraft?.baseSignature || baseSignature,
+              },
+              baseState: savedTableState ?? pending?.baseState ?? persistedState,
+              localState: state,
+              seenState,
+              draftNode: getWorkspaceSavedDraftNode(yDoc, source),
+            });
+          }
         }
       }
 
-      writeSession(payload.source);
-      syncActiveSource(payload.source);
+      writeSession(source);
     },
     [
       dropSavedTableDraft,
@@ -400,9 +427,10 @@ export function usePersistedState(): UsePersistedStateReturn {
       persistedState,
       saveDraftState,
       setPersistedState,
+      setPersistedStateIfChanged,
       shareStorageKey,
-      syncActiveSource,
       writeSession,
+      yDoc,
     ],
   );
 
@@ -433,13 +461,7 @@ export function usePersistedState(): UsePersistedStateReturn {
 
   const clearSavedTableDraft = useCallback(
     (target: SavedTableTarget) => {
-      if (
-        lastLocalSaveRef.current?.source.kind === 'saved_table' &&
-        isSameSavedTable(lastLocalSaveRef.current.source, target)
-      ) {
-        lastLocalSaveRef.current = null;
-      }
-
+      pendingLocalSavesRef.current.delete(savedTableKey(target));
       removeSavedTableDraft(target);
     },
     [removeSavedTableDraft],

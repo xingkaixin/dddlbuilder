@@ -959,25 +959,26 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const { exportWorkspaceYDocToSnapshot, importWorkspaceSnapshotToYDoc } =
       await import('@ddlbuilder/workspace-core');
     const { state, store } = createDurableObjectState();
+    const clientDoc = new Y.Doc();
+    clientDoc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(clientDoc));
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     await durableObject.fetch(createRequest('/state'));
 
-    const warmup = new Y.Doc();
     await durableObject.webSocketMessage(
       createWebSocket(),
       toArrayBuffer(
-        encodeWorkspaceYDocSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, warmup)),
+        encodeWorkspaceYDocSyncMessage((encoder) =>
+          syncProtocol.writeSyncStep1(encoder, clientDoc),
+        ),
       ),
     );
-    warmup.destroy();
 
     const buildUpdateMessage = (tableName: string, updatedAt: number, requestId: number) => {
-      const clientDoc = new Y.Doc();
+      const before = Y.encodeStateVector(clientDoc);
       importWorkspaceSnapshotToYDoc(clientDoc, createSnapshot(tableName, updatedAt));
-      const update = Y.encodeStateAsUpdate(clientDoc);
-      clientDoc.destroy();
 
-      return trackedUpdate(update, requestId);
+      return trackedUpdate(Y.encodeStateAsUpdate(clientDoc, before), requestId);
     };
 
     const persistedOnAck = new Map<number, boolean>();
@@ -1014,6 +1015,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const restored = new Y.Doc();
     Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
     expect(exportWorkspaceYDocToSnapshot(restored).drafts[0]?.state.tableName).toBe('table_two');
+    clientDoc.destroy();
     restored.destroy();
   });
 

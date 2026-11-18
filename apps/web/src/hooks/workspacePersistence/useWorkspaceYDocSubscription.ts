@@ -21,7 +21,7 @@ import {
   WorkspaceYDocOrigin,
   upsertSavedDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
-import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
+import { buildSchemaStateSignature, getWorkspaceSavedDraftNode } from '@ddlbuilder/workspace-core';
 import { pickInitialDraft } from './hydration';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 import { mergeSchemaStates } from '@/services/schemaStateMerge';
@@ -31,9 +31,12 @@ import { toEditorSessionSnapshot } from '@/stores/editorDocumentCodec';
 import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 
 export interface PendingLocalSave {
-  source: WorkspaceSelection;
+  source: Extract<WorkspaceSelection, { kind: 'saved_table' }>;
   baseState: PersistedState;
   localState: PersistedState;
+  /** 记录本次保存时编辑器看到的状态；此后被远端刷新或重新打开替换，下一次输入才相对新状态。 */
+  seenState: PersistedState | null;
+  draftNode: Y.Map<unknown> | null;
 }
 
 interface MutableValue<T> {
@@ -45,7 +48,7 @@ interface UseWorkspaceYDocSubscriptionParams {
   runInYDoc: ReturnType<typeof useWorkspaceYDocGateway>['runInYDoc'];
   activeSourceRef: MutableValue<WorkspaceSelection>;
   persistedState: PersistedState | null;
-  lastLocalSaveRef: MutableValue<PendingLocalSave | null>;
+  pendingLocalSavesRef: MutableValue<Map<string, PendingLocalSave>>;
   replaceSavedTableDrafts: (
     records: Map<string, SavedTableDraftRecord>,
     entityIds?: ReadonlySet<string>,
@@ -58,12 +61,24 @@ interface UseWorkspaceYDocSubscriptionParams {
 const isSameState = (left: PersistedState, right: PersistedState) =>
   buildSchemaStateSignature(left) === buildSchemaStateSignature(right);
 
+const affectsSource = (source: WorkspaceSelection, change?: WorkspaceYDocChange) => {
+  if (!change) return true;
+  const sourceId = source.kind === 'draft' ? source.draftId : savedTableKey(source);
+
+  const matchesCollection =
+    source.kind === 'draft'
+      ? change.collection === 'drafts'
+      : change.collection === 'savedTables' || change.collection === 'savedDrafts';
+
+  return matchesCollection && (change.entityIds.size === 0 || change.entityIds.has(sourceId));
+};
+
 export function useWorkspaceYDocSubscription({
   yDoc,
   runInYDoc,
   activeSourceRef,
   persistedState,
-  lastLocalSaveRef,
+  pendingLocalSavesRef,
   replaceSavedTableDrafts,
   applyYDocState,
   setPersistedStateIfChanged,
@@ -73,15 +88,112 @@ export function useWorkspaceYDocSubscription({
 
   useEffect(() => {
     if (!yDoc) return;
+    const pendingLocalSaves = pendingLocalSavesRef.current;
+
+    const refreshSavedTableDrafts = (entityIds?: ReadonlySet<string>) =>
+      replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc, entityIds), entityIds);
+
+    const refreshSavedTable = (
+      source: PendingLocalSave['source'],
+      change?: WorkspaceYDocChange,
+    ) => {
+      let savedDraft = getSavedDraftFromYDoc(yDoc, source);
+      const savedTable = getSavedTableFromYDoc(yDoc, source);
+
+      if (!savedTable) return savedDraft ? { source, state: savedDraft.state } : null;
+
+      const key = savedTableKey(source);
+      const pending = pendingLocalSaves.get(key);
+      const tableSignature = buildSchemaStateSignature(savedTable.state);
+
+      // 两端同时新建草稿节点时只保留一个；落选端把本地修改合并进胜出节点。
+      if (
+        savedDraft &&
+        change?.replacedSavedDrafts?.has(key) &&
+        pending &&
+        savedDraft.baseSignature === source.baseSignature &&
+        tableSignature === source.baseSignature
+      ) {
+        const state = mergeSchemaStates(savedTable.state, savedDraft.state, pending.localState);
+
+        if (!isSameState(state, savedDraft.state)) {
+          const mergedDraft = { ...savedDraft, state, updatedAt: Date.now() };
+          runInYDoc(() => upsertSavedDraftInYDoc(yDoc, source, mergedDraft));
+          refreshSavedTableDrafts(new Set([key]));
+          savedDraft = mergedDraft;
+        }
+
+        pendingLocalSaves.set(key, {
+          source: pending.source,
+          baseState: savedTable.state,
+          localState: state,
+          seenState: null,
+          draftNode: getWorkspaceSavedDraftNode(yDoc, source),
+        });
+      } else if (
+        savedDraft &&
+        change?.collection === 'savedDrafts' &&
+        pending?.draftNode &&
+        pending.draftNode === getWorkspaceSavedDraftNode(yDoc, source)
+      ) {
+        pending.localState = savedDraft.state;
+      }
+
+      if (
+        !savedDraft &&
+        change?.collection === 'savedDrafts' &&
+        pending?.source.baseSignature === tableSignature
+      ) {
+        pendingLocalSaves.delete(key);
+      }
+
+      // 远端保存会删除共享草稿节点，但尚未同步的本地输入仍需重新落回草稿。
+      const pendingDraft =
+        !savedDraft &&
+        savedTable.trashedAt == null &&
+        pending &&
+        tableSignature !== pending.source.baseSignature
+          ? {
+              state: pending.localState,
+              tableName: savedTable.name,
+              baseSignature: pending.source.baseSignature,
+              baseState: pending.baseState,
+              updatedAt: Date.now(),
+            }
+          : null;
+      const snapshot = resolveSavedTableSnapshot(savedTable, savedDraft ?? pendingDraft);
+
+      if (pendingDraft) {
+        if (isSameState(snapshot.state, savedTable.state)) {
+          pendingLocalSaves.delete(key);
+        } else {
+          runInYDoc(() =>
+            upsertSavedDraftInYDoc(yDoc, snapshot.source, {
+              ...pendingDraft,
+              state: snapshot.state,
+              baseSignature: snapshot.source.baseSignature,
+              baseState: savedTable.state,
+            }),
+          );
+          refreshSavedTableDrafts(new Set([savedTableKey(snapshot.source)]));
+          pendingLocalSaves.set(key, {
+            source: snapshot.source,
+            baseState: savedTable.state,
+            localState: snapshot.state,
+            seenState: null,
+            draftNode: getWorkspaceSavedDraftNode(yDoc, snapshot.source),
+          });
+        }
+      }
+
+      return snapshot;
+    };
 
     const refreshFromYDoc = (change?: WorkspaceYDocChange) => {
       const applyRemoteState = (state: SchemaDocumentState) =>
         applyYDocState(
           withEditorSession(state, toEditorSessionSnapshot(useEditorStore.getState())),
         );
-
-      const refreshSavedTableDrafts = (entityIds?: ReadonlySet<string>) =>
-        replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc, entityIds), entityIds);
 
       // 本地编辑在写入 Y.Doc 前已同步更新草稿缓存。
       if (change?.origin === WorkspaceYDocOrigin.LocalEdit) return;
@@ -149,108 +261,19 @@ export function useWorkspaceYDocSubscription({
 
       const source = activeSourceRef.current;
 
-      if (change) {
-        const sourceId = source.kind === 'draft' ? source.draftId : savedTableKey(source);
-
-        const sourceCollectionChanged =
-          source.kind === 'draft'
-            ? change.collection === 'drafts'
-            : change.collection === 'savedTables' || change.collection === 'savedDrafts';
-
-        if (
-          !sourceCollectionChanged ||
-          (change.entityIds.size > 0 && !change.entityIds.has(sourceId))
-        ) {
-          return;
-        }
+      for (const pending of pendingLocalSaves.values()) {
+        if (!isSameWorkspaceSource(pending.source, source) && affectsSource(pending.source, change))
+          refreshSavedTable(pending.source, change);
       }
 
+      if (!affectsSource(source, change)) return;
+
       if (source.kind === 'saved_table') {
-        let savedDraft = getSavedDraftFromYDoc(yDoc, source);
-        const savedTable = getSavedTableFromYDoc(yDoc, source);
+        const snapshot = refreshSavedTable(source, change);
 
-        if (savedTable) {
-          const pending = lastLocalSaveRef.current;
-
-          // 两端同时新建草稿节点时只保留一个；落选端把本地修改合并进胜出节点。
-          if (
-            savedDraft &&
-            change?.replacedSavedDrafts?.has(savedTableKey(source)) &&
-            pending?.source.kind === 'saved_table' &&
-            isSameWorkspaceSource(pending.source, source) &&
-            savedDraft.baseSignature === source.baseSignature &&
-            buildSchemaStateSignature(savedTable.state) === source.baseSignature
-          ) {
-            const state = mergeSchemaStates(savedTable.state, savedDraft.state, pending.localState);
-
-            if (!isSameState(state, savedDraft.state)) {
-              const mergedDraft = { ...savedDraft, state, updatedAt: Date.now() };
-              runInYDoc(() => upsertSavedDraftInYDoc(yDoc, source, mergedDraft));
-              refreshSavedTableDrafts(new Set([savedTableKey(source)]));
-              lastLocalSaveRef.current = {
-                source: pending.source,
-                baseState: savedTable.state,
-                localState: state,
-              };
-              savedDraft = mergedDraft;
-            }
-          }
-
-          const tableSignature = buildSchemaStateSignature(savedTable.state);
-
-          if (
-            !savedDraft &&
-            change?.collection === 'savedDrafts' &&
-            tableSignature === source.baseSignature
-          ) {
-            lastLocalSaveRef.current = null;
-          }
-
-          const currentPending = lastLocalSaveRef.current;
-
-          // 远端保存会删除共享草稿节点，但尚未同步的本地输入仍需重新落回草稿。
-          const pendingDraft =
-            !savedDraft &&
-            savedTable.trashedAt == null &&
-            currentPending?.source.kind === 'saved_table' &&
-            isSameWorkspaceSource(currentPending.source, source) &&
-            tableSignature !== currentPending.source.baseSignature &&
-            buildSchemaStateSignature(currentPending.localState) !== source.baseSignature
-              ? {
-                  state: currentPending.localState,
-                  tableName: source.tableName,
-                  baseSignature: currentPending.source.baseSignature,
-                  baseState: currentPending.baseState,
-                  updatedAt: Date.now(),
-                }
-              : null;
-          const snapshot = resolveSavedTableSnapshot(savedTable, savedDraft ?? pendingDraft);
-
-          if (pendingDraft && !isSameState(snapshot.state, savedTable.state)) {
-            runInYDoc(() =>
-              upsertSavedDraftInYDoc(yDoc, snapshot.source, {
-                ...pendingDraft,
-                state: snapshot.state,
-                baseSignature: snapshot.source.baseSignature,
-                baseState: savedTable.state,
-              }),
-            );
-            refreshSavedTableDrafts(new Set([savedTableKey(snapshot.source)]));
-            lastLocalSaveRef.current = {
-              source: snapshot.source,
-              baseState: savedTable.state,
-              localState: snapshot.state,
-            };
-          }
-
+        if (snapshot) {
           syncActiveSource(snapshot.source);
           applyRemoteState(snapshot.state);
-
-          return;
-        }
-
-        if (savedDraft) {
-          applyRemoteState(savedDraft.state);
 
           return;
         }
@@ -286,13 +309,13 @@ export function useWorkspaceYDocSubscription({
     refreshFromYDoc();
 
     return () => {
-      lastLocalSaveRef.current = null;
+      pendingLocalSaves.clear();
       unsubscribe();
     };
   }, [
     activeSourceRef,
     applyYDocState,
-    lastLocalSaveRef,
+    pendingLocalSavesRef,
     replaceSavedTableDrafts,
     runInYDoc,
     setPersistedStateIfChanged,
