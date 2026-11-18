@@ -13,7 +13,7 @@ import {
   writeWorkspaceIdentity,
 } from './workspaceIdentity';
 import { clearWorkspaceHistory } from './workspaceHistoryCleanup';
-import type { WorkspaceScope } from '@ddlbuilder/shared-types';
+import type { UserWorkspaceScope, WorkspaceScope } from '@ddlbuilder/shared-types';
 import type { CurrentWorkspaceResponseWithMeta } from '@ddlbuilder/shared-types/api';
 import * as Option from 'effect/Option';
 import { deleteSavedTable, listSavedTablesByStatus } from '@/utils/savedTablesDb';
@@ -86,12 +86,11 @@ export const clearLegacyWorkspaceData = async (scope: WorkspaceScope): Promise<v
   }
 };
 
-export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {
-  if (scope.kind !== 'user') return;
-  const scopes = markWorkspaceCleanupPending(scope);
-
-  const legacyScope = { kind: 'legacy_user', userId: scope.userId } as const;
-
+const clearWorkspaceCaches = async (
+  userId: string,
+  scopes: UserWorkspaceScope[],
+): Promise<void> => {
+  const legacyScope = { kind: 'legacy_user', userId } as const;
   await Promise.all([
     ...scopes.flatMap((cachedScope) => [
       clearWorkspaceYDocData(cachedScope.workspaceId),
@@ -106,21 +105,38 @@ export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<vo
   dispatchWorkspaceSnapshotApplied();
 };
 
+export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {
+  if (scope.kind !== 'user') return;
+  await clearWorkspaceCaches(scope.userId, markWorkspaceCleanupPending(scope));
+};
+
+export const retryWorkspaceCleanup = async (userId: string): Promise<void> => {
+  const scopes = readWorkspaceCaches().filter(
+    (cache) => cache.userId === userId && cache.status === 'pending_cleanup',
+  );
+
+  if (!scopes.length) return;
+  await clearWorkspaceCaches(userId, scopes);
+  const identity = parseWorkspaceIdentity(readWorkspaceIdentity());
+
+  if (
+    identity?.userId === userId &&
+    scopes.some((scope) => scope.workspaceId === identity.workspaceId)
+  )
+    writeWorkspaceIdentity(null);
+};
+
 let pendingCleanup: Promise<void> | null = null;
 export const retryPendingWorkspaceCleanup = (): Promise<void> => {
   if (pendingCleanup) return pendingCleanup;
   pendingCleanup = (async () => {
-    const scopes = readWorkspaceCaches().filter((cache) => cache.status === 'pending_cleanup');
-    const users = new Set<string>();
+    const users = new Set(
+      readWorkspaceCaches()
+        .filter((cache) => cache.status === 'pending_cleanup')
+        .map((cache) => cache.userId),
+    );
 
-    for (const scope of scopes) {
-      if (users.has(scope.userId)) continue;
-      users.add(scope.userId);
-      await clearLocalWorkspaceData(scope);
-
-      if (parseWorkspaceIdentity(readWorkspaceIdentity())?.userId === scope.userId)
-        writeWorkspaceIdentity(null);
-    }
+    for (const userId of users) await retryWorkspaceCleanup(userId);
   })().finally(() => {
     pendingCleanup = null;
   });

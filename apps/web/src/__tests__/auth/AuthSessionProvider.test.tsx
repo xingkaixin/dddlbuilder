@@ -1,10 +1,16 @@
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { render } from '@/__tests__/utils/test-utils';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useEffect } from 'react';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
+import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
+import { createTestQueryClient } from '@/__tests__/utils/queryClient';
+import { readWorkspaceCaches, rememberWorkspaceCache } from '@/services/workspaceCacheRegistry';
+import { executeWorkspaceSignOut } from '@/auth/workspaceSignOut';
+import { currentUserOptions } from '@/queries/auth';
 import {
+  parseWorkspaceIdentity,
   readWorkspaceIdentity,
   writeWorkspaceIdentity,
   WORKSPACE_IDENTITY_KEY,
@@ -31,7 +37,8 @@ const { clearLocalWorkspaceDataMock, prepareWorkspaceSignOutMock } = vi.hoisted(
 }));
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- 认证与工作区替换用于隔离 provider 的会话状态编排和副作用。
-vi.mock('@/services/workspaceYDocStorage', () => ({
+vi.mock('@/services/workspaceYDocStorage', async (importOriginal) => ({
+  ...(await importOriginal()),
   prepareWorkspaceSignOut: prepareWorkspaceSignOutMock,
 }));
 
@@ -86,6 +93,7 @@ const SessionProbe = () => {
 describe('AuthSessionProvider', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    toast.dismiss();
     setupMemoryLocalStorage();
     signInEmailMock.mockReset();
     signUpEmailMock.mockReset();
@@ -311,6 +319,7 @@ describe('AuthSessionProvider', () => {
       render(
         <AuthSessionProvider>
           <Probe />
+          <Toaster />
         </AuthSessionProvider>,
       );
 
@@ -333,6 +342,85 @@ describe('AuthSessionProvider', () => {
         }),
         expect.any(Error),
       );
+
+      const scope = { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' } as const;
+      rememberWorkspaceCache(scope);
+      writeWorkspaceIdentity(scope);
+      clearLocalWorkspaceDataMock.mockResolvedValue(undefined);
+      const retry = await screen.findByRole('button', { name: '重试清理' });
+      await act(async () => fireEvent.click(retry));
+      expect(parseWorkspaceIdentity(readWorkspaceIdentity())).toEqual(scope);
+    });
+
+    it.each([
+      { signedIn: false, refreshFails: false },
+      { signedIn: true, refreshFails: false },
+      { signedIn: false, refreshFails: true },
+    ])('retries sign-out cleanup %j', async (scenario) => {
+      const { signedIn, refreshFails } = scenario;
+      setupFakeIndexedDB();
+
+      try {
+        const scope = { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' } as const;
+        const queryClient = createTestQueryClient();
+
+        const user = {
+          userId: scope.userId,
+          email: 'user@example.com',
+          emailVerified: true,
+          name: 'User One',
+        };
+        rememberWorkspaceCache(scope);
+        writeWorkspaceIdentity(scope);
+        vi.mocked(localStorage.setItem).mockImplementationOnce(() => {
+          throw new DOMException('Storage unavailable', 'QuotaExceededError');
+        });
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const fetch = vi
+          .spyOn(globalThis, 'fetch')
+          .mockResolvedValue(
+            Response.json(signedIn ? { signedIn, user } : { signedIn, user: null }),
+          );
+
+        if (refreshFails) fetch.mockResolvedValueOnce(new Response(null, { status: 503 }));
+        render(<Toaster />);
+
+        await act(() =>
+          executeWorkspaceSignOut({
+            scope,
+            userId: scope.userId,
+            queryClient,
+            remoteSignOut: async () => {},
+          }),
+        );
+
+        expect(readWorkspaceCaches()).toEqual([{ ...scope, status: 'active' }]);
+        expect(parseWorkspaceIdentity(readWorkspaceIdentity())).toEqual(scope);
+        const retry = await screen.findByRole('button', { name: '重试清理' });
+        await act(async () => fireEvent.click(retry));
+
+        if (refreshFails) {
+          const nextRetry = await waitFor(() => {
+            const button = screen
+              .getAllByRole('button', { name: '重试清理' })
+              .find((candidate) => candidate !== retry);
+
+            if (!button) throw new Error('Cleanup retry disappeared');
+
+            return button;
+          });
+          await act(async () => fireEvent.click(nextRetry));
+        }
+
+        await waitFor(() => {
+          expect(queryClient.getQueryData(currentUserOptions().queryKey)?.signedIn).toBe(signedIn);
+          expect(readWorkspaceCaches()).toEqual(signedIn ? [{ ...scope, status: 'active' }] : []);
+          expect(parseWorkspaceIdentity(readWorkspaceIdentity())).toEqual(signedIn ? scope : null);
+        });
+      } finally {
+        teardownFakeIndexedDB();
+      }
     });
   });
 });
