@@ -1,6 +1,8 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createAIRuntimeFixture as createRuntime } from '../helpers/aiRuntime.js';
 import { AI_CONTEXT_LIMIT_ERROR, decodeAIConversationSnapshot } from '@ddlbuilder/shared-types';
+import { recoverAIConversations } from '../../lib/aiConversationRecovery.js';
+import { applyCreditMutation } from '../../lib/credits.js';
 
 const response = (text = 'This query reads users.', stopReason = 'end_turn') => {
   const events = [
@@ -537,4 +539,200 @@ it('accepts only one of two concurrent operations', async () => {
   );
   await test.finish();
   expect(statuses).toEqual([200, 409]);
+});
+
+it('skips retention deletion when a new operation arrives mid-alarm and resets warm state after expiry', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => response()),
+  );
+  const test = await createRuntime();
+  await submit(test);
+  await test.finish();
+
+  const originalPrepare = test.env.USER_DB.prepare.bind(test.env.USER_DB);
+  let injectedRace = false;
+  vi.spyOn(test.env.USER_DB, 'prepare').mockImplementation((query: string) => {
+    const statement = originalPrepare(query);
+
+    if (!injectedRace && query.includes('SELECT expires_at, deleted_at FROM ai_conversations')) {
+      injectedRace = true;
+      const originalBind = statement.bind.bind(statement);
+      statement.bind = (...values: unknown[]) => {
+        const bound = originalBind(...values);
+        bound.first = async <T>() => {
+          test.sqlite
+            .prepare("UPDATE ai_conversations SET expires_at = ? WHERE id = 'conversation'")
+            .run(Date.now() + 600_000);
+          addOperation(test, 'second');
+          await submitOperation(test, 'second');
+
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: matches the retention row shape queried by alarm().
+          return { expires_at: 1, deleted_at: null } as unknown as T;
+        };
+
+        return bound;
+      };
+    }
+
+    return statement;
+  });
+
+  await test.runtime.alarm();
+  await test.finish();
+  expect(
+    test.sqlite.prepare("SELECT deleted_at FROM ai_conversations WHERE id = 'conversation'").get(),
+  ).toEqual({ deleted_at: null });
+  expect(await snapshot(test, 'second')).toMatchObject({
+    status: 'succeeded',
+    accountingPending: false,
+  });
+
+  vi.restoreAllMocks();
+  test.sqlite.prepare("UPDATE ai_conversations SET expires_at = 1 WHERE id = 'conversation'").run();
+  await test.runtime.alarm();
+  expect(
+    test.sqlite
+      .prepare(
+        "SELECT deleted_at IS NOT NULL AS deleted FROM ai_conversations WHERE id = 'conversation'",
+      )
+      .get(),
+  ).toEqual({ deleted: 1 });
+
+  const postDelete = await test.runtime.fetch(
+    new Request('https://internal/snapshot?operation=second', {
+      headers: { 'x-ai-user': 'user-1' },
+    }),
+  );
+  expect([200, 409]).toContain(postDelete.status);
+});
+
+it('settles a zero-token provider stop response that fails output validation', async () => {
+  const zeroTokenEvents = [
+    {
+      type: 'message_start',
+      message: {
+        id: 'msg_zero',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude-haiku-5-5',
+        content: [],
+        stop_reason: null,
+        usage: { input_tokens: 0, output_tokens: 0 },
+      },
+    },
+    {
+      type: 'message_delta',
+      delta: { stop_reason: 'end_turn', stop_sequence: null },
+      usage: { output_tokens: 0 },
+    },
+    { type: 'message_stop' },
+  ];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(
+          zeroTokenEvents
+            .map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`)
+            .join(''),
+          { headers: { 'Content-Type': 'text/event-stream' } },
+        ),
+    ),
+  );
+  const test = await createRuntime();
+  await submit(test, 'review', {
+    ddl: 'CREATE TABLE users(id INT)',
+    tableName: 'users',
+    dbType: 'mysql',
+  });
+  await test.finish();
+  expect(await snapshot(test)).toMatchObject({
+    status: 'failed',
+    accountingPending: false,
+    error: 'UPSTREAM_OPENAI_ERROR',
+  });
+  expect(await test.balance()).toBe(100_000);
+});
+
+it('backs off unrecoverable overage operations during cron recovery until credits are granted', async () => {
+  const overageEvents = [
+    {
+      type: 'message_start',
+      message: {
+        id: 'msg_overage',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude-haiku-5-5',
+        content: [],
+        stop_reason: null,
+        usage: { input_tokens: 8_000, output_tokens: 0 },
+      },
+    },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Answer' } },
+    { type: 'content_block_stop', index: 0 },
+    {
+      type: 'message_delta',
+      delta: { stop_reason: 'end_turn', stop_sequence: null },
+      usage: { output_tokens: 1_000 },
+    },
+    { type: 'message_stop' },
+  ];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(
+          overageEvents
+            .map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`)
+            .join(''),
+          { headers: { 'Content-Type': 'text/event-stream' } },
+        ),
+    ),
+  );
+  const test = await createRuntime({ balance: 5_000 });
+  await submit(test);
+  await expect(test.finish()).rejects.toThrow('AI operation requires durable recovery');
+
+  test.sqlite.prepare("UPDATE ai_operations SET deadline_at = 1 WHERE id = 'operation'").run();
+  let recoveryCalls = 0;
+
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: minimal namespace delegating to the real AIConversationDurableObject.
+  const namespace = {
+    idFromName: (name: string) => name,
+    get: () => ({
+      fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+        recoveryCalls += 1;
+
+        return test.runtime.fetch(new Request(input, init));
+      },
+    }),
+  } as unknown as DurableObjectNamespace;
+  const recoveryEnv = { ...test.env, AI_CONVERSATIONS: namespace };
+
+  await expect(recoverAIConversations(recoveryEnv)).rejects.toThrow(
+    'AI conversation recovery failed',
+  );
+  expect(recoveryCalls).toBe(1);
+
+  await recoverAIConversations(recoveryEnv);
+  expect(recoveryCalls).toBe(1);
+
+  await applyCreditMutation(test.env, {
+    userId: 'user-1',
+    kind: 'grant',
+    source: 'manual_adjustment',
+    amount: 5_000,
+    idempotencyKey: 'grant:topup-1',
+  });
+  await recoverAIConversations(recoveryEnv);
+  expect(recoveryCalls).toBe(2);
+  expect(
+    test.sqlite
+      .prepare(
+        "SELECT completed_at IS NOT NULL AS completed FROM ai_operations WHERE id = 'operation'",
+      )
+      .get(),
+  ).toEqual({ completed: 1 });
 });

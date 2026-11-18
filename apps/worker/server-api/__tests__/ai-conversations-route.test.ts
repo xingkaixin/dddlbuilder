@@ -114,4 +114,74 @@ it('protects operation ownership, immutable submissions and stopped prepared ope
       .prepare('SELECT completed_at IS NOT NULL AS closed FROM ai_operations WHERE id = ?')
       .get(rejected.operationId),
   ).toEqual({ closed: 1 });
+
+  const initial = Schema.decodeUnknownSync(AIOperationIdentitySchema)(
+    await (await request('/ai/operations', 'POST', 'user-1', { route: 'explain' })).json(),
+  );
+  expect(
+    (await request(`/ai/operations/${initial.operationId}`, 'POST', 'user-1', { sql: 'SELECT 1' }))
+      .status,
+  ).toBe(200);
+
+  const pendingOnDeleted = Schema.decodeUnknownSync(AIOperationIdentitySchema)(
+    await (
+      await app.request(
+        '/ai/operations',
+        {
+          method: 'POST',
+          headers: { 'test-user': 'user-1', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ route: 'explain', conversationId: initial.conversationId }),
+        },
+        env,
+      )
+    ).json(),
+  );
+  let releaseDigest: (() => void) | undefined;
+  const originalDigest = crypto.subtle.digest.bind(crypto.subtle);
+  vi.spyOn(crypto.subtle, 'digest').mockImplementationOnce(async (algorithm, data) => {
+    await new Promise<void>((resolve) => {
+      releaseDigest = resolve;
+    });
+
+    return originalDigest(algorithm, data);
+  });
+
+  const concurrentSubmit = request(
+    `/ai/operations/${pendingOnDeleted.operationId}`,
+    'POST',
+    'user-1',
+    { sql: 'SELECT 2' },
+  );
+  await vi.waitFor(() => expect(releaseDigest).toBeDefined());
+
+  expect(
+    (await request(`/ai/conversations/${initial.conversationId}`, 'DELETE', 'user-1')).status,
+  ).toBe(200);
+  releaseDigest?.();
+  expect((await concurrentSubmit).status).toBe(409);
+  expect(
+    test.sqlite
+      .prepare(
+        'SELECT stopped_at IS NOT NULL AS stopped, completed_at IS NOT NULL AS closed FROM ai_operations WHERE id = ?',
+      )
+      .get(pendingOnDeleted.operationId),
+  ).toEqual({ stopped: 1, closed: 1 });
+  expect(
+    forwarded.some((item) => {
+      const url = new URL(item.url);
+
+      return (
+        url.pathname === '/submit' &&
+        url.searchParams.get('operation') === pendingOnDeleted.operationId
+      );
+    }),
+  ).toBe(false);
+  expect(
+    (
+      await request(`/ai/operations/${pendingOnDeleted.operationId}`, 'POST', 'user-1', {
+        sql: 'SELECT 2',
+      })
+    ).status,
+  ).toBe(404);
+  vi.restoreAllMocks();
 });

@@ -60,6 +60,10 @@ export const createAIConversationModels = async (
                 onExcessProperty: 'error',
               })
             : undefined;
+          const estimatedInputTokens =
+            inputSize +
+            current.scenario.instructions.length +
+            (schema ? JSON.stringify(schema).length : 0);
           let call: string | undefined;
           let rejected = false;
           let admissionFailure: string | undefined;
@@ -74,7 +78,7 @@ export const createAIConversationModels = async (
 
               try {
                 call = await admitAICall(env, current.operationId, current.route, model.id, {
-                  inputTokens: inputSize,
+                  inputTokens: estimatedInputTokens,
                   maxOutputTokens: current.scenario.maxTokens,
                 });
               } catch (error) {

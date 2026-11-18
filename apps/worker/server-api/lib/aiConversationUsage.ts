@@ -28,7 +28,10 @@ export type AIOperation = {
   completed_at: number | null;
 };
 
-export type AIOperationAccess = AIOperation & { session_active: number };
+export type AIOperationAccess = AIOperation & {
+  session_active: number;
+  conversation_active: number;
+};
 
 type CallAttempt = {
   id: string;
@@ -81,7 +84,12 @@ export const readAIOperationAccess = (env: ApiEnv['Bindings'], id: string) =>
         WHERE s.id = o.session_id AND s.user_id = o.user_id AND s.expires_at > ?
       )
       AND NOT EXISTS (SELECT 1 FROM admin_user_flags f WHERE f.user_id = o.user_id)
-    ) AS session_active
+    ) AS session_active, (
+      EXISTS (
+        SELECT 1 FROM ai_conversations c
+        WHERE c.id = o.conversation_id AND c.deleted_at IS NULL
+      )
+    ) AS conversation_active
     FROM ai_operations o WHERE o.id = ?
   `)
     .bind(Date.now(), id)
@@ -93,6 +101,7 @@ export const assertAIOperationAccess = (operation: AIOperationAccess) => {
   }
 
   if (
+    !operation.conversation_active ||
     operation.stopped_at ||
     operation.completed_at ||
     !operation.deadline_at ||
@@ -228,7 +237,12 @@ export const admitAICall = async (
   // Mark before dispatch: a crash between this commit and fetch is conservatively treated as possible usage.
   const dispatch = env.USER_DB.prepare(`UPDATE ai_call_attempts SET dispatched_at = ? WHERE id = ?
     AND EXISTS (SELECT 1 FROM usage_events WHERE id = ?)
-    AND EXISTS (SELECT 1 FROM ai_operations WHERE id = ? AND stopped_at IS NULL AND completed_at IS NULL AND deadline_at > ?)
+    AND EXISTS (
+      SELECT 1 FROM ai_operations o
+      JOIN ai_conversations c ON c.id = o.conversation_id
+      WHERE o.id = ? AND o.stopped_at IS NULL AND o.completed_at IS NULL AND o.deadline_at > ?
+        AND c.deleted_at IS NULL
+    )
     RETURNING id`).bind(Date.now(), id, usageId, operationId, Date.now());
 
   const results = await env.USER_DB.batch([
