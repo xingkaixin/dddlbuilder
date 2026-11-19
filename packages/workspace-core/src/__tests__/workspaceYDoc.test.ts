@@ -475,4 +475,20 @@ describe('workspace YDoc roots', () => {
     );
     expect(getWorkspaceRoot(malformed).meta.has('schemaVersion')).toBe(false);
   });
+
+  it('validates folder records on full and incremental structure checks', () => {
+    const doc = new Y.Doc();
+    ensureWorkspaceYDocMeta(doc);
+
+    const changes = trackWorkspaceYDocTableChanges(doc, () => {
+      const folder = new Y.Map<unknown>();
+      folder.set('name', 123);
+      getWorkspaceRoot(doc).folders.set('folder-bad', folder);
+    });
+
+    expect(changes.get('folders')?.has('folder-bad')).toBe(true);
+    expect(() => assertWorkspaceYDocStructure(doc, changes)).toThrow(
+      'folders.folder-bad.name must be a string',
+    );
+  });
 });

@@ -12,7 +12,7 @@ import {
 } from './workspaceTableDoc';
 import { ensureMap, type JsonRecord, readJsonMap, writeJsonMap } from './yMapJson';
 import { readWorkspaceTimestamp } from './workspaceMetadata';
-import { assertTableDocDecodable } from './workspaceYDocValidation';
+import { assertFolderDocDecodable, assertTableDocDecodable } from './workspaceYDocValidation';
 
 export const WORKSPACE_YDOC_SCHEMA_VERSION = 1;
 export const WORKSPACE_YDOC_COLLECTIONS = [
@@ -111,7 +111,7 @@ export const trackWorkspaceYDocTableChanges = (doc: Y.Doc, apply: () => void) =>
   const root = getWorkspaceRoot(doc);
   const changes: WorkspaceYDocTableChanges = new Map();
 
-  const stops = TABLE_COLLECTIONS.map((collection) => {
+  const stops = WORKSPACE_YDOC_COLLECTIONS.map((collection) => {
     const keys = new Set<string>();
     changes.set(collection, keys);
 
@@ -148,8 +148,14 @@ const assertWorkspaceYDocCollections = (doc: Y.Doc, changes?: WorkspaceYDocTable
         throw new Error(`${collection} entries must be Y.Maps`);
       }
 
-      if (collection === 'folders' || (changes && !changedKeys?.has(key))) continue;
+      if (changes && !changedKeys?.has(key)) continue;
       const path = `${collection}.${key}`;
+
+      if (collection === 'folders') {
+        assertFolderDocDecodable(value, path);
+        continue;
+      }
+
       assertTableDocStructure(value, path);
       assertTableDocDecodable(value, path);
     }
