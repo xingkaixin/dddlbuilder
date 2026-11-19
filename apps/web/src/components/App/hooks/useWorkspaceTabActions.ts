@@ -8,7 +8,7 @@ import { useTabStore } from '@/stores/tabStore';
 import { createEmptyRow } from '@/utils/helpers';
 import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
 import { usePreferencesStore } from '@/stores/preferencesStore';
-import { applySavedState } from '../applySavedState';
+import { loadEditorSnapshot } from '../applySavedState';
 import type { useTabLifecycle } from './useTabLifecycle';
 
 const createEmptyDraftState = (): PersistedState => {
@@ -97,8 +97,9 @@ export function useWorkspaceTabActions({
 
       if (existingTab) {
         switchToTab(existingTab);
+        showToast(t('erDiagram.tableLoaded'));
 
-        return;
+        return true;
       }
 
       if (openTabs.length > 0) flushActiveTab();
@@ -128,7 +129,7 @@ export function useWorkspaceTabActions({
           if (currentTab) showTab(currentTab);
         }
 
-        return;
+        return false;
       }
 
       hydrateTab(newTabId, result.source, result.state);
@@ -136,8 +137,12 @@ export function useWorkspaceTabActions({
 
       if (loadedTab?.id === newTabId) {
         showTab(loadedTab);
-        showToast(`已加载：${result.source.tableName} (v${result.version})`);
+        showToast(t('erDiagram.tableLoaded'));
+
+        return true;
       }
+
+      return false;
     },
     [
       activateTab,
@@ -154,6 +159,7 @@ export function useWorkspaceTabActions({
       showTab,
       showToast,
       switchToTab,
+      t,
     ],
   );
 
@@ -179,7 +185,7 @@ export function useWorkspaceTabActions({
         stateSnapshot: nextState,
       });
       activateTab(newTabId);
-      applySavedState(nextState);
+      loadEditorSnapshot(nextState);
       selectWorkspaceSnapshot({ kind: 'draft', draftId }, nextState);
       showToast(existingState ? t('app.loadedDraft') : t('app.emptyDraftCreated'));
     },
@@ -213,7 +219,7 @@ export function useWorkspaceTabActions({
         stateSnapshot: finalState,
       });
       activateTab(newTabId);
-      applySavedState(finalState);
+      loadEditorSnapshot(finalState);
       setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
     },
     [activateTab, addTab, createDraft, flushActiveTab, openTabs.length, setWorkspaceSnapshot],

@@ -86,11 +86,13 @@ export function ImportSqlDialog({
 }: ImportSqlDialogProps) {
   const sqlParseMutation = useMutation({
     mutationFn: (payload: Parameters<typeof requestSqlParse>[0]) => requestSqlParse(payload),
+    networkMode: 'always',
     retry: false,
   });
   const multiSqlParseMutation = useMutation({
     mutationFn: (payload: Parameters<typeof requestMultiSqlParse>[0]) =>
       requestMultiSqlParse(payload),
+    networkMode: 'always',
     retry: false,
   });
   const { t } = useTranslation();

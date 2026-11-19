@@ -48,11 +48,12 @@ export const seedEditorHistory = (documentId: string, state: PersistedState) => 
   const history = getOrCreateHistory(documentId);
   const signature = buildSchemaStateSignature(state);
 
-  if (history.current === null) {
-    history.current = state;
-    history.currentSignature = signature;
-    history.lastRecordedAt = Date.now();
-  }
+  if (history.currentSignature === signature) return;
+  history.past = [];
+  history.future = [];
+  history.current = state;
+  history.currentSignature = signature;
+  history.lastRecordedAt = 0;
 };
 
 export const recordEditorHistory = (

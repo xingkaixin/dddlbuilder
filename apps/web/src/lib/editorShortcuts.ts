@@ -1,11 +1,13 @@
-import { toPersistedState } from '@/stores/editorDocumentCodec';
+import { flushSync } from 'react-dom';
+import { toEditorSessionSnapshot, toPersistedState } from '@/stores/editorDocumentCodec';
 import { useAppUiStore } from '@/stores/appUiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import {
   recordEditorHistory,
   redoEditorHistory,
   runWithEditorHistoryGuard,
-  seedEditorHistory,
+  isApplyingEditorHistory,
+  clearEditorHistory,
   undoEditorHistory,
 } from '@/stores/editorHistory';
 import { useTabStore } from '@/stores/tabStore';
@@ -40,6 +42,7 @@ export function listenForEditorShortcuts() {
   listening = true;
 
   useEditorStore.subscribe((state) => {
+    if (isApplyingEditorHistory()) return;
     const tabId = getActiveEditableTabId();
 
     if (!tabId) return;
@@ -47,12 +50,12 @@ export function listenForEditorShortcuts() {
     recordEditorHistory(tabId, toPersistedState(state));
   });
 
-  useTabStore.subscribe((tabState) => {
-    const active = tabState.tabs.find((tab) => tab.id === tabState.activeTabId);
+  useTabStore.subscribe((state, previous) => {
+    if (state.tabs.length >= previous.tabs.length) return;
 
-    if (!active || active.isLoading) return;
-
-    seedEditorHistory(active.id, toPersistedState(useEditorStore.getState()));
+    for (const tab of previous.tabs) {
+      if (!state.tabs.some((current) => current.id === tab.id)) clearEditorHistory(tab.id);
+    }
   });
 
   window.addEventListener('keydown', (event) => {
@@ -76,6 +79,12 @@ export function listenForEditorShortcuts() {
       if (!saveButton) return;
 
       event.preventDefault();
+
+      const focused = document.activeElement;
+
+      if (focused instanceof HTMLElement && isEditableElement(focused)) {
+        flushSync(() => focused.blur());
+      }
 
       if (!saveButton.disabled) saveButton.click();
 
@@ -101,7 +110,11 @@ export function listenForEditorShortcuts() {
 
       if (!previous) return;
       event.preventDefault();
-      runWithEditorHistoryGuard(() => useEditorStore.getState().replaceDocument(previous));
+      runWithEditorHistoryGuard(() =>
+        useEditorStore
+          .getState()
+          .replaceDocument({ ...previous, ...toEditorSessionSnapshot(useEditorStore.getState()) }),
+      );
 
       return;
     }
@@ -111,7 +124,11 @@ export function listenForEditorShortcuts() {
 
       if (!next) return;
       event.preventDefault();
-      runWithEditorHistoryGuard(() => useEditorStore.getState().replaceDocument(next));
+      runWithEditorHistoryGuard(() =>
+        useEditorStore
+          .getState()
+          .replaceDocument({ ...next, ...toEditorSessionSnapshot(useEditorStore.getState()) }),
+      );
     }
   });
 }

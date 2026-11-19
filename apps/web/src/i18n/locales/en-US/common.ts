@@ -1961,6 +1961,7 @@ export const enUSCommon = {
     },
     toast: {
       tableSaved: 'Table saved',
+      refreshAfterSaveFailed: 'Table saved. Reopen the diagram to refresh it.',
       tableDuplicate: 'Table name already exists',
       tableSaveFailed: 'Failed to save table',
       fkDeleted: 'Foreign key deleted',

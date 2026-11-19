@@ -1978,6 +1978,7 @@ export const jaJPCommon = {
     },
     toast: {
       tableSaved: 'テーブルが保存されました',
+      refreshAfterSaveFailed: 'テーブルは保存されました。図を開き直して更新してください。',
       tableDuplicate: 'テーブル名はすでに存在します',
       tableSaveFailed: 'テーブルの保存に失敗しました',
       fkDeleted: '外部キーが削除されました',

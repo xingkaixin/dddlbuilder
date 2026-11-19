@@ -7,13 +7,13 @@ import { useTabStore } from '@/stores/tabStore';
 type WorkspaceTabActionsParams = Parameters<typeof useWorkspaceTabActions>[0];
 
 const mocks = vi.hoisted(() => ({
-  applySavedState: vi.fn(),
+  loadEditorSnapshot: vi.fn(),
   showToast: vi.fn(),
 }));
 
-// oxlint-disable-next-line anti-slop/no-module-mocking -- Isolates the editor-store side effect so this hook test asserts tab/workspace orchestration; applySavedState has its own integration tests.
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Isolates the editor-store side effect so this hook test asserts tab/workspace orchestration; loadEditorSnapshot has its own integration tests.
 vi.mock('@/components/App/applySavedState', () => ({
-  applySavedState: mocks.applySavedState,
+  loadEditorSnapshot: mocks.loadEditorSnapshot,
 }));
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- Supplies a call recorder for the UI notification context consumed by the tab action hook.
@@ -120,7 +120,7 @@ describe('useWorkspaceTabActions', () => {
       expect.objectContaining({ normalizedName: 'loaded' }),
       expect.objectContaining({ tableName: 'Loaded' }),
     );
-    expect(mocks.applySavedState).not.toHaveBeenCalled();
+    expect(mocks.loadEditorSnapshot).not.toHaveBeenCalled();
     expect(params.selectWorkspaceSnapshot).not.toHaveBeenCalled();
   });
 

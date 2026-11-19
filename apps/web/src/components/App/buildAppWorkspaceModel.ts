@@ -1,3 +1,4 @@
+import { getAnonymousWorkspaceScope, getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 import { i18n } from '@/i18n';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import type { useEditorDomains } from './hooks/useEditorDomains';
@@ -43,7 +44,7 @@ interface BuildAppWorkspaceModelParams {
   handleFireworksComplete: () => void;
   handlePlayFireworks: () => void;
   templateActions: ReturnType<typeof useTemplateActions>;
-  handleSelectTableFromEr: (record: SavedTableRecord) => void;
+  handleSelectTableFromEr: (record: SavedTableRecord) => Promise<boolean>;
 }
 
 export function buildAppWorkspaceModel({
@@ -87,7 +88,11 @@ export function buildAppWorkspaceModel({
 
   return {
     erPage: {
-      ready: !workspacePresentation.shouldShowWorkspaceSkeleton,
+      ready:
+        Boolean(workspaceController.scope) && !workspacePresentation.shouldShowWorkspaceSkeleton,
+      scopeKey: getWorkspaceScopeStorageKey(
+        workspaceController.scope ?? getAnonymousWorkspaceScope(),
+      ),
       onSelectTable: handleSelectTableFromEr,
       saveTable: tables.saveTable,
       overwriteTable: tables.overwriteTable,
@@ -97,7 +102,9 @@ export function buildAppWorkspaceModel({
       onOpenFieldTemplates: templateActions.handleManageTemplates,
       onOpenTableTemplates: tableTemplateActions.handleManageTemplates,
       onOpenAIGenerate: navigationActions.handleOpenAIGenerateDialog,
-      onOpenAIPatch: editorSurface.tableBuilderProps.dataTableProps.onOpenAISchemaPatch,
+      onOpenAIPatch: tabLifecycle.activeWorkspaceTab
+        ? editorSurface.tableBuilderProps.dataTableProps.onOpenAISchemaPatch
+        : undefined,
       onRunAIComments:
         tabLifecycle.tabs.length > 0 &&
         editorSurface.tableBuilderProps.dataTableProps.onGenerateComments
@@ -108,7 +115,14 @@ export function buildAppWorkspaceModel({
         tabLifecycle.tabs.length > 0
           ? editorSurface.tableBuilderProps.dataTableProps.onOpenAIIndexAdvisor
           : undefined,
-      onRequireTable: () => schemaController.showToast(i18n.t('schemaTools.openTableFirst')),
+      onToolUnavailable: () =>
+        schemaController.showToast(
+          i18n.t(
+            tabLifecycle.activeWorkspaceTab
+              ? 'schemaTools.unsupportedDialect'
+              : 'schemaTools.openTableFirst',
+          ),
+        ),
     },
     drawer: {
       open: ui.savedTablesDrawerOpen,

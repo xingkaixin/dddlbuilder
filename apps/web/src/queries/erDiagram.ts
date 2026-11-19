@@ -1,9 +1,12 @@
 import { queryOptions } from '@tanstack/react-query';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 
-export const erDiagramTablesOptions = (loadTables: () => Promise<SavedTableRecord[]>) =>
+export const erDiagramTablesOptions = (
+  scopeKey: string,
+  loadTables: () => Promise<SavedTableRecord[]>,
+) =>
   queryOptions({
-    queryKey: ['er-diagram', 'tables'],
+    queryKey: ['er-diagram', scopeKey, 'tables'],
     queryFn: loadTables,
     // Every open reads a fresh snapshot and refreshes only on demand, so nothing is cached between opens.
     gcTime: 0,

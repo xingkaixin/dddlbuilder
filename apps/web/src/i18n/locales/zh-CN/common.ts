@@ -1886,6 +1886,7 @@ export const zhCNCommon = {
     },
     toast: {
       tableSaved: '表已保存',
+      refreshAfterSaveFailed: '表已保存，请重新打开关系图以刷新。',
       tableDuplicate: '表名已存在',
       tableSaveFailed: '保存失败',
       fkDeleted: '外键已删除',

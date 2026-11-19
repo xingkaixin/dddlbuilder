@@ -44,11 +44,11 @@ const NodePositionSchema = Schema.Struct({
 });
 const SavedNodePositionsSchema = Schema.Record(Schema.String, NodePositionSchema);
 
-function readSavedNodePositions() {
+function readSavedNodePositions(scopeKey: string) {
   const result = new Map<string, { x: number; y: number }>();
 
   try {
-    const raw = window.localStorage.getItem(ER_POSITIONS_STORAGE_KEY);
+    const raw = window.localStorage.getItem(`${ER_POSITIONS_STORAGE_KEY}:${scopeKey}`);
 
     if (!raw) return result;
 
@@ -66,7 +66,7 @@ function readSavedNodePositions() {
   }
 }
 
-function writeSavedNodePositions(nodes: Node[]) {
+function writeSavedNodePositions(scopeKey: string, nodes: Node[]) {
   try {
     const positions = Object.fromEntries(
       nodes.map((node) => [
@@ -75,7 +75,10 @@ function writeSavedNodePositions(nodes: Node[]) {
       ]),
     );
 
-    window.localStorage.setItem(ER_POSITIONS_STORAGE_KEY, JSON.stringify(positions));
+    window.localStorage.setItem(
+      `${ER_POSITIONS_STORAGE_KEY}:${scopeKey}`,
+      JSON.stringify(positions),
+    );
   } catch {
     // ignore storage errors
   }
@@ -128,9 +131,7 @@ function buildNodesFromTables(
   tables: SavedTableRecord[],
   onSelectTable: (record: SavedTableRecord) => void,
 ): Node[] {
-  const savedPositions = readSavedNodePositions();
-
-  const baseNodes: Node[] = tables.map((record) => ({
+  return tables.map((record) => ({
     id: buildSavedTableNodeId(record),
     type: 'table',
     position: { x: 50, y: 50 },
@@ -140,12 +141,6 @@ function buildNodesFromTables(
       state: record.state,
       onSelectTable,
     } as ErNodeData,
-  }));
-  const fallbackPositions = computeRowAwarePositions(baseNodes);
-
-  return baseNodes.map((node) => ({
-    ...node,
-    position: savedPositions.get(node.id) ?? fallbackPositions.get(node.id) ?? node.position,
   }));
 }
 
@@ -204,11 +199,12 @@ function buildEdgesFromTables(
 }
 
 interface CanvasInnerProps {
+  scopeKey: string;
   tables: SavedTableRecord[];
   loading: boolean;
   onSelectTable: (record: SavedTableRecord) => void;
   onRefresh: () => Promise<void>;
-  onAddTable: () => Promise<boolean>;
+  onAddTable: (afterSave: () => void) => void;
   onUpdateTable: (
     normalizedName: SavedTableTarget,
     state: SavedTableStateUpdate,
@@ -231,30 +227,57 @@ type CanvasState = {
 };
 
 type CanvasEvent =
-  | { type: 'graphSourceChanged'; nodes: Node[]; edges: Edge[] }
+  | {
+      type: 'graphSourceChanged';
+      nodes: Node[];
+      edges: Edge[];
+      savedPositions: Map<string, { x: number; y: number }>;
+    }
   | { type: 'nodesChanged'; changes: NodeChangeset }
   | { type: 'edgesChanged'; changes: EdgeChangeset }
   | { type: 'autoLayoutApplied' }
   | { type: 'relationshipProposed'; relationship: PendingRelationship }
   | { type: 'relationshipClosed' };
 
-function createCanvasState(source: { nodes: Node[]; edges: Edge[] }): CanvasState {
+function createCanvasState(source: {
+  nodes: Node[];
+  edges: Edge[];
+  savedPositions: Map<string, { x: number; y: number }>;
+}): CanvasState {
   return {
     sourceNodes: source.nodes,
     sourceEdges: source.edges,
-    nodes: source.nodes,
+    nodes: placeNodes(source.nodes, source.savedPositions),
     edges: source.edges,
     pendingRelationship: null,
   };
 }
 
-function keepNodePositions(previous: Node[], next: Node[]): Node[] {
-  const previousPositions = new Map(previous.map((node) => [node.id, node.position]));
+function placeNodes(nodes: Node[], known: Map<string, { x: number; y: number }>): Node[] {
+  let bottom = 0;
+  const missing = [];
 
-  return next.map((node) => {
-    const position = previousPositions.get(node.id);
+  for (const node of nodes) {
+    const position = known.get(node.id);
 
-    return position ? { ...node, position } : node;
+    if (position) {
+      // SAFETY: all table nodes carry the schema used to estimate their rendered height.
+      const data = node.data as ErNodeData;
+      bottom = Math.max(bottom, position.y + estimateNodeHeight(data.state) + GRID_ROW_GAP_Y);
+    } else {
+      missing.push(node);
+    }
+  }
+
+  const positions = computeRowAwarePositions(missing);
+
+  return nodes.map((node) => {
+    const fixed = known.get(node.id);
+
+    if (fixed) return { ...node, position: fixed };
+    const next = positions.get(node.id) ?? node.position;
+
+    return { ...node, position: { x: next.x, y: next.y + bottom } };
   });
 }
 
@@ -277,7 +300,13 @@ function canvasReducer(state: CanvasState, event: CanvasEvent): CanvasState {
         nodes:
           event.nodes === state.sourceNodes
             ? state.nodes
-            : keepNodePositions(state.nodes, event.nodes),
+            : placeNodes(
+                event.nodes,
+                new Map([
+                  ...event.savedPositions,
+                  ...state.nodes.map((node) => [node.id, node.position] as const),
+                ]),
+              ),
         edges: event.edges === state.sourceEdges ? state.edges : event.edges,
       };
     case 'nodesChanged':
@@ -294,6 +323,7 @@ function canvasReducer(state: CanvasState, event: CanvasEvent): CanvasState {
 }
 
 function CanvasInner({
+  scopeKey,
   tables,
   loading,
   onSelectTable,
@@ -334,16 +364,23 @@ function CanvasInner({
     [tables, handleDeleteForeignKey],
   );
 
+  const savedPositions = useMemo(() => readSavedNodePositions(scopeKey), [scopeKey]);
+
   const [state, dispatch] = useReducer(
     canvasReducer,
-    { nodes: initialNodes, edges: initialEdges },
+    { nodes: initialNodes, edges: initialEdges, savedPositions },
     createCanvasState,
   );
   const { nodes, edges, pendingRelationship } = state;
 
   // Syncing during render keeps dragged positions without committing a stale graph first.
   if (state.sourceNodes !== initialNodes || state.sourceEdges !== initialEdges) {
-    dispatch({ type: 'graphSourceChanged', nodes: initialNodes, edges: initialEdges });
+    dispatch({
+      type: 'graphSourceChanged',
+      nodes: initialNodes,
+      edges: initialEdges,
+      savedPositions,
+    });
   }
 
   const onNodesChange = useCallback(
@@ -359,14 +396,6 @@ function CanvasInner({
     // React Flow 13 measures padding per side; 8.33% preserves the previous 0.2 ratio.
     schedule(() => fitView({ padding: '8.33%' }), 100);
   }, [fitView, schedule]);
-
-  const handleAddTable = useCallback(
-    () =>
-      onAddTable().then((added) => {
-        if (added) fitViewSoon();
-      }),
-    [fitViewSoon, onAddTable],
-  );
 
   const handleConnect = useCallback(
     (connection: Connection) => {
@@ -440,14 +469,14 @@ function CanvasInner({
   );
 
   const handleAutoLayout = useCallback(() => {
-    writeSavedNodePositions(gridLayout(nodes));
+    writeSavedNodePositions(scopeKey, gridLayout(nodes));
     dispatch({ type: 'autoLayoutApplied' });
     schedule(() => fitView({ padding: '8.33%' }), 50);
-  }, [fitView, nodes, schedule]);
+  }, [fitView, nodes, schedule, scopeKey]);
 
   const handleNodeDragStop = useCallback(() => {
-    writeSavedNodePositions(nodes);
-  }, [nodes]);
+    writeSavedNodePositions(scopeKey, nodes);
+  }, [nodes, scopeKey]);
 
   if (loading) {
     return (
@@ -489,7 +518,10 @@ function CanvasInner({
           nodeColor={() => 'hsl(var(--primary))'}
           maskColor="hsl(var(--background) / 0.8)"
         />
-        <ErDiagramToolbar onAddTable={handleAddTable} onAutoLayout={handleAutoLayout} />
+        <ErDiagramToolbar
+          onAddTable={() => onAddTable(fitViewSoon)}
+          onAutoLayout={handleAutoLayout}
+        />
       </ReactFlow>
       {pendingRelationship && (
         <RelationCreationDialog
@@ -509,6 +541,7 @@ function CanvasInner({
 }
 
 export const ErDiagramCanvas = memo(function ErDiagramCanvas({
+  scopeKey,
   tables,
   loading,
   onSelectTable,
@@ -519,6 +552,7 @@ export const ErDiagramCanvas = memo(function ErDiagramCanvas({
   return (
     <ReactFlowProvider>
       <CanvasInner
+        scopeKey={scopeKey}
         tables={tables}
         loading={loading}
         onSelectTable={onSelectTable}

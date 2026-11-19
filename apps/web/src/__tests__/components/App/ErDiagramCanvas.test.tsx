@@ -80,6 +80,7 @@ describe('ER relationship ownership', () => {
     const onRefresh = vi.fn().mockResolvedValue(undefined);
     render(
       <ErDiagramCanvas
+        scopeKey="anonymous"
         tables={[original, imported, parent]}
         loading={false}
         onSelectTable={vi.fn()}

@@ -28,7 +28,8 @@ const ErDiagramCanvas = lazy(() =>
 
 export interface ErPageProps {
   ready: boolean;
-  onSelectTable: (record: SavedTableRecord) => void;
+  scopeKey: string;
+  onSelectTable: (record: SavedTableRecord) => Promise<boolean>;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
   overwriteTable: (
     normalizedName: SavedTableTarget,
@@ -40,20 +41,20 @@ export interface ErPageProps {
 const EMPTY_TABLES: SavedTableRecord[] = [];
 
 type AddTableDialogState = {
-  open: boolean;
+  afterSave: (() => void) | null;
   name: string;
   submitting: boolean;
 };
 
 type AddTableDialogEvent =
-  | { type: 'opened' }
+  | { type: 'opened'; afterSave: () => void }
   | { type: 'closed' }
   | { type: 'nameChanged'; name: string }
   | { type: 'submitStarted' }
   | { type: 'submitSettled'; keepOpen?: boolean };
 
 const INITIAL_ADD_DIALOG: AddTableDialogState = {
-  open: false,
+  afterSave: null,
   name: '',
   submitting: false,
 };
@@ -64,7 +65,7 @@ function addTableDialogReducer(
 ): AddTableDialogState {
   switch (event.type) {
     case 'opened':
-      return { open: true, name: '', submitting: false };
+      return { afterSave: event.afterSave, name: '', submitting: false };
     case 'closed':
       return state.submitting ? state : INITIAL_ADD_DIALOG;
     case 'nameChanged':
@@ -78,6 +79,7 @@ function addTableDialogReducer(
 
 export function ErPage({
   ready,
+  scopeKey,
   onSelectTable,
   saveTable,
   overwriteTable,
@@ -92,7 +94,7 @@ export function ErPage({
     isLoading: loading,
     refetch,
   } = useQuery({
-    ...erDiagramTablesOptions(loadTables),
+    ...erDiagramTablesOptions(scopeKey, loadTables),
     enabled: ready,
   });
 
@@ -101,17 +103,14 @@ export function ErPage({
   }, [refetch]);
 
   const handleSelectTable = useCallback(
-    (record: SavedTableRecord) => {
-      onSelectTable(record);
-      pushPathname('/');
+    async (record: SavedTableRecord) => {
+      if (await onSelectTable(record)) pushPathname('/');
     },
     [onSelectTable],
   );
 
-  const handleOpenAddTable = useCallback(() => {
-    dispatchAddDialog({ type: 'opened' });
-
-    return Promise.resolve(false);
+  const handleOpenAddTable = useCallback((afterSave: () => void) => {
+    dispatchAddDialog({ type: 'opened', afterSave });
   }, []);
 
   const handleConfirmAddTable = useCallback(
@@ -137,25 +136,37 @@ export function ErPage({
         authObjects: [],
       };
 
-      const result = await saveTable(trimmed, state);
+      try {
+        const result = await saveTable(trimmed, state);
 
-      if (result.ok) {
-        showToast(t('erDiagram.toast.tableSaved'));
-        await refresh();
-        dispatchAddDialog({ type: 'submitSettled' });
+        if (!result.ok) {
+          showToast(
+            result.reason === 'duplicate'
+              ? t('erDiagram.toast.tableDuplicate')
+              : result.message || t('erDiagram.toast.tableSaveFailed'),
+          );
+          dispatchAddDialog({ type: 'submitSettled', keepOpen: true });
+
+          return;
+        }
+      } catch {
+        showToast(t('erDiagram.toast.tableSaveFailed'));
+        dispatchAddDialog({ type: 'submitSettled', keepOpen: true });
 
         return;
       }
 
-      if (result.reason === 'duplicate') {
-        showToast(t('erDiagram.toast.tableDuplicate'));
-      } else {
-        showToast(result.message || t('erDiagram.toast.tableSaveFailed'));
-      }
+      dispatchAddDialog({ type: 'submitSettled' });
 
-      dispatchAddDialog({ type: 'submitSettled', keepOpen: true });
+      try {
+        await refresh();
+        addDialog.afterSave?.();
+        showToast(t('erDiagram.toast.tableSaved'));
+      } catch {
+        showToast(t('erDiagram.toast.refreshAfterSaveFailed'));
+      }
     },
-    [addDialog.name, addDialog.submitting, refresh, saveTable, showToast, t],
+    [addDialog, refresh, saveTable, showToast, t],
   );
 
   return (
@@ -172,6 +183,7 @@ export function ErPage({
         }
       >
         <ErDiagramCanvas
+          scopeKey={scopeKey}
           tables={tables}
           loading={loading}
           onSelectTable={handleSelectTable}
@@ -181,7 +193,7 @@ export function ErPage({
         />
       </Suspense>
       <Dialog
-        open={addDialog.open}
+        open={addDialog.afterSave !== null}
         onOpenChange={(open) => {
           if (!open) dispatchAddDialog({ type: 'closed' });
         }}

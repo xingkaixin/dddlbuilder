@@ -9,7 +9,7 @@ export interface ToolActions {
   onOpenAIPatch?: () => void;
   onRunAIComments?: () => void;
   onOpenIndexAdvisor?: () => void;
-  onRequireTable?: () => void;
+  onToolUnavailable?: () => void;
 }
 
 export function openTool(id: string, actions: ToolActions) {
@@ -41,20 +41,20 @@ export function openTool(id: string, actions: ToolActions) {
       navigateApp('/');
 
       if (actions.onOpenAIPatch) actions.onOpenAIPatch();
-      else actions.onRequireTable?.();
+      else actions.onToolUnavailable?.();
 
       return;
     case 'ai-comments':
       navigateApp('/');
 
       if (actions.onRunAIComments) actions.onRunAIComments();
-      else actions.onRequireTable?.();
+      else actions.onToolUnavailable?.();
 
       return;
     case 'index-advisor':
       navigateApp('/');
 
       if (actions.onOpenIndexAdvisor) actions.onOpenIndexAdvisor();
-      else actions.onRequireTable?.();
+      else actions.onToolUnavailable?.();
   }
 }

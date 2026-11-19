@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import * as Y from 'yjs';
+import { listenForEditorShortcuts } from '@/lib/editorShortcuts';
 import { useTabLifecycle } from '@/components/App/hooks/useTabLifecycle';
 import { useWorkspacePresentation } from '@/components/App/hooks/useWorkspacePresentation';
 import { useWorkspaceTabActions } from '@/components/App/hooks/useWorkspaceTabActions';
@@ -24,6 +25,7 @@ const createSource = (name: string) => ({
 
 describe('workspace tab loading', () => {
   beforeEach(() => {
+    listenForEditorShortcuts();
     useTabStore.setState({ tabs: [], activeTabId: null });
     useEditorStore.getState().replaceDocument(toPersistedState(useEditorStore.getInitialState()));
   });
@@ -119,7 +121,7 @@ describe('workspace tab loading', () => {
         return { tabs, actions, presentation };
       });
 
-      let loading: Promise<void>;
+      let loading: Promise<boolean>;
       act(() => {
         loading = result.current.actions.handleSelectSavedTable({
           tableId: 'beta',
@@ -202,6 +204,12 @@ describe('workspace tab loading', () => {
         authoritativeSnapshot.source,
         authoritativeSnapshot.state,
       );
+
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }));
+      });
+      expect(useEditorStore.getState().tableName).toBe('beta');
+      expect(useEditorStore.getState().tableComment).toBe('remote comment');
 
       act(() => useEditorStore.getState().setTableComment('local comment'));
       act(() => result.current.tabs.flushActiveTab());

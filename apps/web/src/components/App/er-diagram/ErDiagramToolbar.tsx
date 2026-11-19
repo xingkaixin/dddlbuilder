@@ -1,16 +1,13 @@
-import { memo, useCallback, useReducer } from 'react';
+import { memo } from 'react';
 import { Panel, useReactFlow } from '@xyflow/react';
 import { ZoomIn, ZoomOut, Maximize, Plus, LayoutGrid } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 
 interface ErDiagramToolbarProps {
-  onAddTable: () => Promise<void>;
+  onAddTable: () => void;
   onAutoLayout: () => void;
 }
-
-const addingReducer = (_adding: boolean, event: 'addStarted' | 'addSettled') =>
-  event === 'addStarted';
 
 export const ErDiagramToolbar = memo(function ErDiagramToolbar({
   onAddTable,
@@ -18,22 +15,10 @@ export const ErDiagramToolbar = memo(function ErDiagramToolbar({
 }: ErDiagramToolbarProps) {
   const { t } = useTranslation();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const [isAdding, dispatchAdding] = useReducer(addingReducer, false);
-
-  const handleAddTable = useCallback(() => {
-    dispatchAdding('addStarted');
-    void onAddTable().finally(() => dispatchAdding('addSettled'));
-  }, [onAddTable]);
 
   return (
     <Panel position="top-left" className="flex items-center gap-2 m-2">
-      <Button
-        size="sm"
-        variant="default"
-        className="h-8 gap-1.5"
-        onClick={handleAddTable}
-        disabled={isAdding}
-      >
+      <Button size="sm" variant="default" className="h-8 gap-1.5" onClick={onAddTable}>
         <Plus className="h-3.5 w-3.5" />
         {t('erDiagram.toolbar.addTable')}
       </Button>

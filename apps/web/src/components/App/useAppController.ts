@@ -13,7 +13,7 @@ import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import { useSavedTableFlowActions } from './hooks/useSavedTableFlowActions';
 import { useTabLifecycle } from './hooks/useTabLifecycle';
 import { usePersistedSync } from './hooks/usePersistedSync';
-import { applySavedState } from './applySavedState';
+import { applySavedState, loadEditorSnapshot } from './applySavedState';
 import { useClearAllActions } from './hooks/useClearAllActions';
 import { useNavigationActions } from './hooks/useNavigationActions';
 import { useFireworksIntro } from './hooks/useFireworksIntro';
@@ -219,7 +219,7 @@ export function useAppController() {
     saveState,
     currentState: currentPersistedState,
     getCurrentState: buildPersistedState,
-    applyPersistedState: applySavedState,
+    applyPersistedState: loadEditorSnapshot,
   });
 
   const clearActions = useClearAllActions({
@@ -355,7 +355,7 @@ export function useAppController() {
 
   const handleSelectTableFromEr = useCallback(
     (record: SavedTableRecord) => {
-      void workspaceTabs.handleSelectSavedTable({
+      return workspaceTabs.handleSelectSavedTable({
         tableId: record.tableId ?? record.normalizedName,
         normalizedName: record.normalizedName,
         name: record.name,
@@ -365,9 +365,8 @@ export function useAppController() {
         updatedAt: record.updatedAt,
         folderId: record.folderId,
       });
-      showToast(t('erDiagram.tableLoaded'));
     },
-    [showToast, t, workspaceTabs],
+    [workspaceTabs],
   );
 
   const handleCopyDiff = useCallback(() => {
