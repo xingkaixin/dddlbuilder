@@ -22,9 +22,11 @@ const StoredOperations = Schema.Array(
 );
 const readResumableOperations = () => {
   try {
-    return Schema.decodeUnknownSync(StoredOperations)(
-      JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '[]'),
-    );
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+
+    if (!raw || raw === '[]') return [];
+
+    return Schema.decodeUnknownSync(StoredOperations)(JSON.parse(raw));
   } catch {
     return [];
   }
@@ -34,6 +36,15 @@ const forgetAIOperation = (id: string) => {
     STORAGE_KEY,
     JSON.stringify(readResumableOperations().filter((item) => item.operationId !== id)),
   );
+};
+export const hasAnyResumableAIOperations = () => {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+
+    return Boolean(raw && raw !== '[]');
+  } catch {
+    return false;
+  }
 };
 export const hasResumableAIOperation = (resumeKey: string) =>
   readResumableOperations().some((item) => item.resumeKey === resumeKey);

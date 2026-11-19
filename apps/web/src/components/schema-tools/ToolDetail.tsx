@@ -1,19 +1,45 @@
-import type { ComponentType } from 'react';
+import { lazy, Suspense, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PublishPanel } from '@/components/publications/PublishPanel';
-import { BusinessDataImportTool } from '@/components/data-import/BusinessDataImportTool';
-import { FieldImpactTool } from './FieldImpactTool';
-import { SqliteExportTool } from './SqliteExportTool';
-import { BusinessModuleTool } from './BusinessModuleTool';
-import { QueryDesignerTool } from './QueryDesignerTool';
-import { MigrationAssessmentTool } from './MigrationAssessmentTool';
-import { SnapshotRefreshTool } from './SnapshotRefreshTool';
-import { DictionaryTool } from './DictionaryTool';
-import { SchemaCompareTool } from './SchemaCompareTool';
-import { RelationalSeedTool } from './RelationalSeedTool';
+import { MainWorkspaceSkeleton } from '@/components/App/MainWorkspaceSkeleton';
 import type { PageToolId } from './toolCatalog';
 import { ToolLayout } from './ToolLayout';
 import './schema-tools.css';
+
+const PublishPanel = lazy(() =>
+  import('@/components/publications/PublishPanel').then((m) => ({ default: m.PublishPanel })),
+);
+const BusinessDataImportTool = lazy(() =>
+  import('@/components/data-import/BusinessDataImportTool').then((m) => ({
+    default: m.BusinessDataImportTool,
+  })),
+);
+const FieldImpactTool = lazy(() =>
+  import('./FieldImpactTool').then((m) => ({ default: m.FieldImpactTool })),
+);
+const SqliteExportTool = lazy(() =>
+  import('./SqliteExportTool').then((m) => ({ default: m.SqliteExportTool })),
+);
+const BusinessModuleTool = lazy(() =>
+  import('./BusinessModuleTool').then((m) => ({ default: m.BusinessModuleTool })),
+);
+const QueryDesignerTool = lazy(() =>
+  import('./QueryDesignerTool').then((m) => ({ default: m.QueryDesignerTool })),
+);
+const MigrationAssessmentTool = lazy(() =>
+  import('./MigrationAssessmentTool').then((m) => ({ default: m.MigrationAssessmentTool })),
+);
+const SnapshotRefreshTool = lazy(() =>
+  import('./SnapshotRefreshTool').then((m) => ({ default: m.SnapshotRefreshTool })),
+);
+const DictionaryTool = lazy(() =>
+  import('./DictionaryTool').then((m) => ({ default: m.DictionaryTool })),
+);
+const SchemaCompareTool = lazy(() =>
+  import('./SchemaCompareTool').then((m) => ({ default: m.SchemaCompareTool })),
+);
+const RelationalSeedTool = lazy(() =>
+  import('./RelationalSeedTool').then((m) => ({ default: m.RelationalSeedTool })),
+);
 
 function PublicationsTool() {
   const { t } = useTranslation();
@@ -44,7 +70,9 @@ export function ToolDetail({ toolId }: { toolId: PageToolId }) {
 
   return (
     <div className="schema-tools schema-tools-content min-w-0">
-      <Tool />
+      <Suspense fallback={<MainWorkspaceSkeleton />}>
+        <Tool />
+      </Suspense>
     </div>
   );
 }

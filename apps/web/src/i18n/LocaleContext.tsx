@@ -6,7 +6,8 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import { i18n } from './index';
+import { toast } from 'sonner';
+import { i18n, loadLocaleResource } from './index';
 import { DEFAULT_LOCALE, LOCAL_STORAGE_KEY, normalizeLocale } from './types';
 import { type AppLocale } from '@ddlbuilder/shared-types/locale';
 
@@ -24,16 +25,34 @@ const subscribeLanguage = (onChange: () => void) => {
   return () => i18n.off('languageChanged', onChange);
 };
 
-const readLocale = () => normalizeLocale(i18n.language) ?? DEFAULT_LOCALE;
+const readLocale = () => normalizeLocale(i18n.resolvedLanguage) ?? DEFAULT_LOCALE;
 
-const setLocale = (nextLocale: AppLocale) => {
+let requestedLocale: AppLocale | undefined;
+
+const setLocale = async (nextLocale: AppLocale) => {
+  requestedLocale = nextLocale;
+
+  try {
+    if (!i18n.hasResourceBundle(nextLocale, 'translation')) {
+      const resource = await loadLocaleResource(nextLocale);
+      i18n.addResourceBundle(nextLocale, 'translation', resource);
+    }
+
+    if (requestedLocale !== nextLocale) return;
+    await i18n.changeLanguage(nextLocale);
+  } catch {
+    if (requestedLocale === nextLocale) toast.error(i18n.t('locale.loadFailed'));
+
+    return;
+  }
+
+  if (requestedLocale !== nextLocale) return;
+
   try {
     window.localStorage.setItem(LOCAL_STORAGE_KEY, nextLocale);
   } catch {
-    // ignore storage errors
+    // The selected language still applies when storage is unavailable.
   }
-
-  void i18n.changeLanguage(nextLocale);
 };
 
 export function LocaleProvider({ children }: { children: ReactNode }) {

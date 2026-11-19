@@ -1,4 +1,5 @@
-import { lazy, Suspense, useReducer } from 'react';
+import { LazyDialogBoundary } from '@/components/AppErrorBoundary';
+import { lazy, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthIdentity } from '@/auth/AuthSessionProvider';
 import { GlobalDialogs } from './containers/GlobalDialogs';
@@ -69,35 +70,40 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
       <WorkspaceMigrationDialog />
       <WebMcpChangeDialog model={model.webMcpDialog} />
       {model.commandPalette.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => model.commandPalette.onOpenChange(false)}>
           <CommandPalette {...model.commandPalette} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       {model.fieldStandards.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={model.fieldStandards.onClose}>
           <FieldStandardsDialog onClose={model.fieldStandards.onClose} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       <GlobalDialogs {...globalDialogs} saveDialog={saveDialog} />
 
       {aiPatchMounted && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary
+          open={aiPatchProps.open}
+          onDismiss={() => aiPatchProps.onOpenChange(false)}
+        >
           <AISchemaPatchDialog
             key={JSON.stringify([authSession.userId, authSession.workspaceId, aiPatchTargetKey])}
             {...aiPatchProps}
           />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
 
       {indexAdvisor.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => indexAdvisor.onOpenChange(false)}>
           <AIIndexAdvisorDialog {...indexAdvisor} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
 
-      <Suspense fallback={null}>
-        {importVisible && <ImportSqlDialog {...importDialogProps} />}
-      </Suspense>
+      {importVisible && (
+        <LazyDialogBoundary onDismiss={() => importDialogProps.onOpenChange(false)}>
+          <ImportSqlDialog {...importDialogProps} />
+        </LazyDialogBoundary>
+      )}
     </>
   );
 }

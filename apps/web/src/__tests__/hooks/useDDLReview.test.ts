@@ -3,6 +3,7 @@ import * as aiTransport from '@/services/aiConversationService';
 // oxlint-disable-next-line anti-slop/no-module-mocking -- Transport lifecycle has dedicated integration tests; these tests protect scenario decoding and hook state.
 vi.mock('@/services/aiConversationService', () => ({
   fetchAIConversation: vi.fn(),
+  hasAnyResumableAIOperations: vi.fn(() => true),
   hasResumableAIOperation: vi.fn(),
   resumeAIConversation: vi.fn(),
 }));

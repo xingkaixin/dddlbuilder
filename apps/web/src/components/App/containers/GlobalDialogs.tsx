@@ -1,4 +1,5 @@
-import { lazy, Suspense, type ComponentProps } from 'react';
+import { LazyDialogBoundary } from '@/components/AppErrorBoundary';
+import { lazy, type ComponentProps } from 'react';
 import { AlertTriangle, Trash2 } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -144,49 +145,49 @@ export function GlobalDialogs({
       {folderDialogProps.open && <FolderDialog {...folderDialogProps} />}
       {deleteFolderDialogProps.open && <DeleteFolderDialog {...deleteFolderDialogProps} />}
       {templateManagerDialogProps.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => templateManagerDialogProps.onOpenChange(false)}>
           <TemplateManagerDialog {...templateManagerDialogProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       {createTemplateDialogProps.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => createTemplateDialogProps.onOpenChange(false)}>
           <CreateTemplateDialog {...createTemplateDialogProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       {tableTemplateManagerDialogProps.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => tableTemplateManagerDialogProps.onOpenChange(false)}>
           <TableTemplateManagerDialog {...tableTemplateManagerDialogProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       {createTableTemplateDialogProps.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => createTableTemplateDialogProps.onOpenChange(false)}>
           <CreateTableTemplateDialog {...createTableTemplateDialogProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       {diffDialogProps.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => diffDialogProps.onOpenChange(false)}>
           <DiffDialog {...diffDialogProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       {versionHistoryDialogProps && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => versionHistoryDialogProps.onOpenChange(false)}>
           <VersionHistoryDialog {...versionHistoryDialogProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       {timelinePlayerProps && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => timelinePlayerProps.onOpenChange(false)}>
           <SchemaTimelinePlayer {...timelinePlayerProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       {reviewHistoryDialogProps.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => reviewHistoryDialogProps.onOpenChange(false)}>
           <ReviewHistoryDialog {...reviewHistoryDialogProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       {aiGenerateDialogProps.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => aiGenerateDialogProps.onOpenChange(false)}>
           <AIGenerateDialog {...aiGenerateDialogProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
 
       <Dialog open={clearDialog.open} onOpenChange={clearDialog.onOpenChange}>
@@ -296,14 +297,14 @@ export function GlobalDialogs({
       </Dialog>
 
       {storageEstimatorDialogProps.open && storageEstimatorDialogProps.dbType !== 'sqlite' && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => storageEstimatorDialogProps.onOpenChange(false)}>
           <StorageEstimatorDialog {...storageEstimatorDialogProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
       {mockDataDialogProps.open && (
-        <Suspense fallback={null}>
+        <LazyDialogBoundary onDismiss={() => mockDataDialogProps.onOpenChange(false)}>
           <MockDataDialog {...mockDataDialogProps} />
-        </Suspense>
+        </LazyDialogBoundary>
       )}
     </>
   );

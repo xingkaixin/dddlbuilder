@@ -1,32 +1,61 @@
-import i18n from 'i18next';
+import i18n, { type BackendModule, type ResourceKey } from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { enUSCommon } from './locales/en-US/common';
-import { jaJPCommon } from './locales/ja-JP/common';
 import { zhCNCommon } from './locales/zh-CN/common';
 import { resolveInitialLocale } from './types';
 
-const resources = {
-  'zh-CN': {
-    translation: zhCNCommon,
-  },
-  'en-US': {
-    translation: enUSCommon,
-  },
-  'ja-JP': {
-    translation: jaJPCommon,
+export const loadLocaleResource = async (language: string): Promise<ResourceKey> => {
+  if (language === 'zh-CN') return zhCNCommon;
+
+  if (language === 'en-US') {
+    const mod = await import('./locales/en-US/common');
+
+    return mod.enUSCommon;
+  }
+
+  if (language === 'ja-JP') {
+    const mod = await import('./locales/ja-JP/common');
+
+    return mod.jaJPCommon;
+  }
+
+  return zhCNCommon;
+};
+
+const lazyLocaleBackend: BackendModule = {
+  type: 'backend',
+  init: () => undefined,
+  read: (language, _namespace, callback) => {
+    void (async () => {
+      try {
+        callback(null, await loadLocaleResource(language));
+      } catch (error) {
+        callback(error instanceof Error ? error : new Error(String(error)), null);
+      }
+    })();
   },
 };
 
-if (!i18n.isInitialized) {
-  void i18n.use(initReactI18next).init({
-    resources,
-    lng: resolveInitialLocale(),
-    fallbackLng: 'zh-CN',
-    interpolation: {
-      escapeValue: false,
-    },
-    returnNull: false,
-  });
-}
+const initialLocale = resolveInitialLocale();
 
-export { i18n };
+const i18nReady: Promise<unknown> = !i18n.isInitialized
+  ? i18n
+      .use(lazyLocaleBackend)
+      .use(initReactI18next)
+      .init({
+        resources: {
+          'zh-CN': {
+            translation: zhCNCommon,
+          },
+        },
+        partialBundledLanguages: true,
+        load: 'currentOnly',
+        lng: initialLocale,
+        fallbackLng: 'zh-CN',
+        interpolation: {
+          escapeValue: false,
+        },
+        returnNull: false,
+      })
+  : Promise.resolve();
+
+export { i18n, i18nReady };
