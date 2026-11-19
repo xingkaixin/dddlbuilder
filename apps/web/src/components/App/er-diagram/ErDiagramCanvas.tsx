@@ -1,4 +1,6 @@
 import { savedTableKey, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
+import * as Option from 'effect/Option';
+import * as Schema from 'effect/Schema';
 import { memo, useCallback, useMemo, useReducer } from 'react';
 import {
   ReactFlow,
@@ -30,8 +32,86 @@ import { ErDiagramToolbar } from './ErDiagramToolbar';
 import { RelationCreationDialog } from './RelationCreationDialog';
 import { planTableRelationship, type TableRelationshipIntent } from './tableRelationship';
 
-const GRID_GAP_X = 300;
-const GRID_GAP_Y = 200;
+const GRID_GAP_X = 320;
+const GRID_ROW_GAP_Y = 48;
+const NODE_HEADER_HEIGHT = 52;
+const NODE_FIELD_HEIGHT = 24;
+const ER_POSITIONS_STORAGE_KEY = 'ddlbuilder:er-positions:v1';
+
+const NodePositionSchema = Schema.Struct({
+  x: Schema.Finite,
+  y: Schema.Finite,
+});
+const SavedNodePositionsSchema = Schema.Record(Schema.String, NodePositionSchema);
+
+function readSavedNodePositions() {
+  const result = new Map<string, { x: number; y: number }>();
+
+  try {
+    const raw = window.localStorage.getItem(ER_POSITIONS_STORAGE_KEY);
+
+    if (!raw) return result;
+
+    const decoded = Schema.decodeUnknownOption(SavedNodePositionsSchema)(JSON.parse(raw));
+
+    if (Option.isNone(decoded)) return result;
+
+    for (const [key, value] of Object.entries(decoded.value)) {
+      result.set(key, value);
+    }
+
+    return result;
+  } catch {
+    return result;
+  }
+}
+
+function writeSavedNodePositions(nodes: Node[]) {
+  try {
+    const positions = Object.fromEntries(
+      nodes.map((node) => [
+        node.id,
+        { x: Math.round(node.position.x), y: Math.round(node.position.y) },
+      ]),
+    );
+
+    window.localStorage.setItem(ER_POSITIONS_STORAGE_KEY, JSON.stringify(positions));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function estimateNodeHeight(state: PersistedState): number {
+  const fieldCount = (state.rows || []).filter((row) => row.fieldName?.trim()).length;
+
+  return NODE_HEADER_HEIGHT + Math.max(1, fieldCount) * NODE_FIELD_HEIGHT;
+}
+
+function computeRowAwarePositions(nodes: Node[]): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
+
+  if (nodes.length === 0) return positions;
+
+  const cols = Math.ceil(Math.sqrt(nodes.length));
+  let currentY = 50;
+
+  for (let rowStart = 0; rowStart < nodes.length; rowStart += cols) {
+    const rowNodes = nodes.slice(rowStart, rowStart + cols);
+    let maxRowHeight = 160;
+
+    rowNodes.forEach((node, colIndex) => {
+      positions.set(node.id, { x: colIndex * GRID_GAP_X + 50, y: currentY });
+      // SAFETY: node.data is ErNodeData supplied by buildNodesFromTables.
+      const data = node.data as ErNodeData | undefined;
+      const height = data?.state ? estimateNodeHeight(data.state) : 160;
+      maxRowHeight = Math.max(maxRowHeight, height);
+    });
+
+    currentY += maxRowHeight + GRID_ROW_GAP_Y;
+  }
+
+  return positions;
+}
 
 const nodeTypes: NodeTypes = { table: ErTableNode };
 const edgeTypes: EdgeTypes = { relation: ErRelationEdge };
@@ -46,24 +126,27 @@ function buildSavedTableNodeId(record: SavedTableRecord): string {
 
 function buildNodesFromTables(
   tables: SavedTableRecord[],
-  onSelectTable: (state: PersistedState) => void,
+  onSelectTable: (record: SavedTableRecord) => void,
 ): Node[] {
-  return tables.map((record, index) => {
-    const cols = Math.ceil(Math.sqrt(tables.length));
-    const col = index % cols;
-    const row = Math.floor(index / cols);
+  const savedPositions = readSavedNodePositions();
 
-    return {
-      id: buildSavedTableNodeId(record),
-      type: 'table',
-      position: { x: col * GRID_GAP_X + 50, y: row * GRID_GAP_Y + 50 },
-      // SAFETY: SavedTableRecord supplies PersistedState for node and edge data.
-      data: {
-        state: record.state,
-        onSelectTable,
-      } as ErNodeData,
-    };
-  });
+  const baseNodes: Node[] = tables.map((record) => ({
+    id: buildSavedTableNodeId(record),
+    type: 'table',
+    position: { x: 50, y: 50 },
+    // SAFETY: SavedTableRecord supplies PersistedState for node and edge data.
+    data: {
+      record,
+      state: record.state,
+      onSelectTable,
+    } as ErNodeData,
+  }));
+  const fallbackPositions = computeRowAwarePositions(baseNodes);
+
+  return baseNodes.map((node) => ({
+    ...node,
+    position: savedPositions.get(node.id) ?? fallbackPositions.get(node.id) ?? node.position,
+  }));
 }
 
 function buildEdgesFromTables(
@@ -123,7 +206,7 @@ function buildEdgesFromTables(
 interface CanvasInnerProps {
   tables: SavedTableRecord[];
   loading: boolean;
-  onSelectTable: (state: PersistedState) => void;
+  onSelectTable: (record: SavedTableRecord) => void;
   onRefresh: () => Promise<void>;
   onAddTable: () => Promise<boolean>;
   onUpdateTable: (
@@ -176,17 +259,12 @@ function keepNodePositions(previous: Node[], next: Node[]): Node[] {
 }
 
 function gridLayout(nodes: Node[]): Node[] {
-  const cols = Math.ceil(Math.sqrt(nodes.length));
+  const positions = computeRowAwarePositions(nodes);
 
-  return nodes.map((node, index) => {
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-
-    return {
-      ...node,
-      position: { x: col * GRID_GAP_X + 50, y: row * GRID_GAP_Y + 50 },
-    };
-  });
+  return nodes.map((node) => ({
+    ...node,
+    position: positions.get(node.id) ?? node.position,
+  }));
 }
 
 function canvasReducer(state: CanvasState, event: CanvasEvent): CanvasState {
@@ -362,9 +440,14 @@ function CanvasInner({
   );
 
   const handleAutoLayout = useCallback(() => {
+    writeSavedNodePositions(gridLayout(nodes));
     dispatch({ type: 'autoLayoutApplied' });
     schedule(() => fitView({ padding: '8.33%' }), 50);
-  }, [fitView, schedule]);
+  }, [fitView, nodes, schedule]);
+
+  const handleNodeDragStop = useCallback(() => {
+    writeSavedNodePositions(nodes);
+  }, [nodes]);
 
   if (loading) {
     return (
@@ -388,6 +471,7 @@ function CanvasInner({
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
+        onNodeDragStop={handleNodeDragStop}
         onEdgesChange={onEdgesChange}
         onConnect={handleConnect}
         nodeTypes={nodeTypes}

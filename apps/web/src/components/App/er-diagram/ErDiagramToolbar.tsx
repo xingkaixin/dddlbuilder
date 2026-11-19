@@ -43,6 +43,7 @@ export const ErDiagramToolbar = memo(function ErDiagramToolbar({
         className="h-8 w-8"
         onClick={() => zoomIn()}
         title={t('erDiagram.toolbar.zoomIn')}
+        aria-label={t('erDiagram.toolbar.zoomIn')}
       >
         <ZoomIn className="h-3.5 w-3.5" />
       </Button>
@@ -52,6 +53,7 @@ export const ErDiagramToolbar = memo(function ErDiagramToolbar({
         className="h-8 w-8"
         onClick={() => zoomOut()}
         title={t('erDiagram.toolbar.zoomOut')}
+        aria-label={t('erDiagram.toolbar.zoomOut')}
       >
         <ZoomOut className="h-3.5 w-3.5" />
       </Button>
@@ -61,6 +63,7 @@ export const ErDiagramToolbar = memo(function ErDiagramToolbar({
         className="h-8 w-8"
         onClick={() => fitView({ padding: '8.33%' })}
         title={t('erDiagram.toolbar.fitView')}
+        aria-label={t('erDiagram.toolbar.fitView')}
       >
         <Maximize className="h-3.5 w-3.5" />
       </Button>
@@ -70,6 +73,7 @@ export const ErDiagramToolbar = memo(function ErDiagramToolbar({
         className="h-8 w-8"
         onClick={onAutoLayout}
         title={t('erDiagram.toolbar.autoLayout')}
+        aria-label={t('erDiagram.toolbar.autoLayout')}
       >
         <LayoutGrid className="h-3.5 w-3.5" />
       </Button>

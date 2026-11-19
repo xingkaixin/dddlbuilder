@@ -3,6 +3,7 @@ import { useTemplateCatalog } from './hooks/useTemplateCatalog';
 import { navigateApp } from '@/lib/appNavigation';
 import { useCallback, useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { useEditorDomains } from './hooks/useEditorDomains';
 import { useWorkspaceController } from './hooks/useWorkspaceController';
 import { useDialogStates } from './hooks/useDialogStates';
@@ -353,11 +354,20 @@ export function useAppController() {
   }, [handleViewVersionHistory, loadedTable, loadedTableId]);
 
   const handleSelectTableFromEr = useCallback(
-    (state: PersistedState) => {
-      openStateInNewDraftTab(state);
+    (record: SavedTableRecord) => {
+      void workspaceTabs.handleSelectSavedTable({
+        tableId: record.tableId ?? record.normalizedName,
+        normalizedName: record.normalizedName,
+        name: record.name,
+        dbType: record.state.dbType,
+        fieldCount: record.state.rows.filter((row) => row.fieldName?.trim()).length,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+        folderId: record.folderId,
+      });
       showToast(t('erDiagram.tableLoaded'));
     },
-    [openStateInNewDraftTab, showToast, t],
+    [showToast, t, workspaceTabs],
   );
 
   const handleCopyDiff = useCallback(() => {

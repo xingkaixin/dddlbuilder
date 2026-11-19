@@ -1,4 +1,4 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import type { useEditorDomains } from './hooks/useEditorDomains';
 import type { useEditorSurfaceModel } from './hooks/useEditorSurfaceModel';
 import type { useFolderActions } from './hooks/useFolderActions';
@@ -42,7 +42,7 @@ interface BuildAppWorkspaceModelParams {
   handleFireworksComplete: () => void;
   handlePlayFireworks: () => void;
   templateActions: ReturnType<typeof useTemplateActions>;
-  handleSelectTableFromEr: (state: PersistedState) => void;
+  handleSelectTableFromEr: (record: SavedTableRecord) => void;
 }
 
 export function buildAppWorkspaceModel({

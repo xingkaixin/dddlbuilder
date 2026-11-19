@@ -1,5 +1,5 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
-import { lazy, Suspense, useCallback } from 'react';
+import { lazy, Suspense, useCallback, useReducer } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SaveTableResult } from '@/hooks/useSavedTables';
@@ -11,6 +11,16 @@ import { pushPathname } from '@/lib/pathnameStore';
 import { usePreferencesStore } from '@/stores/preferencesStore';
 import { createEmptyRow } from '@/utils/helpers';
 import { erDiagramTablesOptions } from '@/queries/erDiagram';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 const ErDiagramCanvas = lazy(() =>
   import('./er-diagram/ErDiagramCanvas').then((m) => ({ default: m.ErDiagramCanvas })),
@@ -18,7 +28,7 @@ const ErDiagramCanvas = lazy(() =>
 
 export interface ErPageProps {
   ready: boolean;
-  onSelectTable: (state: PersistedState) => void;
+  onSelectTable: (record: SavedTableRecord) => void;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
   overwriteTable: (
     normalizedName: SavedTableTarget,
@@ -27,8 +37,44 @@ export interface ErPageProps {
   loadTables: () => Promise<SavedTableRecord[]>;
 }
 
-const INITIAL_ROWS = Array.from({ length: 4 }, () => createEmptyRow());
 const EMPTY_TABLES: SavedTableRecord[] = [];
+
+type AddTableDialogState = {
+  open: boolean;
+  name: string;
+  submitting: boolean;
+};
+
+type AddTableDialogEvent =
+  | { type: 'opened' }
+  | { type: 'closed' }
+  | { type: 'nameChanged'; name: string }
+  | { type: 'submitStarted' }
+  | { type: 'submitSettled'; keepOpen?: boolean };
+
+const INITIAL_ADD_DIALOG: AddTableDialogState = {
+  open: false,
+  name: '',
+  submitting: false,
+};
+
+function addTableDialogReducer(
+  state: AddTableDialogState,
+  event: AddTableDialogEvent,
+): AddTableDialogState {
+  switch (event.type) {
+    case 'opened':
+      return { open: true, name: '', submitting: false };
+    case 'closed':
+      return state.submitting ? state : INITIAL_ADD_DIALOG;
+    case 'nameChanged':
+      return { ...state, name: event.name };
+    case 'submitStarted':
+      return { ...state, submitting: true };
+    case 'submitSettled':
+      return event.keepOpen ? { ...state, submitting: false } : INITIAL_ADD_DIALOG;
+  }
+}
 
 export function ErPage({
   ready,
@@ -39,6 +85,7 @@ export function ErPage({
 }: ErPageProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const [addDialog, dispatchAddDialog] = useReducer(addTableDialogReducer, INITIAL_ADD_DIALOG);
 
   const {
     data: tables = EMPTY_TABLES,
@@ -54,52 +101,62 @@ export function ErPage({
   }, [refetch]);
 
   const handleSelectTable = useCallback(
-    (state: PersistedState) => {
-      onSelectTable(state);
+    (record: SavedTableRecord) => {
+      onSelectTable(record);
       pushPathname('/');
     },
     [onSelectTable],
   );
 
-  const handleAddTable = useCallback(async () => {
-    const name = window.prompt(t('erDiagram.addTablePrompt') || '请输入表名');
+  const handleOpenAddTable = useCallback(() => {
+    dispatchAddDialog({ type: 'opened' });
 
-    if (!name?.trim()) return false;
+    return Promise.resolve(false);
+  }, []);
 
-    const trimmed = name.trim();
+  const handleConfirmAddTable = useCallback(
+    async (event: React.FormEvent) => {
+      event.preventDefault();
+      const trimmed = addDialog.name.trim();
 
-    const { defaultDatabase, sqlFormatMode } = usePreferencesStore.getState();
+      if (!trimmed || addDialog.submitting) return;
 
-    const state: PersistedState = {
-      schemaName: '',
-      tableName: trimmed,
-      tableComment: '',
-      dbType: defaultDatabase,
-      sqlFormatMode,
-      rows: INITIAL_ROWS,
-      addCount: 4,
-      indexes: [],
-      authInput: '',
-      authObjects: [],
-    };
+      dispatchAddDialog({ type: 'submitStarted' });
+      const { defaultDatabase, sqlFormatMode } = usePreferencesStore.getState();
 
-    const result = await saveTable(trimmed, state);
+      const state: PersistedState = {
+        schemaName: '',
+        tableName: trimmed,
+        tableComment: '',
+        dbType: defaultDatabase,
+        sqlFormatMode,
+        rows: Array.from({ length: 4 }, () => createEmptyRow()),
+        addCount: 4,
+        indexes: [],
+        authInput: '',
+        authObjects: [],
+      };
 
-    if (result.ok) {
-      showToast(t('erDiagram.toast.tableSaved'));
-      await refresh();
+      const result = await saveTable(trimmed, state);
 
-      return true;
-    }
+      if (result.ok) {
+        showToast(t('erDiagram.toast.tableSaved'));
+        await refresh();
+        dispatchAddDialog({ type: 'submitSettled' });
 
-    if (result.reason === 'duplicate') {
-      showToast(t('erDiagram.toast.tableDuplicate'));
-    } else {
-      showToast(result.message || t('erDiagram.toast.tableSaveFailed'));
-    }
+        return;
+      }
 
-    return false;
-  }, [saveTable, refresh, showToast, t]);
+      if (result.reason === 'duplicate') {
+        showToast(t('erDiagram.toast.tableDuplicate'));
+      } else {
+        showToast(result.message || t('erDiagram.toast.tableSaveFailed'));
+      }
+
+      dispatchAddDialog({ type: 'submitSettled', keepOpen: true });
+    },
+    [addDialog.name, addDialog.submitting, refresh, saveTable, showToast, t],
+  );
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -119,10 +176,49 @@ export function ErPage({
           loading={loading}
           onSelectTable={handleSelectTable}
           onRefresh={refresh}
-          onAddTable={handleAddTable}
+          onAddTable={handleOpenAddTable}
           onUpdateTable={overwriteTable}
         />
       </Suspense>
+      <Dialog
+        open={addDialog.open}
+        onOpenChange={(open) => {
+          if (!open) dispatchAddDialog({ type: 'closed' });
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={(event) => void handleConfirmAddTable(event)}>
+            <DialogHeader>
+              <DialogTitle>{t('erDiagram.toolbar.addTable')}</DialogTitle>
+              <DialogDescription>{t('erDiagram.addTablePrompt')}</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                autoFocus
+                value={addDialog.name}
+                onChange={(event) =>
+                  dispatchAddDialog({ type: 'nameChanged', name: event.target.value })
+                }
+                placeholder={t('tableConfig.tableNamePlaceholder')}
+                disabled={addDialog.submitting}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={addDialog.submitting}
+                onClick={() => dispatchAddDialog({ type: 'closed' })}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button type="submit" disabled={!addDialog.name.trim() || addDialog.submitting}>
+                {t('erDiagram.toolbar.addTable')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
