@@ -7,19 +7,20 @@ import './index.css';
 import './assets/fonts/roboto-mono/fonts.css';
 import './assets/fonts/xiaolai/fonts.css';
 import './assets/fonts/klee-one/fonts.css';
-import { AppView } from './components/App/AppView';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { appQueryClient } from './lib/queryClient';
 import { Toaster } from './components/ui/sonner';
 import { LocaleProvider } from './i18n/LocaleContext';
 import { AuthSessionProvider } from './auth/AuthSessionProvider';
-import { WorkspaceYDocProvider } from './providers/WorkspaceYDocProvider';
 import { isAdminPath } from './admin/lib/adminPath';
 import { listenForCommandShortcut } from './lib/commandShortcut';
 import { notifyAuthCallbackError } from './auth/useAuthCallbackCommand';
-import { i18n } from './i18n';
+import { i18n, i18nReady } from './i18n';
 
 const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
+const WorkspaceShell = lazy(() =>
+  import('./components/App/WorkspaceShell').then((m) => ({ default: m.WorkspaceShell })),
+);
 // SAFETY: the Vite root element is checked for null before this React mount assertion.
 const AppThemeProvider = ThemeProvider as ComponentType<
   PropsWithChildren<React.ComponentProps<typeof ThemeProvider>>
@@ -58,37 +59,49 @@ if (fontStylesheet) {
   else fontStylesheet.addEventListener('load', enableFont, { once: true });
 }
 
-createRoot(rootElement).render(
-  <StrictMode>
-    <LocaleProvider>
-      <AppThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-        storageKey="ddlbuilder:theme:v1"
-      >
-        <QueryClientProvider client={appQueryClient}>
-          <AppErrorBoundary>
-            {isAdmin ? (
-              <AdminApp />
-            ) : (
-              <AuthSessionProvider>
-                {publicationId ? (
-                  <Suspense fallback={<p>{i18n.t('schemaTools.loading')}</p>}>
-                    <PublicationPage id={publicationId} />
-                  </Suspense>
-                ) : (
-                  <WorkspaceYDocProvider>
-                    <AppView />
-                  </WorkspaceYDocProvider>
-                )}
-              </AuthSessionProvider>
-            )}
-            <Toaster />
-          </AppErrorBoundary>
-        </QueryClientProvider>
-      </AppThemeProvider>
-    </LocaleProvider>
-  </StrictMode>,
-);
+const renderApp = () => {
+  const loadingFallback = (
+    <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">
+      {i18n.t('schemaTools.loading')}
+    </div>
+  );
+
+  createRoot(rootElement).render(
+    <StrictMode>
+      <LocaleProvider>
+        <AppThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+          storageKey="ddlbuilder:theme:v1"
+        >
+          <QueryClientProvider client={appQueryClient}>
+            <AppErrorBoundary>
+              {isAdmin ? (
+                <Suspense fallback={loadingFallback}>
+                  <AdminApp />
+                </Suspense>
+              ) : (
+                <AuthSessionProvider>
+                  {publicationId ? (
+                    <Suspense fallback={loadingFallback}>
+                      <PublicationPage id={publicationId} />
+                    </Suspense>
+                  ) : (
+                    <Suspense fallback={loadingFallback}>
+                      <WorkspaceShell />
+                    </Suspense>
+                  )}
+                </AuthSessionProvider>
+              )}
+              <Toaster />
+            </AppErrorBoundary>
+          </QueryClientProvider>
+        </AppThemeProvider>
+      </LocaleProvider>
+    </StrictMode>,
+  );
+};
+
+void i18nReady.finally(renderApp);
