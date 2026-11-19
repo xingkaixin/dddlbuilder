@@ -8,7 +8,12 @@ import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTranslation } from 'react-i18next';
-import { CopyOutputButton, OutputCode, OutputHeading } from './OutputPrimitives';
+import {
+  CopyOutputButton,
+  DownloadOutputButton,
+  OutputCode,
+  OutputHeading,
+} from './OutputPrimitives';
 
 type RoutineForm = {
   kind: RoutineTemplateKind;
@@ -92,11 +97,14 @@ export function RoutineOutputPanel({
         description={t('ddlOutput.routineDesc')}
         dbType={dbType}
         actions={
-          <CopyOutputButton
-            copy={handleCopy}
-            label={t('ddlOutput.copyRoutine')}
-            tooltip={t('ddlOutput.copyRoutineTip')}
-          />
+          <div className="ml-auto flex items-center gap-1.5">
+            <DownloadOutputButton code={code} filename={`${name || 'routine'}-${dbType}.sql`} />
+            <CopyOutputButton
+              copy={handleCopy}
+              label={t('ddlOutput.copyRoutine')}
+              tooltip={t('ddlOutput.copyRoutineTip')}
+            />
+          </div>
         }
       />
       <div className="grid gap-4 border-b border-primary/10 px-4 py-3.5 md:grid-cols-2">

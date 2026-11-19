@@ -1,9 +1,10 @@
 import { lazy, Suspense, useCallback, useReducer, type CSSProperties } from 'react';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
-import { Check, Copy, IconSwap } from '@/components/icons';
+import { Check, Copy, Download, IconSwap } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DATABASE_OPTIONS } from '../databaseOptions';
+import type { CodeBlockLanguage } from '../SqlCodeBlock';
 import { useTimers } from '@/hooks/useTimers';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
@@ -20,16 +21,62 @@ const CODE_FALLBACK_STYLE: CSSProperties = {
   margin: 0,
 };
 
-export function OutputCode({ code, activeLine }: { code: string; activeLine?: number }) {
+export function OutputCode({
+  code,
+  activeLine,
+  language = 'sql',
+}: {
+  code: string;
+  activeLine?: number;
+  language?: CodeBlockLanguage;
+}) {
   return (
     <div
       data-testid="ddl-output"
       className="relative flex-1 overflow-auto rounded-lg bg-muted py-2.5 pr-3"
     >
       <Suspense fallback={<pre style={CODE_FALLBACK_STYLE}>{code}</pre>}>
-        <SqlCodeBlock code={code} activeLine={activeLine} />
+        <SqlCodeBlock code={code} activeLine={activeLine} language={language} />
       </Suspense>
     </div>
+  );
+}
+
+export function DownloadOutputButton({ code, filename }: { code: string; filename: string }) {
+  const { t } = useTranslation();
+
+  const handleDownload = useCallback(() => {
+    if (!code.trim()) return;
+
+    const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, [code, filename]);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          aria-label={t('mockData.download')}
+          disabled={!code.trim()}
+          onClick={handleDownload}
+        >
+          <Download className="h-3.5 w-3.5" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{t('mockData.downloadTip')}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

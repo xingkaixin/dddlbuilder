@@ -11,7 +11,12 @@ import { ReviewResultPanel } from '../ReviewResult';
 import { useAIRequestAccess } from '@/hooks/useAIRequestAccess';
 import { useTranslation } from 'react-i18next';
 import { useActiveFieldLine } from '@/hooks/useActiveFieldLine';
-import { CopyOutputButton, OutputCode, OutputHeading } from './OutputPrimitives';
+import {
+  CopyOutputButton,
+  DownloadOutputButton,
+  OutputCode,
+  OutputHeading,
+} from './OutputPrimitives';
 
 interface DdlOutputPanelProps {
   code: string;
@@ -124,11 +129,14 @@ export function DdlOutputPanel({
                 </TooltipContent>
               </Tooltip>
             )}
-            <CopyOutputButton
-              copy={onCopy}
-              label={t('ddlOutput.copyDdl')}
-              tooltip={t('ddlOutput.copyDdlTip')}
-            />
+            <div className="ml-auto flex items-center gap-1.5">
+              <DownloadOutputButton code={code} filename={`schema-${dbType}.sql`} />
+              <CopyOutputButton
+                copy={onCopy}
+                label={t('ddlOutput.copyDdl')}
+                tooltip={t('ddlOutput.copyDdlTip')}
+              />
+            </div>
           </>
         }
       />
