@@ -1,41 +1,18 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { reportError } from '@/utils/errorReporter';
 import { i18n } from '@/i18n';
 
-interface AppErrorBoundaryProps {
-  children: ReactNode;
-  variant?: 'page' | 'section' | 'dialog';
-  resetKey?: string;
-}
+type AppErrorBoundaryProps = { children: ReactNode } & (
+  | { variant?: 'page' | 'section' }
+  | { variant: 'dialog'; onDismiss: () => void; open: boolean }
+);
 
-interface AppErrorBoundaryState {
-  hasError: boolean;
-  prevResetKey?: string;
-}
+export class AppErrorBoundary extends Component<AppErrorBoundaryProps, { hasError: boolean }> {
+  state = { hasError: false };
 
-export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
-  state: AppErrorBoundaryState = {
-    hasError: false,
-    prevResetKey: this.props.resetKey,
-  };
-
-  static getDerivedStateFromError(): Partial<AppErrorBoundaryState> {
+  static getDerivedStateFromError() {
     return { hasError: true };
-  }
-
-  static getDerivedStateFromProps(
-    props: AppErrorBoundaryProps,
-    state: AppErrorBoundaryState,
-  ): Partial<AppErrorBoundaryState> | null {
-    if (props.resetKey !== state.prevResetKey) {
-      return {
-        hasError: false,
-        prevResetKey: props.resetKey,
-      };
-    }
-
-    return null;
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
@@ -53,15 +30,13 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
     window.location.reload();
   };
 
-  private handleReset = () => {
-    this.setState({ hasError: false });
-  };
-
   render() {
     if (this.state.hasError) {
-      const variant = this.props.variant ?? 'page';
+      const { variant } = this.props;
 
-      if (variant === 'dialog') {
+      if (this.props.variant === 'dialog') {
+        if (!this.props.open) return null;
+
         return (
           <div
             role="alertdialog"
@@ -72,7 +47,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
               <h2 className="text-lg font-semibold">{i18n.t('errorBoundary.title')}</h2>
               <p className="text-sm text-muted-foreground">{i18n.t('errorBoundary.description')}</p>
               <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={this.handleReset}>
+                <Button variant="outline" onClick={this.props.onDismiss}>
                   {i18n.t('common.cancel')}
                 </Button>
                 <Button onClick={this.handleReload}>{i18n.t('errorBoundary.reload')}</Button>
@@ -89,12 +64,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
             <p className="max-w-md text-sm text-muted-foreground">
               {i18n.t('errorBoundary.description')}
             </p>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={this.handleReset}>
-                {i18n.t('common.retry')}
-              </Button>
-              <Button onClick={this.handleReload}>{i18n.t('errorBoundary.reload')}</Button>
-            </div>
+            <Button onClick={this.handleReload}>{i18n.t('errorBoundary.reload')}</Button>
           </div>
         );
       }
@@ -112,4 +82,20 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
 
     return this.props.children;
   }
+}
+
+export function LazyDialogBoundary({
+  children,
+  open = true,
+  onDismiss,
+}: {
+  children: ReactNode;
+  open?: boolean;
+  onDismiss: () => void;
+}) {
+  return (
+    <AppErrorBoundary variant="dialog" open={open} onDismiss={onDismiss}>
+      <Suspense fallback={null}>{children}</Suspense>
+    </AppErrorBoundary>
+  );
 }

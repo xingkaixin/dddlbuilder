@@ -319,14 +319,28 @@ function collapsedFoldersReducer(collapsed: Set<string>, event: FolderExpansionE
 
 const createCollapsedFolders = () => new Set<string>();
 
-export function useFolderExpansion(folders: FolderTreeNode[]) {
+export function useFolderExpansion() {
   const [collapsedFolders, dispatch] = useReducer(
     collapsedFoldersReducer,
     undefined,
     createCollapsedFolders,
   );
 
-  const expandedFolders = useMemo(() => {
+  const toggleFolder = useCallback(
+    (folderId: string) => dispatch({ type: 'folderToggled', folderId }),
+    [],
+  );
+
+  const expandFolder = useCallback(
+    (folderId: string) => dispatch({ type: 'folderExpanded', folderId }),
+    [],
+  );
+
+  return { collapsedFolders, toggleFolder, expandFolder };
+}
+
+export function useExpandedFolders(folders: FolderTreeNode[], collapsedFolders: Set<string>) {
+  return useMemo(() => {
     const expanded = new Set<string>();
 
     const visit = (nodes: FolderTreeNode[]) => {
@@ -339,16 +353,4 @@ export function useFolderExpansion(folders: FolderTreeNode[]) {
 
     return expanded;
   }, [folders, collapsedFolders]);
-
-  const toggleFolder = useCallback(
-    (folderId: string) => dispatch({ type: 'folderToggled', folderId }),
-    [],
-  );
-
-  const expandFolder = useCallback(
-    (folderId: string) => dispatch({ type: 'folderExpanded', folderId }),
-    [],
-  );
-
-  return { expandedFolders, toggleFolder, expandFolder };
 }

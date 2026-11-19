@@ -17,6 +17,7 @@ import { TableItem } from './saved-tables/TableItem';
 import { WorkspaceTreeView } from './saved-tables/WorkspaceTreeView';
 import {
   useWorkspaceTreeControls,
+  useWorkspaceTreeState,
   type MoveOperationResult,
 } from './saved-tables/useWorkspaceTreeControls';
 
@@ -62,8 +63,13 @@ export interface SavedTablesDrawerProps {
   onDeleteFolder?: (folder: FolderTreeNode) => void;
 }
 
-const SavedTablesDrawerBody = memo<Omit<SavedTablesDrawerProps, 'open' | 'onOpenChange'>>(
+const SavedTablesDrawerBody = memo<
+  Omit<SavedTablesDrawerProps, 'open' | 'onOpenChange'> & {
+    treeState: ReturnType<typeof useWorkspaceTreeState>;
+  }
+>(
   ({
+    treeState,
     loading,
     error,
     items,
@@ -111,6 +117,7 @@ const SavedTablesDrawerBody = memo<Omit<SavedTablesDrawerProps, 'open' | 'onOpen
       [draftAsSavedItems],
     );
     const treeControls = useWorkspaceTreeControls({
+      treeState,
       items: allItems,
       folders,
       onMoveToFolder,
@@ -294,12 +301,16 @@ const SavedTablesDrawerBody = memo<Omit<SavedTablesDrawerProps, 'open' | 'onOpen
 
 SavedTablesDrawerBody.displayName = 'SavedTablesDrawerBody';
 
-export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(({ open, onOpenChange, ...rest }) => (
-  <Drawer open={open} onOpenChange={onOpenChange}>
-    <DrawerContent className="flex h-full flex-col p-0">
-      <SavedTablesDrawerBody {...rest} />
-    </DrawerContent>
-  </Drawer>
-));
+export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(({ open, onOpenChange, ...rest }) => {
+  const treeState = useWorkspaceTreeState();
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="flex h-full flex-col p-0">
+        <SavedTablesDrawerBody {...rest} treeState={treeState} />
+      </DrawerContent>
+    </Drawer>
+  );
+});
 
 SavedTablesDrawer.displayName = 'SavedTablesDrawer';

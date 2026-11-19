@@ -40,6 +40,7 @@ import { TableItem } from './saved-tables/TableItem';
 import { WorkspaceTreeView } from './saved-tables/WorkspaceTreeView';
 import {
   useWorkspaceTreeControls,
+  useWorkspaceTreeState,
   type MoveOperationResult,
 } from './saved-tables/useWorkspaceTreeControls';
 
@@ -132,7 +133,10 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     const { t } = useTranslation();
     const [showTrash, dispatchTrashView] = useReducer(trashViewReducer, false);
 
+    const treeState = useWorkspaceTreeState();
+
     const treeControls = useWorkspaceTreeControls({
+      treeState,
       items,
       folders,
       onMoveToFolder,

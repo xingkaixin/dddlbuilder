@@ -34,7 +34,7 @@ if (!rootElement) {
 
 const isAdmin = isAdminPath();
 
-if (!isAdmin) notifyAuthCallbackError();
+if (!isAdmin) void i18nReady.then(notifyAuthCallbackError);
 
 const publicationId = /^\/publications\/([a-zA-Z0-9-]+)\/?$/.exec(location.pathname)?.[1];
 const PublicationPage = lazy(() =>
@@ -62,7 +62,11 @@ if (fontStylesheet) {
 const renderApp = () => {
   const loadingFallback = (
     <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">
-      {i18n.t('schemaTools.loading')}
+      {i18n.isInitialized ? (
+        i18n.t('schemaTools.loading')
+      ) : (
+        <progress aria-label={document.title} />
+      )}
     </div>
   );
 
@@ -104,4 +108,4 @@ const renderApp = () => {
   );
 };
 
-void i18nReady.finally(renderApp);
+renderApp();

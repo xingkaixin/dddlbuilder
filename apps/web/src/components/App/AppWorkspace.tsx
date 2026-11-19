@@ -141,7 +141,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
         <main className="flex min-h-0 flex-1 flex-col overflow-auto">
           <AppErrorBoundary
             variant="section"
-            resetKey={route.view === 'tools' ? `tools:${route.toolId ?? ''}` : route.view}
+            key={route.view === 'tools' ? `tools:${route.toolId ?? ''}` : route.view}
           >
             <Suspense fallback={<MainWorkspaceSkeleton />}>
               {route.view === 'er' && <ErPage {...erPage} />}
