@@ -66,20 +66,50 @@ function inferType(
     if (digits + scale <= 65 && scale <= 30) return `decimal(${digits + scale},${scale})`;
   }
 
-  const dates = values.map((value) => normalizeImportDate(value, options.dateFormat));
+  let allDates = true;
+  let allDateOnly = true;
+  let maxDatePrecision = 0;
 
-  if (dates.every((value) => value !== null)) {
-    if (dates.every((value) => value?.length === 10)) return 'date';
+  for (const value of values) {
+    const normalized = normalizeImportDate(value, options.dateFormat);
 
-    const precision = dates.reduce(
-      (max, value) => Math.max(max, value?.split('.')[1]?.length ?? 0),
-      0,
-    );
+    if (normalized === null) {
+      allDates = false;
+      break;
+    }
 
-    return `${dialect === 'mysql' ? 'datetime' : 'timestamp'}${precision ? `(${precision})` : ''}`;
+    if (normalized.length !== 10) {
+      allDateOnly = false;
+      const dotIndex = normalized.indexOf('.');
+
+      if (dotIndex >= 0) {
+        maxDatePrecision = Math.max(maxDatePrecision, normalized.length - dotIndex - 1);
+      }
+    }
   }
 
-  const length = values.reduce((max, value) => Math.max(max, Array.from(value).length), 1);
+  if (allDates) {
+    if (allDateOnly) return 'date';
+
+    return `${dialect === 'mysql' ? 'datetime' : 'timestamp'}${maxDatePrecision ? `(${maxDatePrecision})` : ''}`;
+  }
+
+  const length = values.reduce((max, value) => Math.max(max, countCodePoints(value)), 1);
 
   return length <= 255 ? `varchar(${length})` : 'text';
+}
+
+function countCodePoints(value: string): number {
+  let count = 0;
+
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    if (code >= 0xd800 && code <= 0xdbff && i + 1 < value.length) {
+      const next = value.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) i += 1;
+    }
+    count += 1;
+  }
+
+  return count;
 }

@@ -216,18 +216,25 @@ const extractScopedGrants = (sql: string): ScopedGrant[] => {
 
 export class SqlParser {
   private parser: ParserInstance | null;
+  private readonly parsersByDialect = new Map<string, ParserInstance>();
 
   constructor(parser?: ParserInstance) {
     this.parser = parser ?? null;
   }
 
-  private async getParser(): Promise<ParserInstance> {
-    if (!this.parser) {
-      const Parser = await loadParserConstructor();
-      this.parser = new Parser();
-    }
+  private async getParser(dbType: DatabaseType): Promise<ParserInstance> {
+    if (this.parser) return this.parser;
 
-    return this.parser;
+    const dialect = this.buildAstifyOpt(dbType).database;
+    const cached = this.parsersByDialect.get(dialect);
+
+    if (cached) return cached;
+
+    const Parser = await loadParserConstructor(dialect);
+    const instance = new Parser();
+    this.parsersByDialect.set(dialect, instance);
+
+    return instance;
   }
 
   private mergeComments(
@@ -435,8 +442,10 @@ export class SqlParser {
     dbType: DatabaseType,
     strict = false,
   ): MultiParsedResult {
-    const { tableMetadata, grants, partitionConfigs } = this.preprocessSql(sql, dbType);
     const opt = this.buildAstifyOpt(dbType);
+    const tableMetadata = new Map<string, PreprocessedTableMetadata>();
+    const grants: ScopedGrant[] = [];
+    const partitionConfigs = new Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>();
     const statements: AstStatement[] = [];
     const results: ParsedResult[] = [];
     const failed: MultiParsedResult['failed'] = [];
@@ -448,8 +457,37 @@ export class SqlParser {
         const {
           sqlToParse,
           identifierMappings,
+          tableMetadata: statementMetadata,
           grants: statementGrants,
+          partitionConfigs: statementPartitions,
         } = this.preprocessSql(original, dbType);
+
+        for (const [key, metadata] of statementMetadata) {
+          const existing = tableMetadata.get(key);
+
+          if (!existing) {
+            tableMetadata.set(key, {
+              ...metadata,
+              columnComments: { ...metadata.columnComments },
+            });
+          } else {
+            if (metadata.tableComment && !existing.tableComment) {
+              existing.tableComment = metadata.tableComment;
+            }
+
+            for (const [columnName, comment] of Object.entries(metadata.columnComments)) {
+              if (!existing.columnComments[columnName]) {
+                existing.columnComments[columnName] = comment;
+              }
+            }
+          }
+        }
+
+        grants.push(...statementGrants);
+
+        for (const [tableName, config] of statementPartitions) {
+          partitionConfigs.set(tableName, config);
+        }
 
         if (strict && statementGrants.length)
           throw SqlParseError.unsupported('GRANT in a schema snapshot');
@@ -548,7 +586,7 @@ export class SqlParser {
   }
 
   async parseAsync(sql: string, dbType: DatabaseType): Promise<ParsedResult> {
-    const parser = await this.getParser();
+    const parser = await this.getParser(dbType);
 
     return this.parseWithParser(parser, sql, dbType);
   }
@@ -558,7 +596,7 @@ export class SqlParser {
     dbType: DatabaseType,
     strict = false,
   ): Promise<MultiParsedResult> {
-    const parser = await this.getParser();
+    const parser = await this.getParser(dbType);
 
     return this.parseMultiWithParser(parser, sql, dbType, strict);
   }

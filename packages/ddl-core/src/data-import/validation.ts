@@ -57,6 +57,8 @@ export function newDataImportTarget(
   };
 }
 
+const MAX_DATA_IMPORT_ISSUES = 500;
+
 export function validateBusinessData(
   data: BusinessData,
   target: DataImportTarget,
@@ -71,13 +73,19 @@ export function validateBusinessData(
     columns: [],
     preview: [],
   };
+  let hasIssues = false;
   const issue = (
     code: DataImportResult['issues'][number]['code'],
     field = '',
     detail = '',
     line = 0,
     value = '',
-  ) => result.issues.push({ code, field, detail, line, value });
+  ) => {
+    hasIssues = true;
+    if (result.issues.length < MAX_DATA_IMPORT_ISSUES) {
+      result.issues.push({ code, field, detail, line, value });
+    }
+  };
   const validName = (name: string) => isDataImportName(name, target.dbType);
 
   if (!validName(target.tableName) || (target.schemaName && !validName(target.schemaName)))
@@ -136,7 +144,11 @@ export function validateBusinessData(
 
     if (!type) issue('type', field.name, field.type);
 
-    return [{ field, source, type }];
+    const enumValues = field.enumMeta?.length
+      ? new Set(field.enumMeta.map((entry) => entry.value))
+      : null;
+
+    return [{ field, source, type, enumValues }];
   });
 
   for (const column of columns) {
@@ -165,21 +177,31 @@ export function validateBusinessData(
       : [];
   });
 
-  if (result.issues.length) return result;
+  if (hasIssues) return result;
   const sqlRows: string[] = [];
 
   for (const row of data.rows) {
     const values: (string | null)[] = [];
     const literals: string[] = [];
-    const before = result.issues.length;
+    let rowHasIssue = false;
+    const recordRowIssue = (
+      code: DataImportResult['issues'][number]['code'],
+      field = '',
+      detail = '',
+      line = 0,
+      value = '',
+    ) => {
+      rowHasIssue = true;
+      issue(code, field, detail, line, value);
+    };
 
-    for (const { field, source, type } of mapped) {
+    for (const { field, source, type, enumValues } of mapped) {
       const raw = row.values[source];
       const value = dataImportValue(raw, options);
 
       if (value === null) {
         if (!field.nullable || primary.has(field.name))
-          issue('required', field.name, '', row.line, raw);
+          recordRowIssue('required', field.name, '', row.line, raw);
         values.push(null);
         literals.push('NULL');
         continue;
@@ -190,19 +212,21 @@ export function validateBusinessData(
 
       // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a string denotes a value-validation issue, not a SQL value.
       if (typeof checked === 'string') {
-        issue(checked, field.name, field.type, row.line, raw);
+        recordRowIssue(checked, field.name, field.type, row.line, raw);
         continue;
       }
 
-      if (field.enumMeta?.length && !field.enumMeta.some((entry) => entry.value === value))
-        issue('enum', field.name, '', row.line, raw);
+      if (enumValues && !enumValues.has(value)) recordRowIssue('enum', field.name, '', row.line, raw);
       values.push(checked.value);
       literals.push(
         checked.numeric ? checked.value : importStringLiteral(checked.value, target.dbType),
       );
     }
 
-    if (before !== result.issues.length) continue;
+    if (rowHasIssue) {
+      if (result.issues.length >= MAX_DATA_IMPORT_ISSUES) break;
+      continue;
+    }
 
     for (const key of unique) {
       const parts = key.positions.map((position) => values[position]);
@@ -212,8 +236,13 @@ export function validateBusinessData(
       const firstLine = key.seen.get(signature);
 
       if (firstLine !== undefined)
-        issue('duplicate', key.name, String(firstLine), row.line, parts.join(' / '));
+        recordRowIssue('duplicate', key.name, String(firstLine), row.line, parts.join(' / '));
       else key.seen.set(signature, row.line);
+    }
+
+    if (rowHasIssue) {
+      if (result.issues.length >= MAX_DATA_IMPORT_ISSUES) break;
+      continue;
     }
 
     sqlRows.push(`(${literals.join(', ')})`);
@@ -221,7 +250,7 @@ export function validateBusinessData(
     if (result.preview.length < 5) result.preview.push(values);
   }
 
-  if (result.issues.length) return result;
+  if (hasIssues) return result;
 
   const qualified = [target.schemaName, target.tableName]
     .flatMap((name) => (name ? [quoteIdentifier(name, target.dbType)] : []))
