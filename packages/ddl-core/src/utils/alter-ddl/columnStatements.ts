@@ -136,14 +136,6 @@ export function generateModifyColumn(
 
   if (family === 'postgresql') return generatePostgresModifyColumn(tableName, fieldDiff, dbType);
 
-  if (
-    (family === 'oracle' || family === 'dm') &&
-    (fieldDiff.oldField.defaultKind === 'auto_increment') !==
-      (field.defaultKind === 'auto_increment')
-  ) {
-    return `-- Manual migration required: ${dbType} cannot alter identity on column ${fieldName} on ${tableName}. This column modification was skipped.`;
-  }
-
   const comment = fieldDiff.changes.includes('comment')
     ? buildColumnComment(tableName, field, dbType, fieldDiff.oldField.comment)
     : '';

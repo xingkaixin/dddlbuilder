@@ -60,14 +60,16 @@ export function resolveTypeORMColumn(field: NormalizedField, dbType: DatabaseTyp
   const parameters = sqlType.match(/\(([^()]*)\)/);
   const args = parameters ? parameters[1].split(',').map((arg) => arg.trim()) : [];
   const parsed = parseFieldType(sqlType.replace(/\([^()]*\)/, ''));
-  const isSerial = /^(?:big)?serial$/.test(original.baseType);
+  const isSerial = /^(?:small|big)?serial$/.test(original.baseType);
 
   const type =
-    parsed.baseType === 'serial'
-      ? 'integer'
-      : parsed.baseType === 'bigserial'
-        ? 'bigint'
-        : parsed.baseType;
+    parsed.baseType === 'smallserial'
+      ? 'smallint'
+      : parsed.baseType === 'serial'
+        ? 'integer'
+        : parsed.baseType === 'bigserial'
+          ? 'bigint'
+          : parsed.baseType;
   const options: TypeORMColumnOptions = { type };
 
   if (parsed.unsigned) options.unsigned = true;

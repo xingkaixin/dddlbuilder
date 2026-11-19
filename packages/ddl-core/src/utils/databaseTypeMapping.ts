@@ -208,7 +208,8 @@ const isNumericType = (canonical: string) => NUMERIC_TYPES.has(canonical);
 
 const isCharacterType = (canonical: string) => CHARACTER_TYPES.has(canonical);
 
-export const supportsUuidDefault = (canonical: string) => isCharacterType(canonical);
+export const supportsUuidDefault = (canonical: string) =>
+  canonical === 'uniqueidentifier' || isCharacterType(canonical);
 
 export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
   switch (getDatabaseFamily(db)) {

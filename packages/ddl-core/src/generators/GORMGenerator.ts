@@ -59,7 +59,7 @@ export class GORMGenerator implements ORMGenerator {
 
       const isAutoIncrement =
         defaultValue.kind === 'auto_increment' ||
-        ['serial', 'bigserial'].includes(getCanonicalBaseType(field.type));
+        ['smallserial', 'serial', 'bigserial'].includes(getCanonicalBaseType(field.type));
       const isPrioritizedPk =
         primaryFields.size === 1 || ['id', 'ID'].includes(field.name) || fieldName === 'ID';
 

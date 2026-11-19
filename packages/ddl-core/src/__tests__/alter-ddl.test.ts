@@ -833,19 +833,17 @@ describe('Oracle and DM identity alter guard', () => {
         newField: createField({ name: 'id', type: 'bigint', defaultKind: 'auto_increment' }),
         changes: ['default'],
       };
-      const dropIdentity: FieldDiff = {
-        type: 'modify',
-        fieldName: 'id',
-        oldField: createField({ name: 'id', type: 'bigint', defaultKind: 'auto_increment' }),
-        newField: createField({ name: 'id', type: 'bigint', defaultKind: 'none' }),
-        changes: ['default'],
-      };
-      expect(generateModifyColumn('users', addIdentity, dbType)).toContain(
-        '-- Manual migration required:',
+      const diff = createTableDiff(
+        {
+          fields: [addIdentity],
+          foreignKeys: [{ type: 'add', foreignKey: createFk({ fields: ['id'] }) }],
+        },
+        dbType,
       );
-      expect(generateModifyColumn('users', dropIdentity, dbType)).toContain(
-        '-- Manual migration required:',
-      );
+
+      for (const sql of [generateAlterDDL(diff), generateRollbackDDL(diff)]) {
+        expect(sql).toMatch(/^-- Manual migration required: [^\n]+$/);
+      }
     },
   );
 });

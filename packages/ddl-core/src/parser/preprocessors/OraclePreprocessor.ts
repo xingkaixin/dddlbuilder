@@ -83,7 +83,7 @@ export function preprocessOracle(sql: string): PreprocessResult {
       .replace(/\bNUMBER\b/gi, 'DECIMAL')
       .replace(/\bDEFAULT\s+SYS_GUID\(\)/gi, 'DEFAULT uuid()')
       .replace(/\bDEFAULT\s+SYSTIMESTAMP\b/gi, 'DEFAULT CURRENT_TIMESTAMP')
-      .replace(/\bIDENTITY\s*\(\s*\d+\s*,\s*\d+\s*\)/gi, 'AUTO_INCREMENT'),
+      .replace(/\bIDENTITY\s*\(\s*1\s*,\s*1\s*\)/gi, 'AUTO_INCREMENT'),
   );
 
   const identifierMappings = new Map<string, string>();

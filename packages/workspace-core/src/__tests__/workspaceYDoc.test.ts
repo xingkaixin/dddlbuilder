@@ -480,8 +480,9 @@ describe('workspace YDoc roots', () => {
     const doc = new Y.Doc();
     ensureWorkspaceYDocMeta(doc);
 
+    const folder = new Y.Map<unknown>();
+
     const changes = trackWorkspaceYDocTableChanges(doc, () => {
-      const folder = new Y.Map<unknown>();
       folder.set('name', 123);
       getWorkspaceRoot(doc).folders.set('folder-bad', folder);
     });
@@ -490,5 +491,17 @@ describe('workspace YDoc roots', () => {
     expect(() => assertWorkspaceYDocStructure(doc, changes)).toThrow(
       'folders.folder-bad.name must be a string',
     );
+
+    folder.set('name', 'projects');
+
+    for (const timestamp of ['invalid', NaN]) {
+      const edits = trackWorkspaceYDocTableChanges(doc, () => folder.set('updatedAt', timestamp));
+
+      for (const scope of [undefined, edits]) {
+        expect(() => assertWorkspaceYDocStructure(doc, scope)).toThrow(
+          'folders.folder-bad.updatedAt must be a finite number',
+        );
+      }
+    }
   });
 });

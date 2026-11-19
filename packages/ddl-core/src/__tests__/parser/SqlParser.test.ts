@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DATABASE_TYPES } from '@ddlbuilder/shared-types';
+import { buildDDL } from '../../utils/ddlGenerators';
+import { buildORM } from '../../utils/ormGenerators';
 import { SqlParseError, SqlParser } from '../../parser/index.js';
 
 const stripIndexIds = (indexes: any[]) =>
@@ -571,6 +573,35 @@ describe('SqlParser', () => {
       'dm',
     );
     expect(dm.fields[0]).toMatchObject({ defaultKind: 'auto_increment' });
+  });
+
+  it('retains native defaults in generated DDL and ORM models', async () => {
+    const parser = new SqlParser();
+
+    const pg = await parser.parseAsync(
+      `CREATE TABLE " users " (id UUID DEFAULT gen_random_uuid(), token UUID DEFAULT custom.gen_random_uuid());
+       COMMENT ON TABLE " users " IS 'accounts';`,
+      'postgresql',
+    );
+    expect(pg.tableComment).toBe('accounts');
+    expect(buildDDL({ ...pg, dbType: 'postgresql' })).toContain('DEFAULT custom.gen_random_uuid()');
+    expect(buildORM('sqlalchemy', { ...pg, dbType: 'postgresql' })).toContain(
+      "server_default=text('gen_random_uuid()')",
+    );
+
+    const sqlServer = await parser.parseAsync(
+      'CREATE TABLE tokens (id UNIQUEIDENTIFIER DEFAULT NEWID(), day DATE DEFAULT GETDATE(), stamp DATETIMEOFFSET)',
+      'sqlserver',
+    );
+    const ddl = buildDDL({ ...sqlServer, dbType: 'sqlserver' });
+    expect(ddl).toContain('DEFAULT NEWID()');
+    expect(ddl).toContain('DEFAULT GETDATE()');
+    const jpa = buildORM('jpa', { ...sqlServer, dbType: 'sqlserver' });
+    expect(jpa).toContain('import java.util.UUID;');
+    expect(jpa).toContain('import java.util.Date;');
+    await expect(
+      parser.parseAsync('CREATE TABLE t (id INT IDENTITY(100,10))', 'dm'),
+    ).rejects.toBeInstanceOf(SqlParseError);
   });
 
   it('throws SqlParseError when parseAsync receives multiple CREATE TABLE statements', async () => {

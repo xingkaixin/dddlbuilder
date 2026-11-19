@@ -6,6 +6,11 @@ import type {
   ForeignKeyDefinition,
   ForeignKeyAction,
 } from '@ddlbuilder/shared-types';
+import {
+  getCanonicalBaseType,
+  supportsDefaultCurrentTimestamp,
+  supportsUuidDefault,
+} from '../utils/databaseTypeMapping.js';
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming.js';
 import type { ParsedResult } from './types.js';
 import {
@@ -250,13 +255,30 @@ function mapColumnToField(
         throw SqlParseError.unsupported('超过 15 位有效数字的数值默认值（可改用带引号的写法）');
       defaultKind = 'constant';
       defaultValue = normalizeLiteral(val);
-    } else if (funcName && ['now', 'current_timestamp', 'sysdate', 'getdate'].includes(funcName)) {
+    } else if (funcName && ['now', 'current_timestamp', 'sysdate'].includes(funcName)) {
       defaultKind = 'current_timestamp';
-    } else if (funcName && ['uuid', 'gen_random_uuid', 'newid'].includes(funcName)) {
+    } else if (funcName === 'uuid') {
       defaultKind = 'uuid';
     } else {
-      defaultKind = 'expression';
-      defaultValue = serializeExpression(val);
+      const expression = serializeExpression(val);
+      const call = expression.toLowerCase();
+
+      if (
+        databaseFamily === 'sqlserver' &&
+        call === 'getdate()' &&
+        supportsDefaultCurrentTimestamp('sqlserver', typeStr)
+      ) {
+        defaultKind = 'current_timestamp';
+      } else if (
+        supportsUuidDefault(getCanonicalBaseType(typeStr)) &&
+        ((databaseFamily === 'postgresql' && call === 'gen_random_uuid()') ||
+          (databaseFamily === 'sqlserver' && call === 'newid()'))
+      ) {
+        defaultKind = 'uuid';
+      } else {
+        defaultKind = 'expression';
+        defaultValue = expression;
+      }
     }
   }
 

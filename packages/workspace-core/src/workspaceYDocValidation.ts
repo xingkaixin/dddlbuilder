@@ -284,18 +284,11 @@ export const assertFolderDocDecodable = (folderDoc: Y.Map<unknown>, path: string
 
   if (record.parentId !== undefined) assertString(record.parentId, `${path}.parentId`);
 
-  if (
-    record.order !== undefined &&
-    (typeof record.order !== 'number' || !Number.isFinite(record.order))
-  ) {
-    invalid(`${path}.order`, 'a finite number');
-  }
-
-  for (const key of ['createdAt', 'updatedAt'] as const) {
+  for (const key of ['order', 'createdAt', 'updatedAt'] as const) {
     const value = record[key];
 
-    if (value !== undefined && typeof value !== 'number' && typeof value !== 'string') {
-      invalid(`${path}.${key}`, 'a timestamp');
+    if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) {
+      invalid(`${path}.${key}`, 'a finite number');
     }
   }
 };
