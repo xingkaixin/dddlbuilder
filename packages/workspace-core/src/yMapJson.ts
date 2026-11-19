@@ -84,7 +84,11 @@ export const writeJsonMapPatch = (map: Y.Map<unknown>, values: JsonRecord) => {
       continue;
     }
 
-    if (stableStringify(map.get(key)) !== stableStringify(value)) {
+    const current = map.get(key);
+
+    if (Object.is(current, value)) continue;
+
+    if (stableStringify(current) !== stableStringify(value)) {
       map.set(key, value);
     }
   }
