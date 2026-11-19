@@ -48,6 +48,7 @@ const i18nReady: Promise<unknown> = !i18n.isInitialized
           },
         },
         partialBundledLanguages: true,
+        load: 'currentOnly',
         lng: initialLocale,
         fallbackLng: 'zh-CN',
         interpolation: {
