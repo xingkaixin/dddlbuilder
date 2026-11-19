@@ -9,6 +9,7 @@ import {
   applySchemaDocumentStateToTableDoc,
   normalizeSchemaDocumentState,
   tableDocToSchemaDocumentState,
+  tableDocToSchemaSummary,
 } from '../workspaceTableDoc';
 import { getWorkspaceRoot } from '../workspaceYDoc';
 import {
@@ -114,6 +115,27 @@ describe('workspace table doc', () => {
     expect(normalized).toEqual(tableDocToSchemaDocumentState(createTableDoc(legacy)));
     expect(normalizeSchemaDocumentState(normalized)).toEqual(normalized);
     expect(legacy.rows[0]).not.toHaveProperty('id');
+  });
+
+  it('preserves the legacy schema and unnamed field IDs when applying sparse edits', () => {
+    const tableDoc = new Y.Doc().getMap('table');
+    tableDoc.set('stateSnapshot', { tableName: 'tenant.users', rows: [{ fieldName: 'id' }] });
+    const scalar = new Y.Map();
+    tableDoc.set('scalar', scalar);
+    scalar.set('tableName', 'customers');
+    const fields = new Y.Map();
+    tableDoc.set('fields', fields);
+    fields.set('legacy-field-0', new Y.Map());
+    const order = new Y.Array<string>();
+    tableDoc.set('fieldOrder', order);
+    order.push(['legacy-field-0']);
+
+    expect(tableDocToSchemaDocumentState(tableDoc)).toMatchObject({
+      schemaName: 'tenant',
+      tableName: 'customers',
+      rows: [{ fieldName: 'id' }],
+    });
+    expect(tableDocToSchemaSummary(tableDoc).fieldCount).toBe(1);
   });
 
   it('reads rows from a snapshot-only table doc', () => {

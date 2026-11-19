@@ -1,6 +1,22 @@
+import type { SqlParserDialect } from '../utils/databaseFamily.js';
 import type { ParserConstructor, ParserModule } from './types.js';
 
-let parserConstructorPromise: Promise<ParserConstructor> | null = null;
+const parserConstructorPromises = new Map<SqlParserDialect, Promise<ParserConstructor>>();
+
+const importDialectModule = (dialect: SqlParserDialect): Promise<ParserModule> => {
+  switch (dialect) {
+    case 'mysql':
+      return import('node-sql-parser/build/mysql.js');
+    case 'mariadb':
+      return import('node-sql-parser/build/mariadb.js');
+    case 'postgresql':
+      return import('node-sql-parser/build/postgresql.js');
+    case 'transactsql':
+      return import('node-sql-parser/build/transactsql.js');
+    case 'hive':
+      return import('node-sql-parser/build/hive.js');
+  }
+};
 
 // node-sql-parser exposes CommonJS and ESM module shapes; runtime checks are the interop boundary.
 // oxlint-disable anti-slop/no-runtime-typeof
@@ -31,12 +47,13 @@ const normalizeParserConstructor = (module: ParserModule) => {
 };
 // oxlint-enable anti-slop/no-runtime-typeof
 
-export const loadParserConstructor = (): Promise<ParserConstructor> => {
-  if (!parserConstructorPromise) {
-    parserConstructorPromise = import('node-sql-parser').then((module) =>
-      normalizeParserConstructor(module),
-    );
-  }
+export const loadParserConstructor = (dialect: SqlParserDialect): Promise<ParserConstructor> => {
+  const existing = parserConstructorPromises.get(dialect);
 
-  return parserConstructorPromise;
+  if (existing) return existing;
+
+  const loaded = importDialectModule(dialect).then((module) => normalizeParserConstructor(module));
+  parserConstructorPromises.set(dialect, loaded);
+
+  return loaded;
 };

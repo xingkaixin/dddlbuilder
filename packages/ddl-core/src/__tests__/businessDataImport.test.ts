@@ -40,6 +40,19 @@ describe('business data import', () => {
     expect(result.sql).toContain("E'00123', 9007199254740993.01, 9007199254740993, E'2024-02-29'");
   });
 
+  it('includes every invalid row in the downloadable issue list', () => {
+    const source = {
+      headers: ['amount'],
+      rows: Array.from({ length: 501 }, (_, i) => ({ line: i + 2, values: ['invalid'] })),
+    };
+    const columns = [{ source: 'amount', name: 'amount', type: 'int', nullable: false }];
+    const target = newDataImportTarget('mysql', 'items', '', columns);
+    const result = validateBusinessData(source, target, columns, options, false);
+
+    expect(result.issues).toHaveLength(501);
+    expect(result.issues.at(-1)?.line).toBe(502);
+  });
+
   it('scans all values, keeps huge integers as text, and does not guess regional dates', () => {
     const source = {
       headers: ['a', 'b', 'c'],

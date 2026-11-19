@@ -42,7 +42,7 @@ import {
   type StoredMysqlPartitionConfig,
   type StoredTableMiscConfig,
 } from './workspaceFieldReferences';
-import { decodeEnumMeta, decodePersistedState } from './persistedStateCodec';
+import { decodeEnumMeta, decodePersistedState, decodeTableName } from './persistedStateCodec';
 
 const TABLE_SCALAR_KEYS = [
   'objectType',
@@ -434,26 +434,63 @@ const readTableRows = (tableDoc: Y.Map<unknown>, stateSnapshot: SchemaDocumentSt
 };
 
 export const tableDocToSchemaSummary = (tableDoc: Y.Map<unknown>) => {
-  const snapshot = readStateSnapshot(tableDoc);
+  const rawSnapshot = tableDoc.get('stateSnapshot');
+  const snapshotRecord = isRecord(rawSnapshot) ? rawSnapshot : null;
   const scalarDbType = readMap(tableDoc, 'scalar')?.get('dbType');
-  const dbType = scalarDbType === undefined ? snapshot?.dbType : scalarDbType;
+  const dbType = scalarDbType === undefined ? snapshotRecord?.dbType : scalarDbType;
+  const snapshotRows = Array.isArray(snapshotRecord?.rows) ? snapshotRecord.rows : [];
+
+  let fieldCount = 0;
+
+  if (!hasFieldDoc(tableDoc)) {
+    for (const row of snapshotRows) {
+      if (isRecord(row) && typeof row.fieldName === 'string' && row.fieldName.trim().length > 0) {
+        fieldCount += 1;
+      }
+    }
+  } else {
+    const fields = getFields(tableDoc);
+
+    if (fields) {
+      let snapshotNamesById: Map<string, unknown> | null = null;
+
+      for (const fieldId of getFieldOrder(tableDoc)) {
+        const fieldMap = fields.get(fieldId);
+
+        if (!(fieldMap instanceof Y.Map)) continue;
+        let fieldName = fieldMap.get('fieldName');
+
+        if (fieldName === undefined && snapshotRows.length > 0) {
+          if (!snapshotNamesById) {
+            snapshotNamesById = new Map(
+              (readStateSnapshot(tableDoc)?.rows ?? []).map((row) => [row.id, row.fieldName]),
+            );
+          }
+
+          fieldName = snapshotNamesById.get(fieldId);
+        }
+
+        if (typeof fieldName === 'string' && fieldName.trim().length > 0) fieldCount += 1;
+      }
+    }
+  }
 
   return {
-    dbType: typeof dbType === 'string' ? dbType : 'mysql',
-    fieldCount: readTableRows(tableDoc, snapshot).filter(
-      (row) => typeof row.fieldName === 'string' && row.fieldName.trim(),
-    ).length,
+    dbType: typeof dbType === 'string' && dbType ? dbType : 'mysql',
+    fieldCount,
   };
 };
 
 /* oxlint-enable anti-slop/no-runtime-typeof */
 
 export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaDocumentState => {
-  const stateSnapshot = readStateSnapshot(tableDoc);
+  const rawSnapshotValue = tableDoc.get('stateSnapshot');
+  const rawSnapshot = isRecord(rawSnapshotValue) ? rawSnapshotValue : undefined;
   const scalar = readMap(tableDoc, 'scalar');
 
-  const rawState = {
-    ...stateSnapshot,
+  const rawState: JsonRecord = {
+    ...rawSnapshot,
+    ...(rawSnapshot && decodeTableName(rawSnapshot)),
     ...Object.fromEntries(
       TABLE_SCALAR_KEYS.flatMap((key) => {
         const value = scalar?.get(key);
@@ -463,7 +500,7 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
     ),
   };
   const state = decodePersistedState(rawState);
-  const rows = readTableRows(tableDoc, stateSnapshot);
+  const rows = readTableRows(tableDoc, state);
 
   const indexes = decodeIndexFieldReferences(
     hasIndexDoc(tableDoc)

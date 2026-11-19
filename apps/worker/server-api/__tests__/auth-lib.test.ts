@@ -27,9 +27,11 @@ const createEnv = (disabled = false) =>
     },
   }) as unknown as ApiEnv['Bindings'];
 
+const authCookieHeaders = () => new Headers({ cookie: 'better-auth.session_token=test' });
+
 const createContext = (
   env = createEnv(),
-  headers = new Headers(),
+  headers = authCookieHeaders(),
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the test logger accepts any auth failure value emitted by the boundary.
   log?: { error: (error: unknown) => void },
 ) => {
@@ -57,7 +59,7 @@ describe('authenticated session resolution', () => {
   it('distinguishes auth service failure from an anonymous user', async () => {
     mocks.getSession.mockRejectedValue(new Error('database unavailable'));
     const error = vi.fn();
-    const { context } = createContext(createEnv(), new Headers(), { error });
+    const { context } = createContext(createEnv(), authCookieHeaders(), { error });
     await expect(resolveAuthenticatedUser(context)).rejects.toMatchObject({
       status: 503,
       code: 'SERVICE_UNAVAILABLE',
@@ -66,6 +68,11 @@ describe('authenticated session resolution', () => {
     expect(error).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'database unavailable' }),
     );
+  });
+  it('short-circuits anonymous requests without a cookie header', async () => {
+    const { context } = createContext(createEnv(), new Headers());
+    await expect(resolveAuthenticatedUser(context)).resolves.toBeNull();
+    expect(mocks.getSession).not.toHaveBeenCalled();
   });
   it('rejects disabled users', async () => {
     const { context } = createContext(createEnv(true));

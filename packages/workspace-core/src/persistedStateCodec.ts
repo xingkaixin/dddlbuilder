@@ -380,12 +380,7 @@ const hasExternalSchemaDocumentShape = (value: Record<string, unknown>) =>
   typeof value.authInput === 'string' &&
   Array.isArray(value.authObjects);
 
-export const decodePersistedState = (
-  value: unknown,
-  mode: PersistedStateDecodeMode = 'compatible',
-): PersistedState | null => {
-  if (!isRecord(value) || (mode === 'external' && !hasExternalStateShape(value))) return null;
-
+export const decodeTableName = (value: Record<string, unknown>) => {
   const explicitSchemaName = toText(value.schemaName);
   const rawTableName = toText(value.tableName);
 
@@ -393,6 +388,16 @@ export const decodePersistedState = (
     explicitSchemaName || !rawTableName.includes('.')
       ? { schema: explicitSchemaName, table: rawTableName }
       : getSchemaAndTable(rawTableName);
+
+  return { schemaName: schema, tableName: table };
+};
+
+export const decodePersistedState = (
+  value: unknown,
+  mode: PersistedStateDecodeMode = 'compatible',
+): PersistedState | null => {
+  if (!isRecord(value) || (mode === 'external' && !hasExternalStateShape(value))) return null;
+
   const dbType = isDatabaseType(value.dbType) ? value.dbType : 'mysql';
   const foreignKeys = decodeForeignKeys(value.foreignKeys);
   const citusShardingConfig = decodeCitusConfig(value.citusShardingConfig);
@@ -404,8 +409,7 @@ export const decodePersistedState = (
     ...(value.objectType === 'view' || value.objectType === 'table'
       ? { objectType: value.objectType }
       : {}),
-    schemaName: schema,
-    tableName: table,
+    ...decodeTableName(value),
     tableComment: toText(value.tableComment),
     dbType,
     sqlFormatMode: value.sqlFormatMode === 'aligned' ? 'aligned' : 'compact',

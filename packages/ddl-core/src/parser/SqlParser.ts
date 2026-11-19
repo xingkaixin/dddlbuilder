@@ -216,18 +216,25 @@ const extractScopedGrants = (sql: string): ScopedGrant[] => {
 
 export class SqlParser {
   private parser: ParserInstance | null;
+  private readonly parsersByDialect = new Map<string, ParserInstance>();
 
   constructor(parser?: ParserInstance) {
     this.parser = parser ?? null;
   }
 
-  private async getParser(): Promise<ParserInstance> {
-    if (!this.parser) {
-      const Parser = await loadParserConstructor();
-      this.parser = new Parser();
-    }
+  private async getParser(dbType: DatabaseType): Promise<ParserInstance> {
+    if (this.parser) return this.parser;
 
-    return this.parser;
+    const dialect = this.buildAstifyOpt(dbType).database;
+    const cached = this.parsersByDialect.get(dialect);
+
+    if (cached) return cached;
+
+    const Parser = await loadParserConstructor(dialect);
+    const instance = new Parser();
+    this.parsersByDialect.set(dialect, instance);
+
+    return instance;
   }
 
   private mergeComments(
@@ -540,15 +547,17 @@ export class SqlParser {
   }
 
   parse(sql: string, dbType: DatabaseType): ParsedResult {
-    if (!this.parser) {
+    const parser = this.parser ?? this.parsersByDialect.get(this.buildAstifyOpt(dbType).database);
+
+    if (!parser) {
       throw new Error('SqlParser尚未初始化，请使用 parseAsync() 方法。');
     }
 
-    return this.parseWithParser(this.parser, sql, dbType);
+    return this.parseWithParser(parser, sql, dbType);
   }
 
   async parseAsync(sql: string, dbType: DatabaseType): Promise<ParsedResult> {
-    const parser = await this.getParser();
+    const parser = await this.getParser(dbType);
 
     return this.parseWithParser(parser, sql, dbType);
   }
@@ -558,7 +567,7 @@ export class SqlParser {
     dbType: DatabaseType,
     strict = false,
   ): Promise<MultiParsedResult> {
-    const parser = await this.getParser();
+    const parser = await this.getParser(dbType);
 
     return this.parseMultiWithParser(parser, sql, dbType, strict);
   }

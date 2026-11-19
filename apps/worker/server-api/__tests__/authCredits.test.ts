@@ -51,11 +51,13 @@ describe('authentication credit initialization', () => {
 
   afterEach(() => fixture.sqlite.close());
 
+  const authHeaders = { cookie: 'better-auth.session_token=test' };
+
   const createContext = (bindings: ApiEnv['Bindings']) =>
     // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- SAFETY: this partial Hono context provides only the fields read by resolveAuthenticatedUser.
     ({
       env: bindings,
-      req: { raw: { headers: new Headers() } },
+      req: { raw: { headers: new Headers(authHeaders) } },
       get: () => undefined,
     }) as unknown as Context<ApiEnv>;
 
@@ -70,9 +72,9 @@ describe('authentication credit initialization', () => {
     ).rejects.toThrow(/SIGNUP_BONUS_CREDITS/);
     const app = new Hono<ApiEnv>();
     registerCreditRoutes(app);
-    const response = await app.request('/credits/balance', {}, env);
+    const response = await app.request('/credits/balance', { headers: authHeaders }, env);
     expect(await response.json()).toMatchObject({ balance: 100000 });
-    const repeated = await app.request('/credits/balance', {}, env);
+    const repeated = await app.request('/credits/balance', { headers: authHeaders }, env);
     expect(await repeated.json()).toMatchObject({ balance: 100000, version: 1 });
   });
 

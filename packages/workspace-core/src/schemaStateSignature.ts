@@ -22,11 +22,16 @@ type TextEncoderRuntime = typeof globalThis & {
   };
 };
 
-const encodeUtf8 = (input: string): Uint8Array => {
-  // SAFETY: browser and Worker runtimes provide globalThis.TextEncoder.
-  const runtime = globalThis as TextEncoderRuntime;
+let cachedTextEncoder: { encode: (input: string) => Uint8Array } | null = null;
 
-  return new runtime.TextEncoder().encode(input);
+const encodeUtf8 = (input: string): Uint8Array => {
+  if (!cachedTextEncoder) {
+    // SAFETY: browser and Worker runtimes provide globalThis.TextEncoder.
+    const runtime = globalThis as TextEncoderRuntime;
+    cachedTextEncoder = new runtime.TextEncoder();
+  }
+
+  return cachedTextEncoder.encode(input);
 };
 
 const isRecord = (value: unknown): value is JsonLike =>
@@ -154,8 +159,15 @@ export const normalizePersistedStateForSignature = (state: PersistedState) => ({
   },
 });
 
-export const buildPersistedStateSignature = (state: PersistedState) => {
-  const bytes = encodeUtf8(JSON.stringify(normalizePersistedStateForSignature(state)));
+const persistedStateSignatures = new WeakMap<PersistedState, string>();
 
-  return `sha256:${Array.from(digest(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+export const buildPersistedStateSignature = (state: PersistedState) => {
+  const cached = persistedStateSignatures.get(state);
+
+  if (cached) return cached;
+  const bytes = encodeUtf8(JSON.stringify(normalizePersistedStateForSignature(state)));
+  const signature = `sha256:${Array.from(digest(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+  persistedStateSignatures.set(state, signature);
+
+  return signature;
 };

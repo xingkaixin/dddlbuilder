@@ -136,7 +136,11 @@ export function validateBusinessData(
 
     if (!type) issue('type', field.name, field.type);
 
-    return [{ field, source, type }];
+    const enumValues = field.enumMeta?.length
+      ? new Set(field.enumMeta.map((entry) => entry.value))
+      : null;
+
+    return [{ field, source, type, enumValues }];
   });
 
   for (const column of columns) {
@@ -173,7 +177,7 @@ export function validateBusinessData(
     const literals: string[] = [];
     const before = result.issues.length;
 
-    for (const { field, source, type } of mapped) {
+    for (const { field, source, type, enumValues } of mapped) {
       const raw = row.values[source];
       const value = dataImportValue(raw, options);
 
@@ -194,8 +198,7 @@ export function validateBusinessData(
         continue;
       }
 
-      if (field.enumMeta?.length && !field.enumMeta.some((entry) => entry.value === value))
-        issue('enum', field.name, '', row.line, raw);
+      if (enumValues && !enumValues.has(value)) issue('enum', field.name, '', row.line, raw);
       values.push(checked.value);
       literals.push(
         checked.numeric ? checked.value : importStringLiteral(checked.value, target.dbType),
