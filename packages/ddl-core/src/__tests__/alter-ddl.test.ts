@@ -20,7 +20,10 @@ import {
   generateModifyColumn,
 } from '../utils/alter-ddl/columnStatements';
 import { generateDropIndex } from '../utils/alter-ddl/indexStatements';
-import { generateAddForeignKey } from '../utils/alter-ddl/foreignKeyStatements';
+import {
+  generateAddForeignKey,
+  generateDropForeignKey,
+} from '../utils/alter-ddl/foreignKeyStatements';
 import { generateRenameTable } from '../utils/alter-ddl/tableStatements';
 
 const dependencyNotice =
@@ -807,4 +810,40 @@ describe('generateAddForeignKey', () => {
       'ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES public.users (id);',
     );
   });
+
+  it('requires manual migration when dropping a foreign key on hive', () => {
+    const diff: ForeignKeyDiff = {
+      type: 'remove',
+      foreignKey: createFk({ name: 'fk_orders_user' }),
+    };
+    expect(generateDropForeignKey('orders', diff, 'hive')).toContain(
+      '-- Manual migration required:',
+    );
+  });
+});
+
+describe('Oracle and DM identity alter guard', () => {
+  it.each(['oracle', 'oceanbase-oracle', 'dm'] as const)(
+    'requires manual migration when toggling auto_increment on %s',
+    (dbType) => {
+      const addIdentity: FieldDiff = {
+        type: 'modify',
+        fieldName: 'id',
+        oldField: createField({ name: 'id', type: 'bigint', defaultKind: 'none' }),
+        newField: createField({ name: 'id', type: 'bigint', defaultKind: 'auto_increment' }),
+        changes: ['default'],
+      };
+      const diff = createTableDiff(
+        {
+          fields: [addIdentity],
+          foreignKeys: [{ type: 'add', foreignKey: createFk({ fields: ['id'] }) }],
+        },
+        dbType,
+      );
+
+      for (const sql of [generateAlterDDL(diff), generateRollbackDDL(diff)]) {
+        expect(sql).toMatch(/^-- Manual migration required: [^\n]+$/);
+      }
+    },
+  );
 });

@@ -25,7 +25,7 @@ const COLUMN_COMMENT_PATTERN = new RegExp(
  * - Extract and remove COMMENT ON TABLE/COLUMN statements
  * - Remove CREATE OR REPLACE PUBLIC SYNONYM statements
  * - Normalize Oracle types (VARCHAR2 → VARCHAR, NUMBER → DECIMAL)
- * - Convert SYS_GUID() → uuid(), SYSTIMESTAMP → CURRENT_TIMESTAMP
+ * - Convert SYSTIMESTAMP → CURRENT_TIMESTAMP
  */
 export function preprocessOracle(sql: string): PreprocessResult {
   const metadataByTable = new Map<string, PreprocessResult['tableMetadata'][number]>();
@@ -81,8 +81,8 @@ export function preprocessOracle(sql: string): PreprocessResult {
       .replace(/\bNUMBER\(\s*(\d+)\s*,\s*(\d+)\s*\)/gi, 'DECIMAL($1,$2)')
       .replace(/\bNUMBER\(\s*(\d+)\s*\)/gi, 'DECIMAL($1)')
       .replace(/\bNUMBER\b/gi, 'DECIMAL')
-      .replace(/\bDEFAULT\s+SYS_GUID\(\)/gi, 'DEFAULT uuid()')
-      .replace(/\bDEFAULT\s+SYSTIMESTAMP\b/gi, 'DEFAULT CURRENT_TIMESTAMP'),
+      .replace(/\bDEFAULT\s+SYSTIMESTAMP\b/gi, 'DEFAULT CURRENT_TIMESTAMP')
+      .replace(/\bIDENTITY\s*\(\s*1\s*,\s*1\s*\)/gi, 'AUTO_INCREMENT'),
   );
 
   const identifierMappings = new Map<string, string>();

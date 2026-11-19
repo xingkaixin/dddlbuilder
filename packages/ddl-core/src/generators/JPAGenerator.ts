@@ -43,21 +43,13 @@ export class JPAGenerator implements ORMGenerator {
 
     const imports = new Set<string>(['jakarta.persistence.*']);
 
-    const needsDate = fields.some((f) =>
-      ['date', 'datetime', 'timestamp', 'time', 'datetime2', 'timestamptz', 'timetz'].includes(
-        f.type.toLowerCase().split('(')[0].trim(),
-      ),
-    );
-    const needsBigDecimal = fields.some((f) =>
-      ['decimal', 'numeric', 'number'].includes(f.type.toLowerCase().split('(')[0].trim()),
-    );
-    const needsUUID = fields.some((f) => f.type.toLowerCase().split('(')[0].trim() === 'uuid');
+    const javaTypes = new Set(fields.map((field) => mapCanonicalToORMType('jpa', field.type)));
 
-    if (needsDate) imports.add('java.util.Date');
+    if (javaTypes.has('Date')) imports.add('java.util.Date');
 
-    if (needsBigDecimal) imports.add('java.math.BigDecimal');
+    if (javaTypes.has('BigDecimal')) imports.add('java.math.BigDecimal');
 
-    if (needsUUID) imports.add('java.util.UUID');
+    if (javaTypes.has('UUID')) imports.add('java.util.UUID');
 
     if (hasIdClass) {
       imports.add('java.io.Serializable');

@@ -51,7 +51,9 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       'Index',
       ...(defaults.some((value) => value.kind === 'current_timestamp') ? ['func'] : []),
       ...(defaults.some((value) => value.kind === 'constant') ? ['literal_column'] : []),
-      ...(defaults.some((value) => value.kind === 'expression') ? ['text'] : []),
+      ...(defaults.some((value) => value.kind === 'expression' || value.kind === 'uuid')
+        ? ['text']
+        : []),
       ...(foreignKeys.length > 0 ? ['ForeignKeyConstraint'] : []),
     ];
     lines.push(`from sqlalchemy import ${imports.join(', ')}`);
@@ -83,7 +85,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
 
       const isAutoInc =
         defaultValue.kind === 'auto_increment' ||
-        ['serial', 'bigserial'].includes(getCanonicalBaseType(field.type));
+        ['smallserial', 'serial', 'bigserial'].includes(getCanonicalBaseType(field.type));
       const isNullable = field.nullable && !isPk;
 
       const propertyName = names.field(field.name);
@@ -107,7 +109,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
         args.push(
           `server_default=literal_column('${escapePythonString(defaultValue.sqlExpression)}')`,
         );
-      } else if (defaultValue.kind === 'expression') {
+      } else if (defaultValue.kind === 'expression' || defaultValue.kind === 'uuid') {
         args.push(`server_default=text('${escapePythonString(defaultValue.sqlExpression)}')`);
       } else if (defaultValue.kind === 'current_timestamp') {
         args.push('default=func.now()');

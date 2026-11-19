@@ -134,7 +134,7 @@ export function generateModifyColumn(
 
   const family = getDatabaseFamily(dbType);
 
-  if (family === 'postgresql') return generatePostgresModifyColumn(tableName, fieldDiff);
+  if (family === 'postgresql') return generatePostgresModifyColumn(tableName, fieldDiff, dbType);
 
   const comment = fieldDiff.changes.includes('comment')
     ? buildColumnComment(tableName, field, dbType, fieldDiff.oldField.comment)
@@ -147,7 +147,7 @@ export function generateModifyColumn(
     family === 'oracle' || family === 'dm'
       ? [
           changes.includes('type') ? getFieldTypeForDatabase(dbType, field.type) : '',
-          changes.includes('default')
+          changes.includes('default') && field.defaultKind !== 'auto_increment'
             ? buildDialectDefaultClause(field, dbType) || 'DEFAULT NULL'
             : '',
           changes.includes('nullable') ? (field.nullable ? 'NULL' : 'NOT NULL') : '',
@@ -165,9 +165,13 @@ export function generateModifyColumn(
   return [`ALTER TABLE ${tableName} ${clause};`, comment].filter(Boolean).join('\n');
 }
 
-function generatePostgresModifyColumn(tableName: string, fieldDiff: ModifyFieldDiff): string {
+function generatePostgresModifyColumn(
+  tableName: string,
+  fieldDiff: ModifyFieldDiff,
+  dbType: DatabaseType,
+): string {
   const field = fieldDiff.newField;
-  const fieldName = formatSqlIdentifier(field.name, 'postgresql');
+  const fieldName = formatSqlIdentifier(field.name, dbType);
   const alterColumn = `ALTER TABLE ${tableName} ALTER COLUMN ${fieldName}`;
   const changes = fieldDiff.changes;
   const statements: string[] = [];
@@ -184,7 +188,7 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: ModifyFieldD
   }
 
   if (changes.includes('type')) {
-    const mappedType = getFieldTypeForDatabase('postgresql', field.type);
+    const mappedType = getFieldTypeForDatabase(dbType, field.type);
     statements.push(`${alterColumn} TYPE ${mappedType};`);
   }
 
@@ -194,7 +198,7 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: ModifyFieldD
   }
 
   if (changes.includes('default') && !isIdentity) {
-    const defaultClause = buildDialectDefaultClause(field, 'postgresql');
+    const defaultClause = buildDialectDefaultClause(field, dbType);
 
     if (defaultClause) {
       statements.push(`${alterColumn} SET ${defaultClause};`);
@@ -204,7 +208,7 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: ModifyFieldD
   }
 
   if (changes.includes('comment')) {
-    statements.push(buildColumnComment(tableName, field, 'postgresql'));
+    statements.push(buildColumnComment(tableName, field, dbType));
   }
 
   if (addingIdentity) {

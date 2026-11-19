@@ -6,9 +6,17 @@ import {
 } from '../sqlSegments.js';
 import type { PreprocessResult } from './types.js';
 
-const TABLE_COMMENT_PATTERN = /^COMMENT\s+ON\s+TABLE\s+([\w".]+)\s+IS\s+'((?:''|[^'])*)'\s*;$/i;
-const COLUMN_COMMENT_PATTERN =
-  /^COMMENT\s+ON\s+COLUMN\s+([\w".]+)\.(["\w]+)\s+IS\s+'((?:''|[^'])*)'\s*;$/i;
+const DELIMITED_IDENTIFIER_PATTERN = String.raw`"(?:[^"]|"")*"`;
+const IDENTIFIER_PATTERN = String.raw`(?:${DELIMITED_IDENTIFIER_PATTERN}|[\p{L}\p{N}_$]+)`;
+const QUALIFIED_IDENTIFIER_PATTERN = String.raw`${IDENTIFIER_PATTERN}(?:\s*\.\s*${IDENTIFIER_PATTERN})*`;
+const TABLE_COMMENT_PATTERN = new RegExp(
+  String.raw`^COMMENT\s+ON\s+TABLE\s+(${QUALIFIED_IDENTIFIER_PATTERN})\s+IS\s+'((?:''|[^'])*)'\s*;$`,
+  'iu',
+);
+const COLUMN_COMMENT_PATTERN = new RegExp(
+  String.raw`^COMMENT\s+ON\s+COLUMN\s+(${QUALIFIED_IDENTIFIER_PATTERN})\s*\.\s*(${IDENTIFIER_PATTERN})\s+IS\s+'((?:''|[^'])*)'\s*;$`,
+  'iu',
+);
 
 // node-sql-parser 丢弃表名的引号信息；在构造 AST 前完成未引用标识符的大小写折叠。
 export function foldUnquotedPostgresIdentifiers(sql: string): string {

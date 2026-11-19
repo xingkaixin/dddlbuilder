@@ -83,4 +83,21 @@ describe('parse-sql route', () => {
     });
     expect(JSON.stringify(payload)).not.toContain('internal parser diagnostic');
   });
+
+  it('单表接口收到多表 SQL 时返回 400 而非 500', async () => {
+    const response = await app.fetch(
+      createRequest('/api/parse-sql', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sql: 'CREATE TABLE a (id INT); CREATE TABLE b (id INT);',
+          dbType: 'mysql',
+        }),
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code: 'SQL_PARSE_FAILED' });
+  });
 });

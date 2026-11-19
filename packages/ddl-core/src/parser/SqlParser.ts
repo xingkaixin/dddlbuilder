@@ -25,7 +25,7 @@ import { loadParserConstructor } from './parserLoader.js';
 import { preprocessMysql } from './preprocessMysql.js';
 import type { ParsedResult, ParserInstance, MultiParsedResult } from './types.js';
 import { getDatabaseFamily, getSqlParserDialect } from '../utils/databaseFamily.js';
-import { getSqlIdentifierKey } from '../utils/sqlIdentifiers.js';
+import { getSqlIdentifierKey, unquoteSqlIdentifier } from '../utils/sqlIdentifiers.js';
 import { SqlParseError } from './SqlParseError.js';
 import { validateSnapshotStatement } from './snapshotValidation.js';
 
@@ -60,7 +60,9 @@ const isParserSyntaxError = (error: unknown): error is ParserSyntaxError => {
 };
 
 const normalizeIdentifier = (name: string, dbType: DatabaseType) =>
-  getSqlIdentifierKey(name, dbType);
+  getDatabaseFamily(dbType) === 'postgresql'
+    ? unquoteSqlIdentifier(name)
+    : getSqlIdentifierKey(name, dbType);
 
 const SQL_IDENTIFIER_PATTERN =
   '(?:"(?:[^"]|"")*"|`(?:[^`]|``)*`|\\[(?:[^\\]]|\\]\\])*\\]|[\\p{L}\\p{N}_$#*]+)';
@@ -404,7 +406,7 @@ export class SqlParser {
     const statements = Array.isArray(ast) ? ast : [ast];
 
     if (statements.filter(isCreateTableStmt).length > 1) {
-      throw new Error('检测到多个 CREATE TABLE，请使用 parseMultiAsync() 方法。');
+      throw new SqlParseError('检测到多个 CREATE TABLE，请使用 parseMultiAsync() 方法。');
     }
 
     const result: ParsedResult = {

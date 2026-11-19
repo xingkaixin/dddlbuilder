@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { DATABASE_TYPES } from '@ddlbuilder/shared-types';
-import { SqlParser } from '../../parser/SqlParser.js';
+import { buildDDL } from '../../utils/ddlGenerators';
+import { buildORM } from '../../utils/ormGenerators';
+import { SqlParseError, SqlParser } from '../../parser/index.js';
 
 const stripIndexIds = (indexes: any[]) =>
   indexes.map(({ name, fields, kind }) => ({ name, fields, kind }));
@@ -185,8 +187,8 @@ describe('SqlParser', () => {
         type: 'DATETIME',
         comment: '',
         nullable: false,
-        defaultKind: 'expression',
-        defaultValue: 'GETDATE()',
+        defaultKind: 'current_timestamp',
+        defaultValue: '',
         onUpdate: 'none',
       },
     ]);
@@ -540,5 +542,98 @@ describe('SqlParser', () => {
         'idx_COO_SC_RAT_ID_CORP_ID_CORP_NAME_o7yc',
       ]),
     );
+  });
+
+  it('recognizes dialect uuid/identity defaults and quoted PostgreSQL comments', async () => {
+    const parser = new SqlParser();
+
+    const pg = await parser.parseAsync(
+      `CREATE TABLE "用户 表" (
+        id UUID DEFAULT gen_random_uuid() NOT NULL
+      );
+      COMMENT ON TABLE "用户 表" IS '用户表';
+      COMMENT ON COLUMN "用户 表".id IS '主键';`,
+      'postgresql',
+    );
+    expect(pg.tableComment).toBe('用户表');
+    expect(pg.fields[0]).toMatchObject({ defaultKind: 'uuid', comment: '主键' });
+
+    const mssql = await parser.parseAsync(
+      `CREATE TABLE dbo.Tokens (
+        Id UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID()
+      );`,
+      'sqlserver',
+    );
+    expect(mssql.fields[0]).toMatchObject({ defaultKind: 'uuid' });
+
+    const dm = await parser.parseAsync(
+      `CREATE TABLE users (
+        id BIGINT IDENTITY(1,1) NOT NULL
+      );`,
+      'dm',
+    );
+    expect(dm.fields[0]).toMatchObject({ defaultKind: 'auto_increment' });
+  });
+
+  it('retains native defaults in generated DDL and ORM models', async () => {
+    const parser = new SqlParser();
+
+    const pg = await parser.parseAsync(
+      `CREATE TABLE " users " (id UUID DEFAULT gen_random_uuid(), token UUID DEFAULT custom.gen_random_uuid());
+       COMMENT ON TABLE " users " IS 'accounts';`,
+      'postgresql',
+    );
+    expect(pg.tableComment).toBe('accounts');
+    expect(buildDDL({ ...pg, dbType: 'postgresql' })).toContain('DEFAULT custom.gen_random_uuid()');
+    expect(buildORM('sqlalchemy', { ...pg, dbType: 'postgresql' })).toContain(
+      "server_default=text('gen_random_uuid()')",
+    );
+
+    const sqlServer = await parser.parseAsync(
+      'CREATE TABLE tokens (id UNIQUEIDENTIFIER DEFAULT NEWID(), day DATE DEFAULT GETDATE(), stamp DATETIMEOFFSET)',
+      'sqlserver',
+    );
+    const ddl = buildDDL({ ...sqlServer, dbType: 'sqlserver' });
+    expect(ddl).toContain('DEFAULT NEWID()');
+    expect(ddl).toContain('DEFAULT GETDATE()');
+    const jpa = buildORM('jpa', { ...sqlServer, dbType: 'sqlserver' });
+    expect(jpa).toContain('import java.util.UUID;');
+    expect(jpa).toContain('import java.util.Date;');
+    await expect(
+      parser.parseAsync('CREATE TABLE t (id INT IDENTITY(100,10))', 'dm'),
+    ).rejects.toBeInstanceOf(SqlParseError);
+  });
+
+  it('resolves quoted schema references and preserves schema-qualified default calls', async () => {
+    const parser = new SqlParser();
+
+    const pg = await parser.parseAsync(
+      `CREATE TABLE " space ".t (id INT);
+       CREATE INDEX idx ON " space ".t (id);
+       COMMENT ON TABLE " space ".t IS 'accounts';`,
+      'postgresql',
+    );
+    expect(pg.schemaName).toBe(' space ');
+    expect(pg.tableComment).toBe('accounts');
+    expect(pg.indexes.map((index) => index.name)).toContain('idx');
+
+    const dm = await parser.parseAsync('CREATE TABLE t (id BINARY(16) DEFAULT SYS_GUID())', 'dm');
+    expect(buildDDL({ ...dm, dbType: 'dm' })).toContain('DEFAULT SYS_GUID()');
+
+    const sqlServer = await parser.parseAsync(
+      'CREATE TABLE t (id UNIQUEIDENTIFIER DEFAULT dbo.gen_random_uuid())',
+      'sqlserver',
+    );
+    expect(sqlServer.fields[0]).toMatchObject({
+      defaultKind: 'expression',
+      defaultValue: 'dbo.gen_random_uuid()',
+    });
+  });
+
+  it('throws SqlParseError when parseAsync receives multiple CREATE TABLE statements', async () => {
+    const parser = new SqlParser();
+    await expect(
+      parser.parseAsync('CREATE TABLE a (id INT); CREATE TABLE b (id INT);', 'mysql'),
+    ).rejects.toBeInstanceOf(SqlParseError);
   });
 });

@@ -277,3 +277,18 @@ export const assertTableDocDecodable = (tableDoc: Y.Map<unknown>, path: string) 
 
   tableDocToSchemaDocumentState(tableDoc);
 };
+
+export const assertFolderDocDecodable = (folderDoc: Y.Map<unknown>, path: string) => {
+  const record = readJsonMap(folderDoc);
+  assertString(record.name, `${path}.name`);
+
+  if (record.parentId !== undefined) assertString(record.parentId, `${path}.parentId`);
+
+  for (const key of ['order', 'createdAt', 'updatedAt'] as const) {
+    const value = record[key];
+
+    if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) {
+      invalid(`${path}.${key}`, 'a finite number');
+    }
+  }
+};

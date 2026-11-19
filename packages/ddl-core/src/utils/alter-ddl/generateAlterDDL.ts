@@ -78,6 +78,20 @@ export function generateAlterDDL(diff: TableDiff): string {
     return `-- Manual migration required: ${reasons} changed from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
   }
 
+  const family = getDatabaseFamily(dbType);
+
+  if (family === 'oracle' || family === 'dm') {
+    const identityChange = diff.fields.find(
+      (field) =>
+        (field.type === 'modify' || field.type === 'rename') &&
+        (field.oldField.defaultKind === 'auto_increment') !==
+          (field.newField.defaultKind === 'auto_increment'),
+    );
+
+    if (identityChange)
+      return `-- Manual migration required: ${dbType} cannot alter identity on ${identityChange.fieldName} in ${oldTableName}. No automatic changes generated.`;
+  }
+
   const renames = orderFieldRenames(diff.fields, dbType);
 
   if (!renames) {
@@ -148,7 +162,7 @@ export function generateAlterDDL(diff: TableDiff): string {
     statements.push(generateRenameIndex(activeTableName, oldIndex, newIndex, dbType));
   }
 
-  if (getDatabaseFamily(dbType) === 'mysql') {
+  if (family === 'mysql') {
     statements.push(generateMysqlAlterStatement(activeTableName, { ...diff, indexes }, dbType));
   } else {
     for (const idxDiff of indexes.filter((i) => i.type === 'remove')) {
