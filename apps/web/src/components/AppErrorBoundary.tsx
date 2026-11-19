@@ -1,4 +1,11 @@
 import { Component, Suspense, type ErrorInfo, type ReactNode } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { reportError } from '@/utils/errorReporter';
 import { i18n } from '@/i18n';
@@ -35,25 +42,26 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, { hasErro
       const { variant } = this.props;
 
       if (this.props.variant === 'dialog') {
-        if (!this.props.open) return null;
+        const { open, onDismiss } = this.props;
 
         return (
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+              if (!nextOpen) onDismiss();
+            }}
           >
-            <div className="flex w-full max-w-md flex-col items-center gap-3 rounded-lg border bg-background p-6 text-center shadow-lg">
-              <h2 className="text-lg font-semibold">{i18n.t('errorBoundary.title')}</h2>
-              <p className="text-sm text-muted-foreground">{i18n.t('errorBoundary.description')}</p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={this.props.onDismiss}>
+            <DialogContent className="max-w-md">
+              <DialogTitle>{i18n.t('errorBoundary.title')}</DialogTitle>
+              <DialogDescription>{i18n.t('errorBoundary.description')}</DialogDescription>
+              <DialogFooter>
+                <Button variant="outline" onClick={onDismiss}>
                   {i18n.t('common.cancel')}
                 </Button>
                 <Button onClick={this.handleReload}>{i18n.t('errorBoundary.reload')}</Button>
-              </div>
-            </div>
-          </div>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         );
       }
 

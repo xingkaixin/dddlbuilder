@@ -67,7 +67,9 @@ export function useWorkspaceTreeState() {
   const [state, dispatch] = useReducer(treeControlsReducer, initialTreeControlsState);
   const expansion = useFolderExpansion();
 
-  return { ...state, dispatch, ...expansion };
+  const timers = useTimers();
+
+  return { ...state, dispatch, ...expansion, ...timers };
 }
 
 export function useWorkspaceTreeControls({
@@ -83,12 +85,13 @@ export function useWorkspaceTreeControls({
     searchQuery,
     selectedFolderId,
     dragFeedback,
+    schedule,
+    clearAll,
     dispatch,
     collapsedFolders,
     toggleFolder,
     expandFolder,
   } = treeState;
-  const { schedule, clearAll } = useTimers();
   const expandedFolders = useExpandedFolders(folders, collapsedFolders);
 
   const sensors = useSensors(
