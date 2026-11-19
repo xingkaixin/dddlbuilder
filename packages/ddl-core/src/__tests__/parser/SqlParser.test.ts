@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DATABASE_TYPES } from '@ddlbuilder/shared-types';
-import { SqlParser } from '../../parser/SqlParser.js';
+import { SqlParseError, SqlParser } from '../../parser/index.js';
 
 const stripIndexIds = (indexes: any[]) =>
   indexes.map(({ name, fields, kind }) => ({ name, fields, kind }));
@@ -185,8 +185,8 @@ describe('SqlParser', () => {
         type: 'DATETIME',
         comment: '',
         nullable: false,
-        defaultKind: 'expression',
-        defaultValue: 'GETDATE()',
+        defaultKind: 'current_timestamp',
+        defaultValue: '',
         onUpdate: 'none',
       },
     ]);
@@ -540,5 +540,43 @@ describe('SqlParser', () => {
         'idx_COO_SC_RAT_ID_CORP_ID_CORP_NAME_o7yc',
       ]),
     );
+  });
+
+  it('recognizes dialect uuid/identity defaults and quoted PostgreSQL comments', async () => {
+    const parser = new SqlParser();
+
+    const pg = await parser.parseAsync(
+      `CREATE TABLE "用户 表" (
+        id UUID DEFAULT gen_random_uuid() NOT NULL
+      );
+      COMMENT ON TABLE "用户 表" IS '用户表';
+      COMMENT ON COLUMN "用户 表".id IS '主键';`,
+      'postgresql',
+    );
+    expect(pg.tableComment).toBe('用户表');
+    expect(pg.fields[0]).toMatchObject({ defaultKind: 'uuid', comment: '主键' });
+
+    const mssql = await parser.parseAsync(
+      `CREATE TABLE dbo.Tokens (
+        Id UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID()
+      );`,
+      'sqlserver',
+    );
+    expect(mssql.fields[0]).toMatchObject({ defaultKind: 'uuid' });
+
+    const dm = await parser.parseAsync(
+      `CREATE TABLE users (
+        id BIGINT IDENTITY(1,1) NOT NULL
+      );`,
+      'dm',
+    );
+    expect(dm.fields[0]).toMatchObject({ defaultKind: 'auto_increment' });
+  });
+
+  it('throws SqlParseError when parseAsync receives multiple CREATE TABLE statements', async () => {
+    const parser = new SqlParser();
+    await expect(
+      parser.parseAsync('CREATE TABLE a (id INT); CREATE TABLE b (id INT);', 'mysql'),
+    ).rejects.toBeInstanceOf(SqlParseError);
   });
 });

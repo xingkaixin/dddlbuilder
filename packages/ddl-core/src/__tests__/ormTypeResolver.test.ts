@@ -37,6 +37,15 @@ describe('getORMTypeWithArgs', () => {
   it('includes args for SQLAlchemy Numeric type', () => {
     expect(getORMTypeWithArgs('sqlalchemy', 'decimal(10,2)')).toBe('Numeric(10, 2)');
   });
+
+  it.each(['prisma', 'typeorm', 'sqlalchemy', 'gorm', 'jpa'] as const)(
+    'maps native binary, uuid, and serial types for %s',
+    (target) => {
+      for (const type of ['bytea', 'uniqueidentifier', 'raw', 'smallserial', 'datetimeoffset']) {
+        expect(mapCanonicalToORMType(target, type)).toBeTruthy();
+      }
+    },
+  );
 });
 
 describe('buildPrimaryKeyName', () => {

@@ -250,9 +250,9 @@ function mapColumnToField(
         throw SqlParseError.unsupported('超过 15 位有效数字的数值默认值（可改用带引号的写法）');
       defaultKind = 'constant';
       defaultValue = normalizeLiteral(val);
-    } else if (funcName && ['now', 'current_timestamp', 'sysdate'].includes(funcName)) {
+    } else if (funcName && ['now', 'current_timestamp', 'sysdate', 'getdate'].includes(funcName)) {
       defaultKind = 'current_timestamp';
-    } else if (funcName === 'uuid') {
+    } else if (funcName && ['uuid', 'gen_random_uuid', 'newid'].includes(funcName)) {
       defaultKind = 'uuid';
     } else {
       defaultKind = 'expression';

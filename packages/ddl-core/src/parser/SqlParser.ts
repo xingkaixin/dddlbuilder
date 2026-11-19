@@ -404,7 +404,7 @@ export class SqlParser {
     const statements = Array.isArray(ast) ? ast : [ast];
 
     if (statements.filter(isCreateTableStmt).length > 1) {
-      throw new Error('检测到多个 CREATE TABLE，请使用 parseMultiAsync() 方法。');
+      throw new SqlParseError('检测到多个 CREATE TABLE，请使用 parseMultiAsync() 方法。');
     }
 
     const result: ParsedResult = {
