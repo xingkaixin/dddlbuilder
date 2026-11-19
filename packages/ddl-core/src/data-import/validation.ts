@@ -74,6 +74,7 @@ export function validateBusinessData(
     preview: [],
   };
   let hasIssues = false;
+
   const issue = (
     code: DataImportResult['issues'][number]['code'],
     field = '',
@@ -82,6 +83,7 @@ export function validateBusinessData(
     value = '',
   ) => {
     hasIssues = true;
+
     if (result.issues.length < MAX_DATA_IMPORT_ISSUES) {
       result.issues.push({ code, field, detail, line, value });
     }
@@ -184,6 +186,7 @@ export function validateBusinessData(
     const values: (string | null)[] = [];
     const literals: string[] = [];
     let rowHasIssue = false;
+
     const recordRowIssue = (
       code: DataImportResult['issues'][number]['code'],
       field = '',
@@ -216,7 +219,8 @@ export function validateBusinessData(
         continue;
       }
 
-      if (enumValues && !enumValues.has(value)) recordRowIssue('enum', field.name, '', row.line, raw);
+      if (enumValues && !enumValues.has(value))
+        recordRowIssue('enum', field.name, '', row.line, raw);
       values.push(checked.value);
       literals.push(
         checked.numeric ? checked.value : importStringLiteral(checked.value, target.dbType),

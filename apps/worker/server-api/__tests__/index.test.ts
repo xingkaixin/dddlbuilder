@@ -150,7 +150,12 @@ describe('api security guards', () => {
       configureWorkerLogging(true);
 
       try {
-        const response = await app.fetch(createRequest('/api/workspaces'), createEnv());
+        const response = await app.fetch(
+          createRequest('/api/workspaces', {
+            headers: { cookie: 'better-auth.session_token=test' },
+          }),
+          createEnv(),
+        );
         // SAFETY: the API error response is a JSON object with the asserted error/code fields.
         const payload = (await response.json()) as { error?: string; code?: string };
 

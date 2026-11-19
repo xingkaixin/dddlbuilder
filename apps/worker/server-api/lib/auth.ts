@@ -91,13 +91,15 @@ const throwAuthenticationUnavailable = (c: Context<ApiEnv>, error: unknown): nev
 export const resolveAuthenticatedUser = async (
   c: Context<ApiEnv>,
 ): Promise<AuthenticatedAppUser | null> => {
-  const auth = createBetterAuth(c.env);
-  const requestHeaders = new Headers();
   const cookieHeader = c.req.raw.headers.get('cookie');
 
-  if (cookieHeader) {
-    requestHeaders.set('cookie', cookieHeader);
+  if (!cookieHeader) {
+    return null;
   }
+
+  const auth = createBetterAuth(c.env);
+  const requestHeaders = new Headers();
+  requestHeaders.set('cookie', cookieHeader);
 
   const session = await auth.api
     .getSession({ headers: requestHeaders, query: { disableRefresh: true } })

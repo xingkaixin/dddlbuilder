@@ -104,10 +104,13 @@ function countCodePoints(value: string): number {
 
   for (let i = 0; i < value.length; i += 1) {
     const code = value.charCodeAt(i);
+
     if (code >= 0xd800 && code <= 0xdbff && i + 1 < value.length) {
       const next = value.charCodeAt(i + 1);
+
       if (next >= 0xdc00 && next <= 0xdfff) i += 1;
     }
+
     count += 1;
   }
 
