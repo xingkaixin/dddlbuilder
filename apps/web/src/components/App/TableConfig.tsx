@@ -148,7 +148,7 @@ export const TableConfig = memo<TableConfigProps>(
                   )}
                   value={tableName}
                   onChange={(event) => onTableNameChange(event.target.value)}
-                  className="h-8 w-[13ch] min-w-0 border-0 bg-transparent px-1 font-mono text-xl shadow-none hover:border-input focus:border-input"
+                  className="h-8 min-w-[14ch] w-[min(24ch,100%)] border-0 bg-transparent px-1 font-mono text-xl shadow-none hover:border-input focus:border-input"
                 />
               </div>
               <Input

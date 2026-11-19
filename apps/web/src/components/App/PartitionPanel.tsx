@@ -461,6 +461,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                                   type="button"
                                   variant="ghost"
                                   size="icon"
+                                  aria-label={t('partitionPanel.removePartitionTip')}
                                   onClick={() => onRemovePartition(partition.id)}
                                   className="h-8 w-8 text-destructive hover:text-destructive"
                                 >

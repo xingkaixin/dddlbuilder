@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import type { useEditorDomains } from './hooks/useEditorDomains';
 import type { useEditorSurfaceModel } from './hooks/useEditorSurfaceModel';
@@ -97,10 +98,17 @@ export function buildAppWorkspaceModel({
       onOpenTableTemplates: tableTemplateActions.handleManageTemplates,
       onOpenAIGenerate: navigationActions.handleOpenAIGenerateDialog,
       onOpenAIPatch: editorSurface.tableBuilderProps.dataTableProps.onOpenAISchemaPatch,
+      onRunAIComments:
+        tabLifecycle.tabs.length > 0 &&
+        editorSurface.tableBuilderProps.dataTableProps.onGenerateComments
+          ? () =>
+              editorSurface.tableBuilderProps.dataTableProps.onGenerateComments?.('fill_missing')
+          : undefined,
       onOpenIndexAdvisor:
         tabLifecycle.tabs.length > 0
           ? editorSurface.tableBuilderProps.dataTableProps.onOpenAIIndexAdvisor
           : undefined,
+      onRequireTable: () => schemaController.showToast(i18n.t('schemaTools.openTableFirst')),
     },
     drawer: {
       open: ui.savedTablesDrawerOpen,

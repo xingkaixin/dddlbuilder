@@ -1175,6 +1175,8 @@ export const enUSCommon = {
     jsonSchemaResolutionFailed:
       'The JSON Schema contains a reference cycle or is nested too deeply to import safely.',
     sqlParseFailed: 'SQL parse failed. Please check syntax and try again.',
+    sqlOffline:
+      'You appear to be offline or the SQL parser service is unreachable. Reconnect and try again.',
     sqlNoTable: 'No valid table structure could be parsed from SQL. Please check syntax.',
     importSuccess: 'Import succeeded: table {{tableName}} parsed',
     unnamed: 'Untitled',

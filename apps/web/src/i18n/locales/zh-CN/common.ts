@@ -1126,6 +1126,7 @@ export const zhCNCommon = {
       '结构化导入超过规模限制：最多 {{tables}} 张表，每表 {{fields}} 个字段，合计 {{total}} 个字段。',
     jsonSchemaResolutionFailed: 'JSON Schema 存在循环引用或嵌套过深，无法安全导入。',
     sqlParseFailed: 'SQL 解析失败，请检查 SQL 语法后重试。',
+    sqlOffline: '当前处于离线状态或无法连接解析服务，SQL 解析需要联网后重试。',
     sqlNoTable: '未能从 SQL 中解析出有效的表结构，请检查 SQL 语法。',
     importSuccess: '导入成功: 成功解析表: {{tableName}}',
     unnamed: '未命名',

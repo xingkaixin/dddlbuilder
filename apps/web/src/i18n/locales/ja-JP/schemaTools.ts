@@ -4,6 +4,7 @@ export const schemaTools = {
   description: 'データ辞書の作成、構造の比較、テストデータの準備。',
   loading: '読み込み中…',
   failed: '処理に失敗しました。再試行してください。',
+  openTableFirst: 'この機能を使うには、まずワークスペースでテーブルを開くか新規作成してください。',
   source: 'データソース',
   saved: '保存済みテーブル',
   savedHint:

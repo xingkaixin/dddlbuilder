@@ -7,7 +7,9 @@ export interface ToolActions {
   onOpenTableTemplates: () => void;
   onOpenAIGenerate: () => void;
   onOpenAIPatch?: () => void;
+  onRunAIComments?: () => void;
   onOpenIndexAdvisor?: () => void;
+  onRequireTable?: () => void;
 }
 
 export function openTool(id: string, actions: ToolActions) {
@@ -37,15 +39,22 @@ export function openTool(id: string, actions: ToolActions) {
       return;
     case 'ai-patch':
       navigateApp('/');
-      actions.onOpenAIPatch?.();
+
+      if (actions.onOpenAIPatch) actions.onOpenAIPatch();
+      else actions.onRequireTable?.();
 
       return;
     case 'ai-comments':
       navigateApp('/');
 
+      if (actions.onRunAIComments) actions.onRunAIComments();
+      else actions.onRequireTable?.();
+
       return;
     case 'index-advisor':
       navigateApp('/');
-      actions.onOpenIndexAdvisor?.();
+
+      if (actions.onOpenIndexAdvisor) actions.onOpenIndexAdvisor();
+      else actions.onRequireTable?.();
   }
 }

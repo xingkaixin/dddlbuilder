@@ -496,6 +496,8 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                       variant="default"
                       size="icon"
                       className="h-9 w-9"
+                      aria-label={t(isPlaying ? 'timelinePlayer.pause' : 'timelinePlayer.play')}
+                      title={t(isPlaying ? 'timelinePlayer.pause' : 'timelinePlayer.play')}
                       onClick={handlePlayPause}
                     >
                       <IconSwap state={isPlaying}>
