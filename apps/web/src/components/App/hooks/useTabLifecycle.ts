@@ -83,10 +83,11 @@ export function useTabLifecycle({
 
   const switchToTab = useCallback(
     (tab: WorkspaceTab) => {
+      if (tab.id === getActiveTab()?.id) return;
       flushActiveTab();
       showTab(tab);
     },
-    [flushActiveTab, showTab],
+    [flushActiveTab, getActiveTab, showTab],
   );
 
   const switchToTabById = useCallback(

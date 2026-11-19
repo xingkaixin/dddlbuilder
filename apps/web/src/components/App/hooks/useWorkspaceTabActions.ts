@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createEntityId, type PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
@@ -71,6 +71,7 @@ export function useWorkspaceTabActions({
 }: UseWorkspaceTabActionsParams) {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const pendingLoads = useRef(new Map<string, Promise<boolean>>());
 
   const {
     tabs: openTabs,
@@ -97,6 +98,8 @@ export function useWorkspaceTabActions({
 
       if (existingTab) {
         switchToTab(existingTab);
+
+        if (existingTab.isLoading) return pendingLoads.current.get(existingTab.id) ?? false;
         showToast(t('erDiagram.tableLoaded'));
 
         return true;
@@ -117,32 +120,40 @@ export function useWorkspaceTabActions({
       });
       activateTab(newTabId);
 
-      const result = await loadSavedTable(item);
-      const isLoadedTabActive = useTabStore.getState().activeTabId === newTabId;
+      const pending = loadSavedTable(item).then((result) => {
+        const isLoadedTabActive = useTabStore.getState().activeTabId === newTabId;
 
-      if (!result) {
-        closeTab(newTabId);
+        if (!result) {
+          closeTab(newTabId);
 
-        if (isLoadedTabActive) {
-          const currentTab = getActiveTab();
+          if (isLoadedTabActive) {
+            const currentTab = getActiveTab();
 
-          if (currentTab) showTab(currentTab);
+            if (currentTab) showTab(currentTab);
+          }
+
+          return false;
+        }
+
+        hydrateTab(newTabId, result.source, result.state);
+        const loadedTab = getActiveTab();
+
+        if (loadedTab?.id === newTabId) {
+          showTab(loadedTab);
+          showToast(t('erDiagram.tableLoaded'));
+
+          return true;
         }
 
         return false;
+      });
+      pendingLoads.current.set(newTabId, pending);
+
+      try {
+        return await pending;
+      } finally {
+        pendingLoads.current.delete(newTabId);
       }
-
-      hydrateTab(newTabId, result.source, result.state);
-      const loadedTab = getActiveTab();
-
-      if (loadedTab?.id === newTabId) {
-        showTab(loadedTab);
-        showToast(t('erDiagram.tableLoaded'));
-
-        return true;
-      }
-
-      return false;
     },
     [
       activateTab,
