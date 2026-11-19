@@ -24,6 +24,8 @@ describe('SqlParser.parseMultiAsync', () => {
     const sql = `
       CREATE TABLE alpha (id NUMBER);
       CREATE TABLE beta (id NUMBER);
+      COMMENT ON TABLE alpha IS 'Old table';
+      COMMENT ON COLUMN alpha.id IS 'Old id';
       COMMENT ON TABLE alpha IS 'Alpha table';
       COMMENT ON COLUMN alpha.id IS 'Alpha id';
       COMMENT ON TABLE beta IS 'Beta table';
@@ -76,6 +78,12 @@ describe('SqlParser.parseMultiAsync', () => {
       ['', ''],
       ['real', "COMMENT ON TABLE t IS '';"],
     ]);
+  });
+
+  it('reuses an asynchronously loaded dialect for synchronous parsing', async () => {
+    const parser = new SqlParser();
+    await parser.parseAsync('CREATE TABLE alpha (id INT)', 'mysql');
+    expect(parser.parse('CREATE TABLE beta (id INT)', 'mysql').tableName).toBe('beta');
   });
 
   it('单表入口拒绝多个 CREATE TABLE', async () => {

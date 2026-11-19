@@ -442,10 +442,8 @@ export class SqlParser {
     dbType: DatabaseType,
     strict = false,
   ): MultiParsedResult {
+    const { tableMetadata, grants, partitionConfigs } = this.preprocessSql(sql, dbType);
     const opt = this.buildAstifyOpt(dbType);
-    const tableMetadata = new Map<string, PreprocessedTableMetadata>();
-    const grants: ScopedGrant[] = [];
-    const partitionConfigs = new Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>();
     const statements: AstStatement[] = [];
     const results: ParsedResult[] = [];
     const failed: MultiParsedResult['failed'] = [];
@@ -457,37 +455,8 @@ export class SqlParser {
         const {
           sqlToParse,
           identifierMappings,
-          tableMetadata: statementMetadata,
           grants: statementGrants,
-          partitionConfigs: statementPartitions,
         } = this.preprocessSql(original, dbType);
-
-        for (const [key, metadata] of statementMetadata) {
-          const existing = tableMetadata.get(key);
-
-          if (!existing) {
-            tableMetadata.set(key, {
-              ...metadata,
-              columnComments: { ...metadata.columnComments },
-            });
-          } else {
-            if (metadata.tableComment && !existing.tableComment) {
-              existing.tableComment = metadata.tableComment;
-            }
-
-            for (const [columnName, comment] of Object.entries(metadata.columnComments)) {
-              if (!existing.columnComments[columnName]) {
-                existing.columnComments[columnName] = comment;
-              }
-            }
-          }
-        }
-
-        grants.push(...statementGrants);
-
-        for (const [tableName, config] of statementPartitions) {
-          partitionConfigs.set(tableName, config);
-        }
 
         if (strict && statementGrants.length)
           throw SqlParseError.unsupported('GRANT in a schema snapshot');
@@ -578,11 +547,13 @@ export class SqlParser {
   }
 
   parse(sql: string, dbType: DatabaseType): ParsedResult {
-    if (!this.parser) {
+    const parser = this.parser ?? this.parsersByDialect.get(this.buildAstifyOpt(dbType).database);
+
+    if (!parser) {
       throw new Error('SqlParser尚未初始化，请使用 parseAsync() 方法。');
     }
 
-    return this.parseWithParser(this.parser, sql, dbType);
+    return this.parseWithParser(parser, sql, dbType);
   }
 
   async parseAsync(sql: string, dbType: DatabaseType): Promise<ParsedResult> {

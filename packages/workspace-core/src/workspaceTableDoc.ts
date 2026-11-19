@@ -42,7 +42,7 @@ import {
   type StoredMysqlPartitionConfig,
   type StoredTableMiscConfig,
 } from './workspaceFieldReferences';
-import { decodeEnumMeta, decodePersistedState } from './persistedStateCodec';
+import { decodeEnumMeta, decodePersistedState, decodeTableName } from './persistedStateCodec';
 
 const TABLE_SCALAR_KEYS = [
   'objectType',
@@ -462,13 +462,9 @@ export const tableDocToSchemaSummary = (tableDoc: Y.Map<unknown>) => {
 
         if (fieldName === undefined && snapshotRows.length > 0) {
           if (!snapshotNamesById) {
-            snapshotNamesById = new Map();
-
-            for (const row of snapshotRows) {
-              if (isRecord(row) && typeof row.id === 'string') {
-                snapshotNamesById.set(row.id, row.fieldName);
-              }
-            }
+            snapshotNamesById = new Map(
+              (readStateSnapshot(tableDoc)?.rows ?? []).map((row) => [row.id, row.fieldName]),
+            );
           }
 
           fieldName = snapshotNamesById.get(fieldId);
@@ -494,6 +490,7 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
 
   const rawState: JsonRecord = {
     ...rawSnapshot,
+    ...(rawSnapshot && decodeTableName(rawSnapshot)),
     ...Object.fromEntries(
       TABLE_SCALAR_KEYS.flatMap((key) => {
         const value = scalar?.get(key);

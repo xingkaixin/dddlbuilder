@@ -57,8 +57,6 @@ export function newDataImportTarget(
   };
 }
 
-const MAX_DATA_IMPORT_ISSUES = 500;
-
 export function validateBusinessData(
   data: BusinessData,
   target: DataImportTarget,
@@ -73,21 +71,13 @@ export function validateBusinessData(
     columns: [],
     preview: [],
   };
-  let hasIssues = false;
-
   const issue = (
     code: DataImportResult['issues'][number]['code'],
     field = '',
     detail = '',
     line = 0,
     value = '',
-  ) => {
-    hasIssues = true;
-
-    if (result.issues.length < MAX_DATA_IMPORT_ISSUES) {
-      result.issues.push({ code, field, detail, line, value });
-    }
-  };
+  ) => result.issues.push({ code, field, detail, line, value });
   const validName = (name: string) => isDataImportName(name, target.dbType);
 
   if (!validName(target.tableName) || (target.schemaName && !validName(target.schemaName)))
@@ -179,24 +169,13 @@ export function validateBusinessData(
       : [];
   });
 
-  if (hasIssues) return result;
+  if (result.issues.length) return result;
   const sqlRows: string[] = [];
 
   for (const row of data.rows) {
     const values: (string | null)[] = [];
     const literals: string[] = [];
-    let rowHasIssue = false;
-
-    const recordRowIssue = (
-      code: DataImportResult['issues'][number]['code'],
-      field = '',
-      detail = '',
-      line = 0,
-      value = '',
-    ) => {
-      rowHasIssue = true;
-      issue(code, field, detail, line, value);
-    };
+    const before = result.issues.length;
 
     for (const { field, source, type, enumValues } of mapped) {
       const raw = row.values[source];
@@ -204,7 +183,7 @@ export function validateBusinessData(
 
       if (value === null) {
         if (!field.nullable || primary.has(field.name))
-          recordRowIssue('required', field.name, '', row.line, raw);
+          issue('required', field.name, '', row.line, raw);
         values.push(null);
         literals.push('NULL');
         continue;
@@ -215,22 +194,18 @@ export function validateBusinessData(
 
       // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a string denotes a value-validation issue, not a SQL value.
       if (typeof checked === 'string') {
-        recordRowIssue(checked, field.name, field.type, row.line, raw);
+        issue(checked, field.name, field.type, row.line, raw);
         continue;
       }
 
-      if (enumValues && !enumValues.has(value))
-        recordRowIssue('enum', field.name, '', row.line, raw);
+      if (enumValues && !enumValues.has(value)) issue('enum', field.name, '', row.line, raw);
       values.push(checked.value);
       literals.push(
         checked.numeric ? checked.value : importStringLiteral(checked.value, target.dbType),
       );
     }
 
-    if (rowHasIssue) {
-      if (result.issues.length >= MAX_DATA_IMPORT_ISSUES) break;
-      continue;
-    }
+    if (before !== result.issues.length) continue;
 
     for (const key of unique) {
       const parts = key.positions.map((position) => values[position]);
@@ -240,13 +215,8 @@ export function validateBusinessData(
       const firstLine = key.seen.get(signature);
 
       if (firstLine !== undefined)
-        recordRowIssue('duplicate', key.name, String(firstLine), row.line, parts.join(' / '));
+        issue('duplicate', key.name, String(firstLine), row.line, parts.join(' / '));
       else key.seen.set(signature, row.line);
-    }
-
-    if (rowHasIssue) {
-      if (result.issues.length >= MAX_DATA_IMPORT_ISSUES) break;
-      continue;
     }
 
     sqlRows.push(`(${literals.join(', ')})`);
@@ -254,7 +224,7 @@ export function validateBusinessData(
     if (result.preview.length < 5) result.preview.push(values);
   }
 
-  if (hasIssues) return result;
+  if (result.issues.length) return result;
 
   const qualified = [target.schemaName, target.tableName]
     .flatMap((name) => (name ? [quoteIdentifier(name, target.dbType)] : []))
