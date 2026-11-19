@@ -1,4 +1,6 @@
 import { savedTableKey, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
+import * as Option from 'effect/Option';
+import * as Schema from 'effect/Schema';
 import { memo, useCallback, useMemo, useReducer } from 'react';
 import {
   ReactFlow,
@@ -30,8 +32,89 @@ import { ErDiagramToolbar } from './ErDiagramToolbar';
 import { RelationCreationDialog } from './RelationCreationDialog';
 import { planTableRelationship, type TableRelationshipIntent } from './tableRelationship';
 
-const GRID_GAP_X = 300;
-const GRID_GAP_Y = 200;
+const GRID_GAP_X = 320;
+const GRID_ROW_GAP_Y = 48;
+const NODE_HEADER_HEIGHT = 52;
+const NODE_FIELD_HEIGHT = 24;
+const ER_POSITIONS_STORAGE_KEY = 'ddlbuilder:er-positions:v1';
+
+const NodePositionSchema = Schema.Struct({
+  x: Schema.Finite,
+  y: Schema.Finite,
+});
+const SavedNodePositionsSchema = Schema.Record(Schema.String, NodePositionSchema);
+
+function readSavedNodePositions(scopeKey: string) {
+  const result = new Map<string, { x: number; y: number }>();
+
+  try {
+    const raw = window.localStorage.getItem(`${ER_POSITIONS_STORAGE_KEY}:${scopeKey}`);
+
+    if (!raw) return result;
+
+    const decoded = Schema.decodeUnknownOption(SavedNodePositionsSchema)(JSON.parse(raw));
+
+    if (Option.isNone(decoded)) return result;
+
+    for (const [key, value] of Object.entries(decoded.value)) {
+      result.set(key, value);
+    }
+
+    return result;
+  } catch {
+    return result;
+  }
+}
+
+function writeSavedNodePositions(scopeKey: string, nodes: Node[]) {
+  try {
+    const positions = Object.fromEntries(
+      nodes.map((node) => [
+        node.id,
+        { x: Math.round(node.position.x), y: Math.round(node.position.y) },
+      ]),
+    );
+
+    window.localStorage.setItem(
+      `${ER_POSITIONS_STORAGE_KEY}:${scopeKey}`,
+      JSON.stringify(positions),
+    );
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function estimateNodeHeight(state: PersistedState): number {
+  const fieldCount = (state.rows || []).filter((row) => row.fieldName?.trim()).length;
+
+  return NODE_HEADER_HEIGHT + Math.max(1, fieldCount) * NODE_FIELD_HEIGHT;
+}
+
+function computeRowAwarePositions(nodes: Node[]): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
+
+  if (nodes.length === 0) return positions;
+
+  const cols = Math.ceil(Math.sqrt(nodes.length));
+  let currentY = 50;
+
+  for (let rowStart = 0; rowStart < nodes.length; rowStart += cols) {
+    const rowNodes = nodes.slice(rowStart, rowStart + cols);
+    let maxRowHeight = 160;
+
+    rowNodes.forEach((node, colIndex) => {
+      positions.set(node.id, { x: colIndex * GRID_GAP_X + 50, y: currentY });
+      // SAFETY: node.data is ErNodeData supplied by buildNodesFromTables.
+      const data = node.data as ErNodeData | undefined;
+      const height = data?.state ? estimateNodeHeight(data.state) : 160;
+      maxRowHeight = Math.max(maxRowHeight, height);
+    });
+
+    currentY += maxRowHeight + GRID_ROW_GAP_Y;
+  }
+
+  return positions;
+}
 
 const nodeTypes: NodeTypes = { table: ErTableNode };
 const edgeTypes: EdgeTypes = { relation: ErRelationEdge };
@@ -46,24 +129,19 @@ function buildSavedTableNodeId(record: SavedTableRecord): string {
 
 function buildNodesFromTables(
   tables: SavedTableRecord[],
-  onSelectTable: (state: PersistedState) => void,
+  onSelectTable: (record: SavedTableRecord) => void,
 ): Node[] {
-  return tables.map((record, index) => {
-    const cols = Math.ceil(Math.sqrt(tables.length));
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-
-    return {
-      id: buildSavedTableNodeId(record),
-      type: 'table',
-      position: { x: col * GRID_GAP_X + 50, y: row * GRID_GAP_Y + 50 },
-      // SAFETY: SavedTableRecord supplies PersistedState for node and edge data.
-      data: {
-        state: record.state,
-        onSelectTable,
-      } as ErNodeData,
-    };
-  });
+  return tables.map((record) => ({
+    id: buildSavedTableNodeId(record),
+    type: 'table',
+    position: { x: 50, y: 50 },
+    // SAFETY: SavedTableRecord supplies PersistedState for node and edge data.
+    data: {
+      record,
+      state: record.state,
+      onSelectTable,
+    } as ErNodeData,
+  }));
 }
 
 function buildEdgesFromTables(
@@ -121,11 +199,12 @@ function buildEdgesFromTables(
 }
 
 interface CanvasInnerProps {
+  scopeKey: string;
   tables: SavedTableRecord[];
   loading: boolean;
-  onSelectTable: (state: PersistedState) => void;
+  onSelectTable: (record: SavedTableRecord) => void;
   onRefresh: () => Promise<void>;
-  onAddTable: () => Promise<boolean>;
+  onAddTable: (afterSave: () => void) => void;
   onUpdateTable: (
     normalizedName: SavedTableTarget,
     state: SavedTableStateUpdate,
@@ -148,45 +227,67 @@ type CanvasState = {
 };
 
 type CanvasEvent =
-  | { type: 'graphSourceChanged'; nodes: Node[]; edges: Edge[] }
+  | {
+      type: 'graphSourceChanged';
+      nodes: Node[];
+      edges: Edge[];
+      savedPositions: Map<string, { x: number; y: number }>;
+    }
   | { type: 'nodesChanged'; changes: NodeChangeset }
   | { type: 'edgesChanged'; changes: EdgeChangeset }
   | { type: 'autoLayoutApplied' }
   | { type: 'relationshipProposed'; relationship: PendingRelationship }
   | { type: 'relationshipClosed' };
 
-function createCanvasState(source: { nodes: Node[]; edges: Edge[] }): CanvasState {
+function createCanvasState(source: {
+  nodes: Node[];
+  edges: Edge[];
+  savedPositions: Map<string, { x: number; y: number }>;
+}): CanvasState {
   return {
     sourceNodes: source.nodes,
     sourceEdges: source.edges,
-    nodes: source.nodes,
+    nodes: placeNodes(source.nodes, source.savedPositions),
     edges: source.edges,
     pendingRelationship: null,
   };
 }
 
-function keepNodePositions(previous: Node[], next: Node[]): Node[] {
-  const previousPositions = new Map(previous.map((node) => [node.id, node.position]));
+function placeNodes(nodes: Node[], known: Map<string, { x: number; y: number }>): Node[] {
+  let bottom = 0;
+  const missing = [];
 
-  return next.map((node) => {
-    const position = previousPositions.get(node.id);
+  for (const node of nodes) {
+    const position = known.get(node.id);
 
-    return position ? { ...node, position } : node;
+    if (position) {
+      // SAFETY: all table nodes carry the schema used to estimate their rendered height.
+      const data = node.data as ErNodeData;
+      bottom = Math.max(bottom, position.y + estimateNodeHeight(data.state) + GRID_ROW_GAP_Y);
+    } else {
+      missing.push(node);
+    }
+  }
+
+  const positions = computeRowAwarePositions(missing);
+
+  return nodes.map((node) => {
+    const fixed = known.get(node.id);
+
+    if (fixed) return { ...node, position: fixed };
+    const next = positions.get(node.id) ?? node.position;
+
+    return { ...node, position: { x: next.x, y: next.y + bottom } };
   });
 }
 
 function gridLayout(nodes: Node[]): Node[] {
-  const cols = Math.ceil(Math.sqrt(nodes.length));
+  const positions = computeRowAwarePositions(nodes);
 
-  return nodes.map((node, index) => {
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-
-    return {
-      ...node,
-      position: { x: col * GRID_GAP_X + 50, y: row * GRID_GAP_Y + 50 },
-    };
-  });
+  return nodes.map((node) => ({
+    ...node,
+    position: positions.get(node.id) ?? node.position,
+  }));
 }
 
 function canvasReducer(state: CanvasState, event: CanvasEvent): CanvasState {
@@ -199,7 +300,13 @@ function canvasReducer(state: CanvasState, event: CanvasEvent): CanvasState {
         nodes:
           event.nodes === state.sourceNodes
             ? state.nodes
-            : keepNodePositions(state.nodes, event.nodes),
+            : placeNodes(
+                event.nodes,
+                new Map([
+                  ...event.savedPositions,
+                  ...state.nodes.map((node) => [node.id, node.position] as const),
+                ]),
+              ),
         edges: event.edges === state.sourceEdges ? state.edges : event.edges,
       };
     case 'nodesChanged':
@@ -216,6 +323,7 @@ function canvasReducer(state: CanvasState, event: CanvasEvent): CanvasState {
 }
 
 function CanvasInner({
+  scopeKey,
   tables,
   loading,
   onSelectTable,
@@ -256,16 +364,23 @@ function CanvasInner({
     [tables, handleDeleteForeignKey],
   );
 
+  const savedPositions = useMemo(() => readSavedNodePositions(scopeKey), [scopeKey]);
+
   const [state, dispatch] = useReducer(
     canvasReducer,
-    { nodes: initialNodes, edges: initialEdges },
+    { nodes: initialNodes, edges: initialEdges, savedPositions },
     createCanvasState,
   );
   const { nodes, edges, pendingRelationship } = state;
 
   // Syncing during render keeps dragged positions without committing a stale graph first.
   if (state.sourceNodes !== initialNodes || state.sourceEdges !== initialEdges) {
-    dispatch({ type: 'graphSourceChanged', nodes: initialNodes, edges: initialEdges });
+    dispatch({
+      type: 'graphSourceChanged',
+      nodes: initialNodes,
+      edges: initialEdges,
+      savedPositions,
+    });
   }
 
   const onNodesChange = useCallback(
@@ -281,14 +396,6 @@ function CanvasInner({
     // React Flow 13 measures padding per side; 8.33% preserves the previous 0.2 ratio.
     schedule(() => fitView({ padding: '8.33%' }), 100);
   }, [fitView, schedule]);
-
-  const handleAddTable = useCallback(
-    () =>
-      onAddTable().then((added) => {
-        if (added) fitViewSoon();
-      }),
-    [fitViewSoon, onAddTable],
-  );
 
   const handleConnect = useCallback(
     (connection: Connection) => {
@@ -362,9 +469,14 @@ function CanvasInner({
   );
 
   const handleAutoLayout = useCallback(() => {
+    writeSavedNodePositions(scopeKey, gridLayout(nodes));
     dispatch({ type: 'autoLayoutApplied' });
     schedule(() => fitView({ padding: '8.33%' }), 50);
-  }, [fitView, schedule]);
+  }, [fitView, nodes, schedule, scopeKey]);
+
+  const handleNodeDragStop = useCallback(() => {
+    writeSavedNodePositions(scopeKey, nodes);
+  }, [nodes, scopeKey]);
 
   if (loading) {
     return (
@@ -388,6 +500,7 @@ function CanvasInner({
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
+        onNodeDragStop={handleNodeDragStop}
         onEdgesChange={onEdgesChange}
         onConnect={handleConnect}
         nodeTypes={nodeTypes}
@@ -405,7 +518,10 @@ function CanvasInner({
           nodeColor={() => 'hsl(var(--primary))'}
           maskColor="hsl(var(--background) / 0.8)"
         />
-        <ErDiagramToolbar onAddTable={handleAddTable} onAutoLayout={handleAutoLayout} />
+        <ErDiagramToolbar
+          onAddTable={() => onAddTable(fitViewSoon)}
+          onAutoLayout={handleAutoLayout}
+        />
       </ReactFlow>
       {pendingRelationship && (
         <RelationCreationDialog
@@ -425,6 +541,7 @@ function CanvasInner({
 }
 
 export const ErDiagramCanvas = memo(function ErDiagramCanvas({
+  scopeKey,
   tables,
   loading,
   onSelectTable,
@@ -435,6 +552,7 @@ export const ErDiagramCanvas = memo(function ErDiagramCanvas({
   return (
     <ReactFlowProvider>
       <CanvasInner
+        scopeKey={scopeKey}
         tables={tables}
         loading={loading}
         onSelectTable={onSelectTable}

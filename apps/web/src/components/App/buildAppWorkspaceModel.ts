@@ -1,4 +1,6 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { getAnonymousWorkspaceScope, getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
+import { i18n } from '@/i18n';
+import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import type { useEditorDomains } from './hooks/useEditorDomains';
 import type { useEditorSurfaceModel } from './hooks/useEditorSurfaceModel';
 import type { useFolderActions } from './hooks/useFolderActions';
@@ -42,7 +44,7 @@ interface BuildAppWorkspaceModelParams {
   handleFireworksComplete: () => void;
   handlePlayFireworks: () => void;
   templateActions: ReturnType<typeof useTemplateActions>;
-  handleSelectTableFromEr: (state: PersistedState) => void;
+  handleSelectTableFromEr: (record: SavedTableRecord) => Promise<boolean>;
 }
 
 export function buildAppWorkspaceModel({
@@ -86,7 +88,11 @@ export function buildAppWorkspaceModel({
 
   return {
     erPage: {
-      ready: !workspacePresentation.shouldShowWorkspaceSkeleton,
+      ready:
+        Boolean(workspaceController.scope) && !workspacePresentation.shouldShowWorkspaceSkeleton,
+      scopeKey: getWorkspaceScopeStorageKey(
+        workspaceController.scope ?? getAnonymousWorkspaceScope(),
+      ),
       onSelectTable: handleSelectTableFromEr,
       saveTable: tables.saveTable,
       overwriteTable: tables.overwriteTable,
@@ -96,11 +102,27 @@ export function buildAppWorkspaceModel({
       onOpenFieldTemplates: templateActions.handleManageTemplates,
       onOpenTableTemplates: tableTemplateActions.handleManageTemplates,
       onOpenAIGenerate: navigationActions.handleOpenAIGenerateDialog,
-      onOpenAIPatch: editorSurface.tableBuilderProps.dataTableProps.onOpenAISchemaPatch,
+      onOpenAIPatch: tabLifecycle.activeWorkspaceTab
+        ? editorSurface.tableBuilderProps.dataTableProps.onOpenAISchemaPatch
+        : undefined,
+      onRunAIComments:
+        tabLifecycle.tabs.length > 0 &&
+        editorSurface.tableBuilderProps.dataTableProps.onGenerateComments
+          ? () =>
+              editorSurface.tableBuilderProps.dataTableProps.onGenerateComments?.('fill_missing')
+          : undefined,
       onOpenIndexAdvisor:
         tabLifecycle.tabs.length > 0
           ? editorSurface.tableBuilderProps.dataTableProps.onOpenAIIndexAdvisor
           : undefined,
+      onToolUnavailable: () =>
+        schemaController.showToast(
+          i18n.t(
+            tabLifecycle.activeWorkspaceTab
+              ? 'schemaTools.unsupportedDialect'
+              : 'schemaTools.openTableFirst',
+          ),
+        ),
     },
     drawer: {
       open: ui.savedTablesDrawerOpen,

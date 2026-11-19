@@ -209,277 +209,284 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     const totalTrashedCount = trashedItems.length + trashedDraftItems.length;
 
     return (
-      <aside
-        className="absolute inset-y-0 left-0 z-30 flex w-62 shrink-0 flex-col overflow-hidden border-r bg-muted sm:static sm:z-auto sm:w-[220px]"
-        data-testid="workspace-sidebar"
-      >
-        <div className="flex items-center justify-between px-3 pt-3">
-          <button
-            type="button"
-            className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
-            onClick={onOpenWorkspace}
-          >
-            <Workspace className="h-3.5 w-3.5" />
-            <span className="truncate">{t('savedTables.workspaceTitle')}</span>
-          </button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onCollapse}
-            aria-label={t('savedTables.collapse')}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="flex flex-wrap gap-2 px-3 pt-2 [&>*]:flex-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" className="gap-1.5 px-3">
-                <Plus className="h-4 w-4" />
-                {t('savedTables.newMenu')}
-                <ChevronDown className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem onClick={onCreateDraft}>
-                <FilePlus className="h-4 w-4" />
-                {t('savedTables.createDraft')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onOpenAIGenerate}>
-                <Sparkles className="h-4 w-4" />
-                {t('tableConfig.aiGenerate')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onOpenImport}>
-                <FileInput className="h-4 w-4" />
-                {t('header.importSql')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="gap-1.5 px-3"
-            aria-label={t('header.importSql')}
-            onClick={onOpenImport}
-          >
-            <FileInput className="h-4 w-4" />
-            {t('savedTables.import')}
-          </Button>
-        </div>
-
-        <div className="relative min-h-0 flex-1 overflow-y-auto p-3">
-          <div className="mb-3 flex gap-2">
-            <div className="relative min-w-0 flex-1">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder={t('savedTables.workspaceSearchPlaceholder')}
-                className="h-9 pl-8 text-sm"
-              />
-            </div>
-            {onCreateFolder && (
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => onCreateFolder()}
-                aria-label={t('savedTables.createFolder')}
-              >
-                <FolderPlus className="h-4 w-4" />
-              </Button>
-            )}
+      <>
+        <button
+          type="button"
+          aria-label={t('savedTables.collapse')}
+          className="fixed inset-0 z-20 bg-black/30 sm:hidden"
+          onClick={onCollapse}
+        />
+        <aside
+          className="absolute inset-y-0 left-0 z-30 flex w-62 shrink-0 flex-col overflow-hidden border-r bg-muted sm:static sm:z-auto sm:w-[220px]"
+          data-testid="workspace-sidebar"
+        >
+          <div className="flex items-center justify-between px-3 pt-3">
+            <button
+              type="button"
+              className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={onOpenWorkspace}
+            >
+              <Workspace className="h-3.5 w-3.5" />
+              <span className="truncate">{t('savedTables.workspaceTitle')}</span>
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onCollapse}
+              aria-label={t('savedTables.collapse')}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
           </div>
 
-          {loading && (
-            <div className="px-2 py-3 text-xs text-muted-foreground">
-              {t('savedTables.loading')}
-            </div>
-          )}
-          {!loading && error && <div className="px-2 py-3 text-xs text-destructive">{error}</div>}
-          {!loading && !error && (
-            <div className="space-y-4">
-              <section className="space-y-1">
-                <div className="flex items-center px-2 text-xs font-medium text-muted-foreground">
-                  <span>{t('savedTables.draftsSection')}</span>
-                </div>
-                {visibleDrafts.map((draft) => {
-                  const isActive = activeDraftId === draft.draftId;
+          <div className="flex flex-wrap gap-2 px-3 pt-2 [&>*]:flex-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" className="gap-1.5 px-3">
+                  <Plus className="h-4 w-4" />
+                  {t('savedTables.newMenu')}
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem onClick={onCreateDraft}>
+                  <FilePlus className="h-4 w-4" />
+                  {t('savedTables.createDraft')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onOpenAIGenerate}>
+                  <Sparkles className="h-4 w-4" />
+                  {t('tableConfig.aiGenerate')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-1.5 px-3"
+              aria-label={t('header.importSql')}
+              onClick={onOpenImport}
+            >
+              <FileInput className="h-4 w-4" />
+              {t('savedTables.import')}
+            </Button>
+          </div>
 
-                  return (
-                    <div
-                      key={draft.draftId}
-                      className={cn(
-                        'group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] leading-5 hover:bg-accent',
-                        isActive && 'bg-primary/10 text-primary',
-                      )}
-                    >
-                      <FileEdit className="h-4 w-4 text-amber-600" />
-                      <button
-                        type="button"
-                        className="min-w-0 flex-1 truncate text-left font-mono font-normal"
-                        onClick={() => onSelectDraft?.(draft.draftId)}
-                      >
-                        {draft.name}
-                      </button>
-                      {onDeleteDraft && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                            >
-                              <MoreHorizontal className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-36">
-                            {onMoveDraftToFolder && (
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>
-                                  <Folder className="mr-2 h-4 w-4" />
-                                  {t('savedTables.moveToFolder')}
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent className="w-44">
-                                  <DropdownMenuItem
-                                    onClick={() => onMoveDraftToFolder(draft.draftId)}
-                                  >
-                                    {t('savedTables.moveToRoot')}
-                                  </DropdownMenuItem>
-                                  {flatFolders.map((folder) => (
-                                    <DropdownMenuItem
-                                      key={folder.id}
-                                      onClick={() => onMoveDraftToFolder(draft.draftId, folder.id)}
-                                      style={{ paddingLeft: `${folder.depth * 12 + 8}px` }}
-                                    >
-                                      {folder.name}
-                                    </DropdownMenuItem>
-                                  ))}
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
-                            )}
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => onDeleteDraft(draft.draftId)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {t('savedTables.deleteDraft')}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  );
-                })}
-              </section>
-
-              {showTrash ? (
-                <section className="space-y-1">
-                  <div className="flex items-center justify-between px-2 text-xs font-medium text-muted-foreground">
-                    <span>{t('savedTables.trash')}</span>
-                    <div className="flex items-center gap-2">
-                      {onEmptyTrash && totalTrashedCount > 0 && (
-                        <button type="button" className="text-destructive" onClick={onEmptyTrash}>
-                          {t('savedTables.emptyTrash')}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="text-primary"
-                        onClick={() => dispatchTrashView('closed')}
-                      >
-                        {t('savedTables.backToProjects')}
-                      </button>
-                    </div>
-                  </div>
-                  {totalTrashedCount > 0 ? (
-                    <>
-                      {trashedItems.map((item) => (
-                        <TrashRow
-                          key={item.tableId}
-                          name={item.name}
-                          onRestore={onRestore ? () => onRestore(item) : undefined}
-                          onDeletePermanently={
-                            onDeletePermanently ? () => onDeletePermanently(item) : undefined
-                          }
-                        />
-                      ))}
-                      {trashedDraftItems.map((draft) => (
-                        <TrashRow
-                          key={draft.draftId}
-                          name={draft.name}
-                          onRestore={
-                            onRestoreDraft ? () => onRestoreDraft(draft.draftId) : undefined
-                          }
-                          onDeletePermanently={
-                            onDeleteDraftPermanently
-                              ? () => onDeleteDraftPermanently(draft.draftId)
-                              : undefined
-                          }
-                        />
-                      ))}
-                    </>
-                  ) : (
-                    <EmptyTile
-                      scene="trash"
-                      title={t('emptyTiles.trash.title')}
-                      description={t('emptyTiles.trash.description')}
-                    />
-                  )}
-                </section>
-              ) : (
-                <section className="space-y-1">
-                  <div className="px-2 text-xs font-medium text-muted-foreground">
-                    {t('savedTables.projectsSection')}
-                  </div>
-                  {showTree && (
-                    <WorkspaceTreeView
-                      controls={treeControls}
-                      folderActions={{
-                        create: onCreateFolder,
-                        rename: onRenameFolder,
-                        delete: onDeleteFolder,
-                      }}
-                      renderTableList={renderTableList}
-                      rootDropZoneTestId="workspace-root-dropzone"
-                      dragFeedbackTestId="workspace-drag-feedback"
-                    />
-                  )}
-                  {!showTree &&
-                    (normalizedQuery ? (
-                      <EmptyTile
-                        scene="search"
-                        title={t('emptyTiles.search.title')}
-                        description={t('emptyTiles.search.description')}
-                      />
-                    ) : (
-                      <div className="px-2 py-2 text-xs text-muted-foreground">
-                        {t('home.noTables')}
-                      </div>
-                    ))}
-                </section>
+          <div className="relative min-h-0 flex-1 overflow-y-auto p-3">
+            <div className="mb-3 flex gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={t('savedTables.workspaceSearchPlaceholder')}
+                  className="h-9 pl-8 text-sm"
+                />
+              </div>
+              {onCreateFolder && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onCreateFolder()}
+                  aria-label={t('savedTables.createFolder')}
+                >
+                  <FolderPlus className="h-4 w-4" />
+                </Button>
               )}
-
-              {items.length === 0 && <FirstStepsChecklist />}
-              <button
-                type="button"
-                className="flex w-full items-center justify-between rounded-md px-2 py-2 text-[13px] leading-5 text-muted-foreground hover:bg-accent"
-                onClick={() => dispatchTrashView('toggled')}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  {t('savedTables.trash')}
-                </span>
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
-                  {totalTrashedCount}
-                </span>
-              </button>
             </div>
-          )}
-        </div>
-      </aside>
+
+            {loading && (
+              <div className="px-2 py-3 text-xs text-muted-foreground">
+                {t('savedTables.loading')}
+              </div>
+            )}
+            {!loading && error && <div className="px-2 py-3 text-xs text-destructive">{error}</div>}
+            {!loading && !error && (
+              <div className="space-y-4">
+                <section className="space-y-1">
+                  <div className="flex items-center px-2 text-xs font-medium text-muted-foreground">
+                    <span>{t('savedTables.draftsSection')}</span>
+                  </div>
+                  {visibleDrafts.map((draft) => {
+                    const isActive = activeDraftId === draft.draftId;
+
+                    return (
+                      <div
+                        key={draft.draftId}
+                        className={cn(
+                          'group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] leading-5 hover:bg-accent',
+                          isActive && 'bg-primary/10 text-primary',
+                        )}
+                      >
+                        <FileEdit className="h-4 w-4 text-amber-600" />
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 truncate text-left font-mono font-normal"
+                          onClick={() => onSelectDraft?.(draft.draftId)}
+                        >
+                          {draft.name}
+                        </button>
+                        {onDeleteDraft && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={t('savedTables.moreActions', { defaultValue: 'More' })}
+                                className="h-6 w-6 opacity-100 focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                              >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-36">
+                              {onMoveDraftToFolder && (
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
+                                    <Folder className="mr-2 h-4 w-4" />
+                                    {t('savedTables.moveToFolder')}
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent className="w-44">
+                                    <DropdownMenuItem
+                                      onClick={() => onMoveDraftToFolder(draft.draftId)}
+                                    >
+                                      {t('savedTables.moveToRoot')}
+                                    </DropdownMenuItem>
+                                    {flatFolders.map((folder) => (
+                                      <DropdownMenuItem
+                                        key={folder.id}
+                                        onClick={() =>
+                                          onMoveDraftToFolder(draft.draftId, folder.id)
+                                        }
+                                        style={{ paddingLeft: `${folder.depth * 12 + 8}px` }}
+                                      >
+                                        {folder.name}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              )}
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => onDeleteDraft(draft.draftId)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {t('savedTables.deleteDraft')}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    );
+                  })}
+                </section>
+
+                {showTrash ? (
+                  <section className="space-y-1">
+                    <div className="flex items-center justify-between px-2 text-xs font-medium text-muted-foreground">
+                      <span>{t('savedTables.trash')}</span>
+                      <div className="flex items-center gap-2">
+                        {onEmptyTrash && totalTrashedCount > 0 && (
+                          <button type="button" className="text-destructive" onClick={onEmptyTrash}>
+                            {t('savedTables.emptyTrash')}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="text-primary"
+                          onClick={() => dispatchTrashView('closed')}
+                        >
+                          {t('savedTables.backToProjects')}
+                        </button>
+                      </div>
+                    </div>
+                    {totalTrashedCount > 0 ? (
+                      <>
+                        {trashedItems.map((item) => (
+                          <TrashRow
+                            key={item.tableId}
+                            name={item.name}
+                            onRestore={onRestore ? () => onRestore(item) : undefined}
+                            onDeletePermanently={
+                              onDeletePermanently ? () => onDeletePermanently(item) : undefined
+                            }
+                          />
+                        ))}
+                        {trashedDraftItems.map((draft) => (
+                          <TrashRow
+                            key={draft.draftId}
+                            name={draft.name}
+                            onRestore={
+                              onRestoreDraft ? () => onRestoreDraft(draft.draftId) : undefined
+                            }
+                            onDeletePermanently={
+                              onDeleteDraftPermanently
+                                ? () => onDeleteDraftPermanently(draft.draftId)
+                                : undefined
+                            }
+                          />
+                        ))}
+                      </>
+                    ) : (
+                      <EmptyTile
+                        scene="trash"
+                        title={t('emptyTiles.trash.title')}
+                        description={t('emptyTiles.trash.description')}
+                      />
+                    )}
+                  </section>
+                ) : (
+                  <section className="space-y-1">
+                    <div className="px-2 text-xs font-medium text-muted-foreground">
+                      {t('savedTables.projectsSection')}
+                    </div>
+                    {showTree && (
+                      <WorkspaceTreeView
+                        controls={treeControls}
+                        folderActions={{
+                          create: onCreateFolder,
+                          rename: onRenameFolder,
+                          delete: onDeleteFolder,
+                        }}
+                        renderTableList={renderTableList}
+                        rootDropZoneTestId="workspace-root-dropzone"
+                        dragFeedbackTestId="workspace-drag-feedback"
+                      />
+                    )}
+                    {!showTree &&
+                      (normalizedQuery ? (
+                        <EmptyTile
+                          scene="search"
+                          title={t('emptyTiles.search.title')}
+                          description={t('emptyTiles.search.description')}
+                        />
+                      ) : (
+                        <div className="px-2 py-2 text-xs text-muted-foreground">
+                          {t('home.noTables')}
+                        </div>
+                      ))}
+                  </section>
+                )}
+
+                {items.length === 0 && <FirstStepsChecklist />}
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-md px-2 py-2 text-[13px] leading-5 text-muted-foreground hover:bg-accent"
+                  onClick={() => dispatchTrashView('toggled')}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    {t('savedTables.trash')}
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
+                    {totalTrashedCount}
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+        </aside>
+      </>
     );
   },
 );
@@ -539,7 +546,12 @@ function TrashRow({
       <span className="min-w-0 flex-1 truncate font-normal">{name}</span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('savedTables.moreActions', { defaultValue: 'More' })}
+            className="h-6 w-6 opacity-100 focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          >
             <MoreHorizontal className="h-3.5 w-3.5" />
           </Button>
         </DropdownMenuTrigger>

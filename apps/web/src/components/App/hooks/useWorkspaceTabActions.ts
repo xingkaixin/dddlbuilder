@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createEntityId, type PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
@@ -8,7 +8,7 @@ import { useTabStore } from '@/stores/tabStore';
 import { createEmptyRow } from '@/utils/helpers';
 import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
 import { usePreferencesStore } from '@/stores/preferencesStore';
-import { applySavedState } from '../applySavedState';
+import { loadEditorSnapshot } from '../applySavedState';
 import type { useTabLifecycle } from './useTabLifecycle';
 
 const createEmptyDraftState = (): PersistedState => {
@@ -71,6 +71,7 @@ export function useWorkspaceTabActions({
 }: UseWorkspaceTabActionsParams) {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const pendingLoads = useRef(new Map<string, Promise<boolean>>());
 
   const {
     tabs: openTabs,
@@ -98,7 +99,10 @@ export function useWorkspaceTabActions({
       if (existingTab) {
         switchToTab(existingTab);
 
-        return;
+        if (existingTab.isLoading) return pendingLoads.current.get(existingTab.id) ?? false;
+        showToast(t('erDiagram.tableLoaded'));
+
+        return true;
       }
 
       if (openTabs.length > 0) flushActiveTab();
@@ -116,27 +120,39 @@ export function useWorkspaceTabActions({
       });
       activateTab(newTabId);
 
-      const result = await loadSavedTable(item);
-      const isLoadedTabActive = useTabStore.getState().activeTabId === newTabId;
+      const pending = loadSavedTable(item).then((result) => {
+        const isLoadedTabActive = useTabStore.getState().activeTabId === newTabId;
 
-      if (!result) {
-        closeTab(newTabId);
+        if (!result) {
+          closeTab(newTabId);
 
-        if (isLoadedTabActive) {
-          const currentTab = getActiveTab();
+          if (isLoadedTabActive) {
+            const currentTab = getActiveTab();
 
-          if (currentTab) showTab(currentTab);
+            if (currentTab) showTab(currentTab);
+          }
+
+          return false;
         }
 
-        return;
-      }
+        hydrateTab(newTabId, result.source, result.state);
+        const loadedTab = getActiveTab();
 
-      hydrateTab(newTabId, result.source, result.state);
-      const loadedTab = getActiveTab();
+        if (loadedTab?.id === newTabId) {
+          showTab(loadedTab);
+          showToast(t('erDiagram.tableLoaded'));
 
-      if (loadedTab?.id === newTabId) {
-        showTab(loadedTab);
-        showToast(`已加载：${result.source.tableName} (v${result.version})`);
+          return true;
+        }
+
+        return false;
+      });
+      pendingLoads.current.set(newTabId, pending);
+
+      try {
+        return await pending;
+      } finally {
+        pendingLoads.current.delete(newTabId);
       }
     },
     [
@@ -154,6 +170,7 @@ export function useWorkspaceTabActions({
       showTab,
       showToast,
       switchToTab,
+      t,
     ],
   );
 
@@ -179,7 +196,7 @@ export function useWorkspaceTabActions({
         stateSnapshot: nextState,
       });
       activateTab(newTabId);
-      applySavedState(nextState);
+      loadEditorSnapshot(nextState);
       selectWorkspaceSnapshot({ kind: 'draft', draftId }, nextState);
       showToast(existingState ? t('app.loadedDraft') : t('app.emptyDraftCreated'));
     },
@@ -213,7 +230,7 @@ export function useWorkspaceTabActions({
         stateSnapshot: finalState,
       });
       activateTab(newTabId);
-      applySavedState(finalState);
+      loadEditorSnapshot(finalState);
       setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
     },
     [activateTab, addTab, createDraft, flushActiveTab, openTabs.length, setWorkspaceSnapshot],

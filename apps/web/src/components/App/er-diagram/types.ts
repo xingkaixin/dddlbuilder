@@ -1,8 +1,10 @@
 import type { ForeignKeyDefinition, PersistedState } from '@ddlbuilder/shared-types';
+import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 
 export type ErNodeData = {
+  record: SavedTableRecord;
   state: PersistedState;
-  onSelectTable: (state: PersistedState) => void;
+  onSelectTable: (record: SavedTableRecord) => void;
 };
 
 export type ErEdgeData = {

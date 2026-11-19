@@ -6,7 +6,7 @@ import type { ErNodeData } from './types';
 export const ErTableNode = memo(function ErTableNode(props: NodeProps) {
   // SAFETY: React Flow node data is the ErNodeData supplied by buildNodesFromTables.
   const { data, selected } = props as NodeProps & { data: ErNodeData };
-  const { state, onSelectTable } = data;
+  const { record, state, onSelectTable } = data;
 
   const pkFields = new Set(
     state.indexes
@@ -25,7 +25,7 @@ export const ErTableNode = memo(function ErTableNode(props: NodeProps) {
   return (
     <div
       className={`rounded-lg border bg-card shadow-md transition-shadow hover:shadow-lg cursor-pointer select-none min-w-[220px] ${selected ? 'ring-2 ring-primary' : ''}`}
-      onDoubleClick={() => onSelectTable?.(state)}
+      onDoubleClick={() => onSelectTable?.(record)}
     >
       {/* Header */}
       <div className="flex items-center gap-2 rounded-t-lg bg-primary/10 px-3 py-2">

@@ -53,7 +53,16 @@ function getValidationErrorMessage(
   error: unknown,
   sourceType: ImportSourceType,
   fallback: string,
+  offlineFallback: string,
 ): string {
+  if (
+    sourceType === 'sql' &&
+    ((typeof navigator !== 'undefined' && navigator.onLine === false) ||
+      (error instanceof TypeError && !(error instanceof ApiError)))
+  ) {
+    return offlineFallback;
+  }
+
   if (
     error instanceof Error &&
     (sourceType !== 'sql' ||
@@ -77,11 +86,13 @@ export function ImportSqlDialog({
 }: ImportSqlDialogProps) {
   const sqlParseMutation = useMutation({
     mutationFn: (payload: Parameters<typeof requestSqlParse>[0]) => requestSqlParse(payload),
+    networkMode: 'always',
     retry: false,
   });
   const multiSqlParseMutation = useMutation({
     mutationFn: (payload: Parameters<typeof requestMultiSqlParse>[0]) =>
       requestMultiSqlParse(payload),
+    networkMode: 'always',
     retry: false,
   });
   const { t } = useTranslation();
@@ -256,7 +267,12 @@ export function ImportSqlDialog({
             type: 'validation_failed',
             result: {
               success: false,
-              error: getValidationErrorMessage(err, sourceType, t('importSql.sqlParseFailed')),
+              error: getValidationErrorMessage(
+                err,
+                sourceType,
+                t('importSql.sqlParseFailed'),
+                t('importSql.sqlOffline'),
+              ),
             },
           }),
         );
@@ -303,7 +319,12 @@ export function ImportSqlDialog({
             type: 'validation_failed',
             result: {
               success: false,
-              error: getValidationErrorMessage(err, sourceType, t('importSql.sqlParseFailed')),
+              error: getValidationErrorMessage(
+                err,
+                sourceType,
+                t('importSql.sqlParseFailed'),
+                t('importSql.sqlOffline'),
+              ),
             },
           }),
         );

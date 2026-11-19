@@ -148,7 +148,7 @@ export const TableConfig = memo<TableConfigProps>(
                   )}
                   value={tableName}
                   onChange={(event) => onTableNameChange(event.target.value)}
-                  className="h-8 w-[13ch] min-w-0 border-0 bg-transparent px-1 font-mono text-xl shadow-none hover:border-input focus:border-input"
+                  className="h-8 min-w-[14ch] w-[min(24ch,100%)] border-0 bg-transparent px-1 font-mono text-xl shadow-none hover:border-input focus:border-input"
                 />
               </div>
               <Input
@@ -337,6 +337,7 @@ export const TableConfig = memo<TableConfigProps>(
             <TooltipTrigger asChild>
               <span className="inline-flex">
                 <Button
+                  data-shortcut="save-current"
                   className="h-11 w-11 shrink-0 gap-1.5 px-0 @min-[640px]/editor:h-10 @min-[640px]/editor:w-auto @min-[640px]/editor:px-4"
                   onClick={onSaveCurrent}
                   disabled={saveDisabled}

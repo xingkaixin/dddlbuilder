@@ -8,7 +8,7 @@ import type {
 import { useTabStore, type WorkspaceTab } from '@/stores/tabStore';
 import { buildPersistedStateSignature } from '@ddlbuilder/workspace-core';
 import { useShallow } from 'zustand/react/shallow';
-import { applySavedState } from '../applySavedState';
+import { loadEditorSnapshot } from '../applySavedState';
 
 interface UseTabLifecycleParams {
   enabled: boolean;
@@ -75,7 +75,7 @@ export function useTabLifecycle({
       };
       hydrateTab(tab.id, snapshot.source, snapshot.state);
       activateTab(tab.id);
-      applySavedState(snapshot.state);
+      loadEditorSnapshot(snapshot.state);
       selectWorkspaceSnapshot(snapshot.source, snapshot.state);
     },
     [activateTab, hydrateTab, resolveWorkspaceSnapshot, selectWorkspaceSnapshot],
@@ -83,10 +83,11 @@ export function useTabLifecycle({
 
   const switchToTab = useCallback(
     (tab: WorkspaceTab) => {
+      if (tab.id === getActiveTab()?.id) return;
       flushActiveTab();
       showTab(tab);
     },
-    [flushActiveTab, showTab],
+    [flushActiveTab, getActiveTab, showTab],
   );
 
   const switchToTabById = useCallback(

@@ -1186,6 +1186,8 @@ export const jaJPCommon = {
     jsonSchemaResolutionFailed:
       'JSON Schema に循環参照があるか、ネストが深すぎるため安全にインポートできません。',
     sqlParseFailed: 'SQLの解析に失敗しました。構文を確認して再試行してください。',
+    sqlOffline:
+      'オフラインまたは解析サービスに接続できません。ネットワークを確認して再試行してください。',
     sqlNoTable: 'SQL から有効なテーブル構造を解析できませんでした。構文を確認してください。',
     importSuccess: 'インポートは成功しました: テーブル {{tableName}} が解析されました',
     unnamed: '無題',
@@ -1976,6 +1978,7 @@ export const jaJPCommon = {
     },
     toast: {
       tableSaved: 'テーブルが保存されました',
+      refreshAfterSaveFailed: 'テーブルは保存されました。図を開き直して更新してください。',
       tableDuplicate: 'テーブル名はすでに存在します',
       tableSaveFailed: 'テーブルの保存に失敗しました',
       fkDeleted: '外部キーが削除されました',

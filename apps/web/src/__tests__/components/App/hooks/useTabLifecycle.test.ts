@@ -4,11 +4,11 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useTabLifecycle } from '@/components/App/hooks/useTabLifecycle';
 import { useTabStore } from '@/stores/tabStore';
 
-const mocks = vi.hoisted(() => ({ applySavedState: vi.fn() }));
+const mocks = vi.hoisted(() => ({ loadEditorSnapshot: vi.fn() }));
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- Lifecycle tests control saved-state application to isolate tab transitions.
 vi.mock('@/components/App/applySavedState', () => ({
-  applySavedState: mocks.applySavedState,
+  loadEditorSnapshot: mocks.loadEditorSnapshot,
 }));
 
 const createState = (tableName: string): PersistedState => ({
@@ -63,7 +63,7 @@ describe('useTabLifecycle', () => {
 
     act(() => result.current.switchToTabById(staleTabId));
 
-    expect(mocks.applySavedState).toHaveBeenCalledWith(remoteState);
+    expect(mocks.loadEditorSnapshot).toHaveBeenCalledWith(remoteState);
     expect(selectWorkspaceSnapshot).toHaveBeenCalledWith(
       { kind: 'draft', draftId: 'draft-a' },
       remoteState,

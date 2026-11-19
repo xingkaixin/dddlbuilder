@@ -118,8 +118,9 @@ function App() {
 
   return (
     <ErPage
+      scopeKey="anonymous"
       ready
-      onSelectTable={() => {}}
+      onSelectTable={() => Promise.resolve(true)}
       saveTable={saved.saveTable}
       overwriteTable={saved.overwriteTable}
       loadTables={saved.loadTables}

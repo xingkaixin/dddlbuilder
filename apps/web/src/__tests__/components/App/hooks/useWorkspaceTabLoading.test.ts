@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import * as Y from 'yjs';
+import { listenForEditorShortcuts } from '@/lib/editorShortcuts';
 import { useTabLifecycle } from '@/components/App/hooks/useTabLifecycle';
 import { useWorkspacePresentation } from '@/components/App/hooks/useWorkspacePresentation';
 import { useWorkspaceTabActions } from '@/components/App/hooks/useWorkspaceTabActions';
@@ -24,6 +25,7 @@ const createSource = (name: string) => ({
 
 describe('workspace tab loading', () => {
   beforeEach(() => {
+    listenForEditorShortcuts();
     useTabStore.setState({ tabs: [], activeTabId: null });
     useEditorStore.getState().replaceDocument(toPersistedState(useEditorStore.getInitialState()));
   });
@@ -119,17 +121,21 @@ describe('workspace tab loading', () => {
         return { tabs, actions, presentation };
       });
 
-      let loading: Promise<void>;
+      const betaItem = {
+        tableId: 'beta',
+        normalizedName: 'beta',
+        name: 'beta',
+        dbType: 'mysql',
+        fieldCount: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      };
+      let loading: Promise<boolean>;
+      let repeatedSelection: Promise<boolean>;
+
       act(() => {
-        loading = result.current.actions.handleSelectSavedTable({
-          tableId: 'beta',
-          normalizedName: 'beta',
-          name: 'beta',
-          dbType: 'mysql',
-          fieldCount: 0,
-          createdAt: 1,
-          updatedAt: 1,
-        });
+        loading = result.current.actions.handleSelectSavedTable(betaItem);
+        repeatedSelection = result.current.actions.handleSelectSavedTable(betaItem);
       });
       const betaId = result.current.tabs.activeTabId;
       assert(betaId);
@@ -172,7 +178,8 @@ describe('workspace tab loading', () => {
 
       await act(async () => {
         finishLoading();
-        await loading;
+        expect(await loading).toBe(!completedInBackground);
+        expect(await repeatedSelection).toBe(!completedInBackground);
       });
 
       expect(result.current.presentation.shouldShowWorkspaceSkeleton).toBe(false);
@@ -203,7 +210,18 @@ describe('workspace tab loading', () => {
         authoritativeSnapshot.state,
       );
 
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }));
+      });
+      expect(useEditorStore.getState().tableName).toBe('beta');
+      expect(useEditorStore.getState().tableComment).toBe('remote comment');
+
       act(() => useEditorStore.getState().setTableComment('local comment'));
+      await act(async () => {
+        await result.current.actions.handleSelectSavedTable(betaItem);
+      });
+      expect(useEditorStore.getState().tableComment).toBe('local comment');
+
       act(() => result.current.tabs.flushActiveTab());
       expect(saveState).toHaveBeenLastCalledWith({
         source: authoritativeSnapshot.source,

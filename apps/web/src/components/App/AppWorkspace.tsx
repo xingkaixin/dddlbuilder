@@ -144,7 +144,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
             key={route.view === 'tools' ? `tools:${route.toolId ?? ''}` : route.view}
           >
             <Suspense fallback={<MainWorkspaceSkeleton />}>
-              {route.view === 'er' && <ErPage {...erPage} />}
+              {route.view === 'er' && <ErPage key={erPage.scopeKey} {...erPage} />}
               {route.view === 'tools' && <ToolsPage toolId={route.toolId} actions={toolActions} />}
               {route.view === 'settings' && <SettingsPage />}
             </Suspense>

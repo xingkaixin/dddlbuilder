@@ -3,6 +3,7 @@ import { useTemplateCatalog } from './hooks/useTemplateCatalog';
 import { navigateApp } from '@/lib/appNavigation';
 import { useCallback, useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { useEditorDomains } from './hooks/useEditorDomains';
 import { useWorkspaceController } from './hooks/useWorkspaceController';
 import { useDialogStates } from './hooks/useDialogStates';
@@ -12,7 +13,7 @@ import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import { useSavedTableFlowActions } from './hooks/useSavedTableFlowActions';
 import { useTabLifecycle } from './hooks/useTabLifecycle';
 import { usePersistedSync } from './hooks/usePersistedSync';
-import { applySavedState } from './applySavedState';
+import { applySavedState, loadEditorSnapshot } from './applySavedState';
 import { useClearAllActions } from './hooks/useClearAllActions';
 import { useNavigationActions } from './hooks/useNavigationActions';
 import { useFireworksIntro } from './hooks/useFireworksIntro';
@@ -218,7 +219,7 @@ export function useAppController() {
     saveState,
     currentState: currentPersistedState,
     getCurrentState: buildPersistedState,
-    applyPersistedState: applySavedState,
+    applyPersistedState: loadEditorSnapshot,
   });
 
   const clearActions = useClearAllActions({
@@ -353,11 +354,19 @@ export function useAppController() {
   }, [handleViewVersionHistory, loadedTable, loadedTableId]);
 
   const handleSelectTableFromEr = useCallback(
-    (state: PersistedState) => {
-      openStateInNewDraftTab(state);
-      showToast(t('erDiagram.tableLoaded'));
+    (record: SavedTableRecord) => {
+      return workspaceTabs.handleSelectSavedTable({
+        tableId: record.tableId ?? record.normalizedName,
+        normalizedName: record.normalizedName,
+        name: record.name,
+        dbType: record.state.dbType,
+        fieldCount: record.state.rows.filter((row) => row.fieldName?.trim()).length,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+        folderId: record.folderId,
+      });
     },
-    [openStateInNewDraftTab, showToast, t],
+    [workspaceTabs],
   );
 
   const handleCopyDiff = useCallback(() => {

@@ -4,6 +4,8 @@ export const schemaTools = {
   description: 'Deliver documentation, compare schemas and prepare test data.',
   loading: 'Loading…',
   failed: 'Processing failed. Please retry.',
+  unsupportedDialect: 'This tool does not support the current database dialect.',
+  openTableFirst: 'Open or create a table in the workspace first to use this tool.',
   source: 'Source',
   saved: 'Saved tables',
   savedHint: 'Uses saved versions in this workspace. Save pending edits first.',

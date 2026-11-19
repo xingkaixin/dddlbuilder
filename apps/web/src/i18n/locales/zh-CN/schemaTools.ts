@@ -4,6 +4,8 @@ export const schemaTools = {
   description: '交付数据字典、比较结构与准备测试数据。',
   loading: '正在读取…',
   failed: '处理失败，请重试。',
+  unsupportedDialect: '此工具不支持当前数据库方言。',
+  openTableFirst: '请先在工作区打开或新建一张表，再使用此功能。',
   source: '数据来源',
   saved: '已保存表',
   savedHint: '使用当前工作区的已保存版本。未保存的编辑请先保存。',
