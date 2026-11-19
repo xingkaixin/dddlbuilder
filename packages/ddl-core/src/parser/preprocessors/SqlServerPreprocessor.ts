@@ -1,5 +1,4 @@
 import type { PreprocessResult } from './types.js';
-import { mapSqlCode } from '../sqlSegments.js';
 
 /**
  * Preprocess SQL Server SQL for parsing
@@ -7,7 +6,6 @@ import { mapSqlCode } from '../sqlSegments.js';
  * Handles:
  * - Extract and remove sp_addextendedproperty EXEC statements
  * - Parse MS_Description extended properties for table/column comments
- * - Normalize gen_random_uuid() → uuid()
  */
 export function preprocessSqlServer(sql: string): PreprocessResult {
   sql = sql
@@ -79,9 +77,5 @@ export function preprocessSqlServer(sql: string): PreprocessResult {
     match = execRegex.exec(sql);
   }
 
-  const normalizedSql = mapSqlCode(sqlWithoutExec, (code) =>
-    code.replace(/\bgen_random_uuid\(\)/gi, 'uuid()'),
-  );
-
-  return { sql: normalizedSql, tableMetadata: Array.from(metadataByTable.values()) };
+  return { sql: sqlWithoutExec, tableMetadata: Array.from(metadataByTable.values()) };
 }

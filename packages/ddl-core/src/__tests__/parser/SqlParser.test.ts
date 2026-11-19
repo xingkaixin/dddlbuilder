@@ -604,6 +604,29 @@ describe('SqlParser', () => {
     ).rejects.toBeInstanceOf(SqlParseError);
   });
 
+  it('resolves quoted schema references and preserves schema-qualified default calls', async () => {
+    const parser = new SqlParser();
+
+    const pg = await parser.parseAsync(
+      `CREATE TABLE " space ".t (id INT);
+       CREATE INDEX idx ON " space ".t (id);
+       COMMENT ON TABLE " space ".t IS 'accounts';`,
+      'postgresql',
+    );
+    expect(pg.schemaName).toBe(' space ');
+    expect(pg.tableComment).toBe('accounts');
+    expect(pg.indexes.map((index) => index.name)).toContain('idx');
+
+    const sqlServer = await parser.parseAsync(
+      'CREATE TABLE t (id UNIQUEIDENTIFIER DEFAULT dbo.gen_random_uuid())',
+      'sqlserver',
+    );
+    expect(sqlServer.fields[0]).toMatchObject({
+      defaultKind: 'expression',
+      defaultValue: 'dbo.gen_random_uuid()',
+    });
+  });
+
   it('throws SqlParseError when parseAsync receives multiple CREATE TABLE statements', async () => {
     const parser = new SqlParser();
     await expect(

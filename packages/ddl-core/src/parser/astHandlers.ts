@@ -257,11 +257,9 @@ function mapColumnToField(
       defaultValue = normalizeLiteral(val);
     } else if (funcName && ['now', 'current_timestamp', 'sysdate'].includes(funcName)) {
       defaultKind = 'current_timestamp';
-    } else if (funcName === 'uuid') {
-      defaultKind = 'uuid';
     } else {
       const expression = serializeExpression(val);
-      const call = expression.toLowerCase();
+      const call = expression.replace(/^\((.*)\)$/s, '$1').toLowerCase();
 
       if (
         databaseFamily === 'sqlserver' &&
@@ -271,7 +269,9 @@ function mapColumnToField(
         defaultKind = 'current_timestamp';
       } else if (
         supportsUuidDefault(getCanonicalBaseType(typeStr)) &&
-        ((databaseFamily === 'postgresql' && call === 'gen_random_uuid()') ||
+        (((databaseFamily === 'mysql' || databaseFamily === 'oracle' || databaseFamily === 'dm') &&
+          call === 'uuid()') ||
+          (databaseFamily === 'postgresql' && call === 'gen_random_uuid()') ||
           (databaseFamily === 'sqlserver' && call === 'newid()'))
       ) {
         defaultKind = 'uuid';
@@ -320,8 +320,8 @@ export function parseCreateTable(
   if (stmt.table && stmt.table.length > 0) {
     const schema = stmt.table[0].db || stmt.table[0].schema || '';
 
-    if (typeof schema === 'string' && schema.trim()) {
-      result.schemaName = schema.trim();
+    if (typeof schema === 'string' && schema.length) {
+      result.schemaName = schema;
     }
 
     result.tableName = stmt.table[0].table;
