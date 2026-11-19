@@ -19,6 +19,7 @@ export const jaJPCommon = {
     cancel: 'キャンセル',
   },
   locale: {
+    loadFailed: '言語を読み込めませんでした。もう一度お試しください。',
     label: '言語',
     zhCN: '中文',
     enUS: 'English',

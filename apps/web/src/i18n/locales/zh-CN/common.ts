@@ -19,6 +19,7 @@ export const zhCNCommon = {
     cancel: '取消',
   },
   locale: {
+    loadFailed: '语言包加载失败，请重试。',
     label: '语言',
     zhCN: '中文',
     enUS: 'English',

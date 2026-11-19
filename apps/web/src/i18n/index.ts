@@ -3,7 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import { zhCNCommon } from './locales/zh-CN/common';
 import { resolveInitialLocale } from './types';
 
-const loadLocaleResource = async (language: string): Promise<ResourceKey> => {
+export const loadLocaleResource = async (language: string): Promise<ResourceKey> => {
   if (language === 'zh-CN') return zhCNCommon;
 
   if (language === 'en-US') {

@@ -19,6 +19,7 @@ export const enUSCommon = {
     cancel: 'Cancel',
   },
   locale: {
+    loadFailed: 'Could not load this language. Please try again.',
     label: 'Language',
     zhCN: '中文',
     enUS: 'English',
