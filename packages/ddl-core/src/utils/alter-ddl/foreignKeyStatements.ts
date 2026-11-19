@@ -15,6 +15,10 @@ export function generateDropForeignKey(
   const fk = fkDiff.foreignKey;
   const constraintName = formatSqlIdentifier(fk.name, dbType);
 
+  if (dbType === 'hive') {
+    return `-- Manual migration required: drop foreign key ${constraintName} on ${tableName} (${dbType}).`;
+  }
+
   // 只有 MySQL 系用 DROP FOREIGN KEY 语法，其余方言（含派生系）统一 DROP CONSTRAINT
   if (getDatabaseFamily(dbType) === 'mysql') {
     return `ALTER TABLE ${tableName} DROP FOREIGN KEY ${constraintName};`;
