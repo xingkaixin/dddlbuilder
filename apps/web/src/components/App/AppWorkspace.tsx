@@ -13,6 +13,7 @@ import { TabBar } from './TabBar';
 import { WorkspaceEmptyState } from './WorkspaceEmptyState';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import type { AppWorkspaceModel } from './buildAppWorkspaceModel';
+import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 
@@ -138,11 +139,16 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
         </div>
       ) : (
         <main className="flex min-h-0 flex-1 flex-col overflow-auto">
-          <Suspense fallback={<MainWorkspaceSkeleton />}>
-            {route.view === 'er' && <ErPage {...erPage} />}
-            {route.view === 'tools' && <ToolsPage toolId={route.toolId} actions={toolActions} />}
-            {route.view === 'settings' && <SettingsPage />}
-          </Suspense>
+          <AppErrorBoundary
+            variant="section"
+            resetKey={route.view === 'tools' ? `tools:${route.toolId ?? ''}` : route.view}
+          >
+            <Suspense fallback={<MainWorkspaceSkeleton />}>
+              {route.view === 'er' && <ErPage {...erPage} />}
+              {route.view === 'tools' && <ToolsPage toolId={route.toolId} actions={toolActions} />}
+              {route.view === 'settings' && <SettingsPage />}
+            </Suspense>
+          </AppErrorBoundary>
         </main>
       )}
     </>
