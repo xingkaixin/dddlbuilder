@@ -1,7 +1,10 @@
 import { useCallback, useMemo, useReducer } from 'react';
 import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartialJson';
 import { requestDDLReview, resumeDDLReview } from '@/services/reviewService';
-import { hasResumableAIOperation } from '@/services/aiConversationService';
+import {
+  hasAnyResumableAIOperations,
+  hasResumableAIOperation,
+} from '@/services/aiConversationService';
 import { useLocale } from '@/i18n/LocaleContext';
 import { i18n } from '@/i18n';
 import { useAIRequestAccess } from './useAIRequestAccess';
@@ -209,13 +212,15 @@ export function useDDLReview(documentKey: string, resumeScope: string | null) {
 
   const resumeReview = useCallback(
     async (ddl: string, tableName: string, dbType: DatabaseType) => {
+      if (!resumeScope || !hasAnyResumableAIOperations()) return;
+
       const { payload, resumeKey } = buildRequest(ddl, tableName, dbType);
 
       if (!resumeKey || !hasResumableAIOperation(resumeKey)) return;
 
       return runReview(payload, (options) => resumeDDLReview(resumeKey, options));
     },
-    [buildRequest, runReview],
+    [buildRequest, resumeScope, runReview],
   );
 
   const clearReview = useCallback(() => {

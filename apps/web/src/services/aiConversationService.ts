@@ -35,7 +35,17 @@ const forgetAIOperation = (id: string) => {
     JSON.stringify(readResumableOperations().filter((item) => item.operationId !== id)),
   );
 };
+export const hasAnyResumableAIOperations = () => {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+
+    return Boolean(raw && raw !== '[]');
+  } catch {
+    return false;
+  }
+};
 export const hasResumableAIOperation = (resumeKey: string) =>
+  hasAnyResumableAIOperations() &&
   readResumableOperations().some((item) => item.resumeKey === resumeKey);
 export const stopAIOperation = async (id: string) => {
   const response = await fetch(`/api/ai/operations/${encodeURIComponent(id)}/stop`, {
