@@ -337,6 +337,7 @@ export const TableConfig = memo<TableConfigProps>(
             <TooltipTrigger asChild>
               <span className="inline-flex">
                 <Button
+                  data-shortcut="save-current"
                   className="h-11 w-11 shrink-0 gap-1.5 px-0 @min-[640px]/editor:h-10 @min-[640px]/editor:w-auto @min-[640px]/editor:px-4"
                   onClick={onSaveCurrent}
                   disabled={saveDisabled}
