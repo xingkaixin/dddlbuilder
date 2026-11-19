@@ -269,8 +269,8 @@ function mapColumnToField(
         defaultKind = 'current_timestamp';
       } else if (
         supportsUuidDefault(getCanonicalBaseType(typeStr)) &&
-        (((databaseFamily === 'mysql' || databaseFamily === 'oracle' || databaseFamily === 'dm') &&
-          call === 'uuid()') ||
+        ((databaseFamily === 'mysql' && call === 'uuid()') ||
+          ((databaseFamily === 'oracle' || databaseFamily === 'dm') && call === 'sys_guid()') ||
           (databaseFamily === 'postgresql' && call === 'gen_random_uuid()') ||
           (databaseFamily === 'sqlserver' && call === 'newid()'))
       ) {

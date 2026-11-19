@@ -617,6 +617,9 @@ describe('SqlParser', () => {
     expect(pg.tableComment).toBe('accounts');
     expect(pg.indexes.map((index) => index.name)).toContain('idx');
 
+    const dm = await parser.parseAsync('CREATE TABLE t (id BINARY(16) DEFAULT SYS_GUID())', 'dm');
+    expect(buildDDL({ ...dm, dbType: 'dm' })).toContain('DEFAULT SYS_GUID()');
+
     const sqlServer = await parser.parseAsync(
       'CREATE TABLE t (id UNIQUEIDENTIFIER DEFAULT dbo.gen_random_uuid())',
       'sqlserver',
