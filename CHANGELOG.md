@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.26.2] - 2026-11-20
+
 ### Added
 - **Editor undo, redo and keyboard shortcuts**: Each open tab keeps its own edit history. When focus is outside text inputs in the editor, press ⌘Z (Ctrl Z on Windows and Linux) to undo, ⌘⇧Z (Ctrl Shift Z or Ctrl Y on Windows and Linux) to redo, and ⌘B (Ctrl B) to toggle the sidebar. Press ⌘S (Ctrl S) anywhere in the editor to save the current table.
 - **One-click output downloads**: DDL, DCL, ORM and routine output panels now include a download button to save the generated code directly with the matching file extension.
