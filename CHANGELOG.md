@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Added
+- **Editor undo, redo and keyboard shortcuts**: Each open tab keeps its own edit history. When focus is outside text inputs in the editor, press ⌘Z (Ctrl Z on Windows and Linux) to undo, ⌘⇧Z (Ctrl Shift Z or Ctrl Y on Windows and Linux) to redo, and ⌘B (Ctrl B) to toggle the sidebar. Press ⌘S (Ctrl S) anywhere in the editor to save the current table.
+- **One-click output downloads**: DDL, DCL, ORM and routine output panels now include a download button to save the generated code directly with the matching file extension.
+
+### Improved
+- **ORM syntax highlighting**: ORM code previews load Prisma, TypeScript, Python, Go and Java syntax highlighting on demand instead of rendering all targets as SQL.
+- **Initial load and on-demand bundles**: Split the editor shell so shared publication pages and the admin console do not download the full editor bundle. English and Japanese copy, all 11 database tools and SQL parser dialects load on demand, and unauthenticated requests skip auth lookups for faster responses.
+- **Tool error isolation**: Database tools and dialogs now run inside isolated error boundaries so a failure in one tool or dialog does not take down the workspace, and navigation resets the error state automatically.
+- **Interface and accessibility**: Widen the table name input, remove the duplicate Import SQL entry in the sidebar, add a backdrop scrim for the mobile sidebar, keep field row actions accessible on keyboard focus and touch devices, add accessibility labels to ER toolbar, partition and timeline controls, and show a clear offline message when SQL parsing cannot reach the service.
+
+### Fixed
+- **ER diagram workflow and layout**: Double-clicking a saved table in the ER diagram opens the original table instead of duplicating it into a draft. Adding a table from the diagram uses a modal dialog instead of a browser prompt. Layout heights now account for field counts to avoid overlapping cards, and dragged node positions are saved in the current browser.
+- **AI entries on the tools page**: Clicking AI comments, index advisor or AI schema patch from the tools page without an open table now prompts you to open or create a table first instead of doing nothing.
+- **Workspace sync and concurrent editing**: Preserve unsynced local edits across saves, draft deletions and tab switches. Persist workspace updates on the server before broadcasting to other devices, and fix cache cleanup races across sign-out and sign-in so active offline data is not cleared.
+- **DDL, SQL parsing and ORM mappings**: Output `-- Manual migration required` instead of invalid SQL when toggling auto-increment on Oracle, OceanBase Oracle or Dameng, or dropping a foreign key on Hive. Parse `gen_random_uuid()`, `NEWID()`, `GETDATE()`, Dameng `IDENTITY(1,1)` and Unicode or quoted PostgreSQL `COMMENT ON` identifiers, and return a clear parse error when multiple `CREATE TABLE` statements are supplied. Fix `bytea`, `uniqueidentifier`, `raw`, `xmltype`, `datetimeoffset` and related type mappings across Prisma, TypeORM, SQLAlchemy, GORM and JPA, and require a standalone `E'...'` for PostgreSQL escape strings.
+- **AI request and billing reliability**: Clear stopped AI operations from local in-flight state immediately and wait for server settlement. Prevent duplicate billing from upstream thread fallback retries, allow failed 0-token provider calls to settle cleanly, retry failed conversation creation, and preserve first terminal timestamps and retention alarms.
+- **Dialogs and editor state**: Keep confirmation dialogs open and prevent duplicate submissions while async actions are running. Stop showing the unsaved marker on loading tabs, fix schema timeline playback at the start and end bounds, and surface errors when saving business modules fails.
+
 ## [0.26.1] - 2026-11-04
 
 ### Improved
