@@ -1,5 +1,7 @@
 import * as Schema from 'effect/Schema';
+import * as Option from 'effect/Option';
 import {
+  CreateShareRequestSchema,
   CreateShareResponseSchema,
   GetShareResponseSchema,
 } from '@ddlbuilder/shared-types/api-contracts';
@@ -68,19 +70,13 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
 
     if (!parsed.ok) return parsed.response;
 
-    // oxlint-disable anti-slop/no-runtime-typeof -- raw share JSON must be narrowed before reading its state field.
-    const body =
-      parsed.data && typeof parsed.data === 'object' && !Array.isArray(parsed.data)
-        ? parsed.data
-        : null;
-    // oxlint-enable anti-slop/no-runtime-typeof
-    const state = body && 'state' in body ? body.state : undefined;
+    const request = Schema.decodeUnknownOption(CreateShareRequestSchema)(parsed.data);
 
-    if (state == null) {
+    if (Option.isNone(request)) {
       return errorResponse(c, 400, 'State is required', 'SHARE_STATE_REQUIRED');
     }
 
-    const decodedState = decodePersistedState(state, 'external');
+    const decodedState = decodePersistedState(request.value.state, 'external');
 
     if (!decodedState) {
       return errorResponse(c, 400, 'Invalid state', 'SHARE_STATE_INVALID');

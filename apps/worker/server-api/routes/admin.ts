@@ -42,6 +42,10 @@ const ADMIN_LOGIN_RATE_LIMIT = {
   windowMs: 15 * 60 * 1000,
 } as const;
 
+const AdminCreditGrantAmountSchema = Schema.Struct({
+  amount: AdminCreditGrantRequestSchema.fields.amount,
+});
+
 const requireAdminSession: MiddlewareHandler<ApiEnv> = async (c, next) => {
   const valid = await resolveAdminSession(c.env, c.req.header('cookie'));
 
@@ -234,27 +238,18 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     const parsedBody = await parseJsonBodyWithLimit(c, 1024);
 
     if (!parsedBody.ok) return parsedBody.response;
-    const input = parsedBody.data;
-    // oxlint-disable anti-slop/no-runtime-typeof -- raw admin JSON must be narrowed before normalizing the amount field.
 
-    const inputRecord =
-      input && typeof input === 'object' && !Array.isArray(input) ? input : undefined;
-    // oxlint-enable anti-slop/no-runtime-typeof
-    const normalizedAmount =
-      inputRecord && 'amount' in inputRecord ? Number(inputRecord.amount) : Number.NaN;
-
-    const request = Schema.decodeUnknownOption(AdminCreditGrantRequestSchema)({
-      ...inputRecord,
-      amount: normalizedAmount,
-    });
+    const request = Schema.decodeUnknownOption(AdminCreditGrantRequestSchema)(parsedBody.data);
 
     if (Option.isNone(request)) {
+      const hasValidAmount = Option.isSome(
+        Schema.decodeUnknownOption(AdminCreditGrantAmountSchema)(parsedBody.data),
+      );
+
       return errorResponse(
         c,
         400,
-        Schema.is(AdminCreditGrantRequestSchema.fields.amount)(normalizedAmount)
-          ? 'Note must be a string'
-          : 'Amount must be a positive safe integer',
+        hasValidAmount ? 'Note must be a string' : 'Amount must be a positive safe integer',
       );
     }
 

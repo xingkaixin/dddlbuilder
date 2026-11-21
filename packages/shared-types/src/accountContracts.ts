@@ -105,8 +105,11 @@ export const AdminLoginRequestSchema = Schema.Struct({
 });
 export const AdminDisableRequestSchema = Schema.Struct({ reason: Schema.optional(text) });
 export const AdminEmailVerificationRequestSchema = Schema.Struct({ verified: Schema.Boolean });
+const positiveCreditAmount = count.check(Schema.isGreaterThan(0));
 export const AdminCreditGrantRequestSchema = Schema.Struct({
-  amount: count.check(Schema.isGreaterThan(0)),
+  amount: Schema.Union([Schema.Number, Schema.FiniteFromString]).pipe(
+    Schema.decodeTo(positiveCreditAmount),
+  ),
   note: Schema.optional(text),
 });
 export const decodeMeResponse = Schema.decodeUnknownOption(MeResponseSchema);

@@ -347,5 +347,76 @@ describe('/api/admin/*', () => {
         }),
       );
     });
+
+    it('accepts a numeric string amount and coerces it before mutating credits', async () => {
+      const applyCreditMutation = vi.fn().mockResolvedValue({
+        id: 'ledger-2',
+        balanceAfter: 12000,
+      });
+      setAdminAuth({
+        resolveAdminSession: vi.fn().mockResolvedValue(true),
+      });
+      Object.assign(creditOverrides, { applyCreditMutation });
+
+      const app = await createAdminApp();
+
+      const response = await app.fetch(
+        createRequest('/api/admin/users/user-1/credits', {
+          method: 'POST',
+          headers: {
+            Cookie: 'ddlbuilder_admin_session=valid-token',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ amount: '2000', note: 'manual top-up' }),
+        }),
+        createEnv({
+          USER_DB: asD1Database(mockD1Results([{ id: 'user-1' }])),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(applyCreditMutation).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          amount: 2000,
+          metadata: {
+            adminAction: 'manual_credit_grant',
+            adminNote: 'manual top-up',
+          },
+        }),
+      );
+    });
+
+    it.each([
+      [{ amount: 100, note: {} }, 'Note must be a string'],
+      [{ amount: '100', note: 42 }, 'Note must be a string'],
+      [{ amount: 0 }, 'Amount must be a positive safe integer'],
+      [{ amount: true }, 'Amount must be a positive safe integer'],
+      [{ amount: [100] }, 'Amount must be a positive safe integer'],
+      [[], 'Amount must be a positive safe integer'],
+      [null, 'Amount must be a positive safe integer'],
+    ])(
+      'rejects invalid credit grant payload %j with expected message',
+      async (payload, message) => {
+        setAdminAuth({
+          resolveAdminSession: vi.fn().mockResolvedValue(true),
+        });
+        const prepare = vi.fn();
+        const app = await createAdminApp();
+
+        const response = await app.fetch(
+          createRequest('/api/admin/users/user-1/credits', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          }),
+          createEnv({ USER_DB: asD1Database({ prepare }) }),
+        );
+
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toMatchObject({ error: message });
+        expect(prepare).not.toHaveBeenCalled();
+      },
+    );
   });
 });

@@ -124,6 +124,9 @@ export const MultiSqlParseResponseSchema = Schema.Struct({
   ),
   meta,
 });
+export const CreateShareRequestSchema = Schema.Struct({
+  state: Schema.Unknown.check(Schema.makeFilter((value) => value != null)),
+});
 export const CreateShareResponseSchema = Schema.Struct({
   id: nonBlank,
   url: nonBlank,
