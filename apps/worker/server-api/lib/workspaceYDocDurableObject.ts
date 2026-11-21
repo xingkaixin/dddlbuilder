@@ -1,8 +1,8 @@
+import * as Schema from 'effect/Schema';
 import { readSessionAccess } from './auth.js';
 import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
-import type { WorkspaceMigrationSnapshot } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
 import {
   checkpointWorkspaceSnapshotEntities,
@@ -11,6 +11,7 @@ import {
 import {
   assertWorkspaceYDocStructure,
   createWorkspaceYDocUpdateFromSnapshot,
+  decodeWorkspaceMigrationSnapshot,
   encodeWorkspaceYDocAcknowledgement,
   encodeWorkspaceYDocSyncMessage,
   ensureWorkspaceYDocMeta,
@@ -28,12 +29,14 @@ import {
   type WorkspaceYDocStoredMeta,
 } from './workspaceYDocStorage.js';
 
-type WorkspaceYDocSocketAttachment = {
-  schemaVersion: 1;
-  workspaceId?: string;
-  userId?: string;
-  sessionId: string;
-};
+const WorkspaceYDocSocketAttachmentSchema = Schema.Struct({
+  schemaVersion: Schema.Literal(1),
+  workspaceId: Schema.optional(Schema.String),
+  userId: Schema.optional(Schema.String),
+  sessionId: Schema.String,
+});
+
+type WorkspaceYDocSocketAttachment = typeof WorkspaceYDocSocketAttachmentSchema.Type;
 
 type PendingWorkspaceUpdate = {
   seq: number;
@@ -56,12 +59,7 @@ const MAX_SYNC_MESSAGE_BYTES = 16 * 1024 * 1024;
 
 const isSendableCloseCode = (code: number) => code === 1000 || (code >= 3000 && code <= 4999);
 
-const isSocketAttachment = (value: unknown): value is WorkspaceYDocSocketAttachment => {
-  // SAFETY: the predicate below validates the required attachment fields before narrowing this platform value.
-  const record = value as Partial<WorkspaceYDocSocketAttachment> | null;
-
-  return Boolean(record && record.schemaVersion === 1 && typeof record.sessionId === 'string');
-};
+const isSocketAttachment = Schema.is(WorkspaceYDocSocketAttachmentSchema);
 
 export class WorkspaceYDocDurableObject {
   private doc: Y.Doc | null = null;
@@ -169,8 +167,13 @@ export class WorkspaceYDocDurableObject {
 
     if (request.method === 'POST' && url.pathname.endsWith('/migrate')) {
       if (!identity.userId) return new Response('Missing user id', { status: 400 });
-      // SAFETY: routes/workspaceMigration.ts decodes the payload with decodeWorkspaceMigrationPayload, then workspaceYDocAuthority constructs this internal request.
-      const snapshot = (await request.json()) as WorkspaceMigrationSnapshot;
+
+      const snapshot = await request
+        .json()
+        .then(decodeWorkspaceMigrationSnapshot)
+        .catch(() => null);
+
+      if (!snapshot) return new Response('Invalid migration snapshot', { status: 400 });
       const result = applyWorkspaceMigrationSnapshot(doc, identity.userId, snapshot);
       await this.awaitPersisted();
       await this.compact();

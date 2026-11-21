@@ -1,3 +1,5 @@
+import * as Schema from 'effect/Schema';
+
 export type WorkspaceYDocStoredMeta = {
   workspaceId?: string;
   userId?: string;
@@ -12,7 +14,17 @@ export type WorkspaceYDocStoredMeta = {
   checkpointFailedAt?: number;
 };
 
-type ChunkedBinary = { version: 1; chunks: number; byteLength: number };
+const positiveSafeInteger = Schema.Number.check(
+  Schema.makeFilter((value) => Number.isSafeInteger(value) && value > 0),
+);
+
+const ChunkedBinarySchema = Schema.Struct({
+  version: Schema.Literal(1),
+  chunks: positiveSafeInteger,
+  byteLength: positiveSafeInteger,
+});
+
+type ChunkedBinary = typeof ChunkedBinarySchema.Type;
 
 type BinaryStorage = Pick<DurableObjectStorage, 'get' | 'put' | 'delete' | 'list'>;
 
@@ -29,7 +41,9 @@ const updateKey = (seq: number) => {
 const chunkPrefix = (key: string) => `chunk:${key}:`;
 const chunkKey = (key: string, index: number) => `${chunkPrefix(key)}${index}`;
 
-// oxlint-disable anti-slop/no-unknown-parameters -- Durable Object storage returns untyped binary or manifest values.
+const isChunkedBinary = Schema.is(ChunkedBinarySchema);
+
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Durable Object storage returns untyped binary or manifest values.
 const toBytes = (value: unknown): Uint8Array | null => {
   if (value instanceof Uint8Array) return value;
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
@@ -37,23 +51,7 @@ const toBytes = (value: unknown): Uint8Array | null => {
   return null;
 };
 
-const isChunkedBinary = (value: unknown): value is ChunkedBinary => {
-  if (!value || typeof value !== 'object') return false;
-
-  // SAFETY: the object guard above establishes the record boundary; each manifest field is checked below.
-  const manifest = value as Partial<ChunkedBinary>;
-
-  return (
-    manifest.version === 1 &&
-    manifest.chunks !== undefined &&
-    Number.isSafeInteger(manifest.chunks) &&
-    manifest.chunks > 0 &&
-    manifest.byteLength !== undefined &&
-    Number.isSafeInteger(manifest.byteLength) &&
-    manifest.byteLength > 0
-  );
-};
-
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Durable Object storage returns untyped binary or manifest values.
 const readBinary = async (storage: BinaryStorage, key: string, value: unknown) => {
   const bytes = toBytes(value);
 
@@ -113,6 +111,7 @@ const writeBinary = async (storage: BinaryStorage, key: string, bytes: Uint8Arra
   } satisfies ChunkedBinary);
 };
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Durable Object storage returns untyped binary or manifest values.
 const deleteBinary = async (storage: BinaryStorage, key: string, value: unknown) => {
   if (!toBytes(value)) {
     const chunks = await storage.list({ prefix: chunkPrefix(key) });
@@ -122,7 +121,6 @@ const deleteBinary = async (storage: BinaryStorage, key: string, value: unknown)
 
   await storage.delete(key);
 };
-// oxlint-enable anti-slop/no-unknown-parameters
 
 export const readWorkspaceYDocStorage = async (storage: DurableObjectStorage) => {
   const [meta, snapshot, entries] = await Promise.all([

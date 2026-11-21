@@ -11,18 +11,24 @@ import { WorkspaceYDocDurableObject } from '../../lib/workspaceYDocDurableObject
 import { createSqliteD1Database } from '../helpers/sqliteD1';
 import { createDurableObjectState } from '../helpers/durableObjectState';
 
-const createSocket = (sessionId: string | null = 'session-1') => ({
+const createSocket = (
+  sessionId: string | null = 'session-1',
+  attachmentOverride?:
+    | string
+    | { schemaVersion: 1; workspaceId: number; userId: string; sessionId: string },
+) => ({
   readyState: 1,
   send: vi.fn(),
   close: vi.fn(),
-  deserializeAttachment: () => ({
-    schemaVersion: 1,
-    socketId: 'socket-1',
-    workspaceId: 'ws-1',
-    userId: 'user-1',
-    sessionId,
-    connectedAt: 1,
-  }),
+  deserializeAttachment: () =>
+    attachmentOverride ?? {
+      schemaVersion: 1,
+      socketId: 'socket-1',
+      workspaceId: 'ws-1',
+      userId: 'user-1',
+      sessionId,
+      connectedAt: 1,
+    },
 });
 
 describe('workspace socket authorization', () => {
@@ -132,8 +138,21 @@ describe('workspace socket authorization', () => {
     expect(allowed.send).toHaveBeenCalledTimes(1);
   });
 
-  it('closes legacy attachments without session identity', async () => {
-    const socket = createSocket(null);
+  it.each([
+    ['legacy attachments without session identity', () => createSocket(null)],
+    ['non-object attachments', () => createSocket('session-1', 'corrupt-attachment')],
+    [
+      'attachments with invalid workspaceId',
+      () =>
+        createSocket('session-1', {
+          schemaVersion: 1,
+          workspaceId: 123,
+          userId: 'user-1',
+          sessionId: 'session-1',
+        }),
+    ],
+  ])('closes %s', async (_label, makeSocket) => {
+    const socket = makeSocket();
     await sendUpdate(object, socket, 'rejected');
     expect(socket.close).toHaveBeenCalledWith(1008, 'Workspace access denied');
     expect(socket.send).not.toHaveBeenCalled();

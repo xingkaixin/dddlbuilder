@@ -62,30 +62,37 @@ const decodeActiveSession = (
   return activeState ? { activeSource, activeState, updatedAt: value.updatedAt } : undefined;
 };
 
+export const decodeWorkspaceMigrationSnapshot = (
+  value: unknown,
+): WorkspaceMigrationSnapshot | null => {
+  if (!isRecord(value)) return null;
+
+  const snapshot = decodeWorkspaceSnapshot({
+    ...value,
+    drafts: value.drafts ?? [],
+    folders: value.folders ?? [],
+  });
+  const activeSession = decodeActiveSession(value.activeSession);
+
+  if (!snapshot || activeSession === undefined) return null;
+
+  return { ...snapshot, activeSession };
+};
+
 export const decodeWorkspaceMigrationPayload = (
   value: unknown,
 ): WorkspaceMigrationPayload | null => {
-  if (!isRecord(value) || !isRecord(value.snapshot)) return null;
+  if (!isRecord(value)) return null;
 
   const localFingerprint = readRequiredText(value.localFingerprint);
   const idempotencyKey = readRequiredText(value.idempotencyKey);
+  const snapshot = decodeWorkspaceMigrationSnapshot(value.snapshot);
 
-  if (!localFingerprint || !idempotencyKey) return null;
-
-  const snapshotInput = value.snapshot;
-
-  const snapshot = decodeWorkspaceSnapshot({
-    ...snapshotInput,
-    drafts: snapshotInput.drafts ?? [],
-    folders: snapshotInput.folders ?? [],
-  });
-  const activeSession = decodeActiveSession(snapshotInput.activeSession);
-
-  if (!snapshot || activeSession === undefined) return null;
+  if (!localFingerprint || !idempotencyKey || !snapshot) return null;
 
   return {
     localFingerprint,
     idempotencyKey,
-    snapshot: { ...snapshot, activeSession },
+    snapshot,
   };
 };

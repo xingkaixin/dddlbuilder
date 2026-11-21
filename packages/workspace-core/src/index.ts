@@ -20,7 +20,10 @@ export {
   decodeWorkspaceSnapshot,
   type PersistedStateDecodeMode,
 } from './persistedStateCodec';
-export { decodeWorkspaceMigrationPayload } from './workspaceMigrationCodec';
+export {
+  decodeWorkspaceMigrationPayload,
+  decodeWorkspaceMigrationSnapshot,
+} from './workspaceMigrationCodec';
 export {
   encodeWorkspaceYDocAcknowledgement,
   encodeWorkspaceYDocSyncMessage,

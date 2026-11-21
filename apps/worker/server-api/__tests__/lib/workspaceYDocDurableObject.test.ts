@@ -8,10 +8,7 @@ import {
   encodeWorkspaceYDocTrackedSyncMessage,
   readWorkspaceYDocMessageHeader,
 } from '@ddlbuilder/workspace-core';
-import type {
-  WorkspaceMigrationSnapshot,
-  WorkspaceSnapshot,
-} from '@ddlbuilder/shared-types/workspace';
+import type { WorkspaceMigrationSnapshot } from '@ddlbuilder/shared-types/workspace';
 import type { WorkspaceMigrationResult } from '@ddlbuilder/shared-types/api';
 import type { ApiEnv } from '../../lib/context.js';
 import { createDurableObjectState } from '../helpers/durableObjectState';
@@ -45,8 +42,9 @@ const createState = (tableName: string): PersistedState => ({
   foreignKeys: [],
 });
 
-const createSnapshot = (tableName: string, updatedAt = 2): WorkspaceSnapshot => ({
+const createSnapshot = (tableName: string, updatedAt = 2): WorkspaceMigrationSnapshot => ({
   globalDraft: null,
+  activeSession: null,
   drafts: [
     {
       draftId: 'default',
@@ -476,8 +474,9 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       store.set(String(key), value);
     });
 
-    const snapshot: WorkspaceSnapshot = {
+    const snapshot: WorkspaceMigrationSnapshot = {
       globalDraft: null,
+      activeSession: null,
       drafts: [],
       savedDrafts: [],
       folders: [],
@@ -1121,5 +1120,29 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
 
     expect(ws.close).toHaveBeenCalledWith(1008, 'Workspace access denied');
     expect(ws.send).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['malformed JSON', '{invalid'],
+    ['invalid migration snapshot', JSON.stringify({ globalDraft: null, savedTables: 'invalid' })],
+  ])('rejects /migrate with %s', async (_label, body) => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const initDoc = new Y.Doc();
+    initDoc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(initDoc));
+    initDoc.destroy();
+
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+
+    const response = await durableObject.fetch(
+      createRequest('/api/workspaces/ws-1/yjs/migrate', {
+        method: 'POST',
+        body,
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(state.storage.put).not.toHaveBeenCalled();
   });
 });
