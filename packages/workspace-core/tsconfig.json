@@ -1,8 +1,4 @@
 {
-  "extends": "@ddlbuilder/tsconfig/base.json",
-  "compilerOptions": {
-    "lib": ["ES2022"],
-    "noEmit": true
-  },
+  "extends": "@ddlbuilder/tsconfig/wintercg.json",
   "include": ["src"]
 }

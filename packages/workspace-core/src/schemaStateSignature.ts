@@ -16,19 +16,11 @@ import { toSchemaDocumentState } from '@ddlbuilder/shared-types';
 
 type JsonLike = Record<string, unknown>;
 
-type TextEncoderRuntime = typeof globalThis & {
-  TextEncoder: new () => {
-    encode: (input: string) => Uint8Array;
-  };
-};
-
-let cachedTextEncoder: { encode: (input: string) => Uint8Array } | null = null;
+let cachedTextEncoder: TextEncoder | null = null;
 
 const encodeUtf8 = (input: string): Uint8Array => {
   if (!cachedTextEncoder) {
-    // SAFETY: browser and Worker runtimes provide globalThis.TextEncoder.
-    const runtime = globalThis as TextEncoderRuntime;
-    cachedTextEncoder = new runtime.TextEncoder();
+    cachedTextEncoder = new TextEncoder();
   }
 
   return cachedTextEncoder.encode(input);
