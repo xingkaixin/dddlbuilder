@@ -7,10 +7,9 @@ import { getRequestLogger } from './logging.js';
 const REQUEST_ID_CONTEXT_KEY = 'requestId';
 
 export const getRequestId = (c: Context<ApiEnv>): string | undefined => {
-  const value = c.get(REQUEST_ID_CONTEXT_KEY);
+  const value = c.get(REQUEST_ID_CONTEXT_KEY)?.trim();
 
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Hono context values are untyped at this request boundary.
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+  return value || undefined;
 };
 
 export const withMeta = <T extends object>(
