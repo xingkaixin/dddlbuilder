@@ -122,7 +122,6 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       lines.push(`    ${propertyName} = Column(${args.join(', ')})`);
     }
 
-    // Indexes
     for (const idx of indexes) {
       if (idx.kind === 'primary') continue;
       const fieldNames = idx.fields.map((f) => `'${escapePythonString(f.name)}'`).join(', ');

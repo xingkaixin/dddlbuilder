@@ -10,7 +10,6 @@ export interface DatabaseTypeMapping {
   [canonicalType: string]: TypeMappingRule;
 }
 
-// SQL type names are open parser tokens; this map intentionally owns the dynamic lookup contract.
 // oxlint-disable-next-line anti-slop/no-known-value-widening -- each dialect accepts arbitrary canonical type-name keys.
 const FAMILY_TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
   mysql: {
@@ -152,7 +151,6 @@ const FAMILY_TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
   },
 
   dm: {
-    // 字符串类型
     varchar: { mapping: 'varchar', defaultArgs: ['255'] },
     nvarchar: { mapping: 'varchar', defaultArgs: ['255'] },
     char: { mapping: 'char', defaultArgs: ['1'] },
@@ -161,7 +159,6 @@ const FAMILY_TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     mediumtext: { mapping: 'clob' },
     longtext: { mapping: 'clob' },
 
-    // 整数类型
     int: { mapping: 'int' },
     tinyint: { mapping: 'tinyint', defaultArgs: ['1'] },
     smallint: { mapping: 'smallint' },
@@ -180,23 +177,18 @@ const FAMILY_TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     time: { mapping: 'time', maxArgs: 1 },
     timetz: { mapping: 'time', maxArgs: 1 },
 
-    // 布尔类型（达梦使用 NUMBER(1)）
     boolean: { mapping: 'number', defaultArgs: ['1'] },
     bit: { mapping: 'bit', defaultArgs: ['1'] },
 
-    // 大对象类型
     blob: { mapping: 'blob' },
     varbinary: { mapping: 'varbinary', maxArgs: 1 },
 
-    // UUID 类型
     uuid: { mapping: 'char', defaultArgs: ['36'] },
 
-    // 自增列类型
     serial: {
       transform: (_parsed) => 'BIGINT IDENTITY(1,1)',
     },
 
-    // JSON 类型
     json: { mapping: 'json' },
     jsonb: { mapping: 'json' },
   },

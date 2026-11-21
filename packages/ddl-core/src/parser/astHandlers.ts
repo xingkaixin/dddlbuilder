@@ -35,8 +35,6 @@ import { unquoteSqlIdentifier } from '../utils/sqlIdentifiers.js';
 import type { DatabaseFamily } from '../utils/databaseFamily.js';
 import { SqlParseError } from './SqlParseError.js';
 
-// This module is the node-sql-parser AST adapter. Runtime field inspection stays here until
-// values are converted into the shared domain result types.
 // oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 const MYSQL_ENGINE_NAME_MAP = new Map([
   ['innodb', 'InnoDB'],
@@ -218,14 +216,12 @@ function mapColumnToField(
   const name = normalizeColumnName(colDef.column);
   const typeStr = buildTypeString(colDef.definition, serializeExpression, databaseFamily);
 
-  // Comment
   let comment = '';
 
   if (colDef.comment) {
     comment = normalizeLiteral(colDef.comment.value.value);
   }
 
-  // Nullable
   let nullable = true;
 
   if (colDef.nullable) {
@@ -240,7 +236,6 @@ function mapColumnToField(
     nullable = false;
   }
 
-  // Default
   let defaultKind: NormalizedField['defaultKind'] = 'none';
   let defaultValue = '';
 
@@ -296,13 +291,11 @@ function mapColumnToField(
     }
   }
 
-  // Auto Increment
   if (colDef.auto_increment || colDef.generated_by_default) {
     defaultKind = 'auto_increment';
     defaultValue = '';
   }
 
-  // On Update
   let onUpdate: NormalizedField['onUpdate'] = 'none';
 
   const onUpdateSource =
@@ -330,7 +323,6 @@ export function parseCreateTable(
   serializeExpression: (value: unknown) => string,
   databaseFamily?: DatabaseFamily,
 ) {
-  // 1. Table Name
   if (stmt.table && stmt.table.length > 0) {
     const schema = stmt.table[0].db || stmt.table[0].schema || '';
 
@@ -341,7 +333,6 @@ export function parseCreateTable(
     result.tableName = stmt.table[0].table;
   }
 
-  // 2. Table Comment
   if (stmt.table_options) {
     const tableMiscConfig = {
       enabled: false,
@@ -401,14 +392,12 @@ export function parseCreateTable(
     }
   }
 
-  // 3. Columns & Inline Indexes
   if (stmt.create_definitions) {
     stmt.create_definitions.forEach((def) => {
       if (def.resource === 'column') {
         const field = mapColumnToField(def, serializeExpression, databaseFamily);
         result.fields.push(field);
 
-        // Handle inline primary key / unique
         if (def.primary_key) {
           pushPrimaryKey(
             result,
@@ -458,7 +447,6 @@ export function parseCreateIndex(
   const indexName = stmt.index;
   const tableName = stmt.table.table;
 
-  // Only process if table name matches (simple validation)
   const effectiveTableName = targetTableName ?? result.tableName;
 
   if (effectiveTableName && tableName !== effectiveTableName) {
@@ -487,7 +475,6 @@ export function parseAlterTable(
   result: ParsedResult,
   targetTableName?: string,
 ) {
-  // Basic support for ALTER TABLE ADD PRIMARY KEY / INDEX / FOREIGN KEY
   if (!stmt.expr || !Array.isArray(stmt.expr)) return;
 
   const alterTargetTable = Array.isArray(stmt.table) ? undefined : stmt.table?.table;

@@ -56,7 +56,6 @@ const stripTrailingConstraints = (type: string): string => {
   return tokens.slice(0, end).join(' ');
 };
 
-// 辅助函数：处理UNSIGNED后缀
 const parseUnsigned = (type: string) => {
   const isUnsigned = type.toLowerCase().endsWith('unsigned');
   const clean = isUnsigned ? type.replace(/\s+unsigned$/gi, '').trim() : type;
@@ -64,7 +63,6 @@ const parseUnsigned = (type: string) => {
   return { clean, isUnsigned };
 };
 
-// 辅助函数：提取类型名称和参数
 const extractTypeAndArgs = (type: string): { baseType: string; args: string[] } | null => {
   const match = type.match(TYPE_WITH_ARGS);
 
@@ -77,9 +75,7 @@ const extractTypeAndArgs = (type: string): { baseType: string; args: string[] } 
   return { baseType: cleanBaseType, args };
 };
 
-// 辅助函数：处理特殊情况
 const handleSpecialCases = (type: string): ParsedFieldType => {
-  // 处理空字符串
   if (type === '') {
     return {
       baseType: '',
@@ -89,7 +85,6 @@ const handleSpecialCases = (type: string): ParsedFieldType => {
     };
   }
 
-  // 处理 "()"
   if (type === '()') {
     return {
       baseType: '',
@@ -99,7 +94,6 @@ const handleSpecialCases = (type: string): ParsedFieldType => {
     };
   }
 
-  // 处理缺少开括号的情况，如 "varchar255)"
   const cleanBaseType = type.replace(/\)$/, '').toLowerCase();
 
   return {
@@ -110,12 +104,10 @@ const handleSpecialCases = (type: string): ParsedFieldType => {
   };
 };
 
-// 辅助函数：标准化参数数组
 const normalizeArgs = (args: string[]): string[] => {
   return args.map((arg) => (arg.toLowerCase().trim() === 'max' ? 'max' : arg.trim()));
 };
 
-// 辅助函数：创建空字段类型
 const createEmptyField = (): ParsedFieldType => ({
   baseType: '',
   args: [],
@@ -126,27 +118,22 @@ const createEmptyField = (): ParsedFieldType => ({
 export const parseFieldType = (rawType: string): ParsedFieldType => {
   const clean = rawType.trim();
 
-  // 处理空字符串
   if (clean === '') {
     return createEmptyField();
   }
 
   const withoutConstraints = stripTrailingConstraints(clean);
 
-  // 处理UNSIGNED后缀
   const { clean: withoutUnsigned, isUnsigned } = parseUnsigned(withoutConstraints);
 
-  // 尝试提取类型名称和参数
   const extracted = extractTypeAndArgs(withoutUnsigned);
 
   if (!extracted) {
-    // 处理特殊情况（如 "()" 或 "varchar255)"）
     const specialCase = handleSpecialCases(withoutConstraints);
 
     return { ...specialCase, unsigned: isUnsigned, raw: clean };
   }
 
-  // 正常情况：标准化参数并返回结果
   return {
     baseType: extracted.baseType,
     args: normalizeArgs(extracted.args),
@@ -161,7 +148,6 @@ export const getCanonicalBaseType = (fieldType: string): string => {
   return canonicalizeBaseType(parsed.baseType);
 };
 
-// 保留原有的支持函数以保持向后兼容
 const INTEGER_TYPES = new Set(['tinyint', 'smallint', 'int', 'integer', 'bigint']);
 
 const NUMERIC_TYPES = new Set([

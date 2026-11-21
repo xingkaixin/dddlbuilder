@@ -1,12 +1,5 @@
 import type { PreprocessResult } from './types.js';
 
-/**
- * Preprocess SQL Server SQL for parsing
- *
- * Handles:
- * - Extract and remove sp_addextendedproperty EXEC statements
- * - Parse MS_Description extended properties for table/column comments
- */
 export function preprocessSqlServer(sql: string): PreprocessResult {
   sql = sql
     .replace(/EXEC\s+sys\.sp_executesql\s+N'((?:[^']|'')*)'\s*;/gi, (_match, batch: string) =>

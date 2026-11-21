@@ -53,10 +53,6 @@ function orderFieldRenames(fields: TableDiff['fields'], dbType: DatabaseType) {
   return ordered.length === renames.length ? ordered : null;
 }
 
-/**
- * ALTER DDL 生成器
- * 根据 TableDiff 生成各数据库的 ALTER TABLE 语句
- */
 export function generateAlterDDL(diff: TableDiff): string {
   if (!hasTableChanges(diff)) {
     return '';
@@ -132,7 +128,6 @@ export function generateAlterDDL(diff: TableDiff): string {
     statements.push(generateRenameTable(oldTableName, activeTableName, dbType));
   }
 
-  // 表注释变更 (某些数据库支持)
   if (diff.tableCommentChanged) {
     const commentSql = generateTableCommentAlter(
       activeTableName,
@@ -169,7 +164,6 @@ export function generateAlterDDL(diff: TableDiff): string {
       statements.push(generateDropIndex(activeTableName, idxDiff, dbType));
     }
 
-    // 2. 处理删除的字段
     for (const fieldDiff of diff.fields.filter((f) => f.type === 'remove')) {
       statements.push(generateDropColumn(activeTableName, fieldDiff, dbType));
     }
@@ -190,23 +184,19 @@ export function generateAlterDDL(diff: TableDiff): string {
       }
     }
 
-    // 4. 处理新增的字段
     for (const fieldDiff of diff.fields.filter((f) => f.type === 'add')) {
       statements.push(generateAddColumn(activeTableName, fieldDiff, dbType));
     }
 
-    // 5. 处理修改的字段
     for (const fieldDiff of diff.fields.filter((f) => f.type === 'modify')) {
       statements.push(generateModifyColumn(activeTableName, fieldDiff, dbType));
     }
 
-    // 6. 处理新增的索引
     for (const idxDiff of indexes.filter((i) => i.type === 'add')) {
       statements.push(generateAddIndex(activeTableName, idxDiff, dbType));
     }
   }
 
-  // 7. 处理新增的外键
   for (const fkDiff of foreignKeys.filter((f) => f.type === 'add')) {
     statements.push(generateAddForeignKey(activeTableName, fkDiff, dbType));
   }

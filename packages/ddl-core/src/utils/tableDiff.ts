@@ -17,14 +17,8 @@ import { supportsMysqlPartition } from './databaseFamily';
 import { resolveFieldComment } from './fieldComment';
 import { getSqlIdentifierKey } from './sqlIdentifiers';
 
-/**
- * 字段变更类型
- */
 export type FieldDiffType = 'add' | 'remove' | 'modify' | 'rename';
 
-/**
- * 字段属性变更类型
- */
 export type FieldChangeType = 'type' | 'nullable' | 'default' | 'comment';
 
 export type FieldChanges = readonly [FieldChangeType, ...FieldChangeType[]];
@@ -69,40 +63,22 @@ export type RenameFieldDiff = {
   changes?: FieldChanges;
 };
 
-/**
- * 字段变更详情
- */
 export type FieldDiff = AddFieldDiff | RemoveFieldDiff | ModifyFieldDiff | RenameFieldDiff;
 
-/**
- * 索引变更类型
- */
 export type IndexDiffType = 'add' | 'remove';
 
-/**
- * 索引变更详情
- */
 export type IndexDiff = {
   type: IndexDiffType;
   index: IndexDefinition;
 };
 
-/**
- * 外键变更类型
- */
 export type ForeignKeyDiffType = 'add' | 'remove';
 
-/**
- * 外键变更详情
- */
 export type ForeignKeyDiff = {
   type: ForeignKeyDiffType;
   foreignKey: ForeignKeyDefinition;
 };
 
-/**
- * 表结构变更汇总
- */
 export type ManualSchemaChange =
   | 'objectType'
   | 'dbType'
@@ -146,11 +122,6 @@ export function hasTableChanges(diff: TableDiff): boolean {
   );
 }
 
-/**
- * 将 FieldRow 转换为 NormalizedField
- *
- * 作为共享包不能假设调用方已把历史中文枚举值归一化，这里重新收敛一次。
- */
 type DiffField = {
   id: string | null;
   field: NormalizedField;
@@ -178,9 +149,6 @@ function normalizeFieldRow(row: FieldRow): DiffField | null {
   };
 }
 
-/**
- * 从 PersistedState 中提取有效字段列表
- */
 function extractFields(state: PersistedState): DiffField[] {
   if (!state.rows) return [];
 
@@ -193,9 +161,6 @@ const stableTypeKey = (type: string) => {
   return JSON.stringify([parsed.baseType, parsed.args, parsed.unsigned]);
 };
 
-/**
- * 获取两个字段之间的差异
- */
 function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): FieldChangeType[] {
   const changes: FieldChangeType[] = [];
 
@@ -360,9 +325,6 @@ function normalizeMiscConfig(config?: TableMiscConfig): TableMiscConfig {
   };
 }
 
-/**
- * 生成索引的唯一标识（用于比较）
- */
 function getIndexSignature(index: IndexDefinition, dbType: PersistedState['dbType']): string {
   const prefix =
     index.kind === 'primary'
@@ -434,9 +396,6 @@ function getManualSchemaChanges(
   return changes;
 }
 
-/**
- * 对比两个 PersistedState，生成变更详情
- */
 export function diffPersistedState(oldState: PersistedState, newState: PersistedState): TableDiff {
   const dbType = newState.dbType;
 
@@ -456,7 +415,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     foreignKeys: [],
   };
 
-  // 1. 表名变更
   if (
     getSqlIdentifierKey(result.oldSchemaName || '', dbType) !==
     getSqlIdentifierKey(result.newSchemaName || '', dbType)
@@ -473,7 +431,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     result.newTableName = newTableName;
   }
 
-  // 2. 表注释变更
   const oldTableComment = oldState.tableComment?.trim() || '';
   const newTableComment = newState.tableComment?.trim() || '';
 
@@ -483,7 +440,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     result.newTableComment = newTableComment;
   }
 
-  // 2.5 杂项设置变更
   const oldMiscConfig = normalizeMiscConfig(oldState.tableMiscConfig);
   const newMiscConfig = normalizeMiscConfig(newState.tableMiscConfig);
 
@@ -493,12 +449,10 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     result.newMiscConfig = newMiscConfig;
   }
 
-  // 3. 字段变更
   const oldFields = extractFields(oldState);
   const newFields = extractFields(newState);
   result.fields = diffFields(oldFields, newFields, dbType);
 
-  // 4. 索引变更
   const oldIndexes = oldState.indexes || [];
   const newIndexes = newState.indexes || [];
 
@@ -514,7 +468,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     newIndexSigs.set(getIndexSignature(idx, dbType), idx);
   }
 
-  // 检测删除的索引
   for (const [sig, idx] of oldIndexSigs) {
     if (!newIndexSigs.has(sig)) {
       result.indexes.push({ type: 'remove', index: idx });
@@ -523,14 +476,12 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     }
   }
 
-  // 检测新增的索引
   for (const [sig, idx] of newIndexSigs) {
     if (!oldIndexSigs.has(sig)) {
       result.indexes.push({ type: 'add', index: idx });
     }
   }
 
-  // 5. 外键变更
   const oldForeignKeys = (oldState.foreignKeys || []).filter((fk) => !fk.logical);
   const newForeignKeys = (newState.foreignKeys || []).filter((fk) => !fk.logical);
 
@@ -546,7 +497,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     newFkSigs.set(getForeignKeySignature(fk, dbType), fk);
   }
 
-  // 检测删除的外键
   for (const [sig, fk] of oldFkSigs) {
     if (!newFkSigs.has(sig)) {
       result.foreignKeys.push({ type: 'remove', foreignKey: fk });
@@ -555,7 +505,6 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     }
   }
 
-  // 检测新增的外键
   for (const [sig, fk] of newFkSigs) {
     if (!oldFkSigs.has(sig)) {
       result.foreignKeys.push({ type: 'add', foreignKey: fk });

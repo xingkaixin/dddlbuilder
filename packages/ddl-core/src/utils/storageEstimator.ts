@@ -18,9 +18,6 @@ export interface StorageProfile {
   };
 }
 
-/**
- * 估算常用类型的字节占用
- */
 function getFieldSize(type: string, dbType: DatabaseType): number {
   const { baseType, args } = parseFieldType(type);
   const canonicalType = canonicalizeBaseType(baseType);
@@ -57,7 +54,7 @@ function getFieldSize(type: string, dbType: DatabaseType): number {
     return 32;
   }
 
-  return 8; // 默认
+  return 8;
 }
 
 // 同族数据库行开销公式一致，仅字段大小按各自 dbType 计算（getFieldSize 按 family 分支，同族等价）
@@ -234,10 +231,6 @@ export function estimateStorage(
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Storage Breakdown: raw data + index + redundancy
-// ─────────────────────────────────────────────────────────────────────────────
-
 export interface StorageBreakdown {
   dbName: string;
   rowOverhead: number;
@@ -260,7 +253,6 @@ const CLUSTERED_DATABASES = new Set<DatabaseType>([
   'oceanbase',
 ]);
 
-// Physical row locator size for non-clustered (heap) databases
 const HEAP_LOCATOR_SIZES: Partial<Record<DatabaseType, number>> = {
   oracle: 10,
   dm: 10,
@@ -280,7 +272,6 @@ const INDEX_STORAGE_FACTORS: Partial<Record<DatabaseType, number>> = {
   'oceanbase-oracle': 0.3,
 };
 
-// Fraction of (rawData + index) bytes added as redundancy overhead
 const REDUNDANCY_FACTORS = {
   mysql: 0.3,
   mariadb: 0.3,
@@ -345,7 +336,6 @@ function computeIndexBytesPerRow(
             return sum + (field ? getFieldSize(field.type, dbType) : 8);
           }, 0);
 
-    // Row locator: PK columns (clustered) or physical row ID (heap)
     const locator = isClustered ? pkKeySize : getHeapLocatorSize(dbType);
     const entrySize = (keySize + locator + BTREE_ENTRY_OVERHEAD) * BTREE_OVERHEAD;
     totalBytesPerRow += entrySize;

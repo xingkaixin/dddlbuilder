@@ -21,9 +21,6 @@ export interface ConfiguredTableDDL {
 }
 
 export interface DDLStrategy {
-  /**
-   * 生成表的CREATE DDL语句
-   */
   generateTableDDL(
     tableName: string,
     tableComment: string,
@@ -33,9 +30,6 @@ export interface DDLStrategy {
     indexes?: IndexDefinition[],
   ): string;
 
-  /**
-   * 生成外键约束的DDL语句
-   */
   generateForeignKeyDDL(tableName: string, fk: ForeignKeyDefinition): string;
 
   applyTableFeatures(
@@ -44,18 +38,9 @@ export interface DDLStrategy {
     config: TableFeatureConfig,
   ): ConfiguredTableDDL;
 
-  /**
-   * 格式化表名（处理schema、引号等）
-   */
   formatTableName(tableName: string): string;
 
-  /**
-   * 格式化字段名（添加引号等）
-   */
   formatFieldName(fieldName: string): string;
 
-  /**
-   * 获取数据库类型
-   */
   getDatabaseType(): DatabaseType;
 }

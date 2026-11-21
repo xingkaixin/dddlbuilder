@@ -1,10 +1,3 @@
-/**
- * Common types for SQL preprocessors
- */
-
-/**
- * Result from preprocessing SQL before parsing
- */
 export type PreprocessedTableMetadata = {
   tableName: string;
   tableComment: string;
@@ -12,10 +5,7 @@ export type PreprocessedTableMetadata = {
 };
 
 export type PreprocessResult = {
-  /** Normalized SQL ready for parsing */
   sql: string;
-  /** Extracted comments grouped by their owning table */
   tableMetadata: PreprocessedTableMetadata[];
-  /** Parser-safe placeholders mapped back to their original SQL spelling. */
   identifierMappings?: ReadonlyMap<string, string>;
 };
