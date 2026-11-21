@@ -121,6 +121,33 @@ describe('share api', () => {
     expect(mockKV.put.mock.calls[0][2]).toEqual({ expirationTtl: 604800 });
   });
 
+  it.each([null, [], {}, { state: null }])(
+    '创建分享时缺少 state 或请求体非对象应返回 SHARE_STATE_REQUIRED: %j',
+    async (payload) => {
+      const response = await app.request('https://ddlbuilder.test/api/share', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      expect(response.status).toBe(400);
+      expect(await readPayload(response)).toMatchObject({ code: 'SHARE_STATE_REQUIRED' });
+      expect(mockKV.put).not.toHaveBeenCalled();
+    },
+  );
+
+  it('创建分享时 state 结构非法应返回 SHARE_STATE_INVALID', async () => {
+    const response = await app.request('https://ddlbuilder.test/api/share', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ state: 'not-an-object' }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(await readPayload(response)).toMatchObject({ code: 'SHARE_STATE_INVALID' });
+    expect(mockKV.put).not.toHaveBeenCalled();
+  });
+
   it('应读取分享内容', async () => {
     const state = buildState();
     mockKV.get.mockResolvedValueOnce(JSON.stringify(state));

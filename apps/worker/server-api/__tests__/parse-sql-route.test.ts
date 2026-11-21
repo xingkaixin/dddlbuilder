@@ -100,4 +100,24 @@ describe('parse-sql route', () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ code: 'SQL_PARSE_FAILED' });
   });
+
+  it.each([
+    [null, 'SQL_REQUIRED'],
+    [[], 'SQL_REQUIRED'],
+    [{ dbType: 'mysql' }, 'SQL_REQUIRED'],
+    [{ sql: '   ', dbType: 'hive' }, 'SQL_REQUIRED'],
+    [{ sql: 'x'.repeat(50_001), dbType: 'hive' }, 'SQL_TOO_LONG'],
+  ])('按契约优先级校验非法请求体 %j -> %s', async (payload, code) => {
+    const response = await app.fetch(
+      createRequest('/api/parse-sql', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code });
+  });
 });

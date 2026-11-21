@@ -25,27 +25,27 @@ const PARSE_SQL_RATE_LIMIT = {
   windowMs: 60 * 1000,
 } as const;
 
+const SqlTextEnvelopeSchema = Schema.Struct({
+  sql: Schema.String.check(Schema.makeFilter((value) => value.trim().length > 0)),
+});
+
 function validateSqlPayload(
   parsed: JsonBodyResult<unknown>,
   c: Parameters<typeof errorResponse>[0],
 ) {
   if (!parsed.ok) return { errorResponse: parsed.response };
 
-  const body = parsed.data;
-  // oxlint-disable anti-slop/no-runtime-typeof -- raw JSON must be narrowed before reading the SQL field.
+  const decoded = Schema.decodeUnknownOption(SqlParseRequestSchema)(parsed.data);
 
-  const sql =
-    body && typeof body === 'object' && !Array.isArray(body) && 'sql' in body
-      ? body.sql
-      : undefined;
-  // oxlint-enable anti-slop/no-runtime-typeof
+  if (Option.isSome(decoded)) return decoded.value;
 
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the JSON body remains unknown until the request schema decoder below.
-  if (typeof sql !== 'string' || sql.trim().length === 0) {
+  const sqlEnvelope = Schema.decodeUnknownOption(SqlTextEnvelopeSchema)(parsed.data);
+
+  if (Option.isNone(sqlEnvelope)) {
     return { errorResponse: errorResponse(c, 400, 'SQL is required', 'SQL_REQUIRED') };
   }
 
-  if (sql.length > MAX_SQL_LENGTH) {
+  if (sqlEnvelope.value.sql.length > MAX_SQL_LENGTH) {
     return {
       errorResponse: errorResponse(
         c,
@@ -56,15 +56,9 @@ function validateSqlPayload(
     };
   }
 
-  const decoded = Schema.decodeUnknownOption(SqlParseRequestSchema)(parsed.data);
-
-  if (Option.isNone(decoded)) {
-    return {
-      errorResponse: errorResponse(c, 400, 'Invalid database type', 'INVALID_DATABASE_TYPE'),
-    };
-  }
-
-  return decoded.value;
+  return {
+    errorResponse: errorResponse(c, 400, 'Invalid database type', 'INVALID_DATABASE_TYPE'),
+  };
 }
 
 export function registerParseSqlRoute(app: Hono<ApiEnv>) {
