@@ -1,11 +1,6 @@
 import { useCallback, useMemo, useReducer } from 'react';
 import type { DatabaseType, IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types';
-import {
-  estimateStorage,
-  estimateStorageBreakdown,
-  type StorageBreakdown,
-  type StorageResult,
-} from '@ddlbuilder/ddl-core';
+import { estimateStorageBreakdown, type StorageBreakdown } from '@ddlbuilder/ddl-core';
 
 interface SizeDisplay {
   value: number;
@@ -43,11 +38,6 @@ export function useStorageEstimation(
     [],
   );
 
-  // Legacy result kept for backward compatibility
-  const result = useMemo<StorageResult>(() => {
-    return estimateStorage(dbType, fields, storageFormat);
-  }, [dbType, fields, storageFormat]);
-
   const breakdown = useMemo<StorageBreakdown>(() => {
     return estimateStorageBreakdown(dbType, fields, indexes, storageFormat);
   }, [dbType, fields, indexes, storageFormat]);
@@ -75,7 +65,6 @@ export function useStorageEstimation(
   return {
     estimateRows,
     setEstimateRows,
-    result,
     breakdown,
     rawDataBytes,
     indexBytes,

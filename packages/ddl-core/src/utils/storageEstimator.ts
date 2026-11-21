@@ -240,6 +240,8 @@ export function estimateStorage(
 
 export interface StorageBreakdown {
   dbName: string;
+  rowOverhead: number;
+  dataSize: number;
   rawDataPerRow: number;
   indexPerRow: number;
   redundancyPerRow: number;
@@ -390,6 +392,8 @@ export function estimateStorageBreakdown(
 
   return {
     dbName: storageResult.dbName,
+    rowOverhead: storageResult.rowOverhead,
+    dataSize: storageResult.dataSize,
     rawDataPerRow,
     indexPerRow,
     redundancyPerRow,
