@@ -131,14 +131,17 @@ describe('workspace binary storage', () => {
     },
   );
 
-  it.each(['missing-chunk', 'invalid-length'])(
+  it.each(['missing-chunk', 'invalid-length', 'primitive-manifest', 'invalid-chunk-count'])(
     'rejects a %s instead of loading partial state',
     async (corruption) => {
       const { state, store } = createDurableObjectState();
       await compactWorkspaceYDocStorage(state.storage, largeBinary(), meta());
 
       if (corruption === 'missing-chunk') store.delete('chunk:snapshot:0');
-      else {
+      else if (corruption === 'primitive-manifest') store.set('snapshot', 'corrupted-manifest');
+      else if (corruption === 'invalid-chunk-count') {
+        store.set('snapshot', { version: 1, chunks: 0, byteLength: 1024 });
+      } else {
         // SAFETY: the corrupted snapshot was written as an object by the preceding compaction.
         store.set('snapshot', {
           ...(store.get('snapshot') as object),
