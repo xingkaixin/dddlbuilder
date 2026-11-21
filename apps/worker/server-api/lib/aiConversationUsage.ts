@@ -51,7 +51,6 @@ type CallAttempt = {
   completed_at: number | null;
   user_id: string;
   usage_status: string | null;
-  usage_attempt_count: number | null;
 };
 
 const chargedCallTokens = (call: CallAttempt) => {
@@ -113,7 +112,7 @@ export const assertAIOperationAccess = (operation: AIOperationAccess) => {
 
 const readCallAttempts = async (env: ApiEnv['Bindings'], operationId: string) => {
   const { results } = await env.USER_DB.prepare(`
-    SELECT a.*, o.user_id, u.status AS usage_status, u.attempt_count AS usage_attempt_count
+    SELECT a.*, o.user_id, u.status AS usage_status
     FROM ai_call_attempts a
     JOIN ai_operations o ON o.id = a.operation_id
     LEFT JOIN usage_events u ON u.id = a.usage_id
@@ -145,14 +144,6 @@ const settleCallAttempts = async (
 
     // A crash after a terminal status leaves only the budget open, and Cron reconciles that.
     if (!call.usage_status || isTerminalAIUsageStatus(call.usage_status)) continue;
-
-    // Admission sets both fields atomically; this repairs calls admitted before that batch.
-    if (call.dispatched_at !== null && call.usage_attempt_count === 0)
-      await env.USER_DB.prepare(
-        "UPDATE usage_events SET attempt_count = 1 WHERE id = ? AND status = 'reserved' AND attempt_count = 0",
-      )
-        .bind(call.usage_id)
-        .run();
 
     const reservation = {
       usageEventId: call.usage_id,
