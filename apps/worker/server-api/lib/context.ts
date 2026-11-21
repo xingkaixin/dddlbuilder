@@ -41,7 +41,6 @@ export type ApiEnv = {
     ANTHROPIC_API_KEY?: string;
     WORKSPACE_YDOC?: WorkerBindings['WORKSPACE_YDOC'];
     EVLOG_REQUEST_LOG?: WorkerRequestLogger;
-    // Environment variables
     ENVIRONMENT?: string;
     CORS_ALLOWED_ORIGINS?: string;
     BETTER_AUTH_SECRET?: string;
@@ -117,7 +116,6 @@ export const ENV_VARIABLE_KEYS = [
   'ADMIN_SESSION_SECRET',
 ] as const satisfies readonly EnvVariableKey[];
 
-// 编译期断言：新增 Bindings 环境变量而未列入 ENV_VARIABLE_KEYS 时在此报错
 const _envKeysCovered: Exclude<EnvVariableKey, (typeof ENV_VARIABLE_KEYS)[number]> extends never
   ? true
   : never = true;

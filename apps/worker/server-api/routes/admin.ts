@@ -71,8 +71,6 @@ const revokeUserSessionsOrError = async (c: Context<ApiEnv>, userId: string) => 
 };
 
 export function registerAdminRoutes(app: Hono<ApiEnv>) {
-  // ─── Session management ──────────────────────────────────────────
-
   app.post('/admin/session', async (c) => {
     const limited = await enforceIpRateLimit(
       c,
@@ -116,8 +114,6 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     return c.json(Schema.decodeUnknownSync(AdminSessionResponseSchema)({ authenticated: valid }));
   });
 
-  // ─── User management ─────────────────────────────────────────────
-
   app.use('/admin/users', requireAdminSession);
   app.use('/admin/users/*', requireAdminSession);
 
@@ -137,8 +133,6 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
     return c.json(Schema.decodeUnknownSync(AdminUserResponseSchema)(withMeta(c, { user })));
   });
-
-  // ─── User actions ────────────────────────────────────────────────
 
   app.post('/admin/users/:userId/reset-password', async (c) => {
     const userId = c.req.param('userId');
@@ -230,8 +224,6 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     );
   });
 
-  // ─── Credits ─────────────────────────────────────────────────────
-
   app.post('/admin/users/:userId/credits', async (c) => {
     const userId = c.req.param('userId');
 
@@ -296,8 +288,6 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
     return c.json(Schema.decodeUnknownSync(AdminLedgerResponseSchema)(withMeta(c, { items })));
   });
-
-  // ─── Usage events ────────────────────────────────────────────────
 
   app.get('/admin/users/:userId/usage-events', async (c) => {
     const userId = c.req.param('userId');

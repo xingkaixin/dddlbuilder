@@ -507,7 +507,6 @@ export class WorkspaceYDocDurableObject {
     }
   }
 
-  // 登出等撤销事件推送至此：失效授权缓存并立即断开匹配的 socket
   private handleKick(request: Request): Response {
     const sessionId = request.headers.get('x-ddlbuilder-session-id');
     const userId = request.headers.get('x-ddlbuilder-user-id');

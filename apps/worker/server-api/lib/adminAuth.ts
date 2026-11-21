@@ -2,7 +2,7 @@ import type { ApiEnv } from './context.js';
 
 const ADMIN_COOKIE_NAME = 'ddlbuilder_admin_session';
 const ADMIN_COOKIE_PATH = '/api/admin';
-const ADMIN_SESSION_MAX_AGE = 14400; // 4 hours
+const ADMIN_SESSION_MAX_AGE = 14400;
 const ADMIN_SESSION_MAX_AGE_MS = ADMIN_SESSION_MAX_AGE * 1000;
 const ADMIN_SESSION_SECRET_MIN_BYTES = 32;
 const SEPARATOR = '.';
