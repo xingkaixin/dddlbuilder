@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import type { TableDiff, FieldDiff, IndexDiff } from '@ddlbuilder/ddl-core';
 import { generateAlterDDL, generateRollbackDDL, hasTableChanges } from '@ddlbuilder/ddl-core';
 import { cn } from '@/lib/utils';
+import { copyText } from '@/utils/clipboard';
+import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 
 const SqlCodeBlock = lazy(() =>
@@ -133,6 +135,7 @@ const rollbackVisibleReducer = (visible: boolean, _event: 'toggled') => !visible
  */
 export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onCopy }) => {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [showRollback, dispatchRollbackVisible] = useReducer(rollbackVisibleReducer, false);
 
   const alterDDL = useMemo(() => {
@@ -147,27 +150,24 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
     return generateRollbackDDL(diff);
   }, [diff]);
 
-  const handleCopy = useCallback(async () => {
-    if (!alterDDL) return;
+  const copyScript = useCallback(
+    async (script: string) => {
+      if (!script) return;
 
-    try {
-      await navigator.clipboard.writeText(alterDDL);
+      if (!(await copyText(script))) {
+        showToast(t('ddlOutput.copyFailed'));
+
+        return;
+      }
+
       onCopy?.();
-    } catch {
-      // 忽略复制失败
-    }
-  }, [alterDDL, onCopy]);
+    },
+    [onCopy, showToast, t],
+  );
 
-  const handleCopyRollback = useCallback(async () => {
-    if (!rollbackDDL) return;
+  const handleCopy = useCallback(() => copyScript(alterDDL), [alterDDL, copyScript]);
 
-    try {
-      await navigator.clipboard.writeText(rollbackDDL);
-      onCopy?.();
-    } catch {
-      // 忽略复制失败
-    }
-  }, [rollbackDDL, onCopy]);
+  const handleCopyRollback = useCallback(() => copyScript(rollbackDDL), [copyScript, rollbackDDL]);
 
   if (!diff) return null;
 
