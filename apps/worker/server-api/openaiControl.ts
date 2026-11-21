@@ -4,12 +4,6 @@ import { errorResponse } from './lib/http.js';
 import type { AIRouteKey } from './lib/aiRouteKey.js';
 import type { OpenAIConfig } from './lib/openaiConfig.js';
 
-export type OpenAIUsageSnapshot = {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-};
-
 export type GovernanceSnapshot = {
   rateLimitEnabled: boolean;
   rateLimitStore: 'd1';
@@ -157,41 +151,3 @@ export async function enforceOpenAIRateLimit(
     windowMs: rule.windowMs,
   };
 }
-
-// oxlint-disable anti-slop/no-unknown-parameters -- OpenAI stream chunks are untyped SDK payloads decoded at this boundary.
-// oxlint-disable anti-slop/no-runtime-typeof -- field checks validate the external usage payload before use.
-export const readUsageFromStreamChunk = (chunk: unknown): OpenAIUsageSnapshot | null => {
-  if (!chunk || typeof chunk !== 'object') {
-    return null;
-  }
-
-  // SAFETY: the object guard above establishes the chunk record boundary.
-  const usage = (chunk as { usage?: unknown }).usage;
-
-  if (!usage || typeof usage !== 'object') {
-    return null;
-  }
-
-  // SAFETY: the object guard above establishes the usage record boundary.
-  const promptTokens = (usage as { prompt_tokens?: unknown }).prompt_tokens;
-  // SAFETY: the object guard above establishes the usage record boundary.
-  const completionTokens = (usage as { completion_tokens?: unknown }).completion_tokens;
-  // SAFETY: the object guard above establishes the usage record boundary.
-  const totalTokens = (usage as { total_tokens?: unknown }).total_tokens;
-
-  if (
-    typeof promptTokens !== 'number' ||
-    typeof completionTokens !== 'number' ||
-    typeof totalTokens !== 'number'
-  ) {
-    return null;
-  }
-
-  return {
-    promptTokens,
-    completionTokens,
-    totalTokens,
-  };
-};
-// oxlint-enable anti-slop/no-unknown-parameters
-// oxlint-enable anti-slop/no-runtime-typeof
