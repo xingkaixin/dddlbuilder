@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { IDBObjectStore } from 'fake-indexeddb';
 import { STORAGE_KEY } from '@/utils/constants/uiDefaults';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceScope, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
@@ -225,7 +226,7 @@ describe('workspaceStateDb', () => {
     expect(localStorageMock.removeItem).toHaveBeenCalledWith(WORKSPACE_SESSION_STORAGE_KEY);
     expect(localStorageMock.removeItem).toHaveBeenCalledWith(STORAGE_KEY);
   });
-  it('迁移失败时不应删除 legacy 数据', async () => {
+  it('迁移失败时应抛出错误并保留 legacy 数据以供重试', async () => {
     localStorageMock.setItem(
       GLOBAL_DRAFT_STORAGE_KEY,
       JSON.stringify({ state: createState('legacy_keep'), updatedAt: 1 }),
@@ -238,15 +239,116 @@ describe('workspaceStateDb', () => {
       writable: true,
     });
 
-    await migrateLegacyWorkspaceFromLocalStorage();
-
-    Object.defineProperty(globalThis, 'indexedDB', {
-      value: originalIndexedDB,
-      configurable: true,
-      writable: true,
-    });
+    try {
+      await expect(migrateLegacyWorkspaceFromLocalStorage()).rejects.toThrow('IndexedDB 不可用');
+    } finally {
+      Object.defineProperty(globalThis, 'indexedDB', {
+        value: originalIndexedDB,
+        configurable: true,
+        writable: true,
+      });
+    }
 
     expect(localStorageMock.getItem(GLOBAL_DRAFT_STORAGE_KEY)).not.toBeNull();
     expect(localStorageMock.removeItem).not.toHaveBeenCalled();
+
+    await migrateLegacyWorkspaceFromLocalStorage();
+
+    expect((await readDraft(DEFAULT_DRAFT_ID))?.state.tableName).toBe('legacy_keep');
+    expect(localStorageMock.getItem(GLOBAL_DRAFT_STORAGE_KEY)).toBeNull();
+  });
+
+  it('迁移中途写入失败时应整体回滚，避免部分写入跳过后续重试', async () => {
+    localStorageMock.setItem(
+      GLOBAL_DRAFT_STORAGE_KEY,
+      JSON.stringify({ state: createState('global_atomic'), updatedAt: 201 }),
+    );
+    localStorageMock.setItem(
+      SAVED_TABLE_DRAFTS_STORAGE_KEY,
+      JSON.stringify({
+        orders: {
+          state: createState('orders_atomic'),
+          tableName: 'Orders',
+          baseSignature: 'sig_orders',
+          updatedAt: 202,
+        },
+      }),
+    );
+    localStorageMock.setItem(
+      WORKSPACE_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        activeSource: { kind: 'draft', draftId: 'default' },
+        activeState: createState('session_atomic'),
+        updatedAt: 203,
+      }),
+    );
+
+    const originalPut = IDBObjectStore.prototype.put;
+    let putCalls = 0;
+
+    const putSpy = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
+      this: IDBObjectStore,
+      value,
+      key,
+    ) {
+      putCalls += 1;
+
+      if (putCalls === 2) {
+        throw new Error('quota exceeded');
+      }
+
+      return originalPut.call(this, value, key);
+    });
+
+    await expect(migrateLegacyWorkspaceFromLocalStorage()).rejects.toThrow('quota exceeded');
+    putSpy.mockRestore();
+
+    expect(await readDraft(DEFAULT_DRAFT_ID)).toBeNull();
+    expect(await listSavedDrafts()).toEqual({});
+    expect(await readWorkspaceSession()).toBeNull();
+    expect(localStorageMock.getItem(GLOBAL_DRAFT_STORAGE_KEY)).not.toBeNull();
+    expect(localStorageMock.getItem(SAVED_TABLE_DRAFTS_STORAGE_KEY)).not.toBeNull();
+    expect(localStorageMock.getItem(WORKSPACE_SESSION_STORAGE_KEY)).not.toBeNull();
+    expect(localStorageMock.removeItem).not.toHaveBeenCalled();
+
+    await migrateLegacyWorkspaceFromLocalStorage();
+
+    expect((await readDraft(DEFAULT_DRAFT_ID))?.state.tableName).toBe('global_atomic');
+    expect(await listSavedDrafts()).toMatchObject({
+      orders: { tableName: 'Orders', baseSignature: 'sig_orders' },
+    });
+    expect((await readWorkspaceSession())?.updatedAt).toBe(203);
+  });
+
+  it('清理 legacy localStorage 键失败时应上报错误并继续清理其余键', async () => {
+    localStorageMock.setItem(
+      GLOBAL_DRAFT_STORAGE_KEY,
+      JSON.stringify({ state: createState('cleanup_warn'), updatedAt: 301 }),
+    );
+    localStorageMock.setItem(
+      WORKSPACE_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        activeSource: { kind: 'draft', draftId: 'default' },
+        updatedAt: 302,
+      }),
+    );
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    localStorageMock.removeItem.mockImplementationOnce(() => {
+      throw new Error('storage locked');
+    });
+
+    await migrateLegacyWorkspaceFromLocalStorage();
+
+    expect((await readDraft(DEFAULT_DRAFT_ID))?.state.tableName).toBe('cleanup_warn');
+    expect(localStorageMock.getItem(WORKSPACE_SESSION_STORAGE_KEY)).toBeNull();
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(GLOBAL_DRAFT_STORAGE_KEY);
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(SAVED_TABLE_DRAFTS_STORAGE_KEY);
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(WORKSPACE_SESSION_STORAGE_KEY);
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(STORAGE_KEY);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[workspaceStateDb] removeLegacyStorageKey: storage locked'),
+      expect.any(Error),
+    );
   });
 });

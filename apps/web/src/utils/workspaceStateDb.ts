@@ -24,8 +24,9 @@ import {
   getWorkspaceScopeStorageKey,
   scopedWorkspaceKeyRange,
 } from './workspaceScope';
-import { runIndexedDbRequest } from './indexedDbTransaction';
+import { runIndexedDbRequest, runIndexedDbTransaction } from './indexedDbTransaction';
 import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
+import { reportError } from './errorReporter';
 import { isWorkspaceSource } from '@/hooks/workspacePersistence/normalize';
 
 export { DEFAULT_DRAFT_ID };
@@ -34,6 +35,12 @@ const WORKSPACE_SESSION_ROW_ID = 'active';
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const SAVED_TABLE_DRAFTS_STORAGE_KEY = `${STORAGE_KEY}:draft:saved:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
+const LEGACY_STORAGE_KEYS = [
+  GLOBAL_DRAFT_STORAGE_KEY,
+  SAVED_TABLE_DRAFTS_STORAGE_KEY,
+  WORKSPACE_SESSION_STORAGE_KEY,
+  STORAGE_KEY,
+] as const;
 
 type WorkspaceDraftEntity = {
   id: string;
@@ -157,11 +164,15 @@ const parseStorageJson = (key: string): unknown => {
 };
 // oxlint-enable anti-slop/no-unknown-returns, anti-slop/no-known-value-widening
 
-const removeStorage = (key: string) => {
+const removeLegacyStorageKey = (key: string) => {
   try {
     localStorage.removeItem(key);
-  } catch {
-    // ignore localStorage errors
+  } catch (error) {
+    reportError(error, {
+      scope: 'workspaceStateDb',
+      action: 'removeLegacyStorageKey',
+      metadata: { key },
+    });
   }
 };
 
@@ -521,6 +532,12 @@ const readLegacyWorkspaceSession = (): LegacyWorkspaceSessionRecord | null => {
 };
 // oxlint-enable anti-slop/no-runtime-typeof
 
+const LEGACY_MIGRATION_STORES: WorkspaceStoreName[] = [
+  WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
+  WORKSPACE_SAVED_DRAFTS_STORE_NAME,
+  WORKSPACE_SESSION_STORE_NAME,
+];
+
 let migrationPromise: Promise<void> | null = null;
 
 export const migrateLegacyWorkspaceFromLocalStorage = async (): Promise<void> => {
@@ -542,25 +559,52 @@ export const migrateLegacyWorkspaceFromLocalStorage = async (): Promise<void> =>
 
     if (!hasLegacyData) return;
 
-    try {
+    const scope = getAnonymousWorkspaceScope();
+    const scopeKey = getWorkspaceScopeStorageKey(scope);
+    const db = await openDb();
+
+    await runIndexedDbTransaction(db, LEGACY_MIGRATION_STORES, 'readwrite', (tx, fail) => {
+      const failOnError = (request: IDBRequest<IDBValidKey>) => {
+        request.onerror = () => fail(request.error ?? new Error('IndexedDB 请求失败'));
+      };
+
       if (globalDraftRecord) {
-        await writeDraft(DEFAULT_DRAFT_ID, globalDraftRecord, getAnonymousWorkspaceScope());
+        failOnError(
+          tx.objectStore(WORKSPACE_GLOBAL_DRAFT_STORE_NAME).put({
+            id: withScopeKey(scope, DEFAULT_DRAFT_ID),
+            scope: scopeKey,
+            ...globalDraftRecord,
+          } satisfies WorkspaceDraftEntity),
+        );
       }
 
+      const savedDraftStore = tx.objectStore(WORKSPACE_SAVED_DRAFTS_STORE_NAME);
+
       for (const [normalizedName, draft] of Object.entries(savedDraftMap)) {
-        await upsertSavedDraft(normalizedName, draft, getAnonymousWorkspaceScope());
+        failOnError(
+          savedDraftStore.put({
+            normalizedName: withScopeKey(scope, normalizedName),
+            scope: scopeKey,
+            ...draft,
+          } satisfies WorkspaceSavedDraftEntity),
+        );
       }
 
       if (workspaceSession) {
-        await writeWorkspaceSession(workspaceSession, getAnonymousWorkspaceScope());
+        failOnError(
+          tx.objectStore(WORKSPACE_SESSION_STORE_NAME).put({
+            id: withScopeKey(scope, WORKSPACE_SESSION_ROW_ID),
+            scope: scopeKey,
+            ...workspaceSession,
+          } satisfies WorkspaceSessionEntity),
+        );
       }
 
-      removeStorage(GLOBAL_DRAFT_STORAGE_KEY);
-      removeStorage(SAVED_TABLE_DRAFTS_STORAGE_KEY);
-      removeStorage(WORKSPACE_SESSION_STORAGE_KEY);
-      removeStorage(STORAGE_KEY);
-    } catch {
-      // keep legacy data for retry when migration fails
+      return () => undefined;
+    });
+
+    for (const key of LEGACY_STORAGE_KEYS) {
+      removeLegacyStorageKey(key);
     }
   })();
 
