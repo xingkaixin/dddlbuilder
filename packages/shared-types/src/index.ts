@@ -27,7 +27,6 @@ export {
   normalizeFieldEnums,
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
-  normalizePersistedRows,
 } from './fieldRow.js';
 export {
   DEFAULT_EDITOR_SESSION_STATE,

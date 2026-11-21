@@ -38,19 +38,20 @@ export const readJsonMap = (map: Y.Map<unknown> | null | undefined): JsonRecord 
   return record;
 };
 
-export const readOrderedMap = <T>(parent: Y.Map<any>, mapKey: string, orderKey: string): T[] => {
+export const readOrderedMap = (
+  parent: Y.Map<any>,
+  mapKey: string,
+  orderKey: string,
+): JsonRecord[] => {
   const map = readMap(parent, mapKey);
 
   if (!map) return [];
 
-  return readStringArray(parent, orderKey)
-    .map((id) => {
-      const itemMap = map.get(id);
+  return readStringArray(parent, orderKey).flatMap((id) => {
+    const itemMap = map.get(id);
 
-      // SAFETY: workspaceTableDoc reads the index/foreign-key records written by writeOrderedMap; incoming synced records pass assertTableDocDecodable.
-      return itemMap instanceof Y.Map ? (readJsonMap(itemMap) as T) : null;
-    })
-    .filter((item): item is T => item != null);
+    return itemMap instanceof Y.Map ? [readJsonMap(itemMap)] : [];
+  });
 };
 
 export const ensureMap = (parent: Y.Map<any>, key: string): Y.Map<any> => {
@@ -63,21 +64,20 @@ export const ensureMap = (parent: Y.Map<any>, key: string): Y.Map<any> => {
   return next;
 };
 
-export const ensureArray = (parent: Y.Map<any>, key: string): Y.Array<string> => {
+export const ensureArray = (parent: Y.Map<any>, key: string): Y.Array<unknown> => {
   const existing = parent.get(key);
 
   if (existing instanceof Y.Array) {
-    // SAFETY: workspace order keys are written by syncStringArray and checked as string arrays by assertTableDocDecodable on sync.
-    return existing as Y.Array<string>;
+    return existing;
   }
 
-  const next = new Y.Array<string>();
+  const next = new Y.Array<unknown>();
   parent.set(key, next);
 
   return next;
 };
 
-export const writeJsonMapPatch = (map: Y.Map<unknown>, values: JsonRecord) => {
+export const writeJsonMapPatch = <T extends object>(map: Y.Map<unknown>, values: T) => {
   for (const [key, value] of Object.entries(values)) {
     if (value === undefined) {
       map.delete(key);
@@ -94,7 +94,7 @@ export const writeJsonMapPatch = (map: Y.Map<unknown>, values: JsonRecord) => {
   }
 };
 
-export const writeJsonMap = (map: Y.Map<unknown>, values: JsonRecord) => {
+export const writeJsonMap = <T extends object>(map: Y.Map<unknown>, values: T) => {
   const nextKeys = new Set(Object.keys(values));
 
   for (const key of Array.from(map.keys())) {
@@ -106,7 +106,7 @@ export const writeJsonMap = (map: Y.Map<unknown>, values: JsonRecord) => {
   writeJsonMapPatch(map, values);
 };
 
-const retainedArrayIndices = (current: string[], nextPositions: Map<string, number>) => {
+const retainedArrayIndices = (current: unknown[], nextPositions: Map<unknown, number>) => {
   const positions = current.map((value) => nextPositions.get(value) ?? -1);
   const predecessors = current.map(() => -1);
   const tails: number[] = [];
@@ -137,9 +137,9 @@ const retainedArrayIndices = (current: string[], nextPositions: Map<string, numb
   return retained.reverse();
 };
 
-export const syncStringArray = (array: Y.Array<string>, values: string[]) => {
+export const syncStringArray = (array: Y.Array<unknown>, values: string[]) => {
   const current = array.toArray();
-  const nextPositions = new Map(values.map((value, index) => [value, index]));
+  const nextPositions = new Map<unknown, number>(values.map((value, index) => [value, index]));
   const retained = retainedArrayIndices(current, nextPositions);
   let currentStart = 0;
   let nextStart = 0;
@@ -169,7 +169,7 @@ export const writeOrderedMap = <T extends { id: string }>(
   parent: Y.Map<any>,
   mapKey: string,
   orderKey: string,
-  values: T[],
+  values: readonly T[],
 ) => {
   const map = ensureMap(parent, mapKey);
   const order = ensureArray(parent, orderKey);
@@ -184,8 +184,7 @@ export const writeOrderedMap = <T extends { id: string }>(
   }
 
   for (const value of values) {
-    // SAFETY: ordered records are serialized as open JSON records at this raw map boundary.
-    writeJsonMap(ensureMap(map, value.id), value as JsonRecord);
+    writeJsonMap(ensureMap(map, value.id), value);
   }
 
   syncStringArray(order, ids);

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import type { IndexDefinition, SchemaDocumentState } from '@ddlbuilder/shared-types';
+import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
+import { decodeIndexDefinitions } from '../persistedStateCodec';
 import { upsertWorkspaceDraft } from '../workspaceRecords';
 import { getDraftRecordFromYDoc, getWorkspaceRoot } from '../workspaceYDoc';
 import {
@@ -121,7 +122,10 @@ describe('index field references', () => {
     const doc = createDoc();
     write(doc, initialState());
     write(doc, rename(read(doc), 'user_id', 'account_id'));
-    const legacyIndexes = readOrderedMap<IndexDefinition>(table(doc), 'indexes', 'indexOrder');
+
+    const legacyIndexes = decodeIndexDefinitions(
+      readOrderedMap(table(doc), 'indexes', 'indexOrder'),
+    );
 
     expect(legacyIndexes[0].fields.map((field) => field.name)).toEqual(['account_id', 'org_id']);
 

@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import {
-  normalizePersistedRows,
-  type PersistedState,
-  toSchemaDocumentState,
-} from '@ddlbuilder/shared-types';
+import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
+import { decodeFieldRows } from '../persistedStateCodec';
+import { ensureArray, syncStringArray } from '../yMapJson';
 import {
   applySchemaDocumentStateToTableDoc,
   normalizeSchemaDocumentState,
@@ -172,7 +170,7 @@ describe('workspace table doc', () => {
         onUpdate: '当前时间',
       },
     ] as unknown as PersistedState['rows'];
-    const expectedRows = normalizePersistedRows({ rows: legacyRows }).rows;
+    const expectedRows = decodeFieldRows(legacyRows);
 
     const snapshotOnly = createLegacyTableDoc(createClientState({ rows: legacyRows }));
     expect(tableDocToSchemaDocumentState(snapshotOnly).rows).toEqual(expectedRows);
@@ -258,5 +256,18 @@ it('removes standard references without reviving snapshot values during later ed
   applySchemaDocumentStateToTableDoc(table, next);
   applySchemaDocumentStateToTableDoc(table, { ...next, tableComment: 'Another edit' });
   expect(tableDocToSchemaDocumentState(table).rows[0].standardId).toBeUndefined();
+  doc.destroy();
+});
+
+it('replaces non-string order entries when syncing a Y.Array', () => {
+  const doc = new Y.Doc();
+  const table = doc.getMap<unknown>('table');
+  const rawOrder = new Y.Array<unknown>();
+  table.set('fieldOrder', rawOrder);
+  rawOrder.push([123, 'field-a', null, 'field-b']);
+
+  syncStringArray(ensureArray(table, 'fieldOrder'), ['field-a', 'field-c', 'field-b']);
+
+  expect(rawOrder.toArray()).toEqual(['field-a', 'field-c', 'field-b']);
   doc.destroy();
 });

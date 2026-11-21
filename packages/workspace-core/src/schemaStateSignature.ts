@@ -84,15 +84,7 @@ const isDefaultCitusShardingConfig = (config: CitusShardingConfig | undefined) =
   !config || (config.mode === 'reference' && !config.distributionColumn);
 
 export const normalizeSchemaStateForSignature = (state: SchemaDocumentState) => {
-  const normalized = {
-    ...toSchemaDocumentState(state),
-    rows: state.rows.map((row) => {
-      // SAFETY: persisted rows may carry only this legacy optional field in addition to row.
-      const { order: _legacyOrder, ...content } = row as typeof row & { order?: unknown };
-
-      return content;
-    }),
-  };
+  const normalized = toSchemaDocumentState(state);
 
   if (!normalized.objectType || normalized.objectType === 'table') {
     delete normalized.objectType;

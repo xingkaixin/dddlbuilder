@@ -11,7 +11,7 @@ import {
   getWorkspaceRoot,
 } from '../workspaceYDoc';
 import { exportWorkspaceYDocToSnapshot } from '../workspaceYDocCodec';
-import type { StoredForeignKeyDefinition } from '../workspaceFieldReferences';
+import { decodeForeignKeyRecord } from '../persistedStateCodec';
 import { materializeTableDoc } from '../workspaceTableDoc';
 import { readMap, readOrderedMap, writeOrderedMap } from '../yMapJson';
 
@@ -141,11 +141,15 @@ describe('local field references', () => {
     write(doc, state);
     const tableDoc = table(doc);
 
-    const foreignKeys = readOrderedMap<StoredForeignKeyDefinition>(
-      tableDoc,
-      'foreignKeys',
-      'foreignKeyOrder',
-    ).map(({ localFieldIds: _ids, ...foreignKey }) => foreignKey);
+    const usedIds = new Set<string>();
+
+    const foreignKeys = readOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder').flatMap(
+      (record, index) => {
+        const decoded = decodeForeignKeyRecord(record, index, usedIds);
+
+        return decoded ? [decoded] : [];
+      },
+    );
     writeOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder', foreignKeys);
     const scalar = readMap(tableDoc, 'scalar');
 

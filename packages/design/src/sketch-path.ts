@@ -51,8 +51,13 @@ function round1(value: number): number {
 }
 
 function at<T>(items: readonly T[], index: number): T {
-  // SAFETY: every caller indexes within bounds it has just computed from `items.length`.
-  return items[index] as T;
+  const item = items[index];
+
+  if (item === undefined) {
+    throw new RangeError(`Index ${index} out of bounds for length ${items.length}`);
+  }
+
+  return item;
 }
 
 function perimeter(

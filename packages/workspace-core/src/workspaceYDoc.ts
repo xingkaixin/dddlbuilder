@@ -234,11 +234,7 @@ export const getDraftRecordFromYDoc = (
 };
 
 export const writeFolderRecord = (doc: Y.Doc, folder: TableFolderSnapshot) => {
-  // SAFETY: TableFolderSnapshot is a JSON-compatible record accepted by the raw Y.Map writer.
-  writeJsonMap(
-    ensureMap(getWorkspaceRoot(doc).folders, folder.id),
-    Object.fromEntries(Object.entries(folder)),
-  );
+  writeJsonMap(ensureMap(getWorkspaceRoot(doc).folders, folder.id), folder);
 };
 
 export const readFolderRecords = (doc: Y.Doc): TableFolderSnapshot[] =>

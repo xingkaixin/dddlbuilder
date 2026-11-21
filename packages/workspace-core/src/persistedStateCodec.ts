@@ -68,21 +68,20 @@ export const decodeSavedDraftBase = (
 
 export type PersistedStateDecodeMode = 'compatible' | 'external';
 
-const MYSQL_PARTITION_TYPES = new Set<MysqlPartitionType>([
-  'RANGE',
-  'RANGE COLUMNS',
-  'LIST',
-  'LIST COLUMNS',
-  'HASH',
-  'KEY',
-]);
-const FOREIGN_KEY_ACTIONS = new Set<ForeignKeyAction>([
-  'CASCADE',
-  'SET NULL',
-  'SET DEFAULT',
-  'RESTRICT',
-  'NO ACTION',
-]);
+const isMysqlPartitionType = (value: unknown): value is MysqlPartitionType =>
+  value === 'RANGE' ||
+  value === 'RANGE COLUMNS' ||
+  value === 'LIST' ||
+  value === 'LIST COLUMNS' ||
+  value === 'HASH' ||
+  value === 'KEY';
+
+const isForeignKeyAction = (value: unknown): value is ForeignKeyAction =>
+  value === 'CASCADE' ||
+  value === 'SET NULL' ||
+  value === 'SET DEFAULT' ||
+  value === 'RESTRICT' ||
+  value === 'NO ACTION';
 
 const toText = (value: unknown, fallback = '') => (typeof value === 'string' ? value : fallback);
 const toOptionalText = (value: unknown) => (typeof value === 'string' ? value : undefined);
@@ -116,23 +115,31 @@ const decodeIndexFields = (value: unknown): IndexField[] =>
     return name ? [{ name, direction: item.direction === 'DESC' ? 'DESC' : 'ASC' }] : [];
   });
 
+export const decodeIndexRecord = (
+  item: unknown,
+  index: number,
+  usedIds: Set<string>,
+): IndexDefinition | null => {
+  if (!isRecord(item)) return null;
+  const name = toText(item.name);
+
+  if (!name) return null;
+
+  return {
+    id: decodeUniqueEntityId(item.id, `legacy-index-${index}`, usedIds),
+    name,
+    fields: decodeIndexFields(item.fields),
+    kind: indexKindOf(item),
+  };
+};
+
 export const decodeIndexDefinitions = (value: unknown): IndexDefinition[] => {
   const usedIds = new Set<string>();
 
   return (Array.isArray(value) ? value : []).flatMap((item, index) => {
-    if (!isRecord(item)) return [];
-    const name = toText(item.name);
+    const decoded = decodeIndexRecord(item, index, usedIds);
 
-    if (!name) return [];
-
-    return [
-      {
-        id: decodeUniqueEntityId(item.id, `legacy-index-${index}`, usedIds),
-        name,
-        fields: decodeIndexFields(item.fields),
-        kind: indexKindOf(item),
-      },
-    ];
+    return decoded ? [decoded] : [];
   });
 };
 
@@ -157,87 +164,103 @@ export const decodeEnumMeta = (value: unknown[]): EnumValueMeta[] =>
     ];
   });
 
-const decodeRows = (value: unknown): FieldRow[] => {
+export const decodeFieldRows = (value: unknown): FieldRow[] => {
   const usedIds = new Set<string>();
 
   return (Array.isArray(value) ? value : []).map((item, index) => {
     const row = isRecord(item) ? item : {};
+    const standardId = toOptionalText(row.standardId);
 
     return {
       id: decodeUniqueEntityId(
-        // SAFETY: ensureFieldId only reads the optional id; all other row fields are decoded below.
         ensureFieldId({ id: typeof row.id === 'string' ? row.id : undefined }, index),
         `legacy-field-${index}`,
         usedIds,
       ),
-      ...(toOptionalText(row.standardId) ? { standardId: toOptionalText(row.standardId) } : {}),
+      ...(standardId ? { standardId } : {}),
       fieldName: toText(row.fieldName),
       fieldType: toText(row.fieldType),
       fieldComment: toText(row.fieldComment),
       nullable: normalizeFieldNullable(row.nullable),
-      defaultKind: normalizeFieldDefaultKind(row.defaultKind),
-      defaultValue: toText(row.defaultValue),
-      onUpdate: normalizeFieldOnUpdate(row.onUpdate),
+      ...(row.defaultKind === undefined
+        ? {}
+        : { defaultKind: normalizeFieldDefaultKind(row.defaultKind) }),
+      ...(typeof row.defaultValue === 'string' ? { defaultValue: row.defaultValue } : {}),
+      ...(row.onUpdate === undefined ? {} : { onUpdate: normalizeFieldOnUpdate(row.onUpdate) }),
       ...(Array.isArray(row.enumMeta) ? { enumMeta: decodeEnumMeta(row.enumMeta) } : {}),
     };
   });
 };
 
+const decodeRows = (value: unknown): FieldRow[] =>
+  decodeFieldRows(value).map((row) => ({
+    ...row,
+    defaultKind: row.defaultKind ?? 'none',
+    defaultValue: row.defaultValue ?? '',
+    onUpdate: row.onUpdate ?? 'none',
+  }));
+
 // Keep positions so invalid entries cannot silently change field pairings.
 const decodeForeignKeyFields = (value: unknown): string[] =>
   Array.isArray(value) ? value.map((field) => toText(field)) : [];
+
+export const decodeForeignKeyRecord = (
+  item: unknown,
+  index: number,
+  usedIds: Set<string>,
+): ForeignKeyDefinition | null => {
+  if (!isRecord(item)) return null;
+  const name = toText(item.name);
+  const refTable = toText(item.refTable);
+
+  if (!name || !refTable) return null;
+  let logical: ForeignKeyDefinition['logical'];
+
+  if (item.logical !== undefined) {
+    if (!isRecord(item.logical)) {
+      throw new Error('Invalid logical relationship');
+    }
+
+    const { cardinality, optionality, description } = item.logical;
+
+    if (
+      (cardinality !== 'many-to-one' && cardinality !== 'one-to-one') ||
+      (optionality !== 'required' && optionality !== 'optional')
+    ) {
+      throw new Error('Invalid logical relationship');
+    }
+
+    logical = {
+      cardinality,
+      optionality,
+      description: toOptionalText(description),
+    };
+  }
+
+  const onDelete = isForeignKeyAction(item.onDelete) ? item.onDelete : undefined;
+  const onUpdate = isForeignKeyAction(item.onUpdate) ? item.onUpdate : undefined;
+
+  return {
+    id: decodeUniqueEntityId(item.id, `legacy-foreign-key-${index}`, usedIds),
+    name,
+    fields: decodeForeignKeyFields(item.fields),
+    refSchema: toOptionalText(item.refSchema),
+    refTable,
+    refFields: decodeForeignKeyFields(item.refFields),
+    ...(logical ? { logical } : {}),
+    ...(onDelete && !logical ? { onDelete } : {}),
+    ...(onUpdate && !logical ? { onUpdate } : {}),
+  };
+};
 
 const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined => {
   if (!Array.isArray(value)) return undefined;
   const usedIds = new Set<string>();
 
   return value.flatMap((item, index) => {
-    if (!isRecord(item)) return [];
-    const name = toText(item.name);
-    const refTable = toText(item.refTable);
+    const decoded = decodeForeignKeyRecord(item, index, usedIds);
 
-    if (!name || !refTable) return [];
-    let logical: ForeignKeyDefinition['logical'];
-
-    if (item.logical !== undefined) {
-      if (
-        !isRecord(item.logical) ||
-        !['many-to-one', 'one-to-one'].includes(String(item.logical.cardinality)) ||
-        !['required', 'optional'].includes(String(item.logical.optionality))
-      ) {
-        throw new Error('Invalid logical relationship');
-      }
-
-      // SAFETY: the preceding membership checks establish both finite literal unions.
-      logical = {
-        cardinality: item.logical.cardinality as 'many-to-one' | 'one-to-one',
-        optionality: item.logical.optionality as 'required' | 'optional',
-        description: toOptionalText(item.logical.description),
-      };
-    }
-
-    // SAFETY: membership in FOREIGN_KEY_ACTIONS establishes the action union.
-    const onDelete = FOREIGN_KEY_ACTIONS.has(item.onDelete as ForeignKeyAction)
-      ? (item.onDelete as ForeignKeyAction)
-      : undefined;
-    // SAFETY: membership in FOREIGN_KEY_ACTIONS establishes the action union.
-    const onUpdate = FOREIGN_KEY_ACTIONS.has(item.onUpdate as ForeignKeyAction)
-      ? (item.onUpdate as ForeignKeyAction)
-      : undefined;
-
-    return [
-      {
-        id: decodeUniqueEntityId(item.id, `legacy-foreign-key-${index}`, usedIds),
-        name,
-        fields: decodeForeignKeyFields(item.fields),
-        refSchema: toOptionalText(item.refSchema),
-        refTable,
-        refFields: decodeForeignKeyFields(item.refFields),
-        ...(logical ? { logical } : {}),
-        ...(onDelete && !logical ? { onDelete } : {}),
-        ...(onUpdate && !logical ? { onUpdate } : {}),
-      },
-    ];
+    return decoded ? [decoded] : [];
   });
 };
 
@@ -255,8 +278,7 @@ const decodeCitusConfig = (value: unknown): CitusShardingConfig | undefined => {
 };
 
 export const decodeMysqlPartitionConfig = (value: unknown): MysqlPartitionConfig | undefined => {
-  // SAFETY: MYSQL_PARTITION_TYPES membership establishes the supported partition type.
-  if (!isRecord(value) || !MYSQL_PARTITION_TYPES.has(value.type as MysqlPartitionType)) {
+  if (!isRecord(value) || !isMysqlPartitionType(value.type)) {
     return undefined;
   }
 
@@ -279,8 +301,7 @@ export const decodeMysqlPartitionConfig = (value: unknown): MysqlPartitionConfig
 
   return {
     enabled: value.enabled === true,
-    // SAFETY: the guard above established value.type is a MysqlPartitionType.
-    type: value.type as MysqlPartitionType,
+    type: value.type,
     columns: toStringArray(value.columns),
     ...(typeof value.expression === 'string' ? { expression: value.expression } : {}),
     ...(partitionCount === undefined ? {} : { partitionCount }),

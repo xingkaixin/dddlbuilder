@@ -1,6 +1,5 @@
 /* oxlint-disable anti-slop/no-runtime-typeof -- This serializer intentionally dispatches on the complete JavaScript value domain. */
 /* oxlint-disable anti-slop/no-unknown-parameters -- Serialization accepts arbitrary JSON-like values by contract. */
-/* oxlint-disable anti-slop/no-unsafe-dictionary-type -- The serializer's final record representation is intentionally open. */
 
 export const stableStringify = (value: unknown): string => {
   if (value === undefined) return 'undefined';
@@ -18,12 +17,10 @@ export const stableStringify = (value: unknown): string => {
     return `[${value.map(stableStringify).join(',')}]`;
   }
 
-  // SAFETY: all remaining values are non-null non-array objects after primitive and array branches.
-  const record = value as Record<string, unknown>;
-
-  return `{${Object.keys(record)
-    .filter((key) => record[key] !== undefined)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+  return `{${Object.entries(value)
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .flatMap(([key, entryValue]) =>
+      entryValue === undefined ? [] : [`${JSON.stringify(key)}:${stableStringify(entryValue)}`],
+    )
     .join(',')}}`;
 };
