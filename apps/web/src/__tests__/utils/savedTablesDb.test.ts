@@ -43,6 +43,40 @@ describe('savedTablesDb', () => {
     expect(loaded?.state.indexes[0]).toMatchObject({ kind: 'primary' });
   });
 
+  it('strips legacy order markers from saved table rows on read', async () => {
+    const state = createState({
+      // SAFETY: This fixture models a legacy row shape carrying the removed order marker.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Legacy storage data is intentionally outside the current row type.
+      rows: [
+        {
+          order: 1,
+          fieldName: 'id',
+          fieldType: 'bigint',
+          fieldComment: '主键',
+          nullable: '否',
+          defaultKind: '自增',
+        },
+      ] as unknown as PersistedState['rows'],
+    });
+    await addSavedTable(
+      { normalizedName: 'legacy-rows', name: 'legacy-rows', state, createdAt: 1, updatedAt: 1 },
+      anonymousScope,
+    );
+
+    const loaded = await getSavedTable('legacy-rows', anonymousScope);
+    expect(loaded?.state.rows).toEqual([
+      {
+        id: 'legacy-field-0',
+        fieldName: 'id',
+        fieldType: 'bigint',
+        fieldComment: '主键',
+        nullable: false,
+        defaultKind: 'auto_increment',
+      },
+    ]);
+    expect(loaded?.state.rows[0]).not.toHaveProperty('order');
+  });
+
   beforeEach(() => {
     setupFakeIndexedDB();
   });

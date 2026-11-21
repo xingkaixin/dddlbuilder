@@ -108,31 +108,16 @@ type FieldEnumValues = {
 };
 
 /** 历史持久化数据用中文枚举值，读取时统一转成当前 token；缺失的可选字段保持缺失。 */
-export const normalizeFieldEnums = <T extends FieldEnumValues>(field: T): T =>
-  // SAFETY: the spread preserves every T property; normalized values remain in each declared enum domain.
-  ({
-    ...field,
-    nullable: normalizeFieldNullable(field.nullable),
-    ...(field.defaultKind === undefined
-      ? {}
-      : { defaultKind: normalizeFieldDefaultKind(field.defaultKind) }),
-    ...(field.onUpdate === undefined ? {} : { onUpdate: normalizeFieldOnUpdate(field.onUpdate) }),
-  }) as T;
-
-export const normalizePersistedRows = <T extends { rows?: FieldRow[] }>(state: T): T => {
-  if (!Array.isArray(state?.rows)) return state;
+export const normalizeFieldEnums = <T extends FieldEnumValues>(
+  field: T,
+): Omit<T, keyof FieldEnumValues> & FieldEnumValues => {
+  const { nullable, defaultKind, onUpdate, ...rest } = field;
 
   return {
-    ...state,
-    rows: state.rows.map((row, index) => {
-      // SAFETY: persisted rows may carry the removed legacy order marker; all remaining fields are FieldRow data.
-      const { order: _legacyOrder, ...content } = row as FieldRow & { order?: unknown };
-
-      return {
-        ...normalizeFieldEnums(content),
-        id: ensureFieldId(row, index),
-      };
-    }),
+    ...rest,
+    nullable: normalizeFieldNullable(nullable),
+    ...(defaultKind === undefined ? {} : { defaultKind: normalizeFieldDefaultKind(defaultKind) }),
+    ...(onUpdate === undefined ? {} : { onUpdate: normalizeFieldOnUpdate(onUpdate) }),
   };
 };
 

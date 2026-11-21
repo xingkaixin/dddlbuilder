@@ -6,7 +6,6 @@ import {
   normalizeFieldDefaultKind,
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
-  normalizePersistedRows,
   toSchemaDocumentState,
 } from '@ddlbuilder/shared-types';
 import {
@@ -42,7 +41,14 @@ import {
   type StoredMysqlPartitionConfig,
   type StoredTableMiscConfig,
 } from './workspaceFieldReferences';
-import { decodeEnumMeta, decodePersistedState, decodeTableName } from './persistedStateCodec';
+import {
+  decodeEnumMeta,
+  decodeFieldRows,
+  decodeForeignKeyRecord,
+  decodeIndexRecord,
+  decodePersistedState,
+  decodeTableName,
+} from './persistedStateCodec';
 
 const TABLE_SCALAR_KEYS = [
   'objectType',
@@ -144,6 +150,42 @@ const decodeStoredFieldIds = (value: unknown): Array<string | null> | undefined 
   if (!Array.isArray(value)) return undefined;
 
   return value.map((item) => (item === null || typeof item === 'string' ? item : null));
+};
+
+const decodeStoredIndexFields = (value: unknown): StoredIndexDefinition['fields'] =>
+  (Array.isArray(value) ? value : []).flatMap((item) => {
+    if (!isRecord(item) || typeof item.name !== 'string' || !item.name) return [];
+
+    return [
+      {
+        name: item.name,
+        direction: item.direction === 'DESC' ? 'DESC' : 'ASC',
+        ...(typeof item.fieldId === 'string' ? { fieldId: item.fieldId } : {}),
+      },
+    ];
+  });
+
+const decodeStoredIndexes = (records: readonly JsonRecord[]): StoredIndexDefinition[] => {
+  const usedIds = new Set<string>();
+
+  return records.flatMap((record, index) => {
+    const decoded = decodeIndexRecord(record, index, usedIds);
+
+    return decoded ? [{ ...decoded, fields: decodeStoredIndexFields(record.fields) }] : [];
+  });
+};
+
+const decodeStoredForeignKeys = (records: readonly JsonRecord[]): StoredForeignKeyDefinition[] => {
+  const usedIds = new Set<string>();
+
+  return records.flatMap((record, index) => {
+    const decoded = decodeForeignKeyRecord(record, index, usedIds);
+
+    if (!decoded) return [];
+    const localFieldIds = decodeStoredFieldIds(record.localFieldIds);
+
+    return [{ ...decoded, ...(localFieldIds ? { localFieldIds } : {}) }];
+  });
 };
 
 const decodeStoredCitusConfig = (
@@ -280,10 +322,10 @@ export const applySchemaDocumentStateToTableDoc = (
   const previousSnapshot = readStateSnapshot(tableDoc);
 
   const previousIndexes = hasIndexDoc(tableDoc)
-    ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')
+    ? readOrderedMap(tableDoc, 'indexes', 'indexOrder')
     : (previousSnapshot?.indexes ?? []);
   const previousForeignKeys = hasForeignKeyDoc(tableDoc)
-    ? readOrderedMap<StoredForeignKeyDefinition>(tableDoc, 'foreignKeys', 'foreignKeyOrder')
+    ? readOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder')
     : (previousSnapshot?.foreignKeys ?? []);
   const encodedIndexes = encodeIndexFieldReferences(documentState.indexes ?? [], nextRows);
 
@@ -397,12 +439,7 @@ export const normalizeSchemaDocumentState = (
     dbType: typeof state.dbType === 'string' ? state.dbType : 'mysql',
     viewDefinition: typeof state.viewDefinition === 'string' ? state.viewDefinition : '',
     viewCreateOrReplace: state.viewCreateOrReplace !== false,
-    rows: normalizePersistedRows({ rows: state.rows ?? [] }).rows.map((row) => ({
-      ...row,
-      fieldName: typeof row.fieldName === 'string' ? row.fieldName : '',
-      fieldType: typeof row.fieldType === 'string' ? row.fieldType : '',
-      fieldComment: typeof row.fieldComment === 'string' ? row.fieldComment : '',
-    })),
+    rows: decodeFieldRows(state.rows),
     indexes: state.indexes ?? [],
     authInput: typeof state.authInput === 'string' ? state.authInput : '',
     authObjects: Array.isArray(state.authObjects) ? state.authObjects : [],
@@ -504,13 +541,13 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
 
   const indexes = decodeIndexFieldReferences(
     hasIndexDoc(tableDoc)
-      ? readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder')
+      ? decodeStoredIndexes(readOrderedMap(tableDoc, 'indexes', 'indexOrder'))
       : (state?.indexes ?? []),
     rows,
   );
   const foreignKeys = decodeForeignKeyFieldReferences(
     hasForeignKeyDoc(tableDoc)
-      ? readOrderedMap<StoredForeignKeyDefinition>(tableDoc, 'foreignKeys', 'foreignKeyOrder')
+      ? decodeStoredForeignKeys(readOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder'))
       : (state?.foreignKeys ?? []),
     rows,
   );
@@ -542,13 +579,9 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
 export const materializeTableDoc = (tableDoc: Y.Map<unknown>) => {
   if (hasFineGrainedTableDoc(tableDoc)) {
     const state = tableDocToSchemaDocumentState(tableDoc);
-    const indexes = readOrderedMap<StoredIndexDefinition>(tableDoc, 'indexes', 'indexOrder');
+    const indexes = readOrderedMap(tableDoc, 'indexes', 'indexOrder');
 
-    const foreignKeys = readOrderedMap<StoredForeignKeyDefinition>(
-      tableDoc,
-      'foreignKeys',
-      'foreignKeyOrder',
-    );
+    const foreignKeys = readOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder');
     const scalar = readMap(tableDoc, 'scalar');
     const encodedIndexes = encodeIndexFieldReferences(state.indexes, state.rows);
     const encodedForeignKeys = encodeForeignKeyFieldReferences(state.foreignKeys ?? [], state.rows);

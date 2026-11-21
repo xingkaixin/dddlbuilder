@@ -4,11 +4,12 @@ import {
 } from '@ddlbuilder/shared-types/publications';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { decodePersistedState } from './persistedStateCodec.js';
+import { isRecord } from './yMapJson.js';
 
 export type DeliverySnapshot = { tables: PersistedState[]; standards: StandardSummary[] };
 
 // Delivery files must not lose supplied properties while the compatibility decoder fills omitted defaults.
-// oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof, anti-slop/no-unsafe-dictionary-type
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- recursive preservation check compares unknown source and decoded values.
 function assertPreserved(source: unknown, decoded: unknown, path: string): void {
   if (source === undefined) return;
 
@@ -16,17 +17,13 @@ function assertPreserved(source: unknown, decoded: unknown, path: string): void 
     if (!Array.isArray(decoded) || source.length !== decoded.length)
       throw new Error(`Invalid snapshot at ${path}`);
     source.forEach((value, index) => assertPreserved(value, decoded[index], `${path}[${index}]`));
-  } else if (source !== null && typeof source === 'object') {
-    if (decoded === null || typeof decoded !== 'object')
-      throw new Error(`Invalid snapshot at ${path}`);
-    // SAFETY: decoded is an object, and each source property is checked recursively before use.
-    const record = decoded as Record<string, unknown>;
+  } else if (isRecord(source)) {
+    if (!isRecord(decoded)) throw new Error(`Invalid snapshot at ${path}`);
 
     for (const [key, value] of Object.entries(source))
-      assertPreserved(value, record[key], `${path}.${key}`);
+      assertPreserved(value, decoded[key], `${path}.${key}`);
   } else if (source !== decoded) throw new Error(`Invalid snapshot at ${path}`);
 }
-// oxlint-enable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof, anti-slop/no-unsafe-dictionary-type
 
 export function decodeDeliveryTables(values: readonly unknown[]): PersistedState[] {
   if (values.length > 200) throw new Error('A snapshot supports at most 200 tables');

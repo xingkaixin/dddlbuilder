@@ -12,6 +12,7 @@ export {
   type CanonicalWorkspaceSnapshot,
 } from './workspaceSnapshotNormalization';
 export {
+  decodeFieldRows,
   decodePersistedState,
   decodeIndexDefinitions,
   decodeMysqlPartitionConfig,

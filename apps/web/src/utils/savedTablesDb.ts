@@ -1,4 +1,5 @@
 import {
+  decodeFieldRows,
   decodeIndexDefinitions,
   decodeMysqlPartitionConfig,
   type WorkspaceSavedTableMetadataUpdate,
@@ -10,7 +11,6 @@ import {
   getWorkspaceScopeStorageKey,
   scopedWorkspaceKeyRange,
 } from './workspaceScope';
-import { normalizePersistedRows } from '@ddlbuilder/shared-types';
 import { runIndexedDbRequest, runIndexedDbTransaction } from './indexedDbTransaction';
 import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
 import { openDb, STORE_NAME } from './workspaceDb';
@@ -82,7 +82,8 @@ const decodeScopedTableRecord = (
     ...record,
     ...identity,
     state: {
-      ...normalizePersistedRows(record.state),
+      ...record.state,
+      rows: decodeFieldRows(record.state.rows),
       indexes: decodeIndexDefinitions(record.state.indexes),
       ...(record.state.mysqlPartitionConfig
         ? { mysqlPartitionConfig: decodeMysqlPartitionConfig(record.state.mysqlPartitionConfig) }

@@ -1,8 +1,13 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { type PersistedState, normalizePersistedRows } from '@ddlbuilder/shared-types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useSaveLoadActions } from '@/components/App/hooks/savedTableFlow/saveLoadActions';
-import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
+import { buildSchemaStateSignature, decodeFieldRows } from '@ddlbuilder/workspace-core';
+
+const withDecodedRows = (state: PersistedState): PersistedState => ({
+  ...state,
+  rows: decodeFieldRows(state.rows),
+});
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- keep version-message lookup deterministic while testing saved-table actions.
 vi.mock('@/utils/tableVersions', () => ({
@@ -94,7 +99,7 @@ describe('useSaveLoadActions', () => {
       normalizedName: 'norm_test',
       name: 'test_table',
       // SAFETY: this fixture intentionally omits persisted fields irrelevant to draft matching.
-      state: normalizePersistedRows(savedState as PersistedState),
+      state: withDecodedRows(savedState as PersistedState),
     });
 
     const { result } = getHook({
@@ -122,7 +127,7 @@ describe('useSaveLoadActions', () => {
         tableName: 'test_table',
         baseSignature: buildSchemaStateSignature(
           // SAFETY: this fixture is the persisted shape used to compute the saved-table signature.
-          normalizePersistedRows(savedState as PersistedState),
+          withDecodedRows(savedState as PersistedState),
         ),
       },
       state: draftState,
@@ -152,7 +157,7 @@ describe('useSaveLoadActions', () => {
 
     // 升级后已保存表经 savedTablesDb 读取入口归一化，baseSignature 仍是迁移前写入的原始 JSON
     const loadWithDraft = (draftState: PersistedState, baseSignature: string) => {
-      const recordState = normalizePersistedRows(legacySavedState);
+      const recordState = withDecodedRows(legacySavedState);
       loadTable.mockResolvedValue({
         normalizedName: 'orders',
         name: 'orders',
@@ -170,11 +175,10 @@ describe('useSaveLoadActions', () => {
     };
 
     it('保留未保存的编辑，而不是回落到已保存版本', async () => {
-      // SAFETY: normalizePersistedRows returns the current persisted shape before adding the draft-only field.
-      const draftState = {
-        ...normalizePersistedRows(legacySavedState),
+      const draftState: PersistedState = {
+        ...withDecodedRows(legacySavedState),
         tableComment: '尚未保存的编辑',
-      } as PersistedState;
+      };
       const { result } = loadWithDraft(draftState, JSON.stringify(legacySavedState));
 
       const snapshot = await act(() =>
@@ -186,8 +190,7 @@ describe('useSaveLoadActions', () => {
     });
 
     it('基线确实变化时仍回落到已保存版本', async () => {
-      // SAFETY: normalizePersistedRows returns the current persisted shape used as the stale draft baseline.
-      const draftState = { ...normalizePersistedRows(legacySavedState) } as PersistedState;
+      const draftState: PersistedState = { ...withDecodedRows(legacySavedState) };
 
       const staleBase = JSON.stringify({
         ...legacySavedState,
@@ -200,7 +203,7 @@ describe('useSaveLoadActions', () => {
         result.current.resolveSavedTable({ normalizedName: 'orders' } as any),
       );
 
-      expect(snapshot?.state).toEqual(normalizePersistedRows(legacySavedState));
+      expect(snapshot?.state).toEqual(withDecodedRows(legacySavedState));
     });
   });
 });

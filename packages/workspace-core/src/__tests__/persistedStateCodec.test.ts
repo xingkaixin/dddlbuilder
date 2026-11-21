@@ -1,7 +1,12 @@
 /* oxlint-disable anti-slop/no-unsafe-dictionary-type -- These fixtures intentionally model unparsed external snapshot records. */
 
 import { describe, expect, it } from 'vitest';
-import { decodePersistedState, decodeWorkspaceSnapshot } from '../persistedStateCodec';
+import {
+  decodeFieldRows,
+  decodeMysqlPartitionConfig,
+  decodePersistedState,
+  decodeWorkspaceSnapshot,
+} from '../persistedStateCodec';
 
 const externalState = (overrides: Record<string, unknown> = {}) => ({
   tableName: 'users',
@@ -240,6 +245,70 @@ describe('decodePersistedState', () => {
     expect(decodePersistedState({ ...externalState(), dbType: 'unknown' }, 'external')).toBeNull();
     expect(decodePersistedState(null)).toBeNull();
     expect(decodePersistedState([])).toBeNull();
+  });
+
+  it('rejects non-string logical relationship fields and filters unsupported actions and partition types', () => {
+    for (const logical of [
+      { cardinality: ['many-to-one'], optionality: 'required' },
+      { cardinality: 'many-to-one', optionality: { toString: () => 'required' } },
+    ]) {
+      expect(() =>
+        decodePersistedState(
+          externalState({
+            foreignKeys: [{ id: 'fk-1', name: 'fk_users', refTable: 'users', logical }],
+          }),
+        ),
+      ).toThrow('Invalid logical relationship');
+    }
+
+    const decoded = decodePersistedState(
+      externalState({
+        foreignKeys: [
+          {
+            id: 'fk-1',
+            name: 'fk_valid',
+            refTable: 'users',
+            onDelete: 'CASCADE',
+            onUpdate: 'INVALID',
+          },
+        ],
+        mysqlPartitionConfig: { enabled: true, type: 'UNSUPPORTED', columns: ['id'] },
+      }),
+    );
+
+    expect(decoded?.foreignKeys?.[0]).toMatchObject({ onDelete: 'CASCADE' });
+    expect(decoded?.foreignKeys?.[0]).not.toHaveProperty('onUpdate');
+    expect(decoded?.mysqlPartitionConfig).toBeUndefined();
+    expect(decodeMysqlPartitionConfig({ enabled: true, type: 'HASH', columns: ['id'] })).toEqual({
+      enabled: true,
+      type: 'HASH',
+      columns: ['id'],
+    });
+  });
+
+  it('strips legacy order markers when decoding field rows', () => {
+    const rows = decodeFieldRows([
+      {
+        order: 1,
+        fieldName: 'id',
+        fieldType: 'bigint',
+        fieldComment: '主键',
+        nullable: '否',
+        defaultKind: '自增',
+      },
+    ]);
+
+    expect(rows).toEqual([
+      {
+        id: 'legacy-field-0',
+        fieldName: 'id',
+        fieldType: 'bigint',
+        fieldComment: '主键',
+        nullable: false,
+        defaultKind: 'auto_increment',
+      },
+    ]);
+    expect(rows[0]).not.toHaveProperty('order');
   });
 });
 

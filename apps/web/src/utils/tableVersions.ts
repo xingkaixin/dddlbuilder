@@ -1,9 +1,9 @@
-import { decodeIndexDefinitions, decodeMysqlPartitionConfig } from '@ddlbuilder/workspace-core';
 import {
-  createEntityId,
-  normalizePersistedRows,
-  type PersistedState,
-} from '@ddlbuilder/shared-types';
+  decodeFieldRows,
+  decodeIndexDefinitions,
+  decodeMysqlPartitionConfig,
+} from '@ddlbuilder/workspace-core';
+import { createEntityId, type PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { runIndexedDbRequest, runIndexedDbTransaction } from './indexedDbTransaction';
 import { getWorkspaceScopeStorageKey } from './workspaceScope';
@@ -26,7 +26,8 @@ export const getTableVersionKey = ({ scope, tableId }: TableVersionTarget) =>
 const decodeVersion = (version: TableVersion): TableVersion => ({
   ...version,
   state: {
-    ...normalizePersistedRows(version.state),
+    ...version.state,
+    rows: decodeFieldRows(version.state.rows),
     indexes: decodeIndexDefinitions(version.state.indexes),
     ...(version.state.mysqlPartitionConfig
       ? { mysqlPartitionConfig: decodeMysqlPartitionConfig(version.state.mysqlPartitionConfig) }
