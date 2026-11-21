@@ -1,8 +1,3 @@
-/**
- * 字段模板工具函数
- * 提供模板的 CRUD 操作
- */
-
 import {
   createEntityId,
   type FieldRow,
@@ -47,12 +42,10 @@ const decodeTemplate = (template: FieldTemplate): FieldTemplate => ({
   fields: Array.isArray(template.fields) ? template.fields.map(normalizeFieldEnums) : [],
 });
 
-// 生成唯一 ID
 const generateId = (): string => {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 };
 
-// 通用运行器
 const runWithTemplateStore = async <T>(
   mode: IDBTransactionMode,
   runner: (store: IDBObjectStore) => IDBRequest<T>,
@@ -62,21 +55,14 @@ const runWithTemplateStore = async <T>(
   return runIndexedDbRequest(db, TEMPLATE_STORE_NAME, mode, runner);
 };
 
-/**
- * 获取所有模板列表
- */
 export const listTemplates = async (): Promise<FieldTemplate[]> => {
   const templates = await runWithTemplateStore<FieldTemplate[]>('readonly', (store) =>
     store.getAll(),
   );
 
-  // 按更新时间降序排列
   return templates.map(decodeTemplate).sort((a, b) => b.updatedAt - a.updatedAt);
 };
 
-/**
- * 获取单个模板
- */
 export const getTemplate = async (id: string): Promise<FieldTemplate | undefined> => {
   const template = await runWithTemplateStore<FieldTemplate | undefined>('readonly', (store) =>
     store.get(id),
@@ -85,9 +71,6 @@ export const getTemplate = async (id: string): Promise<FieldTemplate | undefined
   return template ? decodeTemplate(template) : undefined;
 };
 
-/**
- * 创建新模板
- */
 export const createTemplate = async (
   name: string,
   fields: TemplateField[],
@@ -109,9 +92,6 @@ export const createTemplate = async (
   return template;
 };
 
-/**
- * 更新模板
- */
 export const updateTemplate = async (
   id: string,
   updates: Partial<Pick<FieldTemplate, 'name' | 'description' | 'keywords' | 'fields'>>,
@@ -138,19 +118,10 @@ export const updateTemplate = async (
   return updated;
 };
 
-/**
- * 删除模板
- */
 export const deleteTemplate = async (id: string): Promise<void> => {
   await runWithTemplateStore('readwrite', (store) => store.delete(id));
 };
 
-/**
- * 从当前表字段创建模板
- * @param name 模板名称
- * @param fields 字段行数组（从 DataTable 选中的行）
- * @param description 可选描述
- */
 export const createTemplateFromFields = async (
   name: string,
   fields: Array<Partial<FieldRow>>,
@@ -159,9 +130,6 @@ export const createTemplateFromFields = async (
   return createTemplate(name, toTemplateFields(fields), description);
 };
 
-/**
- * 复制模板
- */
 export const duplicateTemplate = async (
   id: string,
   newName?: string,

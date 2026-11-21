@@ -238,7 +238,6 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="mr-1 h-4 w-4" />
@@ -246,7 +245,6 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
         </Button>
       </div>
 
-      {/* User info */}
       <div className="rounded-lg border bg-card p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
@@ -346,7 +344,6 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
         </div>
       </div>
 
-      {/* Tabs: Credits + Usage */}
       <Tabs value={activeTab} onValueChange={(tab) => dispatch({ type: 'tabChanged', tab })}>
         <TabsList>
           <TabsTrigger value="credits">{t('admin.detail.tabs.credits')}</TabsTrigger>
@@ -497,7 +494,6 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
         </TabsContent>
       </Tabs>
 
-      {/* Disable User Dialog */}
       <AlertDialog
         open={disableDialogOpen}
         onOpenChange={(open) => dispatch({ type: 'disableDialogOpenChanged', open })}
@@ -524,7 +520,6 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Add Credits Dialog */}
       <AlertDialog
         open={creditsDialogOpen}
         onOpenChange={(open) =>

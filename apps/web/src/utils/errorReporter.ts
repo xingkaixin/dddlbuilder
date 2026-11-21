@@ -5,7 +5,6 @@ export interface ErrorContext {
   metadata?: Record<string, unknown>;
 }
 
-// Errors cross browser, fetch, and SDK boundaries with no common runtime shape.
 // oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 function normalizeError(error: unknown): Error {
   if (error instanceof Error) {
@@ -16,7 +15,6 @@ function normalizeError(error: unknown): Error {
 }
 // oxlint-enable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 
-// Logging is the final boundary and accepts errors thrown by browser, fetch, and SDK code.
 // oxlint-disable-next-line anti-slop/no-unknown-parameters
 export function reportError(error: unknown, context: ErrorContext): void {
   const normalized = normalizeError(error);

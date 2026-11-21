@@ -108,7 +108,6 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
             </div>
           ) : (
             <div className="space-y-5">
-              {/* MySQL-style options: Engine, Charset, Collation */}
               {(supportsEngine || supportsCharset || supportsCollation) && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {supportsEngine && (
@@ -200,7 +199,6 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                 </div>
               )}
 
-              {/* Tablespace option (PostgreSQL/Oracle) */}
               {supportsTablespace && (
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">
@@ -216,7 +214,6 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                 </div>
               )}
 
-              {/* PostgreSQL FILLFACTOR */}
               {supportsFillfactor && (
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">
@@ -249,7 +246,6 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                 </div>
               )}
 
-              {/* Oracle STORAGE (PCTFREE, INITRANS) */}
               {supportsOracleStorage && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -313,14 +309,12 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                 </div>
               )}
 
-              {/* Hive-specific options */}
               {isHive && (
                 <div className="space-y-4 rounded-lg border border-dashed p-4">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Hive
                   </p>
 
-                  {/* Storage format */}
                   {supportsStorage && (
                     <div className="space-y-2">
                       <Label className="text-sm font-semibold">
@@ -357,7 +351,6 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                     </div>
                   )}
 
-                  {/* External table toggle */}
                   <div className="flex items-center justify-between rounded-lg border border-dashed p-3">
                     <div className="space-y-0.5">
                       <Label className="text-sm font-semibold">
@@ -374,7 +367,6 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                     />
                   </div>
 
-                  {/* Location path */}
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">
                       {t('tableOptionsPanel.location')}

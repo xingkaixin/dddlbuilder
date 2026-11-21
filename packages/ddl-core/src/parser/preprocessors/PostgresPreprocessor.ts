@@ -38,13 +38,6 @@ export function normalizePostgresCharTypes(sql: string): string {
   });
 }
 
-/**
- * Extract standalone COMMENT ON statements from PostgreSQL SQL
- *
- * Handles:
- * - COMMENT ON TABLE ... IS '...';
- * - COMMENT ON COLUMN ... IS '...';
- */
 export function extractStandaloneComments(sql: string, options?: SqlScanOptions): PreprocessResult {
   const metadataByTable = new Map<string, PreprocessResult['tableMetadata'][number]>();
   const unescapeComment = (value: string) => value.replace(/''/g, "'");

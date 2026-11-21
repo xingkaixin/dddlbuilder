@@ -21,7 +21,6 @@ const resolveAuthenticatedUser = async (c: Context<ApiEnv>) => {
   return user;
 };
 
-// 查询路径的意外故障统一按额度服务不可用处理；领域错误（401/402 等）直接冒泡给全局 onError
 const wrapCreditService = async (c: Context<ApiEnv>, handler: () => Promise<Response>) => {
   try {
     return await handler();

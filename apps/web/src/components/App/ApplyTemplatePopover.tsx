@@ -1,8 +1,3 @@
-/**
- * 应用模板 Popover 组件
- * 在字段表格上方显示，用于快速应用模板字段
- */
-
 import { memo, useReducer, useMemo, useCallback } from 'react';
 import { ChevronDown, FieldTemplateIcon, Plus, Search, Settings } from '@/components/icons';
 import { Button } from '@/components/ui/button';

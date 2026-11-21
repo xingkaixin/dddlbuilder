@@ -21,7 +21,7 @@ const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m
 const WorkspaceShell = lazy(() =>
   import('./components/App/WorkspaceShell').then((m) => ({ default: m.WorkspaceShell })),
 );
-// SAFETY: the Vite root element is checked for null before this React mount assertion.
+// SAFETY: next-themes ThemeProvider props omit React 19 children compatibility under this tsconfig.
 const AppThemeProvider = ThemeProvider as ComponentType<
   PropsWithChildren<React.ComponentProps<typeof ThemeProvider>>
 >;

@@ -1,6 +1,5 @@
 import { DATABASE_TYPES } from '@ddlbuilder/shared-types';
 
-// WebMCP supplies untyped JSON objects; the receiving helpers validate each key before use.
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type
 export type ToolInput = Record<string, unknown>;
 
@@ -19,7 +18,6 @@ export interface WebMcpToolDependencies {
   applyPatch: (input: ToolInput, signal: AbortSignal) => Promise<ToolResult>;
 }
 
-// JSON Schema properties are intentionally open because each WebMCP tool supplies its own schema.
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type
 const objectSchema = (properties: Record<string, object>, required: string[] = []) => ({
   type: 'object',

@@ -273,7 +273,6 @@ export function useSavedTables() {
           return { ok: false, reason: 'not_found' };
         }
 
-        // 命名冲突解决
         const existingNormalizedNames = new Set(savedTables.map((t) => t.normalizedName));
         let targetNormalizedName = record.normalizedName;
         let targetName = record.name;
@@ -291,7 +290,6 @@ export function useSavedTables() {
           targetName = `${baseName}_${counter}`;
         }
 
-        // 文件夹回退：原文件夹不存在则恢复到根目录
         const folderId =
           record.folderId && options?.existingFolderIds?.has(record.folderId)
             ? record.folderId
@@ -442,7 +440,6 @@ export function useSavedTables() {
     [resolveVersionTarget, t],
   );
 
-  // 移动表到指定文件夹
   const moveTableToFolder = useCallback(
     async (target: SavedTableTarget, folderId?: string): Promise<SaveTableResult> => {
       try {

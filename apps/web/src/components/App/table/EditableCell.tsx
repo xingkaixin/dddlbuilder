@@ -128,7 +128,6 @@ export const EditableCell = memo<EditableCellProps>(
       startEditingWithCurrentValue('focus');
     }, [startEditingWithCurrentValue]);
 
-    // Start editing with empty value (type-to-replace behavior)
     const startEditingWithReplace = useCallback(
       (initialChar: string) => {
         if (disabled) return;
@@ -189,12 +188,10 @@ export const EditableCell = memo<EditableCellProps>(
       [editValue, finishEditing, initialValue],
     );
 
-    // Handle keyboard input when cell is focused (not editing)
     const handleCellKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
         if (disabled) return;
 
-        // Enter or F2 to start editing with current value
         if (e.key === 'Enter' || e.key === 'F2') {
           e.preventDefault();
           startEditingWithCurrentValue('keyboard');
@@ -202,7 +199,6 @@ export const EditableCell = memo<EditableCellProps>(
           return;
         }
 
-        // Delete/Backspace to clear and start editing
         if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault();
           startEditingWithReplace('');
@@ -210,7 +206,6 @@ export const EditableCell = memo<EditableCellProps>(
           return;
         }
 
-        // Printable character - start editing with this character
         if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
           e.preventDefault();
           startEditingWithReplace(e.key);

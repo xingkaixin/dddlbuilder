@@ -20,7 +20,6 @@ export function getORMTypeWithArgs(ormTarget: ORMTarget, fieldType: string): str
   const baseMapped = mapCanonicalToORMType(ormTarget, fieldType);
 
   if (ormTarget === 'sqlalchemy') {
-    // SQLAlchemy needs args for String, Numeric, etc.
     if (['String', 'LargeBinary'].includes(baseMapped) && parsed.args.length > 0) {
       return `${baseMapped}(${parsed.args.join(', ')})`;
     }

@@ -39,13 +39,9 @@
   );
 }
 
-/* transitions-dev — copy this :root block into your project once.
-   Every transition snippet reads from these semantic names. */
 :root {
-  /* Card resize */
   --resize-dur: 300ms;
   --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Number pop-in */
   --digit-dur: 500ms;
   --digit-distance: 8px;
   --digit-stagger: 70ms;
@@ -53,7 +49,6 @@
   --digit-ease: cubic-bezier(0.34, 1.45, 0.64, 1);
   --digit-dir-x: 0;
   --digit-dir-y: 1;
-  /* Notification badge */
   --badge-slide-dur: 260ms;
   --badge-pop-dur: 500ms;
   --badge-pop-close-dur: 180ms;
@@ -65,30 +60,25 @@
   --badge-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --badge-pop-ease: cubic-bezier(0.34, 1.36, 0.64, 1);
   --badge-close-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  /* Text states swap */
   --text-swap-dur: 200ms;
   --text-swap-translate-y: 8px;
   --text-swap-blur: 2px;
   --text-swap-ease: ease-out;
-  /* Menu dropdown */
   --dropdown-open-dur: 250ms;
   --dropdown-close-dur: 150ms;
   --dropdown-pre-scale: 0.97;
   --dropdown-closing-scale: 0.99;
   --dropdown-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Modal open / close */
   --modal-open-dur: 250ms;
   --modal-close-dur: 150ms;
   --modal-scale: 0.96;
   --modal-scale-close: 0.96;
   --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Panel reveal */
   --panel-open-dur: 400ms;
   --panel-close-dur: 350ms;
   --panel-translate-y: 100px;
   --panel-blur: 2px;
   --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Page side-by-side */
   --page-slide-dur: 200ms;
   --page-fade-dur: 200ms;
   --page-slide-distance: 8px;
@@ -97,7 +87,6 @@
   --page-exit-enabled: 1;
   --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --page-fade-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Icon swap */
   --icon-swap-dur: 200ms;
   --icon-swap-blur: 2px;
   --icon-swap-start-scale: 0.25;
@@ -171,7 +160,6 @@
 
     --ring: 219.6 76.4% 75.1%;
 
-    /* React Flow dark mode overrides */
     --xy-edge-stroke: hsl(var(--muted-foreground) / 0.5);
     --xy-edge-stroke-selected: hsl(var(--primary));
     --xy-node-background-color-default: hsl(var(--card));
@@ -180,7 +168,6 @@
     --xy-handle-border-color-default: hsl(var(--background));
   }
 
-  /* React Flow light mode overrides */
   :root {
     --xy-edge-stroke: hsl(var(--muted-foreground) / 0.5);
     --xy-edge-stroke-selected: hsl(var(--primary));
@@ -203,13 +190,7 @@
     font-synthesis-weight: none;
     @apply min-h-screen bg-background text-foreground antialiased text-base leading-relaxed;
   }
-
-  /* Auto color SVG icons based on text color */
 }
-
-/* =============================================
-   transitions-dev Shared Interaction Motion
-   ============================================= */
 
 .t-dropdown {
   transform-origin: top left;
@@ -465,11 +446,6 @@
   }
 }
 
-/* =============================================
-   Suggestion Application Animations
-   ============================================= */
-
-/* Index/Field Add Animation - Green highlight fade in */
 @keyframes suggestion-add {
   0% {
     opacity: 0;
@@ -493,7 +469,6 @@
   }
 }
 
-/* Index/Field Remove Animation - Red highlight fade out with collapse */
 @keyframes suggestion-remove {
   0% {
     opacity: 1;
@@ -525,7 +500,6 @@
   }
 }
 
-/* Field Modify Animation - Blue pulse highlight */
 @keyframes suggestion-modify {
   0% {
     background-color: rgba(59, 130, 246, 0.35);
@@ -543,7 +517,6 @@
   }
 }
 
-/* Animation Classes */
 .animate-suggestion-add {
   animation: suggestion-add 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   transform-origin: center top;
@@ -559,7 +532,6 @@
   animation: suggestion-modify 800ms ease-out forwards;
 }
 
-/* Dark mode adjustments for animations */
 .dark .animate-suggestion-add {
   animation-name: suggestion-add-dark;
 }
@@ -643,7 +615,6 @@
   }
 }
 
-/* Field Table Highlight Animation - More visible blue glow */
 @keyframes field-highlight {
   0% {
     box-shadow:
@@ -716,7 +687,6 @@
   }
 }
 
-/* TanStack Table Row Highlight Animation */
 @keyframes tanstack-row-highlight {
   0% {
     background-color: rgba(59, 130, 246, 0.25);

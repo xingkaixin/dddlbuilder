@@ -18,15 +18,6 @@ const COLUMN_COMMENT_PATTERN = new RegExp(
   'iu',
 );
 
-/**
- * Preprocess Oracle SQL for parsing
- *
- * Handles:
- * - Extract and remove COMMENT ON TABLE/COLUMN statements
- * - Remove CREATE OR REPLACE PUBLIC SYNONYM statements
- * - Normalize Oracle types (VARCHAR2 → VARCHAR, NUMBER → DECIMAL)
- * - Convert SYSTIMESTAMP → CURRENT_TIMESTAMP
- */
 export function preprocessOracle(sql: string): PreprocessResult {
   const metadataByTable = new Map<string, PreprocessResult['tableMetadata'][number]>();
   const unescapeComment = (value: string) => value.replace(/''/g, "'");
@@ -46,7 +37,6 @@ export function preprocessOracle(sql: string): PreprocessResult {
     return metadata;
   };
 
-  // Extract and remove COMMENT statements
   sql = splitSqlStatements(sql, { backslashEscapes: false })
     .map((statement) => {
       const code = statement.replace(LEADING_SQL_TRIVIA, '');
@@ -70,10 +60,8 @@ export function preprocessOracle(sql: string): PreprocessResult {
     })
     .join('');
 
-  // Remove synonym creation statements
   sql = sql.replace(/CREATE\s+OR\s+REPLACE\s+PUBLIC\s+SYNONYM[\s\S]*?;/gi, '');
 
-  // Normalize types and default values for parser compatibility
   const normalizedSql = mapSqlCode(sql, (code) =>
     code
       .replace(/\bVARCHAR2\b/gi, 'VARCHAR')

@@ -17,7 +17,6 @@ import { diffPersistedState, type TableDiff } from '@ddlbuilder/ddl-core';
 import { useEditorStore } from '@/stores/editorStore';
 
 interface UseDerivedTableStateDeps {
-  // 基础表数据
   objectType: NonNullable<PersistedState['objectType']>;
   schemaName: string;
   tableName: string;
@@ -29,27 +28,19 @@ interface UseDerivedTableStateDeps {
   addCount: number;
   rows: FieldRow[];
   indexes: IndexDefinition[];
-  // 外键
   foreignKeys: ForeignKeyDefinition[];
-  // 认证
   authInput: string;
   authObjects: string[];
-  // 配置
   citusShardingConfig: CitusShardingConfig;
   mysqlPartitionConfig: MysqlPartitionConfig;
   tableMiscConfig: TableMiscConfig;
   fieldTableFreezeEnabled: boolean;
   fieldTableFreezeColumns: number;
-  // 加载状态
   loadedTableNormalizedName: string | null;
   loadedTableSignature: string | null;
   loadedTableState: PersistedState | null;
 }
 
-/**
- * 聚合 App 组件中所有派生/计算状态。
- * 从 App/index.tsx 中提取，减少主组件的样板代码。
- */
 export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   const {
     schemaName,
@@ -76,7 +67,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     loadedTableState,
   } = deps;
 
-  // --- 持久化状态 ---
   const currentPersistedState = useMemo(
     () =>
       toPersistedState({
@@ -131,7 +121,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     [loadedTableSignature],
   );
 
-  // --- 加载状态派生 ---
   const currentStateSignature = useMemo(
     () =>
       normalizedLoadedTableSignature == null
@@ -150,7 +139,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   const canSaveCurrent = !hasLoadedTable || isLoadedDirty;
   const saveInputDisabled = hasLoadedTable;
 
-  // --- Diff ---
   const deferredPersistedState = useDeferredValue(currentPersistedState);
 
   const tableDiff = useMemo<TableDiff | null>(() => {
@@ -160,15 +148,12 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   }, [isLoadedDirty, loadedTableState, deferredPersistedState]);
 
   return {
-    // 持久化
     currentPersistedState,
     buildPersistedState,
-    // 加载状态
     hasLoadedTable,
     isLoadedDirty,
     canSaveCurrent,
     saveInputDisabled,
-    // Diff
     tableDiff,
   };
 }

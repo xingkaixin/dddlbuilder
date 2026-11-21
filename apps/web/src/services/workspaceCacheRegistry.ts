@@ -10,7 +10,6 @@ export const readWorkspaceCaches = (): WorkspaceCache[] => {
 
   if (!Array.isArray(value)) throw new Error('Invalid workspace cache registry');
 
-  // localStorage is an untrusted persisted boundary; validate each entry before exposing it.
   // oxlint-disable-next-line anti-slop/no-unknown-parameters
   return value.map((item: unknown) => {
     const scope = parseWorkspaceIdentity(JSON.stringify(item));

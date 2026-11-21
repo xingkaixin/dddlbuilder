@@ -150,7 +150,6 @@ export const MockDataDialog = memo<MockDataDialogProps>(
           </DialogHeader>
 
           <div className="flex flex-col gap-4 min-h-0 flex-1">
-            {/* 行数配置 */}
             <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
               <Label className="shrink-0 text-sm font-medium">{t('mockData.rowCount')}</Label>
               <div className="flex h-7 items-center rounded-md border shadow-sm bg-background">
@@ -200,7 +199,6 @@ export const MockDataDialog = memo<MockDataDialogProps>(
               </span>
             </div>
 
-            {/* 格式 Tabs + 预览 */}
             <Tabs
               value={format}
               onValueChange={(value) => {

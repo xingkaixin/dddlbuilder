@@ -77,10 +77,6 @@ const INTEGER_BYTES: ReadonlyMap<string, number> = new Map([
   ['bigint', 8],
 ]);
 
-/**
- * Returns a FieldTypeRisk if changing from oldType to newType is dangerous
- * (cross-category change, length reduction, or integer narrowing), or null otherwise.
- */
 export function detectFieldTypeRisk(oldType: string, newType: string): FieldTypeRisk | null {
   if (!oldType || !newType) return null;
 
@@ -93,7 +89,6 @@ export function detectFieldTypeRisk(oldType: string, newType: string): FieldType
   const newBase = newParsed.baseType.toLowerCase();
 
   if (oldBase === newBase) {
-    // Same base type: detect length / precision reduction via first arg
     if (oldParsed.args.length > 0 && newParsed.args.length > 0) {
       const oldLen = Number(oldParsed.args[0]);
       const newLen = Number(newParsed.args[0]);
@@ -109,12 +104,10 @@ export function detectFieldTypeRisk(oldType: string, newType: string): FieldType
   const oldCategory = TYPE_CATEGORY.get(oldBase);
   const newCategory = TYPE_CATEGORY.get(newBase);
 
-  // Cross-category change always carries data conversion risk
   if (oldCategory && newCategory && oldCategory !== newCategory) {
     return { kind: 'type_change', fromType: oldType, toType: newType };
   }
 
-  // Same integer category but narrower storage
   if (oldCategory === 'integer') {
     const oldBytes = INTEGER_BYTES.get(oldBase) ?? 0;
     const newBytes = INTEGER_BYTES.get(newBase) ?? 0;

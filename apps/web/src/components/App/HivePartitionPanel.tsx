@@ -90,7 +90,6 @@ export const HivePartitionPanel = memo<HivePartitionPanelProps>(
 
         <div className="relative p-4">
           <div className="space-y-6">
-            {/* Enable Partition Switch */}
             <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
               <Label className="text-sm font-semibold">{t('hivePartitionPanel.enable')}</Label>
               <Switch checked={config.enabled} onCheckedChange={onEnabledChange} />
@@ -188,7 +187,6 @@ export const HivePartitionPanel = memo<HivePartitionPanelProps>(
                   </div>
                 )}
 
-                {/* Clustering Section */}
                 <div className="space-y-4 rounded-lg border border-dashed p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">

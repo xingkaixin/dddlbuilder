@@ -25,7 +25,6 @@ export const ErTableNode = memo(function ErTableNode({ data, selected }: NodePro
       className={`rounded-lg border bg-card shadow-md transition-shadow hover:shadow-lg cursor-pointer select-none min-w-[220px] ${selected ? 'ring-2 ring-primary' : ''}`}
       onDoubleClick={() => onSelectTable?.(record)}
     >
-      {/* Header */}
       <div className="flex items-center gap-2 rounded-t-lg bg-primary/10 px-3 py-2">
         <span className="text-sm font-semibold text-primary truncate">{state.tableName}</span>
         {state.schemaName && (
@@ -33,14 +32,12 @@ export const ErTableNode = memo(function ErTableNode({ data, selected }: NodePro
         )}
       </div>
 
-      {/* Fields */}
       <div className="px-1 py-1">
         {fields.map((field) => (
           <div
             key={field.name}
             className="relative flex items-center justify-between gap-2 px-2 py-0.5 text-xs"
           >
-            {/* Source Handle (left side — for creating FK from this field) */}
             <Handle
               type="source"
               id={field.name}
@@ -62,7 +59,6 @@ export const ErTableNode = memo(function ErTableNode({ data, selected }: NodePro
             </span>
             <span className="text-muted-foreground truncate">{field.type}</span>
 
-            {/* Target Handle (right side — for being referenced by FK) */}
             <Handle
               type="target"
               id={field.name}

@@ -76,7 +76,6 @@ export const isWorkspaceEntityDeletionMarker = (
   );
 };
 
-// IndexedDB callbacks forward the platform's unknown failure value unchanged.
 // oxlint-disable-next-line anti-slop/no-unknown-parameters
 const failRequest = (request: IDBRequest, fail: (error: unknown) => void) =>
   fail(request.error ?? new Error('IndexedDB 请求失败'));
@@ -84,7 +83,6 @@ const failRequest = (request: IDBRequest, fail: (error: unknown) => void) =>
 export const readWorkspaceEntityDeletionMarker = (
   store: IDBObjectStore,
   target: WorkspaceEntityTarget,
-  // IndexedDB callbacks forward the platform's unknown failure value unchanged.
   // oxlint-disable-next-line anti-slop/no-unknown-parameters
   fail: (error: unknown) => void,
   done: (marker?: WorkspaceEntityDeletionMarker) => void,
@@ -209,7 +207,6 @@ export async function cancelWorkspaceEntityDeletion(
 export const runWorkspaceEntityWrites = async (
   writes: WorkspaceEntityWrite[],
   storeNames: string | string[],
-  // IndexedDB callbacks forward the platform's unknown failure value unchanged.
   // oxlint-disable-next-line anti-slop/no-unknown-parameters
   write: (transaction: IDBTransaction, fail: (error: unknown) => void) => void,
 ): Promise<void> => {

@@ -37,7 +37,6 @@ const writeMarker = (scope: UserWorkspaceScope, value: string) => {
 export const isLegacyWorkspaceMigrationCompleted = (scope: UserWorkspaceScope) =>
   readMarker(scope) === DONE;
 
-/** 返回本次运行的令牌，收尾时凭它认领结果。 */
 export const beginLegacyWorkspaceMigration = (scope: UserWorkspaceScope) => {
   const token = `running:${crypto.randomUUID()}`;
   writeMarker(scope, token);

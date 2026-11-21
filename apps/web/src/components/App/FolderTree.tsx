@@ -130,7 +130,6 @@ const FolderNode = memo<FolderNodeProps>(
           >
             <DragDropVerticalIcon className="h-3.5 w-3.5" />
           </button>
-          {/* 展开/折叠按钮 */}
           <button
             type="button"
             className={cn(
@@ -153,7 +152,6 @@ const FolderNode = memo<FolderNodeProps>(
             />
           </button>
 
-          {/* 可点击的文件夹名称区域 */}
           <button
             type="button"
             className={cn(
@@ -162,20 +160,16 @@ const FolderNode = memo<FolderNodeProps>(
             )}
             onClick={onSelect}
           >
-            {/* 文件夹图标 */}
             <Folder
               className="h-4 w-4 text-amber-500"
               data-state={isExpanded ? 'open' : undefined}
             />
-            {/* 文件夹名称 */}
             <span className="flex-1 truncate font-normal">{folder.name}</span>
-            {/* 表数量 */}
             {folder.tableCount !== undefined && folder.tableCount > 0 && (
               <span className="text-xs text-muted-foreground">{folder.tableCount}</span>
             )}
           </button>
 
-          {/* 操作菜单 */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -210,7 +204,6 @@ const FolderNode = memo<FolderNodeProps>(
           </DropdownMenu>
         </div>
 
-        {/* 子内容（展开时显示） */}
         {isExpanded && <fieldset className="m-0 min-w-0 border-0 p-0">{children}</fieldset>}
       </div>
     );
@@ -233,7 +226,6 @@ export const FolderTree = memo<FolderTreeProps>(
   }) => {
     const { t } = useTranslation();
 
-    // 递归渲染文件夹
     const renderFolder = useCallback(
       function renderFolder(folder: FolderTreeNode, depth: number): React.ReactNode {
         const isExpanded = expandedFolders.has(folder.id);
@@ -254,9 +246,7 @@ export const FolderTree = memo<FolderTreeProps>(
             onRename={() => onRenameFolder(folder)}
             onDelete={() => onDeleteFolder(folder)}
           >
-            {/* 子文件夹 */}
             {folder.children.map((child) => renderFolder(child, depth + 1))}
-            {/* 该文件夹下的表 */}
             {renderTables(folder.id, depth)}
           </FolderNode>
         );
@@ -278,12 +268,10 @@ export const FolderTree = memo<FolderTreeProps>(
       <div className="space-y-0.5">
         {folders.length > 0 && (
           <div role="tree" aria-label={t('savedTables.folderTreeAria')} className="space-y-0.5">
-            {/* 根级文件夹 */}
             {folders.map((folder) => renderFolder(folder, 0))}
           </div>
         )}
 
-        {/* 未分组的表 */}
         {renderTables(undefined, 0)}
       </div>
     );

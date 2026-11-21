@@ -1,4 +1,3 @@
--- 以 (workspace_id, entity_type, entity_id) 为主键，去掉拼接的 id 列及其重复唯一索引
 -- 不再重建 idx_workspace_entities_changes：已无按 version 游标拉取的查询，每次 upsert 改 version 都要额外写它
 PRAGMA foreign_keys = OFF;
 

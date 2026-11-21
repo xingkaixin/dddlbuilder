@@ -135,7 +135,6 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
           </DialogHeader>
 
           <div className="grid gap-6 py-4">
-            {/* Row count input */}
             <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="rows-input" className="text-sm font-medium">
@@ -170,7 +169,6 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
               </div>
             </div>
 
-            {/* Grand total */}
             <div className="flex items-center justify-between p-4 bg-violet-500/5 border border-violet-500/20 rounded-xl">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <BarChart3 className="h-4 w-4 text-violet-500" />
@@ -186,7 +184,6 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
               </div>
             </div>
 
-            {/* Breakdown: three cards */}
             <div className="grid grid-cols-3 gap-3">
               <BreakdownCard
                 icon={<Database className="h-4 w-4" />}
@@ -208,23 +205,19 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
               />
             </div>
 
-            {/* Explanations */}
             <div className="space-y-4">
-              {/* Data */}
               <ExplainSection
                 icon={<Database className="h-4 w-4 text-primary" />}
                 title={t('storageEstimator.dataFeatures', { database: breakdown.dbName })}
                 items={dataExplanation}
               />
 
-              {/* Index */}
               <ExplainSection
                 icon={<Index className="h-4 w-4 text-emerald-600" />}
                 title={t('storageEstimator.indexExplanation')}
                 items={indexExplanation}
               />
 
-              {/* Redundancy */}
               <ExplainSection
                 icon={<Zap className="h-4 w-4 text-amber-600" />}
                 title={t('storageEstimator.redundancyExplanation')}

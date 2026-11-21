@@ -24,7 +24,6 @@ import {
   replaceIndexDefinition,
 } from '@/stores/indexDefinitionMutations';
 
-// WebMCP patch JSON is validated by the parser helpers before mutation functions receive it.
 // oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters
 type JsonRecord = Record<string, unknown>;
 

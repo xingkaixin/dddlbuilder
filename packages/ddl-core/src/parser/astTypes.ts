@@ -57,7 +57,6 @@ export type ReferenceDefinitionNode = {
   on_action?: OnActionNode[] | null;
 };
 
-/** CREATE TABLE 约束与 ALTER TABLE 表达式共用的外键最小形状 */
 export type ForeignKeyNode = {
   constraint?: string | null;
   definition?: ColumnListNode[];
@@ -120,13 +119,10 @@ export type AlterTableStmt = AstStatement & {
 const isAstScalar = (value: unknown): value is string | number | boolean =>
   typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 
-// node-sql-parser does not publish a stable TypeScript AST contract; these helpers validate and
-// read its dynamic nodes before parser-specific handlers consume them.
 // oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-/** 读取形态不定的 AST 节点字段，非对象一律得到 undefined（等价于可选链） */
 export const readField = (node: unknown, key: string): unknown =>
   isRecord(node) ? node[key] : undefined;
 

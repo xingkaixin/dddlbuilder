@@ -52,7 +52,6 @@ export function PreviewStep({
         </span>
       </div>
 
-      {/* 字段列表 */}
       <div className="max-h-[300px] overflow-auto overscroll-contain rounded-md border">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-muted">
@@ -140,7 +139,6 @@ export function PreviewStep({
         </table>
       </div>
 
-      {/* 索引明细 */}
       {parsedResult.indexes.length > 0 && (
         <div className="rounded-md border">
           <div className="bg-muted px-3 py-2 text-sm font-medium">
@@ -185,7 +183,6 @@ export function PreviewStep({
         </div>
       )}
 
-      {/* 授权对象明细 */}
       {parsedResult.authObjects.length > 0 && (
         <div className="rounded-md border">
           <div className="bg-muted px-3 py-2 text-sm font-medium">

@@ -34,7 +34,6 @@ export function escapePrismaDefault(value: string): string {
     return 'now()';
   }
 
-  // For numeric/boolean values, return as-is; for strings, quote them
   if (/^-?\d+(\.\d+)?$/.test(value) || value === 'true' || value === 'false') {
     return value;
   }

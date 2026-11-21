@@ -9,7 +9,6 @@ export interface DialectProfile {
   nowFunction: (canonicalType: string) => string;
   /** 列定义片段拼接顺序；hive 无默认值概念，只输出 nullability */
   clauseOrder: Array<'identity' | 'nullability' | 'default'>;
-  /** 可空列是否显式输出 NULL */
   explicitNull: boolean;
   commentChannel: CommentChannel;
 }

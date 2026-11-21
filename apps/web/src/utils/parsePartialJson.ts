@@ -1,14 +1,3 @@
-/**
- * Partial JSON Parser
- *
- * Parses incomplete JSON strings and returns whatever can be extracted.
- * This enables progressive rendering of streaming JSON responses.
- *
- * For a schema like { score, summary, suggestions[] }, it can extract
- * fields as they stream in, even if the JSON isn't complete yet.
- */
-
-// This module incrementally decodes provider JSON that may be incomplete at every update.
 // oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 export interface PartialReviewResult {
   score?: number;
@@ -16,41 +5,30 @@ export interface PartialReviewResult {
   suggestions?: Array<string | Record<string, unknown>>;
 }
 
-/**
- * Attempts to parse a potentially incomplete JSON string.
- * Returns null if nothing can be parsed yet.
- */
 export function parsePartialJson(text: string): PartialReviewResult | null {
   if (!text || text.trim().length === 0) {
     return null;
   }
 
-  // Try to parse as complete JSON first
   try {
     const result = JSON.parse(text);
 
     return normalizeResult(result);
-  } catch {
-    // Continue with partial parsing
-  }
+  } catch {}
 
-  // Extract what we can from partial JSON
   const result: PartialReviewResult = {};
 
-  // Extract score - look for "score": followed by a number
   const scoreMatch = text.match(/"score"\s*:\s*(\d+(?:\.\d+)?)/);
 
   if (scoreMatch) {
     result.score = Math.min(10, Math.max(1, Number(scoreMatch[1])));
   }
 
-  // Extract summary - look for "summary": followed by a quoted string
   const summaryMatch = text.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
 
   if (summaryMatch) {
     result.summary = unescapeJsonString(summaryMatch[1]);
   } else {
-    // Try to get partial summary (string not yet closed)
     const partialSummaryMatch = text.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)$/);
 
     if (partialSummaryMatch) {
@@ -58,7 +36,6 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
     }
   }
 
-  // Extract suggestions array
   const suggestionsStart = text.indexOf('"suggestions"');
 
   if (suggestionsStart !== -1) {
@@ -71,7 +48,6 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
     }
   }
 
-  // Return null if nothing was extracted
   if (
     result.score === undefined &&
     result.summary === undefined &&
@@ -100,12 +76,10 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
   for (let i = 0; i < content.length; i += 1) {
     const char = content[i];
 
-    // Handle end of array
     if (char === ']' && !inString && depth === 0) {
       break;
     }
 
-    // Handle string escaping
     if (escaped) {
       currentItem += char;
       escaped = false;
@@ -118,7 +92,6 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
       continue;
     }
 
-    // Handle string start/end
     if (char === '"') {
       if (!inString) {
         if (itemType === null) {
@@ -136,7 +109,6 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
         inString = false;
 
         if (itemType === 'string' && depth === 0) {
-          // Complete string item
           items.push(unescapeJsonString(currentItem));
           currentItem = '';
           itemType = null;
@@ -148,7 +120,6 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
       continue;
     }
 
-    // Handle object start
     if (char === '{' && !inString) {
       if (itemType === null) {
         itemType = 'object';
@@ -162,19 +133,15 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
       continue;
     }
 
-    // Handle object end
     if (char === '}' && !inString && itemType === 'object') {
       currentItem += char;
       depth -= 1;
 
       if (depth === 0) {
-        // Try to parse the complete object
         try {
           const parsed = JSON.parse(currentItem);
           items.push(parsed);
-        } catch {
-          // Incomplete object, skip it
-        }
+        } catch {}
 
         currentItem = '';
         itemType = null;
@@ -183,15 +150,12 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
       continue;
     }
 
-    // Handle item separator
     if (char === ',' && !inString && depth === 0) {
-      // Skip incomplete items
       currentItem = '';
       itemType = null;
       continue;
     }
 
-    // Accumulate characters based on current item type
     if (itemType === 'string' || itemType === 'object') {
       currentItem += char;
     }
@@ -200,9 +164,6 @@ function extractArrayItems(content: string): (string | Record<string, unknown>)[
   return items;
 }
 
-/**
- * Unescape JSON string escape sequences.
- */
 function unescapeJsonString(str: string): string {
   return str
     .replace(/\\n/g, '\n')
@@ -212,15 +173,12 @@ function unescapeJsonString(str: string): string {
     .replace(/\\\\/g, '\\');
 }
 
-/**
- * Normalize parsed result to ensure correct types.
- */
 function normalizeResult(result: unknown): PartialReviewResult | null {
   if (!result || typeof result !== 'object') {
     return null;
   }
 
-  // SAFETY: normalizeResult only reads optional primitive fields from the parsed JSON object.
+  // SAFETY: result is checked as a non-null object above; every property read below is runtime-validated.
   const obj = result as Record<string, unknown>;
   const normalized: PartialReviewResult = {};
 

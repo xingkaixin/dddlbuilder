@@ -26,9 +26,6 @@ interface DiffDialogProps {
   onCopy?: () => void;
 }
 
-/**
- * 字段变更行组件
- */
 const FieldDiffRow = memo<{ diff: FieldDiff }>(({ diff }) => {
   const { t } = useTranslation();
 
@@ -87,9 +84,6 @@ const FieldDiffRow = memo<{ diff: FieldDiff }>(({ diff }) => {
 });
 FieldDiffRow.displayName = 'FieldDiffRow';
 
-/**
- * 索引变更行组件
- */
 const IndexDiffRow = memo<{ diff: IndexDiff }>(({ diff }) => {
   const { t } = useTranslation();
 
@@ -130,9 +124,6 @@ IndexDiffRow.displayName = 'IndexDiffRow';
 
 const rollbackVisibleReducer = (visible: boolean, _event: 'toggled') => !visible;
 
-/**
- * Diff 对话框组件
- */
 export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onCopy }) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -190,7 +181,6 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
         </DialogHeader>
 
         <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
-          {/* 表元数据变更 */}
           {hasTableMetaChanges && (
             <div className="space-y-2">
               <h4 className="text-sm font-medium text-muted-foreground">
@@ -312,7 +302,6 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
             </div>
           )}
 
-          {/* 字段变更 */}
           {hasFieldChanges && (
             <div className="space-y-2">
               <h4 className="text-sm font-medium text-muted-foreground">
@@ -326,7 +315,6 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
             </div>
           )}
 
-          {/* 索引变更 */}
           {hasIndexChanges && (
             <div className="space-y-2">
               <h4 className="text-sm font-medium text-muted-foreground">
@@ -340,7 +328,6 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
             </div>
           )}
 
-          {/* 变更脚本 */}
           {alterDDL && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -369,7 +356,6 @@ export const DiffDialog = memo<DiffDialogProps>(({ open, onOpenChange, diff, onC
             </div>
           )}
 
-          {/* 回滚脚本 */}
           {rollbackDDL && (
             <div className="space-y-2">
               <button

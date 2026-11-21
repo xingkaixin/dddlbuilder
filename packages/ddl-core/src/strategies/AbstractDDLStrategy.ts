@@ -24,33 +24,17 @@ export interface ColumnDefinitionSegments {
   comment?: string;
 }
 
-/**
- * DDL策略抽象基类
- * 提供所有策略类的公共实现，减少代码重复
- */
 export abstract class AbstractDDLStrategy implements DDLStrategy {
-  /**
-   * 子类必须实现的数据库类型方法
-   */
   abstract getDatabaseType(): DatabaseType;
 
-  /**
-   * 格式化表名 - 所有数据库的通用实现
-   */
   formatTableName(tableName: string): string {
     return formatSqlTableName(tableName, this.getDatabaseType());
   }
 
-  /**
-   * 格式化字段名 - 所有数据库的通用实现
-   */
   formatFieldName(fieldName: string): string {
     return formatSqlIdentifier(fieldName, this.getDatabaseType());
   }
 
-  /**
-   * 生成主键DDL的通用实现
-   */
   protected generatePrimaryKeyDDL(tableName: string, index: IndexDefinition): string {
     const fieldList = index.fields.map((f) => this.formatFieldName(f.name)).join(', ');
     const constraintName = resolveIndexName(tableName, index, this.getDatabaseType());
@@ -58,16 +42,10 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     return `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${this.formatFieldName(constraintName)} PRIMARY KEY (${fieldList});`;
   }
 
-  /**
-   * 生成索引字段列表的通用实现
-   */
   protected formatIndexFieldList(index: IndexDefinition): string {
     return index.fields.map((f) => `${this.formatFieldName(f.name)} ${f.direction}`).join(', ');
   }
 
-  /**
-   * 生成标准索引DDL的通用实现
-   */
   protected generateStandardIndexDDL(tableName: string, index: IndexDefinition): string {
     if (index.kind === 'primary') {
       return this.generatePrimaryKeyDDL(tableName, index);
@@ -86,16 +64,10 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     return `CREATE ${indexType} ${this.formatFieldName(index.name)} ON ${qualifiedName} (${fieldList});`;
   }
 
-  /**
-   * 创建TypeMapper实例的通用方法
-   */
   protected createTypeMapper(): TypeMapper {
     return TypeMapper.create(this.getDatabaseType());
   }
 
-  /**
-   * 生成列注释DDL的通用实现（用于支持列注释的数据库）
-   */
   protected generateColumnCommentsDDL(tableName: string, fields: NormalizedField[]): string[] {
     const comments: string[] = [];
 
@@ -128,9 +100,6 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     });
   }
 
-  /**
-   * 子类必须实现的表DDL生成方法
-   */
   abstract generateTableDDL(
     tableName: string,
     tableComment: string,
@@ -151,17 +120,10 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     };
   }
 
-  /**
-   * 默认索引DDL生成实现，子类可以重写
-   */
   generateIndexDDL(tableName: string, index: IndexDefinition): string {
     return this.generateStandardIndexDDL(tableName, index);
   }
 
-  /**
-   * 生成外键约束DDL的通用实现
-   * 子类可以重写以适配方言差异
-   */
   generateForeignKeyDDL(tableName: string, fk: ForeignKeyDefinition): string {
     return buildForeignKeyDDL(tableName, fk, this.getDatabaseType());
   }

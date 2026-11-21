@@ -104,7 +104,6 @@ export class PrismaGenerator implements ORMGenerator {
       lines.push(`  @@id([${[...primaryFields].map(names.field).join(', ')}])`);
     }
 
-    // Composite unique indexes
     const compositeUniques = indexes.filter(
       (i) => i.kind !== 'index' && i.fields.length > 1 && i.kind !== 'primary',
     );

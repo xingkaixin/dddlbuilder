@@ -9,8 +9,9 @@
 - Better Auth 1.7.25 的 Drizzle 适配器仍使用旧的关联查询过滤格式，仓库通过 pnpm 补丁改用 RQB v2 的 `RAW` 回调，并在回调中使用查询别名构造过滤和排序。上游修复后，验证邮箱验证码、会话和运行时端到端测试再移除补丁。
 - 浏览器使用 cookie session，不使用 bearer token。
 - 业务数据直接以 Better Auth 的 `user.id` 作为用户主键，不维护外部身份映射。
-- 认证接口在交给 Better Auth 之前，先做按 IP 的 D1 限流。Better Auth 自带的限流关闭，不依赖进程内计数。
-- HTTP 路由和 Durable Object 使用同一套会话有效性判断：会话未过期，且用户未被禁用。会话被撤销（退出、管理员禁用）时，主动断开该用户的同步连接。
+- 认证接口在交给 Better Auth 之前，先做按 IP 的 D1 限流。Better Auth 自带的限流关闭，不依赖进程内计数。禁用绕过已验证账号检查的 `/email-otp/send-verification-otp` 路径，统一走原生发信接口；Better Auth 实例按 isolate 级稳定的 D1 绑定作 WeakMap 缓存键，禁止捕获请求态 `env`。
+- HTTP 路由和 Durable Object 使用同一套会话有效性判断：会话未过期，且用户未被禁用。会话被撤销（退出、管理员禁用、批量删会话路径）时，按用户去重并主动断开该用户的同步连接。
+- 业务表时间列统一存储 INTEGER Unix 毫秒，对外 HTTP API 保持 ISO 字符串；种子脚本写入账本时使用 `WHERE NOT EXISTS` 而非 `OR IGNORE`，避免 SQLite 余额校验触发器先于唯一约束触发。
 
 ## 额度账本
 
@@ -45,6 +46,7 @@
 6. AI 上下文与 Workspace Y.Doc 独立存储；删除会话先停止并完成结算，再清理 DO。账本按原保留策略维护。
 7. 额度响应校验失败不能回退成余额 0。可观测性不记录提示词、SQL、输出或密钥。
 8. pi-durable 1.x 标记为 Experimental，DO 内的 SQLite schema 只向前迁移。升级 pi-durable 后不能直接回滚到旧版本代码，回滚前要排空进行中的操作并清理 AI Conversation DO。存储错误会关闭 Harness，DO 随即重置并在下一个事件重新打开。
+9. **运行时与协议细节**：DO 将 `persistWithinMs` 设为 0 以保证 `observeCommits` 实时推送 `/events`，首次并发提交复用同一创建 Promise，结算后立即调度 alarm 检查挂起删除；Cron 恢复限制单批并发上限以控制单次 invocation 子请求数，并保留旧结算状态枚举与 `(status, created_at)` 索引、预算窗口 `MAX` 幂等回填以兼容历史记录。请求入口并行执行限流检查与幂等赠额补发；请求预估按字符数计 token（中文约 1 字符≈1 token）。因 Anthropic 限制结构化输出 union 参数，供应商侧使用扁平 schema，业务侧仍按判别联合校验；多轮建表裁剪历史仅保留最新一条 assistant 基线，提交前剔除空白占位行，字段 `id` 区分保留身份（字符串）与新增字段（`null`），索引建议字段不合法时整条拒绝；流式生成期间禁止应用建议，跳过未闭合 JSON 对象，未知流式错误码前向回退为错误文本展示。
 
 ## 管理后台
 

@@ -43,8 +43,6 @@ type ParserSyntaxError = Error & {
   };
 };
 
-// These helpers traverse node-sql-parser's undocumented error and expression AST values at the
-// parser boundary; downstream handlers receive normalized domain structures.
 // oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns, anti-slop/no-runtime-typeof, anti-slop/no-unsafe-dictionary-type
 const isParserSyntaxError = (error: unknown): error is ParserSyntaxError => {
   if (!(error instanceof Error) || error.name !== 'SyntaxError') return false;

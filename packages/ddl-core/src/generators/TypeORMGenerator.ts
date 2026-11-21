@@ -73,7 +73,6 @@ export class TypeORMGenerator implements ORMGenerator {
 
     const classIndexes: string[] = [];
 
-    // Collect composite unique and normal indexes
     for (const idx of indexes) {
       if (idx.kind === 'primary') continue;
       const fieldNames = idx.fields.map((f) => tsStringLiteral(names.field(f.name))).join(', ');

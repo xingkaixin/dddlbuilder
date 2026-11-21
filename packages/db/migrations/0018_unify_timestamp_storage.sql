@@ -1,6 +1,4 @@
 -- 统一时间列表示：业务表全部改为 INTEGER（Unix 毫秒），与 auth 表及后续迁移一致
--- 转换路径：ADD INTEGER 列 → TEXT 毫秒换算回填 → DROP 旧列 → RENAME（SQLite 不支持原地改列类型）
--- 引用被删列的索引与触发器需先删后建
 
 DROP TRIGGER IF EXISTS credit_ledger_update_balance;
 

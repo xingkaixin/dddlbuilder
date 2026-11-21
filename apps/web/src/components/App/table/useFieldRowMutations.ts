@@ -30,10 +30,6 @@ export type EditableFieldUpdateArgs = {
 
 export type UpdateEditableField = (...args: EditableFieldUpdateArgs) => void;
 
-/**
- * 字段表格通用联动逻辑：
- * - defaultKind 变化时同步清理 defaultValue/nullable
- */
 export function useFieldRowMutations({ setRows }: UseFieldRowMutationsParams) {
   const updateCellValue = useCallback<UpdateEditableField>(
     (...args) => {

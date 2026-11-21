@@ -6,10 +6,12 @@ type ToasterProps = React.ComponentProps<typeof Sonner>;
 const Toaster = ({ position = 'bottom-right', ...props }: ToasterProps) => {
   const { theme = 'system' } = useTheme();
 
+  const toasterTheme: ToasterProps['theme'] =
+    theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system';
+
   return (
     <Sonner
-      // SAFETY: the toast component receives the expected Sonner action element type.
-      theme={theme as ToasterProps['theme']}
+      theme={toasterTheme}
       className="toaster group"
       position={position}
       closeButton

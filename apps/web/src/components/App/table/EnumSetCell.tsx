@@ -24,7 +24,6 @@ export const EnumSetCell = memo<EnumSetCellProps>(
 
     const baseType = fieldType.match(/^(enum|set)\s*/i)?.[1]?.toUpperCase() ?? 'ENUM';
 
-    // Build chip list from enumMeta or fall back to type-string labels
     const chips = enumMeta && enumMeta.length > 0 ? enumMeta : [];
 
     const visibleChips = chips.slice(0, MAX_VISIBLE_CHIPS);

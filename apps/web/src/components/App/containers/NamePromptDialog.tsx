@@ -21,7 +21,6 @@ interface NamePromptDialogProps {
   value: string;
   onValueChange: (value: string) => void;
   error: string;
-  /** 非空表示输入框被锁定，并把该文案作为原因提示展示。 */
   disabledHint?: string | null;
   cancelLabel: string;
   confirmLabel: string;
