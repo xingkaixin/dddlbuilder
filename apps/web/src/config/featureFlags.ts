@@ -16,9 +16,6 @@ function toBooleanFlag(value: string | boolean | undefined): boolean {
 
 export const isCnyFireworksEnabled = toBooleanFlag(import.meta.env.VITE_ENABLE_CNY_FIREWORKS);
 
-export const isAiStreamDebugEnabled = toBooleanFlag(
-  // SAFETY: the environment flag is checked against the known boolean feature flag shape.
-  (import.meta.env as Record<string, string | boolean | undefined>).VITE_ENABLE_AI_STREAM_DEBUG,
-);
+export const isAiStreamDebugEnabled = toBooleanFlag(import.meta.env.VITE_ENABLE_AI_STREAM_DEBUG);
 
 export { toBooleanFlag };

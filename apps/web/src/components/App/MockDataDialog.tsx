@@ -39,6 +39,11 @@ interface MockDataDialogProps {
 const MIN_ROWS = 1;
 const MAX_ROWS = 100;
 const DEFAULT_ROWS = 10;
+const MOCK_EXPORT_FORMATS = [
+  'insert-sql',
+  'csv',
+  'json',
+] as const satisfies readonly MockExportFormat[];
 
 type MockDataState = {
   rowCount: number;
@@ -200,10 +205,11 @@ export const MockDataDialog = memo<MockDataDialogProps>(
             {/* 格式 Tabs + 预览 */}
             <Tabs
               value={format}
-              // SAFETY: the mock-data option is selected from the typed dialog option list.
-              onValueChange={(v) =>
-                dispatch({ type: 'formatSelected', format: v as MockExportFormat })
-              }
+              onValueChange={(value) => {
+                const nextFormat = MOCK_EXPORT_FORMATS.find((item) => item === value);
+
+                if (nextFormat) dispatch({ type: 'formatSelected', format: nextFormat });
+              }}
               className="flex flex-col min-h-0 flex-1"
             >
               <div className="flex items-center justify-between">
@@ -276,7 +282,7 @@ export const MockDataDialog = memo<MockDataDialogProps>(
                 </div>
               </div>
 
-              {(['insert-sql', 'csv', 'json'] as const).map((fmt) => (
+              {MOCK_EXPORT_FORMATS.map((fmt) => (
                 <TabsContent
                   key={fmt}
                   value={fmt}

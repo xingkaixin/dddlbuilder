@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { FieldTemplate, TemplateField } from '@/hooks/useFieldTemplates';
-import type { DatabaseType, FieldRow } from '@ddlbuilder/shared-types';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
 import { instantiateTemplateFields, toTemplateFields } from '@/utils/fieldTemplates';
 import { useEditorStore } from '@/stores/editorStore';
@@ -166,8 +166,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
   }) => {
     const { t } = useTranslation();
     const { showToast } = useToast();
-    // SAFETY: the template editor value is supplied by the typed field-row editor.
-    const dbType = useEditorStore((state) => state.dbType) as DatabaseType;
+    const dbType = useEditorStore((state) => state.dbType);
 
     const [
       {

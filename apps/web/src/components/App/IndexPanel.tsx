@@ -2,7 +2,6 @@ import { EmptyTile } from '@/components/ui/feature-tile';
 import { memo, useMemo, useReducer } from 'react';
 import {
   createEntityId,
-  type DatabaseType,
   type IndexDefinition,
   type IndexField,
   type IndexKind,
@@ -258,8 +257,7 @@ export const IndexPanel = memo<IndexPanelProps>(
 
     const buildDraftName = () => {
       const trimmedName = draft.name.trim();
-      // SAFETY: the selected index field comes from the typed index editor state.
-      const maxLength = getIndexNameMaxLength(dbType as DatabaseType);
+      const maxLength = getIndexNameMaxLength(dbType);
 
       if (trimmedName) return truncateIndexName(trimmedName, maxLength);
       if (draft.type === 'primary') return buildPrimaryKeyName(tableName, maxLength);

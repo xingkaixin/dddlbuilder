@@ -195,8 +195,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
           <TextColumnCell
             rowIndex={row.index}
             columnId="fieldName"
-            // SAFETY: the accessor column is declared for FieldRow and therefore yields a string here.
-            value={getValue() as string}
+            value={getValue()}
             onChange={(v) => updateCellValue(row.index, 'fieldName', v)}
             handleTabNavigation={handleTabNavigation}
             onEditingCellChange={onEditingCellChange}
@@ -212,8 +211,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
           <TextColumnCell
             rowIndex={row.index}
             columnId="fieldComment"
-            // SAFETY: the accessor column is declared for FieldRow and therefore yields a string here.
-            value={getValue() as string}
+            value={getValue()}
             onChange={(v) => updateCellValue(row.index, 'fieldComment', v)}
             handleTabNavigation={handleTabNavigation}
             onEditingCellChange={onEditingCellChange}
@@ -228,8 +226,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         cell: ({ row, getValue }) => (
           <FieldTypeColumnCell
             row={row}
-            // SAFETY: the accessor column is declared for FieldRow and therefore yields a string here.
-            value={getValue() as string}
+            value={getValue()}
             placeholder={t('dataTable.placeholder.fieldType')}
             updateCellValue={updateCellValue}
             updateEnumValues={updateEnumValues}
@@ -282,8 +279,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
             <TextColumnCell
               rowIndex={row.index}
               columnId="defaultValue"
-              // SAFETY: the accessor column is declared for FieldRow and therefore yields a string here.
-              value={(getValue() as string) || ''}
+              value={getValue() ?? ''}
               onChange={(v) => updateCellValue(row.index, 'defaultValue', v)}
               handleTabNavigation={handleTabNavigation}
               onEditingCellChange={onEditingCellChange}
