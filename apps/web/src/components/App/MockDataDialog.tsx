@@ -105,10 +105,8 @@ export const MockDataDialog = memo<MockDataDialogProps>(
 
     const output = useMemo(() => {
       if (!open) return null;
-      // seed 用于强制刷新
-      void seed;
 
-      return generateMockData(tableName, schemaName, fields, dbType, { rowCount });
+      return generateMockData(tableName, schemaName, fields, dbType, { rowCount, seed });
     }, [open, tableName, schemaName, fields, dbType, rowCount, seed]);
 
     const currentContent = useMemo(() => {
@@ -231,6 +229,7 @@ export const MockDataDialog = memo<MockDataDialogProps>(
                       <Button
                         variant="ghost"
                         size="sm"
+                        aria-label={t('mockData.regenerate')}
                         className="h-7 w-7 px-0 text-muted-foreground hover:text-foreground"
                         onClick={() => dispatch({ type: 'regenerated' })}
                       >

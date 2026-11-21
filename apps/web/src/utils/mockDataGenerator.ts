@@ -115,30 +115,68 @@ const CN_ADJECTIVES = [
 
 // ── 随机工具 ──────────────────────────────────────────────────────────────────
 
-function randInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+interface MockRandom {
+  next: () => number;
+  int: (min: number, max: number) => number;
+  pick: <T>(arr: readonly T[]) => T;
+  pickN: <T>(arr: readonly T[], n: number) => T[];
 }
 
-function pick<T>(arr: T[]): T {
-  return arr[randInt(0, arr.length - 1)];
+function hashSeed(seed: number | string): number {
+  const text = String(seed);
+  let hash = 2166136261;
+
+  for (let index = 0; index < text.length; index++) {
+    hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
+  }
+
+  return hash >>> 0;
 }
 
-function pickN<T>(arr: T[], n: number): T[] {
-  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+function createSeededRandom(seed: number | string): () => number {
+  let state = hashSeed(seed);
 
-  return shuffled.slice(0, n);
+  return () => {
+    state += 0x6d2b79f5;
+    let value = Math.imul(state ^ (state >>> 15), state | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function createMockRandom(seed: number | string): MockRandom {
+  const next = createSeededRandom(seed);
+  const int = (min: number, max: number): number => Math.floor(next() * (max - min + 1)) + min;
+  const pick = <T>(arr: readonly T[]): T => arr[int(0, arr.length - 1)];
+
+  const pickN = <T>(arr: readonly T[], n: number): T[] => {
+    const pool = [...arr];
+    const count = Math.min(n, pool.length);
+
+    for (let i = 0; i < count; i++) {
+      const swapIndex = int(i, pool.length - 1);
+      [pool[i], pool[swapIndex]] = [pool[swapIndex], pool[i]];
+    }
+
+    return pool.slice(0, count);
+  };
+
+  return { next, int, pick, pickN };
 }
 
 // ── 语义生成函数 ──────────────────────────────────────────────────────────────
 
-function genChineseName(): string {
-  const nameLen = Math.random() < 0.3 ? 3 : 2;
-  const given = pickN(CN_NAMES_CHARS, nameLen - 1).join('');
+const RANDOM_STRING_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'.split('');
 
-  return `${pick(CN_SURNAMES)}${given}`;
+function genChineseName(rng: MockRandom): string {
+  const nameLen = rng.next() < 0.3 ? 3 : 2;
+  const given = rng.pickN(CN_NAMES_CHARS, nameLen - 1).join('');
+
+  return `${rng.pick(CN_SURNAMES)}${given}`;
 }
 
-function genPhone(): string {
+function genPhone(rng: MockRandom): string {
   const prefixes = [
     '130',
     '131',
@@ -172,78 +210,77 @@ function genPhone(): string {
     '189',
   ];
 
-  return `${pick(prefixes)}${String(randInt(10000000, 99999999))}`;
+  return `${rng.pick(prefixes)}${String(rng.int(10000000, 99999999))}`;
 }
 
-function genEmail(seed?: string): string {
-  const localParts = seed
-    ? [seed.toLowerCase().replace(/[^a-z0-9]/g, ''), String(randInt(100, 9999))]
+function genEmail(rng: MockRandom, prefix?: string): string {
+  const localParts = prefix
+    ? [prefix.toLowerCase().replace(/[^a-z0-9]/g, ''), String(rng.int(100, 9999))]
     : [
-        String.fromCharCode(...Array.from({ length: randInt(4, 8) }, () => randInt(97, 122))),
-        String(randInt(100, 9999)),
+        String.fromCharCode(...Array.from({ length: rng.int(4, 8) }, () => rng.int(97, 122))),
+        String(rng.int(100, 9999)),
       ];
 
-  return `${localParts.join('_')}@${pick(EMAIL_DOMAINS)}`;
+  return `${localParts.join('_')}@${rng.pick(EMAIL_DOMAINS)}`;
 }
 
-function genAddress(): string {
-  return `${pick(CN_PROVINCES).replace(/省|市/, '')}省${pick(CN_CITIES)}市${pick(CN_DISTRICTS)}${pick(CN_STREET_PREFIXES)}${pick(CN_STREET_SUFFIXES)}${randInt(1, 999)}号`;
+function genAddress(rng: MockRandom): string {
+  return `${rng.pick(CN_PROVINCES).replace(/省|市/, '')}省${rng.pick(CN_CITIES)}市${rng.pick(CN_DISTRICTS)}${rng.pick(CN_STREET_PREFIXES)}${rng.pick(CN_STREET_SUFFIXES)}${rng.int(1, 999)}号`;
 }
 
-function genCompany(): string {
-  return `${pick(CN_ADJECTIVES)}${pick(CN_CITIES)}${pick(COMPANY_SUFFIXES)}`;
+function genCompany(rng: MockRandom): string {
+  return `${rng.pick(CN_ADJECTIVES)}${rng.pick(CN_CITIES)}${rng.pick(COMPANY_SUFFIXES)}`;
 }
 
-function genIdCard(): string {
-  const year = randInt(1960, 2000);
-  const month = String(randInt(1, 12)).padStart(2, '0');
-  const day = String(randInt(1, 28)).padStart(2, '0');
-  const seq = String(randInt(100, 999));
-  const suffix = randInt(0, 9);
+function genIdCard(rng: MockRandom): string {
+  const year = rng.int(1960, 2000);
+  const month = String(rng.int(1, 12)).padStart(2, '0');
+  const day = String(rng.int(1, 28)).padStart(2, '0');
+  const seq = String(rng.int(100, 999));
+  const suffix = rng.int(0, 9);
 
-  return `4403${String(randInt(10, 99))}${year}${month}${day}${seq}${suffix}`;
+  return `4403${String(rng.int(10, 99))}${year}${month}${day}${seq}${suffix}`;
 }
 
-function genUUID(): string {
+function genUUID(rng: MockRandom): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
+    const r = (rng.next() * 16) | 0;
 
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
   });
 }
 
-function genIp(): string {
-  return `${randInt(1, 254)}.${randInt(0, 255)}.${randInt(0, 255)}.${randInt(1, 254)}`;
+function genIp(rng: MockRandom): string {
+  return `${rng.int(1, 254)}.${rng.int(0, 255)}.${rng.int(0, 255)}.${rng.int(1, 254)}`;
 }
 
-function genRandomString(maxLen = 20): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const len = randInt(Math.min(4, maxLen), Math.min(maxLen, 20));
+function genRandomString(rng: MockRandom, maxLen = 20): string {
+  const len = rng.int(Math.min(4, maxLen), Math.min(maxLen, 20));
 
-  return Array.from({ length: len }, () => pick(chars.split(''))).join('');
+  return Array.from({ length: len }, () => rng.pick(RANDOM_STRING_CHARS)).join('');
 }
 
-function genDate(): string {
-  const y = randInt(2020, 2025);
-  const m = String(randInt(1, 12)).padStart(2, '0');
-  const d = String(randInt(1, 28)).padStart(2, '0');
+function genDate(rng: MockRandom): string {
+  const y = rng.int(2020, 2025);
+  const m = String(rng.int(1, 12)).padStart(2, '0');
+  const d = String(rng.int(1, 28)).padStart(2, '0');
 
   return `${y}-${m}-${d}`;
 }
 
-function genDatetime(): string {
-  const date = genDate();
-  const h = String(randInt(0, 23)).padStart(2, '0');
-  const min = String(randInt(0, 59)).padStart(2, '0');
-  const s = String(randInt(0, 59)).padStart(2, '0');
+function genDatetime(rng: MockRandom): string {
+  const date = genDate(rng);
+  const h = String(rng.int(0, 23)).padStart(2, '0');
+  const min = String(rng.int(0, 59)).padStart(2, '0');
+  const s = String(rng.int(0, 59)).padStart(2, '0');
 
   return `${date} ${h}:${min}:${s}`;
 }
 
-function genTime(): string {
-  const h = String(randInt(0, 23)).padStart(2, '0');
-  const m = String(randInt(0, 59)).padStart(2, '0');
-  const s = String(randInt(0, 59)).padStart(2, '0');
+function genTime(rng: MockRandom): string {
+  const h = String(rng.int(0, 23)).padStart(2, '0');
+  const m = String(rng.int(0, 59)).padStart(2, '0');
+  const s = String(rng.int(0, 59)).padStart(2, '0');
 
   return `${h}:${m}:${s}`;
 }
@@ -312,53 +349,56 @@ function inferSemanticHint(fieldName: string, fieldComment: string): SemanticHin
 
 // ── 字段值生成 ────────────────────────────────────────────────────────────────
 
-function generateSemanticValue(field: NormalizedField): string | number | undefined {
+function generateSemanticValue(
+  field: NormalizedField,
+  rng: MockRandom,
+): string | number | undefined {
   const semantic = inferSemanticHint(field.name, field.comment ?? '');
 
   if (semantic) {
     switch (semantic) {
       case 'chinese_name':
-        return genChineseName();
+        return genChineseName(rng);
       case 'phone':
-        return genPhone();
+        return genPhone(rng);
       case 'email':
-        return genEmail(field.name);
+        return genEmail(rng, field.name);
       case 'address':
-        return genAddress();
+        return genAddress(rng);
       case 'city':
-        return pick(CN_CITIES);
+        return rng.pick(CN_CITIES);
       case 'province':
-        return pick(CN_PROVINCES);
+        return rng.pick(CN_PROVINCES);
       case 'id_card':
-        return genIdCard();
+        return genIdCard(rng);
       case 'age':
-        return randInt(18, 75);
+        return rng.int(18, 75);
       case 'gender_text':
-        return pick(['男', '女']);
+        return rng.pick(['男', '女']);
       case 'company':
-        return genCompany();
+        return genCompany(rng);
       case 'uuid':
-        return genUUID();
+        return genUUID(rng);
       case 'ip':
-        return genIp();
+        return genIp(rng);
       case 'price':
-        return Number((Math.random() * 9999 + 1).toFixed(2));
+        return Number((rng.next() * 9999 + 1).toFixed(2));
       case 'status':
-        return randInt(0, 3);
+        return rng.int(0, 3);
       case 'title':
-        return `${pick(CN_ADJECTIVES)}${pick(CN_CITIES)}${pick(['项目', '方案', '计划', '报告', '通知'])}`;
+        return `${rng.pick(CN_ADJECTIVES)}${rng.pick(CN_CITIES)}${rng.pick(['项目', '方案', '计划', '报告', '通知'])}`;
       case 'description':
-        return `${pick(CN_CITIES)}${pick(['数字化', '智能化', '信息化'])}建设${pick(['项目', '工程', '方案'])}描述内容`;
+        return `${rng.pick(CN_CITIES)}${rng.pick(['数字化', '智能化', '信息化'])}建设${rng.pick(['项目', '工程', '方案'])}描述内容`;
       case 'code':
-        return `${String.fromCharCode(randInt(65, 90))}${String(randInt(10000, 99999))}`;
+        return `${String.fromCharCode(rng.int(65, 90))}${String(rng.int(10000, 99999))}`;
       case 'url':
-        return `https://example.com/${genRandomString(8)}`;
+        return `https://example.com/${genRandomString(rng, 8)}`;
       case 'avatar':
-        return `https://example.com/avatar/${randInt(1, 1000)}.jpg`;
+        return `https://example.com/avatar/${rng.int(1, 1000)}.jpg`;
       case 'count':
-        return randInt(0, 9999);
+        return rng.int(0, 9999);
       case 'year':
-        return randInt(2010, 2025);
+        return rng.int(2010, 2025);
     }
   }
 
@@ -376,7 +416,7 @@ const INTEGER_BITS: ReadonlyMap<string, number> = new Map([
   ['bigserial', 64],
 ]);
 
-function generateDecimalValue(args: string[], preferred: number): number {
+function generateDecimalValue(args: string[], preferred: number, rng: MockRandom): number {
   const precision = Number(args[0] ?? 10);
   const scale = Number(args[1] ?? 0);
 
@@ -388,7 +428,7 @@ function generateDecimalValue(args: string[], preferred: number): number {
   const units =
     Number.isSafeInteger(coefficient) && Math.abs(coefficient) < 10 ** precision
       ? coefficient
-      : randInt(0, 10 ** Math.min(precision, 6) - 1);
+      : rng.int(0, 10 ** Math.min(precision, 6) - 1);
   const value = Number(`${units}e${-scale}`);
 
   return Number.isFinite(value) ? value : 0;
@@ -398,8 +438,9 @@ function generateValueForField(
   field: NormalizedField,
   rowIndex: number,
   dbType: DatabaseType,
+  rng: MockRandom,
 ): MockDataValue {
-  if (field.nullable && field.defaultKind === 'none' && Math.random() < 0.1) return null;
+  if (field.nullable && field.defaultKind === 'none' && rng.next() < 0.1) return null;
 
   const parsed = parseFieldType(field.type);
   const baseType = getCanonicalBaseType(field.type);
@@ -407,32 +448,32 @@ function generateValueForField(
   const family = getDatabaseFamily(dbType);
 
   if (baseType === 'enum' || baseType === 'set') {
-    if (args.length > 0) return pick(args).replace(/^'|'$/g, '').replace(/''/g, "'");
+    if (args.length > 0) return rng.pick(args).replace(/^'|'$/g, '').replace(/''/g, "'");
 
     return 'value';
   }
 
-  if (baseType === 'date') return genDate();
+  if (baseType === 'date') return genDate(rng);
   if (['datetime', 'datetime2', 'datetimeoffset', 'timestamp', 'timestamptz'].includes(baseType))
-    return genDatetime();
-  if (baseType === 'time' || baseType === 'timetz') return genTime();
-  if (baseType === 'year') return randInt(2010, 2025);
+    return genDatetime(rng);
+  if (baseType === 'time' || baseType === 'timetz') return genTime(rng);
+  if (baseType === 'year') return rng.int(2010, 2025);
   if (baseType === 'json' || baseType === 'jsonb')
-    return JSON.stringify({ id: randInt(1, 999), value: genRandomString(6) });
-  if (baseType === 'uuid' || baseType === 'uniqueidentifier') return genUUID();
+    return JSON.stringify({ id: rng.int(1, 999), value: genRandomString(rng, 6) });
+  if (baseType === 'uuid' || baseType === 'uniqueidentifier') return genUUID(rng);
 
   const preferred =
     field.defaultKind === 'auto_increment'
       ? rowIndex + 1
       : field.defaultKind === 'uuid'
-        ? genUUID()
+        ? genUUID(rng)
         : field.enumMeta?.length
-          ? pick(field.enumMeta).value
-          : generateSemanticValue(field);
+          ? rng.pick(field.enumMeta).value
+          : generateSemanticValue(field, rng);
   const numeric = Number(preferred);
 
   if (baseType === 'boolean') {
-    const value = numeric === 0 || numeric === 1 ? numeric : randInt(0, 1);
+    const value = numeric === 0 || numeric === 1 ? numeric : rng.int(0, 1);
 
     return family === 'postgresql' || family === 'hive' ? Boolean(value) : value;
   }
@@ -441,7 +482,7 @@ function generateValueForField(
     const length = Number(args[0] ?? 1);
     const bits = Number.isSafeInteger(length) && length > 0 ? Math.min(length, 53) : 1;
 
-    return randInt(0, 2 ** bits - 1);
+    return rng.int(0, 2 ** bits - 1);
   }
 
   const bits = INTEGER_BITS.get(baseType);
@@ -455,22 +496,22 @@ function generateValueForField(
     if (Number.isSafeInteger(value) && value >= min && value <= max) return value;
     const sampleMax = baseType === 'tinyint' && args[0] === '1' ? 1 : Math.min(max, 999999);
 
-    return randInt(0, sampleMax);
+    return rng.int(0, sampleMax);
   }
 
-  if (baseType === 'decimal') return generateDecimalValue(args, numeric);
+  if (baseType === 'decimal') return generateDecimalValue(args, numeric, rng);
 
   if (['float', 'double', 'real'].includes(baseType)) {
-    if (args.length === 2) return generateDecimalValue(args, numeric);
+    if (args.length === 2) return generateDecimalValue(args, numeric, rng);
 
-    return Number.isFinite(numeric) ? numeric : Number((Math.random() * 999).toFixed(4));
+    return Number.isFinite(numeric) ? numeric : Number((rng.next() * 999).toFixed(4));
   }
 
   const declaredLength = Number(args[0] ?? (baseType === 'char' || baseType === 'nchar' ? 1 : NaN));
 
   const maxLength =
     Number.isSafeInteger(declaredLength) && declaredLength >= 0 ? declaredLength : undefined;
-  const value = preferred === undefined ? genRandomString(maxLength) : String(preferred);
+  const value = preferred === undefined ? genRandomString(rng, maxLength) : String(preferred);
 
   return maxLength === undefined ? value : Array.from(value).slice(0, maxLength).join('');
 }
@@ -511,6 +552,7 @@ export type MockExportFormat = 'insert-sql' | 'csv' | 'json';
 
 export interface MockDataGeneratorOptions {
   rowCount: number;
+  seed?: number | string;
 }
 
 export interface MockDataOutput {
@@ -526,7 +568,7 @@ export function generateMockData(
   dbType: DatabaseType,
   options: MockDataGeneratorOptions,
 ): MockDataOutput {
-  const { rowCount } = options;
+  const { rowCount, seed = 0 } = options;
 
   // 过滤掉没有字段名的字段
   const validFields = fields.filter((f) => f.name.trim() !== '');
@@ -535,12 +577,14 @@ export function generateMockData(
     return { insertSql: '', csv: '', json: '[]' };
   }
 
+  const rng = createMockRandom(seed);
+
   // 生成 rowCount 行数据
   const rows: Array<Record<string, MockDataValue>> = Array.from({ length: rowCount }, (_, i) => {
     const row: Record<string, MockDataValue> = {};
 
     for (const field of validFields) {
-      row[field.name] = generateValueForField(field, i, dbType);
+      row[field.name] = generateValueForField(field, i, dbType, rng);
     }
 
     return row;
