@@ -31,6 +31,7 @@ import { ErRelationEdge } from './ErRelationEdge';
 import { ErDiagramToolbar } from './ErDiagramToolbar';
 import { RelationCreationDialog } from './RelationCreationDialog';
 import { planTableRelationship, type TableRelationshipIntent } from './tableRelationship';
+import { writeLocalStorageJson } from '@/utils/localStorage';
 
 const GRID_GAP_X = 320;
 const GRID_ROW_GAP_Y = 48;
@@ -67,21 +68,18 @@ function readSavedNodePositions(scopeKey: string) {
 }
 
 function writeSavedNodePositions(scopeKey: string, nodes: Node[]) {
-  try {
-    const positions = Object.fromEntries(
-      nodes.map((node) => [
-        node.id,
-        { x: Math.round(node.position.x), y: Math.round(node.position.y) },
-      ]),
-    );
+  const positions = Object.fromEntries(
+    nodes.map((node) => [
+      node.id,
+      { x: Math.round(node.position.x), y: Math.round(node.position.y) },
+    ]),
+  );
 
-    window.localStorage.setItem(
-      `${ER_POSITIONS_STORAGE_KEY}:${scopeKey}`,
-      JSON.stringify(positions),
-    );
-  } catch {
-    // ignore storage errors
-  }
+  writeLocalStorageJson(
+    `${ER_POSITIONS_STORAGE_KEY}:${scopeKey}`,
+    positions,
+    '[er-diagram] node position write',
+  );
 }
 
 function estimateNodeHeight(state: PersistedState): number {

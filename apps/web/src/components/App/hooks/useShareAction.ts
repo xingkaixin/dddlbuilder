@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
+import { writeLocalStorageJson } from '@/utils/localStorage';
 import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { i18n } from '@/i18n';
 
@@ -44,11 +45,7 @@ const readShareLinkCache = (): ShareLinkCacheRecord | null => {
 };
 
 const writeShareLinkCache = (record: ShareLinkCacheRecord) => {
-  try {
-    localStorage.setItem(SHARE_LINK_CACHE_KEY, JSON.stringify(record));
-  } catch {
-    // ignore localStorage quota errors
-  }
+  writeLocalStorageJson(SHARE_LINK_CACHE_KEY, record, '[share] share link cache write');
 };
 
 interface UseShareActionParams {
