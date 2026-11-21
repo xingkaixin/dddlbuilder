@@ -3,7 +3,6 @@ import type { TableMiscConfig } from './schema.js';
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
-// These normalizers decode legacy persisted and model-produced numeric values at this boundary.
 // oxlint-disable anti-slop/no-unknown-parameters -- callers provide untrusted persisted values.
 const clampInteger = (value: unknown, minimum: number, maximum: number, fallback: number) => {
   if (!isFiniteNumber(value)) return fallback;
