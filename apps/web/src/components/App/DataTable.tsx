@@ -104,17 +104,28 @@ function isCellContentEvent({ target, currentTarget }: SyntheticEvent<HTMLTableC
   );
 }
 
+const SHALLOW_ROW_PROP_KEYS = [
+  'columns',
+  'selectedColumn',
+  'editingColumn',
+  'onEditingCellChange',
+  'handleCellActivate',
+  'focusEditableCell',
+  'focusFirstInteractiveInCell',
+  'freezeEnabled',
+  'effectiveFreezeColumns',
+  'getStickyLeft',
+  'isRowHighlighted',
+  'isRowSelected',
+  'dragFieldLabel',
+] as const satisfies readonly Exclude<keyof SortableDataRowProps, 'row' | 'warnings'>[];
+
 // TanStack 在数据变化时会为每一行重建 Row 对象；按原始数据、序号和告警内容比较，只重渲染真正变化的行。
 const areRowPropsEqual = (previous: SortableDataRowProps, next: SortableDataRowProps) =>
   previous.row.original === next.row.original &&
   previous.row.index === next.row.index &&
   previous.warnings.join('\n') === next.warnings.join('\n') &&
-  Object.keys(next).every((key) => {
-    // SAFETY: keys come from the props object being compared.
-    const prop = key as keyof SortableDataRowProps;
-
-    return prop === 'row' || prop === 'warnings' || Object.is(previous[prop], next[prop]);
-  });
+  SHALLOW_ROW_PROP_KEYS.every((prop) => Object.is(previous[prop], next[prop]));
 
 const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
   row,

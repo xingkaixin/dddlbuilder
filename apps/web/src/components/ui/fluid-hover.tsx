@@ -52,14 +52,16 @@ export function FluidHover({ className, children, ref, ...props }: ComponentProp
         .map((element) => {
           let left = element.offsetLeft;
           let top = element.offsetTop;
-          // SAFETY: browser offsetParent values provide the HTMLElement offset metrics used below.
-          let parent = element.offsetParent as HTMLElement | null;
+          let parent = element.offsetParent;
 
-          while (parent && parent !== container && container.contains(parent)) {
+          while (
+            parent instanceof HTMLElement &&
+            parent !== container &&
+            container.contains(parent)
+          ) {
             left += parent.offsetLeft + parent.clientLeft;
             top += parent.offsetTop + parent.clientTop;
-            // SAFETY: this continues the HTMLElement offsetParent chain established above.
-            parent = parent.offsetParent as HTMLElement | null;
+            parent = parent.offsetParent;
           }
 
           return { element, left, top, width: element.offsetWidth, height: element.offsetHeight };

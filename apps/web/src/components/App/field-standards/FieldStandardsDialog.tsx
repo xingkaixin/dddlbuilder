@@ -35,9 +35,19 @@ const queryKey = ['field-standards'] as const;
 const EMPTY_STANDARDS: FieldStandard[] = [];
 const selectClass = 'h-9 w-full rounded-md border border-input bg-background px-2 text-sm';
 
+const STANDARD_FIELD_KEYS = [
+  'fieldName',
+  'fieldType',
+  'fieldComment',
+  'nullable',
+  'defaultKind',
+  'defaultValue',
+  'onUpdate',
+  'enumMeta',
+] as const satisfies readonly (keyof StandardField)[];
+
 function getStandardFieldKeys(field: StandardField): (keyof StandardField)[] {
-  // SAFETY: StandardField is the owner type of every key returned by Object.keys here.
-  return Object.keys(field) as (keyof StandardField)[];
+  return STANDARD_FIELD_KEYS.filter((key) => Object.hasOwn(field, key));
 }
 
 type WorkspaceScope = ReturnType<typeof useWorkspaceScope>;

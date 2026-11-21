@@ -21,6 +21,15 @@ import type {
 } from '@ddlbuilder/shared-types';
 import { Notice } from '@/components/ui/notice';
 
+const MYSQL_PARTITION_TYPES = [
+  'RANGE',
+  'RANGE COLUMNS',
+  'LIST',
+  'LIST COLUMNS',
+  'HASH',
+  'KEY',
+] as const satisfies readonly MysqlPartitionType[];
+
 const PARTITION_TYPE_INFO: Record<MysqlPartitionType, { label: string }> = {
   RANGE: {
     label: 'RANGE',
@@ -41,11 +50,6 @@ const PARTITION_TYPE_INFO: Record<MysqlPartitionType, { label: string }> = {
     label: 'KEY',
   },
 };
-
-function getPartitionTypes(): MysqlPartitionType[] {
-  // SAFETY: PARTITION_TYPE_INFO is keyed by the complete MysqlPartitionType domain.
-  return Object.keys(PARTITION_TYPE_INFO) as MysqlPartitionType[];
-}
 
 interface PartitionPanelProps {
   config: MysqlPartitionConfig;
@@ -182,7 +186,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                   <Select
                     value={config.type}
                     onValueChange={(value) => {
-                      const selectedType = getPartitionTypes().find((type) => type === value);
+                      const selectedType = MYSQL_PARTITION_TYPES.find((type) => type === value);
 
                       if (selectedType) onTypeChange(selectedType);
                     }}
@@ -191,7 +195,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                       <SelectValue placeholder={t('partitionPanel.typePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {getPartitionTypes().map((type) => (
+                      {MYSQL_PARTITION_TYPES.map((type) => (
                         <SelectItem
                           key={type}
                           value={type}
