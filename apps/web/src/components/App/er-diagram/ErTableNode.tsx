@@ -1,11 +1,9 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Key } from '@/components/icons';
-import type { ErNodeData } from './types';
+import type { ErNode } from './types';
 
-export const ErTableNode = memo(function ErTableNode(props: NodeProps) {
-  // SAFETY: React Flow node data is the ErNodeData supplied by buildNodesFromTables.
-  const { data, selected } = props as NodeProps & { data: ErNodeData };
+export const ErTableNode = memo(function ErTableNode({ data, selected }: NodeProps<ErNode>) {
   const { record, state, onSelectTable } = data;
 
   const pkFields = new Set(
