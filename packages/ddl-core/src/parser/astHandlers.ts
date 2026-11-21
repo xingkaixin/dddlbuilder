@@ -75,11 +75,30 @@ export const assertRepresentableIndexType = (indexType: string | null | undefine
 const generatedIdentifierPart = (name: string) =>
   unquoteSqlIdentifier(name).replace(/[^\p{L}\p{N}_$]+/gu, '_');
 
-function pushIndex(result: ParsedResult, name: string, fields: IndexField[], kind: IndexKind) {
+function buildDefaultIndexName(
+  result: ParsedResult,
+  fields: IndexField[],
+  kind: IndexKind,
+): string {
+  if (kind === 'primary') {
+    return buildPrimaryKeyName(generatedIdentifierPart(result.tableName));
+  }
+
+  const prefix = kind === 'index' ? 'idx' : 'uk';
+
+  return `${prefix}_${fields.map((field) => generatedIdentifierPart(field.name)).join('_')}`;
+}
+
+function pushIndex(
+  result: ParsedResult,
+  name: string | null | undefined,
+  fields: IndexField[],
+  kind: IndexKind,
+) {
   if (fields.length === 0) return;
   result.indexes.push({
     id: createEntityId(),
-    name,
+    name: name?.trim() ? name : buildDefaultIndexName(result, fields, kind),
     fields,
     kind,
   });
@@ -156,12 +175,7 @@ function enforceNotNullForFields(result: ParsedResult, fieldNames: string[]) {
 }
 
 function pushPrimaryKey(result: ParsedResult, fields: IndexField[], name?: string | null) {
-  pushIndex(
-    result,
-    name || buildPrimaryKeyName(generatedIdentifierPart(result.tableName)),
-    fields,
-    'primary',
-  );
+  pushIndex(result, name, fields, 'primary');
   enforceNotNullForFields(
     result,
     fields.map((field) => field.name),
@@ -237,7 +251,7 @@ function mapColumnToField(
 
     if (literalType === 'single_quote_string' || literalType === 'double_quote_string') {
       defaultKind = 'constant';
-      const value = stringifyAstValue(readField(val, 'value') ?? '');
+      const value = stringifyAstValue(readField(val, 'value'));
       defaultValue =
         literalType === 'single_quote_string'
           ? value.replace(/''/g, "'")
@@ -406,7 +420,7 @@ export function parseCreateTable(
         if (def.unique) {
           pushIndex(
             result,
-            def.constraint?.constraint || `uk_${generatedIdentifierPart(field.name)}`,
+            def.constraint?.constraint,
             [{ name: field.name, direction: 'ASC' }],
             'unique_constraint',
           );
@@ -416,12 +430,7 @@ export function parseCreateTable(
           pushPrimaryKey(result, buildIndexFields(def.definition), def.constraint || def.index);
         } else if (['unique', 'unique key', 'unique index'].includes(def.constraint_type ?? '')) {
           const fields = buildIndexFields(def.definition || []);
-
-          const indexName =
-            def.constraint ||
-            def.index ||
-            `uk_${fields.map((field) => generatedIdentifierPart(field.name)).join('_')}`;
-          pushIndex(result, indexName, fields, 'unique_constraint');
+          pushIndex(result, def.constraint || def.index, fields, 'unique_constraint');
         } else if (def.constraint_type?.toLowerCase() === 'foreign key') {
           pushForeignKey(result, def);
         } else if (def.constraint_type?.toLowerCase() === 'check') {
@@ -432,8 +441,7 @@ export function parseCreateTable(
         const fields = buildIndexFields(def.definition || []);
         pushIndex(
           result,
-          // SAFETY: parser AST uses a string index for named indexes and null for anonymous KEY; this preserves the existing passthrough.
-          def.index as string,
+          def.index,
           fields,
           def.index_type === 'unique' || def.keyword === 'unique' ? 'unique_index' : 'index',
         );
@@ -503,12 +511,7 @@ export function parseAlterTable(
       case 'unique':
       case 'unique key':
       case 'unique index':
-        pushIndex(
-          result,
-          name || `uk_${fields.map((field) => generatedIdentifierPart(field.name)).join('_')}`,
-          fields,
-          'unique_constraint',
-        );
+        pushIndex(result, name, fields, 'unique_constraint');
         break;
       case 'foreign key':
         pushForeignKey(result, definition);

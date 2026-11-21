@@ -33,6 +33,8 @@ export function normalizeColumnName(column: unknown): string {
     if (value !== undefined) {
       return normalizeColumnName(value);
     }
+
+    return '';
   }
 
   return stringifyAstValue(column);
@@ -88,11 +90,17 @@ export function buildTypeString(
   const length = definition?.length;
   const scale = definition?.scale;
 
-  const suffix = (definition?.suffix ?? [])
-    .filter((value) => value !== null && value !== undefined)
-    .map(stringifyAstValue)
-    .filter((value) => value.toLowerCase() !== 'null')
-    .join(' ');
+  const suffixParts: string[] = [];
+
+  for (const item of definition?.suffix ?? []) {
+    const text = stringifyAstValue(item);
+
+    if (text && text.toLowerCase() !== 'null') {
+      suffixParts.push(text);
+    }
+  }
+
+  const suffix = suffixParts.join(' ');
 
   if (/\bZEROFILL\b/i.test(suffix)) throw SqlParseError.unsupported('ZEROFILL');
 
@@ -115,8 +123,10 @@ export function extractFunctionName(val: unknown): string | null {
   if (!val) return null;
   const keyword = readField(val, 'keyword');
 
-  if (keyword) {
-    return stringifyAstValue(keyword).toLowerCase();
+  if (keyword !== undefined) {
+    const keywordName = stringifyAstValue(keyword).toLowerCase();
+
+    if (keywordName) return keywordName;
   }
 
   const name = readField(val, 'name');
@@ -130,7 +140,9 @@ export function extractFunctionName(val: unknown): string | null {
       const rawName =
         readField(nameNode, 'value') ?? readField(readField(nameNode, 'expr'), 'value') ?? nameNode;
 
-      return rawName ? stringifyAstValue(rawName).toLowerCase() : null;
+      const normalizedName = stringifyAstValue(rawName).toLowerCase();
+
+      return normalizedName || null;
     }
 
     if (typeof name === 'string') {
@@ -160,6 +172,8 @@ export function normalizeLiteral(val: unknown): string {
     if (expr !== undefined) {
       return normalizeLiteral(expr);
     }
+
+    return '';
   }
 
   return stringifyAstValue(val).replace(/^'|'$/g, '');
