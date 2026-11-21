@@ -400,4 +400,112 @@ describe('workspaceMigration', () => {
     );
     expect(exportWorkspaceYDocToSnapshot(cloudDoc).folders).toEqual([]);
   });
+
+  it('按实体类型报告冲突标识并在冲突复制时更新草稿的文件夹引用', async () => {
+    const payload = createPayload();
+    payload.snapshot.drafts = [
+      {
+        draftId: 'draft-a',
+        state: createState('local draft'),
+        createdAt: 1,
+        updatedAt: 2,
+        folderId: 'folder-a',
+      },
+    ];
+    payload.snapshot.savedTables = [
+      {
+        tableId: 'table-alpha',
+        normalizedName: 'alpha',
+        name: 'Alpha Table',
+        state: createState('local alpha'),
+        createdAt: 1,
+        updatedAt: 2,
+        folderId: 'folder-a',
+      },
+    ];
+    payload.snapshot.savedDrafts = [
+      {
+        tableId: 'table-alpha',
+        normalizedName: 'alpha',
+        tableName: 'Alpha Draft',
+        state: createState('local alpha draft'),
+        baseSignature: 'base-local',
+        updatedAt: 2,
+      },
+    ];
+    payload.snapshot.folders = [
+      {
+        id: 'folder-a',
+        name: 'Local Folder',
+        order: 0,
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    ];
+
+    importWorkspaceSnapshotToYDoc(cloudDoc, {
+      globalDraft: null,
+      drafts: [
+        {
+          draftId: 'draft-a',
+          state: createState('cloud draft'),
+          createdAt: 1,
+          updatedAt: 2,
+        },
+      ],
+      savedTables: [
+        {
+          tableId: 'table-alpha',
+          normalizedName: 'alpha',
+          name: 'Alpha Table',
+          state: createState('cloud alpha'),
+          createdAt: 1,
+          updatedAt: 2,
+        },
+      ],
+      savedDrafts: [
+        {
+          tableId: 'table-alpha',
+          normalizedName: 'alpha',
+          tableName: 'Alpha Draft',
+          state: createState('cloud alpha draft'),
+          baseSignature: 'base-cloud',
+          updatedAt: 2,
+        },
+      ],
+      folders: [
+        {
+          id: 'folder-a',
+          name: 'Cloud Folder',
+          order: 0,
+          createdAt: 1,
+          updatedAt: 2,
+        },
+      ],
+    });
+
+    const statement = {
+      bind: () => statement,
+      first: async () => null,
+      run: async () => ({ success: true }),
+    };
+    // SAFETY: the migration test only exercises the USER_DB methods implemented by this fixture.
+    const env = { USER_DB: { prepare: () => statement } } as never;
+
+    const analysis = await analyzeWorkspaceMigration(env, 'user-1', payload);
+    expect(analysis.conflictCount).toBe(4);
+    expect(analysis.conflicts).toEqual([
+      { kind: 'draft', normalizedName: 'draft-a', displayName: 'draft-a' },
+      { kind: 'saved_table', normalizedName: 'alpha', displayName: 'Alpha Table' },
+      { kind: 'saved_draft', normalizedName: 'alpha', displayName: 'Alpha Draft' },
+      { kind: 'folder', normalizedName: 'folder-a', displayName: 'Local Folder' },
+    ]);
+
+    await commitWorkspaceMigration(env, 'user-1', payload);
+    const snapshot = exportWorkspaceYDocToSnapshot(cloudDoc);
+    const copiedFolder = snapshot.folders.find((item) => item.name === 'Local Folder (Imported)');
+    const copiedDraft = snapshot.drafts.find((item) => item.draftId === 'draft-a (imported)');
+    expect(copiedFolder).toBeDefined();
+    expect(copiedDraft?.folderId).toBe(copiedFolder?.id);
+  });
 });

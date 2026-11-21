@@ -7,12 +7,51 @@ import {
 
 export const LEGACY_GLOBAL_DRAFT_ENTITY_ID = '__global_draft__';
 
-export type WorkspaceEntityInput = {
-  entityType: WorkspaceEntityType;
-  entityId: string;
-  payload: unknown;
-  sourceUpdatedAt: number;
-};
+export type WorkspaceDraftEntityPayload = Omit<
+  WorkspaceSnapshot['drafts'][number],
+  'draftId' | 'updatedAt'
+>;
+
+export type WorkspaceSavedTableEntityPayload = Omit<
+  WorkspaceSnapshot['savedTables'][number],
+  'updatedAt'
+>;
+
+export type WorkspaceSavedDraftEntityPayload = Omit<
+  WorkspaceSnapshot['savedDrafts'][number],
+  'updatedAt'
+>;
+
+export type WorkspaceFolderEntityPayload = Omit<
+  WorkspaceSnapshot['folders'][number],
+  'id' | 'updatedAt'
+>;
+
+export type WorkspaceEntityInput =
+  | {
+      entityType: 'draft';
+      entityId: string;
+      payload: WorkspaceDraftEntityPayload;
+      sourceUpdatedAt: number;
+    }
+  | {
+      entityType: 'saved_table';
+      entityId: string;
+      payload: WorkspaceSavedTableEntityPayload;
+      sourceUpdatedAt: number;
+    }
+  | {
+      entityType: 'saved_draft';
+      entityId: string;
+      payload: WorkspaceSavedDraftEntityPayload;
+      sourceUpdatedAt: number;
+    }
+  | {
+      entityType: 'folder';
+      entityId: string;
+      payload: WorkspaceFolderEntityPayload;
+      sourceUpdatedAt: number;
+    };
 
 export type StoredWorkspaceEntity = {
   entityType: WorkspaceEntityType;

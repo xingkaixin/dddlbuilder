@@ -1,4 +1,3 @@
-import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceMigrationResult } from '@ddlbuilder/shared-types/api';
 import type { WorkspaceEntityType, WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { normalizeSchemaDocumentState, stableStringify } from '@ddlbuilder/workspace-core';
@@ -8,59 +7,88 @@ import {
   type WorkspaceEntityInput,
 } from './workspaceEntitySnapshot.js';
 
-type MigrationEntityRecord = {
-  id: string;
-  kind: WorkspaceEntityType;
-  displayName: string;
-  entity: WorkspaceEntityInput;
-  payloadJson: string;
-};
+type MigrationEntityRecordOf<TEntity extends WorkspaceEntityInput> =
+  TEntity extends WorkspaceEntityInput
+    ? {
+        id: string;
+        kind: TEntity['entityType'];
+        displayName: string;
+        entity: TEntity;
+        payloadJson: string;
+      }
+    : never;
+
+type MigrationEntityRecord = MigrationEntityRecordOf<WorkspaceEntityInput>;
 
 const LOCAL_COPY_SUFFIX = ' (Imported)';
 
 const buildMigrationEntityId = (userId: string, kind: WorkspaceEntityType, entityId: string) =>
   `${kind}:${userId}:${entityId}`;
 
-// oxlint-disable anti-slop/no-runtime-typeof -- migration normalizes persisted historical payloads at this codec boundary.
 const toMigrationEntityRecord = (
   userId: string,
   entity: WorkspaceEntityInput,
 ): MigrationEntityRecord => {
-  const kind = entity.entityType;
-  // SAFETY: workspaceSnapshotToEntities creates object payloads for every supported entity kind.
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- persisted entity payloads are decoded as open JSON objects here.
-  const sourcePayload = entity.payload as Record<string, unknown>;
+  switch (entity.entityType) {
+    case 'draft': {
+      const payload = {
+        ...entity.payload,
+        state: normalizeSchemaDocumentState(entity.payload.state),
+        createdAt: entity.payload.createdAt ?? entity.sourceUpdatedAt,
+      };
 
-  const payload: typeof sourcePayload = {
-    ...sourcePayload,
-    ...(kind !== 'folder'
-      ? {
-          // SAFETY: workspaceSnapshotToEntities supplies a SchemaDocumentState for non-folder entities.
-          state: normalizeSchemaDocumentState(sourcePayload.state as Partial<SchemaDocumentState>),
-        }
-      : {}),
-    ...(kind !== 'saved_draft'
-      ? { createdAt: sourcePayload.createdAt ?? entity.sourceUpdatedAt }
-      : {}),
-  };
-  const payloadName = typeof payload.name === 'string' ? payload.name : entity.entityId;
+      return {
+        id: buildMigrationEntityId(userId, entity.entityType, entity.entityId),
+        kind: entity.entityType,
+        displayName: entity.entityId,
+        entity: { ...entity, payload },
+        payloadJson: stableStringify(payload),
+      };
+    }
 
-  const payloadTableName =
-    typeof payload.tableName === 'string' ? payload.tableName : entity.entityId;
-  const displayName =
-    kind === 'saved_table' || kind === 'folder'
-      ? payloadName
-      : kind === 'saved_draft'
-        ? payloadTableName
-        : entity.entityId;
+    case 'saved_table': {
+      const payload = {
+        ...entity.payload,
+        state: normalizeSchemaDocumentState(entity.payload.state),
+        createdAt: entity.payload.createdAt ?? entity.sourceUpdatedAt,
+      };
 
-  return {
-    id: buildMigrationEntityId(userId, kind, entity.entityId),
-    kind,
-    displayName,
-    entity: { ...entity, payload },
-    payloadJson: stableStringify(payload),
-  };
+      return {
+        id: buildMigrationEntityId(userId, entity.entityType, entity.entityId),
+        kind: entity.entityType,
+        displayName: payload.name,
+        entity: { ...entity, payload },
+        payloadJson: stableStringify(payload),
+      };
+    }
+
+    case 'saved_draft': {
+      const payload = {
+        ...entity.payload,
+        state: normalizeSchemaDocumentState(entity.payload.state),
+      };
+
+      return {
+        id: buildMigrationEntityId(userId, entity.entityType, entity.entityId),
+        kind: entity.entityType,
+        displayName: payload.tableName,
+        entity: { ...entity, payload },
+        payloadJson: stableStringify(payload),
+      };
+    }
+
+    case 'folder': {
+      const payload = entity.payload;
+
+      return {
+        id: buildMigrationEntityId(userId, entity.entityType, entity.entityId),
+        kind: entity.entityType,
+        displayName: payload.name,
+        entity: { ...entity, payload },
+        payloadJson: stableStringify(payload),
+      };
+    }
+  }
 };
 
 const normalizeName = (value: string) => value.trim().toLowerCase();
@@ -70,30 +98,43 @@ const buildLocalCopyName = (baseName: string, counter: number) =>
     ? `${baseName}${LOCAL_COPY_SUFFIX}`
     : `${baseName}${LOCAL_COPY_SUFFIX} ${counter + 1}`;
 
+const buildCopyTableId = (entityId: string, normalizedName: string) =>
+  entityId.startsWith('legacy:')
+    ? `legacy:${normalizedName}`
+    : `import:${entityId}:${normalizedName}`;
+
 const buildCopyEntity = (
   source: MigrationEntityRecord,
   displayName: string,
   normalizedName: string,
 ): WorkspaceEntityInput => {
-  // SAFETY: source records originate from workspaceSnapshotToEntities and carry object payloads.
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- migration payloads retain arbitrary JSON fields.
-  const sourcePayload = source.entity.payload as Record<string, unknown>;
-
-  switch (source.kind) {
-    case 'saved_table':
-    case 'saved_draft': {
-      const tableId = source.entity.entityId.startsWith('legacy:')
-        ? `legacy:${normalizedName}`
-        : `import:${source.entity.entityId}:${normalizedName}`;
+  switch (source.entity.entityType) {
+    case 'saved_table': {
+      const tableId = buildCopyTableId(source.entity.entityId, normalizedName);
 
       return {
         ...source.entity,
         entityId: tableId,
         payload: {
-          ...sourcePayload,
+          ...source.entity.payload,
           tableId,
           normalizedName,
-          [source.kind === 'saved_table' ? 'name' : 'tableName']: displayName,
+          name: displayName,
+        },
+      };
+    }
+
+    case 'saved_draft': {
+      const tableId = buildCopyTableId(source.entity.entityId, normalizedName);
+
+      return {
+        ...source.entity,
+        entityId: tableId,
+        payload: {
+          ...source.entity.payload,
+          tableId,
+          normalizedName,
+          tableName: displayName,
         },
       };
     }
@@ -102,8 +143,9 @@ const buildCopyEntity = (
       return {
         ...source.entity,
         entityId: normalizedName,
-        payload: { ...sourcePayload, name: displayName },
+        payload: { ...source.entity.payload, name: displayName },
       };
+
     case 'draft':
       return {
         ...source.entity,
@@ -156,26 +198,58 @@ export const buildMigrationEntityRecords = (
 const buildEntityPayloadMap = (records: MigrationEntityRecord[]) =>
   new Map(records.map((record) => [record.id, record.payloadJson] as const));
 
+const resolveTargetFolderId = (
+  sourceFolderId: string | undefined,
+  folderIds: ReadonlyMap<string, string>,
+) => {
+  if (sourceFolderId === undefined) return null;
+  const targetFolderId = folderIds.get(sourceFolderId);
+
+  return targetFolderId && targetFolderId !== sourceFolderId ? targetFolderId : null;
+};
+
 const replaceFolderReference = (
   userId: string,
   record: MigrationEntityRecord,
   folderIds: ReadonlyMap<string, string>,
-) => {
-  // SAFETY: migration records are created by toMigrationEntityRecord with object payloads.
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- migration payloads retain arbitrary JSON fields.
-  const payload = record.entity.payload as Record<string, unknown>;
-  const referenceName = record.kind === 'folder' ? 'parentId' : 'folderId';
-  const sourceFolderId = payload[referenceName];
+): MigrationEntityRecord => {
+  switch (record.entity.entityType) {
+    case 'folder': {
+      const targetFolderId = resolveTargetFolderId(record.entity.payload.parentId, folderIds);
 
-  if (typeof sourceFolderId !== 'string') return record;
-  const targetFolderId = folderIds.get(sourceFolderId);
+      if (!targetFolderId) return record;
 
-  if (!targetFolderId || targetFolderId === sourceFolderId) return record;
+      return toMigrationEntityRecord(userId, {
+        ...record.entity,
+        payload: { ...record.entity.payload, parentId: targetFolderId },
+      });
+    }
 
-  return toMigrationEntityRecord(userId, {
-    ...record.entity,
-    payload: { ...payload, [referenceName]: targetFolderId },
-  });
+    case 'draft': {
+      const targetFolderId = resolveTargetFolderId(record.entity.payload.folderId, folderIds);
+
+      if (!targetFolderId) return record;
+
+      return toMigrationEntityRecord(userId, {
+        ...record.entity,
+        payload: { ...record.entity.payload, folderId: targetFolderId },
+      });
+    }
+
+    case 'saved_table': {
+      const targetFolderId = resolveTargetFolderId(record.entity.payload.folderId, folderIds);
+
+      if (!targetFolderId) return record;
+
+      return toMigrationEntityRecord(userId, {
+        ...record.entity,
+        payload: { ...record.entity.payload, folderId: targetFolderId },
+      });
+    }
+
+    case 'saved_draft':
+      return record;
+  }
 };
 
 const canReserveRecords = (
@@ -225,11 +299,9 @@ const orderFoldersByParent = (records: MigrationEntityRecord[]) => {
 
   for (const folder of folders) {
     const folderId = folder.entity.entityId;
-    // SAFETY: migration records are created by toMigrationEntityRecord with object payloads.
-    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- parentId is read from an open migration payload.
-    const parentId = (folder.entity.payload as Record<string, unknown>).parentId;
+    const parentId = folder.entity.payload.parentId;
 
-    if (typeof parentId !== 'string' || !foldersById.has(parentId)) continue;
+    if (parentId === undefined || !foldersById.has(parentId)) continue;
     pendingParentCount.set(folderId, 1);
     childIdsByParent.set(parentId, [...(childIdsByParent.get(parentId) ?? []), folderId]);
   }
@@ -311,6 +383,17 @@ const resolveMigrationRecords = (
   return resolvedRecords;
 };
 
+const getConflictNormalizedName = (record: MigrationEntityRecord) => {
+  switch (record.entity.entityType) {
+    case 'saved_table':
+    case 'saved_draft':
+      return record.entity.payload.normalizedName;
+    case 'draft':
+    case 'folder':
+      return record.entity.entityId;
+  }
+};
+
 export const analyzeMigrationRecords = (
   sourceRecords: MigrationEntityRecord[],
   existingRecords: MigrationEntityRecord[],
@@ -333,19 +416,15 @@ export const analyzeMigrationRecords = (
       continue;
     }
 
-    // SAFETY: migration records are created by toMigrationEntityRecord with object payloads.
-    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- normalizedName is read from an open migration payload.
-    const normalizedName = (record.entity.payload as Record<string, unknown>).normalizedName;
     conflicts.push({
       kind: record.kind,
-      normalizedName: typeof normalizedName === 'string' ? normalizedName : record.entity.entityId,
+      normalizedName: getConflictNormalizedName(record),
       displayName: record.displayName,
     });
   }
 
   return { createdCount, skippedCount, conflicts };
 };
-// oxlint-enable anti-slop/no-runtime-typeof
 
 export const buildMigrationWritePlan = (
   userId: string,
