@@ -2,9 +2,9 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from '@xyflow/react';
 import { X } from '@/components/icons';
-import type { ErEdgeData } from './types';
+import type { ErEdge } from './types';
 
-export const ErRelationEdge = memo(function ErRelationEdge(props: EdgeProps) {
+export const ErRelationEdge = memo(function ErRelationEdge(props: EdgeProps<ErEdge>) {
   const { t } = useTranslation();
 
   const {
@@ -17,9 +17,7 @@ export const ErRelationEdge = memo(function ErRelationEdge(props: EdgeProps) {
     data,
     selected,
     markerEnd,
-    // SAFETY: React Flow edge data is the ErEdgeData supplied by buildEdgesFromTables.
-    // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- React Flow registers this edge with ErEdgeData in ErDiagramCanvas.
-  } = props as EdgeProps & { data: ErEdgeData };
+  } = props;
 
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -71,7 +69,7 @@ export const ErRelationEdge = memo(function ErRelationEdge(props: EdgeProps) {
           {(selected || data?.fk) && (
             <button
               type="button"
-              onClick={() => void data.onDelete()}
+              onClick={() => void data?.onDelete()}
               data-edge-id={props.id}
               className="ml-1 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground w-4 h-4 hover:bg-destructive/80 transition-colors"
               title={t('foreignKeyPanel.deleteTip')}

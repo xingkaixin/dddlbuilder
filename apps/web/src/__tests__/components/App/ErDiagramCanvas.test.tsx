@@ -2,7 +2,7 @@ import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type * as ReactFlowModule from '@xyflow/react';
 import { createFieldRow } from '@/__tests__/utils/testFactories';
-import type { ErEdgeData } from '@/components/App/er-diagram/types';
+import type { ErEdge, ErNode } from '@/components/App/er-diagram/types';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { buildSavedTableBatchImportPlan } from '@/utils/savedTableBatchImport';
 import { ErDiagramCanvas } from '@/components/App/er-diagram/ErDiagramCanvas';
@@ -12,18 +12,19 @@ import {
 } from '@/utils/savedTableStateUpdate';
 import type { SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 
-// SAFETY: React Flow supplies Edge objects to the mocked renderer, so the capture uses its public edge contract.
-const capture = vi.hoisted(() => ({
-  edges: [] as ReactFlowModule.Edge<ErEdgeData>[],
-  fitView: vi.fn(),
-}));
+const capture = vi.hoisted(() => {
+  const edges: ErEdge[] = [];
+
+  return {
+    edges,
+    fitView: vi.fn(),
+  };
+});
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- React Flow 替换捕获图边和命令回调，验证画布业务编排而不启动图编辑器。
 vi.mock('@xyflow/react', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactFlowModule>()),
-  ReactFlow: ({
-    edges,
-  }: ReactFlowModule.ReactFlowProps<ReactFlowModule.Node, ReactFlowModule.Edge<ErEdgeData>>) => {
+  ReactFlow: ({ edges }: ReactFlowModule.ReactFlowProps<ErNode, ErEdge>) => {
     capture.edges = edges ?? [];
 
     return null;
