@@ -1,4 +1,5 @@
 import { STORAGE_KEY } from '@/utils/constants/uiDefaults';
+import { removeLocalStorageItem, writeLocalStorageJson } from '@/utils/localStorage';
 
 const SHARE_UUID_REGEX =
   /^\/share\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
@@ -34,18 +35,12 @@ const rememberShare = (key: string) => {
   localStorage.setItem(SHARE_ORDER_KEY, JSON.stringify(order.slice(0, MAX_CACHED_SHARES)));
 };
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
-export const writeStorageJson = (key: string, value: unknown) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.warn('[workspace] share cache write failed', error);
-  }
+export const writeStorageJson = <T>(key: string, value: T) => {
+  writeLocalStorageJson(key, value, '[workspace] share cache write');
 };
 
 // 进入分享页时维护一次最近使用顺序，编辑时只覆盖当前缓存。
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- this boundary callback handles values thrown or supplied by external JavaScript.
-export const cacheShareJson = (key: string, value: unknown) => {
+export const cacheShareJson = <T>(key: string, value: T) => {
   try {
     rememberShare(key);
     localStorage.setItem(key, JSON.stringify(value));
@@ -72,11 +67,7 @@ export const readStorageJson = (key: string): unknown => {
 // oxlint-enable anti-slop/no-unknown-returns, anti-slop/no-known-value-widening
 
 export const removeStorage = (key: string) => {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    // ignore localStorage errors
-  }
+  removeLocalStorageItem(key, '[workspace] share cache remove');
 };
 
 export const buildShareStorageKey = (shareId: string) => `${STORAGE_KEY}:share:${shareId}`;
