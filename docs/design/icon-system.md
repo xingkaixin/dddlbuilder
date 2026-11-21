@@ -28,8 +28,8 @@ Web 的图标全部自绘，不依赖外部图标库。风格与 Lanmo 手绘主
 - 手绘感写进路径里：线端略微出头，长边带一点弧度，闭合形状的接口不完全对齐。`icon-draw.ts` 的基本形（`line`、`poly`、`rect`、`ring` 等）用固定的弯曲序列生成，每次渲染一致。
 
 **水彩块（wash）**
-- 在墨线下面垫一块平涂色，用 CSS `translate` 错开 0.9 个单位，像套色没对准的水彩。
-- 颜色只取 wash token：`--blue-wash`、`--success-wash`、`--warning-wash`、`--danger-wash`、`--ai-wash`。这些 token 都有 `.dark` 值，暗色不需要另画。
+- 在墨线下面垫一块平涂色，用独立 CSS `translate`（而非 `transform`）错开 0.9 个单位，像套色没对准的水彩，同时保证与悬停分组的 `transform` 叠加而不被覆盖。
+- 颜色只取 wash token：`--blue-wash`、`--success-wash`、`--warning-wash`、`--danger-wash`、`--ai-wash`。这些 token 都有 `.dark` 值，暗色不需要另画。Lanmo 主色 token 命名为 `--blue` 而非 `--accent`，避免与 Web 端 shadcn HSL 三元组冲突。
 
 **颜色按语义分配**
 - 功能和对象图标用蓝。成功用绿，警告用黄，破坏性操作和错误用红，AI 类用紫（`--ai-wash`）。
@@ -53,7 +53,7 @@ Web 的图标全部自绘，不依赖外部图标库。风格与 Lanmo 手绘主
 
 **悬停动作**
 - 只给"动作本身预示下一步"的图标加。例如删除时桶盖掀起，下载时箭头下落，复制时前一张纸错开，刷新时转半圈，发送时纸飞机前冲，设置时齿轮转动，AI 类星芒闪一下。
-- 图的部件可以标一个分组 `g`，渲染为 `lm-ic-g-<分组>` 类。`icons.css` 在可交互父元素（`button`、`a`、`[role=button|menuitem|option|tab]`）`:hover` 或 `:focus-visible` 时移动该分组。悬停由父元素触发，因为点击区域是按钮。
+- 图的部件可以标一个分组 `g`，渲染为 `lm-ic-g-<分组>` 类。`icons.css` 在可交互父元素（`button`、`a`、`[role=button|menuitem|option|tab]`）`:hover` 或 `:focus-visible` 时移动该分组。悬停由父元素触发，因为点击区域是按钮。悬停分组 `g` 与回笔 `echo` 互斥（分组悬停 `transform` 会覆盖回笔偏移变换）。
 - 只用 CSS transform，时长 260ms，曲线 `cubic-bezier(0.22, 1, 0.36, 1)`。
 
 **A→B 过渡**

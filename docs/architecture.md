@@ -68,12 +68,13 @@ ddl-core, workspace-core → shared-types
 4. 一致性由持久化约束保证。额度变化只通过插入账本记录完成；幂等键、结算意图、工作区权威副本都持久化。应用层的重试和 finalizer 不能替代这些约束。
 5. 访问控制在每个服务端入口执行。HTTP 路由和 Durable Object 都以 D1 中的会话和归属为准；会话被撤销时主动断开同步连接。
 6. 失败要可见。生成器无法安全处理时输出人工处理提示；启动读取失败进入可重试的错误态，不用空数据继续；额度响应校验失败不能当作余额 0。
-7. Worker 中请求返回后仍需执行的异步工作必须挂到 `waitUntil`。
+7. Worker 中请求返回后仍需执行的异步工作必须挂到 `waitUntil`。领域层统一抛出带状态码和错误码的 `DomainError`，由全局 `onError` 统一渲染；数据库层业务时间列统一存储 Unix 毫秒，对外 HTTP 接口保持 ISO 字符串。
+8. Web 编辑器优先保证按键输入流畅度：输出面板的 DDL/ORM/Lint 计算通过 `useDeferredValue` 延迟、ORM 代码按需惰性生成、隐藏输出面板保持挂载并跳过高亮重算、表格行级编辑态与告警下沉到独立 Context、密集表单控件边框使用静态 CSS data-URI SVG 而非逐元素手绘组件。
 
 ## 工程基础
 
 - pnpm workspace + Turbo；多个 workspace 共用的依赖版本放在 `pnpm-workspace.yaml` 的 `catalog`。
-- 部署使用 `cf` CLI 和 `apps/worker/cloudflare.config.ts`，分 `development`、`production`、`e2e` 三个 mode。部署前记录 D1 Time Travel 恢复点，再执行远程迁移。
+- 部署使用 `cf` CLI 和 `apps/worker/cloudflare.config.ts`，分 `development`、`production`、`e2e` 三个 mode。部署前记录 D1 Time Travel 恢复点，再执行远程迁移。`@cloudflare/vite-plugin` 仅将 `.dev.vars` 注入已声明的 secret，本地开发因此转为文本绑定传入。
 - `cf` 1.0 RC 与 Vite 插件 2.0 RC 使用 Build Output v1（`.cloudflare/output/v1/`）。升级这组工具后重新构建，不能直接部署旧格式的产物。配置校验使用 `CloudflareConfigSchema`。
 - Miniflare 的 `undici` 通过 workspace override 固定到 7.30.2，覆盖构建工具引入的各个 Miniflare 版本，避免升级后重新安装存在已知漏洞的 7.30.1。
 - 测试与验证策略见 `AGENTS.md`。

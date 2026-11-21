@@ -22,7 +22,7 @@ Cron 的 `ai.usage.recovery` 覆盖用量回收、预算补结算和过期治理
 
 HTTP 日志和原生 span 通过 `requestId` / `request.id` 关联；跨 invocation 的 AI 执行通过 operationId 关联。Effect 内部 trace ID 不作为 Cloudflare trace ID 输出。
 
-Trace 属性使用白名单，不包含 SQL、提示词、响应正文、密钥和原始异常信息。追踪 API 失败不影响请求或结算。生产采样沿用 Cloudflare 配置。
+Trace 属性使用白名单，不包含 SQL、提示词、响应正文、密钥和原始异常信息。日志脱敏使用带边界断言的自定义正则替代 evlog 内置的 `creditCard` 规则，避免误伤全数字 UUID 尾段。追踪 API 失败不影响请求或结算。生产采样沿用 Cloudflare 配置。
 
 ## 查询
 

@@ -3,9 +3,12 @@
 `packages/design` holds the Lanmo tokens, the sketch path generator and the feature tiles, because
 the web app and the docs site must draw the same lines and play the same tiles. Shared packages do
 not touch the DOM, and this package keeps that rule everywhere except `tile-player.ts`, which arms
-one tile element and replays it on hover and focus. It has no framework dependency, so the React
-web app and the static docs site both call it directly. The package holds no product logic and
-reads no network, storage or Worker bindings, and it depends on no other workspace package.
+one tile element and replays it on hover and focus (forcing synchronous layout reflow via
+`offsetWidth` before re-arming so CSS animations replay in the same frame). Tile SVG markup injected
+by apps comes exclusively from the static built-in `TILE_SCENES` constants in this package. It has
+no framework dependency, so the React web app and the static docs site both call it directly. The
+package holds no product logic and reads no network, storage or Worker bindings, and it depends on
+no other workspace package.
 
 ## Considered Options
 

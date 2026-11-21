@@ -27,3 +27,12 @@ timers and cancellation become hard to maintain.
 
 Existing components that keep state in `useState` or react to changes in `useEffect` migrate
 incrementally; new code follows this decision.
+
+Operational rules derived from this model:
+- TanStack Query queries and mutations that read or write local-only state (Y.Doc, IndexedDB, or
+  sign-out cleanup) set `networkMode: 'always'` so offline pauses never block local transitions or
+  leave the page inert.
+- Subscription adapters re-read the external snapshot immediately after attaching a listener to
+  capture mutations that occurred between render and subscribe.
+- Request-cancellation adapters use `useLayoutEffect` (rather than `useEffect`) when aborting a
+  superseded document request so cleanup runs before the next document paints.
