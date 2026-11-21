@@ -1,37 +1,15 @@
-import type { Context } from 'hono';
+import type { Context, ExecutionContext as HonoExecutionContext } from 'hono';
 import { matchedRoutes } from 'hono/route';
-import { createLogger } from 'evlog';
+import { createLogger, isEnabled } from 'evlog';
 import { initWorkersLogger, withEvlog, type EvlogWorkersOptions } from 'evlog/workers';
 import type { ApiEnv, WorkerRequestLogger } from './context.js';
 
 const REQUEST_ID_PATTERN = /^[a-zA-Z0-9._:-]{1,128}$/;
 const API_PATH_PREFIX = '/api';
 
-type RuntimeGlobal = typeof globalThis & {
-  process?: { env?: Record<string, string | undefined> };
-};
-
-// SAFETY: process is optional in the Worker runtime; this is a capability probe for local tooling only.
-const getRuntimeProcess = () => (globalThis as RuntimeGlobal).process;
-
-const isVitest = () => {
-  const runtimeProcess = getRuntimeProcess();
-
-  return runtimeProcess?.env?.VITEST === 'true';
-};
-
-const getRuntimeEnvironment = () => {
-  const runtimeEnv = getRuntimeProcess()?.env;
-
-  return runtimeEnv?.ENVIRONMENT?.trim() || runtimeEnv?.NODE_ENV?.trim() || undefined;
-};
-
 let configuredEnvironment: string | undefined;
 
-export const configureWorkerLogging = (
-  enabled = !isVitest(),
-  environment = getRuntimeEnvironment(),
-) => {
+export const configureWorkerLogging = (enabled = isEnabled(), environment?: string) => {
   configuredEnvironment = environment;
   initWorkersLogger({
     enabled,
@@ -74,7 +52,7 @@ const configureWorkerLoggingFromEnvironment = (environment: string | undefined) 
   const normalized = environment?.trim() || undefined;
 
   if (!normalized || normalized === configuredEnvironment) return;
-  configureWorkerLogging(!isVitest(), normalized);
+  configureWorkerLogging(isEnabled(), normalized);
 };
 
 export const WORKER_LOGGING_OPTIONS = {
@@ -105,37 +83,44 @@ export const normalizeApiRequestId = (request: Request) => {
 type WorkerFetch = (
   request: Request,
   env: ApiEnv['Bindings'],
-  ctx?: ExecutionContext,
+  ctx?: HonoExecutionContext,
 ) => Response | Promise<Response>;
 
+const noopExecutionContext: HonoExecutionContext = {
+  waitUntil() {},
+  passThroughOnException() {},
+  props: {},
+};
+
 export const withWorkerRequestLogging = (handler: WorkerFetch): WorkerFetch => {
-  const loggedWorker = withEvlog<ApiEnv['Bindings']>(async (request, env, ctx, log) => {
-    if (env.ENVIRONMENT) {
-      log.set({ deployment: { environment: env.ENVIRONMENT } });
-    }
+  const loggedWorker = withEvlog<ApiEnv['Bindings'], HonoExecutionContext>(
+    async (request, env, ctx, log) => {
+      if (env.ENVIRONMENT) {
+        log.set({ deployment: { environment: env.ENVIRONMENT } });
+      }
 
-    const response = await handler(
-      request,
-      {
-        ...env,
-        // SAFETY: withEvlog's open field bag is adapted to the WorkerRequestLogger fields consumed by this Worker request handler.
-        EVLOG_REQUEST_LOG: log as WorkerRequestLogger,
-      },
-      // SAFETY: withEvlog provides the platform execution context required by the Worker handler.
-      ctx as ExecutionContext,
-    );
+      const response = await handler(
+        request,
+        {
+          ...env,
+          // SAFETY: withEvlog's open field bag is adapted to the WorkerRequestLogger fields consumed by this Worker request handler.
+          EVLOG_REQUEST_LOG: log as WorkerRequestLogger,
+        },
+        ctx,
+      );
 
-    if (response.status >= 500) log.setLevel('error');
-    else if (response.status >= 400) log.setLevel('warn');
+      if (response.status >= 500) log.setLevel('error');
+      else if (response.status >= 400) log.setLevel('warn');
 
-    return response;
-  }, WORKER_LOGGING_OPTIONS);
+      return response;
+    },
+    WORKER_LOGGING_OPTIONS,
+  );
 
   return (request, env, ctx) => {
     configureWorkerLoggingFromEnvironment(env.ENVIRONMENT);
 
-    // SAFETY: Cloudflare invokes the Worker fetch handler with an ExecutionContext.
-    return loggedWorker.fetch(normalizeApiRequestId(request), env, ctx as ExecutionContext);
+    return loggedWorker.fetch(normalizeApiRequestId(request), env, ctx ?? noopExecutionContext);
   };
 };
 

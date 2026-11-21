@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLogger } from 'evlog';
-import { configureWorkerLogging } from '../../lib/logging.js';
+import type { ApiEnv } from '../../lib/context.js';
+import { configureWorkerLogging, withWorkerRequestLogging } from '../../lib/logging.js';
 
 type CapturedEvent = {
   service?: string;
@@ -54,6 +55,19 @@ describe('worker request logging', () => {
       sql: '[REDACTED]',
       credentials: { token: '[REDACTED]' },
     });
+    captured.restore();
+  });
+
+  it('stays silent across environment updates when disabled by test setup', async () => {
+    const captured = captureEvents();
+    const fetchHandler = withWorkerRequestLogging(() => new Response('ok', { status: 200 }));
+    // SAFETY: the stubbed handler does not read Cloudflare resource bindings.
+    const env = { ENVIRONMENT: 'staging' } as ApiEnv['Bindings'];
+
+    const response = await fetchHandler(new Request('https://example.com/api/workspaces'), env);
+
+    expect(response.status).toBe(200);
+    expect(captured.events).toHaveLength(0);
     captured.restore();
   });
 });
