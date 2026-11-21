@@ -153,7 +153,7 @@ interface DeleteFolderDialogProps {
   onOpenChange: (open: boolean) => void;
   folder: FolderTreeNode | null;
   tableCount: number;
-  onConfirm: () => Promise<void>;
+  onConfirm: () => Promise<boolean>;
 }
 
 export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
@@ -162,17 +162,17 @@ export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
     const [loading, dispatchDeleting] = useReducer(deletingReducer, false);
 
     const handleConfirm = useCallback(async () => {
+      if (loading) return;
       dispatchDeleting('started');
 
       try {
-        await onConfirm();
-        onOpenChange(false);
-      } catch {
-        // Error handling is done in parent
+        if (await onConfirm()) {
+          onOpenChange(false);
+        }
       } finally {
         dispatchDeleting('settled');
       }
-    }, [onConfirm, onOpenChange]);
+    }, [loading, onConfirm, onOpenChange]);
 
     if (!folder) return null;
 

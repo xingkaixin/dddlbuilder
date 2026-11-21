@@ -34,8 +34,12 @@ const savedTable: SavedTableSummary = {
   updatedAt: 1,
 };
 
-function renderFolderActions() {
-  const deleteFolderAction = vi.fn().mockResolvedValue([targetFolder.id]);
+function renderFolderActions(options?: {
+  deleteFolderAction?: ReturnType<typeof vi.fn<(id: string) => Promise<string[]>>>;
+}) {
+  const deleteFolderAction =
+    options?.deleteFolderAction ??
+    vi.fn<(id: string) => Promise<string[]>>().mockResolvedValue([targetFolder.id]);
   const createFolder = vi.fn();
   const showToast = vi.fn();
   const getDraftState = vi.fn();
@@ -71,7 +75,7 @@ function renderFolderActions() {
     }),
   );
 
-  return hook;
+  return { ...hook, deleteFolderAction, showToast };
 }
 
 describe('useFolderActions', () => {
@@ -83,5 +87,35 @@ describe('useFolderActions', () => {
     act(() => result.current.handleOpenDeleteFolderDialog(rootFolder));
 
     expect(result.current.deleteFolderTableCount).toBe(2);
+  });
+
+  it('returns true when folder deletion succeeds', async () => {
+    const { result } = renderFolderActions();
+
+    act(() => result.current.handleOpenDeleteFolderDialog(rootFolder));
+
+    let succeeded = false;
+    await act(async () => {
+      succeeded = await result.current.handleDeleteFolderConfirm();
+    });
+
+    expect(succeeded).toBe(true);
+  });
+
+  it('returns false and notifies when folder deletion fails', async () => {
+    const deleteFolderAction = vi
+      .fn<(id: string) => Promise<string[]>>()
+      .mockRejectedValue(new Error('storage locked'));
+    const { result, showToast } = renderFolderActions({ deleteFolderAction });
+
+    act(() => result.current.handleOpenDeleteFolderDialog(rootFolder));
+
+    let succeeded = true;
+    await act(async () => {
+      succeeded = await result.current.handleDeleteFolderConfirm();
+    });
+
+    expect(succeeded).toBe(false);
+    expect(showToast).toHaveBeenCalledWith('storage locked');
   });
 });

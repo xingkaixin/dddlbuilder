@@ -158,8 +158,8 @@ export function useFolderActions({
     ],
   );
 
-  const handleDeleteFolderConfirm = useCallback(async () => {
-    if (!deleteFolderTarget) return;
+  const handleDeleteFolderConfirm = useCallback(async (): Promise<boolean> => {
+    if (!deleteFolderTarget) return false;
 
     try {
       const openDraftIds = new Set(
@@ -190,10 +190,14 @@ export function useFolderActions({
           name: deleteFolderTarget.name,
         }),
       );
+
+      return true;
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : i18n.t('savedTables.toast.deleteFolderFailed'),
       );
+
+      return false;
     }
   }, [closeTab, deleteFolderTarget, deleteFolderAction, getDraftState, refreshDrafts, showToast]);
 
