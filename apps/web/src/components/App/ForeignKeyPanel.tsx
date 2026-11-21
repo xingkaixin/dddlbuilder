@@ -172,7 +172,6 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
 
       <div className="relative p-4">
         <div className="space-y-3">
-          {/* Add button */}
           {!draft && (
             <Button
               size="sm"
@@ -185,7 +184,6 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
             </Button>
           )}
 
-          {/* Add form */}
           {draft && (
             <div className="space-y-4 rounded-xl border bg-muted/40 p-4">
               <div className="grid gap-3 sm:grid-cols-2">
@@ -235,7 +233,6 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                 />
               </div>
 
-              {/* Local fields */}
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
                   {t('foreignKeyPanel.localFields')} *
@@ -263,7 +260,6 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                 )}
               </div>
 
-              {/* Reference fields */}
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
                   {t('foreignKeyPanel.refFields')} *
@@ -306,7 +302,6 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label
@@ -404,7 +399,6 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
             </div>
           )}
 
-          {/* Foreign Key List */}
           {foreignKeys.length > 0 && (
             <div className="space-y-3">
               <div className="text-sm font-semibold relative pb-2">

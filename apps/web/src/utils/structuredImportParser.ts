@@ -12,8 +12,6 @@ import {
   toMebibytes,
 } from '@/utils/importLimits';
 
-// This module owns the XLSX/CSV/JSON import boundary and normalizes undocumented provider shapes
-// before returning ParsedResult values.
 // oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unsafe-dictionary-type
 
 export type StructuredImportSource = Exclude<ImportSourceType, 'sql'>;
@@ -301,7 +299,6 @@ function parseJsonSchemaImport(content: string): ParsedResult[] {
 }
 
 function collectSchemas(root: JsonSchemaLike): Record<string, JsonSchemaLike> {
-  // Web JSON schema maps are filtered to validated nodes before callers consume them.
   // oxlint-disable-next-line anti-slop/no-unknown-parameters
   const readSchemaMap = (value: unknown): Record<string, JsonSchemaLike> | undefined => {
     if (!isRecord(value)) return undefined;

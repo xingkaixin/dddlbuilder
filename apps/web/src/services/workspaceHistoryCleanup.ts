@@ -37,12 +37,10 @@ type WorkspaceTableSnapshot = {
 const HISTORY_STORES = [VERSION_STORE_NAME, REVIEW_STORE_NAME] as const;
 const CLEANUP_STORES = [WORKSPACE_ENTITY_META_STORE_NAME, ...HISTORY_STORES] as const;
 
-// IndexedDB errors are forwarded unchanged to the transaction boundary.
 // oxlint-disable-next-line anti-slop/no-unknown-parameters
 const failRequest = (request: IDBRequest, fail: (error: unknown) => void) =>
   fail(request.error ?? new Error('IndexedDB 请求失败'));
 
-// History records come from an older IndexedDB store and are decoded field by field.
 // oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 const historyNormalizedName = (value: unknown) => {
   if (!value || typeof value !== 'object') return '';
@@ -53,7 +51,6 @@ const historyNormalizedName = (value: unknown) => {
 };
 // oxlint-enable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 
-// History keys and values come from legacy IndexedDB records; this helper owns their narrow decode.
 // oxlint-disable anti-slop/no-unknown-parameters
 const historyTargetFromKey = (
   scope: WorkspaceScope,

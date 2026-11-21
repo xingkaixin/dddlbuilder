@@ -59,15 +59,9 @@ function animationReducer(state: AnimationState, event: AnimationEvent): Animati
   }
 }
 
-/**
- * Hook for managing suggestion application animations.
- * Provides state and methods to animate indexes and highlight the field table
- * when applying review suggestions.
- */
 export function useSuggestionAnimation() {
   const [state, dispatch] = useReducer(animationReducer, initialAnimationState);
 
-  // Use refs to track pending timeouts for cleanup
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const triggerIndexAnimation = useCallback((indexId: string, kind: IndexAnimationType) => {
@@ -84,22 +78,15 @@ export function useSuggestionAnimation() {
     timeoutsRef.current.set(timeoutKey, timeout);
   }, []);
 
-  /**
-   * Trigger a highlight animation on the entire field table or a specific row.
-   * @param rowIndex - Optional row index to highlight. If not provided, highlights the entire table.
-   */
   const triggerFieldTableHighlight = useCallback((rowIndex?: number) => {
-    // Clear any existing highlight timeout
     const existingTimeout = timeoutsRef.current.get('field-table-highlight');
 
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
 
-    // Set highlight state
     dispatch({ type: 'fieldTableHighlighted', rowIndex: rowIndex ?? null });
 
-    // Schedule cleanup after animation duration
     const timeout = setTimeout(() => {
       dispatch({ type: 'fieldTableHighlightEnded' });
       timeoutsRef.current.delete('field-table-highlight');

@@ -3,25 +3,10 @@ import { useCallback } from 'react';
 import { toast, type ExternalToast } from 'sonner';
 
 export interface UseToastReturn {
-  /**
-   * Show a success toast
-   */
   success: (msg: string | React.ReactNode, options?: ExternalToast) => void;
-  /**
-   * Show an error toast
-   */
   error: (msg: string | React.ReactNode, options?: ExternalToast) => void;
-  /**
-   * Show an info toast
-   */
   info: (msg: string | React.ReactNode, options?: ExternalToast) => void;
-  /**
-   * Show a warning toast
-   */
   warning: (msg: string | React.ReactNode, options?: ExternalToast) => void;
-  /**
-   * Show a promise toast
-   */
   promise: <T>(
     promise: Promise<T> | (() => Promise<T>),
     data?: {
@@ -31,13 +16,7 @@ export interface UseToastReturn {
     },
     options?: ExternalToast,
   ) => void;
-  /**
-   * Generic toast message (default)
-   */
   showToast: (msg: string | React.ReactNode, options?: ExternalToast) => void;
-  /**
-   * Dismiss a specific toast or all toasts
-   */
   dismiss: (id?: string | number) => void;
 }
 

@@ -125,7 +125,6 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
 
     const visibleReviews = reviewsQuery.data ?? [];
 
-    // 删除记录
     const handleDelete = useCallback(async () => {
       if (!deleteConfirmId || !target) return;
 

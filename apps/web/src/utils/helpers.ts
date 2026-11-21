@@ -17,8 +17,6 @@ import {
   supportsUuidDefault,
 } from '@ddlbuilder/ddl-core';
 
-// This conversion is the shared boundary for pasted and persisted cell values; callers explicitly
-// need JavaScript's string fallback for values that are not already strings.
 // oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 export const toStringSafe = (value: unknown) => {
   if (typeof value === 'string') {
@@ -29,7 +27,6 @@ export const toStringSafe = (value: unknown) => {
     return '';
   }
 
-  // This helper intentionally preserves JavaScript's default string coercion semantics.
   // oxlint-disable-next-line typescript/no-base-to-string
   return String(value);
 };
@@ -54,10 +51,8 @@ export const createEmptyRow = (): FieldRow => ({
   onUpdate: 'none',
 });
 
-// Cell editors provide a deliberately open value union keyed by the selected column.
 type NormalizedFieldCellValue = string | boolean;
 
-// The map receives raw editor cell values before the selected normalizer validates them.
 // oxlint-disable-next-line anti-slop/no-unknown-parameters
 const FIELD_CELL_NORMALIZERS = new Map<string, (value: unknown) => NormalizedFieldCellValue>([
   ['nullable', normalizeFieldNullable],
@@ -65,7 +60,6 @@ const FIELD_CELL_NORMALIZERS = new Map<string, (value: unknown) => NormalizedFie
   ['onUpdate', normalizeFieldOnUpdate],
 ]);
 
-/** 表格单元格的输入可能来自勾选框、下拉框或粘贴的文本，按列收敛成该列的存储类型。 */
 // oxlint-disable anti-slop/no-unknown-parameters
 export const normalizeFieldCellValue = (prop: string, value: unknown): NormalizedFieldCellValue =>
   (FIELD_CELL_NORMALIZERS.get(prop) ?? toStringSafe)(value);

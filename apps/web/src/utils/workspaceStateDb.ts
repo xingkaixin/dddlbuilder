@@ -144,12 +144,10 @@ const toDraftRecord = (entity: WorkspaceDraftEntity): WorkspaceDraftRecord | nul
     : null;
 };
 
-// Legacy localStorage records are decoded through this temporary key/value view.
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// localStorage JSON remains unknown until each legacy record decoder validates its shape.
 // oxlint-disable anti-slop/no-unknown-returns, anti-slop/no-known-value-widening
 const parseStorageJson = (key: string): unknown => {
   try {
@@ -454,7 +452,6 @@ export const clearWorkspaceSession = async (scope: WorkspaceScope): Promise<void
   );
 };
 
-// This decoder keeps compatibility with pre-IndexedDB localStorage record shapes.
 // oxlint-disable anti-slop/no-runtime-typeof
 const readLegacyGlobalDraftRecord = (): WorkspaceDraftRecord | null => {
   const parsed = parseStorageJson(GLOBAL_DRAFT_STORAGE_KEY);

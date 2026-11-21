@@ -109,7 +109,6 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-// IndexedDB reports failures as unknown values; this adapter forwards them unchanged.
 // oxlint-disable-next-line anti-slop/no-unknown-parameters
 const failRequest = (request: IDBRequest, fail: (error: unknown) => void) =>
   fail(request.error ?? new Error('IndexedDB 请求失败'));
@@ -126,7 +125,6 @@ async function runWithStore<T>(
 const readReviewDraftBinding = (
   store: IDBObjectStore,
   target: ReviewTarget,
-  // IndexedDB callbacks forward the platform's unknown failure value unchanged.
   // oxlint-disable-next-line anti-slop/no-unknown-parameters
   fail: (error: unknown) => void,
   done: (binding?: ReviewDraftBinding) => void,

@@ -2,10 +2,6 @@ import { useCallback } from 'react';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { useDialogState } from '@/hooks/useDialogState';
 
-/**
- * 聚合 App 组件中所有 dialog state 的初始化。
- * 从 App/index.tsx 中提取，减少主组件的样板代码。
- */
 export function useDialogStates(deps: {
   isSaveDialogOpen: boolean;
   setIsSaveDialogOpen: (open: boolean) => void;

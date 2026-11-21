@@ -38,9 +38,6 @@ const encodeFolder = (folder: TableFolder, scope: WorkspaceScope): TableFolder =
   scope: getWorkspaceScopeStorageKey(scope),
 });
 
-/**
- * 运行文件夹 store 事务
- */
 async function runWithFolderStore<T>(
   mode: IDBTransactionMode,
   runner: (store: IDBObjectStore) => IDBRequest<T>,
@@ -50,9 +47,6 @@ async function runWithFolderStore<T>(
   return runIndexedDbRequest(db, FOLDER_STORE_NAME, mode, runner);
 }
 
-/**
- * 获取所有文件夹
- */
 export async function listFolders(scope: WorkspaceScope): Promise<TableFolder[]> {
   const folders = await runWithFolderStore<TableFolder[]>('readonly', (store) => store.getAll());
 
@@ -64,13 +58,6 @@ export async function listFolders(scope: WorkspaceScope): Promise<TableFolder[]>
     .sort((a, b) => a.order - b.order);
 }
 
-/**
- * 获取指定父文件夹下的子文件夹
- */
-
-/**
- * 获取单个文件夹
- */
 export async function getFolder(id: string, scope: WorkspaceScope): Promise<TableFolder | null> {
   const folder = await runWithFolderStore<TableFolder | undefined>('readonly', (store) =>
     store.get(withScopeKey(scope, id)),
@@ -91,9 +78,6 @@ export async function getFolder(id: string, scope: WorkspaceScope): Promise<Tabl
   return null;
 }
 
-/**
- * 创建文件夹
- */
 export async function createFolder(
   name: string,
   scope: WorkspaceScope,
@@ -108,9 +92,6 @@ export async function createFolder(
   return folder;
 }
 
-/**
- * 更新文件夹
- */
 export async function updateFolder(folder: TableFolder, scope: WorkspaceScope): Promise<void> {
   await runWithFolderStore<IDBValidKey>('readwrite', (store) =>
     store.put(encodeFolder(folder, scope)),
@@ -121,9 +102,6 @@ export async function updateFolder(folder: TableFolder, scope: WorkspaceScope): 
   }
 }
 
-/**
- * 重命名文件夹
- */
 export async function renameFolder(
   id: string,
   newName: string,
@@ -138,9 +116,6 @@ export async function renameFolder(
   await updateFolder(renameFolderRecord(folder, newName), scope);
 }
 
-/**
- * 移动文件夹到新的父文件夹
- */
 export async function moveFolder(
   id: string,
   scope: WorkspaceScope,
@@ -154,10 +129,6 @@ export async function moveFolder(
 
   await updateFolder(moveFolderRecord(await listFolders(scope), id, newParentId), scope);
 }
-
-/**
- * 获取文件夹的所有后代文件夹 ID
- */
 
 /**
  * 删除文件夹及后代，并把其中仍生效的表和草稿移入回收站
@@ -181,7 +152,6 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
     let pendingReads = requests.length;
     let settled = false;
 
-    // IndexedDB callback failures are intentionally forwarded without changing their error shape.
     // oxlint-disable-next-line anti-slop/no-unknown-parameters
     const fail = (error: unknown, message: string) => {
       if (settled) return;
@@ -233,9 +203,6 @@ export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<s
   });
 }
 
-/**
- * 清空所有文件夹
- */
 export async function clearFolders(scope: WorkspaceScope): Promise<void> {
   const folders = await listFolders(scope);
 
@@ -253,9 +220,6 @@ export async function clearFolders(scope: WorkspaceScope): Promise<void> {
   });
 }
 
-/**
- * 批量写入文件夹（覆盖式）
- */
 export async function bulkPutFolders(folders: TableFolder[], scope: WorkspaceScope): Promise<void> {
   if (folders.length === 0) return;
   await runWithFolderStore<IDBValidKey>('readwrite', (store) => {

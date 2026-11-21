@@ -43,10 +43,6 @@ function pendingReducer(state: PendingState, event: PendingEvent): PendingState 
   }
 }
 
-/**
- * Runs one abortable request at a time. The active request is aborted with `resetReason` on
- * unmount and whenever `resetKey` changes.
- */
 export function useLatestRequest(resetKey?: string, resetReason: CancelReason = 'stop') {
   const activeRequestRef = useRef<ActiveRequest | null>(null);
   const [pending, dispatchPending] = useReducer(pendingReducer, resetKey, idlePending);

@@ -1,8 +1,3 @@
-/**
- * 从选中字段创建模板对话框
- * 将用户选中的字段保存为可复用的模板
- */
-
 import { memo, useReducer, useCallback, useMemo } from 'react';
 import {
   Dialog,
@@ -72,7 +67,6 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
       initialTemplateFormState,
     );
 
-    // 过滤有效字段
     const validFields = useMemo(
       () => selectedFields.filter((f) => f.fieldName?.trim()),
       [selectedFields],
@@ -121,7 +115,6 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            {/* 字段预览 */}
             <div className="rounded-md bg-muted p-3">
               <div className="text-sm font-medium mb-2">
                 {t('templateManager.createFromFieldsDialog.fieldPreviewTitle')}

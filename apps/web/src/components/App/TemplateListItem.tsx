@@ -1,8 +1,3 @@
-/**
- * 模板列表项组件
- * 显示单个模板的名称、字段数，以及编辑/复制/删除操作
- */
-
 import { memo } from 'react';
 import { Copy, FieldTemplateIcon, Pencil, Trash2 } from '@/components/icons';
 import { Button } from '@/components/ui/button';

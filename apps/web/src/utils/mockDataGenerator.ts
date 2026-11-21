@@ -6,8 +6,6 @@ import {
   quoteIdentifier,
 } from '@ddlbuilder/ddl-core';
 
-// ── 本地化数据池 ─────────────────────────────────────────────────────────────
-
 const CN_SURNAMES = '赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜'.split('');
 const CN_NAMES_CHARS =
   '伟芳娜秀英敏静艳丽燕珊雪琳倩梅梦娟灿宇子鹏博昊峰磊帆军凯洋鑫浩然志成明亮辉强生'.split('');
@@ -113,8 +111,6 @@ const CN_ADJECTIVES = [
   '汇聚',
 ];
 
-// ── 随机工具 ──────────────────────────────────────────────────────────────────
-
 interface MockRandom {
   next: () => number;
   int: (min: number, max: number) => number;
@@ -164,8 +160,6 @@ function createMockRandom(seed: number | string): MockRandom {
 
   return { next, int, pick, pickN };
 }
-
-// ── 语义生成函数 ──────────────────────────────────────────────────────────────
 
 const RANDOM_STRING_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'.split('');
 
@@ -285,8 +279,6 @@ function genTime(rng: MockRandom): string {
   return `${h}:${m}:${s}`;
 }
 
-// ── 语义推断 ──────────────────────────────────────────────────────────────────
-
 type SemanticHint =
   | 'chinese_name'
   | 'phone'
@@ -346,8 +338,6 @@ function inferSemanticHint(fieldName: string, fieldComment: string): SemanticHin
 
   return null;
 }
-
-// ── 字段值生成 ────────────────────────────────────────────────────────────────
 
 function generateSemanticValue(
   field: NormalizedField,
@@ -516,9 +506,6 @@ function generateValueForField(
   return maxLength === undefined ? value : Array.from(value).slice(0, maxLength).join('');
 }
 
-// ── 导出格式 ──────────────────────────────────────────────────────────────────
-
-// Values reaching export formatting are the finite scalar generator domain.
 // oxlint-disable anti-slop/no-runtime-typeof
 function toStr(value: MockDataValue): string {
   if (typeof value === 'string') return value;
@@ -570,7 +557,6 @@ export function generateMockData(
 ): MockDataOutput {
   const { rowCount, seed = 0 } = options;
 
-  // 过滤掉没有字段名的字段
   const validFields = fields.filter((f) => f.name.trim() !== '');
 
   if (validFields.length === 0) {
@@ -579,7 +565,6 @@ export function generateMockData(
 
   const rng = createMockRandom(seed);
 
-  // 生成 rowCount 行数据
   const rows: Array<Record<string, MockDataValue>> = Array.from({ length: rowCount }, (_, i) => {
     const row: Record<string, MockDataValue> = {};
 
@@ -590,7 +575,6 @@ export function generateMockData(
     return row;
   });
 
-  // ── INSERT SQL ──
   const qualifiedTable = schemaName
     ? `${quoteIdentifier(schemaName, dbType)}.${quoteIdentifier(tableName || 'table_name', dbType)}`
     : quoteIdentifier(tableName || 'table_name', dbType);
@@ -604,12 +588,10 @@ export function generateMockData(
   });
   const insertSql = `INSERT INTO ${qualifiedTable} (${columnList})\nVALUES\n${valueLines.join(',\n')};`;
 
-  // ── CSV ──
   const csvHeader = validFields.map((f) => formatCsvValue(f.name)).join(',');
   const csvRows = rows.map((row) => validFields.map((f) => formatCsvValue(row[f.name])).join(','));
   const csv = [csvHeader, ...csvRows].join('\n');
 
-  // ── JSON ──
   const json = JSON.stringify(rows, null, 2);
 
   return { insertSql, csv, json };

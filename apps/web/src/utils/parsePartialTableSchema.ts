@@ -5,30 +5,21 @@ import {
   type PartialTableSchema,
 } from '@ddlbuilder/shared-types/ai-generate';
 
-// This module incrementally decodes provider JSON that may be incomplete at every update.
 // oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 
-/**
- * Parse partial JSON for GeneratedTableSchema structure.
- * Extracts fields as they stream in, similar to parsePartialJson for ReviewResult.
- */
 export function parsePartialTableSchema(text: string): PartialTableSchema | null {
   if (!text || text.trim().length === 0) {
     return null;
   }
 
-  // Try to parse as complete JSON first
   try {
     const result = JSON.parse(text);
 
     return normalizeTableSchema(result);
-  } catch {
-    // Continue with partial parsing
-  }
+  } catch {}
 
   const result: PartialTableSchema = {};
 
-  // Extract tableName
   const tableNameMatch = text.match(/"tableName"\s*:\s*"((?:[^"\\]|\\.)*)"/);
 
   if (tableNameMatch) {
@@ -41,7 +32,6 @@ export function parsePartialTableSchema(text: string): PartialTableSchema | null
     result.schemaName = unescapeJsonString(schemaNameMatch[1]);
   }
 
-  // Extract tableComment
   const tableCommentMatch = text.match(/"tableComment"\s*:\s*"((?:[^"\\]|\\.)*)"/);
 
   if (tableCommentMatch) {
@@ -56,7 +46,6 @@ export function parsePartialTableSchema(text: string): PartialTableSchema | null
     isGeneratedDesignDecision,
   );
 
-  // Return null if nothing was extracted
   if (
     result.tableName === undefined &&
     result.tableComment === undefined &&
@@ -70,10 +59,6 @@ export function parsePartialTableSchema(text: string): PartialTableSchema | null
   return result;
 }
 
-/**
- * Extract complete objects from a partial array content.
- * Only returns fully parseable objects - incomplete objects are skipped.
- */
 function extractArrayObjects(content: string): unknown[] {
   const items: unknown[] = [];
   let depth = 0;
@@ -85,12 +70,10 @@ function extractArrayObjects(content: string): unknown[] {
   for (let i = 0; i < content.length; i += 1) {
     const char = content[i];
 
-    // Handle end of array
     if (char === ']' && !inString && depth === 0) {
       break;
     }
 
-    // Handle string escaping
     if (escaped) {
       currentItem += char;
       escaped = false;
@@ -103,7 +86,6 @@ function extractArrayObjects(content: string): unknown[] {
       continue;
     }
 
-    // Handle string start/end
     if (char === '"') {
       inString = !inString;
 
@@ -114,7 +96,6 @@ function extractArrayObjects(content: string): unknown[] {
       continue;
     }
 
-    // Handle object start
     if (char === '{' && !inString) {
       if (!inObject) {
         inObject = true;
@@ -128,19 +109,15 @@ function extractArrayObjects(content: string): unknown[] {
       continue;
     }
 
-    // Handle object end
     if (char === '}' && !inString && inObject) {
       currentItem += char;
       depth -= 1;
 
       if (depth === 0) {
-        // Try to parse the complete object
         try {
           const parsed = JSON.parse(currentItem);
           items.push(parsed);
-        } catch {
-          // Incomplete object, skip it
-        }
+        } catch {}
 
         currentItem = '';
         inObject = false;
@@ -149,7 +126,6 @@ function extractArrayObjects(content: string): unknown[] {
       continue;
     }
 
-    // Handle nested arrays
     if (char === '[' && !inString && inObject) {
       depth += 1;
       currentItem += char;
@@ -162,13 +138,10 @@ function extractArrayObjects(content: string): unknown[] {
       continue;
     }
 
-    // Handle item separator at depth 0
     if (char === ',' && !inString && depth === 0 && !inObject) {
-      // Skip, ready for next item
       continue;
     }
 
-    // Accumulate characters for current object
     if (inObject) {
       currentItem += char;
     }
@@ -194,9 +167,6 @@ function extractValidatedArray<T>(
   return extractArrayObjects(afterKey.slice(arrayStart + 1)).filter(isValid);
 }
 
-/**
- * Unescape JSON string escape sequences.
- */
 function unescapeJsonString(str: string): string {
   return str
     .replace(/\\n/g, '\n')
@@ -206,9 +176,6 @@ function unescapeJsonString(str: string): string {
     .replace(/\\\\/g, '\\');
 }
 
-/**
- * Normalize parsed result to ensure correct types.
- */
 function normalizeTableSchema(result: unknown): PartialTableSchema | null {
   if (!result || typeof result !== 'object') {
     return null;

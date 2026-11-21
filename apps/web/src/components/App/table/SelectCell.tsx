@@ -38,7 +38,6 @@ export const SelectCell = memo<SelectCellProps>(
       [value, onChange],
     );
 
-    // When disabled, show as plain text
     if (disabled) {
       return (
         <div

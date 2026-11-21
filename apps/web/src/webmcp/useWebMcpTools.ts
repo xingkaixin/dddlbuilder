@@ -79,7 +79,6 @@ function webMcpDialogReducer(
 const MAX_PAGE_SIZE = 50;
 const MAX_OUTPUT_CHARS = 1200;
 
-// WebMCP input is decoded at this boundary before it enters document operations.
 // oxlint-disable anti-slop/no-runtime-typeof
 const requireString = (input: ToolInput, key: string) => {
   const value = input[key];
@@ -165,7 +164,6 @@ const page = <T>(values: T[], offset: number, limit: number) => ({
 
 const inspectActiveSchema = (snapshot: RuntimeSnapshot, toolInput: ToolInput) => {
   assertReady(snapshot);
-  // WebMCP input is an external JSON object; an omitted section defaults to overview.
   // oxlint-disable-next-line anti-slop/no-runtime-typeof
   const section = typeof toolInput.section === 'string' ? toolInput.section : 'overview';
   const offset = readInteger(toolInput, 'offset', 0, 0, Number.MAX_SAFE_INTEGER);
@@ -466,7 +464,6 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
         }
 
         const operationIds = rawOperationIds?.map((value) => {
-          // This is the operationIds JSON field validation at the WebMCP boundary.
           // oxlint-disable-next-line anti-slop/no-runtime-typeof
           if (typeof value !== 'string') {
             throw new WebMcpToolError('INVALID_INPUT', 'operationIds must contain strings');

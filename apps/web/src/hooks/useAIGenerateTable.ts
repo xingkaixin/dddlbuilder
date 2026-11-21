@@ -100,9 +100,6 @@ function appendConversation(
   ];
 }
 
-/**
- * 大师建表工坊 表结构的 Hook
- */
 export function useAIGenerateTable() {
   const { resolvedLocale } = useLocale();
   const requestAccess = useAIRequestAccess();

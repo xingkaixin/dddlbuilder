@@ -52,7 +52,6 @@ const tableWrite = (
   mode,
 });
 
-// IndexedDB reports failures as unknown values; this adapter forwards them unchanged.
 // oxlint-disable-next-line anti-slop/no-unknown-parameters
 const rejectFailedWrite = (request: IDBRequest, fail: (error: unknown) => void) => {
   request.onerror = () => fail(request.error ?? new Error('IndexedDB 写入失败'));

@@ -60,7 +60,6 @@ export function useAppSelectors() {
 
   return {
     ...state,
-    // 基础表配置
     setSchemaName,
     setTableName,
     setTableComment,
@@ -74,16 +73,12 @@ export function useAppSelectors() {
     resetTableConfig,
     resetTableViewConfig,
     resetDocument,
-    // 冻结列
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
-    // Field store
     setRows,
     resetTableRows,
-    // Index store
     resetIndexState,
     setIndexes,
-    // ForeignKey store
     setForeignKeys,
     resetForeignKeyState,
     addForeignKey,

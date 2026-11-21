@@ -78,7 +78,6 @@ export function normalizeGeneratedTableSchema(
     fields: Array.isArray(schema.fields)
       ? normalizeGeneratedFields(schema.fields, baseFields, dbType)
       : [],
-    // AI output is normalized at this boundary; retain only complete decision records.
     // oxlint-disable anti-slop/no-runtime-typeof
     designDecisions: Array.isArray(schema.designDecisions)
       ? schema.designDecisions.filter(

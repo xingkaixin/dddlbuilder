@@ -65,22 +65,18 @@ interface PartitionPanelProps {
   onGeneratePartitions: (preset: 'year' | 'month' | 'day') => void;
 }
 
-// 判断是否需要分区定义（RANGE/LIST 类型需要）
 const needsPartitionDefinitions = (type: MysqlPartitionType): boolean => {
   return ['RANGE', 'RANGE COLUMNS', 'LIST', 'LIST COLUMNS'].includes(type);
 };
 
-// 判断是否需要分区数量（HASH/KEY 类型需要）
 const needsPartitionCount = (type: MysqlPartitionType): boolean => {
   return ['HASH', 'KEY'].includes(type);
 };
 
-// 判断是否支持多列（COLUMNS 类型支持）
 const supportsMultipleColumns = (type: MysqlPartitionType): boolean => {
   return ['RANGE COLUMNS', 'LIST COLUMNS'].includes(type);
 };
 
-// 判断是否支持表达式（HASH/KEY/RANGE 支持，COLUMNS 类型不支持）
 const supportsExpression = (type: MysqlPartitionType): boolean => {
   return ['HASH', 'KEY', 'RANGE', 'LIST'].includes(type);
 };
@@ -161,15 +157,12 @@ export const PartitionPanel = memo<PartitionPanelProps>(
 
     return (
       <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
-        {/* Decorative gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
 
-        {/* Top gradient bar */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/30 to-transparent rounded-t-lg" />
 
         <div className="relative p-4">
           <div className="space-y-6">
-            {/* Enable Partition Switch */}
             <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
               <Label className="text-sm font-semibold">{t('partitionPanel.enable')}</Label>
               <Switch checked={config.enabled} onCheckedChange={onEnabledChange} />
@@ -177,7 +170,6 @@ export const PartitionPanel = memo<PartitionPanelProps>(
 
             {config.enabled && (
               <div className="space-y-6 animate-in slide-in-from-top-2 duration-200">
-                {/* Partition Type Selection */}
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold flex items-center gap-2">
                     <Layers className="h-4 w-4 text-primary" />
@@ -209,14 +201,12 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                     </SelectContent>
                   </Select>
 
-                  {/* Type Description */}
                   <div className="flex items-start gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                     <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
                     <span>{t(`partitionPanel.typeDesc.${config.type}`)}</span>
                   </div>
                 </div>
 
-                {/* Partition Column/Expression Selection */}
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold flex items-center gap-2">
                     {t('partitionPanel.partitionKey')}
@@ -232,7 +222,6 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                     )}
                   </Label>
 
-                  {/* Expression input for HASH/KEY/RANGE/LIST */}
                   {supportsExpression(config.type) && (
                     <div className="space-y-2">
                       <Input
@@ -247,7 +236,6 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                     </div>
                   )}
 
-                  {/* Divider when expression is supported */}
                   {supportsExpression(config.type) && !config.expression && (
                     <div className="flex items-center gap-3">
                       <div className="flex-1 border-t" />
@@ -258,12 +246,10 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                     </div>
                   )}
 
-                  {/* Field selection (hidden when expression is used) */}
                   {!config.expression &&
                     (availableFields.length === 0 ? (
                       <Notice>{t('partitionPanel.noFields')}</Notice>
                     ) : supportsMultipleColumns(config.type) ? (
-                      // Multi-column selection for COLUMNS types
                       <div className="flex flex-wrap gap-2">
                         {availableFields.map((field) => {
                           const isSelected = config.columns.includes(field);
@@ -291,7 +277,6 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                         })}
                       </div>
                     ) : (
-                      // Single column selection for non-COLUMNS types
                       <Select
                         value={config.columns[0] || ''}
                         onValueChange={(value) => onColumnsChange([value])}
@@ -314,7 +299,6 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                     ))}
                 </div>
 
-                {/* Partition Count (for HASH/KEY) */}
                 {needsPartitionCount(config.type) && (
                   <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
                     <Label className="text-sm font-semibold">
@@ -330,7 +314,6 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                   </div>
                 )}
 
-                {/* Partition Definitions (for RANGE/LIST) */}
                 {needsPartitionDefinitions(config.type) && (
                   <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
                     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -338,7 +321,6 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                         {t('partitionPanel.partitionDefs')}
                       </Label>
                       <div className="flex items-center gap-2">
-                        {/* Quick generate buttons for RANGE */}
                         {config.type.startsWith('RANGE') && (
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-muted-foreground mr-1">

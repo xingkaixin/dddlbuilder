@@ -196,10 +196,9 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
     const lastFrame = versions.length - 1;
     const currentFrame = Math.max(0, Math.min(frame, lastFrame));
 
-    // Precompute diffs for each frame
     const frameDiffs = useMemo<(TableDiff | null)[]>(() => {
       if (versions.length === 0) return [];
-      const diffs: (TableDiff | null)[] = [null]; // first frame has no diff
+      const diffs: (TableDiff | null)[] = [null];
 
       for (let i = 1; i < versions.length; i++) {
         diffs.push(diffPersistedState(versions[i - 1].state, versions[i].state));
@@ -289,7 +288,6 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
             </div>
           ) : (
             <>
-              {/* Mini timeline */}
               <div className="shrink-0 border-b px-6 py-3">
                 <div className="flex items-center gap-1">
                   {versions.map((v, idx) => {
@@ -333,7 +331,6 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                 </div>
               </div>
 
-              {/* Frame info */}
               <div className="shrink-0 border-b bg-muted/30 px-6 py-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-sm">
@@ -366,7 +363,6 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                 )}
               </div>
 
-              {/* Read-only field table */}
               <div className="min-h-0 flex-1 overflow-auto px-6 py-3">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-background">
@@ -459,9 +455,7 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
                 </table>
               </div>
 
-              {/* Playback controls */}
               <div className="shrink-0 border-t bg-muted/30 px-6 py-3">
-                {/* Progress bar */}
                 <div className="mb-3">
                   <input
                     type="range"

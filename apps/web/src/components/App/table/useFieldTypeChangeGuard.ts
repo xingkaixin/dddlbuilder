@@ -23,11 +23,6 @@ type PendingChangeEvent = { type: 'riskDetected'; change: PendingChange } | { ty
 const pendingChangeReducer = (_pending: PendingChange | null, event: PendingChangeEvent) =>
   event.type === 'riskDetected' ? event.change : null;
 
-/**
- * Wraps updateCellValue to intercept dangerous fieldType changes.
- * When the new type triggers a risk, the change is held in pendingChange
- * until the user confirms or cancels via handleConfirm / handleCancel.
- */
 export function useFieldTypeChangeGuard(
   getRows: () => FieldRow[],
   updateCellValue: UpdateCellValue,

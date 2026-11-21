@@ -19,7 +19,6 @@ import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 
-// Known suggestion types for compatibility
 const KNOWN_SUGGESTION_TYPES = new Set([
   'add_field',
   'modify_field',
@@ -71,7 +70,6 @@ function isRenderableSuggestion(
   );
 }
 
-// Component for rendering score
 function ScoreDisplay({ score, isStreaming }: { score: number; isStreaming?: boolean }) {
   return (
     <div className={`flex items-center gap-2 rounded-lg px-4 py-2 ${getScoreBgColor(score)}`}>
@@ -102,7 +100,6 @@ function SummarySkeleton() {
   );
 }
 
-// Component for rendering a single suggestion
 const SuggestionItem = memo<{
   suggestion: string | StructuredSuggestion;
   onApply?: (suggestion: StructuredSuggestion) => void;
@@ -115,7 +112,6 @@ const SuggestionItem = memo<{
     return <li className="text-sm text-foreground/70 list-disc relative pl-1">{suggestion}</li>;
   }
 
-  // Guard check: ensure required properties exist (for partial objects during streaming)
   if (!suggestion.id || !suggestion.description) {
     return null;
   }
@@ -149,7 +145,6 @@ const SuggestionItem = memo<{
           {suggestion.description}
         </div>
 
-        {/* Performance warning severity badge */}
         {suggestion.type === 'performance_warning' && suggestion.severity && (
           <span
             className={`mt-1 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${
@@ -160,7 +155,6 @@ const SuggestionItem = memo<{
           </span>
         )}
 
-        {/* Detail view based on type */}
         {!isApplied && suggestion.type === 'modify_field' && suggestion.fieldModification && (
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
             <span className="font-mono bg-muted px-1 rounded truncate max-w-[100px]">
@@ -221,7 +215,6 @@ const SuggestionItem = memo<{
 });
 SuggestionItem.displayName = 'SuggestionItem';
 
-// Component for rendering suggestions list
 function SuggestionsList({
   suggestions,
   skeletonCount = 0,
@@ -298,7 +291,6 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
   ({ isLoading, thinking, partialResult, result, error, onApplySuggestion }) => {
     const { t } = useTranslation();
     const isStreaming = isLoading && !result;
-    // Determine what to show: final result or partial result during streaming
     const displayResult = result || (isLoading ? partialResult : null);
 
     const suggestions: (string | StructuredSuggestion)[] = result
@@ -327,10 +319,8 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
           </div>
         )}
 
-        {/* Progressive rendering of result */}
         {(displayResult || isStreaming) && (
           <div className="space-y-5">
-            {/* Score & Summary */}
             <div className="flex items-start gap-4">
               {displayResult?.score !== undefined ? (
                 <div className="shrink-0">
@@ -353,7 +343,6 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
               )}
             </div>
 
-            {/* Suggestions - show as they come in */}
             {suggestions.length > 0 && (
               <SuggestionsList
                 suggestions={suggestions}
@@ -364,7 +353,6 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
             )}
             {isStreaming && suggestions.length === 0 && <SuggestionsSkeleton showHeader />}
 
-            {/* Disclaimer */}
             {!isLoading && (
               <p className="mt-4 text-[10px] text-muted-foreground/60 leading-relaxed border-t pt-3 italic">
                 {t('review.disclaimer')}

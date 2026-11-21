@@ -80,7 +80,6 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
       let nextActiveId = state.activeTabId;
 
       if (state.activeTabId === id) {
-        // 激活相邻标签页：优先右侧，否则左侧最后一个
         const nextTab = state.tabs[index + 1] ?? state.tabs[index - 1];
         nextActiveId = nextTab?.id ?? null;
       }

@@ -25,15 +25,12 @@ export const ShardingPanel = memo<ShardingPanelProps>(
 
     return (
       <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
-        {/* Decorative gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
 
-        {/* Top gradient bar */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/30 to-transparent rounded-t-lg" />
 
         <div className="relative p-4">
           <div className="space-y-6">
-            {/* Table Mode Selection */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold flex items-center gap-2">
                 <Database className="h-4 w-4 text-primary" />
@@ -88,7 +85,6 @@ export const ShardingPanel = memo<ShardingPanelProps>(
               </div>
             </div>
 
-            {/* Distribution Column Selection (only for distributed mode) */}
             {config.mode === 'distributed' && (
               <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
                 <Label className="text-sm font-semibold flex items-center gap-2">

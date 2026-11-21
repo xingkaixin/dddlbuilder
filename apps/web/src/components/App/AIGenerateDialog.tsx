@@ -273,12 +273,10 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             <AIAccessNotice />
-            {/* Existing config hint */}
             {hasExistingConfig && !conversationHistory.length && (
               <Notice>{t('aiGenerate.existingConfigHint')}</Notice>
             )}
 
-            {/* Conversation history */}
             {conversationHistory.length > 0 && (
               <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
                 <div className="flex items-center justify-between">
@@ -310,7 +308,6 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
               </div>
             )}
 
-            {/* Generated result preview */}
             {displayResult && (
               <div className="border rounded-lg p-4 bg-card space-y-3">
                 <div className="flex items-center justify-between">
@@ -324,7 +321,6 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   )}
                 </div>
 
-                {/* Field changes preview */}
                 {fieldChanges.length > 0 && (
                   <div className="space-y-1">
                     <span className="text-xs font-medium text-muted-foreground">
@@ -343,7 +339,6 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   </div>
                 )}
 
-                {/* Fields preview */}
                 {displayResult.fields && displayResult.fields.length > 0 && (
                   <div className="space-y-1">
                     <span className="text-xs font-medium text-muted-foreground">
@@ -364,7 +359,6 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                           <span className="text-muted-foreground">{field.fieldType}</span>
                           {field.fieldComment && (
                             <span className="text-muted-foreground/70 truncate max-w-[150px]">
-                              {/* 字段注释 */}
                               {field.fieldComment}
                             </span>
                           )}
@@ -374,7 +368,6 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   </div>
                 )}
 
-                {/* Indexes preview */}
                 {displayResult.indexes && displayResult.indexes.length > 0 && (
                   <div className="space-y-1">
                     <span className="text-xs font-medium text-muted-foreground">
@@ -445,7 +438,6 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
               </output>
             )}
 
-            {/* Error display */}
             {error && (
               <div
                 role="alert"
@@ -457,7 +449,6 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
             )}
           </div>
 
-          {/* Input area */}
           <div className="space-y-3 pt-4 border-t">
             <Textarea
               placeholder={
@@ -479,7 +470,6 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
             </span>
 
             <div className="flex items-center justify-between">
-              {/* Template selection */}
               {templates && templates.length > 0 ? (
                 <div className="flex-1 mr-4">
                   <button

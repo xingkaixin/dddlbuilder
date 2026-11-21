@@ -2,7 +2,6 @@ type IndexedDbRequestOptions = {
   closeDatabase?: boolean;
 };
 
-// IndexedDB invokes these callbacks with platform errors that are intentionally preserved.
 // oxlint-disable anti-slop/no-unknown-parameters
 export const runIndexedDbTransaction = <T>(
   db: IDBDatabase,

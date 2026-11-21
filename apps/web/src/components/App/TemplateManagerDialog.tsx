@@ -1,8 +1,3 @@
-/**
- * 模板管理对话框组件
- * 提供模板的查看、创建、编辑、删除功能，包含字段编辑器
- */
-
 import { memo, useReducer, useCallback, useMemo, type SetStateAction } from 'react';
 import { Plus, Search } from '@/components/icons';
 import {
@@ -36,7 +31,6 @@ import { TemplateFieldTable } from './TemplateFieldTable';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 
-// 模板管理对话框
 interface TemplateManagerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -186,7 +180,6 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     const isSaving = editStatus.status === 'saving';
     const editError = editStatus.status === 'failed' ? editStatus.error : '';
 
-    // 过滤模板
     const filteredTemplates = useMemo(() => {
       if (!searchTerm.trim()) return templates;
       const term = searchTerm.toLowerCase();
@@ -196,9 +189,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       );
     }, [templates, searchTerm]);
 
-    // 打开新建/编辑对话框
     const handleOpenEditDialog = useCallback((template?: FieldTemplate) => {
-      // 新建时提供一个空字段
       const rows = template?.fields.length
         ? instantiateTemplateFields(template.fields)
         : [createEmptyRow()];
@@ -211,14 +202,12 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       [],
     );
 
-    // 添加字段
     const handleAddField = useCallback(() => {
       const row = createEmptyRow();
 
       setEditRows((prev) => [...prev, row]);
     }, [setEditRows]);
 
-    // 保存模板
     const handleSaveTemplate = useCallback(async () => {
       const trimmedName = editName.trim();
 
@@ -274,7 +263,6 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       showToast,
     ]);
 
-    // 复制模板
     const handleDuplicate = useCallback(
       async (template: FieldTemplate) => {
         const result = await onDuplicateTemplate(template.id);
@@ -288,13 +276,11 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       [onDuplicateTemplate, showToast, t],
     );
 
-    // 打开删除确认
     const handleOpenDeleteDialog = useCallback(
       (template: FieldTemplate) => dispatch({ type: 'deleteRequested', template }),
       [],
     );
 
-    // 确认删除
     const handleConfirmDelete = useCallback(async () => {
       if (!deleteTarget || deleting) return;
       dispatch({ type: 'deleteStarted' });
@@ -321,7 +307,6 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
             </DialogHeader>
 
             <div className="space-y-4">
-              {/* 搜索和新建 */}
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -340,7 +325,6 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                 </Button>
               </div>
 
-              {/* 模板列表 */}
               <div className="max-h-[400px] space-y-2 overflow-y-auto">
                 {loading ? (
                   <div className="py-8 text-center text-muted-foreground">
@@ -372,7 +356,6 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
           </DialogContent>
         </Dialog>
 
-        {/* 新建/编辑对话框 - 包含字段编辑器 */}
         <Dialog
           open={isEditDialogOpen}
           onOpenChange={(open) => dispatch({ type: 'editDialogOpenChanged', open })}
@@ -392,7 +375,6 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto space-y-4 py-4 min-h-0">
-              {/* 基本信息 */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="template-name">{t('templateManager.editor.name')}</Label>
@@ -419,7 +401,6 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                 </div>
               </div>
 
-              {/* 字段编辑区 */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>{t('templateManager.editor.fieldList')}</Label>
@@ -454,7 +435,6 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
           </DialogContent>
         </Dialog>
 
-        {/* 删除确认 */}
         <AlertDialog
           open={isDeleteDialogOpen}
           onOpenChange={(open) => dispatch({ type: 'deleteDialogOpenChanged', open })}

@@ -228,7 +228,6 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       [t],
     );
 
-    // 预计算相邻版本之间的 diff（时间轴上每个节点 vs 它的下一个/更老的版本）
     const versionDiffs = useMemo(() => {
       const diffs: (TableDiff | null)[] = [];
 
@@ -268,13 +267,11 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     const { mutate: rollback } = rollbackMutation;
     const { mutate: removeVersion } = deleteMutation;
 
-    // 回滚到选中版本
     const handleRollback = useCallback(() => {
       if (!selectedId || !onRollback || !target) return;
       rollback({ id: selectedId, target });
     }, [selectedId, onRollback, rollback, target]);
 
-    // 删除版本
     const handleDelete = useCallback(() => {
       if (!deleteConfirmId || !target) return;
       removeVersion({ id: deleteConfirmId, target });
@@ -366,7 +363,6 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                 </div>
               ) : (
                 <div className="relative pl-4 pr-1">
-                  {/* 时间轴线 */}
                   <div className="absolute bottom-3 left-[11px] top-3 w-px bg-border" />
 
                   {filteredVersions.map((v) => {
@@ -379,7 +375,6 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
 
                     return (
                       <div key={v.id} className="group relative mb-1">
-                        {/* 时间节点圆点 */}
                         <div
                           className={cn(
                             'absolute left-0 top-3 z-10 h-2.5 w-2.5 rounded-full border-2',

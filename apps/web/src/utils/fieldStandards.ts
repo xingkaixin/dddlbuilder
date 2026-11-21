@@ -59,7 +59,6 @@ export function fieldStandardDifferences(
   });
 }
 
-// Imported field-standard files are decoded here before entering IndexedDB or the editor model.
 // oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

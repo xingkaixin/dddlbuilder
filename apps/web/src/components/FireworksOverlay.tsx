@@ -302,7 +302,7 @@ export function FireworksOverlay({ onComplete }: FireworksOverlayProps) {
             key={star.id}
             className="cny-star"
             style={
-              // SAFETY: the animation ref is created by the component with the expected canvas element type.
+              // SAFETY: React.CSSProperties does not include custom CSS properties ('--duration', '--min-opacity').
               {
                 width: `${star.size}px`,
                 height: `${star.size}px`,
