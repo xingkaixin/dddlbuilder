@@ -1,5 +1,7 @@
+import * as Option from 'effect/Option';
+import * as Schema from 'effect/Schema';
 import { create } from 'zustand';
-import type { DatabaseType, SqlFormatMode } from '@ddlbuilder/shared-types';
+import { DATABASE_TYPES, type DatabaseType, type SqlFormatMode } from '@ddlbuilder/shared-types';
 
 export type InterfaceFont = 'hand' | 'plain';
 
@@ -48,6 +50,33 @@ const defaultPreferences: Preferences = {
   checklistDismissed: false,
 };
 
+const createDefaultPreferences = (): Preferences => ({
+  ...defaultPreferences,
+  hiddenFieldColumns: [...defaultPreferences.hiddenFieldColumns],
+  pinnedTools: [...defaultPreferences.pinnedTools],
+});
+
+const decodeStoredPreferencesObject = Schema.decodeUnknownOption(
+  Schema.fromJsonString(Schema.JsonObject),
+);
+const decodeFont = Schema.decodeUnknownOption(Schema.Literals(['hand', 'plain']));
+const decodeDensity = Schema.decodeUnknownOption(Schema.Literals(['comfortable', 'compact']));
+const decodeDefaultDatabase = Schema.decodeUnknownOption(Schema.Literals(DATABASE_TYPES));
+const decodeLayout = Schema.decodeUnknownOption(
+  Schema.Literals(['side', 'split', 'design', 'output']),
+);
+const decodeHiddenFieldColumns = Schema.decodeUnknownOption(
+  Schema.Array(Schema.Literals(FIELD_COLUMNS)).pipe(Schema.mutable),
+);
+const decodeSqlFormatMode = Schema.decodeUnknownOption(Schema.Literals(['compact', 'aligned']));
+const decodeAddRowCount = Schema.decodeUnknownOption(
+  Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100)),
+);
+const decodePinnedTools = Schema.decodeUnknownOption(
+  Schema.Array(Schema.String).pipe(Schema.mutable),
+);
+const decodeChecklistDismissed = Schema.decodeUnknownOption(Schema.Boolean);
+
 function readStorage(key: string): string | null {
   try {
     return localStorage.getItem(key);
@@ -67,14 +96,42 @@ function legacyLayout(): EditorLayout {
 function readPreferences(): Preferences {
   const stored = readStorage(preferencesKey);
 
-  if (!stored) return { ...defaultPreferences, layout: legacyLayout() };
+  if (!stored) return { ...createDefaultPreferences(), layout: legacyLayout() };
 
-  try {
-    // SAFETY: only this store writes the key, and every field keeps a default for older versions.
-    return { ...defaultPreferences, ...(JSON.parse(stored) as Partial<Preferences>) };
-  } catch {
-    return defaultPreferences;
-  }
+  const parsed = decodeStoredPreferencesObject(stored);
+
+  if (Option.isNone(parsed)) return createDefaultPreferences();
+
+  const record = parsed.value;
+
+  return {
+    font: Option.getOrElse(decodeFont(record.font), () => defaultPreferences.font),
+    density: Option.getOrElse(decodeDensity(record.density), () => defaultPreferences.density),
+    defaultDatabase: Option.getOrElse(
+      decodeDefaultDatabase(record.defaultDatabase),
+      () => defaultPreferences.defaultDatabase,
+    ),
+    layout: Option.getOrElse(decodeLayout(record.layout), () => defaultPreferences.layout),
+    hiddenFieldColumns: Option.getOrElse(
+      decodeHiddenFieldColumns(record.hiddenFieldColumns),
+      () => [...defaultPreferences.hiddenFieldColumns],
+    ),
+    sqlFormatMode: Option.getOrElse(
+      decodeSqlFormatMode(record.sqlFormatMode),
+      () => defaultPreferences.sqlFormatMode,
+    ),
+    addRowCount: Option.getOrElse(
+      decodeAddRowCount(record.addRowCount),
+      () => defaultPreferences.addRowCount,
+    ),
+    pinnedTools: Option.getOrElse(decodePinnedTools(record.pinnedTools), () => [
+      ...defaultPreferences.pinnedTools,
+    ]),
+    checklistDismissed: Option.getOrElse(
+      decodeChecklistDismissed(record.checklistDismissed),
+      () => defaultPreferences.checklistDismissed,
+    ),
+  };
 }
 
 function pickPreferences(state: PreferencesState): Preferences {

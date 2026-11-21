@@ -1,5 +1,7 @@
 import { useMemo, useReducer } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import * as Option from 'effect/Option';
+import * as Schema from 'effect/Schema';
 import { useTranslation } from 'react-i18next';
 import { useAuthCredits, useAuthIdentity } from '@/auth/AuthSessionProvider';
 import { ChevronLeft, ChevronRight } from '@/components/icons';
@@ -44,25 +46,18 @@ const formatLedgerTime = (value: number) => {
   }).format(value);
 };
 
-type MetadataValue =
-  | string
-  | number
-  | boolean
-  | null
-  | MetadataValue[]
-  | { [key: string]: MetadataValue };
+const CreditLedgerMetadataSchema = Schema.Struct({
+  reason: Schema.optional(Schema.String),
+});
 
-type MetadataRecord = { [key: string]: MetadataValue };
+const decodeCreditLedgerMetadata = Schema.decodeUnknownOption(
+  Schema.fromJsonString(CreditLedgerMetadataSchema),
+);
 
 const parseMetadata = (value?: string | null) => {
   if (!value) return null;
 
-  try {
-    // SAFETY: metadata is only read as a record after JSON.parse succeeds; nested values remain opaque.
-    return JSON.parse(value) as MetadataRecord;
-  } catch {
-    return null;
-  }
+  return Option.getOrNull(decodeCreditLedgerMetadata(value));
 };
 
 const resolveLedgerTypeLabel = (

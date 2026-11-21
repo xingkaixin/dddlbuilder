@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from '@/__tests__/utils/test-utils';
 import { screen, act } from '@testing-library/react';
 import { CreditSettings } from '@/components/App/settings/CreditSettings';
+import { i18n } from '@/i18n';
 import { fetchCreditLedger } from '@/services/creditService';
 
 const auth = vi.hoisted(() => ({ userId: 'ledger-user', name: 'Tester' }));
@@ -90,5 +91,58 @@ describe('credit ledger rendering', () => {
     await act(async () =>
       resolvePage(Response.json({ limit: 20, offset: 0, items: [], total: 0 })),
     );
+  });
+
+  it('ignores non-object or malformed refund metadataJson while labeling failed-request refunds', async () => {
+    const items = [
+      {
+        ...item,
+        id: 'refund-failed',
+        kind: 'refund',
+        source: 'ai_review',
+        metadataJson: JSON.stringify({ reason: 'request_failed' }),
+      },
+      {
+        ...item,
+        id: 'refund-null',
+        kind: 'refund',
+        source: 'ai_review',
+        metadataJson: 'null',
+      },
+      {
+        ...item,
+        id: 'refund-array',
+        kind: 'refund',
+        source: 'ai_review',
+        metadataJson: '[]',
+      },
+      {
+        ...item,
+        id: 'refund-primitive',
+        kind: 'refund',
+        source: 'ai_review',
+        metadataJson: '"request_failed"',
+      },
+      {
+        ...item,
+        id: 'refund-bad-reason',
+        kind: 'refund',
+        source: 'ai_review',
+        metadataJson: JSON.stringify({ reason: 123 }),
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(Response.json({ limit: 20, offset: 0, items, total: items.length })),
+    );
+
+    render(<CreditSettings />);
+
+    await screen.findByRole('table');
+    expect(screen.getAllByText(i18n.t('settings.kind.aiFailedRefund'))).toHaveLength(1);
+    expect(screen.getAllByText(i18n.t('settings.kind.aiSettlementRefund'))).toHaveLength(4);
   });
 });

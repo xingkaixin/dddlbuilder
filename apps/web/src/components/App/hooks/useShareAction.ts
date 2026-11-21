@@ -1,5 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import * as Option from 'effect/Option';
+import * as Schema from 'effect/Schema';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
@@ -7,11 +9,17 @@ import { writeLocalStorageJson } from '@/utils/localStorage';
 import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
 import { i18n } from '@/i18n';
 
-type ShareLinkCacheRecord = {
-  signature: string;
-  url: string;
-  expiresAt: number;
-};
+const ShareLinkCacheRecordSchema = Schema.Struct({
+  signature: Schema.String,
+  url: Schema.String,
+  expiresAt: Schema.Finite,
+});
+
+type ShareLinkCacheRecord = typeof ShareLinkCacheRecordSchema.Type;
+
+const decodeShareLinkCache = Schema.decodeUnknownOption(
+  Schema.fromJsonString(ShareLinkCacheRecordSchema),
+);
 
 const SHARE_LINK_CACHE_KEY = 'ddlbuilder:share:last:v2';
 
@@ -20,25 +28,8 @@ const readShareLinkCache = (): ShareLinkCacheRecord | null => {
     const raw = localStorage.getItem(SHARE_LINK_CACHE_KEY);
 
     if (!raw) return null;
-    // SAFETY: the following runtime checks validate every field used from the parsed cache object.
-    const parsed = JSON.parse(raw) as Partial<ShareLinkCacheRecord>;
 
-    if (
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- localStorage JSON is untrusted and must be checked before use.
-      typeof parsed.signature !== 'string' ||
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
-      typeof parsed.url !== 'string' ||
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- this boundary value requires a runtime representation check.
-      typeof parsed.expiresAt !== 'number'
-    ) {
-      return null;
-    }
-
-    return {
-      signature: parsed.signature,
-      url: parsed.url,
-      expiresAt: parsed.expiresAt,
-    };
+    return Option.getOrNull(decodeShareLinkCache(raw));
   } catch {
     return null;
   }
