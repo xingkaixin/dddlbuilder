@@ -2,6 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { DATABASE_TYPES } from '@ddlbuilder/shared-types';
 import { buildDDL } from '../../utils/ddlGenerators';
 import { buildORM } from '../../utils/ormGenerators';
+import { stringifyAstValue } from '../../parser/astTypes.js';
+import {
+  buildTypeString,
+  extractFunctionName,
+  normalizeLiteral,
+} from '../../parser/normalizers.js';
 import { SqlParseError, SqlParser } from '../../parser/index.js';
 
 const stripIndexIds = (indexes: any[]) =>
@@ -635,5 +641,66 @@ describe('SqlParser', () => {
     await expect(
       parser.parseAsync('CREATE TABLE a (id INT); CREATE TABLE b (id INT);', 'mysql'),
     ).rejects.toBeInstanceOf(SqlParseError);
+  });
+
+  it('normalizes anonymous inline KEY/INDEX and CREATE INDEX definitions to valid names', async () => {
+    const parser = new SqlParser();
+
+    const mysql = await parser.parseAsync(
+      'CREATE TABLE users (id INT, email VARCHAR(100), KEY (email), INDEX (id, email DESC));',
+      'mysql',
+    );
+    expect(stripIndexIds(mysql.indexes)).toEqual([
+      { name: 'idx_email', fields: [{ name: 'email', direction: 'ASC' }], kind: 'index' },
+      {
+        name: 'idx_id_email',
+        fields: [
+          { name: 'id', direction: 'ASC' },
+          { name: 'email', direction: 'DESC' },
+        ],
+        kind: 'index',
+      },
+    ]);
+    const generated = buildDDL({ ...mysql, dbType: 'mysql' });
+    expect(generated).toContain('INDEX idx_email (email ASC)');
+    expect(generated).toContain('INDEX idx_id_email (id ASC, email DESC)');
+
+    const pg = await parser.parseAsync(
+      'CREATE TABLE users (id INT, email VARCHAR(100)); CREATE INDEX ON users (email); CREATE UNIQUE INDEX ON users (id);',
+      'postgresql',
+    );
+    expect(stripIndexIds(pg.indexes)).toEqual([
+      { name: 'idx_email', fields: [{ name: 'email', direction: 'ASC' }], kind: 'index' },
+      { name: 'uk_id', fields: [{ name: 'id', direction: 'ASC' }], kind: 'unique_index' },
+    ]);
+  });
+
+  it('does not stringify non-scalar AST leaves into [object Object]', async () => {
+    const parser = new SqlParser();
+
+    const pg = await parser.parseAsync(
+      'CREATE TABLE users (email TEXT); CREATE INDEX idx_lower_email ON users (lower(email));',
+      'postgresql',
+    );
+    expect(pg.indexes).toEqual([]);
+
+    expect(stringifyAstValue('text')).toBe('text');
+    expect(stringifyAstValue(42)).toBe('42');
+    expect(stringifyAstValue(false)).toBe('false');
+    expect(stringifyAstValue(null)).toBe('');
+    expect(stringifyAstValue(undefined)).toBe('');
+    expect(stringifyAstValue({ type: 'expr' })).toBe('');
+    expect(stringifyAstValue(['a'])).toBe('');
+
+    expect(
+      buildTypeString({ dataType: 'INT', suffix: ['UNSIGNED', { type: 'unknown' }] }, () => ''),
+    ).toBe('INT UNSIGNED');
+    expect(
+      extractFunctionName({
+        type: 'function',
+        name: { name: [{ type: 'unknown' }] },
+      }),
+    ).toBeNull();
+    expect(normalizeLiteral({ type: 'binary_expr' })).toBe('');
   });
 });
