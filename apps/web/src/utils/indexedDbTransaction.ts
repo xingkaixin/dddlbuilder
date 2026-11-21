@@ -16,8 +16,7 @@ export const runIndexedDbTransaction = <T>(
     let transaction: IDBTransaction | undefined;
 
     const close = () => {
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- IDBDatabase implementations may omit close in test/browser adapters.
-      if (closeDatabase && typeof db.close === 'function') db.close();
+      if (closeDatabase) db.close();
     };
     const fail = (error: unknown) => {
       if (settled) return;
