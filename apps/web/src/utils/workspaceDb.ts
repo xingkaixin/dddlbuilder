@@ -1,3 +1,4 @@
+import type { ReviewRecord } from './reviewHistory';
 import type { SavedTableRecord, TableVersion } from './workspaceStorageTypes';
 import {
   buildScopedWorkspaceKey,
@@ -31,6 +32,29 @@ const ensureIndexedDb = () => {
   if (typeof indexedDB === 'undefined') throw new Error('IndexedDB 不可用');
 };
 
+type LegacyTableHistoryRecord = Pick<
+  TableVersion | ReviewRecord,
+  'tableId' | 'tableKey' | 'tableNormalizedName'
+>;
+
+const isLegacyTableHistoryRecord = (value: unknown): value is LegacyTableHistoryRecord => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+
+  if (!('tableNormalizedName' in value) || typeof value.tableNormalizedName !== 'string') {
+    return false;
+  }
+
+  if ('tableId' in value && value.tableId !== undefined && typeof value.tableId !== 'string') {
+    return false;
+  }
+
+  if ('tableKey' in value && value.tableKey !== undefined && typeof value.tableKey !== 'string') {
+    return false;
+  }
+
+  return true;
+};
+
 const migrateLegacyTableHistory = (transaction: IDBTransaction) => {
   const tablesRequest: IDBRequest<SavedTableRecord[]> = transaction
     .objectStore(STORE_NAME)
@@ -62,32 +86,34 @@ const migrateLegacyTableHistory = (transaction: IDBTransaction) => {
       }
     }
 
-    for (const storeName of [VERSION_STORE_NAME, REVIEW_STORE_NAME]) {
+    for (const storeName of [VERSION_STORE_NAME, REVIEW_STORE_NAME] as const) {
       const cursorRequest = transaction.objectStore(storeName).openCursor();
       cursorRequest.onsuccess = () => {
         const cursor = cursorRequest.result;
 
         if (!cursor) return;
-        // SAFETY: VERSION_STORE_NAME and REVIEW_STORE_NAME store TableVersion records by schema.
-        const record = cursor.value as TableVersion;
-        const previousId = record.tableId ?? `legacy:${record.tableNormalizedName}`;
-        const previousKey = record.tableKey ?? `${LEGACY_SCOPE}::${previousId}`;
-        const separator = previousKey.indexOf('::');
-        const scope = previousKey.slice(0, separator);
-        const key = previousKey.slice(separator + 2);
-        const isReview = storeName === REVIEW_STORE_NAME;
 
-        if (
-          separator !== -1 &&
-          (key === previousId || (isReview && key === `table:${previousId}`))
-        ) {
-          const alias = aliases.get(`${scope}::${previousId}`);
-          const tableId = alias ?? previousId;
-          const isTableReview = isReview && (alias != null || key === `table:${previousId}`);
-          const tableKey = `${scope}::${isTableReview ? 'table:' : ''}${tableId}`;
+        if (isLegacyTableHistoryRecord(cursor.value)) {
+          const record = cursor.value;
+          const previousId = record.tableId ?? `legacy:${record.tableNormalizedName}`;
+          const previousKey = record.tableKey ?? `${LEGACY_SCOPE}::${previousId}`;
+          const separator = previousKey.indexOf('::');
+          const scope = previousKey.slice(0, separator);
+          const key = previousKey.slice(separator + 2);
+          const isReview = storeName === REVIEW_STORE_NAME;
 
-          if (record.tableId !== tableId || record.tableKey !== tableKey) {
-            cursor.update({ ...record, tableId, tableKey });
+          if (
+            separator !== -1 &&
+            (key === previousId || (isReview && key === `table:${previousId}`))
+          ) {
+            const alias = aliases.get(`${scope}::${previousId}`);
+            const tableId = alias ?? previousId;
+            const isTableReview = isReview && (alias != null || key === `table:${previousId}`);
+            const tableKey = `${scope}::${isTableReview ? 'table:' : ''}${tableId}`;
+
+            if (record.tableId !== tableId || record.tableKey !== tableKey) {
+              cursor.update({ ...record, tableId, tableKey });
+            }
           }
         }
 
