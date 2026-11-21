@@ -46,4 +46,46 @@ describe('generateMockData', () => {
     ]);
     expect(result.insertSql).not.toContain('NaN');
   });
+
+  it('produces identical output for the same inputs and seed', () => {
+    const fields = [
+      createField({ name: 'id', type: 'bigint', defaultKind: 'auto_increment' }),
+      createField({ name: 'name', type: 'varchar(50)', defaultKind: 'none' }),
+      createField({ name: 'email', type: 'varchar(100)', defaultKind: 'none', nullable: true }),
+      createField({ name: 'request_id', type: 'char(36)', defaultKind: 'uuid' }),
+      createField({ name: 'price', type: 'decimal(10,2)', defaultKind: 'none' }),
+      createField({ name: 'score', type: 'double', defaultKind: 'none' }),
+      createField({ name: 'created_at', type: 'datetime', defaultKind: 'none' }),
+    ];
+
+    const first = generateMockData('orders', 'shop', fields, 'mysql', { rowCount: 5, seed: 42 });
+    const second = generateMockData('orders', 'shop', fields, 'mysql', { rowCount: 5, seed: 42 });
+    const defaultFirst = generateMockData('orders', 'shop', fields, 'mysql', { rowCount: 5 });
+
+    const explicitZero = generateMockData('orders', 'shop', fields, 'mysql', {
+      rowCount: 5,
+      seed: 0,
+    });
+
+    expect(second).toEqual(first);
+    expect(defaultFirst).toEqual(explicitZero);
+  });
+
+  it('regenerates different deterministic output when seed changes', () => {
+    const fields = [
+      createField({ name: 'name', type: 'varchar(50)', defaultKind: 'none' }),
+      createField({ name: 'phone', type: 'varchar(20)', defaultKind: 'none' }),
+      createField({ name: 'request_id', type: 'char(36)', defaultKind: 'uuid' }),
+      createField({ name: 'price', type: 'decimal(10,2)', defaultKind: 'none' }),
+    ];
+
+    const seed0 = generateMockData('users', '', fields, 'mysql', { rowCount: 4, seed: 0 });
+    const seed1 = generateMockData('users', '', fields, 'mysql', { rowCount: 4, seed: 1 });
+    const seed1Again = generateMockData('users', '', fields, 'mysql', { rowCount: 4, seed: 1 });
+
+    expect(seed1.json).not.toEqual(seed0.json);
+    expect(seed1.insertSql).not.toEqual(seed0.insertSql);
+    expect(seed1.csv).not.toEqual(seed0.csv);
+    expect(seed1Again).toEqual(seed1);
+  });
 });
