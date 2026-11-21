@@ -62,13 +62,22 @@ export const OpenAISettings = Config.all({
 }).pipe(
   Config.map(({ limits, ...config }): OpenAIConfig => ({
     ...config,
-    // SAFETY: Config.all defines exactly the AIRouteKey entries below; each entry receives one rate-limit rule.
-    rateLimitRules: Object.fromEntries(
-      Object.entries(limits).map(([route, maxRequests]) => [
-        route,
-        { maxRequests, windowMs: config.defaultWindowMs },
-      ]),
-    ) as Record<AIRouteKey, RateLimitRule>,
+    rateLimitRules: {
+      explain: { maxRequests: limits.explain, windowMs: config.defaultWindowMs },
+      review: { maxRequests: limits.review, windowMs: config.defaultWindowMs },
+      'generate-table': {
+        maxRequests: limits['generate-table'],
+        windowMs: config.defaultWindowMs,
+      },
+      'generate-comments': {
+        maxRequests: limits['generate-comments'],
+        windowMs: config.defaultWindowMs,
+      },
+      'index-advisor': {
+        maxRequests: limits['index-advisor'],
+        windowMs: config.defaultWindowMs,
+      },
+    },
   })),
 );
 

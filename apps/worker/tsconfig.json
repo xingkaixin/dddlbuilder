@@ -2,7 +2,7 @@
   "extends": "@ddlbuilder/tsconfig/base.json",
   "compilerOptions": {
     "lib": ["ES2022"],
-    "types": ["@cloudflare/workers-types"],
+    "types": ["@cloudflare/workers-types", "node"],
     "noEmit": true
   },
   "include": ["api", "server-api"]

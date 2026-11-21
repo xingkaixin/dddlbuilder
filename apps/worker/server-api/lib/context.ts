@@ -27,7 +27,7 @@ export type WorkerRequestLogger = AuditableLogger<WorkerRequestLogFields>;
 
 export type ApiEnv = {
   Variables: {
-    requestId: string;
+    requestId?: string;
     currentUserId?: string;
     log?: WorkerRequestLogger;
   };

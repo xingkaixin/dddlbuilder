@@ -6,6 +6,7 @@ export default defineConfig({
     fileParallelism: false,
     globals: true,
     environment: 'node',
+    setupFiles: ['./server-api/__tests__/setup.ts'],
     testTimeout: 10_000,
     exclude: ['node_modules/**', '**/node_modules/**'],
     coverage: {
