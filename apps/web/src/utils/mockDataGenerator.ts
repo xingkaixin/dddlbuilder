@@ -365,16 +365,16 @@ function generateSemanticValue(field: NormalizedField): string | number | undefi
   return undefined;
 }
 
-const INTEGER_BITS = {
-  tinyint: 8,
-  smallint: 16,
-  mediumint: 24,
-  int: 32,
-  bigint: 64,
-  smallserial: 16,
-  serial: 32,
-  bigserial: 64,
-} satisfies Record<string, number>;
+const INTEGER_BITS: ReadonlyMap<string, number> = new Map([
+  ['tinyint', 8],
+  ['smallint', 16],
+  ['mediumint', 24],
+  ['int', 32],
+  ['bigint', 64],
+  ['smallserial', 16],
+  ['serial', 32],
+  ['bigserial', 64],
+]);
 
 function generateDecimalValue(args: string[], preferred: number): number {
   const precision = Number(args[0] ?? 10);
@@ -444,8 +444,7 @@ function generateValueForField(
     return randInt(0, 2 ** bits - 1);
   }
 
-  // SAFETY: unknown parsed base types produce undefined and use the generic fallback below.
-  const bits = INTEGER_BITS[baseType as keyof typeof INTEGER_BITS];
+  const bits = INTEGER_BITS.get(baseType);
 
   if (bits) {
     const unsigned = parsed.unsigned || (family === 'sqlserver' && baseType === 'tinyint');

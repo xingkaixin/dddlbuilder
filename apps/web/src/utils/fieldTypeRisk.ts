@@ -8,64 +8,74 @@ export type FieldTypeRisk = {
   toType: string;
 };
 
+type FieldTypeCategory =
+  | 'string'
+  | 'integer'
+  | 'decimal'
+  | 'datetime'
+  | 'boolean'
+  | 'binary'
+  | 'json'
+  | 'uuid';
+
 // Map base type names to semantic categories
-const TYPE_CATEGORY = {
+const TYPE_CATEGORY: ReadonlyMap<string, FieldTypeCategory> = new Map([
   // String
-  varchar: 'string',
-  varchar2: 'string',
-  nvarchar: 'string',
-  nvarchar2: 'string',
-  char: 'string',
-  nchar: 'string',
-  text: 'string',
-  mediumtext: 'string',
-  longtext: 'string',
-  clob: 'string',
+  ['varchar', 'string'],
+  ['varchar2', 'string'],
+  ['nvarchar', 'string'],
+  ['nvarchar2', 'string'],
+  ['char', 'string'],
+  ['nchar', 'string'],
+  ['text', 'string'],
+  ['mediumtext', 'string'],
+  ['longtext', 'string'],
+  ['clob', 'string'],
   // Integer
-  tinyint: 'integer',
-  smallint: 'integer',
-  int: 'integer',
-  integer: 'integer',
-  bigint: 'integer',
+  ['tinyint', 'integer'],
+  ['smallint', 'integer'],
+  ['int', 'integer'],
+  ['integer', 'integer'],
+  ['bigint', 'integer'],
   // Decimal / floating point
-  decimal: 'decimal',
-  numeric: 'decimal',
-  number: 'decimal',
-  float: 'decimal',
-  double: 'decimal',
-  real: 'decimal',
+  ['decimal', 'decimal'],
+  ['numeric', 'decimal'],
+  ['number', 'decimal'],
+  ['float', 'decimal'],
+  ['double', 'decimal'],
+  ['real', 'decimal'],
   // Date / time
-  date: 'datetime',
-  datetime: 'datetime',
-  datetime2: 'datetime',
-  timestamp: 'datetime',
-  timestamptz: 'datetime',
-  time: 'datetime',
-  timetz: 'datetime',
+  ['date', 'datetime'],
+  ['datetime', 'datetime'],
+  ['datetime2', 'datetime'],
+  ['timestamp', 'datetime'],
+  ['timestamptz', 'datetime'],
+  ['time', 'datetime'],
+  ['timetz', 'datetime'],
   // Boolean / bit
-  boolean: 'boolean',
-  bool: 'boolean',
-  bit: 'boolean',
+  ['boolean', 'boolean'],
+  ['bool', 'boolean'],
+  ['bit', 'boolean'],
   // Binary
-  blob: 'binary',
-  varbinary: 'binary',
-  binary: 'binary',
-  bytea: 'binary',
+  ['blob', 'binary'],
+  ['varbinary', 'binary'],
+  ['binary', 'binary'],
+  ['bytea', 'binary'],
   // JSON
-  json: 'json',
-  jsonb: 'json',
+  ['json', 'json'],
+  ['jsonb', 'json'],
   // UUID
-  uuid: 'uuid',
-} satisfies Record<string, string>;
+  ['uuid', 'uuid'],
+]);
 
 // Storage width in bytes for integer narrowing detection
-const INTEGER_BYTES = {
-  tinyint: 1,
-  smallint: 2,
-  int: 4,
-  integer: 4,
-  bigint: 8,
-} satisfies Record<string, number>;
+const INTEGER_BYTES: ReadonlyMap<string, number> = new Map([
+  ['tinyint', 1],
+  ['smallint', 2],
+  ['int', 4],
+  ['integer', 4],
+  ['bigint', 8],
+]);
 
 /**
  * Returns a FieldTypeRisk if changing from oldType to newType is dangerous
@@ -96,10 +106,8 @@ export function detectFieldTypeRisk(oldType: string, newType: string): FieldType
     return null;
   }
 
-  // SAFETY: the key assertion is guarded by the literal-key lookup semantics; unknown bases yield undefined.
-  const oldCategory = TYPE_CATEGORY[oldBase as keyof typeof TYPE_CATEGORY];
-  // SAFETY: the same finite category map lookup treats an unknown base as undefined.
-  const newCategory = TYPE_CATEGORY[newBase as keyof typeof TYPE_CATEGORY];
+  const oldCategory = TYPE_CATEGORY.get(oldBase);
+  const newCategory = TYPE_CATEGORY.get(newBase);
 
   // Cross-category change always carries data conversion risk
   if (oldCategory && newCategory && oldCategory !== newCategory) {
@@ -108,10 +116,8 @@ export function detectFieldTypeRisk(oldType: string, newType: string): FieldType
 
   // Same integer category but narrower storage
   if (oldCategory === 'integer') {
-    // SAFETY: unknown parsed base names are intentionally treated as zero-width entries.
-    const oldBytes = INTEGER_BYTES[oldBase as keyof typeof INTEGER_BYTES] ?? 0;
-    // SAFETY: unknown parsed base names are intentionally treated as zero-width entries.
-    const newBytes = INTEGER_BYTES[newBase as keyof typeof INTEGER_BYTES] ?? 0;
+    const oldBytes = INTEGER_BYTES.get(oldBase) ?? 0;
+    const newBytes = INTEGER_BYTES.get(newBase) ?? 0;
 
     if (newBytes > 0 && newBytes < oldBytes) {
       return { kind: 'length_shrink', fromType: oldType, toType: newType };

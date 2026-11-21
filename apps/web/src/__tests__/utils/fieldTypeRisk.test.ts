@@ -15,4 +15,19 @@ describe('detectFieldTypeRisk', () => {
     expect(risk).not.toBeNull();
     expect(risk?.kind).toBe('type_change');
   });
+
+  it('detects length_shrink when narrowing integer storage width', () => {
+    const risk = detectFieldTypeRisk('bigint', 'int');
+    expect(risk).toEqual({
+      kind: 'length_shrink',
+      fromType: 'bigint',
+      toType: 'int',
+    });
+  });
+
+  it('treats Object.prototype property names as unknown types', () => {
+    expect(detectFieldTypeRisk('varchar(255)', 'constructor')).toBeNull();
+    expect(detectFieldTypeRisk('bigint', 'toString')).toBeNull();
+    expect(detectFieldTypeRisk('constructor', 'toString')).toBeNull();
+  });
 });

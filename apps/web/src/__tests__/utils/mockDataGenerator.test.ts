@@ -30,4 +30,20 @@ describe('generateMockData', () => {
     expect(result.insertSql).toContain('[users]');
     expect(result.insertSql).toContain('[id]');
   });
+
+  it('falls back to string generation for Object.prototype property type names', () => {
+    const fields = [
+      createField({ name: 'col_a', type: 'constructor', defaultKind: 'none' }),
+      createField({ name: 'col_b', type: 'toString', defaultKind: 'none' }),
+    ];
+    const result = generateMockData('items', '', fields, 'mysql', { rowCount: 1 });
+
+    expect(JSON.parse(result.json)).toEqual([
+      {
+        col_a: expect.any(String),
+        col_b: expect.any(String),
+      },
+    ]);
+    expect(result.insertSql).not.toContain('NaN');
+  });
 });
