@@ -133,7 +133,6 @@
         "apps/web/src/components/App/ExplainPopover.tsx",
         "apps/web/src/components/App/hooks/usePersistedSync.ts",
         "apps/web/src/components/App/hooks/useReviewActions.ts",
-        "apps/web/src/components/App/hooks/useSchemaApplyActions.ts",
         "apps/web/src/components/FireworksOverlay.tsx",
         "apps/web/src/components/ui/fluid-hover.tsx",
         "apps/web/src/hooks/useInterval.ts",

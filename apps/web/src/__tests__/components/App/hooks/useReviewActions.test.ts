@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useReviewActions } from '@/components/App/hooks/useReviewActions';
+import { useReviewStore } from '@/stores/reviewStore';
 import { requestDDLReview } from '@/services/reviewService';
 import { saveReview } from '@/utils/reviewHistory';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
@@ -64,7 +65,10 @@ function renderReview({
   };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  useReviewStore.getState().resetReview();
+  vi.clearAllMocks();
+});
 
 describe('review request ownership', () => {
   it('cancels the request and skips history after an edit', async () => {
