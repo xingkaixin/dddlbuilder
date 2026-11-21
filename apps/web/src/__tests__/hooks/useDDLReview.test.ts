@@ -11,6 +11,7 @@ vi.mock('@/services/aiConversationService', () => ({
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDDLReview } from '@/hooks/useDDLReview';
+import { useReviewStore } from '@/stores/reviewStore';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { createAITextStream as createStream } from '@/__tests__/utils/aiStream';
@@ -43,6 +44,7 @@ const createResponse = (body: BodyInit | null, status = 200) => new Response(bod
 
 describe('useDDLReview', () => {
   afterEach(() => {
+    useReviewStore.getState().resetReview();
     vi.restoreAllMocks();
   });
 

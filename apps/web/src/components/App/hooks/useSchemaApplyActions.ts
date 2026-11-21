@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import { createEntityId, type DatabaseType, type PersistedState } from '@ddlbuilder/shared-types';
@@ -12,14 +12,15 @@ import { convertParsedResultToPersistedState } from '@/utils/convertParsedResult
 import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import type { BuilderTab } from '@/utils/tabUtils';
+import { toPersistedState } from '@/stores/editorDocumentCodec';
 import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
 import { validateDocumentFields } from '@/stores/editorDocumentValidation';
+import { useEditorStore } from '@/stores/editorStore';
+import { isStructuredSuggestion, useReviewStore } from '@/stores/reviewStore';
 import { useTimers } from '@/hooks/useTimers';
 
 interface UseSchemaApplyActionsParams {
-  currentState: PersistedState;
-  reviewResult: ReviewResult | null;
-  setReviewResult: (result: ReviewResult | null, state: PersistedState) => void;
+  getCurrentDocumentKey: () => string;
   replaceCurrentState: (state: PersistedState) => void;
   openGeneratedState: (state: PersistedState) => void;
   setActiveTab: (value: BuilderTab) => void;
@@ -43,10 +44,16 @@ const suggestionTab = (suggestion: StructuredSuggestion): BuilderTab | null => {
   }
 };
 
+const readCurrentState = (): PersistedState => toPersistedState(useEditorStore.getState());
+
+const readCurrentReview = (documentKey: string): ReviewResult | null => {
+  const reviewState = useReviewStore.getState();
+
+  return reviewState.documentKey === documentKey ? reviewState.result : null;
+};
+
 export function useSchemaApplyActions({
-  currentState,
-  reviewResult,
-  setReviewResult,
+  getCurrentDocumentKey,
   replaceCurrentState,
   openGeneratedState,
   setActiveTab,
@@ -55,75 +62,73 @@ export function useSchemaApplyActions({
   showToast,
 }: UseSchemaApplyActionsParams) {
   const { t } = useTranslation();
-  const currentStateRef = useRef(currentState);
-  const reviewResultRef = useRef(reviewResult);
   const { schedule } = useTimers();
-
-  // Delayed suggestion actions and handlers captured before a re-render must see the latest
-  // committed document and review; reviewResult has no store to read from.
-  useLayoutEffect(() => {
-    currentStateRef.current = currentState;
-    reviewResultRef.current = reviewResult;
-  }, [currentState, reviewResult]);
 
   const scheduleReviewAction = useCallback(
     (action: () => void, delay: number) => {
-      const state = currentStateRef.current;
-      const review = reviewResultRef.current;
+      const capturedDocumentKey = getCurrentDocumentKey();
+      const capturedReview = readCurrentReview(capturedDocumentKey);
 
       schedule(() => {
-        if (currentStateRef.current !== state || reviewResultRef.current !== review) return;
+        const currentDocumentKey = getCurrentDocumentKey();
+
+        if (
+          currentDocumentKey !== capturedDocumentKey ||
+          readCurrentReview(currentDocumentKey) !== capturedReview
+        ) {
+          return;
+        }
+
         action();
       }, delay);
     },
-    [schedule],
+    [getCurrentDocumentKey, schedule],
   );
 
   const replaceLatestState = useCallback(
     (update: (state: PersistedState) => PersistedState) => {
-      const nextState = update(currentStateRef.current);
-      currentStateRef.current = nextState;
-      replaceCurrentState(nextState);
+      replaceCurrentState(update(readCurrentState()));
     },
     [replaceCurrentState],
   );
 
   const markSuggestionApplied = useCallback(
-    (suggestion: StructuredSuggestion) => {
-      const review = reviewResultRef.current;
+    (previousDocumentKey: string, suggestion: StructuredSuggestion) => {
+      const nextDocumentKey = getCurrentDocumentKey();
 
-      if (!review) return;
+      if (
+        !useReviewStore
+          .getState()
+          .markSuggestionApplied(previousDocumentKey, nextDocumentKey, suggestion.id)
+      ) {
+        return;
+      }
 
-      const suggestions = review.suggestions.map((item) =>
-        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- suggestions intentionally support legacy string entries.
-        typeof item !== 'string' && item.id === suggestion.id ? { ...item, applied: true } : item,
-      );
-      const nextReview = { ...review, suggestions };
-      reviewResultRef.current = nextReview;
-      setReviewResult(nextReview, currentStateRef.current);
       showToast(`已应用建议：${suggestion.description}`);
     },
-    [setReviewResult, showToast],
+    [getCurrentDocumentKey, showToast],
   );
 
   const handleApplySuggestion = useCallback(
     (suggestion: StructuredSuggestion) => {
-      const currentSuggestion = reviewResultRef.current?.suggestions.find(
-        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- suggestions intentionally support legacy string entries.
-        (item) => typeof item !== 'string' && item.id === suggestion.id,
+      const documentKey = getCurrentDocumentKey();
+
+      const currentSuggestion = readCurrentReview(documentKey)?.suggestions.find(
+        (item): item is StructuredSuggestion =>
+          isStructuredSuggestion(item) && item.id === suggestion.id,
       );
 
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- suggestions intentionally support legacy string entries.
-      if (!currentSuggestion || typeof currentSuggestion === 'string' || currentSuggestion.applied)
-        return;
+      if (!currentSuggestion || currentSuggestion.applied) return;
 
       const activeTab = suggestionTab(suggestion);
 
       if (activeTab) setActiveTab(activeTab);
 
+      const currentState = readCurrentState();
+
       switch (suggestion.type) {
         case 'add_field': {
-          const rowIndex = currentStateRef.current.rows.length;
+          const rowIndex = currentState.rows.length;
           replaceLatestState((state) => ({
             ...state,
             rows: [
@@ -147,9 +152,7 @@ export function useSchemaApplyActions({
         case 'modify_field': {
           const { fieldName, changes } = suggestion.fieldModification;
 
-          const rowIndex = currentStateRef.current.rows.findIndex(
-            (row) => row.fieldName === fieldName,
-          );
+          const rowIndex = currentState.rows.findIndex((row) => row.fieldName === fieldName);
 
           if (rowIndex < 0) {
             showToast(`未找到字段 "${fieldName}"，无法应用修改`);
@@ -168,7 +171,7 @@ export function useSchemaApplyActions({
         }
 
         case 'remove_field': {
-          const rowIndex = currentStateRef.current.rows.findIndex(
+          const rowIndex = currentState.rows.findIndex(
             (row) => row.fieldName === suggestion.fieldName,
           );
 
@@ -183,7 +186,7 @@ export function useSchemaApplyActions({
             replaceLatestState((state) =>
               removeFieldsFromDocument(state, (row) => row.fieldName === suggestion.fieldName),
             );
-            markSuggestionApplied(suggestion);
+            markSuggestionApplied(documentKey, suggestion);
           }, 500);
 
           return;
@@ -193,9 +196,9 @@ export function useSchemaApplyActions({
           const indexId = createEntityId();
 
           const nextState: PersistedState = {
-            ...currentStateRef.current,
+            ...currentState,
             indexes: sanitizeIndexesForPersist([
-              ...currentStateRef.current.indexes,
+              ...currentState.indexes,
               {
                 id: indexId,
                 name: suggestion.index.name,
@@ -213,15 +216,15 @@ export function useSchemaApplyActions({
             return;
           }
 
-          replaceLatestState(() => nextState);
-          markSuggestionApplied(suggestion);
+          replaceCurrentState(nextState);
+          markSuggestionApplied(documentKey, suggestion);
           scheduleReviewAction(() => triggerIndexAnimation(indexId, 'add'), 50);
 
           return;
         }
 
         case 'remove_index': {
-          const targetIndex = currentStateRef.current.indexes.find(
+          const targetIndex = currentState.indexes.find(
             (index) => index.name === suggestion.indexName,
           );
 
@@ -237,7 +240,7 @@ export function useSchemaApplyActions({
               ...state,
               indexes: state.indexes.filter((index) => index.name !== suggestion.indexName),
             }));
-            markSuggestionApplied(suggestion);
+            markSuggestionApplied(documentKey, suggestion);
           }, 500);
 
           return;
@@ -250,10 +253,12 @@ export function useSchemaApplyActions({
           return;
       }
 
-      markSuggestionApplied(suggestion);
+      markSuggestionApplied(documentKey, suggestion);
     },
     [
+      getCurrentDocumentKey,
       markSuggestionApplied,
+      replaceCurrentState,
       replaceLatestState,
       scheduleReviewAction,
       setActiveTab,
@@ -274,15 +279,17 @@ export function useSchemaApplyActions({
 
   const handleApplyAIGeneratedSchema = useCallback(
     (schema: GeneratedTableSchema) => {
+      const { dbType, sqlFormatMode } = useEditorStore.getState();
+
       openGeneratedState(
         buildPersistedStateFromAISchema(schema, {
-          dbType: currentState.dbType,
-          sqlFormatMode: currentState.sqlFormatMode,
+          dbType,
+          sqlFormatMode,
         }),
       );
       showToast(t('aiGenerate.appliedToast'));
     },
-    [currentState.dbType, currentState.sqlFormatMode, openGeneratedState, showToast, t],
+    [openGeneratedState, showToast, t],
   );
 
   return {

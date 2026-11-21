@@ -5,7 +5,6 @@ import {
 } from '@ddlbuilder/shared-types/workspace';
 import { useCallback, useDeferredValue, useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { DDLReviewResult } from '@ddlbuilder/shared-types/ddl-review';
 import { buildQualifiedTableName, supportsMysqlPartition } from '@ddlbuilder/ddl-core';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useOrmGeneration } from '@/hooks/useOrmGeneration';
@@ -270,17 +269,7 @@ export function useSchemaController({
     loadedTableNormalizedName,
     setIsReviewHistoryOpen,
   });
-  const { setReviewResult: setDocumentReviewResult } = reviewActions.reviewState;
-
-  const setReviewResult = useCallback(
-    (result: DDLReviewResult | null, state: PersistedState) =>
-      setDocumentReviewResult(
-        result,
-        buildDocumentKey(workspaceScope, useTabStore.getState().getActiveTab(), state),
-      ),
-    [setDocumentReviewResult, workspaceScope],
-  );
-  const reviewState = { ...reviewActions.reviewState, setReviewResult };
+  const reviewState = reviewActions.reviewState;
 
   const schemaLintIssues = useMemo(
     () =>
@@ -302,6 +291,7 @@ export function useSchemaController({
 
   return {
     derived,
+    getCurrentDocumentKey,
     normalizedFields,
     availableFields,
     loadedPresentation,

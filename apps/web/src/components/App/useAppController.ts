@@ -161,8 +161,7 @@ export function useAppController() {
     canSaveCurrent,
   } = schemaController.derived;
   const { refreshTableVersions, workspaceLabel } = schemaController.loadedPresentation;
-  const { reviewState, showToast } = schemaController;
-  const { result: reviewResult, setReviewResult } = reviewState;
+  const { getCurrentDocumentKey, showToast } = schemaController;
 
   const tabLifecycle = useTabLifecycle({
     enabled: hydrated && !isShareView,
@@ -322,9 +321,7 @@ export function useAppController() {
   });
 
   const schemaActions = useSchemaApplyActions({
-    currentState: currentPersistedState,
-    reviewResult,
-    setReviewResult,
+    getCurrentDocumentKey,
     replaceCurrentState: applySavedState,
     openGeneratedState: openStateInNewDraftTab,
     setActiveTab,
