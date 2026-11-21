@@ -2,10 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { getSavedTable, listSavedTableMetadata, replaceSavedTable } from '@/utils/savedTablesDb';
-import { listReviews } from '@/utils/reviewHistory';
+import { listReviews, type ReviewRecord } from '@/utils/reviewHistory';
 import { listVersions } from '@/utils/tableVersions';
 import { deleteIndexedDbSavedTablePermanently } from '@/services/workspaceHistoryCleanup';
 import { openDb, REVIEW_STORE_NAME, STORE_NAME, VERSION_STORE_NAME } from '@/utils/workspaceDb';
+import type { TableVersion } from '@/utils/workspaceStorageTypes';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
 
 const scope: WorkspaceScope = { kind: 'anonymous' };
@@ -32,24 +33,41 @@ const table = (normalizedName: string, recordScope = 'anonymous', tableId?: stri
   createdAt: 1,
   updatedAt: 1,
 });
-const history = (id: string, tableId?: string, tableKey?: string, name = 'users') => ({
+const versionRecord = (
+  id: string,
+  tableId?: string,
+  tableKey?: string,
+  name = 'users',
+): TableVersion => ({
+  id,
+  tableId,
+  tableKey,
+  tableNormalizedName: name,
+  state,
+  createdAt: 1,
+});
+const reviewRecord = (
+  id: string,
+  tableId?: string,
+  tableKey?: string,
+  name = 'users',
+): ReviewRecord => ({
   id,
   tableId,
   tableKey,
   tableNormalizedName: name,
   tableName: name,
-  state,
   ddl: 'CREATE TABLE users (id INT)',
   dbType: 'mysql',
-  result: { score: 100, summary: '', suggestions: [] },
+  result: { score: 8, summary: '', suggestions: [] },
   createdAt: 1,
 });
 
 async function createOldDatabase(
   version: number,
   tables: ReturnType<typeof table>[],
-  records: ReturnType<typeof history>[],
-  reviews = records,
+  versions: TableVersion[],
+  reviews: ReviewRecord[],
 ) {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open('ddlbuilder', version);
@@ -71,11 +89,8 @@ async function createOldDatabase(
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction([STORE_NAME, VERSION_STORE_NAME, REVIEW_STORE_NAME], 'readwrite');
     tables.forEach((record) => tx.objectStore(STORE_NAME).put(record));
-
-    for (const name of [VERSION_STORE_NAME, REVIEW_STORE_NAME]) {
-      const storeRecords = name === REVIEW_STORE_NAME ? reviews : records;
-      storeRecords.forEach((record) => tx.objectStore(name).put(record));
-    }
+    versions.forEach((record) => tx.objectStore(VERSION_STORE_NAME).put(record));
+    reviews.forEach((record) => tx.objectStore(REVIEW_STORE_NAME).put(record));
 
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
@@ -83,11 +98,11 @@ async function createOldDatabase(
   db.close();
 }
 
-async function readRawHistory(storeName: string) {
+async function readRawHistory<T>(storeName: string) {
   const db = await openDb();
 
   try {
-    return await new Promise<ReturnType<typeof history>[]>((resolve, reject) => {
+    return await new Promise<T[]>((resolve, reject) => {
       const request = db.transaction(storeName, 'readonly').objectStore(storeName).getAll();
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -102,7 +117,7 @@ describe('legacy saved table identity migration', () => {
   afterEach(() => teardownFakeIndexedDB());
 
   it('upgrades an ID-less v14 table and deletes its versions with the same identity', async () => {
-    await createOldDatabase(14, [table('users')], [history('old')]);
+    await createOldDatabase(14, [table('users')], [versionRecord('old')], [reviewRecord('old')]);
     const saved = await getSavedTable('users', scope);
     const upgraded = await openDb();
     expect(
@@ -116,8 +131,10 @@ describe('legacy saved table identity migration', () => {
     expect((await listReviews(target)).map((record) => record.id)).toEqual(['old']);
     await deleteIndexedDbSavedTablePermanently(target);
     expect(await getSavedTable('users', scope)).toBeNull();
-    expect(await readRawHistory(VERSION_STORE_NAME)).toEqual([]);
-    expect((await readRawHistory(REVIEW_STORE_NAME)).map((record) => record.id)).toEqual(['old']);
+    expect(await readRawHistory<TableVersion>(VERSION_STORE_NAME)).toEqual([]);
+    expect(
+      (await readRawHistory<ReviewRecord>(REVIEW_STORE_NAME)).map((record) => record.id),
+    ).toEqual(['old']);
   });
 
   it('keeps an already persisted ID and brings its old and new histories together before renaming', async () => {
@@ -126,12 +143,12 @@ describe('legacy saved table identity migration', () => {
       15,
       [table('users', 'anonymous', tableId)],
       [
-        history('old', 'legacy:users', 'anonymous::legacy:users'),
-        history('new', tableId, `anonymous::${tableId}`),
+        versionRecord('old', 'legacy:users', 'anonymous::legacy:users'),
+        versionRecord('new', tableId, `anonymous::${tableId}`),
       ],
       [
-        history('old', 'legacy:users', 'anonymous::legacy:users'),
-        history('new', tableId, `anonymous::table:${tableId}`),
+        reviewRecord('old', 'legacy:users', 'anonymous::legacy:users'),
+        reviewRecord('new', tableId, `anonymous::table:${tableId}`),
       ],
     );
     const saved = await getSavedTable('users', scope);
@@ -140,7 +157,17 @@ describe('legacy saved table identity migration', () => {
     const target = { scope, tableId, normalizedName: 'users' };
     expect(saved.tableId).toBe(tableId);
     expect((await listVersions(target)).map((record) => record.id).sort()).toEqual(['new', 'old']);
-    expect((await listReviews(target)).map((record) => record.id).sort()).toEqual(['new', 'old']);
+    const migratedReviews = await listReviews(target);
+    expect(migratedReviews.map((record) => record.id).sort()).toEqual(['new', 'old']);
+    expect(migratedReviews.find((record) => record.id === 'old')).toMatchObject({
+      id: 'old',
+      tableId,
+      tableKey: `anonymous::table:${tableId}`,
+      tableName: 'users',
+      ddl: 'CREATE TABLE users (id INT)',
+      dbType: 'mysql',
+      result: { score: 8, summary: '', suggestions: [] },
+    });
     await replaceSavedTable(
       'users',
       { ...saved, normalizedName: 'accounts', name: 'Accounts' },
@@ -150,12 +177,12 @@ describe('legacy saved table identity migration', () => {
     expect((await getSavedTable(renamedTarget, scope))?.tableId).toBe(tableId);
     expect(await listVersions(renamedTarget)).toHaveLength(2);
     expect(await listReviews(renamedTarget)).toHaveLength(2);
-    const histories = await readRawHistory(VERSION_STORE_NAME);
-    expect(await readRawHistory(VERSION_STORE_NAME)).toEqual(histories);
+    const histories = await readRawHistory<TableVersion>(VERSION_STORE_NAME);
+    expect(await readRawHistory<TableVersion>(VERSION_STORE_NAME)).toEqual(histories);
     await deleteIndexedDbSavedTablePermanently(renamedTarget);
     expect(await getSavedTable(renamedTarget, scope)).toBeNull();
-    expect(await readRawHistory(VERSION_STORE_NAME)).toEqual([]);
-    expect(await readRawHistory(REVIEW_STORE_NAME)).toEqual([]);
+    expect(await readRawHistory<TableVersion>(VERSION_STORE_NAME)).toEqual([]);
+    expect(await readRawHistory<ReviewRecord>(REVIEW_STORE_NAME)).toEqual([]);
   });
 
   it('does not reassign legacy history to same-name replacement tables or another scope', async () => {
@@ -163,8 +190,12 @@ describe('legacy saved table identity migration', () => {
       15,
       [table('users', 'anonymous', 'replacement-id'), table('users', userScopeKey, 'user-table')],
       [
-        history('old', 'legacy:users', 'anonymous::legacy:users'),
-        history('user', 'user-table', `${userScopeKey}::user-table`),
+        versionRecord('old', 'legacy:users', 'anonymous::legacy:users'),
+        versionRecord('user', 'user-table', `${userScopeKey}::user-table`),
+      ],
+      [
+        reviewRecord('old', 'legacy:users', 'anonymous::legacy:users'),
+        reviewRecord('user', 'user-table', `${userScopeKey}::user-table`),
       ],
     );
     expect((await getSavedTable('users', scope))?.tableId).toBe('replacement-id');
@@ -186,9 +217,8 @@ describe('legacy saved table identity migration', () => {
         await listVersions({ scope: userScope, tableId: 'user-table', normalizedName: 'users' })
       ).map((record) => record.id),
     ).toEqual(['user']);
-    expect((await readRawHistory(REVIEW_STORE_NAME)).map((record) => record.id)).toEqual([
-      'old',
-      'user',
-    ]);
+    expect(
+      (await readRawHistory<ReviewRecord>(REVIEW_STORE_NAME)).map((record) => record.id),
+    ).toEqual(['old', 'user']);
   });
 });
