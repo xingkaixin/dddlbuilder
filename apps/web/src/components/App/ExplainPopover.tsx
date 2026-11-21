@@ -49,7 +49,7 @@ function popoverReducer(state: PopoverState, event: PopoverEvent): PopoverState 
 function readSelectionAnchor(container: HTMLDivElement | null): SelectionAnchor | null {
   const sel = window.getSelection();
 
-  if (!sel || sel.isCollapsed || !container) return null;
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed || !container) return null;
 
   const range = sel.getRangeAt(0);
 
@@ -76,20 +76,13 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
   const { isLoading, isStreaming, isComplete, explanation, error, startExplain, clearExplain } =
     useDDLExplain();
   const popoverRef = useRef<HTMLDivElement>(null);
-  const isInteractingRef = useRef(false);
 
   useEffect(() => {
     const handleSelectionChange = () => {
-      if (isInteractingRef.current) return;
-
-      try {
-        dispatch({
-          type: 'selectionChanged',
-          selection: readSelectionAnchor(containerRef.current),
-        });
-      } catch (_e) {
-        // Ignore range errors
-      }
+      dispatch({
+        type: 'selectionChanged',
+        selection: readSelectionAnchor(containerRef.current),
+      });
     };
 
     document.addEventListener('selectionchange', handleSelectionChange);
@@ -134,7 +127,6 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showResult, handleClose]);
 
-  // 计算是否在上方显示
   const showOnTop = selection ? selection.y > 400 : true;
 
   return (
@@ -152,23 +144,11 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
               left: selection.x,
               top: showOnTop ? selection.y : selection.bottom,
             }}
-            onMouseDown={() => {
-              isInteractingRef.current = true;
-              // Listen on document: a press released outside the portal never reaches its mouseup.
-              document.addEventListener(
-                'mouseup',
-                () => {
-                  setTimeout(() => {
-                    isInteractingRef.current = false;
-                  }, 100);
-                },
-                { once: true },
-              );
-            }}
           >
             <Button
               size="sm"
               className="h-8 gap-1.5 shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground border border-white/20"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleExplain}
             >
               <Lightbulb className="h-3.5 w-3.5" />
@@ -243,7 +223,6 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
                 </p>
               </div>
             </div>
-            {/* 这里的箭头逻辑需要根据 showOnTop 调整 */}
             {showOnTop ? (
               <div className="absolute left-1/2 bottom-1.5 -translate-x-1/2 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-card/98 drop-shadow-sm" />
             ) : (
