@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
-import { estimateStorage } from '../utils/storageEstimator';
+import { estimateStorage, estimateStorageBreakdown } from '../utils/storageEstimator';
 
 describe('storageEstimator', () => {
   const fields: NormalizedField[] = [
@@ -47,5 +47,13 @@ describe('storageEstimator', () => {
     // Data part for id(8) + name(100*0.5=50) + created_at(8) = 66
     // Padding to 8-byte boundary: 66 -> 72
     expect(result.dataSize).toBe(72);
+  });
+
+  it('should expose row overhead and field data size in storage breakdown', () => {
+    const breakdown = estimateStorageBreakdown('postgresql', fields, []);
+    expect(breakdown.dbName).toBe('PostgreSQL');
+    expect(breakdown.rowOverhead).toBe(23 + 4);
+    expect(breakdown.dataSize).toBe(72);
+    expect(breakdown.rawDataPerRow).toBe(breakdown.rowOverhead + breakdown.dataSize);
   });
 });

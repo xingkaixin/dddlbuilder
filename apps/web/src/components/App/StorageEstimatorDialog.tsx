@@ -79,7 +79,6 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
       estimateRows,
       setEstimateRows,
       breakdown,
-      result,
       rawDataBytes,
       indexBytes,
       redundancyBytes,
@@ -87,13 +86,13 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
     } = useStorageEstimation(dbType, fields, indexes, storageFormat);
     const dataExplanation = [
       t('storageEstimator.explanations.rowOverhead', {
-        size: formatSizeText(result.rowOverhead),
+        size: formatSizeText(breakdown.rowOverhead),
       }),
       t('storageEstimator.explanations.fieldData', {
-        size: formatSizeText(result.dataSize),
+        size: formatSizeText(breakdown.dataSize),
       }),
       t('storageEstimator.explanations.rowTotal', {
-        size: formatSizeText(result.totalRowSize),
+        size: formatSizeText(breakdown.rawDataPerRow),
       }),
     ];
     const indexExplanation =
@@ -214,7 +213,7 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
               {/* Data */}
               <ExplainSection
                 icon={<Database className="h-4 w-4 text-primary" />}
-                title={t('storageEstimator.dataFeatures', { database: result.dbName })}
+                title={t('storageEstimator.dataFeatures', { database: breakdown.dbName })}
                 items={dataExplanation}
               />
 
