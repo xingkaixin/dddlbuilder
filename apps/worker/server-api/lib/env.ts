@@ -6,15 +6,23 @@ export const readEnvBool = (value: string | undefined, fallback: boolean): boole
   return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
 };
 
+let cachedRawOrigins: string | undefined;
+let cachedParsedOrigins: string[] = DEFAULT_ALLOWED_ORIGINS;
+
 export const parseAllowedOrigins = (envOrigins?: string): string[] => {
+  if (envOrigins === cachedRawOrigins) return cachedParsedOrigins;
+
   const raw = envOrigins?.trim();
 
-  if (!raw) return DEFAULT_ALLOWED_ORIGINS;
+  const parsed = raw
+    ? raw
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
 
-  const items = raw
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
+  cachedRawOrigins = envOrigins;
+  cachedParsedOrigins = parsed.length > 0 ? parsed : DEFAULT_ALLOWED_ORIGINS;
 
-  return items.length > 0 ? items : DEFAULT_ALLOWED_ORIGINS;
+  return cachedParsedOrigins;
 };

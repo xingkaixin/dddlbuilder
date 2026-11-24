@@ -19,6 +19,7 @@ import {
 import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
 
 const MAX_PARSE_SQL_BODY_BYTES = 131_072;
+const sharedSqlParser = new SqlParser();
 const PARSE_SQL_RATE_LIMIT = {
   scope: 'parse:sql',
   limit: 10,
@@ -75,8 +76,7 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     const { sql, dbType } = validation;
 
     try {
-      const parser = new SqlParser();
-      const result = await parser.parseAsync(sql, dbType);
+      const result = await sharedSqlParser.parseAsync(sql, dbType);
 
       return c.json(Schema.decodeUnknownSync(SqlParseResponseSchema)(withMeta(c, { result })));
     } catch (error) {
@@ -100,10 +100,8 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     if ('errorResponse' in validation) return validation.errorResponse;
     const { sql, dbType } = validation;
 
-    const parser = new SqlParser();
-
     const response = Schema.decodeUnknownSync(MultiSqlParseResponseSchema)(
-      withMeta(c, await parser.parseMultiAsync(sql, dbType, validation.strict)),
+      withMeta(c, await sharedSqlParser.parseMultiAsync(sql, dbType, validation.strict)),
     );
     const { results, failed } = response;
 

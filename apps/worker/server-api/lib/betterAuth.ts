@@ -1,8 +1,7 @@
-import { betterAuth } from 'better-auth';
+import { betterAuth } from 'better-auth/minimal';
 import { emailOTP } from 'better-auth/plugins/email-otp';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { drizzle } from 'drizzle-orm/d1';
-import { Resend } from 'resend';
 import type { ApiEnv } from './context.js';
 import { betterAuthRelations, betterAuthSchema } from '@ddlbuilder/user-db';
 import { getUserSystemConfig } from './userSystemConfig.js';
@@ -50,20 +49,33 @@ const sendEmail = async (
   },
 ) => {
   const config = getUserSystemConfig(env);
-  const resend = new Resend(config.resendApiKey);
 
-  const { error } = await resend.emails.send({
-    from: `${config.resendFromName} <${config.resendFromEmail}>`,
-    to: input.to,
-    subject: input.subject,
-    html: input.html,
-    text: input.text,
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.resendApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `${config.resendFromName} <${config.resendFromEmail}>`,
+      to: input.to,
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+    }),
   });
 
-  if (error) {
+  if (!response.ok) {
+    const payload = await response
+      .json()
+      .catch(() => ({ name: 'http_error', statusCode: response.status }));
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- third-party HTTP error payload is parsed at the Resend API boundary.
+    const isObj = Boolean(payload && typeof payload === 'object');
+    // SAFETY: isObj verifies payload is a non-null object before reading optional error fields.
+    const error = isObj ? (payload as { name?: unknown; statusCode?: unknown }) : {};
     console.error('[auth] email delivery failed', {
-      name: error.name,
-      statusCode: error.statusCode,
+      name: error.name ?? 'http_error',
+      statusCode: error.statusCode ?? response.status,
     });
     throw new Error('Authentication email delivery failed');
   }

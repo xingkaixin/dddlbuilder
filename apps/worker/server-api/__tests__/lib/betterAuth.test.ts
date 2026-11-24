@@ -27,20 +27,17 @@ describe('createBetterAuth', () => {
   const betterAuthMock = vi.fn();
   const drizzleAdapterMock = vi.fn();
   const drizzleMock = vi.fn(() => ({ db: 'mocked' }));
-  const resendSendMock = vi.fn();
+  const fetchMock = vi.fn<typeof fetch>();
   const grantSignupCreditsMock = vi.fn();
-
-  class MockResend {
-    emails = { send: resendSendMock };
-  }
 
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    resendSendMock.mockResolvedValue({ data: { id: 'email-1' }, error: null });
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: 'email-1' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
 
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate the external Better Auth factory to inspect its generated config
-    vi.doMock('better-auth', () => ({
+    vi.doMock('better-auth/minimal', () => ({
       betterAuth: betterAuthMock,
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- replace the external Drizzle adapter while testing Better Auth wiring
@@ -50,10 +47,6 @@ describe('createBetterAuth', () => {
     // oxlint-disable-next-line anti-slop/no-module-mocking -- replace the external D1 Drizzle factory to inspect adapter configuration
     vi.doMock('drizzle-orm/d1', () => ({
       drizzle: drizzleMock,
-    }));
-    // oxlint-disable-next-line anti-slop/no-module-mocking -- replace the external email SDK to verify notification wiring
-    vi.doMock('resend', () => ({
-      Resend: MockResend,
     }));
     // oxlint-disable-next-line anti-slop/no-module-mocking -- isolate the credit side effect while testing Better Auth lifecycle hooks
     vi.doMock('../../lib/credits.js', () => ({ grantSignupCredits: grantSignupCreditsMock }));
@@ -82,10 +75,16 @@ describe('createBetterAuth', () => {
     const { createBetterAuth } = await import('../../lib/betterAuth.js');
     createBetterAuth(createEnv());
     const config = betterAuthMock.mock.calls[0][0];
-    resendSendMock.mockResolvedValue({
-      data: null,
-      error: { name: 'rate_limit_exceeded', message: 'Too many requests', statusCode: 429 },
-    });
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          name: 'rate_limit_exceeded',
+          message: 'Too many requests',
+          statusCode: 429,
+        }),
+        { status: 429 },
+      ),
+    );
 
     const sender = section === 'otp' ? config.plugins[0].options : config[section];
 
@@ -105,7 +104,7 @@ describe('createBetterAuth', () => {
       status: 'rejected',
       message: 'Authentication email delivery failed',
     });
-    expect(resendSendMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('normalizes relative password reset URLs into absolute HTTPS URLs', async () => {
@@ -122,7 +121,11 @@ describe('createBetterAuth', () => {
     const url = '/api/auth/verify-email?token=xyz';
     await config.emailAndPassword.sendResetPassword({ user, url });
 
-    const sent = resendSendMock.mock.calls[0][0];
+    // SAFETY: sendEmail always serializes a JSON object with html and text fields.
+    const sent = JSON.parse(String(fetchMock.mock.calls[0][1]?.body)) as {
+      html: string;
+      text: string;
+    };
     expect(sent.html).toContain('https://ddl.xingkaixin.me/api/auth/verify-email?token=xyz');
     expect(sent.text).toContain('https://ddl.xingkaixin.me/api/auth/verify-email?token=xyz');
   });
@@ -138,7 +141,11 @@ describe('createBetterAuth', () => {
     const url = 'https://example.com/verify?token=<>&"\'';
     await config.emailAndPassword.sendResetPassword({ user, url });
 
-    const sent = resendSendMock.mock.calls[0][0];
+    // SAFETY: sendEmail always serializes a JSON object with html and text fields.
+    const sent = JSON.parse(String(fetchMock.mock.calls[0][1]?.body)) as {
+      html: string;
+      text: string;
+    };
     expect(sent.html).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
     expect(sent.html).toContain('&lt;&gt;&amp;&quot;&#39;');
     expect(sent.text).toContain('<script>alert("xss")</script>');

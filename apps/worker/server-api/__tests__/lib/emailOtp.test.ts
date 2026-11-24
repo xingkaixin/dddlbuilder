@@ -1,16 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Context } from 'hono';
 import type { ApiEnv } from '../../lib/context.js';
+import { resolveAuthenticatedUser } from '../../lib/auth.js';
 import { createBetterAuth } from '../../lib/betterAuth.js';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
-const { sendEmail } = vi.hoisted(() => ({ sendEmail: vi.fn() }));
-
-// oxlint-disable-next-line anti-slop/no-module-mocking -- replace the external email SDK while exercising real Better Auth and SQLite verification flow
-vi.mock('resend', () => ({
-  Resend: class {
-    emails = { send: sendEmail };
-  },
-}));
+const sendEmail = vi.fn<(payload: { html: string; text: string }) => void>();
 
 describe('email OTP verification', () => {
   let fixture: ReturnType<typeof createSqliteD1Database>;
@@ -32,8 +27,7 @@ describe('email OTP verification', () => {
   const verify = (otp: string) => post('/email-otp/verify-email', { email, otp });
 
   const latestCode = () => {
-    // SAFETY: the mocked Resend call is created by the signup flow with an object containing text.
-    const text = sendEmail.mock.lastCall?.[0].text as string;
+    const text = sendEmail.mock.lastCall?.[0].text ?? '';
     const code = text.match(/验证码是：(\d{6})/)?.[1];
 
     if (!code) throw new Error('Verification email has no six-digit OTP');
@@ -42,7 +36,16 @@ describe('email OTP verification', () => {
   };
 
   beforeEach(() => {
-    sendEmail.mockReset().mockResolvedValue({ data: { id: 'email-1' }, error: null });
+    sendEmail.mockReset();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        // SAFETY: sendEmail always serializes a JSON object with html and text fields.
+        sendEmail(JSON.parse(String(init?.body)) as { html: string; text: string });
+
+        return new Response(JSON.stringify({ id: 'email-1' }), { status: 200 });
+      }),
+    );
     fixture = createSqliteD1Database({ includeMeta: true });
     // SAFETY: this fixture supplies every required Better Auth binding used by createBetterAuth.
     env = {
@@ -55,7 +58,10 @@ describe('email OTP verification', () => {
     } as ApiEnv['Bindings'];
   });
 
-  afterEach(() => fixture.sqlite.close());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    fixture.sqlite.close();
+  });
 
   it('sends one code on signup, stores a hash, and verifies into a session exactly once', async () => {
     const response = await signup();
@@ -64,9 +70,9 @@ describe('email OTP verification', () => {
     expect(sendEmail).toHaveBeenCalledTimes(1);
     const otp = latestCode();
     const sent = sendEmail.mock.lastCall?.[0];
-    expect(sent.html).toContain(otp);
-    expect(sent.html).toContain('10 分钟');
-    expect(sent.html).not.toContain('href=');
+    expect(sent?.html).toContain(otp);
+    expect(sent?.html).toContain('10 分钟');
+    expect(sent?.html).not.toContain('href=');
     const stored = fixture.sqlite.prepare('SELECT value, expires_at FROM verification').get();
     expect(stored?.value).not.toContain(otp);
     expect(Number(stored?.expires_at) - Date.now()).toBeGreaterThan(590_000);
@@ -84,6 +90,63 @@ describe('email OTP verification', () => {
       headers: new Headers({ cookie: cookie ?? '' }),
     });
     expect(prepare).toHaveBeenCalledTimes(1);
+    prepare.mockClear();
+
+    // SAFETY: resolveAuthenticatedUser only reads env, req.raw.headers, and c.get().
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- minimal Hono context for fast-path cookie verification.
+    const fastUser = await resolveAuthenticatedUser({
+      env,
+      req: { raw: { headers: new Headers({ cookie: cookie ?? '' }) } },
+      get: () => undefined,
+    } as unknown as Context<ApiEnv>);
+    expect(prepare).toHaveBeenCalledTimes(1);
+    expect(fastUser).toMatchObject({
+      userId: session?.user.id,
+      sessionId: session?.session.id,
+      email,
+      emailVerified: true,
+    });
+    prepare.mockClear();
+
+    const httpsEnv = { ...env, BETTER_AUTH_URL: 'https://ddl.xingkaixin.me' };
+
+    // SAFETY: resolveAuthenticatedUser only reads env, req.raw.headers, and c.get().
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- minimal Hono context for HTTPS cookie prefix check.
+    const rejectedPlainOnHttps = await resolveAuthenticatedUser({
+      env: httpsEnv,
+      req: { raw: { headers: new Headers({ cookie: cookie ?? '' }) } },
+      get: () => undefined,
+    } as unknown as Context<ApiEnv>);
+    expect(rejectedPlainOnHttps).toBeNull();
+    expect(prepare).not.toHaveBeenCalled();
+
+    const secureCookie = (cookie ?? '').replace(
+      'better-auth.session_token=',
+      '__Secure-better-auth.session_token=',
+    );
+
+    // SAFETY: resolveAuthenticatedUser only reads env, req.raw.headers, and c.get().
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- minimal Hono context for HTTPS secure cookie check.
+    const acceptedSecureOnHttps = await resolveAuthenticatedUser({
+      env: httpsEnv,
+      req: { raw: { headers: new Headers({ cookie: secureCookie }) } },
+      get: () => undefined,
+    } as unknown as Context<ApiEnv>);
+    expect(prepare).toHaveBeenCalledTimes(1);
+    expect(acceptedSecureOnHttps?.userId).toBe(session?.user.id);
+    prepare.mockClear();
+
+    const duplicateCookie = `${cookie ?? ''}; better-auth.session_token=stale-token.invalid-sig`;
+
+    // SAFETY: resolveAuthenticatedUser only reads env, req.raw.headers, and c.get().
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- minimal Hono context for duplicate cookie precedence check.
+    const acceptedFirstDuplicate = await resolveAuthenticatedUser({
+      env,
+      req: { raw: { headers: new Headers({ cookie: duplicateCookie }) } },
+      get: () => undefined,
+    } as unknown as Context<ApiEnv>);
+    expect(prepare).toHaveBeenCalledTimes(1);
+    expect(acceptedFirstDuplicate?.userId).toBe(session?.user.id);
     prepare.mockRestore();
     expect(session?.user.emailVerified).toBe(true);
     expect(session?.user.createdAt).toBeInstanceOf(Date);
