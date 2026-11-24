@@ -45,7 +45,7 @@ vi.mock('@/services/workspaceYDocStorage', async (importOriginal) => ({
 // oxlint-disable-next-line anti-slop/no-module-mocking -- 认证与工作区替换用于隔离 provider 的会话状态编排和副作用。
 vi.mock('@/auth/betterAuthClient', () => ({
   isBetterAuthConfigured: () => true,
-  getBetterAuthClient: () => ({
+  getBetterAuthClient: async () => ({
     signIn: {
       email: signInEmailMock,
     },

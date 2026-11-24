@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { i18n } from '@/i18n';
 import { ApiError } from '@/services/apiError';
 import { translateAuthError } from './authErrors';
-import type { getBetterAuthClient } from './betterAuthClient';
+import type { BetterAuthClient } from './betterAuthClient';
 
 export type SignUpInput = {
   name: string;
@@ -21,16 +21,20 @@ export type AuthAccountActions = {
   verifyEmail: (email: string, otp: string) => Promise<void>;
 };
 
-type AuthClient = ReturnType<typeof getBetterAuthClient>;
-
 export const useAuthAccountActions = (
-  client: AuthClient,
+  loadClient: () => Promise<BetterAuthClient | null>,
   configured: boolean,
   refreshSession: () => Promise<void>,
 ): AuthAccountActions =>
   useMemo(() => {
-    const requireClient = () => {
-      if (!client || !configured) {
+    const requireClient = async () => {
+      if (!configured) {
+        throw new Error(i18n.t('services.authConfigMissing'));
+      }
+
+      const client = await loadClient();
+
+      if (!client) {
         throw new Error(i18n.t('services.authConfigMissing'));
       }
 
@@ -39,7 +43,7 @@ export const useAuthAccountActions = (
 
     return {
       signInWithEmail: async (email, password) => {
-        const result = await requireClient().signIn.email({ email, password });
+        const result = await (await requireClient()).signIn.email({ email, password });
 
         if (result.error) {
           throw new ApiError(
@@ -52,7 +56,7 @@ export const useAuthAccountActions = (
         await refreshSession();
       },
       signUpWithEmail: async (input) => {
-        const result = await requireClient().signUp.email(input);
+        const result = await (await requireClient()).signUp.email(input);
 
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));
@@ -67,7 +71,7 @@ export const useAuthAccountActions = (
         return 'verification_required';
       },
       updateUserName: async (name) => {
-        const result = await requireClient().updateUser({ name });
+        const result = await (await requireClient()).updateUser({ name });
 
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'settings.usernameFailed'));
@@ -76,7 +80,9 @@ export const useAuthAccountActions = (
         await refreshSession();
       },
       changePassword: async (currentPassword, newPassword) => {
-        const result = await requireClient().changePassword({
+        const result = await (
+          await requireClient()
+        ).changePassword({
           currentPassword,
           newPassword,
           revokeOtherSessions: false,
@@ -87,7 +93,9 @@ export const useAuthAccountActions = (
         }
       },
       requestPasswordReset: async (email) => {
-        const result = await requireClient().requestPasswordReset({
+        const result = await (
+          await requireClient()
+        ).requestPasswordReset({
           email,
           redirectTo: `${window.location.origin}/?auth_action=reset-password`,
         });
@@ -97,21 +105,21 @@ export const useAuthAccountActions = (
         }
       },
       resetPassword: async (token, newPassword) => {
-        const result = await requireClient().resetPassword({ token, newPassword });
+        const result = await (await requireClient()).resetPassword({ token, newPassword });
 
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'header.auth.signInFailed'));
         }
       },
       sendVerificationEmail: async (email) => {
-        const result = await requireClient().sendVerificationEmail({ email });
+        const result = await (await requireClient()).sendVerificationEmail({ email });
 
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'header.auth.sendCodeFailed'));
         }
       },
       verifyEmail: async (email, otp) => {
-        const result = await requireClient().emailOtp.verifyEmail({ email, otp });
+        const result = await (await requireClient()).emailOtp.verifyEmail({ email, otp });
 
         if (result.error) {
           throw new Error(translateAuthError(result.error, 'header.auth.verifyCodeFailed'));
@@ -120,4 +128,4 @@ export const useAuthAccountActions = (
         await refreshSession();
       },
     };
-  }, [client, configured, refreshSession]);
+  }, [configured, loadClient, refreshSession]);

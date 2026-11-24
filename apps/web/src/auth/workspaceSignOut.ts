@@ -3,13 +3,12 @@ import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { toast } from 'sonner';
 import { i18n } from '@/i18n';
 import { markWorkspaceCleanupPending } from '@/services/workspaceCacheRegistry';
-import { clearLocalWorkspaceData, retryWorkspaceCleanup } from '@/services/workspaceAccountService';
-import { prepareWorkspaceSignOut } from '@/services/workspaceYDocStorage';
 import { writeWorkspaceIdentity } from '@/services/workspaceIdentity';
 import { authQueryKeys, currentUserOptions } from '@/queries/auth';
 import { creditQueryKeys } from '@/queries/credits';
 import { workspaceQueryKeys } from '@/queries/workspaces';
-import { workspaceMigrationQueryKeys } from '@/queries/workspaceMigration';
+
+const workspaceMigrationUserQueryKey = (userId: string) => ['workspace-migration', userId] as const;
 
 interface ExecuteWorkspaceSignOutInput {
   scope: UserWorkspaceScope | null;
@@ -26,6 +25,7 @@ export const executeWorkspaceSignOut = async ({
 }: ExecuteWorkspaceSignOutInput) => {
   if (scope) {
     try {
+      const { prepareWorkspaceSignOut } = await import('@/services/workspaceYDocStorage');
       await prepareWorkspaceSignOut(scope.workspaceId);
     } catch (error) {
       console.error('[workspace-yjs] sign out cancelled to preserve local changes', error);
@@ -53,6 +53,7 @@ export const executeWorkspaceSignOut = async ({
         cleanupRegistered = true;
       }
 
+      const { retryWorkspaceCleanup } = await import('@/services/workspaceAccountService');
       await retryWorkspaceCleanup(scope.userId);
     };
 
@@ -73,6 +74,7 @@ export const executeWorkspaceSignOut = async ({
     try {
       markWorkspaceCleanupPending(scope);
       cleanupRegistered = true;
+      const { clearLocalWorkspaceData } = await import('@/services/workspaceAccountService');
       await clearLocalWorkspaceData(scope);
     } catch (error) {
       console.error(
@@ -90,7 +92,7 @@ export const executeWorkspaceSignOut = async ({
   if (userId) {
     queryClient.removeQueries({ queryKey: creditQueryKeys.all(userId) });
     queryClient.removeQueries({ queryKey: workspaceQueryKeys.all(userId) });
-    queryClient.removeQueries({ queryKey: workspaceMigrationQueryKeys.all(userId) });
+    queryClient.removeQueries({ queryKey: workspaceMigrationUserQueryKey(userId) });
   }
 
   queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });

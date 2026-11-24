@@ -6,7 +6,6 @@ import { syncPreferencesToDocument } from './stores/preferencesStore';
 import './index.css';
 import './assets/fonts/roboto-mono/fonts.css';
 import './assets/fonts/xiaolai/fonts.css';
-import './assets/fonts/klee-one/fonts.css';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { appQueryClient } from './lib/queryClient';
 import { Toaster } from './components/ui/sonner';
@@ -15,12 +14,13 @@ import { AuthSessionProvider } from './auth/AuthSessionProvider';
 import { isAdminPath } from './admin/lib/adminPath';
 import { listenForCommandShortcut } from './lib/commandShortcut';
 import { notifyAuthCallbackError } from './auth/useAuthCallbackCommand';
+import { currentUserOptions } from './queries/auth';
 import { i18n, i18nReady } from './i18n';
 
+const loadWorkspaceShell = () =>
+  import('./components/App/WorkspaceShell').then((m) => ({ default: m.WorkspaceShell }));
 const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
-const WorkspaceShell = lazy(() =>
-  import('./components/App/WorkspaceShell').then((m) => ({ default: m.WorkspaceShell })),
-);
+const WorkspaceShell = lazy(loadWorkspaceShell);
 // SAFETY: next-themes ThemeProvider props omit React 19 children compatibility under this tsconfig.
 const AppThemeProvider = ThemeProvider as ComponentType<
   PropsWithChildren<React.ComponentProps<typeof ThemeProvider>>
@@ -34,7 +34,10 @@ if (!rootElement) {
 
 const isAdmin = isAdminPath();
 
-if (!isAdmin) void i18nReady.then(notifyAuthCallbackError);
+if (!isAdmin) {
+  void appQueryClient.prefetchQuery(currentUserOptions());
+  void i18nReady.then(notifyAuthCallbackError);
+}
 
 const publicationId = /^\/publications\/([a-zA-Z0-9-]+)\/?$/.exec(location.pathname)?.[1];
 const PublicationPage = lazy(() =>
@@ -42,6 +45,7 @@ const PublicationPage = lazy(() =>
 );
 
 if (!isAdmin && !publicationId) {
+  void loadWorkspaceShell();
   document.documentElement.dataset.surface = 'app';
   syncPreferencesToDocument();
   listenForCommandShortcut();
