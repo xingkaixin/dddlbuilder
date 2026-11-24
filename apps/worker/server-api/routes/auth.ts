@@ -4,9 +4,11 @@ import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser } from '../lib/auth.js';
 import { createBetterAuth } from '../lib/betterAuth.js';
+import { readCreditBalance } from '../lib/credits.js';
 import { parseJsonBodyWithLimit, validateRequestBodyWithLimit, withMeta } from '../lib/http.js';
 import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
 import { getAuthBodyMaxBytes } from '../lib/userSystemConfig.js';
+import { getCurrentWorkspace } from '../lib/workspaceEntities.js';
 
 const SIGNUP_RATE_LIMIT = {
   scope: 'auth:signup',
@@ -80,6 +82,11 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
 
     c.set('currentUserId', user.userId);
 
+    const [workspace, creditAccount] = await Promise.all([
+      getCurrentWorkspace(c.env, user.userId).catch(() => undefined),
+      readCreditBalance(c.env, user).catch(() => undefined),
+    ]);
+
     return c.json(
       Schema.decodeUnknownSync(MeResponseSchema)(
         withMeta(c, {
@@ -90,6 +97,8 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
             emailVerified: user.emailVerified,
             name: user.name,
           },
+          ...(workspace ? { workspaceId: workspace.workspaceId } : {}),
+          ...(creditAccount ? { creditBalance: creditAccount.balance } : {}),
         }),
       ),
     );

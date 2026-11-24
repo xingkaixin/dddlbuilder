@@ -1,31 +1,19 @@
-import { createAuthClient } from 'better-auth/client';
-import { emailOTPClient } from 'better-auth/client/plugins';
+import type { BetterAuthClient } from './betterAuthClientRuntime';
 
-const buildAuthClient = () =>
-  createAuthClient({
-    baseURL: resolveBaseURL(),
-    plugins: [emailOTPClient()],
-    fetchOptions: { credentials: 'include' },
-  });
+export type { BetterAuthClient };
 
-let authClient: ReturnType<typeof buildAuthClient> | null | undefined;
-
-const resolveBaseURL = () => import.meta.env.VITE_BETTER_AUTH_URL?.trim() || window.location.origin;
+let clientPromise: Promise<BetterAuthClient> | null = null;
 
 export const isBetterAuthConfigured = () => typeof window !== 'undefined';
 
-export const getBetterAuthClient = () => {
-  if (authClient !== undefined) {
-    return authClient;
-  }
-
+export const getBetterAuthClient = (): Promise<BetterAuthClient | null> => {
   if (!isBetterAuthConfigured()) {
-    authClient = null;
-
-    return authClient;
+    return Promise.resolve(null);
   }
 
-  authClient = buildAuthClient();
+  clientPromise ??= import('./betterAuthClientRuntime').then((mod) =>
+    mod.getBetterAuthClientInstance(),
+  );
 
-  return authClient;
+  return clientPromise;
 };

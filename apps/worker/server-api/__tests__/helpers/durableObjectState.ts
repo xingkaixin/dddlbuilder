@@ -12,7 +12,19 @@ export const createDurableObjectState = (store = new Map<string, unknown>()) => 
       put: vi.fn(async (key: string, value: unknown) => {
         store.set(key, value);
       }),
-      delete: vi.fn(async (key: string) => store.delete(key)),
+      delete: vi.fn(async (key: string | string[]) => {
+        if (Array.isArray(key)) {
+          let count = 0;
+
+          for (const k of key) {
+            if (store.delete(k)) count += 1;
+          }
+
+          return count;
+        }
+
+        return store.delete(key);
+      }),
       list: vi.fn(
         async (options?: { prefix?: string }) =>
           new Map([...store].filter(([key]) => !options?.prefix || key.startsWith(options.prefix))),

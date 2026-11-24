@@ -29,7 +29,6 @@
     "evlog": "2.35.1",
     "hono": "catalog:",
     "lib0": "catalog:",
-    "resend": "^6.38.1",
     "y-protocols": "catalog:",
     "yjs": "catalog:"
   },

@@ -10,7 +10,7 @@ import {
 } from '@/services/workspaceIdentity';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import * as Y from 'yjs';
-import { watchWorkspaceHistory } from '@/services/workspaceHistoryCleanup';
+import { watchWorkspaceHistory } from '@/services/workspaceHistoryWatcher';
 import {
   upsertSavedTableInYDoc,
   recreateSavedTableInYDoc,

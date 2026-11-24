@@ -88,12 +88,184 @@ const throwAuthenticationUnavailable = (c: Context<ApiEnv>, error: unknown): nev
   throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'Authentication service unavailable');
 };
 
+const SECURE_SESSION_COOKIE_NAME = '__Secure-better-auth.session_token';
+const PLAIN_SESSION_COOKIE_NAME = 'better-auth.session_token';
+const HMAC_ALGORITHM = { name: 'HMAC', hash: 'SHA-256' } as const;
+const hmacKeyCache = new Map<string, Promise<CryptoKey>>();
+
+// Match better-call's parseCookies (used by Better Auth session endpoints): first occurrence wins.
+const parseRequestCookies = (cookieHeader: string): Map<string, string> => {
+  const cookies = new Map<string, string>();
+  let index = 0;
+
+  while (index < cookieHeader.length) {
+    const eqIdx = cookieHeader.indexOf('=', index);
+
+    if (eqIdx === -1) break;
+    let endIdx = cookieHeader.indexOf(';', index);
+
+    if (endIdx === -1) {
+      endIdx = cookieHeader.length;
+    } else if (endIdx < eqIdx) {
+      index = cookieHeader.lastIndexOf(';', eqIdx - 1) + 1;
+      continue;
+    }
+
+    const key = cookieHeader.slice(index, eqIdx).trim();
+
+    if (!cookies.has(key)) {
+      let val = cookieHeader.slice(eqIdx + 1, endIdx).trim();
+
+      if (val.codePointAt(0) === 34) val = val.slice(1, -1);
+
+      try {
+        cookies.set(key, decodeURIComponent(val));
+      } catch {
+        cookies.set(key, val);
+      }
+    }
+
+    index = endIdx + 1;
+  }
+
+  return cookies;
+};
+
+const resolveSessionCookieName = (env: ApiEnv['Bindings']): string | null => {
+  const raw = env.BETTER_AUTH_URL?.trim();
+
+  if (!raw) return null;
+
+  try {
+    return new URL(raw).protocol === 'https:'
+      ? SECURE_SESSION_COOKIE_NAME
+      : PLAIN_SESSION_COOKIE_NAME;
+  } catch {
+    return null;
+  }
+};
+
+const getSessionHmacKey = (secret: string) => {
+  let cached = hmacKeyCache.get(secret);
+
+  if (!cached) {
+    cached = crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      HMAC_ALGORITHM,
+      false,
+      ['verify'],
+    );
+    hmacKeyCache.set(secret, cached);
+  }
+
+  return cached;
+};
+
+const verifySignedSessionToken = async (
+  signedValue: string,
+  secret: string,
+): Promise<string | null> => {
+  const dotIndex = signedValue.lastIndexOf('.');
+
+  if (dotIndex <= 0) return null;
+  const token = signedValue.slice(0, dotIndex);
+  const base64Signature = signedValue.slice(dotIndex + 1);
+
+  try {
+    const binary = atob(base64Signature);
+    const signature = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i += 1) {
+      signature[i] = binary.charCodeAt(i);
+    }
+
+    const key = await getSessionHmacKey(secret);
+
+    const valid = await crypto.subtle.verify(
+      HMAC_ALGORITHM,
+      key,
+      signature,
+      new TextEncoder().encode(token),
+    );
+
+    return valid ? token : null;
+  } catch {
+    return null;
+  }
+};
+
+const readSessionByToken = async (env: ApiEnv['Bindings'], token: string) =>
+  env.USER_DB.prepare(`
+    SELECT
+      s.id AS sessionId,
+      u.id AS userId,
+      u.email AS email,
+      u.email_verified AS emailVerified,
+      u.name AS name,
+      EXISTS (SELECT 1 FROM admin_user_flags WHERE user_id = u.id) AS disabled
+    FROM session s
+    JOIN user u ON u.id = s.user_id
+    WHERE s.token = ? AND s.expires_at > ?
+    LIMIT 1
+  `)
+    .bind(token, Date.now())
+    .first<{
+      sessionId: string;
+      userId: string;
+      email: string;
+      emailVerified: number | boolean;
+      name: string;
+      disabled: number;
+    }>();
+
 export const resolveAuthenticatedUser = async (
   c: Context<ApiEnv>,
 ): Promise<AuthenticatedAppUser | null> => {
   const cookieHeader = c.req.raw.headers.get('cookie');
 
   if (!cookieHeader) {
+    return null;
+  }
+
+  const parsedCookies = parseRequestCookies(cookieHeader);
+  const expectedCookieName = resolveSessionCookieName(c.env);
+
+  if (expectedCookieName) {
+    const cookieValue = parsedCookies.get(expectedCookieName);
+
+    if (!cookieValue) {
+      return null;
+    }
+
+    const secret = c.env.BETTER_AUTH_SECRET?.trim();
+
+    if (secret && cookieValue.includes('.')) {
+      const token = await verifySignedSessionToken(cookieValue, secret);
+
+      if (!token) return null;
+
+      const row = await readSessionByToken(c.env, token).catch(
+        // oxlint-disable-next-line anti-slop/no-unknown-parameters -- database adapter failures cross the async boundary as unknown.
+        (error: unknown) => throwAuthenticationUnavailable(c, error),
+      );
+
+      if (!row) return null;
+
+      if (row.disabled === 1) throw new DomainError(403, 'USER_DISABLED', 'USER_DISABLED');
+
+      return {
+        userId: row.userId,
+        sessionId: row.sessionId,
+        email: row.email,
+        emailVerified: Boolean(row.emailVerified),
+        name: row.name,
+      };
+    }
+  } else if (
+    !parsedCookies.has(SECURE_SESSION_COOKIE_NAME) &&
+    !parsedCookies.has(PLAIN_SESSION_COOKIE_NAME)
+  ) {
     return null;
   }
 

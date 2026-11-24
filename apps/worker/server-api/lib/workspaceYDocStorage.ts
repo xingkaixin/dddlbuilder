@@ -111,15 +111,33 @@ const writeBinary = async (storage: BinaryStorage, key: string, bytes: Uint8Arra
   } satisfies ChunkedBinary);
 };
 
+const DELETE_BATCH_LIMIT = 128;
+
+const deleteKeys = async (storage: BinaryStorage, keys: string[]) => {
+  for (let offset = 0; offset < keys.length; offset += DELETE_BATCH_LIMIT) {
+    const batch = keys.slice(offset, offset + DELETE_BATCH_LIMIT);
+
+    if (batch.length === 1) await storage.delete(batch[0]);
+    else await storage.delete(batch);
+  }
+};
+
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Durable Object storage returns untyped binary or manifest values.
-const deleteBinary = async (storage: BinaryStorage, key: string, value: unknown) => {
+const collectDeleteKeys = async (storage: BinaryStorage, key: string, value: unknown) => {
+  const keys = [key];
+
   if (!toBytes(value)) {
     const chunks = await storage.list({ prefix: chunkPrefix(key) });
 
-    for (const chunk of chunks.keys()) await storage.delete(chunk);
+    for (const chunk of chunks.keys()) keys.push(chunk);
   }
 
-  await storage.delete(key);
+  return keys;
+};
+
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Durable Object storage returns untyped binary or manifest values.
+const deleteBinary = async (storage: BinaryStorage, key: string, value: unknown) => {
+  await deleteKeys(storage, await collectDeleteKeys(storage, key, value));
 };
 
 export const readWorkspaceYDocStorage = async (storage: DurableObjectStorage) => {
@@ -165,12 +183,15 @@ export const compactWorkspaceYDocStorage = (
     const updates = await transaction.list<unknown>({ prefix: UPDATE_PREFIX });
     const throughKey = updateKey(meta.lastCompactedSeq);
     let deleted = 0;
+    const keysToDelete: string[] = [];
 
     for (const [key, value] of updates) {
       if (key > throughKey) continue;
-      await deleteBinary(transaction, key, value);
+      keysToDelete.push(...(await collectDeleteKeys(transaction, key, value)));
       deleted += 1;
     }
+
+    if (keysToDelete.length > 0) await deleteKeys(transaction, keysToDelete);
 
     await transaction.put(WORKSPACE_YDOC_META_KEY, meta);
 

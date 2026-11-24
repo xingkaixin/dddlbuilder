@@ -1,9 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
-import { fetchCurrentWorkspace } from '@/services/workspaceAccountService';
+import { fetchCurrentWorkspace } from '@/services/workspaceApi';
 import { writeWorkspaceIdentity } from '@/services/workspaceIdentity';
 import { currentUserOptions } from './auth';
-
-const CURRENT_WORKSPACE_STALE_TIME_MS = 30_000;
 
 export const workspaceQueryKeys = {
   all: (userId: string) => ['workspaces', userId] as const,
@@ -30,7 +28,7 @@ export function currentWorkspaceOptions(userId: string) {
         throw error;
       }
     },
-    staleTime: CURRENT_WORKSPACE_STALE_TIME_MS,
-    refetchOnWindowFocus: true,
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchOnWindowFocus: false,
   });
 }

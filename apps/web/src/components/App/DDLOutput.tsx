@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { lazy, memo, Suspense } from 'react';
 import type { DatabaseType, SqlFormatMode } from '@ddlbuilder/shared-types';
 import type {
   DDLReviewResult,
@@ -9,10 +9,17 @@ import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import type { SchemaLintIssue } from '@/utils/schemaLint';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTranslation } from 'react-i18next';
-import { DclOutputPanel } from './ddl-output/DclOutputPanel';
 import { DdlOutputPanel } from './ddl-output/DdlOutputPanel';
-import { OrmOutputPanel } from './ddl-output/OrmOutputPanel';
-import { RoutineOutputPanel } from './ddl-output/RoutineOutputPanel';
+
+const DclOutputPanel = lazy(() =>
+  import('./ddl-output/DclOutputPanel').then((m) => ({ default: m.DclOutputPanel })),
+);
+const OrmOutputPanel = lazy(() =>
+  import('./ddl-output/OrmOutputPanel').then((m) => ({ default: m.OrmOutputPanel })),
+);
+const RoutineOutputPanel = lazy(() =>
+  import('./ddl-output/RoutineOutputPanel').then((m) => ({ default: m.RoutineOutputPanel })),
+);
 
 interface DDLOutputProps {
   generatedSql: string;
@@ -84,26 +91,32 @@ export const DDLOutput = memo<DDLOutputProps>((props) => {
           />
         </TabsContent>
         <TabsContent value="dcl" className="mt-0">
-          <DclOutputPanel
-            code={props.generatedDcl}
-            dbType={props.dbType}
-            onCopy={props.onCopyDcl}
-          />
+          <Suspense fallback={null}>
+            <DclOutputPanel
+              code={props.generatedDcl}
+              dbType={props.dbType}
+              onCopy={props.onCopyDcl}
+            />
+          </Suspense>
         </TabsContent>
         <TabsContent value="orm" className="mt-0">
-          <OrmOutputPanel
-            dbType={props.dbType}
-            generateCode={props.generateOrm}
-            target={props.ormTarget}
-            onTargetChange={props.onOrmTargetChange}
-            onCopy={props.onCopyOrm}
-          />
+          <Suspense fallback={null}>
+            <OrmOutputPanel
+              dbType={props.dbType}
+              generateCode={props.generateOrm}
+              target={props.ormTarget}
+              onTargetChange={props.onOrmTargetChange}
+              onCopy={props.onCopyOrm}
+            />
+          </Suspense>
         </TabsContent>
         <TabsContent value="routine" className="mt-0">
-          <RoutineOutputPanel
-            dbType={props.dbType}
-            tableNameDefault={props.routineTableNameDefault}
-          />
+          <Suspense fallback={null}>
+            <RoutineOutputPanel
+              dbType={props.dbType}
+              tableNameDefault={props.routineTableNameDefault}
+            />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>

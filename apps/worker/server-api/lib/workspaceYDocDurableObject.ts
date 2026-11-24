@@ -383,7 +383,6 @@ export class WorkspaceYDocDurableObject {
         assertWorkspaceYDocStructure(doc);
       }
 
-      this.resetValidationDoc(doc);
       doc.on('update', this.handleDocUpdate);
       this.doc = doc;
       logWorkspaceYDocHealth('load', {
@@ -618,12 +617,15 @@ export class WorkspaceYDocDurableObject {
     // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Yjs origin is an opaque caller-owned value used for identity filtering.
     origin: unknown,
   ) {
-    const message = encodeWorkspaceYDocSyncMessage((encoder) =>
-      syncProtocol.writeUpdate(encoder, update),
-    );
     const sockets = this.state
       .getWebSockets()
       .filter((socket) => socket !== origin && socket.readyState === WebSocket.OPEN);
+
+    if (sockets.length === 0) return;
+
+    const message = encodeWorkspaceYDocSyncMessage((encoder) =>
+      syncProtocol.writeUpdate(encoder, update),
+    );
     let recipients = sockets;
 
     try {
@@ -663,6 +665,8 @@ export class WorkspaceYDocDurableObject {
     this.updateBytes -= meta.updateBytes;
     this.lastCompactedSeq = meta.nextSeq;
     this.compactCount += 1;
+    const prevCheckpointSeq = this.lastCheckpointSeq;
+    const prevCheckpointFailedAt = this.checkpointFailedAt;
     let checkpointError: unknown;
 
     try {
@@ -671,7 +675,13 @@ export class WorkspaceYDocDurableObject {
       checkpointError = error;
     }
 
-    await this.writeMeta();
+    if (
+      this.lastCheckpointSeq !== prevCheckpointSeq ||
+      this.checkpointFailedAt !== prevCheckpointFailedAt
+    ) {
+      await this.writeMeta();
+    }
+
     logWorkspaceYDocHealth('compact', {
       workspaceId: this.workspaceId,
       compactDurationMs: Date.now() - startedAt,

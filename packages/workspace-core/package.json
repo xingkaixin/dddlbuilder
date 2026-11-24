@@ -2,6 +2,7 @@
   "name": "@ddlbuilder/workspace-core",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "scripts": {
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

@@ -14,6 +14,8 @@ export const MeResponseSchema = Schema.Union([
   Schema.Struct({
     signedIn: Schema.Literal(true),
     user: Schema.Struct({ userId: id, email: text, emailVerified: Schema.Boolean, name: text }),
+    workspaceId: Schema.optional(id),
+    creditBalance: Schema.optional(count),
     meta,
   }),
 ]);

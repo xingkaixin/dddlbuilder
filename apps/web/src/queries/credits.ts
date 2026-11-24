@@ -6,7 +6,7 @@ import {
 } from '@/services/creditService';
 
 const CREDIT_LEDGER_STALE_TIME_MS = 15_000;
-const CREDIT_BALANCE_STALE_TIME_MS = 10_000;
+const CREDIT_BALANCE_STALE_TIME_MS = 60_000;
 
 export const creditQueryKeys = {
   all: (userId: string) => ['credits', userId] as const,
@@ -36,6 +36,7 @@ export function creditBalanceOptions(userId: string) {
       }
     },
     staleTime: CREDIT_BALANCE_STALE_TIME_MS,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: (query) =>
+      query.state.status === 'error' || query.state.data === undefined || query.state.data === 0,
   });
 }

@@ -60,6 +60,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = locale;
+
+    if (locale === 'ja-JP') {
+      void import('../assets/fonts/klee-one/fonts.css');
+    }
   }, [locale]);
 
   const value = useMemo<LocaleContextValue>(

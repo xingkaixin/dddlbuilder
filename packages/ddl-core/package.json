@@ -2,6 +2,7 @@
   "name": "@ddlbuilder/ddl-core",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./parser": "./src/parser/index.ts"

@@ -50,12 +50,13 @@ export const prepareWorkspaceSignOut = async (workspaceId: string) => {
 
 export const commitLegacyWorkspaceYDoc = async (persistence: IndexeddbPersistence, doc: Y.Doc) => {
   if (!persistence.db) throw new Error('Workspace database is not open');
+  const snapshot = Y.encodeStateAsUpdate(doc);
   await runIndexedDbTransaction(
     persistence.db,
     ['updates', 'custom'],
     'readwrite',
     (tx) => {
-      tx.objectStore('updates').add(Y.encodeStateAsUpdate(doc));
+      tx.objectStore('updates').add(snapshot);
       tx.objectStore('custom').put(true, LEGACY_MIGRATION_COMMITTED);
 
       return () => undefined;

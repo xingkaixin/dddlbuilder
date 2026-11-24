@@ -1,4 +1,4 @@
-import { LazyDialogBoundary } from '@/components/AppErrorBoundary';
+import { LazyDialogBoundary } from '../LazyDialogBoundary';
 import { lazy, type ComponentProps } from 'react';
 import { AlertTriangle, Trash2 } from '@/components/icons';
 import { Button } from '@/components/ui/button';

@@ -72,7 +72,6 @@ const authDialogReducer = (_open: boolean, event: 'opened' | 'closed') => event 
 
 export function AuthSessionProvider({ children }: PropsWithChildren) {
   const configured = isBetterAuthConfigured();
-  const client = getBetterAuthClient();
   const queryClient = useQueryClient();
   const [authDialogOpen, dispatchAuthDialog] = useReducer(authDialogReducer, false);
   const storedIdentity = useSyncExternalStore(subscribeWorkspaceIdentity, readWorkspaceIdentity);
@@ -179,7 +178,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    if (result.data?.signedIn) {
+    if (result.data?.signedIn && !result.data.workspaceId) {
       await queryClient.invalidateQueries({
         queryKey: workspaceQueryKeys.current(result.data.user.userId),
       });
@@ -191,7 +190,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     await queryClient.invalidateQueries({ queryKey: creditQueryKeys.all(userId) });
   }, [queryClient, userId]);
 
-  const accountActions = useAuthAccountActions(client, configured, refreshSession);
+  const accountActions = useAuthAccountActions(getBetterAuthClient, configured, refreshSession);
 
   const signOutMutation = useMutation({
     mutationFn: executeWorkspaceSignOut,
@@ -204,7 +203,15 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   const signOut = useCallback(async () => {
     if (signingOut) return;
 
-    if (!client || !configured) {
+    if (!configured) {
+      dispatchAuthDialog('closed');
+
+      return;
+    }
+
+    const client = await getBetterAuthClient();
+
+    if (!client) {
       dispatchAuthDialog('closed');
 
       return;
@@ -232,7 +239,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       },
     });
     dispatchAuthDialog('closed');
-  }, [client, configured, identity, queryClient, runSignOut, signingOut]);
+  }, [configured, identity, queryClient, runSignOut, signingOut]);
   const actions = useMemo<AuthActions>(
     () => ({ ...accountActions, signOut, refreshSession }),
     [accountActions, refreshSession, signOut],
