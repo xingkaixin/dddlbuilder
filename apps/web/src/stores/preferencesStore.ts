@@ -1,7 +1,5 @@
-import * as Option from 'effect/Option';
-import * as Schema from 'effect/Schema';
 import { create } from 'zustand';
-import { DATABASE_TYPES, type DatabaseType, type SqlFormatMode } from '@ddlbuilder/shared-types';
+import { isDatabaseType, type DatabaseType, type SqlFormatMode } from '@ddlbuilder/shared-types';
 
 export type InterfaceFont = 'hand' | 'plain';
 
@@ -56,26 +54,36 @@ const createDefaultPreferences = (): Preferences => ({
   pinnedTools: [...defaultPreferences.pinnedTools],
 });
 
-const decodeStoredPreferencesObject = Schema.decodeUnknownOption(
-  Schema.fromJsonString(Schema.JsonObject),
-);
-const decodeFont = Schema.decodeUnknownOption(Schema.Literals(['hand', 'plain']));
-const decodeDensity = Schema.decodeUnknownOption(Schema.Literals(['comfortable', 'compact']));
-const decodeDefaultDatabase = Schema.decodeUnknownOption(Schema.Literals(DATABASE_TYPES));
-const decodeLayout = Schema.decodeUnknownOption(
-  Schema.Literals(['side', 'split', 'design', 'output']),
-);
-const decodeHiddenFieldColumns = Schema.decodeUnknownOption(
-  Schema.Array(Schema.Literals(FIELD_COLUMNS)).pipe(Schema.mutable),
-);
-const decodeSqlFormatMode = Schema.decodeUnknownOption(Schema.Literals(['compact', 'aligned']));
-const decodeAddRowCount = Schema.decodeUnknownOption(
-  Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100)),
-);
-const decodePinnedTools = Schema.decodeUnknownOption(
-  Schema.Array(Schema.String).pipe(Schema.mutable),
-);
-const decodeChecklistDismissed = Schema.decodeUnknownOption(Schema.Boolean);
+const FIELD_COLUMN_SET = new Set<string>(FIELD_COLUMNS);
+
+interface StoredPreferencesRecord {
+  font?: unknown;
+  density?: unknown;
+  defaultDatabase?: unknown;
+  layout?: unknown;
+  hiddenFieldColumns?: unknown;
+  sqlFormatMode?: unknown;
+  addRowCount?: unknown;
+  pinnedTools?: unknown;
+  checklistDismissed?: unknown;
+}
+
+const isFieldColumn = (value: unknown): value is FieldColumn =>
+  typeof value === 'string' && FIELD_COLUMN_SET.has(value);
+
+function parseStoredObject(raw: string): StoredPreferencesRecord | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- localStorage JSON is parsed at the storage boundary.
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+
+    // SAFETY: the preceding check ensures parsed is a non-null, non-array JSON object.
+    return parsed as StoredPreferencesRecord;
+  } catch {
+    return null;
+  }
+}
 
 function readStorage(key: string): string | null {
   try {
@@ -98,39 +106,63 @@ function readPreferences(): Preferences {
 
   if (!stored) return { ...createDefaultPreferences(), layout: legacyLayout() };
 
-  const parsed = decodeStoredPreferencesObject(stored);
+  const record = parseStoredObject(stored);
 
-  if (Option.isNone(parsed)) return createDefaultPreferences();
+  if (!record) return createDefaultPreferences();
 
-  const record = parsed.value;
+  const font: InterfaceFont =
+    record.font === 'hand' || record.font === 'plain' ? record.font : defaultPreferences.font;
+  const density: Density =
+    record.density === 'comfortable' || record.density === 'compact'
+      ? record.density
+      : defaultPreferences.density;
+  const defaultDatabase: DatabaseType = isDatabaseType(record.defaultDatabase)
+    ? record.defaultDatabase
+    : defaultPreferences.defaultDatabase;
+  const layout: EditorLayout =
+    record.layout === 'side' ||
+    record.layout === 'split' ||
+    record.layout === 'design' ||
+    record.layout === 'output'
+      ? record.layout
+      : defaultPreferences.layout;
+  const hiddenFieldColumns: FieldColumn[] =
+    Array.isArray(record.hiddenFieldColumns) && record.hiddenFieldColumns.every(isFieldColumn)
+      ? [...record.hiddenFieldColumns]
+      : [...defaultPreferences.hiddenFieldColumns];
+  const sqlFormatMode: SqlFormatMode =
+    record.sqlFormatMode === 'compact' || record.sqlFormatMode === 'aligned'
+      ? record.sqlFormatMode
+      : defaultPreferences.sqlFormatMode;
+  const addRowCount: number =
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- localStorage field is validated at the storage boundary.
+    typeof record.addRowCount === 'number' &&
+    Number.isInteger(record.addRowCount) &&
+    record.addRowCount >= 1 &&
+    record.addRowCount <= 100
+      ? record.addRowCount
+      : defaultPreferences.addRowCount;
+  const pinnedTools: string[] =
+    Array.isArray(record.pinnedTools) &&
+    record.pinnedTools.every((item): item is string => typeof item === 'string')
+      ? [...record.pinnedTools]
+      : [...defaultPreferences.pinnedTools];
+  const checklistDismissed: boolean =
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- localStorage field is validated at the storage boundary.
+    typeof record.checklistDismissed === 'boolean'
+      ? record.checklistDismissed
+      : defaultPreferences.checklistDismissed;
 
   return {
-    font: Option.getOrElse(decodeFont(record.font), () => defaultPreferences.font),
-    density: Option.getOrElse(decodeDensity(record.density), () => defaultPreferences.density),
-    defaultDatabase: Option.getOrElse(
-      decodeDefaultDatabase(record.defaultDatabase),
-      () => defaultPreferences.defaultDatabase,
-    ),
-    layout: Option.getOrElse(decodeLayout(record.layout), () => defaultPreferences.layout),
-    hiddenFieldColumns: Option.getOrElse(
-      decodeHiddenFieldColumns(record.hiddenFieldColumns),
-      () => [...defaultPreferences.hiddenFieldColumns],
-    ),
-    sqlFormatMode: Option.getOrElse(
-      decodeSqlFormatMode(record.sqlFormatMode),
-      () => defaultPreferences.sqlFormatMode,
-    ),
-    addRowCount: Option.getOrElse(
-      decodeAddRowCount(record.addRowCount),
-      () => defaultPreferences.addRowCount,
-    ),
-    pinnedTools: Option.getOrElse(decodePinnedTools(record.pinnedTools), () => [
-      ...defaultPreferences.pinnedTools,
-    ]),
-    checklistDismissed: Option.getOrElse(
-      decodeChecklistDismissed(record.checklistDismissed),
-      () => defaultPreferences.checklistDismissed,
-    ),
+    font,
+    density,
+    defaultDatabase,
+    layout,
+    hiddenFieldColumns,
+    sqlFormatMode,
+    addRowCount,
+    pinnedTools,
+    checklistDismissed,
   };
 }
 

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import type { DatabaseType, SqlFormatMode } from '@ddlbuilder/shared-types';
 import type {
   DDLReviewResult,
@@ -7,7 +8,6 @@ import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import { AlignJustify, AlignLeft, GraduationCap, History } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ReviewResultPanel } from '../ReviewResult';
 import { useAIRequestAccess } from '@/hooks/useAIRequestAccess';
 import { useTranslation } from 'react-i18next';
 import { useActiveFieldLine } from '@/hooks/useActiveFieldLine';
@@ -17,6 +17,10 @@ import {
   OutputCode,
   OutputHeading,
 } from './OutputPrimitives';
+
+const ReviewResultPanel = lazy(() =>
+  import('../ReviewResult').then((m) => ({ default: m.ReviewResultPanel })),
+);
 
 interface DdlOutputPanelProps {
   code: string;
@@ -141,16 +145,20 @@ export function DdlOutputPanel({
         }
       />
       <OutputCode code={code || t('ddlOutput.emptyDdl')} activeLine={activeLine} />
-      <div className="pb-4">
-        <ReviewResultPanel
-          isLoading={isReviewing}
-          thinking={reviewThinking}
-          partialResult={reviewPartialResult}
-          result={reviewResult}
-          error={reviewError}
-          onApplySuggestion={onApplySuggestion}
-        />
-      </div>
+      {(isReviewing || reviewResult || reviewError) && (
+        <div className="pb-4">
+          <Suspense fallback={null}>
+            <ReviewResultPanel
+              isLoading={isReviewing}
+              thinking={reviewThinking}
+              partialResult={reviewPartialResult}
+              result={reviewResult}
+              error={reviewError}
+              onApplySuggestion={onApplySuggestion}
+            />
+          </Suspense>
+        </div>
+      )}
     </div>
   );
 }

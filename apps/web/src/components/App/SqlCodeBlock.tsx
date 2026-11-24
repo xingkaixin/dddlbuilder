@@ -1,13 +1,11 @@
 import { useMemo, useRef, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
-import { createHighlighterCoreSync } from 'shiki/core';
-import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
-import sql from 'shiki/langs/sql.mjs';
-import oneDarkPro from 'shiki/themes/one-dark-pro.mjs';
-import oneLight from 'shiki/themes/one-light.mjs';
 import { ExplainPopover } from './ExplainPopover';
+import { tokenizeSql, type HighlightResult } from './sqlTokenizer';
+import type * as ShikiHighlighterModule from './shikiHighlighter';
+import type { OrmCodeLanguage } from './shikiHighlighter';
 
-export type CodeBlockLanguage = 'sql' | 'prisma' | 'typescript' | 'python' | 'go' | 'java';
+export type CodeBlockLanguage = 'sql' | OrmCodeLanguage;
 
 interface SqlCodeBlockProps {
   code: string;
@@ -15,14 +13,10 @@ interface SqlCodeBlockProps {
   language?: CodeBlockLanguage;
 }
 
-const highlighter = createHighlighterCoreSync({
-  langs: [sql],
-  themes: [oneDarkPro, oneLight],
-  engine: createJavaScriptRegexEngine(),
-});
+type ShikiRuntime = typeof ShikiHighlighterModule;
 
-const loadedLanguages = new Set<CodeBlockLanguage>(['sql']);
-const loadingLanguages = new Set<CodeBlockLanguage>();
+let shikiRuntime: ShikiRuntime | null = null;
+const loadingLanguages = new Set<OrmCodeLanguage>();
 const languageListeners = new Set<() => void>();
 let languageVersion = 0;
 
@@ -34,29 +28,14 @@ const subscribeLanguages = (listener: () => void) => {
 
 const readLanguageVersion = () => languageVersion;
 
-const loadExtraLanguage = (language: Exclude<CodeBlockLanguage, 'sql'>) => {
-  if (loadedLanguages.has(language) || loadingLanguages.has(language)) return;
+const loadOrmHighlighter = (language: OrmCodeLanguage) => {
+  if (loadingLanguages.has(language)) return;
   loadingLanguages.add(language);
 
-  const loader = () => {
-    switch (language) {
-      case 'prisma':
-        return import('shiki/langs/prisma.mjs');
-      case 'typescript':
-        return import('shiki/langs/typescript.mjs');
-      case 'python':
-        return import('shiki/langs/python.mjs');
-      case 'go':
-        return import('shiki/langs/go.mjs');
-      case 'java':
-        return import('shiki/langs/java.mjs');
-    }
-  };
-
-  void loader()
-    .then((mod) => {
-      highlighter.loadLanguageSync(mod.default);
-      loadedLanguages.add(language);
+  void (shikiRuntime ? Promise.resolve(shikiRuntime) : import('./shikiHighlighter'))
+    .then(async (runtime) => {
+      shikiRuntime = runtime;
+      await runtime.ensureOrmLanguageLoaded(language);
       languageVersion += 1;
       languageListeners.forEach((listener) => listener());
     })
@@ -64,6 +43,15 @@ const loadExtraLanguage = (language: Exclude<CodeBlockLanguage, 'sql'>) => {
     .finally(() => {
       loadingLanguages.delete(language);
     });
+};
+
+const plainTextTokens = (code: string, mode: 'light' | 'dark'): HighlightResult => {
+  const fg = mode === 'dark' ? '#abb2bf' : '#383a42';
+
+  return {
+    fg,
+    tokens: code.split('\n').map((line) => (line ? [{ content: line, color: fg }] : [])),
+  };
 };
 
 function revealInPane(line: HTMLElement | null) {
@@ -80,20 +68,24 @@ function revealInPane(line: HTMLElement | null) {
 export function SqlCodeBlock({ code, activeLine, language = 'sql' }: SqlCodeBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
-  const theme = resolvedTheme === 'dark' ? 'one-dark-pro' : 'one-light';
+  const mode = resolvedTheme === 'dark' ? 'dark' : 'light';
   const loadedVersion = useSyncExternalStore(subscribeLanguages, readLanguageVersion);
 
-  if (language !== 'sql' && !loadedLanguages.has(language)) {
-    loadExtraLanguage(language);
-  }
-
-  const effectiveLang = loadedLanguages.has(language) ? language : 'text';
-
-  const highlighted = useMemo(() => {
+  const highlighted = useMemo<HighlightResult>(() => {
     void loadedVersion;
 
-    return highlighter.codeToTokens(code, { lang: effectiveLang, theme });
-  }, [code, effectiveLang, loadedVersion, theme]);
+    if (language === 'sql') {
+      return tokenizeSql(code, mode);
+    }
+
+    const ormResult = shikiRuntime?.highlightOrmCode(code, language, mode);
+
+    if (ormResult) return ormResult;
+
+    loadOrmHighlighter(language);
+
+    return plainTextTokens(code, mode);
+  }, [code, language, loadedVersion, mode]);
 
   const content = (
     <pre

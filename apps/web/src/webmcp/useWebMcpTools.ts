@@ -1,26 +1,11 @@
 import { useCallback, useEffect, useEffectEvent, useReducer, useRef } from 'react';
-import {
-  diffPersistedState,
-  generateAlterDDL,
-  generateRollbackDDL,
-  hasTableChanges,
-} from '@ddlbuilder/ddl-core';
-import { isDatabaseType, type PersistedState } from '@ddlbuilder/shared-types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
-import { requestSqlParse } from '@/services/sqlParseService';
-import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
-import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
-import { lintSchema, type SchemaLintIssue } from '@/utils/schemaLint';
-import { buildSchemaStateSignature } from '@ddlbuilder/workspace-core';
-import { applySchemaPatchOperations, parseSchemaPatchOperations } from './schemaPatch';
-import { createWebMcpTools, WebMcpToolError, type ToolInput } from './tools';
-import {
-  summarizeChangeSet,
-  type WebMcpApplyRequest,
-  type WebMcpAuthStatus,
-  type WebMcpChangeSet,
-  type WebMcpChangeSource,
-  type WebMcpDialogModel,
+import type {
+  WebMcpApplyRequest,
+  WebMcpAuthStatus,
+  WebMcpChangeSet,
+  WebMcpDialogModel,
 } from './types';
 
 interface UseWebMcpToolsInput {
@@ -35,8 +20,6 @@ interface UseWebMcpToolsInput {
   getGeneratedOrm: () => string;
   replaceState: (state: PersistedState) => void;
 }
-
-interface RuntimeSnapshot extends UseWebMcpToolsInput {}
 
 type ConfirmationResolver = {
   resolve: (confirmed: boolean) => void;
@@ -76,263 +59,12 @@ function webMcpDialogReducer(
   }
 }
 
-const MAX_PAGE_SIZE = 50;
-const MAX_OUTPUT_CHARS = 1200;
-
-// oxlint-disable anti-slop/no-runtime-typeof
-const requireString = (input: ToolInput, key: string) => {
-  const value = input[key];
-
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new WebMcpToolError('INVALID_INPUT', `${key} is required`);
-  }
-
-  return value.trim();
-};
-// oxlint-enable anti-slop/no-runtime-typeof
-
-const readInteger = (
-  input: ToolInput,
-  key: string,
-  fallback: number,
-  minimum: number,
-  maximum: number,
-) => {
-  const value = input[key];
-
-  if (value === undefined) return fallback;
-
-  if (!Number.isInteger(value)) {
-    throw new WebMcpToolError('INVALID_INPUT', `${key} is outside the supported range`);
-  }
-
-  // SAFETY: Number.isInteger returns true only for numeric integer values.
-  const integer = value as number;
-
-  if (integer < minimum || integer > maximum) {
-    throw new WebMcpToolError('INVALID_INPUT', `${key} is outside the supported range`);
-  }
-
-  return integer;
-};
-
-const applyPatchOperations = (state: PersistedState, operations: WebMcpChangeSet['operations']) => {
-  if (!operations) throw new WebMcpToolError('INVALID_INPUT', 'Operations are required');
-
-  try {
-    return applySchemaPatchOperations(state, operations);
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new WebMcpToolError('INVALID_INPUT', error.message);
-    }
-
-    throw error;
-  }
-};
-
-const lintState = (state: PersistedState): SchemaLintIssue[] =>
-  lintSchema({
-    tableName: state.tableName,
-    rows: state.rows,
-    indexes: state.indexes,
-    foreignKeys: state.foreignKeys,
-    mysqlPartitionConfig: state.mysqlPartitionConfig,
-    citusShardingConfig: state.citusShardingConfig,
-    tableMiscConfig: state.tableMiscConfig,
-  });
-
-const namedFieldOrder = (state: PersistedState) =>
-  JSON.stringify(state.rows.filter((row) => row.fieldName.trim()).map((row) => row.id));
-
-const assertReady = (snapshot: RuntimeSnapshot) => {
-  if (!snapshot.hydrated) throw new WebMcpToolError('NOT_READY', 'Workspace is still loading');
-};
-
-const assertMutable = (snapshot: RuntimeSnapshot) => {
-  assertReady(snapshot);
-
-  if (snapshot.isShareView) {
-    throw new WebMcpToolError('READ_ONLY', 'Shared workspaces are read-only');
-  }
-};
-
-const page = <T>(values: T[], offset: number, limit: number) => ({
-  items: values.slice(offset, offset + limit),
-  total: values.length,
-  nextOffset: offset + limit < values.length ? offset + limit : null,
-});
-
-const inspectActiveSchema = (snapshot: RuntimeSnapshot, toolInput: ToolInput) => {
-  assertReady(snapshot);
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof
-  const section = typeof toolInput.section === 'string' ? toolInput.section : 'overview';
-  const offset = readInteger(toolInput, 'offset', 0, 0, Number.MAX_SAFE_INTEGER);
-  const limit = readInteger(toolInput, 'limit', 20, 1, MAX_PAGE_SIZE);
-  const state = snapshot.state;
-  const baseSignature = buildSchemaStateSignature(state);
-  const base = { ok: true, section, baseSignature };
-
-  if (section === 'overview') {
-    return {
-      ...base,
-      document: {
-        source:
-          snapshot.source.kind === 'draft'
-            ? { kind: 'draft', draftId: snapshot.source.draftId }
-            : {
-                kind: 'saved_table',
-                normalizedName: snapshot.source.normalizedName,
-                tableId: snapshot.source.tableId,
-              },
-        readOnly: snapshot.isShareView,
-        objectType: state.objectType ?? 'table',
-        schemaName: state.schemaName,
-        tableName: state.tableName,
-        tableComment: state.tableComment,
-        dbType: state.dbType,
-        fieldCount: state.rows.filter((row) => row.fieldName.trim()).length,
-        indexCount: state.indexes.length,
-        foreignKeyCount: state.foreignKeys?.length ?? 0,
-      },
-    };
-  }
-
-  if (section === 'fields') {
-    const fields = state.rows
-      .filter((row) => row.fieldName.trim())
-      .map((row) => ({
-        id: row.id,
-        fieldName: row.fieldName,
-        fieldType: row.fieldType,
-        fieldComment: row.fieldComment,
-        nullable: row.nullable,
-        defaultKind: row.defaultKind ?? 'none',
-        defaultValue: row.defaultValue ?? '',
-        onUpdate: row.onUpdate ?? 'none',
-      }));
-
-    return { ...base, ...page(fields, offset, limit) };
-  }
-
-  if (section === 'indexes') return { ...base, ...page(state.indexes, offset, limit) };
-
-  if (section === 'relations') {
-    return {
-      ...base,
-      ...page(state.foreignKeys ?? [], offset, limit),
-      authObjects: state.authObjects,
-    };
-  }
-
-  if (section === 'options') {
-    return {
-      ...base,
-      mysqlPartitionConfig: state.mysqlPartitionConfig,
-      citusShardingConfig: state.citusShardingConfig,
-      tableMiscConfig: state.tableMiscConfig,
-    };
-  }
-
-  throw new WebMcpToolError('INVALID_INPUT', `Unsupported section: ${section}`);
-};
-
-const readActiveOutput = (
-  snapshot: RuntimeSnapshot,
-  pending: WebMcpChangeSet | null,
-  toolInput: ToolInput,
-) => {
-  assertReady(snapshot);
-  const kind = requireString(toolInput, 'kind');
-  const offset = readInteger(toolInput, 'offset', 0, 0, Number.MAX_SAFE_INTEGER);
-  const maxChars = readInteger(toolInput, 'maxChars', MAX_OUTPUT_CHARS, 1, MAX_OUTPUT_CHARS);
-  let content = '';
-
-  if (kind === 'ddl') content = snapshot.generatedSql;
-  else if (kind === 'dcl') content = snapshot.generatedDcl;
-  else if (kind === 'orm') content = snapshot.getGeneratedOrm();
-  else if (kind === 'alter' || kind === 'rollback') {
-    if (!pending) throw new WebMcpToolError('NOT_FOUND', 'No staged change set is available');
-    content = kind === 'alter' ? generateAlterDDL(pending.diff) : generateRollbackDDL(pending.diff);
-  } else {
-    throw new WebMcpToolError('INVALID_INPUT', `Unsupported output kind: ${kind}`);
-  }
-
-  return {
-    ok: true,
-    kind,
-    content: content.slice(offset, offset + maxChars),
-    offset,
-    totalChars: content.length,
-    nextOffset: offset + maxChars < content.length ? offset + maxChars : null,
-  };
-};
-
 export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
-  const readSnapshot = useEffectEvent((): RuntimeSnapshot => input);
+  const readSnapshot = useEffectEvent(() => input);
   const [{ changeSet, dialog }, dispatch] = useReducer(webMcpDialogReducer, initialDialogState);
   const changeSetRef = useRef<WebMcpChangeSet | null>(null);
   const confirmationRef = useRef<ConfirmationResolver | null>(null);
   const { authStatus, isShareView } = input;
-
-  const stageCandidate = useCallback(
-    async (
-      snapshot: RuntimeSnapshot,
-      source: WebMcpChangeSource,
-      requestedSignature: string,
-      candidateState: PersistedState,
-      operations?: WebMcpChangeSet['operations'],
-    ) => {
-      assertMutable(snapshot);
-
-      if (confirmationRef.current) {
-        throw new WebMcpToolError('BUSY', 'Another change set is awaiting user confirmation');
-      }
-
-      const currentSignature = buildSchemaStateSignature(snapshot.state);
-
-      if (requestedSignature !== currentSignature) {
-        throw new WebMcpToolError(
-          'CONFLICT',
-          'The active document changed. Inspect it again before proposing changes.',
-        );
-      }
-
-      const diff = diffPersistedState(snapshot.state, candidateState);
-
-      if (
-        !hasTableChanges(diff) &&
-        namedFieldOrder(snapshot.state) === namedFieldOrder(candidateState)
-      ) {
-        throw new WebMcpToolError('NO_CHANGES', 'The proposal changes nothing');
-      }
-
-      const issues = lintState(candidateState);
-
-      const next: WebMcpChangeSet = {
-        id: crypto.randomUUID(),
-        source,
-        baseSignature: currentSignature,
-        baseState: structuredClone(snapshot.state),
-        candidateState,
-        diff,
-        issues,
-        operations,
-        createdAt: Date.now(),
-      };
-      changeSetRef.current = next;
-      dispatch({ type: 'changeSetStaged', changeSet: next });
-
-      return {
-        ok: true,
-        status: 'preview_ready',
-        changeSetId: next.id,
-        source,
-        summary: summarizeChangeSet(diff, issues),
-        operationIds: operations?.map((operation) => operation.id) ?? [],
-      };
-    },
-    [],
-  );
 
   const settleConfirmation = useCallback((confirmed: boolean) => {
     const pending = confirmationRef.current;
@@ -370,177 +102,28 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     if (!modelContext) return;
     const controller = new AbortController();
 
-    const definitions = createWebMcpTools({
-      authStatus,
-      readOnly: isShareView,
-      getAuthStatus: () => ({
-        ok: true,
-        status: readSnapshot().authStatus,
-        anonymousCapabilities: ['edit_local_draft', 'import_sql', 'lint_schema', 'read_output'],
-        signedInCapabilities: ['cloud_sync', 'saved_tables', 'paid_ai'],
-      }),
-      startSignIn: () => {
-        const snapshot = readSnapshot();
-
-        if (snapshot.authStatus === 'signed_in') return { ok: true, status: 'already_signed_in' };
-        snapshot.openAuthDialog();
-
-        return { ok: true, status: 'user_action_required' };
-      },
-      inspectSchema: async (toolInput: ToolInput) => inspectActiveSchema(readSnapshot(), toolInput),
-      lintSchema: () => {
-        const snapshot = readSnapshot();
-        assertReady(snapshot);
-        const issues = lintState(snapshot.state);
-
-        return {
-          ok: true,
-          counts: {
-            errors: issues.filter((issue) => issue.severity === 'error').length,
-            warnings: issues.filter((issue) => issue.severity === 'warning').length,
-            suggestions: issues.filter((issue) => issue.severity === 'suggestion').length,
-          },
-          issues: issues.slice(0, 20),
-          truncated: issues.length > 20,
-        };
-      },
-      readOutput: (toolInput: ToolInput) =>
-        readActiveOutput(readSnapshot(), changeSetRef.current, toolInput),
-      previewPatch: async (toolInput: ToolInput) => {
-        const snapshot = readSnapshot();
-        assertMutable(snapshot);
-        const baseSignature = requireString(toolInput, 'baseSignature');
-        let operations: WebMcpChangeSet['operations'];
-
-        try {
-          operations = parseSchemaPatchOperations(toolInput.operations);
-        } catch (error) {
-          if (error instanceof Error) {
-            throw new WebMcpToolError('INVALID_INPUT', error.message);
-          }
-
-          throw error;
-        }
-
-        const candidate = applyPatchOperations(snapshot.state, operations);
-
-        return stageCandidate(snapshot, 'schema_patch', baseSignature, candidate, operations);
-      },
-      previewSqlImport: async (toolInput: ToolInput) => {
-        const snapshot = readSnapshot();
-        assertMutable(snapshot);
-        const baseSignature = requireString(toolInput, 'baseSignature');
-        const sql = requireString(toolInput, 'sql');
-
-        if (sql.length > 50_000) throw new WebMcpToolError('INVALID_INPUT', 'SQL is too long');
-        const dbType = toolInput.dbType;
-
-        if (!isDatabaseType(dbType)) {
-          throw new WebMcpToolError('INVALID_INPUT', 'Unsupported database type');
-        }
-
-        const parsed = await requestSqlParse({ sql, dbType });
-
-        const candidate = preserveImportedFieldIds(
-          snapshot.state,
-          convertParsedResultToPersistedState(parsed, dbType),
-        );
-
-        return stageCandidate(readSnapshot(), 'sql_import', baseSignature, candidate);
-      },
-      applyPatch: async (toolInput: ToolInput, signal: AbortSignal) => {
-        assertMutable(readSnapshot());
-        const id = requireString(toolInput, 'changeSetId');
-        const pending = changeSetRef.current;
-
-        if (!pending || pending.id !== id) {
-          throw new WebMcpToolError('NOT_FOUND', 'The staged change set is no longer available');
-        }
-
-        const rawOperationIds = toolInput.operationIds;
-
-        if (rawOperationIds !== undefined && !Array.isArray(rawOperationIds)) {
-          throw new WebMcpToolError('INVALID_INPUT', 'operationIds must be an array');
-        }
-
-        const operationIds = rawOperationIds?.map((value) => {
-          // oxlint-disable-next-line anti-slop/no-runtime-typeof
-          if (typeof value !== 'string') {
-            throw new WebMcpToolError('INVALID_INPUT', 'operationIds must contain strings');
-          }
-
-          return value;
-        });
-
-        if (operationIds && pending.source !== 'schema_patch') {
-          throw new WebMcpToolError('INVALID_INPUT', 'SQL imports must be applied as a whole');
-        }
-
-        let requestChangeSet = pending;
-
-        if (operationIds && pending.operations) {
-          if (operationIds.length === 0) {
-            throw new WebMcpToolError('INVALID_INPUT', 'At least one operation id is required');
-          }
-
-          const selected = pending.operations.filter((operation) =>
-            operationIds.includes(operation.id),
-          );
-
-          if (selected.length !== operationIds.length) {
-            throw new WebMcpToolError('INVALID_INPUT', 'Unknown operation id');
-          }
-
-          const candidateState = applyPatchOperations(pending.baseState, selected);
-          const diff = diffPersistedState(pending.baseState, candidateState);
-          requestChangeSet = {
-            ...pending,
-            candidateState,
-            diff,
-            issues: lintState(candidateState),
-            operations: selected,
-          };
-        }
-
-        const confirmed = await requestConfirmation(
-          { changeSet: requestChangeSet, operationIds },
-          signal,
-        );
-
-        if (!confirmed) return { ok: true, status: 'canceled_by_user' };
-
-        const latest = readSnapshot();
-
-        if (buildSchemaStateSignature(latest.state) !== pending.baseSignature) {
-          throw new WebMcpToolError(
-            'CONFLICT',
-            'The active document changed while confirmation was pending',
-          );
-        }
-
-        latest.replaceState(requestChangeSet.candidateState);
-        changeSetRef.current = null;
-        dispatch({ type: 'changeSetApplied' });
-
-        return { ok: true, status: 'applied', changeSetId: pending.id };
-      },
-    });
-
-    void Promise.allSettled(
-      definitions.map((definition) =>
-        modelContext.registerTool(definition, { signal: controller.signal }),
-      ),
-    ).then((results) => {
+    void import('./webMcpRuntime').then(({ registerWebMcpTools }) => {
       if (controller.signal.aborted) return;
-      results.forEach((result) => {
-        if (result.status === 'rejected') {
-          console.warn('[webmcp] failed to register tool', result.reason);
-        }
+
+      registerWebMcpTools({
+        modelContext,
+        authStatus,
+        isShareView,
+        signal: controller.signal,
+        readSnapshot,
+        getPendingChangeSet: () => changeSetRef.current,
+        setPendingChangeSet: (next) => {
+          changeSetRef.current = next;
+        },
+        hasPendingConfirmation: () => confirmationRef.current !== null,
+        onChangeSetStaged: (next) => dispatch({ type: 'changeSetStaged', changeSet: next }),
+        onChangeSetApplied: () => dispatch({ type: 'changeSetApplied' }),
+        requestConfirmation,
       });
     });
 
     return () => controller.abort();
-  }, [authStatus, isShareView, requestConfirmation, stageCandidate]);
+  }, [authStatus, isShareView, requestConfirmation]);
 
   useEffect(
     () => () => {
