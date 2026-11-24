@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [0.26.3] - 2026-11-24
+
+### Improved
+- **Page load and sync responsiveness**: SQL previews now use a built-in lightweight syntax highlighter instead of preloading the full highlighting engine on editor startup (ORM highlighting still loads on demand). Signed-in session checks now return workspace and credit balance together, reducing startup round trips and redundant queries on window focus. Icons and share preview images are compressed, and non-initial modules and Japanese fonts load on demand.
+
+### Fixed
+- **SQL import indexes and expression parsing**: Anonymous `KEY`, `INDEX` and `CREATE INDEX` definitions now receive generated names from their columns (such as `pk_`, `uk_` and `idx_`). Non-scalar syntax nodes, including PostgreSQL expression indexes, no longer render as `[object Object]`.
+- **Mock data regeneration**: Mock data generation now uses an explicit deterministic seed so identical schemas and seeds produce consistent output, while regenerating advances the seed to refresh rows. Special type names (such as `constructor` and `toString`) no longer misbehave in mock data generation or field type risk checks.
+- **Diff copy and folder deletion**: Copying ALTER or rollback DDL in the version diff dialog now shows an error toast if clipboard access fails. Failed folder deletions keep the confirmation dialog open so you can retry.
+- **SQL selection explain popover**: Clicking the Explain button no longer clears the selected text, and clearing the selection dismisses the popover immediately.
+- **Legacy workspace migration and local caches**: Migrating legacy `localStorage` workspace data to IndexedDB now runs in a single atomic transaction and rolls back into a retryable error state on failure. Corrupted local preferences, share link caches or credit metadata now fall back to defaults cleanly.
+
+### Deployment
+- **D1 performance indexes**: Apply migration `0029` (`packages/db/migrations/0029_performance_indexes.sql`) before publishing to add database indexes for AI conversation recovery and daily budget cleanup; `pnpm deploy:cf` applies it automatically.
+
 ## [0.26.2] - 2026-11-20
 
 ### Added
