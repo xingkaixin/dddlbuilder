@@ -227,7 +227,7 @@ const readActiveOutput = (
 
 export function registerWebMcpTools(params: {
   modelContext: NonNullable<Document['modelContext']>;
-  authStatus: WebMcpAuthStatus;
+  canSignIn: boolean;
   isShareView: boolean;
   signal: AbortSignal;
   readSnapshot: () => WebMcpRuntimeSnapshot;
@@ -240,7 +240,7 @@ export function registerWebMcpTools(params: {
 }) {
   const {
     modelContext,
-    authStatus,
+    canSignIn,
     isShareView,
     signal,
     readSnapshot,
@@ -310,7 +310,7 @@ export function registerWebMcpTools(params: {
   };
 
   const definitions = createWebMcpTools({
-    authStatus,
+    canSignIn,
     readOnly: isShareView,
     getAuthStatus: () => ({
       ok: true,
@@ -465,7 +465,7 @@ export function registerWebMcpTools(params: {
     },
   });
 
-  void Promise.allSettled(
+  return Promise.allSettled(
     definitions.map((definition) => modelContext.registerTool(definition, { signal })),
   ).then((results) => {
     if (signal.aborted) return;

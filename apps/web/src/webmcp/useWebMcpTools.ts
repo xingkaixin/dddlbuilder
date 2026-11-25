@@ -65,6 +65,7 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
   const changeSetRef = useRef<WebMcpChangeSet | null>(null);
   const confirmationRef = useRef<ConfirmationResolver | null>(null);
   const { authStatus, isShareView } = input;
+  const canSignIn = !isShareView && authStatus === 'signed_out';
 
   const settleConfirmation = useCallback((confirmed: boolean) => {
     const pending = confirmationRef.current;
@@ -102,28 +103,40 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
     if (!modelContext) return;
     const controller = new AbortController();
 
-    void import('./webMcpRuntime').then(({ registerWebMcpTools }) => {
-      if (controller.signal.aborted) return;
+    const readyPromise = import('./webMcpRuntime')
+      .then(({ registerWebMcpTools }) => {
+        if (controller.signal.aborted) return;
 
-      registerWebMcpTools({
-        modelContext,
-        authStatus,
-        isShareView,
-        signal: controller.signal,
-        readSnapshot,
-        getPendingChangeSet: () => changeSetRef.current,
-        setPendingChangeSet: (next) => {
-          changeSetRef.current = next;
-        },
-        hasPendingConfirmation: () => confirmationRef.current !== null,
-        onChangeSetStaged: (next) => dispatch({ type: 'changeSetStaged', changeSet: next }),
-        onChangeSetApplied: () => dispatch({ type: 'changeSetApplied' }),
-        requestConfirmation,
+        return registerWebMcpTools({
+          modelContext,
+          canSignIn,
+          isShareView,
+          signal: controller.signal,
+          readSnapshot,
+          getPendingChangeSet: () => changeSetRef.current,
+          setPendingChangeSet: (next) => {
+            changeSetRef.current = next;
+          },
+          hasPendingConfirmation: () => confirmationRef.current !== null,
+          onChangeSetStaged: (next) => dispatch({ type: 'changeSetStaged', changeSet: next }),
+          onChangeSetApplied: () => dispatch({ type: 'changeSetApplied' }),
+          requestConfirmation,
+        });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          console.warn('[webmcp] failed to load runtime', error);
+        }
       });
-    });
+
+    try {
+      modelContext.waitForToolsUntil?.(readyPromise);
+    } catch (error) {
+      console.warn('[webmcp] waitForToolsUntil failed', error);
+    }
 
     return () => controller.abort();
-  }, [authStatus, isShareView, requestConfirmation]);
+  }, [canSignIn, isShareView, requestConfirmation]);
 
   useEffect(
     () => () => {

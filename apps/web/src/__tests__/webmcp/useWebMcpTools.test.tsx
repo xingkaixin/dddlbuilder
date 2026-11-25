@@ -33,23 +33,29 @@ const execute = (tool: WebMCP.ModelContextTool, input: Record<string, unknown>) 
 
 describe('useWebMcpTools', () => {
   const registrations = new Map<string, WebMCP.ModelContextTool>();
+  let registerToolMock: ReturnType<typeof vi.fn>;
+  let waitForToolsUntilMock: ReturnType<typeof vi.fn>;
   let originalModelContext: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     registrations.clear();
     originalModelContext = Object.getOwnPropertyDescriptor(document, 'modelContext');
 
+    registerToolMock = vi.fn(
+      async (tool: WebMCP.ModelContextTool, options?: WebMCP.ModelContextRegisterToolOptions) => {
+        registrations.set(tool.name, tool);
+        options?.signal?.addEventListener('abort', () => registrations.delete(tool.name), {
+          once: true,
+        });
+      },
+    );
+    waitForToolsUntilMock = vi.fn();
+
     const modelContext = Object.assign(new EventTarget(), {
       ontoolchange: null,
       getTools: vi.fn(async () => []),
-      registerTool: vi.fn(
-        async (tool: WebMCP.ModelContextTool, options?: WebMCP.ModelContextRegisterToolOptions) => {
-          registrations.set(tool.name, tool);
-          options?.signal?.addEventListener('abort', () => registrations.delete(tool.name), {
-            once: true,
-          });
-        },
-      ),
+      registerTool: registerToolMock,
+      waitForToolsUntil: waitForToolsUntilMock,
     });
     Object.defineProperty(document, 'modelContext', {
       configurable: true,
@@ -139,5 +145,45 @@ describe('useWebMcpTools', () => {
 
     hook.unmount();
     expect(registrations.size).toBe(0);
+  });
+
+  it('signals tool readiness via waitForToolsUntil and avoids re-registering when loading finishes signed in', async () => {
+    const baseProps = {
+      openAuthDialog: vi.fn(),
+      hydrated: true,
+      isShareView: false,
+      source: { kind: 'draft', draftId: 'global' } as const,
+      state: createState(),
+      generatedSql: 'CREATE TABLE orders (id bigint);',
+      generatedDcl: '',
+      getGeneratedOrm: () => '',
+      replaceState: vi.fn(),
+    };
+
+    const hook = renderHook(
+      ({ authStatus }: { authStatus: 'loading' | 'signed_in' | 'signed_out' }) =>
+        useWebMcpTools({ ...baseProps, authStatus }),
+      { initialProps: { authStatus: 'loading' } },
+    );
+
+    expect(waitForToolsUntilMock).toHaveBeenCalledTimes(1);
+    // SAFETY: Mock argument is the promise passed to waitForToolsUntil by useWebMcpTools.
+    const readyPromise = waitForToolsUntilMock.mock.calls[0]?.[0] as Promise<void>;
+    await readyPromise;
+
+    expect(registrations.size).toBe(7);
+    expect(registrations.has('start_sign_in')).toBe(false);
+    const callsAfterInitial = registerToolMock.mock.calls.length;
+
+    hook.rerender({ authStatus: 'signed_in' });
+    await Promise.resolve();
+    expect(registerToolMock.mock.calls.length).toBe(callsAfterInitial);
+    expect(waitForToolsUntilMock).toHaveBeenCalledTimes(1);
+
+    hook.rerender({ authStatus: 'signed_out' });
+    await waitFor(() => expect(registrations.has('start_sign_in')).toBe(true));
+    expect(waitForToolsUntilMock).toHaveBeenCalledTimes(2);
+
+    hook.unmount();
   });
 });

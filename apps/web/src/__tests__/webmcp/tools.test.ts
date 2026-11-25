@@ -4,7 +4,7 @@ import { createWebMcpTools, type WebMcpToolDependencies } from '@/webmcp/tools';
 const createDependencies = (
   overrides: Partial<WebMcpToolDependencies> = {},
 ): WebMcpToolDependencies => ({
-  authStatus: 'signed_out',
+  canSignIn: true,
   readOnly: false,
   getAuthStatus: vi.fn(() => ({ ok: true })),
   startSignIn: vi.fn(() => ({ ok: true })),
@@ -36,5 +36,14 @@ describe('WebMCP tool catalog', () => {
     expect(names).not.toContain('import_sql_preview');
     expect(names).not.toContain('apply_schema_patch');
     expect(names).not.toContain('start_sign_in');
+  });
+
+  it('omits start_sign_in when sign-in is unavailable', () => {
+    const names = createWebMcpTools(createDependencies({ canSignIn: false })).map(
+      (tool) => tool.name,
+    );
+
+    expect(names).not.toContain('start_sign_in');
+    expect(names).toContain('preview_schema_patch');
   });
 });

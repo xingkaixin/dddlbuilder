@@ -3,6 +3,15 @@ import type { TableDiff } from '@ddlbuilder/ddl-core';
 import type { SchemaLintIssue } from '@/utils/schemaLint';
 import type { SchemaPatchOperation } from './schemaPatch';
 
+declare global {
+  namespace WebMCP {
+    interface ModelContext {
+      // Spec #373 (waitForToolsUntil) is not yet included in webmcp-types 0.1.x.
+      waitForToolsUntil?: (promise: Promise<void>) => void;
+    }
+  }
+}
+
 export type WebMcpAuthStatus = 'loading' | 'signed_out' | 'signed_in';
 
 export type WebMcpChangeSource = 'schema_patch' | 'sql_import';
