@@ -3,8 +3,10 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { toast, Toaster } from 'sonner';
 import type { TableDiff } from '@ddlbuilder/ddl-core';
 import { render } from '@/__tests__/utils/test-utils';
+import { AuthSessionProvider } from '@/auth/AuthSessionProvider';
 import { DiffDialog } from '@/components/App/DiffDialog';
 import { i18n } from '@/i18n';
+import { LocaleProvider } from '@/i18n/LocaleContext';
 
 const tableDiff: TableDiff = {
   oldDbType: 'mysql',
@@ -55,6 +57,17 @@ function setClipboardMocks(options: { writeTextError?: Error; execCommandResult:
   return { writeText, execCommand };
 }
 
+function renderDiffDialog(onCopy: () => void) {
+  return render(
+    <LocaleProvider>
+      <AuthSessionProvider>
+        <DiffDialog open onOpenChange={vi.fn()} diff={tableDiff} onCopy={onCopy} />
+        <Toaster />
+      </AuthSessionProvider>
+    </LocaleProvider>,
+  );
+}
+
 describe('DiffDialog clipboard copy', () => {
   afterEach(() => {
     toast.dismiss();
@@ -76,12 +89,7 @@ describe('DiffDialog clipboard copy', () => {
       });
       const onCopy = vi.fn();
 
-      render(
-        <>
-          <DiffDialog open onOpenChange={vi.fn()} diff={tableDiff} onCopy={onCopy} />
-          <Toaster />
-        </>,
-      );
+      renderDiffDialog(onCopy);
 
       if (kind === 'rollback') {
         fireEvent.click(screen.getByRole('button', { name: i18n.t('diffDialog.rollbackScript') }));
@@ -107,12 +115,7 @@ describe('DiffDialog clipboard copy', () => {
       });
       const onCopy = vi.fn();
 
-      render(
-        <>
-          <DiffDialog open onOpenChange={vi.fn()} diff={tableDiff} onCopy={onCopy} />
-          <Toaster />
-        </>,
-      );
+      renderDiffDialog(onCopy);
 
       if (kind === 'rollback') {
         fireEvent.click(screen.getByRole('button', { name: i18n.t('diffDialog.rollbackScript') }));
