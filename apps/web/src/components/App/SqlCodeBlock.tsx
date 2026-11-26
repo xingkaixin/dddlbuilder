@@ -72,13 +72,12 @@ export function SqlCodeBlock({ code, activeLine, language = 'sql' }: SqlCodeBloc
   const loadedVersion = useSyncExternalStore(subscribeLanguages, readLanguageVersion);
 
   const highlighted = useMemo<HighlightResult>(() => {
-    void loadedVersion;
-
     if (language === 'sql') {
       return tokenizeSql(code, mode);
     }
 
-    const ormResult = shikiRuntime?.highlightOrmCode(code, language, mode);
+    const ormResult =
+      loadedVersion > 0 ? shikiRuntime?.highlightOrmCode(code, language, mode) : undefined;
 
     if (ormResult) return ormResult;
 

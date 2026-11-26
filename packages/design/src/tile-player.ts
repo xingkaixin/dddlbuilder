@@ -20,7 +20,7 @@ export function attachTilePlayer(node: HTMLElement, order = 0): () => void {
     playing = true;
     node.removeAttribute('data-played');
     // Removing and re-adding the attribute in one frame would not restart the CSS animations.
-    void node.offsetWidth;
+    node.getBoundingClientRect();
     node.setAttribute('data-played', '');
     clearTimeout(timer);
     timer = setTimeout(() => {

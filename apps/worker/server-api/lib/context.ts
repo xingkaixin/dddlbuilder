@@ -116,7 +116,8 @@ export const ENV_VARIABLE_KEYS = [
   'ADMIN_SESSION_SECRET',
 ] as const satisfies readonly EnvVariableKey[];
 
-const _envKeysCovered: Exclude<EnvVariableKey, (typeof ENV_VARIABLE_KEYS)[number]> extends never
-  ? true
-  : never = true;
-void _envKeysCovered;
+type AssertNever<T extends never> = T;
+
+export type EnvKeysCovered = AssertNever<
+  Exclude<EnvVariableKey, (typeof ENV_VARIABLE_KEYS)[number]>
+>;
