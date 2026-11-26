@@ -6,7 +6,7 @@ import type { SchemaPatchOperation } from './schemaPatch';
 declare global {
   namespace WebMCP {
     interface ModelContext {
-      // Spec #373 (waitForToolsUntil) is not yet included in webmcp-types 0.1.x.
+      // Spec #373 (waitForToolsUntil) is not yet included in webmcp-types 0.2.x.
       waitForToolsUntil?: (promise: Promise<void>) => void;
     }
   }

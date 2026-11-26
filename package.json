@@ -43,31 +43,31 @@
     "test:e2e:runtime": "playwright test --config playwright.runtime.config.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.9",
+    "@hono/node-server": "^2.1.11",
     "hono": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/config": "catalog:",
     "@ddlbuilder/tsconfig": "workspace:*",
-    "@oxlint/plugins": "1.94.0",
+    "@oxlint/plugins": "1.95.0",
     "@playwright/test": "^1.65.1",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "@vitest/ui": "^5.1.0",
+    "@vitest/ui": "^5.1.2",
     "lib0": "catalog:",
-    "miniflare": "5.20261117.0-beta",
-    "oxfmt": "^0.79.0",
-    "oxlint": "^1.94.0",
+    "miniflare": "5.20261123.1-beta",
+    "oxfmt": "^0.80.0",
+    "oxlint": "^1.95.0",
     "png-to-ico": "^3.0.2",
     "sharp": "^0.35.5",
-    "tsrs": "0.25.0-ts7.1.0-beta",
+    "tsrs": "7.1.0-beta.tsrs5",
     "tsx": "^4.23.15",
-    "turbo": "^2.11.11",
+    "turbo": "^2.11.13",
     "typescript": "catalog:",
     "vitest": "catalog:",
-    "wrangler": "^4.164.0",
+    "wrangler": "^4.168.0",
     "y-protocols": "catalog:",
     "yjs": "catalog:"
   },
-  "packageManager": "pnpm@12.21.0"
+  "packageManager": "pnpm@12.23.0"
 }

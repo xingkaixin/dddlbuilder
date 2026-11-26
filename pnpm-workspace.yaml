@@ -14,18 +14,18 @@ overrides:
   'zod@<4.6.6': '^4.6.6'
   'miniflare>undici': '7.30.2'
 catalog:
-  '@cloudflare/config': 1.0.0-rc.1
-  '@types/node': ^26.6.6
-  '@vitest/coverage-v8': ^5.1.0
-  'better-auth': ^1.7.25
-  'drizzle-orm': ^1.0.0-rc.5
-  'effect': 4.1.4
-  'hono': ^4.13.19
+  '@cloudflare/config': 1.0.0-rc.4
+  '@types/node': ^26.6.11
+  '@vitest/coverage-v8': ^5.1.2
+  'better-auth': ^1.7.28
+  'drizzle-orm': ^1.0.0-rc.6
+  'effect': 4.1.5
+  'hono': ^4.13.22
   'lib0': ^0.2.120
   'typescript': '~7.0.2'
   'vite': ^8.3.8
-  'vitest': ^5.1.0
+  'vitest': ^5.1.2
   'y-protocols': '^1.0.7'
   'yjs': '^13.6.33'
 patchedDependencies:
-  '@better-auth/drizzle-adapter@1.7.25': patches/@better-auth__drizzle-adapter@1.7.25.patch
+  '@better-auth/drizzle-adapter@1.7.28': patches/@better-auth__drizzle-adapter@1.7.28.patch
