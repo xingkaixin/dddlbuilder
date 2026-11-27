@@ -13,9 +13,10 @@ DDLBuilder is an online database schema designer and DDL generator. Configure co
 
 | Task | Workflow and output |
 | --- | --- |
-| [Generate MySQL or PostgreSQL CREATE TABLE SQL](/en/basic/getting-started) | Configure columns, primary keys and indexes, then copy DDL |
-| [Convert SQL to an ER diagram](/en/advanced/foreign-key-and-er) | Import and save tables, add foreign keys or logical relationships, and inspect the diagram |
-| [Convert SQL to Prisma and other ORM models](/en/advanced/orm-generation) | Export Prisma, TypeORM, SQLAlchemy, GORM or JPA code |
+| [MySQL Online DDL Generator (Partitions & Indexes)](/en/scenarios/mysql-ddl) | Configure InnoDB tables, composite indexes, and RANGE COLUMNS partitions with a preset example |
+| [PostgreSQL CREATE TABLE & Index Generator](/en/scenarios/postgresql-ddl) | Configure schemas, IDENTITY keys, JSONB, COMMENT ON, and fillfactor for native DDL |
+| [SQL to ER Diagram & Prisma Schema Converter](/en/scenarios/sql-to-er-and-prisma) | Import SQL, inspect relationships in the ER diagram, and export Prisma or other ORM models |
+| [Dameng, Oracle & Enterprise SQL DDL Generator](/en/scenarios/dm-oracle-ddl) | Generate Dameng, Oracle, Kingbase, GaussDB, and OceanBase DDL with IDENTITY and tablespaces |
 | [Compare two SQL schemas](/en/advanced/database-tools#compare-two-sql-snapshots) | Inspect MySQL or PostgreSQL schema changes and export migration SQL |
 | [Generate a data dictionary from SQL](/en/advanced/database-tools#data-dictionary) | Export Markdown or searchable offline HTML documentation |
 | [Convert CSV or Excel to INSERT SQL](/en/advanced/business-data-import) | Map fields, validate records and export SQL with an error report |

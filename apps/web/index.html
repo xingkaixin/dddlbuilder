@@ -22,17 +22,19 @@
     <meta name="theme-color" content="#2f5bb7" />
     <meta
       name="description"
-      content="筑表师 DDLBuilder 是在线数据库设计与 DDL 生成工具。可视化设计 MySQL、PostgreSQL、SQLite 等表结构，导入 SQL 查看 ER 图，导出 Prisma 等 ORM 模型，比较结构差异并生成迁移 SQL。"
+      content="筑表师 DDLBuilder 是在线数据库设计与 DDL 生成工具，支持 MySQL、PostgreSQL、Oracle、达梦、TiDB、SQLite 等 16 种数据库。可视化设计表结构、导入 SQL 查看 ER 图、导出 Prisma 等 ORM 模型、对比差异并生成迁移 SQL。"
     />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://ddl.xingkaixin.me/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://ddl.xingkaixin.me/" />
+    <link rel="alternate" hreflang="x-default" href="https://ddl.xingkaixin.me/" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="zh_CN" />
     <meta property="og:site_name" content="筑表师" />
     <meta property="og:title" content="在线数据库设计与 DDL 生成工具 | 筑表师 DDLBuilder" />
     <meta
       property="og:description"
-      content="可视化设计 MySQL、PostgreSQL、SQLite 表结构，导入 SQL 查看 ER 图，导出 ORM 模型并比较结构差异。"
+      content="可视化设计 MySQL、PostgreSQL、Oracle、达梦、TiDB、SQLite 等 16 种数据库表结构，导入 SQL 查看 ER 图，导出 Prisma 等 ORM 模型并比较结构差异。"
     />
     <meta property="og:url" content="https://ddl.xingkaixin.me/" />
     <meta property="og:image" content="https://ddl.xingkaixin.me/og-image.png" />
@@ -48,7 +50,7 @@
     <meta name="twitter:title" content="在线数据库设计与 DDL 生成工具 | 筑表师 DDLBuilder" />
     <meta
       name="twitter:description"
-      content="可视化设计 MySQL、PostgreSQL、SQLite 表结构，导入 SQL 查看 ER 图，导出 ORM 模型并比较结构差异。"
+      content="可视化设计 MySQL、PostgreSQL、Oracle、达梦、TiDB、SQLite 等 16 种数据库表结构，导入 SQL 查看 ER 图，导出 ORM 模型并比较结构差异。"
     />
     <meta name="twitter:image" content="https://ddl.xingkaixin.me/og-image.png" />
     <meta
@@ -70,6 +72,123 @@
       media="print"
       href="https://cdn-font.hyperos.mi.com/font/css?family=MiSans_VF:VF:Chinese_Simplify,Latin&display=swap"
     />
+    <style>
+      .ssr-shell {
+        min-height: 100dvh;
+        margin: 0;
+        padding: 40px 24px 64px;
+        background: #f5f6f8;
+        color: #1c2840;
+        font-family:
+          'MiSans VF', 'PingFang SC', 'Hiragino Sans', 'Segoe UI', 'Helvetica Neue', Arial,
+          sans-serif;
+        line-height: 1.7;
+      }
+      .ssr-shell__in {
+        max-width: 880px;
+        margin: 0 auto;
+      }
+      .ssr-shell__brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .ssr-shell h1 {
+        margin: 0 0 12px;
+        font-size: 30px;
+        font-weight: 600;
+        line-height: 1.3;
+      }
+      .ssr-shell__lead {
+        margin: 0 0 24px;
+        color: #3f4c66;
+        font-size: 16px;
+      }
+      .ssr-shell h2 {
+        margin: 28px 0 10px;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .ssr-shell__list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .ssr-shell__list li {
+        padding: 4px 10px;
+        border: 1px solid #c9d0dc;
+        border-radius: 6px;
+        background: #fcfcfd;
+        font-size: 13px;
+      }
+      .ssr-shell__links {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .ssr-shell__links a {
+        display: block;
+        padding: 10px 12px;
+        border: 1px solid #c9d0dc;
+        border-radius: 6px;
+        background: #fcfcfd;
+        color: #1e3f8a;
+        font-size: 14px;
+        text-decoration: none;
+      }
+      .ssr-shell pre {
+        margin: 0;
+        padding: 14px 16px;
+        overflow-x: auto;
+        border: 1px solid #c9d0dc;
+        border-radius: 8px;
+        background: #eceff4;
+        font-family: 'Roboto Mono', Menlo, Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .ssr-shell__foot {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-top: 28px;
+        font-size: 14px;
+      }
+      .ssr-shell__foot a {
+        color: #2f5bb7;
+      }
+      @media (prefers-color-scheme: dark) {
+        .ssr-shell {
+          background: #14171e;
+          color: #e6eaf2;
+        }
+        .ssr-shell__lead {
+          color: #b6bfcf;
+        }
+        .ssr-shell__list li,
+        .ssr-shell__links a {
+          border-color: #343b4a;
+          background: #1b1f28;
+        }
+        .ssr-shell__links a,
+        .ssr-shell__foot a {
+          color: #8fb0f0;
+        }
+        .ssr-shell pre {
+          border-color: #343b4a;
+          background: #222734;
+        }
+      }
+    </style>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -79,7 +198,7 @@
         "url": "https://ddl.xingkaixin.me/",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Web",
-        "description": "在线数据库设计与 DDL 生成工具，支持 SQL 导入、ER 图、ORM 模型导出、结构对比与迁移 SQL。",
+        "description": "在线数据库设计与 DDL 生成工具，支持 MySQL、PostgreSQL、Oracle、达梦、TiDB、SQLite 等 16 种数据库，提供 SQL 导入、ER 图、Prisma 等 ORM 模型导出、结构对比与迁移 SQL。",
         "image": "https://ddl.xingkaixin.me/og-image.png",
         "inLanguage": ["zh-CN", "en-US", "ja-JP"]
       }
@@ -87,7 +206,84 @@
     <title>在线数据库设计与 DDL 生成工具 | 筑表师 DDLBuilder</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="ssr-shell">
+        <div class="ssr-shell__in">
+          <div class="ssr-shell__brand">
+            <img src="/logo.png" alt="筑表师 DDLBuilder" width="32" height="32" />
+            <span>筑表师 DDLBuilder</span>
+          </div>
+          <h1>在线数据库设计与 DDL 生成工具</h1>
+          <p class="ssr-shell__lead">
+            在浏览器中可视化设计数据表、主键、索引、外键、分区与分片，实时生成 16
+            种数据库方言的 CREATE TABLE / ALTER DDL、授权 DCL 与 Prisma、TypeORM、SQLAlchemy、GORM、JPA
+            ORM 模型。支持 SQL 导入、ER 关系图、两份结构对比、数据字典与 CSV/Excel 转 INSERT
+            SQL，不连接用户数据库，不登录即可直接使用。
+          </p>
+
+          <section aria-labelledby="supported-dialects">
+            <h2 id="supported-dialects">支持 16 种数据库方言</h2>
+            <ul class="ssr-shell__list">
+              <li>MySQL</li>
+              <li>PostgreSQL</li>
+              <li>PostgreSQL (Citus)</li>
+              <li>SQLite / D1</li>
+              <li>Oracle</li>
+              <li>达梦 (Dameng)</li>
+              <li>TiDB</li>
+              <li>MariaDB</li>
+              <li>SQL Server</li>
+              <li>OceanBase (MySQL)</li>
+              <li>OceanBase (Oracle)</li>
+              <li>PolarDB</li>
+              <li>Kingbase (人大金仓)</li>
+              <li>GaussDB</li>
+              <li>GBase</li>
+              <li>Hive</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="scenario-guides">
+            <h2 id="scenario-guides">数据库专项方案与在线模板</h2>
+            <ul class="ssr-shell__links">
+              <li>
+                <a href="/docs/zh/scenarios/mysql-ddl">MySQL 在线建表 DDL 生成器（支持分区表与索引）</a>
+              </li>
+              <li>
+                <a href="/docs/zh/scenarios/postgresql-ddl">PostgreSQL CREATE TABLE &amp; 索引生成器</a>
+              </li>
+              <li>
+                <a href="/docs/zh/scenarios/sql-to-er-and-prisma">SQL 转 ER 图在线工具 / SQL 转 Prisma Schema</a>
+              </li>
+              <li>
+                <a href="/docs/zh/scenarios/dm-oracle-ddl">达梦 / Oracle / 国产数据库建表 DDL 在线生成</a>
+              </li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="sample-ddl">
+            <h2 id="sample-ddl">MySQL 建表 DDL 输出示例</h2>
+            <pre><code>CREATE TABLE user_profile (
+  id BIGINT AUTO_INCREMENT NOT NULL COMMENT '主键ID',
+  username VARCHAR(50) NOT NULL COMMENT '用户名',
+  email VARCHAR(100) NOT NULL COMMENT '邮箱',
+  status TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id ASC),
+  UNIQUE INDEX uk_username (username ASC)
+) COMMENT='用户资料表';</code></pre>
+          </section>
+
+          <nav class="ssr-shell__foot" aria-label="文档入口">
+            <a href="/docs/zh/">中文使用文档</a>
+            <a href="/docs/en/">English Documentation</a>
+            <a href="/docs/ja/">日本語ドキュメント</a>
+            <a href="/docs/zh/basic/getting-started">快速开始</a>
+          </nav>
+        </div>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- Umami Analytics -->
     <script src="/analytics.js" defer></script>

@@ -2,6 +2,7 @@
 import { render } from 'astro:content';
 import { alternatesFor, canonicalHref, pageTitle, splitHeading, type DocEntry } from '../lib/docs';
 import { lastUpdated } from '../lib/git';
+import { presetForDoc } from '../lib/presets';
 import { adjacentPages, docsHref, FEEDBACK_URL, localeOf, LOCALES, routeOf, sectionOf } from '../lib/site';
 import DocsLayout from '../layouts/DocsLayout.astro';
 import PageList from './PageList.astro';
@@ -23,6 +24,21 @@ const alternates = alternatesFor(route, routes);
 const { previous, next } = adjacentPages(route, locale);
 const updated = lastUpdated(entry.filePath ?? entry.id);
 const section = sectionOf(route, locale);
+const preset = presetForDoc(route, entry.data.preset);
+const faqJsonLd = entry.data.faq?.length
+  ? JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: entry.data.faq.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.answer,
+        },
+      })),
+    })
+  : null;
 ---
 
 <DocsLayout
@@ -35,10 +51,27 @@ const section = sectionOf(route, locale);
   <Fragment slot="head">
     <link rel="canonical" href={canonicalHref(route)} />
     {alternates.map((link) => <link rel="alternate" hreflang={link.lang} href={link.href} />)}
+    {faqJsonLd && <script type="application/ld+json" set:html={faqJsonLd} />}
   </Fragment>
   <div class="doc__intro" slot="banner">
     <div class="crumb">{section ? `${copy.docs} / ${section}` : copy.docs}</div>
     <Fragment set:html={heading} />
+    {
+      preset && (
+        <div class="doc__intro-cta">
+          <a
+            class="lm-btn lm-btn--primary lm-btn--sm"
+            href={preset.href}
+            data-sketch="wash"
+            data-cta-placement="doc_top"
+            data-preset={preset.id}
+          >
+            {copy.openExample}
+            <i class="i i-arrow" aria-hidden="true"></i>
+          </a>
+        </div>
+      )
+    }
   </div>
   <div class="doc__layout">
     <nav class="doc__list" aria-label={copy.pagesLabel}>
@@ -68,6 +101,20 @@ const section = sectionOf(route, locale);
           <p>{copy.helpBody}</p>
         </div>
         <div class="endcard__actions">
+          {
+            preset && (
+              <a
+                class="lm-btn lm-btn--primary lm-btn--sm"
+                href={preset.href}
+                data-sketch="wash"
+                data-cta-placement="doc_bottom"
+                data-preset={preset.id}
+              >
+                {copy.openExample}
+                <i class="i i-arrow" aria-hidden="true"></i>
+              </a>
+            )
+          }
           <a class="lm-btn lm-btn--secondary lm-btn--sm" href={docsHref(`/${locale}/faq/common-errors`)} data-sketch="wash">
             {copy.faq}
           </a>

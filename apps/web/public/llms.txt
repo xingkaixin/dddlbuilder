@@ -15,7 +15,7 @@
 ## What DDLBuilder Can Do
 - Generate table DDL from form-based schema configuration.
 - Generate privilege DCL for authorization scenarios.
-- Support multiple database dialects: MySQL, PostgreSQL, PostgreSQL (Citus), SQL Server, Oracle, MariaDB, TiDB, Dameng, OceanBase (MySQL), OceanBase (Oracle), Kingbase, GBase, PolarDB, and GaussDB.
+- Support 16 database dialects: MySQL, PostgreSQL, PostgreSQL (Citus), SQLite / D1, SQL Server, Oracle, MariaDB, TiDB, Dameng, OceanBase (MySQL), OceanBase (Oracle), Kingbase, GBase, PolarDB, GaussDB, and Hive.
 - Configure fields, indexes, constraints, logical enums, and table-level options.
 - Create table relationships by dragging between fields in the ER diagram, then confirm cardinality, optionality, referential actions, and indexes in the relationship wizard.
 - Generate typed ORM models for Prisma, TypeORM, SQLAlchemy, GORM, and JPA.
@@ -45,6 +45,14 @@
 ## Official Documentation (English)
 - [Documentation Home](https://ddl.xingkaixin.me/docs/en/)
   Start here for the complete English documentation index.
+- [MySQL DDL & Partitions](https://ddl.xingkaixin.me/docs/en/scenarios/mysql-ddl)
+  Generate MySQL CREATE TABLE DDL with composite indexes, InnoDB options, and RANGE COLUMNS partitions.
+- [PostgreSQL DDL & Indexes](https://ddl.xingkaixin.me/docs/en/scenarios/postgresql-ddl)
+  Generate native PostgreSQL CREATE TABLE DDL, schema namespaces, JSONB/TIMESTAMPTZ, COMMENT ON, and indexes.
+- [SQL to ER Diagram & Prisma Schema](https://ddl.xingkaixin.me/docs/en/scenarios/sql-to-er-and-prisma)
+  Import SQL to visualize ER diagrams and export Prisma, TypeORM, SQLAlchemy, GORM, and JPA models.
+- [Dameng & Oracle DDL Generator](https://ddl.xingkaixin.me/docs/en/scenarios/dm-oracle-ddl)
+  Generate Dameng, Oracle, Kingbase, GaussDB, OceanBase, and GBase DDL with IDENTITY and tablespaces.
 - [Quick Start](https://ddl.xingkaixin.me/docs/en/basic/getting-started)
   First-run workflow to build and copy your first DDL/DCL output.
 - [Core Concepts](https://ddl.xingkaixin.me/docs/en/basic/core-concepts)
@@ -112,7 +120,7 @@
 ## DDLBuilder 能做什么
 - 通过表单化的结构配置生成建表 DDL。
 - 针对授权场景生成权限 DCL。
-- 支持多种数据库方言：MySQL、PostgreSQL、PostgreSQL (Citus)、SQL Server、Oracle、MariaDB、TiDB、Dameng、OceanBase (MySQL)、OceanBase (Oracle)、Kingbase、GBase、PolarDB 和 GaussDB。
+- 支持 16 种数据库方言：MySQL、PostgreSQL、PostgreSQL (Citus)、SQLite / D1、SQL Server、Oracle、MariaDB、TiDB、Dameng（达梦）、OceanBase (MySQL)、OceanBase (Oracle)、Kingbase（人大金仓）、GBase、PolarDB、GaussDB 和 Hive。
 - 配置字段、索引、约束、逻辑枚举以及表级选项。
 - 在 ER 图中拖动字段连接点创建表关系，并通过关系向导确认基数、可选性、引用动作和索引。
 - 一键导出 Prisma、TypeORM、SQLAlchemy、GORM 与 JPA 框架的 ORM 模型代码。
@@ -142,6 +150,14 @@
 ## 官方文档（中文）
 - [文档首页](https://ddl.xingkaixin.me/docs/zh/)
   从这里进入完整的中文文档目录。
+- [MySQL 在线建表 DDL 生成器（支持分区表与索引）](https://ddl.xingkaixin.me/docs/zh/scenarios/mysql-ddl)
+  配置 MySQL 字段、复合索引、InnoDB 选项与 RANGE COLUMNS 分区表并加载示例。
+- [PostgreSQL CREATE TABLE & 索引生成器](https://ddl.xingkaixin.me/docs/zh/scenarios/postgresql-ddl)
+  生成原生 PostgreSQL 建表 DDL、Schema、JSONB/TIMESTAMPTZ、COMMENT ON 与复合索引。
+- [SQL 转 ER 图与 Prisma Schema](https://ddl.xingkaixin.me/docs/zh/scenarios/sql-to-er-and-prisma)
+  导入 SQL 查看 ER 图，并导出 Prisma、TypeORM、SQLAlchemy、GORM 与 JPA 模型代码。
+- [达梦 / Oracle / 国产数据库建表 DDL 在线生成](https://ddl.xingkaixin.me/docs/zh/scenarios/dm-oracle-ddl)
+  生成达梦、Oracle、Kingbase、GaussDB、OceanBase 与 GBase 的 IDENTITY 与表空间 DDL。
 - [快速开始](https://ddl.xingkaixin.me/docs/zh/basic/getting-started)
   首次使用流程，帮助你完成第一份 DDL / DCL 的配置与复制。
 - [核心概念](https://ddl.xingkaixin.me/docs/zh/basic/core-concepts)
@@ -195,6 +211,14 @@
 ## 公式ドキュメント（日本語）
 - [ドキュメントホーム](https://ddl.xingkaixin.me/docs/ja/)
   日本語ドキュメントの目次です。
+- [MySQL オンライン DDL 生成（パーティション・インデックス対応）](https://ddl.xingkaixin.me/docs/ja/scenarios/mysql-ddl)
+  MySQL のパーティションテーブルと複合インデックスの DDL を生成します。
+- [PostgreSQL CREATE TABLE & インデックス生成](https://ddl.xingkaixin.me/docs/ja/scenarios/postgresql-ddl)
+  PostgreSQL 固有の IDENTITY、JSONB、COMMENT ON、インデックス DDL を生成します。
+- [SQL から ER 図・Prisma Schema 変換](https://ddl.xingkaixin.me/docs/ja/scenarios/sql-to-er-and-prisma)
+  SQL を取り込んで ER 図を確認し、Prisma などの ORM モデルを出力します。
+- [Dameng・Oracle・エンタープライズ DB 向け DDL 生成](https://ddl.xingkaixin.me/docs/ja/scenarios/dm-oracle-ddl)
+  Dameng、Oracle、Kingbase、GaussDB、OceanBase 向けの DDL を生成します。
 - [クイックスタート](https://ddl.xingkaixin.me/docs/ja/basic/getting-started)
   最初の DDL / DCL を作成してコピーする手順です。
 - [コアコンセプト](https://ddl.xingkaixin.me/docs/ja/basic/core-concepts)

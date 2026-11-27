@@ -13,9 +13,10 @@ description: "用筑表师在线设计 MySQL、PostgreSQL、SQLite 表结构。�
 
 | 你要完成的任务 | 操作与产物 |
 | --- | --- |
-| [生成 MySQL、PostgreSQL 建表语句](/zh/basic/getting-started) | 配置字段、主键和索引，复制 CREATE TABLE SQL |
-| [SQL 转 ER 图](/zh/advanced/foreign-key-and-er) | 导入并保存表结构，建立外键或逻辑关系，查看关系图 |
-| [SQL 转 Prisma 等 ORM 模型](/zh/advanced/orm-generation) | 将表结构转换为 Prisma、TypeORM、SQLAlchemy、GORM 或 JPA 代码 |
+| [MySQL 在线建表 DDL 生成器（支持分区表与索引）](/zh/scenarios/mysql-ddl) | 配置 InnoDB 表、复合索引与 RANGE COLUMNS 分区，一键加载订单表示例 |
+| [PostgreSQL CREATE TABLE & 索引生成器](/zh/scenarios/postgresql-ddl) | 配置 Schema、IDENTITY、JSONB、COMMENT ON 与 fillfactor，复制原生 DDL |
+| [SQL 转 ER 图 / SQL 转 Prisma Schema](/zh/scenarios/sql-to-er-and-prisma) | 导入建表 SQL 查看表关系图，导出 Prisma、TypeORM、SQLAlchemy、GORM 或 JPA |
+| [达梦 / Oracle / 国产数据库建表 DDL 在线生成](/zh/scenarios/dm-oracle-ddl) | 生成达梦、Oracle、Kingbase、GaussDB、OceanBase 的 IDENTITY 与表空间 DDL |
 | [对比两份 SQL 表结构](/zh/advanced/database-tools#两份-sql-的结构对比) | 查看 MySQL 或 PostgreSQL 的结构差异，导出迁移 SQL |
 | [从 SQL 生成数据字典](/zh/advanced/database-tools#数据字典) | 导出 Markdown 或带搜索的离线 HTML 文档 |
 | [CSV、Excel 转 INSERT SQL](/zh/advanced/business-data-import) | 映射字段、校验记录并导出数据 SQL 与错误清单 |
