@@ -1,8 +1,10 @@
 import { useWorkspaceQuerySync } from '@/hooks/workspacePersistence/useWorkspaceQuerySync';
 import { useTemplateCatalog } from './hooks/useTemplateCatalog';
 import { navigateApp } from '@/lib/appNavigation';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { OutputTab } from '@/utils/presetTemplates';
+import { useUrlPresetLaunch } from './hooks/useUrlPresetLaunch';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { useEditorDomains } from './hooks/useEditorDomains';
 import { useWorkspaceController } from './hooks/useWorkspaceController';
@@ -31,8 +33,11 @@ import { buildAppWorkspaceModel } from './buildAppWorkspaceModel';
 
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
+const outputTabReducer = (_current: OutputTab, next: OutputTab) => next;
+
 export function useAppController() {
   useWorkspaceQuerySync();
+  const [outputTab, setOutputTab] = useReducer(outputTabReducer, 'ddl');
   const { t } = useTranslation();
   const authIdentity = useAuthIdentity();
   const authDialog = useAuthDialog();
@@ -288,6 +293,15 @@ export function useAppController() {
   });
   const { openStateInNewDraftTab } = workspaceTabs;
 
+  useUrlPresetLaunch({
+    hydrated,
+    isShareView,
+    openStateInNewDraftTab,
+    setActiveTab,
+    setOutputTab,
+    showToast,
+  });
+
   const {
     fieldTemplateData,
     tableTemplateData,
@@ -432,6 +446,8 @@ export function useAppController() {
     onViewCurrentVersionHistory: handleViewCurrentVersionHistory,
     onOpenErDiagram: openErDiagram,
     onOpenAISchemaPatch: openAISchemaPatch,
+    outputTab,
+    onOutputTabChange: setOutputTab,
   });
 
   const webMcpDialog = useWebMcpTools({

@@ -8,6 +8,7 @@ import type { ORMTarget } from '@ddlbuilder/ddl-core';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import type { SchemaLintIssue } from '@/utils/schemaLint';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { isOutputTab, type OutputTab } from '@/utils/presetTemplates';
 import { useTranslation } from 'react-i18next';
 import { DdlOutputPanel } from './ddl-output/DdlOutputPanel';
 
@@ -43,6 +44,8 @@ interface DDLOutputProps {
   onStartReview: () => void;
   onViewReviewHistory?: () => void;
   onApplySuggestion?: (suggestion: DDLReviewStructuredSuggestion) => void;
+  outputTab?: OutputTab;
+  onOutputTabChange?: (tab: OutputTab) => void;
 }
 
 export const DDLOutput = memo<DDLOutputProps>((props) => {
@@ -55,9 +58,24 @@ export const DDLOutput = memo<DDLOutputProps>((props) => {
     { value: 'routine', label: t('ddlOutput.routineTab') },
   ] as const;
 
+  const resolvedOutputTab: OutputTab | undefined =
+    props.outputTab === undefined
+      ? undefined
+      : props.dbType === 'sqlite' && (props.outputTab === 'dcl' || props.outputTab === 'routine')
+        ? 'ddl'
+        : props.outputTab;
+
   return (
     <div className="relative flex w-full min-w-0 flex-col bg-background">
-      <Tabs key={props.dbType} defaultValue="ddl" className="relative flex flex-col">
+      <Tabs
+        key={props.dbType}
+        defaultValue={resolvedOutputTab === undefined ? 'ddl' : undefined}
+        value={resolvedOutputTab}
+        onValueChange={(value) => {
+          if (props.onOutputTabChange && isOutputTab(value)) props.onOutputTabChange(value);
+        }}
+        className="relative flex flex-col"
+      >
         <div className="sticky top-0 z-10 bg-background pb-2">
           <div className="flex items-center gap-2 text-muted-foreground">
             <TabsList className="min-w-0 max-w-full justify-start overflow-x-auto p-0">

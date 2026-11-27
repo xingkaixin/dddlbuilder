@@ -8,6 +8,7 @@ import type { useClearAllActions } from './useClearAllActions';
 import type { useNavigationActions } from './useNavigationActions';
 import type { useSchemaApplyActions } from './useSchemaApplyActions';
 import { hasTableChanges } from '@ddlbuilder/ddl-core';
+import type { OutputTab } from '@/utils/presetTemplates';
 
 type EditorDomains = ReturnType<typeof useEditorDomains>;
 
@@ -34,6 +35,8 @@ interface UseEditorSurfaceModelInput {
   onViewCurrentVersionHistory: () => void;
   onOpenErDiagram: () => void;
   onOpenAISchemaPatch: () => void;
+  outputTab: OutputTab;
+  onOutputTabChange: (tab: OutputTab) => void;
 }
 
 export function useEditorSurfaceModel({
@@ -55,6 +58,8 @@ export function useEditorSurfaceModel({
   onViewCurrentVersionHistory,
   onOpenErDiagram,
   onOpenAISchemaPatch,
+  outputTab,
+  onOutputTabChange,
 }: UseEditorSurfaceModelInput): EditorSurfaceModel {
   const { t } = useTranslation();
   const { editor, auth, sharding, animations, partition, tableOptions } = domains;
@@ -337,6 +342,8 @@ export function useEditorSurfaceModel({
       onStartReview: reviewActions.handleStartReview,
       onViewReviewHistory: reviewActions.handleViewReviewHistory,
       onApplySuggestion: schemaActions.handleApplySuggestion,
+      outputTab,
+      onOutputTabChange,
     }),
     [
       sql.generatedSql,
@@ -360,6 +367,8 @@ export function useEditorSurfaceModel({
       reviewActions.handleStartReview,
       reviewActions.handleViewReviewHistory,
       schemaActions.handleApplySuggestion,
+      outputTab,
+      onOutputTabChange,
     ],
   );
   const outputProps = useMemo(() => ({ ddlOutputProps }), [ddlOutputProps]);
