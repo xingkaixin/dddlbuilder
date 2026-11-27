@@ -96,7 +96,7 @@ const readWorkspaceDoc = async (page: Page, workspaceId: string) => {
 };
 
 test.describe('Cloudflare runtime bindings', () => {
-  for (const path of ['/', '/docs/zh/basic/getting-started']) {
+  for (const path of ['/', '/docs/zh/basic/getting-started', '/docs/zh/scenarios/mysql-ddl']) {
     test(`serves ${path} with an enforced CSP`, async ({ page }) => {
       await page.route(/^https:\/\//, (route) => route.fulfill({ body: '' }));
       await page.addInitScript(() => {
@@ -122,6 +122,30 @@ test.describe('Cloudflare runtime bindings', () => {
       expect(await page.locator('html').getAttribute('data-csp-violation')).toBeNull();
     });
   }
+
+  test('serves crawlable static H1 and hreflang on root and launches docs preset CTAs into the editor', async ({
+    page,
+    request,
+  }) => {
+    const rootHtml = await (await request.get('/')).text();
+    expect(rootHtml).toContain('<h1>在线数据库设计与 DDL 生成工具</h1>');
+    expect(rootHtml).toContain('hreflang="zh-CN"');
+    expect(rootHtml).toContain('hreflang="x-default"');
+    expect(rootHtml).toContain('/docs/zh/scenarios/mysql-ddl');
+
+    const scenarioHtml = await (await request.get('/docs/zh/scenarios/mysql-ddl')).text();
+    expect(scenarioHtml).toContain('"@type":"FAQPage"');
+    expect(scenarioHtml).toContain('hreflang="en-US"');
+    expect(scenarioHtml).toContain('hreflang="ja-JP"');
+    expect(scenarioHtml).toContain('data-cta-placement="doc_top"');
+    expect(scenarioHtml).toContain('data-cta-placement="doc_bottom"');
+
+    await page.route(/^https:\/\//, (route) => route.fulfill({ body: '' }));
+    await page.goto('/?preset=mysql-partition');
+    await expect(page.locator('#table-name')).toHaveValue('orders');
+    await expect(page.getByTestId('generated-results')).toContainText('PARTITION BY RANGE COLUMNS');
+    expect(new URL(page.url()).search).toBe('');
+  });
 
   test('permanently redirects legacy docs while preserving query parameters', async ({
     request,
