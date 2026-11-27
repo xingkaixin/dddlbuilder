@@ -283,8 +283,16 @@ kbd {
 }
 
 .doc__intro {
+  align-items: flex-start;
   max-width: 1320px;
   margin-top: 24px;
+}
+
+.doc__intro-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .doc__banner h1 {

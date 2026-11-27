@@ -13,9 +13,10 @@ DDLBuilder は、オンラインでデータベースを設計し DDL を生成�
 
 | やりたいこと | 操作と出力 |
 | --- | --- |
-| [MySQL・PostgreSQL の CREATE TABLE 文を生成する](/ja/basic/getting-started) | フィールド、主キー、インデックスを設定し、CREATE TABLE の SQL をコピーする |
-| [SQL から ER 図を作成する](/ja/advanced/foreign-key-and-er) | テーブル構造を取り込んで保存し、外部キーまたは論理リレーションを作成して、リレーション図を確認する |
-| [SQL から Prisma などの ORM モデルを生成する](/ja/advanced/orm-generation) | テーブル構造を Prisma、TypeORM、SQLAlchemy、GORM、JPA のコードに変換する |
+| [MySQL オンライン DDL 生成（パーティション・インデックス対応）](/ja/scenarios/mysql-ddl) | InnoDB オプション、複合インデックス、RANGE COLUMNS パーティションのプリセット例を開く |
+| [PostgreSQL CREATE TABLE & インデックス生成](/ja/scenarios/postgresql-ddl) | Schema、IDENTITY、JSONB、COMMENT ON、fillfactor を含むネイティブ DDL を出力 |
+| [SQL から ER 図・Prisma Schema 変換](/ja/scenarios/sql-to-er-and-prisma) | SQL を取り込んで ER 図を作成し、Prisma・TypeORM・SQLAlchemy・GORM・JPA を出力 |
+| [Dameng・Oracle・エンタープライズ DB 向け DDL 生成](/ja/scenarios/dm-oracle-ddl) | Dameng、Oracle、Kingbase、GaussDB、OceanBase 向けの IDENTITY・表領域 DDL を出力 |
 | [2 つの SQL のテーブル構造を比較する](/ja/advanced/database-tools#_2-つの-sql-の構造比較) | MySQL または PostgreSQL の構造の差分を確認し、移行 SQL を出力する |
 | [SQL からデータ辞書を生成する](/ja/advanced/database-tools#data-dictionary) | Markdown、または検索できるオフライン HTML の文書を出力する |
 | [CSV・Excel から INSERT SQL を生成する](/ja/advanced/business-data-import) | フィールドを対応付け、レコードを検証し、データの SQL とエラー一覧を出力する |

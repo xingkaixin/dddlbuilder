@@ -35,6 +35,7 @@ interface Locale {
   docs: string;
   changelog: string;
   open: string;
+  openExample: string;
   start: string;
   home: string;
   features: string;
@@ -65,6 +66,15 @@ interface Locale {
 }
 
 const zhSidebar: SidebarGroup[] = [
+  {
+    text: '场景方案',
+    items: [
+      { text: 'MySQL 建表与分区', link: '/zh/scenarios/mysql-ddl' },
+      { text: 'PostgreSQL 建表与索引', link: '/zh/scenarios/postgresql-ddl' },
+      { text: 'SQL 转 ER 图与 Prisma', link: '/zh/scenarios/sql-to-er-and-prisma' },
+      { text: '达梦与 Oracle 建表', link: '/zh/scenarios/dm-oracle-ddl' },
+    ],
+  },
   {
     text: '基础指南',
     items: [
@@ -112,6 +122,15 @@ const zhSidebar: SidebarGroup[] = [
 ];
 
 const enSidebar: SidebarGroup[] = [
+  {
+    text: 'Database solutions',
+    items: [
+      { text: 'MySQL DDL & partitions', link: '/en/scenarios/mysql-ddl' },
+      { text: 'PostgreSQL DDL & indexes', link: '/en/scenarios/postgresql-ddl' },
+      { text: 'SQL to ER & Prisma', link: '/en/scenarios/sql-to-er-and-prisma' },
+      { text: 'Dameng & Oracle DDL', link: '/en/scenarios/dm-oracle-ddl' },
+    ],
+  },
   {
     text: 'Basic guide',
     items: [
@@ -202,6 +221,15 @@ const enSidebar: SidebarGroup[] = [
 
 const jaSidebar: SidebarGroup[] = [
   {
+    text: 'シナリオ別ガイド',
+    items: [
+      { text: 'MySQL DDL・パーティション', link: '/ja/scenarios/mysql-ddl' },
+      { text: 'PostgreSQL DDL・インデックス', link: '/ja/scenarios/postgresql-ddl' },
+      { text: 'SQL から ER 図・Prisma', link: '/ja/scenarios/sql-to-er-and-prisma' },
+      { text: 'Dameng・Oracle DDL', link: '/ja/scenarios/dm-oracle-ddl' },
+    ],
+  },
+  {
     text: '基本ガイド',
     items: [
       { text: 'クイックスタート', link: '/ja/basic/getting-started' },
@@ -261,6 +289,7 @@ export const LOCALES: Record<LocaleKey, Locale> = {
     docs: '文档',
     changelog: '更新日志',
     open: '打开筑表师',
+    openExample: '在筑表师中打开此示例',
     start: '快速开始',
     home: '文档首页',
     features: '主要功能',
@@ -306,6 +335,7 @@ export const LOCALES: Record<LocaleKey, Locale> = {
     docs: 'Docs',
     changelog: 'Changelog',
     open: 'Open DDLBuilder',
+    openExample: 'Open this example in DDLBuilder',
     start: 'Get started',
     home: 'Docs home',
     features: 'Main features',
@@ -351,6 +381,7 @@ export const LOCALES: Record<LocaleKey, Locale> = {
     docs: 'ドキュメント',
     changelog: '更新情報',
     open: 'DDLBuilder を開く',
+    openExample: 'DDLBuilder でこの例を開く',
     start: 'はじめる',
     home: 'ドキュメントホーム',
     features: '主な機能',

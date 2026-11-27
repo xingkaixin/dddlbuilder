@@ -12,6 +12,15 @@ const docs = defineCollection({
     title: z.string().optional(),
     description: z.string().optional(),
     outline: z.tuple([z.number(), z.number()]).optional(),
+    preset: z.string().optional(),
+    faq: z
+      .array(
+        z.object({
+          question: z.string(),
+          answer: z.string(),
+        }),
+      )
+      .optional(),
   }),
 });
 
