@@ -39,6 +39,7 @@ export default defineConfig({
       'apps/web',
       'apps/worker',
       'packages/ddl-core',
+      'packages/workspace-core',
       {
         test: {
           name: 'scripts',

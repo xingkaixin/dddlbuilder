@@ -90,10 +90,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: web 1/2
-            command: pnpm --filter @ddlbuilder/web run test --shard=1/2
-          - name: web 2/2
-            command: pnpm --filter @ddlbuilder/web run test --shard=2/2
+          - name: web
+            command: pnpm --filter @ddlbuilder/web run test
           # Mirrors `pnpm test` minus the web package, so new packages are picked up automatically.
           - name: others
             command: pnpm exec turbo run test --filter='!@ddlbuilder/web' && pnpm run test:scripts
